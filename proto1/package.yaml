@@ -1,0 +1,23 @@
+name:                proto1
+version:             0.1.0.0
+#synopsis:
+#description:
+homepage:            https://github.com/githubuser/proto1#readme
+license:             BSD3
+author:              Author name here
+maintainer:          example@example.com
+copyright:           2019 Author name here
+category:            Web
+extra-source-files:
+- README.md
+
+dependencies:
+  - base >= 4.7 && < 5
+  - unordered-containers >= 0.2.10.0 && < 0.3.0.0
+  - text >= 1.2.3.1 && < 1.3.0.0
+  - mtl >= 2.2.2 && < 2.3.0
+
+executables:
+  proto1:
+    source-dirs:      src
+    main:             Main.hs
