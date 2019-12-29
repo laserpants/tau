@@ -1,31 +1,37 @@
-{-# LANGUAGE OverloadedStrings #-}
 {-# LANGUAGE NoMonadFailDesugaring #-}
 {-# LANGUAGE LambdaCase #-}
+{-# LANGUAGE RecordWildCards #-}
 module Main where
 
 import Control.Monad.Identity
+import Control.Monad.State
 import Data.HashMap.Strict (HashMap)
+import Data.Set (Set)
 import Data.Text (Text)
 import Debug.Trace
-import qualified Data.HashMap.Strict as HashMap
+import qualified Data.HashMap.Strict as Map
+import qualified Data.Text as Text
 
 
 -------------------------------------------------------------------------------
--- Internal
+-- Name
 -------------------------------------------------------------------------------
 
 type Name = Text
+
+
+type Map = HashMap
 
 
 -------------------------------------------------------------------------------
 -- Eval
 -------------------------------------------------------------------------------
 
-type Env = HashMap Name Value
+type Env = Map Name Value
 
 
 emptyEnv :: Env
-emptyEnv = HashMap.empty
+emptyEnv = Map.empty
 
 
 data Value
@@ -48,38 +54,36 @@ instance Show Value where
     show VClosure{}  = "<<closure>>"
 
 
-binOp :: BinOp -> Int -> Int -> Value
-binOp Add a b = VInt (a + b)
-binOp Mul a b = VInt (a * b)
-binOp Sub a b = VInt (a - b)
-binOp Eq a b = VBool (a == b)
+binop :: Op -> Int -> Int -> Value
+binop Add a b = VInt (a + b)
+binop Mul a b = VInt (a * b)
+binop Sub a b = VInt (a - b)
+binop Eq a b = VBool (a == b)
 
 
 eval :: Env -> Expr -> Identity Value
 eval env = \case
     Var name -> do
-        let Just val = HashMap.lookup name env
+        let Just val = Map.lookup name env
         pure val
 
     App fun arg -> do
         VClosure name body env1 <- eval env fun
         arg1 <- eval env arg
-        eval (HashMap.insert name arg1 env1) body
+        eval (Map.insert name arg1 env1) body
 
     Lam name body ->
         pure (VClosure name body env)
 
     Let name expr body -> do
         expr1 <- eval env expr
-        eval (HashMap.insert name expr1 env) body
+        eval (Map.insert name expr1 env) body
 
-    Lit lit ->
-        case lit of
-            LInt int ->
-                pure (VInt int)
+    Lit (LInt int) ->
+        pure (VInt int)
 
-            LBool bool ->
-                pure (VBool bool)
+    Lit (LBool bool) ->
+        pure (VBool bool)
 
     Fix expr ->
         eval env (App expr (Fix expr))
@@ -91,12 +95,12 @@ eval env = \case
     Op op a b -> do
         VInt v1 <- eval env a
         VInt v2 <- eval env b
-        pure (binOp op v1 v2)
+        pure (binop op v1 v2)
 
 
 runEval :: Env -> Name -> Expr -> ( Value, Env )
 runEval env name expr =
-    ( val, HashMap.insert name val env )
+    ( val, Map.insert name val env )
   where
     val = runIdentity (eval env expr)
 
@@ -113,7 +117,7 @@ data Expr
     | Lit !Lit
     | Fix !Expr
     | If !Expr !Expr !Expr
-    | Op !BinOp !Expr !Expr
+    | Op !Op !Expr !Expr
     deriving (Show, Eq)
 
 
@@ -127,11 +131,10 @@ data Lit
     deriving (Show, Eq)
 
 
-data BinOp = Add | Sub | Mul | Eq
+data Op = Add | Sub | Mul | Eq
     deriving (Show, Eq)
 
 
--- Top-level declaration
 type Decl = ( Name, Expr )
 
 
@@ -143,19 +146,25 @@ data Program = Program ![Decl] !Expr
 -- Types
 -------------------------------------------------------------------------------
 
-newtype TVar = NewTVar Text
-    deriving (Show, Eq)
-
-
 data Type
-    = TVar !TVar
-    | TCon !Name
+    = TVar !Name
+    | TCon !Text
     | TArr !Type !Type
     deriving (Show, Eq)
 
 
-data Scheme = Forall ![TVar] !Type
+instance Substitutable Type where
+    free = undefined
+    apply = undefined
+
+
+data Scheme = Forall ![Name] !Type
     deriving (Show, Eq)
+
+
+instance Substitutable Scheme where
+    free = undefined
+    apply = undefined
 
 
 int :: Type
@@ -170,11 +179,7 @@ bool = TCon "Bool"
 -- Typing environment (TypeEnv)
 -------------------------------------------------------------------------------
 
-newtype TypeEnv = TypeEnv { types :: HashMap Name Scheme }
-    deriving (Show, Eq)
-
-
-newtype Unique = Unique { count :: Int }
+newtype TypeEnv = TypeEnv { types :: Map Name Scheme }
     deriving (Show, Eq)
 
 
@@ -186,67 +191,95 @@ instance Monoid TypeEnv where
     mempty = emptyTypeEnv
 
 
+instance Substitutable TypeEnv where
+    free = undefined
+    apply = undefined
+
+
 emptyTypeEnv :: TypeEnv
-emptyTypeEnv = TypeEnv HashMap.empty
+emptyTypeEnv = TypeEnv Map.empty
 
 
-extend :: TypeEnv -> ( Name, Scheme ) -> TypeEnv
-extend (TypeEnv env) ( name, scheme ) =
-    TypeEnv (HashMap.insert name scheme env)
+typeOf :: Name -> TypeEnv -> Maybe Scheme
+typeOf name (TypeEnv env) =
+    Map.lookup name env
 
 
-remove :: TypeEnv -> Name -> TypeEnv
-remove (TypeEnv env) name =
-    TypeEnv (HashMap.delete name env)
+extend :: Name -> Scheme -> TypeEnv -> TypeEnv
+extend name scheme (TypeEnv env) =
+    TypeEnv (Map.insert name scheme env)
 
 
-lookup :: Name -> TypeEnv -> Maybe Scheme
-lookup name (TypeEnv env) =
-    HashMap.lookup name env
+remove :: Name -> TypeEnv -> TypeEnv
+remove name (TypeEnv env) =
+    TypeEnv (Map.delete name env)
 
 
 union :: TypeEnv -> TypeEnv -> TypeEnv
 union (TypeEnv a) (TypeEnv b) =
-    TypeEnv (HashMap.union a b)
+    TypeEnv (Map.union a b)
 
 
 fromList :: [( Name, Scheme )] -> TypeEnv
-fromList xs =
-    TypeEnv (HashMap.fromList xs)
+fromList =
+    TypeEnv . Map.fromList
 
 
 toList :: TypeEnv -> [( Name, Scheme )]
 toList (TypeEnv env) =
-    HashMap.toList env
+    Map.toList env
 
 
 -------------------------------------------------------------------------------
 -- Unification
 -------------------------------------------------------------------------------
 
-type Subst = HashMap TVar Type
+type Subst = Map Name Type
 
 
-data Matching a = Matching a
+class Substitutable a where
+    free :: a -> Set Name
+    apply :: Subst -> a -> a
 
 
-instance Functor Matching where
-    fmap = undefined
-
-instance Applicative Matching where
-    (<*>) = undefined
-    pure = undefined
+data InferState = InferState
+    { count :: Int
+    }
+    deriving (Show, Eq)
 
 
-instance Monad Matching where
-    (>>=) = undefined
+type Infer a = State InferState a
+
+
+getCount :: State InferState Int
+getCount = do
+    InferState{ count = count, .. } <- get
+    put InferState{ count = count + 1, .. }
+    pure count
 
 
 emptySubst :: Subst
-emptySubst = HashMap.empty
+emptySubst = Map.empty
 
 
-infer :: Expr -> Matching Type
+instantiate :: Scheme -> Infer Type
+instantiate (Forall vars _type) = 
+    undefined
+
+
+generalize :: Type -> TypeEnv -> Scheme
+generalize _type env =
+    Forall vars _type
+  where
+    vars = undefined
+
+
+inEnv :: Name -> Scheme -> Infer a -> Infer a
+inEnv name scheme =
+    undefined
+
+
+infer :: Expr -> Infer Type
 infer = \case
     Var name -> 
         undefined
@@ -254,27 +287,27 @@ infer = \case
     App fun arg -> do
         funt <- infer fun
         argt <- infer arg
-        case funt of
-            TArr t1 t2 -> do
-                unify t1 argt
-                pure t2
+        t1 <- fresh
+        unify funt (TArr argt t1)
+        pure t1
 
-            _ ->
-                fail "Not a function"
+    Lam name body -> do
+        undefined
+        --t1 <- fresh
+        --let tvar = Forall [] t1
+        --undefined (extend name tvar)
+        --t2 <- infer body
+        --pure (TArr t1 t2)
 
-    Lam name body ->
+    Let name expr body -> do
+        t1 <- infer expr
         undefined
 
-    Let name expr body -> 
-        undefined
+    Lit (LInt _ ) ->
+        pure int
 
-    Lit lit ->
-        case lit of
-            LInt _ ->
-                pure int
-
-            LBool _ ->
-                pure bool
+    Lit (LBool _) ->
+        pure bool
 
     Fix expr ->
         undefined
@@ -290,10 +323,32 @@ infer = \case
         undefined
 
 
-unify = undefined
+unify :: Type -> Type -> Infer Type
+unify fst snd =
+    case ( fst, snd ) of
+        ( TCon a, TCon b ) | a == b ->
+            pure fst
+
+        ( TArr a b, TArr a1 b1 ) -> do
+            t1 <- unify a a1
+            t2 <- unify b b1
+            pure (TArr t1 t2)
+
+        ( _, _ ) ->
+            error "Cannot unify"
 
 
 occurs = undefined
+
+
+names = fmap (\c -> Text.pack [c]) ['a' .. 'z'] ++ fmap (\n -> Text.pack ('a' : show n)) [1 .. ]
+
+
+fresh :: Infer Type
+fresh = do
+    count <- getCount
+    let var = names !! count
+    pure (TVar var)
 
 
 -------------------------------------------------------------------------------
@@ -301,6 +356,12 @@ occurs = undefined
 main :: IO ()
 main =
     let
+        expr1 =
+            Lam "x" (Op Add (Var "x") (Lit (LInt 1)))
+
+        expr2 =
+            App expr1 (Lit (LInt 3))
+
         fact =
             Fix (Lam "f"
                 (Lam "n"
@@ -312,4 +373,7 @@ main =
 
         fact5 = App fact (Lit (LInt 5))
 
-     in print (eval mempty fact5)
+     in do
+     print (eval mempty fact5)
+     print (eval mempty expr1)
+     print (eval mempty expr2)
