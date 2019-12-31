@@ -28,7 +28,7 @@ class Free a where
 
 
 instance Free a => Free [a] where
-    free = foldr (union . free) mempty
+    free = foldr (union . free) Set.empty
 
 
 -------------------------------------------------------------------------------
@@ -158,7 +158,7 @@ data Type
 instance Free Type where
     free (TVar name)  = Set.singleton name
     free (TArr t1 t2) = free t1 `union` free t2
-    free _            = mempty
+    free _            = Set.empty
 
 
 data Scheme = Forall !(Set Var) !Type
@@ -178,12 +178,21 @@ newtype Context = Context (Map Var Scheme)
 
 
 instance Free Context where
-    free (Context env) = foldr (Set.union . free) mempty (Map.elems env)
+    free (Context env) = foldr (Set.union . free) (Set.empty) (Map.elems env)
 
 
 extend :: Var -> Scheme -> Context -> Context 
 extend name scheme (Context env) =
     Context (Map.insert name scheme env)
+
+
+apply1 :: Sub -> Context -> Context
+apply1 sub (Context env) = 
+    Context (Map.map fun env)
+  where
+    fun (Forall vars tau) = Forall vars (apply sub' tau)
+      where
+        sub' = foldr Map.delete sub vars
 
 
 ---------------------------------------------------------------------------------
@@ -306,18 +315,6 @@ ops = Map.fromList
     ]
 
 
-apply2 :: Sub -> Scheme -> Scheme
-apply2 sub (Forall vars tau) =
-    Forall vars (apply sub' tau)
-  where
-    sub' = foldr Map.delete sub vars
-
-
-apply1 :: Sub -> Context -> Context
-apply1 sub (Context env) = 
-    Context (Map.map (apply2 sub) env)
-
-
 -- http://www.macs.hw.ac.uk/~yl55/UnPublished/ThesisMainText.pdf
 --
 unify :: Type -> Type -> Unify Sub
@@ -347,9 +344,7 @@ unify = curry $ \case
         fail "Unification failed"
 
   where
-    occursIn :: Var -> Type -> Bool
-    occursIn name tau = 
-        name `member` free tau
+    occursIn name = member name . free
 
 
 apply :: Sub -> Type -> Type
@@ -374,42 +369,44 @@ fresh = do
 letters = fmap Text.pack ( [1..] >>= flip replicateM ['a'..'z'] )
 
 
-runInfer :: Unify Type -> Type
+runInfer :: Unify a -> a
 runInfer state =
     evalState state newUniState 
 
 
 -------------------------------------------------------------------------------
 
+expr1 = Lam "x" (Op Add (Var "x") (Lit (Int 1)))
+
+expr2 = App expr1 (Lit (Int 3))
+
+expr3 = -- let x = 4 in let x = 5 in x
+    Let "x" (Lit (Int 4)) (Let "x" (Lit (Int 5)) (Var "x"))
+
+expr4 = 
+    Let "x" (Lit (Int 4)) (Let "y" (Lit (Int 5)) (Var "x"))
+
+fact =
+    Fix (Lam "f"
+        (Lam "n"
+            (If (Op Eq (Lit (Int 0)) (Var "n"))
+                (Lit (Int 1))
+                (Op Mul (Var "n") (App (Var "f") (Op Sub (Var "n") (Lit (Int 1))))))
+        )
+    )
+
+fact5 = App fact (Lit (Int 5))
+
+expr1Type = runInfer (infer (Context mempty) expr1)
+
+expr2Type = runInfer (infer (Context mempty) expr2)
+
 main :: IO ()
-main =
-    let
-        expr1 =
-            Lam "x" (Op Add (Var "x") (Lit (Int 1)))
-
-        expr2 =
-            App expr1 (Lit (Int 3))
-
-        expr3 = -- let x = 4 in let x = 5 in x
-            Let "x" (Lit (Int 4)) (Let "x" (Lit (Int 5)) (Var "x"))
-
-        expr4 =
-            Let "x" (Lit (Int 4)) (Let "y" (Lit (Int 5)) (Var "x"))
-
-        fact =
-            Fix (Lam "f"
-                (Lam "n"
-                    (If (Op Eq (Lit (Int 0)) (Var "n"))
-                        (Lit (Int 1))
-                        (Op Mul (Var "n") (App (Var "f") (Op Sub (Var "n") (Lit (Int 1))))))
-                )
-            )
-
-        fact5 = App fact (Lit (Int 5))
-
-   in do
-   print (runReader (eval fact5) mempty)
+main = do
+   print (runReader (eval fact5) mempty, 120)
    print (runReader (eval expr1) mempty)
-   print (runReader (eval expr2) mempty)
-   print (runReader (eval expr3) mempty)
-   print (runReader (eval expr4) mempty)
+   print (runReader (eval expr2) mempty, 4)
+   print (runReader (eval expr3) mempty, 5)
+   print (runReader (eval expr4) mempty, 4)
+   print (snd expr1Type)
+   print (snd expr2Type)
