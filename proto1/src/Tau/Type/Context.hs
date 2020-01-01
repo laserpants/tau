@@ -13,8 +13,7 @@ newtype Context = Context (Map Var Scheme)
 
 
 instance Free Context where
-    free (Context env) = 
-        foldr (Set.union . free) Set.empty (Map.elems env)
+    free (Context env) = foldr (Set.union . free) Set.empty (Map.elems env)
 
 
 extend :: Var -> Scheme -> Context -> Context 

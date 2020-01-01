@@ -35,6 +35,7 @@ data Expr
     | App !Expr !Expr
     | Lam !Var !Expr
     | Let !Var !Expr !Expr
+    -- | Case ...
     | Lit !Value
     | Fix !Expr
     | If !Expr !Expr !Expr
