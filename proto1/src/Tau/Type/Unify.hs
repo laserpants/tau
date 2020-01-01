@@ -49,11 +49,8 @@ generalize context tau =
 
 
 infer :: Context -> Expr -> Unify ( Sub, Type )
-infer context = \case
+infer context@(Context env) = \case
     Var name -> 
-        let 
-            Context env = context
-        in
         case Map.lookup name env of
             Nothing ->
                 fail "Unbound variable"
