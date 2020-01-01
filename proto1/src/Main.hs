@@ -2,12 +2,12 @@ module Main where
 
 import Control.Monad.Reader
 import Debug.Trace
+import Tau.Core
 import Tau.Eval
-import Tau.Parts
-import Tau.Syntax
 import Tau.Type
 import Tau.Type.Context (Context(..))
 import Tau.Type.Unify
+import Tau.Util
 
 
 expr1 = Lam "x" (Op Add (Var "x") (Lit (Int 1)))

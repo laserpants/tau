@@ -1,4 +1,4 @@
-module Tau.Parts where
+module Tau.Util where
 
 import Data.Text (Text)
 

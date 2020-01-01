@@ -3,8 +3,8 @@
 module Tau.Eval where
 
 import Control.Monad.Reader
-import Tau.Parts
-import Tau.Syntax
+import Tau.Core
+import Tau.Util
 import qualified Data.Map as Map
 
 

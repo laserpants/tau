@@ -3,15 +3,13 @@ module Tau.Type where
 
 import Data.Map (Map)
 import Data.Set (Set, union, difference)
-import Tau.Parts
+import Tau.Util
 import qualified Data.Map as Map
 import qualified Data.Set as Set
 
 
 data Type
     = TVar !Var
---    | EVar !Int
---    | TCon !Text
     | TInt
     | TBool
     | TArr !Type !Type
@@ -53,3 +51,12 @@ apply sub = \case
 
     tau ->
         tau
+
+
+singleSub :: Var -> Type -> Sub
+singleSub = Map.singleton
+
+
+compose :: Sub -> Sub -> Sub
+compose sub1 sub2 = 
+    Map.map (apply sub1) sub2 `Map.union` sub1

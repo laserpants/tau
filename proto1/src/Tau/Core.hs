@@ -1,7 +1,7 @@
-module Tau.Syntax where
+module Tau.Core where
 
 import Data.Map (Map)
-import Tau.Parts
+import Tau.Util
 
 
 type Env = Map Var Value

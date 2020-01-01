@@ -5,11 +5,11 @@ module Tau.Type.Unify where
 import Control.Monad.State
 import Data.Map (Map)
 import Data.Set (difference, member)
-import Tau.Parts
-import Tau.Syntax (Expr(..), Value(..), Op(..))
-import Tau.Type (Type(..), Scheme(..), Free(..), Sub)
+import Tau.Core (Expr(..), Value(..), Op(..))
+import Tau.Type (Type(..), Scheme(..), Free(..), Sub, compose, singleSub)
 import Tau.Type (apply)
 import Tau.Type.Context (Context(..), extend)
+import Tau.Util
 import qualified Data.Map as Map
 import qualified Data.Set as Set
 import qualified Data.Text as Text
@@ -46,15 +46,6 @@ instantiate (Forall vars tau) = do
 generalize :: Context -> Type -> Scheme
 generalize context tau =
     Forall (free tau `difference` free context) tau
-
-
-substitute :: Var -> Type -> Sub
-substitute = Map.singleton
-
-
-compose :: Sub -> Sub -> Sub
-compose sub1 sub2 = 
-    Map.map (apply sub1) sub2 `Map.union` sub1
 
 
 infer :: Context -> Expr -> Unify ( Sub, Type )
@@ -151,7 +142,7 @@ unify = curry $ \case
 
     ( TVar name, tau ) 
         | name `occursIn` tau -> fail "Infinite type"
-        | otherwise           -> pure (substitute name tau)
+        | otherwise           -> pure (singleSub name tau)
 
     _ -> 
         fail "Unification failed"

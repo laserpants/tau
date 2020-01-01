@@ -1,8 +1,8 @@
 module Tau.Type.Context where
 
 import Data.Map (Map)
-import Tau.Parts
 import Tau.Type (Scheme(..), Free(..), Sub)
+import Tau.Util
 import qualified Data.Map as Map
 import qualified Data.Set as Set
 import qualified Tau.Type as Type
