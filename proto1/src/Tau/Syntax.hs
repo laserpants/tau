@@ -42,7 +42,11 @@ data Expr
     deriving (Show, Eq)
 
 
-data Op = Add | Sub | Mul | Eq
+data Op
+    = Add
+    | Sub
+    | Mul
+    | Eq
     deriving (Show, Eq, Ord)
 
 
