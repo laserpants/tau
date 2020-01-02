@@ -16,15 +16,24 @@ instance Free Context where
     free (Context env) = foldr (Set.union . free) Set.empty (Map.elems env)
 
 
+empty :: Context
+empty = Context Map.empty
+
+
 extend :: Var -> Scheme -> Context -> Context 
 extend name scheme (Context env) =
     Context (Map.insert name scheme env)
 
 
-apply :: Sub -> Context -> Context
-apply sub (Context env) = 
+remove :: Var -> Context -> Context
+remove name (Context env) = 
+    Context (Map.delete name env)
+
+
+substitute :: Sub -> Context -> Context
+substitute sub (Context env) =
     Context (Map.map fun env)
   where
-    fun (Forall vars tau) = Forall vars (Type.apply sub' tau)
+    fun (Forall vars tau) = Forall vars (Type.substitute sub' tau)
       where
         sub' = foldr Map.delete sub vars

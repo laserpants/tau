@@ -31,9 +31,13 @@ fact =
 
 fact5 = App fact (Lit (Int 5))
 
-expr1Type = runInfer (infer (Context mempty) expr1)
+expr1Type = runInfer (infer expr1)
 
-expr2Type = runInfer (infer (Context mempty) expr2)
+expr2Type = runInfer (infer expr2)
+
+expr6 = Lam "x" (Lam "y" (Lam "z" (Op Add (Var "x") (Op Add (Var "y") (Var "z")))))
+
+expr6Type = runInfer (infer expr6)
 
 main :: IO ()
 main = do
@@ -42,5 +46,5 @@ main = do
    print (runReader (eval expr2) mempty, 4)
    print (runReader (eval expr3) mempty, 5)
    print (runReader (eval expr4) mempty, 4)
-   print (snd expr1Type)
-   print (snd expr2Type)
+   print expr1Type
+   print expr2Type

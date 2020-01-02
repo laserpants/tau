@@ -41,13 +41,13 @@ instance Free Scheme where
 type Sub = Map Var Type
 
 
-apply :: Sub -> Type -> Type
-apply sub = \case 
+substitute :: Sub -> Type -> Type
+substitute sub = \case 
     TVar name ->
         Map.findWithDefault (TVar name) name sub
 
     TArr t1 t2 ->
-        TArr (apply sub t1) (apply sub t2)
+        TArr (substitute sub t1) (substitute sub t2)
 
     tau ->
         tau
@@ -59,4 +59,4 @@ singleSub = Map.singleton
 
 compose :: Sub -> Sub -> Sub
 compose sub1 sub2 = 
-    Map.map (apply sub1) sub2 `Map.union` sub1
+    Map.map (substitute sub1) sub2 `Map.union` sub1
