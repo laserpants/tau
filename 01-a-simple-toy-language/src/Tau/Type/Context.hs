@@ -1,7 +1,7 @@
 module Tau.Type.Context where
 
 import Data.Map (Map)
-import Tau.Type (Scheme(..), Free(..), Sub)
+import Tau.Type (Scheme(..), Free(..), Substitutable(..), Sub)
 import Tau.Util
 import qualified Data.Map as Map
 import qualified Data.Set as Set
@@ -30,10 +30,7 @@ remove name (Context env) =
     Context (Map.delete name env)
 
 
-substitute :: Sub -> Context -> Context
-substitute sub (Context env) =
-    Context (Map.map fun env)
-  where
-    fun (Forall vars tau) = Forall vars (Type.substitute sub' tau)
+instance Substitutable Context where
+    substitute sub (Context env) = Context (Map.map fun env)
       where
-        sub' = foldr Map.delete sub vars
+        fun (Forall vars tau) = Forall vars (substitute (foldr Map.delete sub vars) tau)

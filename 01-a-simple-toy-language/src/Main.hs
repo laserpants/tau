@@ -1,3 +1,4 @@
+{-# LANGUAGE RankNTypes #-}
 module Main where
 
 import Control.Monad.Reader
@@ -35,9 +36,14 @@ expr1Type = runInfer (infer expr1)
 
 expr2Type = runInfer (infer expr2)
 
-expr6 = Lam "x" (Lam "y" (Lam "z" (Op Add (Var "x") (Op Add (Var "y") (Var "z")))))
+expr6 = Lam "x" (Lam "y" (Lam "z" (Op Add (Op Add (Var "x") (Var "y")) (Var "z"))))
 
 expr6Type = runInfer (infer expr6)
+
+
+fun :: (forall a.a -> Int) -> ( Int, Int )
+fun g = ( g True, g 3 )
+
 
 main :: IO ()
 main = do
