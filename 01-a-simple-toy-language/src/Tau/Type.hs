@@ -44,8 +44,8 @@ instance Free Scheme where
 type Sub = Map Var Type
 
 
-sub :: Var -> Type -> Sub
-sub = Map.singleton
+substitute :: Var -> Type -> Sub
+substitute = Map.singleton
 
 
 emptySub :: Sub
@@ -56,27 +56,27 @@ emptySub = Map.empty
 --
 compose :: Sub -> Sub -> Sub
 compose sub1 sub2 = 
-    Map.map (substitute sub1) sub2 `Map.union` sub1
+    Map.map (apply sub1) sub2 `Map.union` sub1
 
 
 class Substitutable a where
-    substitute :: Sub -> a -> a
+    apply :: Sub -> a -> a
 
 
 instance Substitutable a => Substitutable [a] where
-    substitute = map . substitute
+    apply = map . apply
 
 
 -- | Apply a substitution to a type.
 --
 instance Substitutable Type where
-    substitute sub (TyVar name) =
+    apply sub (TyVar name) =
         Map.findWithDefault (TyVar name) name sub
 
-    substitute sub (TyArr t1 t2) =
-        TyArr (substitute sub t1) (substitute sub t2)
+    apply sub (TyArr t1 t2) =
+        TyArr (apply sub t1) (apply sub t2)
 
-    substitute _ tau = tau
+    apply _ tau = tau
 
 
 data Constraint = Constraint !Type !Type
@@ -84,5 +84,5 @@ data Constraint = Constraint !Type !Type
 
 
 instance Substitutable Constraint where
-    substitute sub (Constraint t1 t2) =
-        Constraint (substitute sub t1) (substitute sub t2)
+    apply sub (Constraint t1 t2) =
+        Constraint (apply sub t1) (apply sub t2)

@@ -41,6 +41,16 @@ expr6 = Lam "x" (Lam "y" (Lam "z" (Op Add (Op Add (Var "x") (Var "y")) (Var "z")
 
 expr6Type = runInfer (infer expr6)
 
+expr7Type = runInfer (infer fact)
+
+xx = let Right (a,constraints) = expr6Type in 
+         let Right s = runSolver constraints in 
+               apply s a
+
+yy = let Right (a,constraints) = expr7Type in 
+         let Right s = runSolver constraints in 
+               apply s a
+
 
 fun :: (forall a.a -> Int) -> ( Int, Int )
 fun g = ( g True, g 3 )

@@ -8,8 +8,8 @@ import Control.Monad.RWS.Strict
 import Data.Map (Map)
 import Data.Set (difference, member)
 import Tau.Core (Expr(..), Value(..), Op(..))
-import Tau.Type (Type(..), Scheme(..), Constraint(..), Free(..), Substitutable(..), Sub, compose, emptySub, sub)
-import Tau.Type (substitute)
+import Tau.Type (Type(..), Scheme(..), Constraint(..), Free(..), Substitutable(..), Sub, compose, emptySub, substitute)
+import Tau.Type (apply)
 import Tau.Type.Context (Context(..), extend, remove)
 import Tau.Util
 import qualified Data.Map as Map
@@ -21,13 +21,13 @@ import qualified Tau.Type.Context as Context
 type Infer = RWST Context [Constraint] Int (Either String)
 
 
-type Solve = Identity
+type Solve = Either String
 
 
 instantiate :: Scheme -> Infer Type
 instantiate (Forall vars tau) = do
     vars' <- mapM (const fresh) varsL
-    pure $ substitute (Map.fromList (varsL `zip` vars')) tau
+    pure $ apply (Map.fromList (varsL `zip` vars')) tau
   where
     varsL = Set.toList vars
 
@@ -48,7 +48,7 @@ infer = \case
         Context env <- ask
         case Map.lookup name env of
             Nothing ->
-                fail "Unbound variable"
+                lift (Left "Unbound variable")
 
             Just scheme -> do
                 instantiate scheme
@@ -66,9 +66,9 @@ infer = \case
 
     App fun arg -> do
         t1 <- infer fun
-        t2 <- infer arg
+        t2 <- infer arg 
         t3 <- fresh
-        unify t1 (TyArr t2 t3)   -- ?
+        unify t1 (TyArr t2 t3)
         pure t3
 
     Let name expr body -> do
@@ -133,27 +133,27 @@ unifies = curry $ \case
 
     ( TyBool, TyBool ) -> 
         pure emptySub
-    
+
     ( TyInt, TyInt ) -> 
         pure emptySub
 
     ( TyArr a b, TyArr a1 b1 ) -> do
         t1 <- unifies a a1
-        t2 <- unifies (substitute t1 b) (substitute t1 b1)
+        t2 <- unifies (apply t1 b) (apply t1 b1)
         pure (t2 `compose` t1)
 
     ( TyVar a, TyVar b ) 
         | a == b -> pure emptySub
 
     ( TyVar name, tau ) 
-        | name `occursIn` tau -> fail "Infinite type"
-        | otherwise           -> pure (sub name tau)
+        | name `occursIn` tau -> Left "Infinite type"
+        | otherwise           -> pure (substitute name tau)
 
     ( tau, TyVar name ) -> 
         unifies (TyVar name) tau
 
     _ -> 
-        fail "Unification failed"
+        Left "Unification failed"
 
   where
     occursIn name = member name . free
@@ -165,10 +165,10 @@ solve ( sub, constraints ) =
   where
     go :: Sub -> Constraint -> Solve Sub
     go sub (Constraint t1 t2) = do
-        sub1 <- unifies (substitute sub t1) (substitute sub t2)
+        sub1 <- unifies (apply sub t1) (apply sub t2)
         pure (sub `compose` sub1)
 
 
 runSolver :: [Constraint] -> Either String Sub
 runSolver constraints =
-    pure $ runIdentity $ solve ( Map.empty, constraints )
+    solve ( Map.empty, constraints )

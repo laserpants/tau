@@ -8,6 +8,8 @@ import qualified Data.Set as Set
 import qualified Tau.Type as Type
 
 
+-- | The type environment is a mapping from variables to type schemes.
+--
 newtype Context = Context (Map Var Scheme)
     deriving (Show, Eq)
 
@@ -31,6 +33,6 @@ remove name (Context env) =
 
 
 instance Substitutable Context where
-    substitute sub (Context env) = Context (Map.map fun env)
+    apply sub (Context env) = Context (Map.map fun env)
       where
-        fun (Forall vars tau) = Forall vars (substitute (foldr Map.delete sub vars) tau)
+        fun (Forall vars tau) = Forall vars (apply (foldr Map.delete sub vars) tau)
