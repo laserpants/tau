@@ -52,10 +52,10 @@ emptySub :: Sub
 emptySub = Map.empty
 
 
--- | Compose substitutions  
+-- | Compose substitutions
 --
 compose :: Sub -> Sub -> Sub
-compose sub1 sub2 = 
+compose sub1 sub2 =
     Map.map (apply sub1) sub2 `Map.union` sub1
 
 

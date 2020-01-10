@@ -1,14 +1,15 @@
 module Tau.Core where
 
 import Data.Map (Map)
+import Tau.Type
 import Tau.Util
 
 
 type Env = Map Var Value
 
 
-data Value 
-    = Int !Integer 
+data Value
+    = Int !Integer
     | Bool !Bool
     -- | Int32 !Int32
     -- | Int64 !Int64

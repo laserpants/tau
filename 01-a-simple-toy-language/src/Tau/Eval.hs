@@ -12,7 +12,7 @@ type Eval = Reader Env
 
 
 eval :: Expr -> Eval Value
-eval = \case 
+eval = \case
     Var name -> do
         Just val <- asks $ Map.lookup name
         pure val
@@ -24,10 +24,10 @@ eval = \case
         local (const env') (eval body)
 
     Lam name body -> do
-        env <- ask 
+        env <- ask
         pure (Closure name body env)
 
-    Let name expr body -> 
+    Let name expr body ->
         eval (App (Lam name body) expr)
 
     Lit val ->

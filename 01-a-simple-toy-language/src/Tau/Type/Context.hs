@@ -8,7 +8,7 @@ import qualified Data.Set as Set
 import qualified Tau.Type as Type
 
 
--- | The type environment is a mapping from variables to type schemes.
+-- | The type context (environment) is a mapping from variables to type schemes.
 --
 newtype Context = Context (Map Var Scheme)
     deriving (Show, Eq)
@@ -18,6 +18,8 @@ instance Free Context where
     free (Context env) = foldr (Set.union . free) Set.empty (Map.elems env)
 
 
+-- | The empty type context
+--
 empty :: Context
 empty = Context Map.empty
 
@@ -27,6 +29,8 @@ extend name scheme (Context env) =
     Context (Map.insert name scheme env)
 
 
+-- | Remove a name from the type context.
+--
 remove :: Var -> Context -> Context
 remove name (Context env) = 
     Context (Map.delete name env)

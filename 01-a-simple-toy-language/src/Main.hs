@@ -5,6 +5,7 @@ module Main where
 import Control.Monad.Reader
 import Debug.Trace
 import Tau.Core
+--import Tau.Core.Parser
 import Tau.Eval
 import Tau.Type
 import Tau.Type.Context (Context(..))
