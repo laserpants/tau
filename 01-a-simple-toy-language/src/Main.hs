@@ -7,6 +7,7 @@ import Debug.Trace
 import Tau.Core
 --import Tau.Core.Parser
 import Tau.Eval
+import Tau.Repl
 import Tau.Type
 import Tau.Type.Context (Context(..))
 import Tau.Type.Unify
@@ -59,10 +60,11 @@ fun g = ( g True, g 3 )
 
 main :: IO ()
 main = do
-   print (runReader (eval fact5) mempty, 120)
-   print (runReader (eval expr1) mempty)
-   print (runReader (eval expr2) mempty, 4)
-   print (runReader (eval expr3) mempty, 5)
-   print (runReader (eval expr4) mempty, 4)
-   print expr1Type
-   print expr2Type
+    repl
+   --print (runReader (eval fact5) mempty, 120)
+   --print (runReader (eval expr1) mempty)
+   --print (runReader (eval expr2) mempty, 4)
+   --print (runReader (eval expr3) mempty, 5)
+   --print (runReader (eval expr4) mempty, 4)
+   --print expr1Type
+   --print expr2Type
