@@ -28,7 +28,7 @@ instance Show Value where
     -- show (VChar c)   = show c
     -- show (VString s) = show s
     -- show VUnit       = "()"
-    show Closure{}  = "<<closure>>"
+    show Closure{}  = "<function>"
 
 
 data Expr

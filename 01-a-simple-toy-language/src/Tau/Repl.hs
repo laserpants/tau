@@ -7,20 +7,35 @@ import Data.Text (pack)
 import System.Console.Repline
 import Tau.Core.Parser
 import Tau.Eval
+import Tau.Type
+import Tau.Type.Context (Context(..))
+import Tau.Type.Unify
 import Text.Megaparsec
 
 
 type Repl a = HaskelineT IO a
 
 
---cmd :: String -> Repl ()
+eval_ expr = runReader (eval expr) mempty
+
+
+cmd :: String -> Repl ()
 cmd input = --liftIO $ print input
     case parse expr "" (pack input) of
         Left _ -> 
             liftIO $ print "No parse!"
         
         Right ast ->
-            liftIO $ print $ runReader (eval (toExpr ast)) mempty
+            let
+                expr = toExpr ast
+                tp   = runInfer (infer expr)
+
+                Right (a,constraints) = tp
+                Right s = runSolver constraints
+                xxx = apply s a
+
+            in
+            liftIO $ print ( (eval_ expr), xxx )
 
 
 completer :: Monad m => WordCompleter m
@@ -52,4 +67,6 @@ ini = liftIO $ putStrLn "Welcome!"
 
 
 repl :: IO ()
-repl = evalRepl (pure "> ") cmd options (Just ':') (Word completer) ini
+repl = evalRepl prompt cmd options (Just ':') (Word completer) ini
+  where
+    prompt = pure "> "
