@@ -4,9 +4,11 @@ module Tau.Core.Parser where
 import Control.Monad.Combinators.Expr
 import Data.Text (Text, pack)
 import Data.Void
+import Tau.Core (Expr)
 import Text.Megaparsec
 import Text.Megaparsec.Char
 import qualified Text.Megaparsec.Char.Lexer as Lex
+import qualified Tau.Core as Core
 
 
 type Parser = Parsec Void Text
@@ -182,3 +184,47 @@ operator =
 
 expr :: Parser Ast
 expr = makeExprParser term operator
+
+
+toExpr :: Ast -> Expr
+toExpr ast =
+    case ast of
+       Var name ->
+          Core.Var name
+
+       App fun arg ->
+          Core.App (toExpr fun) (toExpr arg)
+
+       If cond true false ->
+          Core.If (toExpr cond) (toExpr true) (toExpr false)
+
+       Let name exp body ->
+          Core.Let name (toExpr exp) (toExpr body)
+
+       Lambda name body ->
+          Core.Lam name (toExpr body)
+
+       Op2 op2 a b ->
+          Core.Op (toOp op2) (toExpr a) (toExpr b)
+
+       Bool b ->
+          Core.Lit (Core.Bool b)
+
+       Int n ->
+          Core.Lit (Core.Int n)
+
+
+toOp :: Op2 -> Core.Op
+toOp op2 = 
+    case op2 of
+        Add ->
+            Core.Add
+
+        Sub ->
+            Core.Sub
+
+        Mul ->
+            Core.Mul
+
+        Eq ->
+            Core.Eq
