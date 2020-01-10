@@ -4,9 +4,9 @@ version:             0.1.0.0
 #description:
 #homepage:            
 license:             BSD3
-author:              Author name here
+author:              Heikki Johannes Hildén
 maintainer:          example@example.com
-copyright:           2019 Author name here
+copyright:           2019-2020 Author name here
 category:            Web
 extra-source-files:
 - README.md

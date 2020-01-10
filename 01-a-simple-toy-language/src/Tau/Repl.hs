@@ -20,7 +20,7 @@ eval_ expr = runReader (eval expr) mempty
 
 
 cmd :: String -> Repl ()
-cmd input = --liftIO $ print input
+cmd input =
     case parse expr "" (pack input) of
         Left _ -> 
             liftIO $ print "No parse!"
@@ -47,12 +47,6 @@ completer n = do
 help :: [String] -> Repl ()
 help args = 
     liftIO $ print $ "Help: " ++ show args
-
-
---say :: [String] -> Repl ()
---say args = do
---    liftIO $ system $ "cowsay" ++ " " ++ (unwords args)
---    return ()
 
 
 options :: [(String, [String] -> Repl ())]
