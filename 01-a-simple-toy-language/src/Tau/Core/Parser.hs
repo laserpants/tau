@@ -43,7 +43,7 @@ spaces = Lex.space
     (Lex.skipBlockComment "{-" "-}")
 
 
--- | By convention, whitespace is consumed after lexemes.
+-- | Parse a single lexeme. By convention, whitespace is consumed after lexemes.
 --
 lexeme :: Parser a -> Parser a
 lexeme = Lex.lexeme spaces
@@ -53,7 +53,7 @@ symbol :: Text -> Parser Text
 symbol = Lex.symbol spaces
 
 
--- | Parse something between a pair of parentheses.
+-- | Parse something surrounded by a pair of parentheses.
 --
 parens :: Parser a -> Parser a
 parens = between (symbol "(") (symbol ")")

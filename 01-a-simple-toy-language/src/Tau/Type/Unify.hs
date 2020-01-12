@@ -232,7 +232,6 @@ solve :: ( Sub, [Constraint] ) -> Solve Sub
 solve ( sub, constraints ) =
     foldM go emptySub constraints
   where
-    go :: Sub -> Constraint -> Solve Sub
     go sub (Constraint t1 t2) = do
         sub1 <- unifies (apply sub t1) (apply sub t2)
         pure (sub `compose` sub1)
