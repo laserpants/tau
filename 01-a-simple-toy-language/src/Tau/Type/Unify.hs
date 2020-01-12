@@ -3,6 +3,7 @@
 module Tau.Type.Unify where
 
 import Control.Monad.State
+import Control.Monad.Reader
 import Control.Monad.Identity
 import Control.Monad.RWS.Strict
 import Data.Map (Map)
@@ -20,7 +21,7 @@ import qualified Tau.Type.Context as Context
 import Debug.Trace
 
 
-type Infer = RWST Context [Constraint] Int (Either String)
+type Infer = ReaderT Context (StateT Int (Either String))
 
 
 type Solve = Either String
@@ -28,7 +29,6 @@ type Solve = Either String
 
 instantiate :: Scheme -> Infer Type
 instantiate (Forall vars tau) = do
---    trace (show (Forall vars tau)) $ do
     vars' <- mapM (const fresh) varsL
     pure $ apply (Map.fromList (varsL `zip` vars')) tau
   where
@@ -45,70 +45,131 @@ inContext name scheme = do
     local (extend name scheme . remove name)
 
 
-infer :: Expr -> Infer Type
+infer :: Expr -> Infer ( Type, [Constraint] )
 infer = \case
-    Var name -> do
-        Context env <- ask
---        trace (show name) $
-        case Map.lookup name env of
-            Nothing ->
-                lift (Left "Unbound variable")
-
-            Just scheme -> do
-                trace (show scheme) $ pure ()
-                instantiate scheme
 
     Lit (Int _) ->
-        pure TyInt
-
+        pure ( TyInt, [] )
+ 
     Lit (Bool _) ->
-        pure TyBool
+        pure ( TyBool, [] )
+
+    Var name -> do
+        Context env <- ask
+        case Map.lookup name env of
+            Nothing ->
+                error "Unbound variable"
+
+            Just scheme -> do
+                t <- instantiate scheme
+                pure ( t, [] )
 
     Lam name body -> do
         t1 <- fresh
-        t2 <- inContext name (Forall Set.empty t1) (infer body)
-        pure (TyArr t1 t2)
+        ( t2, c2 ) <- inContext name (Forall Set.empty t1) (infer body)
+        pure ( TyArr t1 t2, c2 )
 
     App fun arg -> do
-        t1 <- infer fun
-        t2 <- infer arg 
+        ( t1, c1 ) <- infer fun
+        ( t2, c2 ) <- infer arg
         t3 <- fresh
-        unify t1 (TyArr t2 t3)
-        pure t3
+        pure ( t3, c1 ++ c2 ++ [Constraint t1 (TyArr t2 t3)] )
 
     Let name expr body -> do
         context <- ask
-        t1 <- infer expr
-        
-        t2 <- inContext name (generalize context t1) (infer body)
-        ----let (RWST a) = inContext name (generalize context t1) (infer body)
-        ----trace (show a) $ pure ()
-        pure t2
+        ( t1, c1 ) <- infer expr
+        case runSolver c1 of
+            Left err -> 
+                fail err
 
-        -- Int -> Int -> a  ~  Int -> Int -> Int
+            Right sub -> do
+                let sc = generalize (apply sub context) (apply sub t1)
+                ( t2, c2 ) <- inContext name sc (local (apply sub) (infer body))
+                pure (t2, c1 ++ c2)
 
     If cond true false -> do
-        t1 <- infer cond
-        t2 <- infer true
-        t3 <- infer false
-        unify t1 TyBool
-        unify t2 t3
-        pure t2
+        ( t1, c1 ) <- infer cond
+        ( t2, c2 ) <- infer true
+        ( t3, c3 ) <- infer false
+        pure ( t2, c1 ++ c2 ++ c3 ++ [Constraint t1 TyBool, Constraint t2 t3] )
 
     Fix expr -> do
-        t1 <- infer expr
+        ( t1, c1 ) <- infer expr
         t2 <- fresh
-        unify (TyArr t2 t2) t1
-        pure t2
+        pure ( t2, c1 ++ [Constraint (TyArr t2 t2) t1] )
 
     Op op a b -> do
-        t1 <- infer a
-        t2 <- infer b
+        ( t1, c1 ) <- infer a
+        ( t2, c2 ) <- infer b
         t3 <- fresh
         let u1 = TyArr t1 (TyArr t2 t3)
-        let u2 = (Map.!) ops op
-        unify u1 u2
-        pure t3
+            u2 = (Map.!) ops op
+        pure ( t3, c1 ++ c2 ++ [Constraint u1 u2] )
+
+
+-- \case
+--     Var name -> do
+--         Context env <- ask
+-- --        trace (show name) $
+--         case Map.lookup name env of
+--             Nothing ->
+--                 lift (Left "Unbound variable")
+-- 
+--             Just scheme -> do
+--                 trace (show scheme) $ pure ()
+--                 instantiate scheme
+-- 
+--     Lit (Int _) ->
+--         pure TyInt
+-- 
+--     Lit (Bool _) ->
+--         pure TyBool
+-- 
+--     Lam name body -> do
+--         t1 <- fresh
+--         t2 <- inContext name (Forall Set.empty t1) (infer body)
+--         pure (TyArr t1 t2)
+-- 
+--     App fun arg -> do
+--         t1 <- infer fun
+--         t2 <- infer arg 
+--         t3 <- fresh
+--         unify t1 (TyArr t2 t3)
+--         pure t3
+-- 
+--     Let name expr body -> do
+--         context <- ask
+--         t1 <- infer expr
+--         
+--         t2 <- incontext name (generalize context t1) (infer body)
+--         ----let (RWST a) = inContext name (generalize context t1) (infer body)
+--         ----trace (show a) $ pure ()
+--         pure t2
+-- 
+--         -- Int -> Int -> a  ~  Int -> Int -> Int
+-- 
+--     If cond true false -> do
+--         t1 <- infer cond
+--         t2 <- infer true
+--         t3 <- infer false
+--         unify t1 TyBool
+--         unify t2 t3
+--         pure t2
+-- 
+--     Fix expr -> do
+--         t1 <- infer expr
+--         t2 <- fresh
+--         unify (TyArr t2 t2) t1
+--         pure t2
+-- 
+--     Op op a b -> do
+--         t1 <- infer a
+--         t2 <- infer b
+--         t3 <- fresh
+--         let u1 = TyArr t1 (TyArr t2 t3)
+--         let u2 = (Map.!) ops op
+--         unify u1 u2
+--         pure t3
 
 
 ops :: Map Op Type
@@ -120,8 +181,8 @@ ops = Map.fromList
     ]
 
 
-unify :: Type -> Type -> Infer ()
-unify t1 t2 = tell [Constraint t1 t2]
+--unify :: Type -> Type -> Infer ()
+--unify t1 t2 = tell [Constraint t1 t2]
 
 
 fresh :: Infer Type
@@ -134,9 +195,9 @@ fresh = do
 letters = fmap Text.pack ( [1..] >>= flip replicateM ['a'..'z'] )
 
 
-runInfer :: Infer Type -> Either String ( Type, [Constraint] )
-runInfer state =
-    evalRWST state Context.empty 0
+runInfer :: Infer a -> Either String a
+runInfer reader =
+    evalStateT (runReaderT reader Context.empty) 0
 
 
 unifies :: Type -> Type -> Solve Sub

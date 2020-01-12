@@ -13,6 +13,7 @@ type Eval = Reader Env
 
 eval :: Expr -> Eval Value
 eval = \case
+
     Var name -> do
         Just val <- asks $ Map.lookup name
         pure val

@@ -49,7 +49,7 @@ cmd input =
             in
             liftIO $ do
                 Text.putStrLn ghi --( (eval_ expr), Print.prnt xxx )
-                print tp
+                --print tp
 
 
 completer :: Monad m => WordCompleter m

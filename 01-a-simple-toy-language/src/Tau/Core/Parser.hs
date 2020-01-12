@@ -1,3 +1,4 @@
+{-# LANGUAGE LambdaCase #-}
 {-# LANGUAGE OverloadedStrings #-}
 module Tau.Core.Parser where
 
@@ -187,44 +188,44 @@ expr = makeExprParser term operator
 
 
 toExpr :: Ast -> Expr
-toExpr ast =
-    case ast of
-       Var name ->
-          Core.Var name
+toExpr = \case 
 
-       App fun arg ->
-          Core.App (toExpr fun) (toExpr arg)
+    Var name ->
+       Core.Var name
 
-       If cond true false ->
-          Core.If (toExpr cond) (toExpr true) (toExpr false)
+    App fun arg ->
+       Core.App (toExpr fun) (toExpr arg)
 
-       Let name exp body ->
-          Core.Let name (toExpr exp) (toExpr body)
+    If cond true false ->
+       Core.If (toExpr cond) (toExpr true) (toExpr false)
 
-       Lambda name body ->
-          Core.Lam name (toExpr body)
+    Let name exp body ->
+       Core.Let name (toExpr exp) (toExpr body)
 
-       Op2 op2 a b ->
-          Core.Op (toOp op2) (toExpr a) (toExpr b)
+    Lambda name body ->
+       Core.Lam name (toExpr body)
 
-       Bool b ->
-          Core.Lit (Core.Bool b)
+    Op2 op2 a b ->
+       Core.Op (toOp op2) (toExpr a) (toExpr b)
 
-       Int n ->
-          Core.Lit (Core.Int n)
+    Bool b ->
+       Core.Lit (Core.Bool b)
+
+    Int n ->
+       Core.Lit (Core.Int n)
 
 
 toOp :: Op2 -> Core.Op
-toOp op2 = 
-    case op2 of
-        Add ->
-            Core.Add
+toOp = \case
 
-        Sub ->
-            Core.Sub
+    Add ->
+        Core.Add
 
-        Mul ->
-            Core.Mul
+    Sub ->
+        Core.Sub
 
-        Eq ->
-            Core.Eq
+    Mul ->
+        Core.Mul
+
+    Eq ->
+        Core.Eq
