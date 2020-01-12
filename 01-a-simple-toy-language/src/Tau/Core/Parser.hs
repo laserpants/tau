@@ -6,6 +6,7 @@ import Control.Monad.Combinators.Expr
 import Data.Text (Text, pack)
 import Data.Void
 import Tau.Core (Expr)
+import Tau.Util
 import Text.Megaparsec
 import Text.Megaparsec.Char
 import qualified Text.Megaparsec.Char.Lexer as Lex
@@ -15,18 +16,15 @@ import qualified Tau.Core as Core
 type Parser = Parsec Void Text
 
 
-type Name = Text
-
-
 data Ast 
-    = Var Name
-    | App Ast Ast
-    | If Ast Ast Ast
-    | Let Name Ast Ast
-    | Lambda Name Ast
-    | Op2 Op2 Ast Ast
-    | Bool Bool
-    | Int Integer
+    = Var !Name
+    | App !Ast !Ast
+    | If !Ast !Ast !Ast
+    | Let !Name !Ast !Ast
+    | Lambda !Name !Ast
+    | Op2 !Op2 !Ast !Ast
+    | Bool !Bool
+    | Int !Integer
     deriving (Show, Eq)
 
 
