@@ -148,10 +148,10 @@ int = do
 
 term :: Parser Ast
 term = do
-    exps <- some expr
+    exps <- some ast
     pure (foldl1 App exps)
   where
-    expr = do 
+    ast = do 
         parens expr
             <|> ifClause
             <|> letBinding

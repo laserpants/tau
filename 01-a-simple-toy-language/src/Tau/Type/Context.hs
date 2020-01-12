@@ -32,7 +32,7 @@ extend name scheme (Context env) =
 -- | Remove a name from the type context.
 --
 remove :: Var -> Context -> Context
-remove name (Context env) = 
+remove name (Context env) =
     Context (Map.delete name env)
 
 

@@ -17,6 +17,8 @@ import qualified Data.Set as Set
 import qualified Data.Text as Text
 import qualified Tau.Type.Context as Context
 
+import Debug.Trace
+
 
 type Infer = RWST Context [Constraint] Int (Either String)
 
@@ -26,6 +28,7 @@ type Solve = Either String
 
 instantiate :: Scheme -> Infer Type
 instantiate (Forall vars tau) = do
+--    trace (show (Forall vars tau)) $ do
     vars' <- mapM (const fresh) varsL
     pure $ apply (Map.fromList (varsL `zip` vars')) tau
   where
@@ -38,7 +41,7 @@ generalize context tau =
 
 
 inContext :: Var -> Scheme -> Infer a -> Infer a
-inContext name scheme =
+inContext name scheme = do
     local (extend name scheme . remove name)
 
 
@@ -46,11 +49,13 @@ infer :: Expr -> Infer Type
 infer = \case
     Var name -> do
         Context env <- ask
+--        trace (show name) $
         case Map.lookup name env of
             Nothing ->
                 lift (Left "Unbound variable")
 
             Just scheme -> do
+                trace (show scheme) $ pure ()
                 instantiate scheme
 
     Lit (Int _) ->
@@ -74,7 +79,13 @@ infer = \case
     Let name expr body -> do
         context <- ask
         t1 <- infer expr
-        inContext name (generalize context t1) (infer body)
+        
+        t2 <- inContext name (generalize context t1) (infer body)
+        ----let (RWST a) = inContext name (generalize context t1) (infer body)
+        ----trace (show a) $ pure ()
+        pure t2
+
+        -- Int -> Int -> a  ~  Int -> Int -> Int
 
     If cond true false -> do
         t1 <- infer cond
