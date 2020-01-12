@@ -10,11 +10,17 @@ import qualified Data.Set as Set
 
 data Type
     = TyVar !Var
-    | TyInt
-    | TyBool
-    -- | TyCon !Var
+    | TyCon !Name
     | TyArr !Type !Type
     deriving (Show, Eq, Ord)
+
+
+tyBool :: Type
+tyBool = TyCon "Bool"
+
+
+tyInt :: Type
+tyInt = TyCon "Int"
 
 
 class Free a where

@@ -12,11 +12,8 @@ prnt t =
         TyVar var ->
             var
 
-        TyInt ->
-            "Int"
-
-        TyBool ->
-            "Bool"
+        TyCon con ->
+            con
 
         TyArr t1 t2 ->
             Text.concat [ prnt t1, " -> ", prnt t2 ]

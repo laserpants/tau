@@ -4,3 +4,6 @@ import Data.Text (Text)
 
 
 type Var = Text
+
+
+type Name = Text

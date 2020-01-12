@@ -9,7 +9,7 @@ import Control.Monad.RWS.Strict
 import Data.Map (Map)
 import Data.Set (difference, member)
 import Tau.Core (Expr(..), Value(..), Op(..))
-import Tau.Type (Type(..), Scheme(..), Constraint(..), Free(..), Substitutable(..), Sub, compose, emptySub, substitute)
+import Tau.Type (Type(..), Scheme(..), Constraint(..), Free(..), Substitutable(..), Sub, compose, emptySub, substitute, tyBool, tyInt)
 import Tau.Type (apply)
 import Tau.Type.Context (Context(..), extend, remove)
 import Tau.Util
@@ -49,10 +49,10 @@ infer :: Expr -> Infer ( Type, [Constraint] )
 infer = \case
 
     Lit (Int _) ->
-        pure ( TyInt, [] )
+        pure ( tyInt, [] )
  
     Lit (Bool _) ->
-        pure ( TyBool, [] )
+        pure ( tyBool, [] )
 
     Var name -> do
         Context env <- ask
@@ -91,7 +91,7 @@ infer = \case
         ( t1, c1 ) <- infer cond
         ( t2, c2 ) <- infer true
         ( t3, c3 ) <- infer false
-        pure ( t2, c1 ++ c2 ++ c3 ++ [Constraint t1 TyBool, Constraint t2 t3] )
+        pure ( t2, c1 ++ c2 ++ c3 ++ [Constraint t1 tyBool, Constraint t2 t3] )
 
     Fix expr -> do
         ( t1, c1 ) <- infer expr
@@ -120,10 +120,10 @@ infer = \case
 --                 instantiate scheme
 -- 
 --     Lit (Int _) ->
---         pure TyInt
+--         pure tyInt
 -- 
 --     Lit (Bool _) ->
---         pure TyBool
+--         pure tyBool
 -- 
 --     Lam name body -> do
 --         t1 <- fresh
@@ -152,7 +152,7 @@ infer = \case
 --         t1 <- infer cond
 --         t2 <- infer true
 --         t3 <- infer false
---         unify t1 TyBool
+--         unify t1 tyBool
 --         unify t2 t3
 --         pure t2
 -- 
@@ -174,10 +174,10 @@ infer = \case
 
 ops :: Map Op Type
 ops = Map.fromList 
-    [ ( Add, (TyInt `TyArr` (TyInt `TyArr` TyInt)) )
-    , ( Mul, (TyInt `TyArr` (TyInt `TyArr` TyInt)) )
-    , ( Sub, (TyInt `TyArr` (TyInt `TyArr` TyInt)) )
-    , ( Eq, (TyInt `TyArr` (TyInt `TyArr` TyBool)) )
+    [ ( Add, (tyInt `TyArr` (tyInt `TyArr` tyInt)) )
+    , ( Mul, (tyInt `TyArr` (tyInt `TyArr` tyInt)) )
+    , ( Sub, (tyInt `TyArr` (tyInt `TyArr` tyInt)) )
+    , ( Eq, (tyInt `TyArr` (tyInt `TyArr` tyBool)) )
     ]
 
 
@@ -203,11 +203,8 @@ runInfer reader =
 unifies :: Type -> Type -> Solve Sub
 unifies = curry $ \case
 
-    ( TyBool, TyBool ) -> 
-        pure emptySub
-
-    ( TyInt, TyInt ) -> 
-        pure emptySub
+    ( TyCon a, TyCon b )
+        | a == b -> pure emptySub
 
     ( TyArr a b, TyArr a1 b1 ) -> do
         t1 <- unifies a a1

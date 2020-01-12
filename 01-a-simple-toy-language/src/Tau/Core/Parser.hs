@@ -135,8 +135,7 @@ lambda = do
 
 
 bool :: Parser Ast
-bool = true <|> false
-  where
+bool = true <|> false where
     true = keyword "True" *> pure (Bool True)
     false = keyword "False" *> pure (Bool False)
 
@@ -149,17 +148,16 @@ int = do
 
 term :: Parser Ast
 term = do
-    exps <- some ast
-    pure (foldl1 App exps)
+    ast <- some asts
+    pure (foldl1 App ast)
   where
-    ast = do 
-        parens expr
-            <|> ifClause
-            <|> letBinding
-            <|> lambda
-            <|> bool
-            <|> int
-            <|> variable
+    asts = parens expr
+        <|> ifClause
+        <|> letBinding
+        <|> lambda
+        <|> bool
+        <|> int
+        <|> variable
 
 
 binary :: Text -> (a -> a -> a) -> Operator Parser a
