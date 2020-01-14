@@ -3,10 +3,10 @@
 module Tau.Eval where
 
 import Control.Monad.Reader
+import Debug.Trace
 import Tau.Core
 import Tau.Util
 import qualified Data.Map as Map
-import Debug.Trace
 
 
 type Eval = Reader Env

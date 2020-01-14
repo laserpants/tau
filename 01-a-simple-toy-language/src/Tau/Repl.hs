@@ -11,11 +11,12 @@ import Tau.Eval
 import Tau.Type
 import Tau.Type.Context (Context(..))
 import Tau.Type.Unify
-import qualified Tau.Core.Print
 import Text.Megaparsec
-import qualified Tau.Type.Print as Print
 import qualified Data.Text as Text
 import qualified Data.Text.IO as Text
+--import qualified Tau.Core.Print
+import qualified Tau.Util.Print as Print
+--import qualified Tau.Type.Print as Print
 
 
 type Repl a = HaskelineT IO a
@@ -38,17 +39,17 @@ cmd input =
 
                 Right (a,constraints) = tp
                 Right s = runSolver constraints
-                xxx = apply s a
+                xyz = apply s a
 
                 abc :: Value
                 abc = eval_ expr
 
-                def = Tau.Core.Print.prnt abc
+                def = Print.value abc
 
-                ghi = Text.concat [ def, " : ", Print.prnt xxx ]
+                ghi = Text.concat [ def, " : ", Print.type_ xyz ]
             in
             liftIO $ do
-                Text.putStrLn ghi --( (eval_ expr), Print.prnt xxx )
+                Text.putStrLn ghi --( (eval_ expr), Print.prnt xyz )
                 --print tp
 
 

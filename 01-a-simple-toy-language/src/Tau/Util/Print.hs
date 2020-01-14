@@ -1,20 +1,21 @@
 {-# LANGUAGE LambdaCase #-}
 {-# LANGUAGE OverloadedStrings #-}
-module Tau.Core.Print where
+module Tau.Util.Print where
 
 import Data.Text (Text, pack)
 import Data.Text.Lazy (toStrict)
 import Formatting (format)
-import Tau.Core
+import Tau.Core (Value(..))
+import Tau.Type (Type(..))
 import qualified Data.Text as Text
-import qualified Formatting as Format
+import qualified Formatting
 
 
-prnt :: Value -> Text
-prnt = \case
+value :: Value -> Text
+value = \case
 
     Int n ->
-        toStrict (format Format.int n)
+        toStrict (format Formatting.int n)
 
     Bool False ->
         "False"
@@ -33,3 +34,16 @@ prnt = \case
         
     Closure{} ->
         "<function>"
+
+
+type_ :: Type -> Text
+type_ = \case
+
+    TyVar var ->
+        var
+
+    TyCon con ->
+        con
+
+    TyArr t1 t2 ->
+        Text.concat [ type_ t1, " -> ", type_ t2 ]
