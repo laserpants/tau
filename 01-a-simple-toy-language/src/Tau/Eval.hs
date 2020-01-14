@@ -6,6 +6,7 @@ import Control.Monad.Reader
 import Tau.Core
 import Tau.Util
 import qualified Data.Map as Map
+import Debug.Trace
 
 
 type Eval = Reader Env
@@ -28,8 +29,9 @@ eval = \case
         env <- ask
         pure (Closure name body env)
 
-    Let name expr body ->
-        eval (App (Lam name body) expr)
+    Let name expr body -> do
+        --eval (App (Lam name body) expr)
+        eval (App (Lam name body) (Fix (Lam name expr)))
 
     Lit val ->
         pure val

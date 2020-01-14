@@ -24,16 +24,19 @@ import Tau.Util
 -- expr4 = 
 --     Let "x" (Lit (Int 4)) (Let "y" (Lit (Int 5)) (Var "x"))
 -- 
--- fact =
---     Fix (Lam "f"
---         (Lam "n"
---             (If (Op Eq (Lit (Int 0)) (Var "n"))
---                 (Lit (Int 1))
---                 (Op Mul (Var "n") (App (Var "f") (Op Sub (Var "n") (Lit (Int 1))))))
---         )
---     )
--- 
--- fact5 = App fact (Lit (Int 5))
+fact =
+    Fix (Lam "f"
+        (Lam "n"
+            (If (Op Eq (Lit (Int 0)) (Var "n"))
+                (Lit (Int 1))
+                (Op Mul (Var "n") (App (Var "f") (Op Sub (Var "n") (Lit (Int 1))))))
+        )
+    )
+
+fact5 = App fact (Lit (Int 5))
+
+fact6 = Let "f" (Lam "n" (If (Op Eq (Var "n") (Lit (Int 0))) (Lit (Int 1)) (Op Mul (Var "n") (App (Var "f") (Op Sub (Var "n") (Lit (Int 1))))))) (App (Var "f") (Lit (Int 4)))
+
 -- 
 -- expr1Type = runInfer (infer expr1)
 -- 

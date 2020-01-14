@@ -77,7 +77,7 @@ infer = \case
 
     Let name expr body -> do
         context <- ask
-        ( t1, c1 ) <- infer expr
+        ( t1, c1 ) <- infer (Fix (Lam name expr))
         case runSolver c1 of
             Left err -> 
                 fail err
