@@ -11,6 +11,7 @@ import Tau.Eval
 import Tau.Type
 import Tau.Type.Context (Context(..))
 import Tau.Type.Unify
+import qualified Tau.Core.Print
 import Text.Megaparsec
 import qualified Tau.Type.Print as Print
 import qualified Data.Text as Text
@@ -42,10 +43,9 @@ cmd input =
                 abc :: Value
                 abc = eval_ expr
 
-                def :: String
-                def = show abc
+                def = Tau.Core.Print.prnt abc
 
-                ghi = Text.concat [ pack def, " : ", Print.prnt xxx ]
+                ghi = Text.concat [ def, " : ", Print.prnt xxx ]
             in
             liftIO $ do
                 Text.putStrLn ghi --( (eval_ expr), Print.prnt xxx )
