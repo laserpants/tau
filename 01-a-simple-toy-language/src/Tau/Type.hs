@@ -9,22 +9,34 @@ import qualified Data.Set as Set
 
 
 data Type
-    = TyVar !Var
+    = TyVar !Name
     | TyCon !Name
     | TyArr !Type !Type
     deriving (Show, Eq, Ord)
-
-
-tyBool :: Type
-tyBool = TyCon "Bool"
 
 
 tyInt :: Type
 tyInt = TyCon "Int"
 
 
+tyBool :: Type
+tyBool = TyCon "Bool"
+
+
+tyString :: Type
+tyString = TyCon "String"
+
+
+tyChar :: Type
+tyChar = TyCon "Char"
+
+
+tyUnit :: Type
+tyUnit = TyCon "Unit"
+
+
 class Free a where
-    free :: a -> Set Var
+    free :: a -> Set Name
 
 
 instance Free a => Free [a] where
@@ -37,7 +49,7 @@ instance Free Type where
     free _             = Set.empty
 
 
-data Scheme = Forall !(Set Var) !Type
+data Scheme = Forall !(Set Name) !Type
     deriving (Show, Eq)
 
 
@@ -47,10 +59,10 @@ instance Free Scheme where
 
 -- | A substitution is a function from type variables to types.
 --
-type Sub = Map Var Type
+type Sub = Map Name Type
 
 
-substitute :: Var -> Type -> Sub
+substitute :: Name -> Type -> Sub
 substitute = Map.singleton
 
 

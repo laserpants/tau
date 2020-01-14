@@ -1,7 +1,7 @@
 # 01. A simple toy language
 
 A first rendition of the core language, implementing a simplified AST, parser, evaluation logic and a Hindley-Milner type system.
-Many important pieces, like code generation, algebraic data types, case statementes, modules, and higher-kinded polymorphism are still missing.
+Many important pieces, like code generation, algebraic data types, case statementes, effects, modules, and higher-kinded polymorphism are still missing.
 
 ## Syntax
 

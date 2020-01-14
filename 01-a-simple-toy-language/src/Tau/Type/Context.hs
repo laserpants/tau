@@ -10,7 +10,7 @@ import qualified Tau.Type as Type
 
 -- | The type context (environment) is a mapping from variables to type schemes.
 --
-newtype Context = Context (Map Var Scheme)
+newtype Context = Context (Map Name Scheme)
     deriving (Show, Eq)
 
 
@@ -24,14 +24,14 @@ empty :: Context
 empty = Context Map.empty
 
 
-extend :: Var -> Scheme -> Context -> Context 
+extend :: Name -> Scheme -> Context -> Context 
 extend name scheme (Context env) =
     Context (Map.insert name scheme env)
 
 
 -- | Remove a name from the type context.
 --
-remove :: Var -> Context -> Context
+remove :: Name -> Context -> Context
 remove name (Context env) =
     Context (Map.delete name env)
 

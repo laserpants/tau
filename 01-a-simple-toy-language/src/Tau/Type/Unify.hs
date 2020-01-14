@@ -9,7 +9,7 @@ import Control.Monad.RWS.Strict
 import Data.Map (Map)
 import Data.Set (difference, member)
 import Tau.Core (Expr(..), Value(..), Op(..))
-import Tau.Type (Type(..), Scheme(..), Constraint(..), Free(..), Substitutable(..), Sub, compose, emptySub, substitute, tyBool, tyInt)
+import Tau.Type (Type(..), Scheme(..), Constraint(..), Free(..), Substitutable(..), Sub, compose, emptySub, substitute, tyBool, tyInt, tyString, tyChar, tyUnit)
 import Tau.Type (apply)
 import Tau.Type.Context (Context(..), extend, remove)
 import Tau.Util
@@ -17,8 +17,6 @@ import qualified Data.Map as Map
 import qualified Data.Set as Set
 import qualified Data.Text as Text
 import qualified Tau.Type.Context as Context
-
-import Debug.Trace
 
 
 type Infer = ReaderT Context (StateT Int (Either String))
@@ -40,7 +38,7 @@ generalize context tau =
     Forall (free tau `difference` free context) tau
 
 
-inContext :: Var -> Scheme -> Infer a -> Infer a
+inContext :: Name -> Scheme -> Infer a -> Infer a
 inContext name scheme = do
     local (extend name scheme . remove name)
 
@@ -53,6 +51,15 @@ infer = \case
  
     Lit (Bool _) ->
         pure ( tyBool, [] )
+
+    Lit (String _) ->
+        pure ( tyString, [] )
+
+    Lit (Char _) ->
+        pure ( tyChar, [] )
+
+    Lit Unit ->
+        pure ( tyUnit, [] )
 
     Var name -> do
         Context env <- ask

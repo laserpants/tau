@@ -1,42 +1,38 @@
 module Tau.Core where
 
 import Data.Map (Map)
+import Data.Text (Text)
 import Tau.Type
 import Tau.Util
 
 
-type Env = Map Var Value
+type Env = Map Name Value
 
 
 data Value
     = Int !Integer
     | Bool !Bool
-    -- | Int32 !Int32
-    -- | Int64 !Int64
-    -- | Float !Double
-    -- | Unit
-    -- | Char !Char
-    -- | String !Text
-    | Closure !Var !Expr Env
+    | String !Text
+    | Char !Char
+    | Unit
+    | Closure !Name !Expr Env
     deriving (Eq)
 
 
 instance Show Value where
     show (Int n)    = show n
     show (Bool b)   = show b
-    -- show (VFloat f)  = show f
-    -- show (VChar c)   = show c
-    -- show (VString s) = show s
-    -- show VUnit       = "()"
+    show (String s) = show s
+    show (Char c)   = show c
+    show Unit       = "()"
     show Closure{}  = "<function>"
 
 
 data Expr
-    = Var !Var
+    = Var !Name
     | App !Expr !Expr
-    | Lam !Var !Expr
-    | Let !Var !Expr !Expr
-    -- | Case ...
+    | Lam !Name !Expr
+    | Let !Name !Expr !Expr
     | Lit !Value
     | Fix !Expr
     | If !Expr !Expr !Expr
@@ -52,5 +48,5 @@ data Op
     deriving (Show, Eq, Ord)
 
 
-data Program = Program !(Map Var Expr) !Expr
+data Program = Program !(Map Name Expr) !Expr
     deriving (Show, Eq)

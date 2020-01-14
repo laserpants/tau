@@ -56,7 +56,7 @@ binop Sub a b = Int (a - b)
 binop Eq a b = Bool (a == b)
 
 
-runEval :: Env -> Var -> Expr -> ( Value, Env )
+runEval :: Env -> Name -> Expr -> ( Value, Env )
 runEval env name expr =
     ( val, Map.insert name val env )
   where

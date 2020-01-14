@@ -245,17 +245,17 @@ toExpr = \case
     Bool b ->
        Core.Lit (Core.Bool b)
 
---    String str ->
---        Core.Lit (Core.String str)
---
---    Char ch ->
---        Core.Lit (Core.Char ch)
---
-----    Float f ->
-----        Core.Lit (Core.Float f)
---
---    Unit ->
---        Core.Lit Core.Unit
+    String str ->
+        Core.Lit (Core.String str)
+
+    Char ch ->
+        Core.Lit (Core.Char ch)
+
+--    Float f ->
+--        Core.Lit (Core.Float f)
+
+    Unit ->
+        Core.Lit Core.Unit
 
 
 toOp :: Op2 -> Core.Op
