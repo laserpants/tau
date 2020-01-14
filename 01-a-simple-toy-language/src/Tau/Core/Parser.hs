@@ -9,8 +9,9 @@ import Tau.Core (Expr)
 import Tau.Util
 import Text.Megaparsec
 import Text.Megaparsec.Char
-import qualified Text.Megaparsec.Char.Lexer as Lex
+import qualified Data.Text as Text
 import qualified Tau.Core as Core
+import qualified Text.Megaparsec.Char.Lexer as Lex
 
 
 type Parser = Parsec Void Text
@@ -23,8 +24,12 @@ data Ast
     | Let !Name !Ast !Ast
     | Lambda !Name !Ast
     | Op2 !Op2 !Ast !Ast
-    | Bool !Bool
     | Int !Integer
+    | Bool !Bool
+    | String !Text
+    | Char !Char
+--    | Float !Double
+    | Unit
     deriving (Show, Eq)
 
 
@@ -132,16 +137,34 @@ lambda = do
     pure (Lambda var body)
 
 
+int :: Parser Ast
+int = do
+    num <- integer
+    pure (Int num)
+
+
 bool :: Parser Ast
 bool = true <|> false where
     true = keyword "True" *> pure (Bool True)
     false = keyword "False" *> pure (Bool False)
 
 
-int :: Parser Ast
-int = do
-    num <- integer
-    pure (Int num)
+-- float = fmap Float Lex.float
+
+
+unit = symbol "()" *> pure Unit
+
+
+ch = do
+    chr <- char '\'' *> Lex.charLiteral <* char '\''
+    pure (Char chr)
+
+
+str = do
+    char '"'
+    str <- char '\"' *> manyTill Lex.charLiteral (char '\"')
+    char '"'
+    pure $ String $ Text.pack $ str
 
 
 term :: Parser Ast
@@ -149,13 +172,18 @@ term = do
     ast <- some asts
     pure (foldl1 App ast)
   where
-    asts = parens expr
+    asts = unit 
+        <|> parens expr
         <|> ifClause
         <|> letBinding
         <|> lambda
-        <|> bool
         <|> int
+        <|> bool
+--        <|> float
+        <|> ch
+        <|> str
         <|> variable
+
 
 
 binary :: Text -> (a -> a -> a) -> Operator Parser a
@@ -183,6 +211,13 @@ expr :: Parser Ast
 expr = makeExprParser term operator
 
 
+ast :: Parser Ast
+ast = spaces *> expr <* eof
+
+
+--
+
+
 toExpr :: Ast -> Expr
 toExpr = \case 
 
@@ -204,11 +239,23 @@ toExpr = \case
     Op2 op2 a b ->
        Core.Op (toOp op2) (toExpr a) (toExpr b)
 
+    Int n ->
+       Core.Lit (Core.Int n)
+
     Bool b ->
        Core.Lit (Core.Bool b)
 
-    Int n ->
-       Core.Lit (Core.Int n)
+--    String str ->
+--        Core.Lit (Core.String str)
+--
+--    Char ch ->
+--        Core.Lit (Core.Char ch)
+--
+----    Float f ->
+----        Core.Lit (Core.Float f)
+--
+--    Unit ->
+--        Core.Lit Core.Unit
 
 
 toOp :: Op2 -> Core.Op

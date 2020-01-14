@@ -26,7 +26,7 @@ eval_ expr = runReader (eval expr) mempty
 
 cmd :: String -> Repl ()
 cmd input =
-    case parse expr "" (pack input) of
+    case parse ast "" (pack input) of
         Left _ -> 
             liftIO $ print "No parse!"
         
