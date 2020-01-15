@@ -24,54 +24,58 @@ evald :: Ast -> Value
 evald ast = runReader (eval (toExpr ast)) mempty
 
 
-typeOf :: Ast -> Type
-typeOf ast = apply sub t1
-  where
-    Right ( t1, cs ) = runInfer (infer (toExpr ast))
-    Right sub = runSolver cs
+typeOf :: Ast -> Either String Type
+typeOf ast = do
+    ( t1, cs ) <- runInfer (infer (toExpr ast))
+    apply <$> runSolver cs <*> pure t1
 
 
 cmd :: String -> Repl ()
 cmd input =
     liftIO $ case parse ast "" (pack input) of
-        Left _ -> 
-            putStrLn "I didn't understand that"
+        Left _ ->
+            putStrLn "I didn't understand that."
 
         Right ast ->
-            let
-                output = Text.concat 
-                    [ Print.value (evald ast)
-                    , " : "
-                    , Print.type_ (typeOf ast)
-                    ]
-            in
-            Text.putStrLn output
+            case typeOf ast of
+                Left err ->
+                    putStrLn err
+
+                Right type_ ->
+                    let
+                        output = Text.concat
+                            [ Print.value (evald ast)
+                            , " : "
+                            , Print.type_ type_
+                            ]
+                    in
+                    Text.putStrLn output
 
 
 completer :: Monad m => WordCompleter m
 completer n =
     pure $ filter (isPrefixOf n) names
   where
-    names = 
+    names =
         [ ":help"
         , ":quit"
         ]
 
 
 help :: List String -> Repl ()
-help args = 
+help args =
     liftIO (putStrLn message)
   where
     message = "Help: " ++ show args
 
 
 quit :: List String -> Repl ()
-quit args = 
+quit args =
     liftIO (putStrLn "Bye!") >> abort
 
 
 options :: List (String, List String -> Repl ())
-options = 
+options =
     [ ( "help", help )
     , ( "quit", quit )
     ]

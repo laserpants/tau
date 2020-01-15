@@ -1,6 +1,7 @@
 {-# LANGUAGE LambdaCase #-}
 module Tau.Type.Unify where
 
+import Control.Monad.Except
 import Control.Monad.Reader
 import Control.Monad.State
 import Data.Map (Map)
@@ -15,7 +16,7 @@ import qualified Data.Text as Text
 import qualified Tau.Type.Context as Context
 
 
-type Infer = ReaderT Context (StateT Int (Either String))
+type Infer a = ExceptT String (ReaderT Context (State Int)) a
 
 
 type Solve = Either String
@@ -61,7 +62,7 @@ infer = \case
         Context env <- ask
         case Map.lookup name env of
             Nothing ->
-                error "Unbound variable"
+                throwError ("Unbound variable `" ++ Text.unpack name ++ "`.")
 
             Just scheme -> do
                 t <- instantiate scheme
@@ -131,7 +132,7 @@ letters = fmap Text.pack ( [1..] >>= flip replicateM ['a'..'z'] )
 
 runInfer :: Infer a -> Either String a
 runInfer reader =
-    evalStateT (runReaderT reader Context.empty) 0
+    evalState (runReaderT (runExceptT reader) Context.empty) 0
 
 
 occursIn :: Free a => Name -> a -> Bool
