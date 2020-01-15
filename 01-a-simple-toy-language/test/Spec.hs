@@ -43,13 +43,13 @@ main =
     hspec $ do
         describe (unpack program1) $ do
 
-            it "evalautes to 120" $
+            it "should evaluate to 120" $
                 evald program1 `shouldBe` (Tau.Core.Int 120)
 
-            it "has type Int" $
+            it "should have type Int" $
                 typeOf program1 `shouldBe` tyInt
 
         describe (unpack program2) $ do
 
-            it "has type Int -> Int" $
+            it "should have type Int -> Int" $
                 typeOf program2 `shouldBe` (TyArr tyInt tyInt)
