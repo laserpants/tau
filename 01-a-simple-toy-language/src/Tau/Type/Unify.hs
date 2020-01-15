@@ -134,6 +134,10 @@ runInfer reader =
     evalStateT (runReaderT reader Context.empty) 0
 
 
+occursIn :: Free a => Name -> a -> Bool
+occursIn name = member name . free
+
+
 unifies :: Type -> Type -> Solve Sub
 unifies = curry $ \case
 
@@ -157,9 +161,6 @@ unifies = curry $ \case
 
     _ -> 
         Left "Unification failed"
-
-  where
-    occursIn name = member name . free
 
 
 solve :: ( Sub, List Constraint ) -> Solve Sub
