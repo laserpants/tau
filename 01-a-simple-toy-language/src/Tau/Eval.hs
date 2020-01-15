@@ -21,9 +21,9 @@ eval = \case
 
     App fun arg -> do
         Closure name body env <- eval fun
-        arg' <- eval arg
-        let env' = Map.insert name arg' env
-        local (const env') (eval body)
+        arg_val <- eval arg
+        let env_local = Map.insert name arg_val env
+        local (const env_local) (eval body)
 
     Lam name body -> do
         env <- ask
@@ -39,13 +39,13 @@ eval = \case
         eval (App expr (Fix expr))
 
     If cond true false -> do
-        Bool cond' <- eval cond
-        eval (if cond' then true else false)
+        Bool cond_val <- eval cond
+        eval (if cond_val then true else false)
 
     Op op a b -> do
-        Int a' <- eval a
-        Int b' <- eval b
-        pure (binop op a' b')
+        Int a_val <- eval a
+        Int b_val <- eval b
+        pure (binop op a_val b_val)
 
 
 binop :: Op -> Integer -> Integer -> Value

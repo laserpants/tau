@@ -10,15 +10,13 @@ import Tau.Core
 import Tau.Core.Parser
 import Tau.Eval
 import Tau.Type
-import Tau.Util
 import Tau.Type.Context (Context(..))
 import Tau.Type.Unify
+import Tau.Util
 import Text.Megaparsec
 import qualified Data.Text as Text
 import qualified Data.Text.IO as Text
---import qualified Tau.Core.Print
 import qualified Tau.Util.Print as Print
---import qualified Tau.Type.Print as Print
 
 
 type Repl a = HaskelineT IO a

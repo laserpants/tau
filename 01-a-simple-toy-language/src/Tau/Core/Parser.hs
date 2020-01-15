@@ -20,7 +20,7 @@ type Parser = Parsec Void Text
 data Ast 
     = Var !Name
     | App !Ast !Ast
-    | If !Ast !Ast !Ast
+    | If  !Ast !Ast !Ast
     | Let !Name !Ast !Ast
     | Lambda !Name !Ast
     | Op2 !Op2 !Ast !Ast

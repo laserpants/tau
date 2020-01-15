@@ -1,6 +1,6 @@
 # 01. A simple toy language
 
-A first rendition of the core language, implementing a simplified AST, parser, evaluation logic and a Hindley-Milner type system.
+A first implementation of the core language, accommodating a simplified AST, parser, evaluation logic and a Hindley-Milner type system.
 Many important pieces, like code generation, algebraic data types, case statementes, effects, modules, and higher-kinded polymorphism are still missing.
 
 ## Syntax
@@ -82,7 +82,55 @@ Many important pieces, like code generation, algebraic data types, case statemen
   </tr>
 </table>
 
+An expression is either a value or reduces to a value in one or more reduction steps.
+
 ### Values
+
+<table style="margin: 1em;">
+  <tr>
+    <td>\(c\,\)</td>
+    <td align="center">\(\Coloneqq\)</td>
+    <td>\( \text{Int}\, n \)</td>
+    <td style="width: 3em;"></td>
+    <td>An arbitrary precision integer</td>
+  </tr>
+  <tr>
+    <td></td>
+    <td align="center">\(\vert\)</td>
+    <td>\( \text{Bool}\, (\text{True}\, \vert\, \text{False}) \)</td>
+    <td></td>
+    <td></td>
+  </tr>
+  <tr>
+    <td></td>
+    <td align="center">\(\vert\)</td>
+    <td>\( \text{String}\, t \)</td>
+    <td></td>
+    <td>A Unicode text string</td>
+  </tr>
+  <tr>
+    <td></td>
+    <td align="center">\(\vert\)</td>
+    <td>\( \text{Char}\, c \)</td>
+    <td></td>
+    <td>A single Unicode character</td>
+  </tr>
+  <tr>
+    <td></td>
+    <td align="center">\(\vert\)</td>
+    <td>\( \text{Unit} \)</td>
+    <td></td>
+    <td>The Unit type (a nullary tuple)</td>
+  </tr>
+  <tr>
+    <td></td>
+    <td align="center">\(\vert\)</td>
+    <td>\( \text{Closure}\, v\, e\, \Gamma \)</td>
+    <td></td>
+    <td></td>
+  </tr>
+</table>
+
 
 ### Free Variables
 
@@ -106,6 +154,27 @@ Many important pieces, like code generation, algebraic data types, case statemen
     <td>\( \text{Bool} \)</td>
     <td></td>
     <td>Boolean</td>
+  </tr>
+  <tr>
+    <td></td>
+    <td align="center">\(\vert\)</td>
+    <td>\( \text{String} \)</td>
+    <td></td>
+    <td>String</td>
+  </tr>
+  <tr>
+    <td></td>
+    <td align="center">\(\vert\)</td>
+    <td>\( \text{Char} \)</td>
+    <td></td>
+    <td>Char</td>
+  </tr>
+  <tr>
+    <td></td>
+    <td align="center">\(\vert\)</td>
+    <td>\( \text{Unit} \)</td>
+    <td></td>
+    <td>Unit type</td>
   </tr>
   <tr>
     <td></td>
@@ -142,7 +211,7 @@ Many important pieces, like code generation, algebraic data types, case statemen
   </tr>
 </table>
 
-### Type Inference
+### Type System
 
 <p style="font-size: 1.2em;">
 $$
