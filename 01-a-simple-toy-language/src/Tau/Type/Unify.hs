@@ -19,7 +19,7 @@ import qualified Tau.Type.Context as Context
 type Infer a = ExceptT String (ReaderT Context (State Int)) a
 
 
-type Solve = Either String
+type Solve = Except String
 
 
 instantiate :: Scheme -> Infer Type
@@ -84,7 +84,7 @@ infer = \case
         ( t1, c1 ) <- infer (Fix (Lam name expr))
         case runSolver c1 of
             Left err -> 
-                fail err
+                throwError err
 
             Right sub -> do
                 let sc = generalize (apply sub context) (apply sub t1)
@@ -154,14 +154,14 @@ unifies = curry $ \case
         | a == b -> pure emptySub
 
     ( TyVar name, tau ) 
-        | name `occursIn` tau -> Left "Infinite type"
+        | name `occursIn` tau -> throwError "Infinite type"
         | otherwise           -> pure (substitute name tau)
 
     ( tau, TyVar name ) -> 
         unifies (TyVar name) tau
 
     _ -> 
-        Left "Unification failed"
+        throwError "Unification failed"
 
 
 solve :: ( Sub, List Constraint ) -> Solve Sub
@@ -175,4 +175,4 @@ solve ( sub, constraints ) =
 
 runSolver :: List Constraint -> Either String Sub
 runSolver constraints =
-    solve ( Map.empty, constraints )
+    runExcept (solve ( Map.empty, constraints ))
