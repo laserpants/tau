@@ -1,4 +1,4 @@
-name:                a-simple-toy-language
+name:                toy
 version:             0.1.0.0
 #synopsis:
 #description:
@@ -22,7 +22,24 @@ dependencies:
   - haskeline >= 0.7.5.0 && < 0.8.0.0
   - formatting >= 6.3.7 && < 7.0.0
 
+library:
+  source-dirs: src/
+
 executables:
-  proto1:
-    source-dirs:      src
+  toy-exe:
+    source-dirs:      app/
     main:             Main.hs
+    dependencies:
+    - toy
+
+tests:
+  toy-test:
+    source-dirs:      test/
+    main:             Spec.hs
+    ghc-options:
+    - -threaded
+    - -rtsopts
+    - -with-rtsopts=-N
+    dependencies:
+    - hspec
+    - toy

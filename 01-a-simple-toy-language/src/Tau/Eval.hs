@@ -30,7 +30,6 @@ eval = \case
         pure (Closure name body env)
 
     Let name expr body -> do
-        --eval (App (Lam name body) expr)
         eval (App (Lam name body) (Fix (Lam name expr)))
 
     Lit val ->

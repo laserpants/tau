@@ -1,3 +1,4 @@
+{-# LANGUAGE OverloadedStrings #-}
 module Tau.Repl where
 
 import Control.Monad.Reader

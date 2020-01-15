@@ -19,15 +19,6 @@ data Value
     deriving (Show, Eq)
 
 
---instance Show Value where
---    show (Int n)    = show n
---    show (Bool b)   = show b
---    show (String s) = show s
---    show (Char c)   = show c
---    show Unit       = "()"
---    show Closure{}  = "<function>"
-
-
 data Expr
     = Var !Name
     | App !Expr !Expr
