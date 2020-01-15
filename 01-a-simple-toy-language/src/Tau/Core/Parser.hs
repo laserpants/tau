@@ -137,9 +137,7 @@ lambda = do
 
 
 int :: Parser Ast
-int = do
-    num <- integer
-    pure (Int num)
+int = Int <$> integer
 
 
 bool :: Parser Ast

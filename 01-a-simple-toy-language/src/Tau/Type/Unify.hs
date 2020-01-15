@@ -36,7 +36,7 @@ generalize context tau =
 
 
 inContext :: Name -> Scheme -> Infer a -> Infer a
-inContext name scheme = do
+inContext name scheme =
     local (extend name scheme . remove name)
 
 
@@ -45,7 +45,7 @@ infer = \case
 
     Lit (Int _) ->
         pure ( tyInt, [] )
- 
+
     Lit (Bool _) ->
         pure ( tyBool, [] )
 
