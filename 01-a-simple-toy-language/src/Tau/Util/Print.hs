@@ -2,7 +2,9 @@
 {-# LANGUAGE OverloadedStrings #-}
 module Tau.Util.Print where
 
-import Data.Text (Text, pack)
+-- | Utilities for pretty printing
+
+import Data.Text (Text)
 import Data.Text.Lazy (toStrict)
 import Formatting (format)
 import Tau.Core (Value(..))
@@ -31,7 +33,7 @@ value = \case
 
     Unit ->
         "()"
-        
+
     Closure{} ->
         "<function>"
 

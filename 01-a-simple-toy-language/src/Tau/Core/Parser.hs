@@ -186,7 +186,6 @@ term = do
         <|> variable
 
 
-
 binary :: Text -> (a -> a -> a) -> Operator Parser a
 binary name f = InfixL (f <$ symbol name)
 

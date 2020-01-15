@@ -16,7 +16,7 @@ eval :: Expr -> Eval Value
 eval = \case
 
     Var name -> do
-        Just val <- asks $ Map.lookup name
+        Just val <- asks (Map.lookup name)
         pure val
 
     App fun arg -> do

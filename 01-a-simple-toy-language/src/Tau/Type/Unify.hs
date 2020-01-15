@@ -1,16 +1,12 @@
 {-# LANGUAGE LambdaCase #-}
-{-# LANGUAGE RecordWildCards #-}
 module Tau.Type.Unify where
 
-import Control.Monad.State
 import Control.Monad.Reader
-import Control.Monad.Identity
-import Control.Monad.RWS.Strict
+import Control.Monad.State
 import Data.Map (Map)
 import Data.Set (difference, member)
 import Tau.Core (Expr(..), Value(..), Op(..))
 import Tau.Type (Type(..), Scheme(..), Constraint(..), Free(..), Substitutable(..), Sub, compose, emptySub, substitute, tyBool, tyInt, tyString, tyChar, tyUnit)
-import Tau.Type (apply)
 import Tau.Type.Context (Context(..), extend, remove)
 import Tau.Util
 import qualified Data.Map as Map
@@ -114,71 +110,6 @@ infer = \case
         pure ( t3, c1 ++ c2 ++ [Constraint u1 u2] )
 
 
--- \case
---     Var name -> do
---         Context env <- ask
--- --        trace (show name) $
---         case Map.lookup name env of
---             Nothing ->
---                 lift (Left "Unbound variable")
--- 
---             Just scheme -> do
---                 trace (show scheme) $ pure ()
---                 instantiate scheme
--- 
---     Lit (Int _) ->
---         pure tyInt
--- 
---     Lit (Bool _) ->
---         pure tyBool
--- 
---     Lam name body -> do
---         t1 <- fresh
---         t2 <- inContext name (Forall Set.empty t1) (infer body)
---         pure (TyArr t1 t2)
--- 
---     App fun arg -> do
---         t1 <- infer fun
---         t2 <- infer arg 
---         t3 <- fresh
---         unify t1 (TyArr t2 t3)
---         pure t3
--- 
---     Let name expr body -> do
---         context <- ask
---         t1 <- infer expr
---         
---         t2 <- incontext name (generalize context t1) (infer body)
---         ----let (RWST a) = inContext name (generalize context t1) (infer body)
---         ----trace (show a) $ pure ()
---         pure t2
--- 
---         -- Int -> Int -> a  ~  Int -> Int -> Int
--- 
---     If cond true false -> do
---         t1 <- infer cond
---         t2 <- infer true
---         t3 <- infer false
---         unify t1 tyBool
---         unify t2 t3
---         pure t2
--- 
---     Fix expr -> do
---         t1 <- infer expr
---         t2 <- fresh
---         unify (TyArr t2 t2) t1
---         pure t2
--- 
---     Op op a b -> do
---         t1 <- infer a
---         t2 <- infer b
---         t3 <- fresh
---         let u1 = TyArr t1 (TyArr t2 t3)
---         let u2 = (Map.!) ops op
---         unify u1 u2
---         pure t3
-
-
 ops :: Map Op Type
 ops = Map.fromList 
     [ ( Add, (tyInt `TyArr` (tyInt `TyArr` tyInt)) )
@@ -186,10 +117,6 @@ ops = Map.fromList
     , ( Sub, (tyInt `TyArr` (tyInt `TyArr` tyInt)) )
     , ( Eq, (tyInt `TyArr` (tyInt `TyArr` tyBool)) )
     ]
-
-
---unify :: Type -> Type -> Infer ()
---unify t1 t2 = tell [Constraint t1 t2]
 
 
 fresh :: Infer Type
