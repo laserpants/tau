@@ -28,7 +28,6 @@ data Ast
     | Bool !Bool
     | String !Text
     | Char !Char
---    | Float !Double
     | Unit
     deriving (Show, Eq)
 
@@ -75,7 +74,7 @@ keyword token =
     string token *> notFollowedBy alphaNumChar *> spaces
 
 
-reserved :: [String]
+reserved :: List String
 reserved = 
     [ "let"
     , "in"
@@ -152,14 +151,17 @@ bool = true <|> false where
 -- float = fmap Float Lex.float
 
 
+unit :: Parser Ast
 unit = symbol "()" *> pure Unit
 
 
+ch :: Parser Ast
 ch = do
     chr <- char '\'' *> Lex.charLiteral <* char '\''
     pure (Char chr)
 
 
+str :: Parser Ast
 str = do
     char '"'
     str <- char '\"' *> manyTill Lex.charLiteral (char '\"')
@@ -179,7 +181,6 @@ term = do
         <|> lambda
         <|> int
         <|> bool
---        <|> float
         <|> ch
         <|> str
         <|> variable
@@ -198,7 +199,7 @@ postfix :: Text -> (a -> a) -> Operator Parser a
 postfix name f = Postfix (f <$ symbol name)
 
 
-operator :: [[Operator Parser Ast]]
+operator :: List (List (Operator Parser Ast))
 operator =
     [ [ binary "+" (Op2 Add)
       , binary "-" (Op2 Sub)

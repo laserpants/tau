@@ -10,6 +10,7 @@ import Tau.Core
 import Tau.Core.Parser
 import Tau.Eval
 import Tau.Type
+import Tau.Util
 import Tau.Type.Context (Context(..))
 import Tau.Type.Unify
 import Text.Megaparsec
@@ -60,12 +61,12 @@ completer n = do
     return $ filter (isPrefixOf n) names
 
 
-help :: [String] -> Repl ()
+help :: List String -> Repl ()
 help args = 
     liftIO $ print $ "Help: " ++ show args
 
 
-options :: [(String, [String] -> Repl ())]
+options :: List (String, List String -> Repl ())
 options = 
     [ ("help", help)  -- :help
 --    , ("say", say)    -- :say

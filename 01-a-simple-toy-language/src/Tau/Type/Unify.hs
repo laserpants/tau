@@ -43,7 +43,7 @@ inContext name scheme = do
     local (extend name scheme . remove name)
 
 
-infer :: Expr -> Infer ( Type, [Constraint] )
+infer :: Expr -> Infer ( Type, List Constraint )
 infer = \case
 
     Lit (Int _) ->
@@ -235,7 +235,7 @@ unifies = curry $ \case
     occursIn name = member name . free
 
 
-solve :: ( Sub, [Constraint] ) -> Solve Sub
+solve :: ( Sub, List Constraint ) -> Solve Sub
 solve ( sub, constraints ) =
     foldM go emptySub constraints
   where
@@ -244,6 +244,6 @@ solve ( sub, constraints ) =
         pure (sub `compose` sub1)
 
 
-runSolver :: [Constraint] -> Either String Sub
+runSolver :: List Constraint -> Either String Sub
 runSolver constraints =
     solve ( Map.empty, constraints )
