@@ -1,7 +1,7 @@
 {-# LANGUAGE OverloadedStrings #-}
 
 import Control.Monad.Reader
-import Data.Text (Text)
+import Data.Text (Text, unpack)
 import Tau.Core
 import Tau.Core.Parser
 import Tau.Eval
@@ -37,18 +37,19 @@ typeOf src = apply sub t1
 evald :: Text -> Value
 evald src = runReader (eval (program_expr src)) mempty
 
---
 
 main :: IO ()
 main =
-    hspec $ 
-        describe "" $ do
+    hspec $ do
+        describe (unpack program1) $ do
 
-            it "" $ 
+            it "evalautes to 120" $
                 evald program1 `shouldBe` (Tau.Core.Int 120)
 
-            it "" $ 
+            it "has type Int" $
                 typeOf program1 `shouldBe` tyInt
 
-            it "" $
+        describe (unpack program2) $ do
+
+            it "has type Int -> Int" $
                 typeOf program2 `shouldBe` (TyArr tyInt tyInt)
