@@ -78,7 +78,7 @@ infer = \case
             Nothing ->
                 throwError ("Unbound variable `" ++ Text.unpack name ++ "`.")
 
-            Just scheme -> do
+            Just scheme ->
                 instantiate scheme
 
     Lam name body -> do
@@ -265,7 +265,7 @@ unifies = curry $ \case
         | a == b -> pure emptySub
 
     ( TyVar name, tau )
-        | name `occursIn` tau -> throwError "Infinite type"
+        | name `occursIn` tau -> throwError "Cannot construct infinite type."
         | otherwise           -> pure (substitute name tau)
 
     ( tau, TyVar name ) ->
