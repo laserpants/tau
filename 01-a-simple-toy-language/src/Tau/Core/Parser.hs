@@ -248,9 +248,6 @@ toExpr = \case
     Char ch ->
         Core.Lit (Core.Char ch)
 
---    Float f ->
---        Core.Lit (Core.Float f)
-
     Unit ->
         Core.Lit Core.Unit
 
