@@ -25,11 +25,10 @@ eval = \case
         let env_local = Map.insert name arg_val env
         local (const env_local) (eval body)
 
-    Lam name body -> do
-        env <- ask
-        pure (Closure name body env)
+    Lam name body ->
+        asks (Closure name body)
 
-    Let name expr body -> do
+    Let name expr body ->
         eval (App (Lam name body) (Fix (Lam name expr)))
 
     Lit val ->

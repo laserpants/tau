@@ -1,5 +1,6 @@
 {-# LANGUAGE OverloadedStrings #-}
 
+import Control.Exception (evaluate)
 import Control.Monad.Reader
 import Data.Text (Text, unpack)
 import Tau.Core
@@ -28,6 +29,9 @@ program4 :: Text
 program4 = "let f = \\x -> x in let g = f () in f 5"
 
 
+program5 :: Text
+program5 = "\\x -> x"
+
 --
 
 program_expr :: Text -> Expr
@@ -50,30 +54,34 @@ evald src = runReader (eval (program_expr src)) mempty
 main :: IO ()
 main =
     hspec $ do
-        describe (unpack program1) $ do
+        describe ("Factorial of 5: " ++ unpack program1) $ do
 
             it "should evaluate to 120" $
-                evald program1 `shouldBe` (Tau.Core.Int 120)
+                evald program1 `shouldBe` Tau.Core.Int 120
 
             it "should have type Int" $
                 typeOf program1 `shouldBe` tyInt
 
-        describe (unpack program2) $ do
+        describe (unpack program2) $
 
             it "should have type Int -> Int" $
-                typeOf program2 `shouldBe` (TyArr tyInt tyInt)
+                typeOf program2 `shouldBe` TyArr tyInt tyInt
 
-        describe (unpack program3) $ do
-
+        describe (unpack program3) $
             it "should evaluate to ()" $
                 evald program3 `shouldBe` Tau.Core.Unit
 
-        describe (unpack program4) $ do
+        describe (unpack program4) $
 
             it "should evaluate to 5" $
-                evald program4 `shouldBe` (Tau.Core.Int 5)
+                evald program4 `shouldBe` Tau.Core.Int 5
 
---        describe "Infinte type" $ do
---
---            it "should throw an exception" $
---                evald "let x = x x in 1" `shouldThrow` anyException
+        describe "Infinte type: let x = x x in 1" $
+
+            it "should throw an exception" $
+                evaluate (typeOf "let x = x x in 1") `shouldThrow` anyException
+
+        describe ("Identity function: " ++ unpack program5) $
+
+            it "should have type a -> a" $
+                typeOf program5 `shouldBe` TyArr (TyVar "a") (TyVar "a")
