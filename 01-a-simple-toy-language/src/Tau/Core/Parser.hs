@@ -182,8 +182,8 @@ term = do
         <|> variable
 
 
-binary :: Text -> (a -> a -> a) -> Operator Parser a
-binary name f = InfixL (f <$ symbol name)
+--binary :: Text -> (a -> a -> a) -> Operator Parser a
+--binary name f = InfixL (f <$ symbol name)
 
 
 prefix :: Text -> (a -> a) -> Operator Parser a
@@ -196,10 +196,12 @@ postfix name f = Postfix (f <$ symbol name)
 
 operator :: List (List (Operator Parser Ast))
 operator =
-    [ [ binary "+" (Op2 Add)
-      , binary "-" (Op2 Sub)
-      , binary "*" (Op2 Mul)
-      , binary "==" (Op2 Eq)
+    [ [ InfixL (Op2 Mul <$ symbol "*")
+      ]
+    , [ InfixL (Op2 Add <$ symbol "+")
+      , InfixL (Op2 Sub <$ symbol "-")
+      ]
+    , [ InfixN (Op2 Eq <$ symbol "==")
     ] ]
 
 
