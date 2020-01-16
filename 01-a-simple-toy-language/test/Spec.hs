@@ -49,6 +49,9 @@ program9 :: Text
 program9 = "let f = \"hello\" in 1"
 
 
+program10 :: Text
+program10 = "let const = \\a -> \\b -> a in const ()"
+
 --
 
 program_expr :: Text -> Expr
@@ -122,3 +125,8 @@ main =
 
             it "should evaluate to 1" $
                 evald program9 `shouldBe` Tau.Core.Int 1
+
+        describe (unpack program10) $
+
+            it "should have type f -> Unit" $
+                typeOf program10 `shouldBe` TyArr (TyVar "f") (TyCon "Unit")
