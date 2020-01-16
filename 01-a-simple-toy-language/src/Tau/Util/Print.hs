@@ -26,10 +26,10 @@ value = \case
         "True"
 
     String str ->
-        str
+        Text.concat ["\"", str, "\""]
 
     Char char ->
-        Text.singleton char
+        Text.concat ["'", Text.singleton char, "'"]
 
     Unit ->
         "()"

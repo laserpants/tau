@@ -45,6 +45,10 @@ program8 :: Text
 program8 = "2 + (-2)"
 
 
+program9 :: Text
+program9 = "let f = \"hello\" in 1"
+
+
 --
 
 program_expr :: Text -> Expr
@@ -113,3 +117,8 @@ main =
 
             it "should evaluate to 0" $
                 evald program8 `shouldBe` Tau.Core.Int 0
+
+        describe (unpack program9) $
+
+            it "should evaluate to 1" $
+                evald program9 `shouldBe` Tau.Core.Int 1

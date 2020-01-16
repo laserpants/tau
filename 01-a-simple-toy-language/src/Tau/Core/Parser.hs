@@ -181,8 +181,8 @@ term = do
         <|> lambda
         <|> int
         <|> bool
-        <|> ch
-        <|> str
+        <|> lexeme ch
+        <|> lexeme str
         <|> variable
 
 
