@@ -165,9 +165,7 @@ ch = do
 
 str :: Parser Ast
 str = do
-    char '"'
-    str <- char '\"' *> manyTill Lex.charLiteral (char '\"')
-    char '"'
+    str <- char '"' *> manyTill Lex.charLiteral (char '"')
     pure $ String $ Text.pack str
 
 
