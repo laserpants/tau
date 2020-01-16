@@ -99,9 +99,6 @@ identifier = lexeme $ try $ do
         pure (pack name)
 
 
----
-
-
 ifClause :: Parser Ast
 ifClause = do
     keyword "if"
