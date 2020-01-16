@@ -3,6 +3,7 @@
 module Tau.Core.Parser where
 
 import Control.Monad.Combinators.Expr
+import Data.Functor (($>))
 import Data.Text (Text, pack)
 import Data.Void
 import Tau.Core (Expr)
@@ -142,15 +143,15 @@ int = Int <$> integer
 
 bool :: Parser Ast
 bool = true <|> false where
-    true = keyword "True" *> pure (Bool True)
-    false = keyword "False" *> pure (Bool False)
+    true = keyword "True" $> Bool True
+    false = keyword "False" $> Bool False
 
 
 -- float = fmap Float Lex.float
 
 
 unit :: Parser Ast
-unit = symbol "()" *> pure Unit
+unit = symbol "()" $> Unit
 
 
 ch :: Parser Ast
@@ -164,7 +165,7 @@ str = do
     char '"'
     str <- char '\"' *> manyTill Lex.charLiteral (char '\"')
     char '"'
-    pure $ String $ Text.pack $ str
+    pure $ String $ Text.pack str
 
 
 term :: Parser Ast
@@ -211,9 +212,6 @@ expr = makeExprParser term operator
 
 ast :: Parser Ast
 ast = spaces *> expr <* eof
-
-
---
 
 
 toExpr :: Ast -> Expr
