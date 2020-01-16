@@ -70,7 +70,7 @@ parens :: Parser a -> Parser a
 parens = between (symbol "(") (symbol ")")
 
 
--- | Parse an integer.
+-- | Parse a positive integer.
 --
 integer :: Parser Integer
 integer = lexeme Lex.decimal
@@ -148,9 +148,6 @@ bool :: Parser Ast
 bool = true <|> false where
     true = keyword "True" $> Bool True
     false = keyword "False" $> Bool False
-
-
--- float = fmap Float Lex.float
 
 
 unit :: Parser Ast
