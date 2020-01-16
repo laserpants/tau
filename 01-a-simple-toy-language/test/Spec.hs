@@ -32,6 +32,10 @@ program4 = "let f = \\x -> x in let g = f () in f 5"
 program5 :: Text
 program5 = "\\x -> x"
 
+
+program6 :: Text
+program6 = "3 + 3 + 3 == 3 * 3"
+
 --
 
 program_expr :: Text -> Expr
@@ -85,3 +89,8 @@ main =
 
             it "should have type a -> a" $
                 typeOf program5 `shouldBe` TyArr (TyVar "a") (TyVar "a")
+
+        describe (unpack program6) $
+
+            it "should evaluate to True" $
+                evald program6 `shouldBe` Tau.Core.Bool True
