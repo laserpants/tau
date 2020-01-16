@@ -15,7 +15,7 @@ data Value
     | String !Text
     | Char !Char
     | Unit
-    | Closure !Name !Expr Env
+    | Closure !Name !Expr !Env
     deriving (Show, Eq)
 
 

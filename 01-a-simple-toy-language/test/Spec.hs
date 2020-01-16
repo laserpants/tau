@@ -52,6 +52,13 @@ program9 = "let f = \"hello\" in 1"
 program10 :: Text
 program10 = "let const = \\a -> \\b -> a in const ()"
 
+
+program11 :: Expr
+program11 =
+    Tau.Core.App
+        (Tau.Core.Fix (Tau.Core.Lam "f" (Tau.Core.Lam "n" (Tau.Core.If (Tau.Core.Op Tau.Core.Eq (Tau.Core.Var "n") (Tau.Core.Lit (Tau.Core.Int 0))) (Tau.Core.Lit (Tau.Core.Int 1)) (Tau.Core.Op Tau.Core.Mul (Tau.Core.Var "n") (Tau.Core.App (Tau.Core.Var "f") (Tau.Core.Op Tau.Core.Sub (Tau.Core.Var "n") (Tau.Core.Lit (Tau.Core.Int 1)))))))))
+        (Tau.Core.Lit (Tau.Core.Int 4))
+
 --
 
 program_expr :: Text -> Expr
@@ -130,3 +137,8 @@ main =
 
             it "should have type f -> Unit" $
                 typeOf program10 `shouldBe` TyArr (TyVar "f") (TyCon "Unit")
+
+        describe (show program11) $
+
+            it "should evaluate to 24" $
+                runReader (eval program11) mempty `shouldBe` Tau.Core.Int 24
