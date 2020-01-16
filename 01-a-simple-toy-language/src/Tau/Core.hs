@@ -28,6 +28,7 @@ data Expr
     | Fix !Expr
     | If !Expr !Expr !Expr
     | Op !Op !Expr !Expr
+    | Neg !Expr
     deriving (Show, Eq)
 
 

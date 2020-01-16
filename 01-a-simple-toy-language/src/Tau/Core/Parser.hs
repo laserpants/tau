@@ -18,12 +18,13 @@ import qualified Text.Megaparsec.Char.Lexer as Lex
 type Parser = Parsec Void Text
 
 
-data Ast 
+data Ast
     = Var !Name
     | App !Ast !Ast
     | If  !Ast !Ast !Ast
     | Let !Name !Ast !Ast
     | Lambda !Name !Ast
+    | Op1 !Op1 !Ast
     | Op2 !Op2 !Ast !Ast
     | Int !Integer
     | Bool !Bool
@@ -33,7 +34,12 @@ data Ast
     deriving (Show, Eq)
 
 
-data Op2 
+data Op1
+    = Neg
+    deriving (Show, Eq)
+
+
+data Op2
     = Add
     | Sub
     | Mul
@@ -71,12 +77,12 @@ integer = lexeme Lex.decimal
 
 
 keyword :: Text -> Parser ()
-keyword token = 
+keyword token =
     string token *> notFollowedBy alphaNumChar *> spaces
 
 
 reserved :: List String
-reserved = 
+reserved =
     [ "let"
     , "in"
     , "if"
@@ -170,7 +176,7 @@ term = do
     ast <- some asts
     pure (foldl1 App ast)
   where
-    asts = unit 
+    asts = unit
         <|> parens expr
         <|> ifClause
         <|> letBinding
@@ -180,10 +186,6 @@ term = do
         <|> ch
         <|> str
         <|> variable
-
-
---binary :: Text -> (a -> a -> a) -> Operator Parser a
---binary name f = InfixL (f <$ symbol name)
 
 
 prefix :: Text -> (a -> a) -> Operator Parser a
@@ -196,7 +198,9 @@ postfix name f = Postfix (f <$ symbol name)
 
 operator :: List (List (Operator Parser Ast))
 operator =
-    [ [ InfixL (Op2 Mul <$ symbol "*")
+    [ [ prefix "-" (Op1 Neg)
+      ]
+    , [ InfixL (Op2 Mul <$ symbol "*")
       ]
     , [ InfixL (Op2 Add <$ symbol "+")
       , InfixL (Op2 Sub <$ symbol "-")
@@ -214,7 +218,7 @@ ast = spaces *> expr <* eof
 
 
 toExpr :: Ast -> Expr
-toExpr = \case 
+toExpr = \case
 
     Var name ->
        Core.Var name
@@ -231,8 +235,11 @@ toExpr = \case
     Lambda name body ->
        Core.Lam name (toExpr body)
 
+    Op1 Neg a ->
+       Core.Neg (toExpr a)
+
     Op2 op2 a b ->
-       Core.Op (toOp op2) (toExpr a) (toExpr b)
+       Core.Op (toOp2 op2) (toExpr a) (toExpr b)
 
     Int n ->
        Core.Lit (Core.Int n)
@@ -253,8 +260,8 @@ toExpr = \case
         Core.Lit Core.Unit
 
 
-toOp :: Op2 -> Core.Op
-toOp = \case
+toOp2 :: Op2 -> Core.Op
+toOp2 = \case
 
     Add ->
         Core.Add

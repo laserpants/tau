@@ -40,6 +40,11 @@ program6 = "3 + 3 + 3 == 3 * 3"
 program7 :: Text
 program7 = "5 + 3 * 2"
 
+
+program8 :: Text
+program8 = "2 + (-2)"
+
+
 --
 
 program_expr :: Text -> Expr
@@ -103,3 +108,8 @@ main =
 
             it "should evaluate to 11" $
                 evald program7 `shouldBe` Tau.Core.Int 11
+
+        describe (unpack program8) $
+
+            it "should evaluate to 0" $
+                evald program8 `shouldBe` Tau.Core.Int 0

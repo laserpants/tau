@@ -46,6 +46,10 @@ eval = \case
         Int b_val <- eval b
         pure (binop op a_val b_val)
 
+    Neg a -> do
+        Int a_val <- eval a
+        pure (Int (negate a_val))
+
 
 binop :: Op -> Integer -> Integer -> Value
 binop Add a b = Int (a + b)

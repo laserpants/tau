@@ -121,6 +121,9 @@ infer = \case
         unify (TyArr t1 (TyArr t2 t3)) (ops op)
         pure t3
 
+    Neg a ->
+        pure tyInt
+
 
 ops :: Op -> Type
 ops = \case
