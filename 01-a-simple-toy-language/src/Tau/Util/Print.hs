@@ -47,5 +47,8 @@ type_ = \case
     TyCon con ->
         con
 
+    TyArr t1@TyArr{} t2 ->
+        Text.concat [ "(", type_ t1, ")", " -> ", type_ t2 ]
+
     TyArr t1 t2 ->
         Text.concat [ type_ t1, " -> ", type_ t2 ]
