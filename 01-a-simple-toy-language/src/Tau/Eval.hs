@@ -28,8 +28,9 @@ eval = \case
     Lam name body ->
         asks (Closure name body)
 
-    Let name expr body ->
-        eval (App (Lam name body) (Fix (Lam name expr)))
+    Let name expr body -> do
+        expr_val <- eval (Fix (Lam name expr))
+        local (Map.insert name expr_val) (eval body)
 
     Lit val ->
         pure val
