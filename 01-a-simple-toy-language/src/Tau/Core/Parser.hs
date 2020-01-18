@@ -183,17 +183,13 @@ term = do
         <|> variable
 
 
-prefix :: Text -> (a -> a) -> Operator Parser a
-prefix name f = Prefix (f <$ symbol name)
-
-
 postfix :: Text -> (a -> a) -> Operator Parser a
 postfix name f = Postfix (f <$ symbol name)
 
 
 operator :: List (List (Operator Parser Ast))
 operator =
-    [ [ prefix "-" (Op1 Neg)
+    [ [ Prefix (Op1 Neg <$ "-")
       ]
     , [ InfixL (Op2 Mul <$ symbol "*")
       ]
