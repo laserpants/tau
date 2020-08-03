@@ -1,5 +1,6 @@
-{-# LANGUAGE LambdaCase #-}
-{-# LANGUAGE StrictData #-}
+{-# LANGUAGE LambdaCase       #-}
+{-# LANGUAGE FlexibleContexts #-}
+{-# LANGUAGE StrictData       #-}
 module Tau.Type.Solver where
 
 import Control.Monad.Except
