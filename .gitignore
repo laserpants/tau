@@ -1,0 +1,4 @@
+monad-supply/
+dist
+/.stack-work
+*.cabal
