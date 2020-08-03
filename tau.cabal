@@ -1,0 +1,42 @@
+cabal-version: 1.12
+
+-- This file has been generated from package.yaml by hpack version 0.31.2.
+--
+-- see: https://github.com/sol/hpack
+--
+-- hash: 5119daca64ead576c02d6fb7fac880ef4a633bfb13eec0696aa24ad7382d307c
+
+name:           tau
+version:        0.1.0.0
+category:       Web
+homepage:       https://github.com/githubuser/tau#readme
+author:         Author name here
+maintainer:     example@example.com
+copyright:      2020 Author name here
+license:        BSD3
+license-file:   LICENSE
+build-type:     Simple
+extra-source-files:
+    README.md
+
+executable tau
+  main-is: Main.hs
+  other-modules:
+      Tau.Ast
+      Tau.Core
+      Tau.Pattern
+      Tau.Prim
+      Tau.Type
+      Tau.Type.Class
+      Tau.Type.Infer
+      Tau.Type.Infer.Monad
+      Tau.Type.Solver
+      Tau.Type.Substitution
+      Tau.Type.Unify
+      Tau.Util
+      Paths_tau
+  hs-source-dirs:
+      src
+  build-depends:
+      base >=4.7 && <5
+  default-language: Haskell2010
