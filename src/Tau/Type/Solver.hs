@@ -18,6 +18,9 @@ import qualified Data.Set.Monad as Set
 
 type Assumption = (Name, Type)
 
+removeAssumption :: Name -> [Assumption] -> [Assumption]
+removeAssumption var = filter (\a -> fst a /= var)
+
 data Constraint
     = Equality Type Type
     | Implicit Type Type Monoset 

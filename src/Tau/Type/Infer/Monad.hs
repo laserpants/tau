@@ -17,6 +17,9 @@ import qualified Data.Set.Monad as Set
 newtype Monoset = Monoset (Set Name)
     deriving (Show, Eq)
 
+insertIntoMonoset :: Name -> Monoset -> Monoset
+insertIntoMonoset var (Monoset set) = Monoset (Set.insert var set)
+
 instance Free Monoset where
     free (Monoset set) = set
 
