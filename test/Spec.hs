@@ -1,4 +1,5 @@
 import Tau.TestUnify
+import Tau.TestInfer
 import Test.Hspec
 
 main :: IO ()

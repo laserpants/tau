@@ -21,11 +21,14 @@ type Assumption = (Name, Type)
 removeAssumption :: Name -> [Assumption] -> [Assumption]
 removeAssumption var = filter (\a -> fst a /= var)
 
+removeMany :: [Name] -> [Assumption] -> [Assumption]
+removeMany = flip (foldr removeAssumption)
+
 data Constraint
     = Equality Type Type
     | Implicit Type Type Monoset 
     | Explicit Type Scheme
-  deriving (Show, Eq)
+    deriving (Show, Eq)
 
 instance Substitutable Constraint where
     apply sub (Equality t1 t2)      = Equality (apply sub t1) (apply sub t2)
