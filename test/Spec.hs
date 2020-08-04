@@ -4,7 +4,7 @@ import Test.Hspec
 
 main :: IO ()
 main =
-    hspec $ -- do
+    hspec $ do
 --        describe "Eval" testEval
---        describe "Infer" testInfer
+        describe "Infer" testInfer
         describe "Unify" testUnify

@@ -14,6 +14,7 @@ import Data.Functor.Foldable
 import Data.Map.Strict (Map, notMember)
 import Data.Text (Text)
 import Data.Tuple.Extra (fst3, first3)
+import Debug.Trace
 import Tau.Ast
 import Tau.Pattern
 import Tau.Prim
@@ -58,7 +59,7 @@ inferAlg = \case
         (t1, a1, c1) <- local (insertIntoMonoset var) expr
         pure ( TArr beta t1
              , removeAssumption name a1
-             , c1 <> [Equality t beta | (y, t) <- a1, var == y] )
+             , c1 <> [Equality t beta | (y, t) <- a1, name == y] )
 
     AppS exprs ->
         foldl1 inferApp exprs
