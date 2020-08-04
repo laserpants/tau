@@ -57,7 +57,7 @@ freshVars = TVar . pfxed <$> [1..] where
 runInferT :: Monad m => InferT m a -> m (Either InferError a)
 runInferT (InferT a) =
     freshVars 
-        $> Monoset (Set.fromList [])
+        $> Monoset mempty
         |> runReaderT a 
         |> runExceptT 
         |> evalSupplyT
