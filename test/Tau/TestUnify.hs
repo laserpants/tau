@@ -7,7 +7,8 @@ import Tau.Type.Infer.Monad
 import Tau.Type.Substitution
 import Tau.Type.Unify
 import Test.Hspec
-import qualified Util.Pretty as Pretty
+import Utils
+import qualified Utils.Pretty as Pretty
 
 test010 :: (Type, Type)
 test010 =
@@ -76,7 +77,7 @@ shouldUnify (t1, t2) =
 
         Right sub ->
             if apply sub t1 == apply sub t2 then
-                pure ()
+                pass
 
             else
                 expectationFailure "Substitution does not yield equal types"
@@ -85,7 +86,7 @@ shouldFailToUnify :: (Type, Type) -> Expectation
 shouldFailToUnify (t1, t2) =
     case runInfer (unify t1 t2) of
         Left{} ->
-            pure ()
+            pass
 
         Right{} ->
             expectationFailure "Expected unification to fail"

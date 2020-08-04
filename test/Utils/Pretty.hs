@@ -1,6 +1,6 @@
 {-# LANGUAGE LambdaCase #-}
 {-# LANGUAGE OverloadedStrings #-}
-module Util.Pretty where
+module Utils.Pretty where
 
 import Data.Text (Text)
 import Tau.Type
