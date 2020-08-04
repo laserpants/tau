@@ -30,7 +30,7 @@ newtype TypedExpr = TypedExpr { runTypedExpr :: Fix TypedExprF }
     deriving (Eq, Show)
 
 instance Substitutable TypedExpr where
-    apply sub = runTypedExpr >>> cata alg >>> TypedExpr 
+    apply sub = runTypedExpr >>> cata alg >>> TypedExpr
       where
         alg (Const ty :*: expr) = Fix (Const (apply sub ty) :*: expr)
 
@@ -38,11 +38,11 @@ getType :: TypedExpr -> Type
 getType = getConst . left . unfix . runTypedExpr
 
 infer :: Expr -> Infer (TypedExpr, [Assumption], [Constraint])
-infer = cata alg where 
-    toTypedExpr ty = TypedExpr . Fix . (Const ty :*:) 
-    alg expr = 
+infer = cata alg where
+    toTypedExpr ty = TypedExpr . Fix . (Const ty :*:)
+    alg expr =
         (fmap (runTypedExpr . fst3) >>> flip toTypedExpr >>> first3)
-            <$> sequence expr 
+            <$> sequence expr
             <*> (expr |> fmap fmap fmap (first3 getType) |> inferAlg)
 
 type InferType = Infer (Type, [Assumption], [Constraint])
@@ -99,40 +99,41 @@ inferPrim = \case
     Char{}    -> pure (tChar, [], [])
     String{}  -> pure (tString, [], [])
 
-inferClauses 
+inferClauses
     :: Type
-    -> [(Pattern, InferType)] 
-    -> (Type, [Assumption], [Constraint]) 
+    -> [(Pattern, InferType)]
+    -> (Type, [Assumption], [Constraint])
     -> InferType
 inferClauses beta clss (t, a, c) = do
     (as, cs) <- foldrM inferClause (a, c) clss
     pure (beta, as, cs)
   where
     inferClause (ptn, expr) (as, cs) = do
-        (t1, a1, c1) <- expr
-        case ptn of
-            VarP var ->
-                pure ( as <> removeAssumption var a1 
-                     , cs <> c1 
-                          <> [Equality t1 beta] 
-                          <> [Equality t1 t' | (y, t') <- a1, var == y] )
-
-            -- TODO
-            ConP name ps -> do
-                (t2, a2, c2) <- undefined
-                undefined
-                --(t2, a2, c2) <- infer (Con name (Var <$> ps))
-                --pure ( as <> removeMany ps a1 <> removeMany ps a2
-                --     , cs <> c1 <> c2 <> [Equality t1 beta, Equality t2 t] )
-
-            LitP prim -> do
-                (t, [], []) <- inferPrim prim
-                pure ( as <> a1
-                     , cs <> c1 <> [Equality t1 beta, Equality t1 t] )
-
-            AnyP ->
-                pure ( as <> a1
-                     , cs <> c1 <> [Equality t1 beta] )
+        undefined
+--        (t1, a1, c1) <- expr
+--        case ptn of
+--            VarP var ->
+--                pure ( as <> removeAssumption var a1
+--                     , cs <> c1
+--                          <> [Equality t1 beta]
+--                          <> [Equality t1 t' | (y, t') <- a1, var == y] )
+--
+--            -- TODO
+--            ConP name ps -> do
+--                (t2, a2, c2) <- undefined
+--                undefined
+--                --(t2, a2, c2) <- infer (Con name (Var <$> ps))
+--                --pure ( as <> removeMany ps a1 <> removeMany ps a2
+--                --     , cs <> c1 <> c2 <> [Equality t1 beta, Equality t2 t] )
+--
+--            LitP prim -> do
+--                (t, [], []) <- inferPrim prim
+--                pure ( as <> a1
+--                     , cs <> c1 <> [Equality t1 beta, Equality t1 t] )
+--
+--            AnyP ->
+--                pure ( as <> a1
+--                     , cs <> c1 <> [Equality t1 beta] )
 
 inferApp :: InferType -> InferType -> InferType
 inferApp fun arg = do
