@@ -14,7 +14,6 @@ import Data.Functor.Foldable
 import Data.Map.Strict (Map, notMember)
 import Data.Text (Text)
 import Data.Tuple.Extra (fst3, first3)
-import Debug.Trace
 import Tau.Ast
 import Tau.Pattern
 import Tau.Prim
@@ -46,9 +45,9 @@ infer = cata alg where
             <$> sequence expr 
             <*> (expr |> fmap fmap fmap (first3 getType) |> inferAlg)
 
-inferAlg 
-    :: ExprF (Infer (Type, [Assumption], [Constraint])) 
-    -> Infer (Type, [Assumption], [Constraint])
+type InferType = Infer (Type, [Assumption], [Constraint])
+
+inferAlg :: ExprF InferType -> InferType
 inferAlg = \case
     VarS name -> do
         beta <- supply
@@ -90,7 +89,7 @@ inferAlg = \case
         -- TODO
         undefined
 
-inferPrim :: Prim -> Infer (Type, [Assumption], [Constraint])
+inferPrim :: Prim -> InferType
 inferPrim = \case
     Unit      -> pure (tUnit, [], [])
     Bool{}    -> pure (tBool, [], [])
@@ -102,9 +101,9 @@ inferPrim = \case
 
 inferClauses 
     :: Type
-    -> [(Pattern, Infer (Type, [Assumption], [Constraint]))] 
+    -> [(Pattern, InferType)] 
     -> (Type, [Assumption], [Constraint]) 
-    -> Infer (Type, [Assumption], [Constraint])
+    -> InferType
 inferClauses beta clss (t, a, c) = do
     (as, cs) <- foldrM inferClause (a, c) clss
     pure (beta, as, cs)
@@ -135,10 +134,7 @@ inferClauses beta clss (t, a, c) = do
                 pure ( as <> a1
                      , cs <> c1 <> [Equality t1 beta] )
 
-inferApp 
-    :: Infer (Type, [Assumption], [Constraint])
-    -> Infer (Type, [Assumption], [Constraint])
-    -> Infer (Type, [Assumption], [Constraint])
+inferApp :: InferType -> InferType -> InferType
 inferApp fun arg = do
     (t1, a1, c1) <- fun
     (t2, a2, c2) <- arg
@@ -147,10 +143,7 @@ inferApp fun arg = do
          , a1 <> a2
          , c1 <> c2 <> [Equality t1 (TArr t2 beta)] )
 
-inferLet
-    :: (Name, Infer (Type, [Assumption], [Constraint]))
-    -> Infer (Type, [Assumption], [Constraint])
-    -> Infer (Type, [Assumption], [Constraint])
+inferLet :: (Name, InferType) -> InferType -> InferType
 inferLet (var, expr) body = do
     (t1, a1, c1) <- expr
     (t2, a2, c2) <- body
@@ -159,9 +152,7 @@ inferLet (var, expr) body = do
          , removeAssumption var a1 <> removeAssumption var a2
          , c1 <> c2 <> [Implicit t t1 set | (y, t) <- a1 <> a2, var == y] )
 
-inferOp 
-    :: OpF (Infer (Type, [Assumption], [Constraint])) 
-    -> Infer (Type, [Assumption], [Constraint])
+inferOp :: OpF InferType -> InferType
 inferOp = \case
     AddS e1 e2 -> binOp e1 e2 tInt tInt
     SubS e1 e2 -> binOp e1 e2 tInt tInt
@@ -178,21 +169,13 @@ inferOp = \case
              , a1 <> a2
              , c1 <> c2 <> [Equality t1 t2, Equality beta tBool] )
 
-unOp 
-    :: Infer (Type, [Assumption], [Constraint])
-    -> Type 
-    -> Infer (Type, [Assumption], [Constraint])
+unOp :: InferType -> Type -> InferType
 unOp expr t = do
     (t1, a1, c1) <- expr
     beta <- supply
     pure (beta, a1, c1 <> [Equality (TArr t1 beta) (TArr t t)])
 
-binOp 
-    :: Infer (Type, [Assumption], [Constraint]) 
-    -> Infer (Type, [Assumption], [Constraint]) 
-    -> Type 
-    -> Type 
-    -> Infer (Type, [Assumption], [Constraint])
+binOp :: InferType -> InferType -> Type -> Type -> InferType
 binOp e1 e2 t0 t = do
     (t1, a1, c1) <- e1
     (t2, a2, c2) <- e2
