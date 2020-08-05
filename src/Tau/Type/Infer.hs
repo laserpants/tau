@@ -43,12 +43,12 @@ infer = cata alg where
     alg expr =
         (fmap (runTypedExpr . fst3) >>> flip toTypedExpr >>> first3)
             <$> sequence expr
-            <*> (expr |> fmap fmap fmap (first3 getType) |> inferAlg)
+            <*> (expr |> fmap fmap fmap (first3 getType) |> inferExpr)
 
 type InferType = Infer (Type, [Assumption], [Constraint])
 
-inferAlg :: ExprF InferType -> InferType
-inferAlg = \case
+inferExpr :: ExprF InferType -> InferType
+inferExpr = \case
     VarS name -> do
         beta <- supply
         pure (beta, [(name, beta)], [])
@@ -77,9 +77,8 @@ inferAlg = \case
              , a1 <> a2 <> a3
              , c1 <> c2 <> c3 <> [Equality t1 tBool, Equality t2 t3] )
 
-    CaseS expr clss -> do
-        beta <- supply
-        expr >>= inferClauses beta clss
+    CaseS expr clss -> 
+        expr >>= inferClauses clss
 
     OpS op ->
         inferOp op
@@ -100,40 +99,40 @@ inferPrim = \case
     String{}  -> pure (tString, [], [])
 
 inferClauses
-    :: Type
-    -> [(Pattern, InferType)]
+    :: [(Pattern, InferType)]
     -> (Type, [Assumption], [Constraint])
     -> InferType
-inferClauses beta clss (t, a, c) = do
-    (as, cs) <- foldrM inferClause (a, c) clss
-    pure (beta, as, cs)
+inferClauses clss (t, a, c) = do
+    beta <- supply
+    foldrM fun (beta, a, c) clss
   where
-    inferClause (ptn, expr) (as, cs) = do
-        undefined
---        (t1, a1, c1) <- expr
---        case ptn of
---            VarP var ->
---                pure ( as <> removeAssumption var a1
---                     , cs <> c1
---                          <> [Equality t1 beta]
---                          <> [Equality t1 t' | (y, t') <- a1, var == y] )
---
---            -- TODO
---            ConP name ps -> do
---                (t2, a2, c2) <- undefined
---                undefined
---                --(t2, a2, c2) <- infer (Con name (Var <$> ps))
---                --pure ( as <> removeMany ps a1 <> removeMany ps a2
---                --     , cs <> c1 <> c2 <> [Equality t1 beta, Equality t2 t] )
---
---            LitP prim -> do
---                (t, [], []) <- inferPrim prim
---                pure ( as <> a1
---                     , cs <> c1 <> [Equality t1 beta, Equality t1 t] )
---
---            AnyP ->
---                pure ( as <> a1
---                     , cs <> c1 <> [Equality t1 beta] )
+    fun :: (Pattern, InferType) 
+        -> (Type, [Assumption], [Constraint]) 
+        -> InferType
+    fun (ptn, expr) (beta, as, cs) = do
+        (t1, a1, c1) <- expr
+        flip cata ptn $ \case
+            VarP var ->
+                pure ( beta
+                     , as <> removeAssumption var a1
+                     , cs <> c1
+                          <> [Equality t1 beta]
+                          <> [Equality t1 t' | (y, t') <- a1, var == y] )
+
+            LitP prim -> do
+                t0 <- fst3 <$> inferPrim prim
+                pure ( beta
+                     , as <> a1
+                     , cs <> c1 <> [Equality t1 beta, Equality t0 t] )
+
+            AnyP ->
+                pure ( beta
+                     , as <> a1
+                     , cs <> c1 <> [Equality t1 beta] )
+
+            ConP name ps -> do
+                beta <- supply
+                foldl1 inferApp (pure (beta, [(name, beta)], []):ps)
 
 inferApp :: InferType -> InferType -> InferType
 inferApp fun arg = do

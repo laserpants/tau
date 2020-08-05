@@ -1,4 +1,7 @@
-{-# LANGUAGE StrictData #-}
+{-# LANGUAGE DeriveFoldable    #-}
+{-# LANGUAGE DeriveFunctor     #-}
+{-# LANGUAGE DeriveTraversable #-}
+{-# LANGUAGE StrictData        #-}
 {-# LANGUAGE TemplateHaskell   #-}
 module Tau.Pattern where
 
@@ -13,7 +16,7 @@ data PatternF a
     | ConP Name [a]          -- ^ Constuctor pattern
     | LitP Prim              -- ^ Literal pattern
     | AnyP                   -- ^ Wildcard pattern
-    deriving (Show, Eq)
+    deriving (Show, Eq, Functor, Foldable, Traversable)
 
 type Pattern = Fix PatternF
 
