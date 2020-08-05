@@ -26,13 +26,13 @@ removeMany = flip (foldr removeAssumption)
 
 data Constraint
     = Equality Type Type
-    | Implicit Type Type Monoset 
+    | Implicit Type Type Monoset
     | Explicit Type Scheme
     deriving (Show, Eq)
 
 instance Substitutable Constraint where
     apply sub (Equality t1 t2)      = Equality (apply sub t1) (apply sub t2)
-    apply sub (Implicit t1 t2 mono) = Implicit (apply sub t1) (apply sub t2) (apply sub mono) 
+    apply sub (Implicit t1 t2 mono) = Implicit (apply sub t1) (apply sub t2) (apply sub mono)
     apply sub (Explicit t1 scheme)  = Explicit (apply sub t1) (apply sub scheme)
 
 class Active a where
@@ -55,9 +55,12 @@ isSolvable (Implicit _ t2 (Monoset vars), cs) =
 choice :: [Constraint] -> Maybe (Constraint, [Constraint])
 choice xs = find isSolvable [(x, ys) | x <- xs, let ys = delete x xs]
 
-solve :: [Constraint] -> Infer Substitution
+solve
+    :: (MonadError InferError m, MonadSupply Type m)
+    => [Constraint]
+    -> m Substitution
 solve [] = pure empty
-solve xs = 
+solve xs =
     maybe (throwError CannotSolve) pure (choice xs)
         >>= uncurry (flip run)
   where
@@ -65,7 +68,7 @@ solve xs =
         Equality t1 t2 -> do
             sub1 <- unify t1 t2
             sub2 <- solve (apply sub1 cs)
-            pure (sub2 `compose` sub1) 
+            pure (sub2 `compose` sub1)
 
         Implicit t1 t2 (Monoset vars) ->
             solve (Explicit t1 (generalize vars t2):cs)

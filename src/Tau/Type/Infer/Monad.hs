@@ -44,7 +44,7 @@ data InferError
     | UnboundVariable Name
     deriving (Show, Eq)
 
-instance Monad m => MonadFail (InferT m) where
+instance (Monad m) => MonadFail (InferT m) where
     fail = const (throwError ImplementationError)
 
 instance MonadTrans InferT where
@@ -54,7 +54,7 @@ freshVars :: List Type
 freshVars = TVar . pfxed <$> [1..] where
     pfxed count = "t" <> pack (show count)
 
-runInferT :: Monad m => InferT m a -> m (Either InferError a)
+runInferT :: (Monad m) => InferT m a -> m (Either InferError a)
 runInferT (InferT a) =
     freshVars 
         $> Monoset mempty
