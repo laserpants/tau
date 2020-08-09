@@ -1,10 +1,8 @@
 {-# LANGUAGE LambdaCase        #-}
-{-# LANGUAGE OverloadedStrings #-}
-{-# LANGUAGE StrictData        #-}
 {-# LANGUAGE TypeOperators     #-}
+{-# LANGUAGE OverloadedStrings #-}
 module Tau.Type.Infer where
 
-import Control.Arrow ((>>>))
 import Control.Monad.Except (throwError)
 import Control.Monad.Reader (local, ask)
 import Control.Monad.Supply
@@ -13,174 +11,206 @@ import Data.Functor.Const
 import Data.Functor.Foldable
 import Data.Map.Strict (Map, notMember)
 import Data.Text (Text)
-import Data.Tuple.Extra (fst3, first3)
 import Tau.Ast
+import Tau.Core
 import Tau.Pattern
 import Tau.Prim
 import Tau.Type
 import Tau.Type.Infer.Monad
 import Tau.Type.Solver
 import Tau.Type.Substitution
-import Tau.Util
+import Tau.Type.TypedAst
 import qualified Data.Map.Strict as Map
 
-type TypedExprF = Const Type :*: ExprF
-
-newtype TypedExpr = TypedExpr { runTypedExpr :: Fix TypedExprF }
-    deriving (Eq, Show)
-
-instance Substitutable TypedExpr where
-    apply sub = runTypedExpr >>> cata alg >>> TypedExpr
-      where
-        alg (Const ty :*: expr) = Fix (Const (apply sub ty) :*: expr)
-
-getType :: TypedExpr -> Type
-getType = getConst . left . unfix . runTypedExpr
+(>*<) :: Type -> ExprF (Fix (Const Type :*: ExprF)) -> TypedExpr
+t >*< a = TypedExpr $ Fix $ Const t :*: a
 
 infer :: Expr -> Infer (TypedExpr, [Assumption], [Constraint])
-infer = cata alg where
-    toTypedExpr ty = TypedExpr . Fix . (Const ty :*:)
-    alg expr =
-        (fmap (runTypedExpr . fst3) >>> flip toTypedExpr >>> first3)
-            <$> sequence expr
-            <*> (expr |> fmap fmap fmap (first3 getType) |> inferExpr)
-
-type InferType = Infer (Type, [Assumption], [Constraint])
-
-inferExpr :: ExprF InferType -> InferType
-inferExpr = \case
+infer = cata $ \case
     VarS name -> do
         beta <- supply
-        pure (beta, [(name, beta)], [])
+        pure ( beta >*< VarS name
+             , [(name, beta)]
+             , [] )
 
     LamS name expr -> do
         beta@(TVar var) <- supply
-        (t1, a1, c1) <- local (insertIntoMonoset var) expr
-        pure ( TArr beta t1
+        (tex1, a1, c1) <- local (insertIntoMonoset var) expr
+        let Const t1 :*: e = unfix (runTypedExpr tex1)
+        pure ( TArr beta t1 >*< e
              , removeAssumption name a1
              , c1 <> [Equality t beta | (y, t) <- a1, name == y] )
 
     AppS exprs ->
         foldl1 inferApp exprs
 
-    LitS prim ->
-        inferPrim prim
+    LitS prim -> do
+        t <- inferPrim prim
+        pure ( t >*< LitS prim, [], [] )
 
-    LetS pairs body ->
-        foldr inferLet body pairs
+    LetS parts body ->
+        foldr inferLet body parts
 
-    IfS cond true false -> do
-        (t1, a1, c1) <- cond
-        (t2, a2, c2) <- true
-        (t3, a3, c3) <- false
-        pure ( t2
+    IfS isTrue true false -> do
+        (tex1, a1, c1) <- isTrue
+        (tex2, a2, c2) <- true
+        (tex3, a3, c3) <- false
+        let Const t1 :*: e1 = unfix (runTypedExpr tex1)
+        let Const t2 :*: e2 = unfix (runTypedExpr tex2)
+        let Const t3 :*: e3 = unfix (runTypedExpr tex3)
+        pure ( t2 >*< IfS (Fix $ Const t1 :*: e1) (Fix $ Const t2 :*: e2) (Fix $ Const t3 :*: e3)
              , a1 <> a2 <> a3
              , c1 <> c2 <> c3 <> [Equality t1 tBool, Equality t2 t3] )
 
-    CaseS expr clss -> 
-        expr >>= inferClauses clss
+    CaseS expr clss -> do
+        beta <- supply
+        (tex1, a1, c1) <- expr
+        let Const t1 :*: e = unfix (runTypedExpr tex1)
+        (clss', as, cs) <- foldrM (inferClause beta t1) ([], [], []) clss
+        pure ( beta >*< CaseS (Fix $ Const t1 :*: e) clss'
+             , a1 <> as
+             , c1 <> cs )
 
     OpS op ->
         inferOp op
 
-    AnnS expr ty -> do
-        (t1, a1, c1) <- expr
-        -- TODO
-        undefined
+    AnnS expr ty ->
+        undefined -- TODO
 
-inferPrim :: Prim -> InferType
-inferPrim = \case
-    Unit      -> pure (tUnit, [], [])
-    Bool{}    -> pure (tBool, [], [])
-    Int{}     -> pure (tInt, [], [])
-    Integer{} -> pure (tInteger, [], [])
-    Float{}   -> pure (tFloat, [], [])
-    Char{}    -> pure (tChar, [], [])
-    String{}  -> pure (tString, [], [])
+insertMany :: [Name] -> Monoset -> Monoset
+insertMany = flip (foldr insertIntoMonoset)
 
-inferClauses
-    :: [(Pattern, InferType)]
-    -> (Type, [Assumption], [Constraint])
-    -> InferType
-inferClauses clss (t, a, c) = do
-    beta <- supply
-    foldrM fun (beta, a, c) clss
+getVars :: Pattern -> [Name]
+getVars (VarP v)     = [v]
+getVars (ConP  _ ps) = concatMap getVars ps
+getVars _ = []
+
+inferClause
+    :: Type
+    -> Type
+    -> (Pattern, Infer (TypedExpr, [Assumption], [Constraint]))
+    -> ([(Pattern, Fix (Const Type :*: ExprF))], [Assumption], [Constraint])
+    -> Infer ([(Pattern, Fix (Const Type :*: ExprF))], [Assumption], [Constraint])
+inferClause beta t (pttrn, expr) (ps, as, cs) = do
+     (tex1, a1, c1) <- local (insertMany vars) expr
+     let Const t1 :*: e = unfix (runTypedExpr tex1)
+     (t2, a2, c2) <- inferPattern pttrn
+     pure ( (pttrn, Fix $ Const t1 :*: e):ps
+          , as <> removeMany vars a1
+               <> removeMany vars a2
+          , cs <> c1 <> c2
+               <> [Equality beta t1, Equality t t2]
+               <> [Equality t' t'' | (y1, t') <- a1, (y2, t'') <- a2, var <- vars, var == y1 && var == y2] )
   where
-    fun :: (Pattern, InferType) 
-        -> (Type, [Assumption], [Constraint]) 
-        -> InferType
-    fun (ptn, expr) (beta, as, cs) = do
-        (t1, a1, c1) <- expr
-        flip cata ptn $ \case
-            VarP var ->
-                pure ( beta
-                     , as <> removeAssumption var a1
-                     , cs <> c1
-                          <> [Equality t1 beta]
-                          <> [Equality t1 t' | (y, t') <- a1, var == y] )
+    vars = getVars pttrn
 
-            LitP prim -> do
-                t0 <- fst3 <$> inferPrim prim
-                pure ( beta
-                     , as <> a1
-                     , cs <> c1 <> [Equality t1 beta, Equality t0 t] )
+inferPattern :: Pattern -> Infer (Type, [Assumption], [Constraint])
+inferPattern = \case
+    VarP var -> do
+        beta <- supply
+        pure (beta, [(var, beta)], [])
 
-            AnyP ->
-                pure ( beta
-                     , as <> a1
-                     , cs <> c1 <> [Equality t1 beta] )
+    ConP name ps -> do
+        beta <- supply
+        (ts, as's, cs's) <- unzip3 <$> traverse inferPattern ps
+        pure ( beta
+             , concat as's <> [(name, foldr TArr beta ts)]
+             , concat cs's )
 
-            ConP name ps -> do
-                beta <- supply
-                foldl1 inferApp (pure (beta, [(name, beta)], []):ps)
+    LitP prim -> do
+        t <- inferPrim prim
+        pure (t, [], [])
 
-inferApp :: InferType -> InferType -> InferType
+    AnyP -> do
+        beta <- supply
+        pure (beta, [], [])
+
+inferApp
+    :: Infer (TypedExpr, [Assumption], [Constraint])
+    -> Infer (TypedExpr, [Assumption], [Constraint])
+    -> Infer (TypedExpr, [Assumption], [Constraint])
 inferApp fun arg = do
-    (t1, a1, c1) <- fun
-    (t2, a2, c2) <- arg
+    (tex1, a1, c1) <- fun
+    (tex2, a2, c2) <- arg
+    let Const t1 :*: e1 = unfix (runTypedExpr tex1)
+    let Const t2 :*: e2 = unfix (runTypedExpr tex2)
     beta <- supply
-    pure ( beta
+    pure ( beta >*< AppS [Fix $ Const t1 :*: e1, Fix $ Const t2 :*: e2]
          , a1 <> a2
          , c1 <> c2 <> [Equality t1 (TArr t2 beta)] )
 
-inferLet :: (Name, InferType) -> InferType -> InferType
+inferPrim :: Prim -> Infer Type
+inferPrim = \case
+    Unit      -> pure tUnit
+    Bool{}    -> pure tBool
+    Int{}     -> pure tInt
+    Integer{} -> pure tInteger
+    Float{}   -> pure tFloat
+    Char{}    -> pure tChar
+    String{}  -> pure tString
+
+inferLet
+    :: (Name, Infer (TypedExpr, [Assumption], [Constraint]))
+    -> Infer (TypedExpr, [Assumption], [Constraint])
+    -> Infer (TypedExpr, [Assumption], [Constraint])
 inferLet (var, expr) body = do
-    (t1, a1, c1) <- expr
-    (t2, a2, c2) <- body
+    (tex1, a1, c1) <- expr
+    (tex2, a2, c2) <- body
+    let Const t1 :*: e1 = unfix (runTypedExpr tex1)
+    let Const t2 :*: e2 = unfix (runTypedExpr tex2)
     set <- ask
-    pure ( t2
+    pure ( t2 >*< LetS [(var, Fix $ Const t1 :*: e1)] (Fix $ Const t2 :*: e2)
          , removeAssumption var a1 <> removeAssumption var a2
          , c1 <> c2 <> [Implicit t t1 set | (y, t) <- a1 <> a2, var == y] )
 
-inferOp :: OpF InferType -> InferType
+inferOp
+    :: OpF (Infer (TypedExpr, [Assumption], [Constraint]))
+    -> Infer (TypedExpr, [Assumption], [Constraint])
 inferOp = \case
-    AddS e1 e2 -> binOp e1 e2 tInt tInt
-    SubS e1 e2 -> binOp e1 e2 tInt tInt
-    MulS e1 e2 -> binOp e1 e2 tInt tInt
-    LtS e1 e2 -> binOp e1 e2 tInt tBool
-    GtS e1 e2 -> binOp e1 e2 tInt tBool
-    NegS e -> unOp e tInt
-    NotS e -> unOp e tBool
-    EqS e1 e2 -> do
-        (t1, a1, c1) <- e1
-        (t2, a2, c2) <- e2
-        beta <- supply
-        pure ( beta
-             , a1 <> a2
-             , c1 <> c2 <> [Equality t1 t2, Equality beta tBool] )
+     AddS e1 e2 -> binOp AddS e1 e2 tInt tInt
+     SubS e1 e2 -> binOp SubS e1 e2 tInt tInt
+     MulS e1 e2 -> binOp MulS e1 e2 tInt tInt
+     LtS e1 e2 -> binOp LtS e1 e2 tInt tBool
+     GtS e1 e2 -> binOp GtS e1 e2 tInt tBool
+     NegS e -> unOp NegS e tInt
+     NotS e -> unOp NotS e tBool
+     EqS e1 e2 -> do
+         (tex1, a1, c1) <- e1
+         (tex2, a2, c2) <- e2
+         let Const t1 :*: e1 = unfix (runTypedExpr tex1)
+         let Const t2 :*: e2 = unfix (runTypedExpr tex2)
+         beta <- supply
+         pure ( beta >*< OpS (EqS (Fix $ Const t1 :*: e1) (Fix $ Const t2 :*: e2))
+              , a1 <> a2
+              , c1 <> c2 <> [Equality t1 t2, Equality beta tBool] )
 
-unOp :: InferType -> Type -> InferType
-unOp expr t = do
-    (t1, a1, c1) <- expr
+unOp
+    :: (Fix (Const Type :*: ExprF) -> OpF (Fix (Const Type :*: ExprF)))
+    -> Infer (TypedExpr, [Assumption], [Constraint])
+    -> Type
+    -> Infer (TypedExpr, [Assumption], [Constraint])
+unOp op expr t = do
+    (tex1, a1, c1) <- expr
+    let Const t1 :*: e1 = unfix (runTypedExpr tex1)
     beta <- supply
-    pure (beta, a1, c1 <> [Equality (TArr t1 beta) (TArr t t)])
+    pure ( beta >*< OpS (op (Fix $ Const t1 :*: e1))
+         , a1
+         , c1 <> [Equality (TArr t1 beta) (TArr t t)] )
 
-binOp :: InferType -> InferType -> Type -> Type -> InferType
-binOp e1 e2 t0 t = do
-    (t1, a1, c1) <- e1
-    (t2, a2, c2) <- e2
+binOp
+    :: (Fix (Const Type :*: ExprF) -> Fix (Const Type :*: ExprF) -> OpF (Fix (Const Type :*: ExprF)))
+    -> Infer (TypedExpr, [Assumption], [Constraint])
+    -> Infer (TypedExpr, [Assumption], [Constraint])
+    -> Type
+    -> Type
+    -> Infer (TypedExpr, [Assumption], [Constraint])
+binOp op e1 e2 t0 t = do
+    (tex1, a1, c1) <- e1
+    (tex2, a2, c2) <- e2
+    let Const t1 :*: e1 = unfix (runTypedExpr tex1)
+    let Const t2 :*: e2 = unfix (runTypedExpr tex2)
     beta <- supply
-    pure ( beta
+    pure ( beta >*< OpS (op (Fix $ Const t1 :*: e1) (Fix $ Const t2 :*: e2))
          , a1 <> a2
          , c1 <> c2 <> [Equality (TArr t1 (TArr t2 beta)) (TArr t0 (TArr t0 t))] )
 
