@@ -12,8 +12,8 @@ import Tau.Type
 import Tau.Util
 import Text.Show.Deriving
 
--- | Source language expression tree 
-data ExprF a 
+-- | Source language expression tree
+data ExprF a
     = VarS Name
     | LamS Name a
     | AppS [a]
@@ -32,9 +32,9 @@ data OpF a
     = AddS a a
     | SubS a a
     | MulS a a
-    | EqS a a 
-    | LtS a a 
-    | GtS a a 
+    | EqS a a
+    | LtS a a
+    | GtS a a
     | NegS a
     | NotS a
     deriving (Show, Eq, Functor, Foldable, Traversable)
@@ -45,7 +45,7 @@ varS = Fix . VarS
 
 -- | LamS constructor
 lamS :: Name -> Expr -> Expr
-lamS a = Fix . LamS a 
+lamS a = Fix . LamS a
 
 -- | AppS constructor
 appS :: [Expr] -> Expr
@@ -72,6 +72,38 @@ opS :: OpF Expr -> Expr
 opS = Fix . OpS
 
 -- annS = TODO
+
+-- | AddS constructor
+addS :: Expr -> Expr -> Expr
+addS a1 a2 = opS (AddS a1 a2)
+
+-- | SubS constructor
+subS :: Expr -> Expr -> Expr
+subS a1 a2 = opS (SubS a1 a2)
+
+-- | MulS constructor
+mulS :: Expr -> Expr -> Expr
+mulS a1 a2 = opS (MulS a1 a2)
+
+-- | EqS constructor
+eqS :: Expr -> Expr -> Expr
+eqS a1 a2 = opS (EqS a1 a2)
+
+-- | LtS constructor
+ltS :: Expr -> Expr -> Expr
+ltS a1 a2 = opS (LtS a1 a2)
+
+-- | GtS constructor
+gtS :: Expr -> Expr -> Expr
+gtS a1 a2 = opS (GtS a1 a2)
+
+-- | NegS constructor
+negS :: Expr -> Expr
+negS a = opS (NegS a)
+
+-- | NotS constructor
+notS :: Expr -> Expr
+notS a = opS (NotS a)
 
 $(deriveShow1 ''ExprF)
 $(deriveEq1   ''ExprF)
