@@ -11,7 +11,9 @@ import Data.Functor.Const
 import Data.Functor.Foldable
 import Data.Map.Strict (Map, notMember)
 import Data.Text (Text)
+import Data.Tuple.Extra (first3)
 import Tau.Ast
+import Debug.Trace
 import Tau.Core
 import Tau.Pattern
 import Tau.Prim
@@ -25,6 +27,19 @@ import qualified Data.Map.Strict as Map
 (>*<) :: Type -> ExprF (Fix (Const Type :*: ExprF)) -> TypedExpr
 t >*< a = TypedExpr $ Fix $ Const t :*: a
 
+fx
+    :: Infer (TypedExpr, [Assumption], [Constraint])
+    -> Infer (Type, Fix TypedExprF, [Assumption], [Constraint])
+fx expr = do
+    (e, as, cs) <- first3 runTypedExpr <$> expr
+    let Const t :*: _ = unfix e
+    pure (t, e, as, cs)
+
+unfixed
+    :: Infer (TypedExpr, [Assumption], [Constraint])
+    -> Infer (TypedExprF (Fix TypedExprF), [Assumption], [Constraint])
+unfixed = fmap (first3 (unfix . runTypedExpr))
+
 infer :: Expr -> Infer (TypedExpr, [Assumption], [Constraint])
 infer = cata $ \case
     VarS name -> do
@@ -35,8 +50,7 @@ infer = cata $ \case
 
     LamS name expr -> do
         beta@(TVar var) <- supply
-        (tex1, a1, c1) <- local (insertIntoMonoset var) expr
-        let Const t1 :*: e = unfix (runTypedExpr tex1)
+        (Const t1 :*: e, a1, c1) <- unfixed (local (insertIntoMonoset var) expr)
         pure ( TArr beta t1 >*< e
              , removeAssumption name a1
              , c1 <> [Equality t beta | (y, t) <- a1, name == y] )
@@ -52,13 +66,10 @@ infer = cata $ \case
         foldr inferLet body pairs
 
     IfS isTrue true false -> do
-        (tex1, a1, c1) <- isTrue
-        (tex2, a2, c2) <- true
-        (tex3, a3, c3) <- false
-        let Const t1 :*: e1 = unfix (runTypedExpr tex1)
-        let Const t2 :*: e2 = unfix (runTypedExpr tex2)
-        let Const t3 :*: e3 = unfix (runTypedExpr tex3)
-        pure ( t2 >*< IfS (Fix $ Const t1 :*: e1) (Fix $ Const t2 :*: e2) (Fix $ Const t3 :*: e3)
+        (t1, _isTrue, a1, c1) <- fx isTrue
+        (t2, _true, a2, c2) <- fx true
+        (t3, _false, a3, c3) <- fx false
+        pure ( t2 >*< IfS _isTrue _true _false
              , a1 <> a2 <> a3
              , c1 <> c2 <> c3 <> [Equality t1 tBool, Equality t2 t3] )
 
@@ -67,10 +78,9 @@ infer = cata $ \case
 
     CaseS expr clss -> do
         beta <- supply
-        (tex1, a1, c1) <- expr
-        let Const t1 :*: e = unfix (runTypedExpr tex1)
+        (t1, _expr, a1, c1) <- fx expr
         (clss', as, cs) <- foldrM (inferClause beta t1) ([], [], []) clss
-        pure ( beta >*< CaseS (Fix $ Const t1 :*: e) clss'
+        pure ( beta >*< CaseS _expr clss'
              , a1 <> as
              , c1 <> cs )
 
@@ -116,6 +126,7 @@ inferPattern = cata $ \case
         pure (beta, [(var, beta)], [])
 
     ConP name ps -> do
+        traceShowM "ConP"
         beta <- supply
         (ts, as's, cs's) <- (fmap unzip3 . sequence) ps
         pure ( beta
@@ -180,12 +191,10 @@ inferOp = \case
      NegS e -> unOp NegS e tInt
      NotS e -> unOp NotS e tBool
      EqS e1 e2 -> do
-         (tex1, a1, c1) <- e1
-         (tex2, a2, c2) <- e2
-         let Const t1 :*: e1 = unfix (runTypedExpr tex1)
-         let Const t2 :*: e2 = unfix (runTypedExpr tex2)
+         (t1, _e1, a1, c1) <- fx e1
+         (t2, _e2, a2, c2) <- fx e2
          beta <- supply
-         pure ( beta >*< OpS (EqS (Fix $ Const t1 :*: e1) (Fix $ Const t2 :*: e2))
+         pure ( beta >*< OpS (EqS _e1 _e2)
               , a1 <> a2
               , c1 <> c2 <> [Equality t1 t2, Equality beta tBool] )
 
@@ -195,10 +204,9 @@ unOp
     -> Type
     -> Infer (TypedExpr, [Assumption], [Constraint])
 unOp op expr t = do
-    (tex1, a1, c1) <- expr
-    let Const t1 :*: e1 = unfix (runTypedExpr tex1)
+    (t1, _e1, a1, c1) <- fx expr
     beta <- supply
-    pure ( beta >*< OpS (op (Fix $ Const t1 :*: e1))
+    pure ( beta >*< OpS (op _e1)
          , a1
          , c1 <> [Equality (TArr t1 beta) (TArr t t)] )
 
@@ -210,12 +218,10 @@ binOp
     -> Type
     -> Infer (TypedExpr, [Assumption], [Constraint])
 binOp op e1 e2 t0 t = do
-    (tex1, a1, c1) <- e1
-    (tex2, a2, c2) <- e2
-    let Const t1 :*: e1 = unfix (runTypedExpr tex1)
-    let Const t2 :*: e2 = unfix (runTypedExpr tex2)
+    (t1, _e1, a1, c1) <- fx e1
+    (t2, _e2, a2, c2) <- fx e2
     beta <- supply
-    pure ( beta >*< OpS (op (Fix $ Const t1 :*: e1) (Fix $ Const t2 :*: e2))
+    pure ( beta >*< OpS (op _e1 _e2)
          , a1 <> a2
          , c1 <> c2 <> [Equality (TArr t1 (TArr t2 beta)) (TArr t0 (TArr t0 t))] )
 
