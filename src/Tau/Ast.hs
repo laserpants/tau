@@ -6,6 +6,7 @@ module Tau.Ast where
 
 import Data.Eq.Deriving
 import Data.Functor.Foldable
+import Data.Text (Text)
 import Tau.Pattern
 import Tau.Prim
 import Tau.Type
@@ -104,6 +105,27 @@ negS a = opS (NegS a)
 -- | NotS constructor
 notS :: Expr -> Expr
 notS a = opS (NotS a)
+
+litUnit :: Expr
+litUnit = litS Unit
+
+litBool :: Bool -> Expr
+litBool = litS . Bool
+
+litInt :: Int -> Expr
+litInt = litS . Int
+
+litInteger :: Integer -> Expr
+litInteger = litS . Integer
+
+litFloat :: Double -> Expr
+litFloat = litS . Float
+
+litChar :: Char -> Expr
+litChar = litS . Char
+
+litString :: Text -> Expr
+litString = litS . String
 
 $(deriveShow1 ''ExprF)
 $(deriveEq1   ''ExprF)

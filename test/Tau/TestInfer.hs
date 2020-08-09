@@ -18,16 +18,16 @@ import qualified Data.Map.Strict as Map
 import qualified Utils.Pretty as Pretty
 
 test010 :: Expr
-test010 = letS [("const", lamS "a" (lamS "b" (varS "a")))] (appS [varS "const", litS Unit])
+test010 = letS [("const", lamS "a" (lamS "b" (varS "a")))] (appS [varS "const", litUnit])
 
 test011 :: Expr
-test011 = appS [varS "const", litS (Int 5), litS Unit]
+test011 = appS [varS "const", litInt 5, litUnit]
 
 test012 :: Expr
-test012 = appS [varS "foo", litS (Int 5)]
+test012 = appS [varS "foo", litInt 5]
 
 test013 :: Expr
-test013 = appS [varS "Foo", litS (Int 5)]
+test013 = appS [varS "Foo", litInt 5]
 
 test014 :: Expr
 test014 = lamS "a" (varS "a")
@@ -36,115 +36,114 @@ test015 :: Expr
 test015 = lamS "a" (lamS "b" (varS "a"))
 
 test020 :: Expr
-test020 = letS [("const", lamS "a" (lamS "b" (varS "a")))] (appS [varS "const", litS Unit, litS (Int 5)])
+test020 = letS [("const", lamS "a" (lamS "b" (varS "a")))] (appS [varS "const", litUnit, litInt 5])
 
 test030 :: Expr
-test030 = appS [lamS "xs" (caseS (varS "xs") clauses), appS [varS "Cons", litS (Int 5), appS [varS "Nil"]]]
+test030 = appS [lamS "xs" (caseS (varS "xs") clauses), appS [varS "Cons", litInt 5, appS [varS "Nil"]]]
   where
     clauses =
-        [ (ConP "Cons" [VarP "y", VarP "ys"], litS (Int 1))
-        , (ConP "Nil" [], litS (Int 2)) ]
+        [ (conP "Cons" [varP "y", varP "ys"], litInt 1)
+        , (conP "Nil" [], litInt 2) ]
 
 -- \xs -> case xs of { _ => 1 } Cons 5 Nil
 test031 :: Expr
-test031 = appS [lamS "xs" (caseS (varS "xs") clauses), appS [varS "Cons", litS (Int 5), appS [varS "Nil"]]]
+test031 = appS [lamS "xs" (caseS (varS "xs") clauses), appS [varS "Cons", litInt 5, appS [varS "Nil"]]]
   where
-    clauses = [ (AnyP, litS (Int 1)) ]
+    clauses = [ (anyP, litInt 1) ]
 
 -- \xs -> case xs of { x => 1 } Cons 5 Nil
 test032 :: Expr
-test032 = appS [lamS "xs" (caseS (varS "xs") clauses), appS [varS "Cons", litS (Int 5), appS [varS "Nil"]]]
+test032 = appS [lamS "xs" (caseS (varS "xs") clauses), appS [varS "Cons", litInt 5, appS [varS "Nil"]]]
   where
-    clauses = [ (VarP "x", litS (Int 1)) ]
+    clauses = [ (varP "x", litInt 1) ]
 
 -- \xs -> case xs of { Cons y ys => 1 } Cons 5 Nil
 test033 :: Expr
-test033 = appS [lamS "xs" (caseS (varS "xs") clauses), appS [varS "Cons", litS (Int 5), appS [varS "Nil"]]]
+test033 = appS [lamS "xs" (caseS (varS "xs") clauses), appS [varS "Cons", litInt 5, appS [varS "Nil"]]]
   where
-    clauses = [ (ConP "Cons" [VarP "y", VarP "ys"], litS (Int 1)) ]
+    clauses = [ (conP "Cons" [varP "y", varP "ys"], litInt 1) ]
 
 test034 :: Expr
-test034 = letS [("xs", appS [varS "Baz"])] (caseS (varS "xs") [ (ConP "Baz" [], litS (String "hello"))])
+test034 = letS [("xs", appS [varS "Baz"])] (caseS (varS "xs") [ (conP "Baz" [], litString "hello")])
 
 test040 :: Expr
-test040 = appS [lamS "xs" (caseS (varS "xs") [(ConP "Cons" [VarP "y", VarP "ys"], litS (Int 1)), (ConP "Nil" [], litS (Int 2))]), appS [varS "Nil"]]
+test040 = appS [lamS "xs" (caseS (varS "xs") [(conP "Cons" [varP "y", varP "ys"], litInt 1), (conP "Nil" [], litInt 2)]), appS [varS "Nil"]]
 
 test041 :: Expr
-test041 = appS [varS "Cons", litS (Int 5)]
+test041 = appS [varS "Cons", litInt 5]
 
 test042 :: Expr
-test042 = appS [varS "Cons", litS (Int 5), appS [varS "Nil"]]
+test042 = appS [varS "Cons", litInt 5, appS [varS "Nil"]]
 
 test043 :: Expr
-test043 = appS [varS "Cons", litS (Int 5), appS [varS "Cons", litS (Int 4), appS [varS "Nil"]]]
+test043 = appS [varS "Cons", litInt 5, appS [varS "Cons", litInt 4, appS [varS "Nil"]]]
 
 test044 :: Expr
-test044 = appS [varS "Cons", litS (Int 5), appS [varS "Cons", litS (Bool True), appS [varS "Nil"]]]
+test044 = appS [varS "Cons", litInt 5, appS [varS "Cons", litBool True, appS [varS "Nil"]]]
 
 -- case Cons 5 Nil of { Cons y ys -> y + 1; Nil -> 0 })
 test050 :: Expr
-test050 = caseS (appS [varS "Cons", litS (Int 5), appS [varS "Nil"]]) [(ConP "Cons" [VarP "y", VarP "ys"], opS (AddS (varS "y") (litS (Int 1)))), (ConP "Nil" [], litS (Int 0))]
+test050 = caseS (appS [varS "Cons", litInt 5, appS [varS "Nil"]]) [(conP "Cons" [varP "y", varP "ys"], opS (AddS (varS "y") (litInt 1))), (conP "Nil" [], litInt 0)]
 
 test0aa :: Expr
-test0aa = ifS (eqS (litS (Int 1)) (litS (Bool True))) (litS (Int 1)) (litS (Int 0))
+test0aa = ifS (eqS (litInt 1) (litBool True)) (litInt 1) (litInt 0)
 
 test0ab :: Expr
-test0ab = ifS (eqS (appS [varS "Cons", litS (Bool True), appS [varS "Nil"]]) (appS [varS "Cons", litS (Int 1), appS [varS "Nil"]])) (litS (Int 1)) (litS (Int 0))
+test0ab = ifS (eqS (appS [varS "Cons", litBool True, appS [varS "Nil"]]) (appS [varS "Cons", litInt 1, appS [varS "Nil"]])) (litInt 1) (litInt 0)
 
 -- case Cons "a" Nil of { Cons y ys -> y + 1 })
 test053 :: Expr
-test053 = caseS (appS [varS "Cons", litS (String "a"), appS [varS "Nil"]]) [(ConP "Cons" [VarP "y", VarP "ys"], opS (AddS (varS "y") (litS (Int 1))))]
+test053 = caseS (appS [varS "Cons", litString "a", appS [varS "Nil"]]) [(conP "Cons" [varP "y", varP "ys"], opS (AddS (varS "y") (litInt 1)))]
 
 -- case Cons 6 Nil of { Cons y ys -> y + 1 })
 test054 :: Expr
-test054 = caseS (appS [varS "Cons", litS (Int 6), appS [varS "Nil"]]) [(ConP "Cons" [VarP "y", VarP "ys"], opS (AddS (varS "y") (litS (Int 1))))]
+test054 = caseS (appS [varS "Cons", litInt 6, appS [varS "Nil"]]) [(conP "Cons" [varP "y", varP "ys"], opS (AddS (varS "y") (litInt 1)))]
 
 test055 :: Expr
 test055 = letS
-    [ ("xs", appS [varS "Cons", litS (Bool True), appS [varS "Nil"]])
-    , ("ys", appS [varS "Cons", litS (Int 1), appS [varS "Nil"]])
-    ] (litS (Int 5))
+    [ ("xs", appS [varS "Cons", litBool True, appS [varS "Nil"]])
+    , ("ys", appS [varS "Cons", litInt 1, appS [varS "Nil"]])
+    ] (litInt 5)
 
 -- case Cons 6 Nil of { Cons y ys -> y + 1; Cons 4 ys -> 5 })
 test056 :: Expr
-test056 = caseS (appS [varS "Cons", litS (Int 6), appS [varS "Nil"]]) [(ConP "Cons" [VarP "y", VarP "ys"], opS (AddS (varS "y") (litS (Int 1)))), (ConP "Cons" [LitP (Int 4), VarP "ys"], litS (Int 5))]
+test056 = caseS (appS [varS "Cons", litInt 6, appS [varS "Nil"]]) [(conP "Cons" [varP "y", varP "ys"], opS (AddS (varS "y") (litInt 1))), (conP "Cons" [litP (Int 4), varP "ys"], litInt 5)]
 
 -- case Cons 6 Nil of { Cons y ys -> y + 1; Cons 4 ys -> "foo" })
 test057 :: Expr
-test057 = caseS (appS [varS "Cons", litS (Int 6), appS [varS "Nil"]])
-    [ (ConP "Cons" [VarP "y", VarP "ys"], opS (AddS (varS "y") (litS (Int 1))))
-    , (ConP "Cons" [LitP (Int 4), VarP "ys"], litS (String "foo")) ]
+test057 = caseS (appS [varS "Cons", litInt 6, appS [varS "Nil"]])
+    [ (conP "Cons" [varP "y", varP "ys"], opS (AddS (varS "y") (litInt 1)))
+    , (conP "Cons" [litP (Int 4), varP "ys"], litString "foo") ]
 
 -- case Cons 6 Nil of { Cons y ys -> y + 1; 5 -> 1 })
 test058 :: Expr
-test058 = caseS (appS [varS "Cons", litS (Int 6), appS [varS "Nil"]])
-    [ (ConP "Cons" [VarP "y", VarP "ys"], opS (AddS (varS "y") (litS (Int 1))))
-    , (LitP (Int 5), litS (Int 1))
-    ]
+test058 = caseS (appS [varS "Cons", litInt 6, appS [varS "Nil"]])
+    [ (conP "Cons" [varP "y", varP "ys"], opS (AddS (varS "y") (litInt 1)))
+    , (litP (Int 5), litInt 1) ]
 
 -- case Cons 6 Nil of { Cons y ys -> y + 1; Cons "w" z -> 1 })
 test059 :: Expr
-test059 = caseS (appS [varS "Cons", litS (Int 6), appS [varS "Nil"]])
-    [ (ConP "Cons" [VarP "y", VarP "ys"], opS (AddS (varS "y") (litS (Int 1))))
-    , (ConP "Cons" [LitP (String "w"), VarP "z"], litS (Int 1)) ]
+test059 = caseS (appS [varS "Cons", litInt 6, appS [varS "Nil"]])
+    [ (conP "Cons" [varP "y", varP "ys"], opS (AddS (varS "y") (litInt 1)))
+    , (conP "Cons" [litP (String "w"), varP "z"], litInt 1) ]
 
 -- case Cons 6 Nil of { Cons y ys -> y + 1; Cons z 5 -> 1 })
 test060 :: Expr
-test060 = caseS (appS [varS "Cons", litS (Int 6), appS [varS "Nil"]])
-    [ (ConP "Cons" [VarP "y", VarP "ys"], opS (AddS (varS "y") (litS (Int 1))))
-    , (ConP "Cons" [VarP "z", LitP (Int 5)], litS (Int 1)) ]
+test060 = caseS (appS [varS "Cons", litInt 6, appS [varS "Nil"]])
+    [ (conP "Cons" [varP "y", varP "ys"], opS (AddS (varS "y") (litInt 1)))
+    , (conP "Cons" [varP "z", litP (Int 5)], litInt 1) ]
 
 -- case Cons 6 Nil of { Cons y ys -> "one"; _ -> "two" })
 test061 :: Expr
-test061 = caseS (appS [varS "Cons", litS (Int 6), appS [varS "Nil"]])
-    [ (ConP "Cons" [VarP "y", VarP "ys"], litS (String "one"))
-    , (AnyP, litS (String "two")) ]
+test061 = caseS (appS [varS "Cons", litInt 6, appS [varS "Nil"]])
+    [ (conP "Cons" [varP "y", varP "ys"], litString "one")
+    , (anyP, litString "two") ]
 
 -- case Cons 6 Nil of { Cons y ys -> y; _ -> "two" })
 test062 :: Expr
-test062 = caseS (appS [varS "Cons", litS (Int 6), appS [varS "Nil"]])
-    [ (ConP "Cons" [VarP "y", VarP "ys"], varS "y")
-    , (AnyP, litS (String "two")) ]
+test062 = caseS (appS [varS "Cons", litInt 6, appS [varS "Nil"]])
+    [ (conP "Cons" [varP "y", varP "ys"], varS "y")
+    , (anyP, litString "two") ]
 
 listA :: Type
 listA = TApp (TCon "List") (TVar "a")

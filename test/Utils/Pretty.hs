@@ -89,9 +89,10 @@ op (NegS a) = "-" <> a
 op (NotS a) = "not " <> a
 
 clause :: (Pattern, Text) -> Text
-clause (p, e) = pttrn p <> "=> " <> e
+clause (p, e) = cata alg p <> "=> " <> e
   where
-    pttrn (VarP name)    = name <> " "
-    pttrn (ConP name ps) = name <> " " <> Text.concat (pttrn <$> ps)
-    pttrn (LitP prim)    = pack (show prim) <> " "
-    pttrn AnyP           = "_ "
+    alg :: PatternF Text -> Text
+    alg (VarP name)    = name <> " "
+    alg (ConP name ps) = name <> " " <> Text.concat ps
+    alg (LitP prim)    = pack (show prim) <> " "
+    alg AnyP           = "_ "

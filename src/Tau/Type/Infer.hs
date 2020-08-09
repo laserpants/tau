@@ -84,9 +84,12 @@ insertMany :: [Name] -> Monoset -> Monoset
 insertMany = flip (foldr insertIntoMonoset)
 
 getVars :: Pattern -> [Name]
-getVars (VarP v)     = [v]
-getVars (ConP  _ ps) = concatMap getVars ps
-getVars _ = []
+getVars = cata alg where
+    alg :: PatternF [Name] -> [Name]
+    alg (VarP v)    = [v]
+    alg (ConP _ ps) = concat ps
+    alg _ = []
+
 
 inferClause
     :: Type
@@ -108,14 +111,14 @@ inferClause beta t (pttrn, expr) (ps, as, cs) = do
     vars = getVars pttrn
 
 inferPattern :: Pattern -> Infer (Type, [Assumption], [Constraint])
-inferPattern = \case
+inferPattern = cata $ \case
     VarP var -> do
         beta <- supply
         pure (beta, [(var, beta)], [])
 
     ConP name ps -> do
         beta <- supply
-        (ts, as's, cs's) <- unzip3 <$> traverse inferPattern ps
+        (ts, as's, cs's) <- (fmap unzip3 . sequence) ps
         pure ( beta
              , concat as's <> [(name, foldr TArr beta ts)]
              , concat cs's )
