@@ -6,6 +6,7 @@ import Data.Functor.Foldable
 import Data.List (intersperse)
 import Data.Text (Text, pack, unpack)
 import Tau.Ast
+import Tau.Pattern
 import Tau.Prim
 import Tau.Type
 import Tau.Util
@@ -69,10 +70,18 @@ expr = cata alg
             "if " <> cond <> " then " <> true <> " else " <> false
 
         CaseS expr clss ->
-            "TODO"
+            "case " <> expr <> " of { " <> Text.concat (intersperse "; " $ clause <$> clss) <> " }"
 
         OpS ops ->
             "TODO"
 
         AnnS expr ty ->
             "TODO"
+
+clause :: (Pattern, Text) -> Text
+clause (p, e) = pttrn p <> " => " <> e
+  where
+    pttrn (VarP name) = name
+    pttrn (ConP name ps) = name <> " " <> Text.concat (intersperse " " $ pttrn <$> ps)
+    pttrn (LitP prim) = pack (show prim)
+    pttrn AnyP = "_"
