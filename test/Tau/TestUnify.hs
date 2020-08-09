@@ -61,7 +61,7 @@ test060 =
 testUnify :: SpecWith ()
 testUnify = do
     testSuccess test010 "test010"
-    testFailure test020 "test020" 
+    testFailure test020 "test020"
     testSuccess test030 "test030"
     testSuccess test040 "test040"
     testSuccess test041 "test041"
@@ -70,7 +70,7 @@ testUnify = do
     testFailure test060 "test060"
 
 shouldUnify :: (Type, Type) -> Expectation
-shouldUnify (t1, t2) = 
+shouldUnify (t1, t2) =
     case runInfer (unify t1 t2) of
         Left{} ->
             expectationFailure "Unification failed"
@@ -91,21 +91,21 @@ shouldFailToUnify (t1, t2) =
         Right{} ->
             expectationFailure "Expected unification to fail"
 
-describeTest 
-    :: ((Type, Type) -> Expectation) 
-    -> String 
-    -> (Type, Type) 
-    -> Text 
+describeTest
+    :: ((Type, Type) -> Expectation)
+    -> String
+    -> (Type, Type)
+    -> Text
     -> SpecWith ()
 describeTest test outcome (t1, t2) name =
-    describe (unpack description) $
+    describe description $
         it outcome $ test (t1, t2)
   where
-    description = 
-        name <> ": The types (" 
-             <> Pretty._type t1 
-             <> ") and (" 
-             <> Pretty._type t2 
+    description = unpack $
+        name <> ": The types ("
+             <> Pretty._type t1
+             <> ") and ("
+             <> Pretty._type t2
              <> ")"
 
 testSuccess, testFailure :: (Type, Type) -> Text -> SpecWith ()

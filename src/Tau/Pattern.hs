@@ -11,14 +11,21 @@ import Tau.Prim
 import Tau.Util
 import Text.Show.Deriving
 
-data PatternF a
-    = VarP Name              -- ^ Variable pattern
-    | ConP Name [a]          -- ^ Constuctor pattern
-    | LitP Prim              -- ^ Literal pattern
-    | AnyP                   -- ^ Wildcard pattern
-    deriving (Show, Eq, Functor, Foldable, Traversable)
+--data PatternF a
+--    = VarP Name              -- ^ Variable pattern
+--    | ConP Name [a]          -- ^ Constuctor pattern
+--    | LitP Prim              -- ^ Literal pattern
+--    | AnyP                   -- ^ Wildcard pattern
+--    deriving (Show, Eq, Functor, Foldable, Traversable)
+--
+--type Pattern = Fix PatternF
 
-type Pattern = Fix PatternF
+data Pattern
+    = VarP Name
+    | ConP Name [Pattern]
+    | LitP Prim
+    | AnyP
+    deriving (Show, Eq)
 
-$(deriveShow1 ''PatternF)
-$(deriveEq1   ''PatternF)
+-- $(deriveShow1 ''PatternF)
+-- $(deriveEq1   ''PatternF)

@@ -52,7 +52,7 @@ instance MonadTrans InferT where
 
 freshVars :: List Type
 freshVars = TVar . pfxed <$> [1..] where
-    pfxed count = "t" <> pack (show count)
+    pfxed count = "a" <> pack (show count)
 
 runInferT :: (Monad m) => InferT m a -> m (Either InferError a)
 runInferT (InferT a) =

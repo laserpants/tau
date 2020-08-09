@@ -39,6 +39,40 @@ data OpF a
     | NotS a
     deriving (Show, Eq, Functor, Foldable, Traversable)
 
+-- | VarS constructor
+varS :: Name -> Expr
+varS = Fix . VarS
+
+-- | LamS constructor
+lamS :: Name -> Expr -> Expr
+lamS a = Fix . LamS a 
+
+-- | AppS constructor
+appS :: [Expr] -> Expr
+appS = Fix . AppS
+
+-- | LitS constructor
+litS :: Prim -> Expr
+litS = Fix . LitS
+
+-- | LetS constructor
+letS :: [(Name, Expr)] -> Expr -> Expr
+letS a = Fix . LetS a
+
+-- | IfS constructor
+ifS :: Expr -> Expr -> Expr -> Expr
+ifS a1 a2 a3 = Fix (IfS a1 a2 a3)
+
+-- | CaseS constructor
+caseS :: Expr -> [(Pattern, Expr)] -> Expr
+caseS a = Fix . CaseS a
+
+-- | OpS constructor
+opS :: OpF Expr -> Expr
+opS = Fix . OpS
+
+-- annS = TODO
+
 $(deriveShow1 ''ExprF)
 $(deriveEq1   ''ExprF)
 $(deriveShow1 ''OpF)

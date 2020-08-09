@@ -23,8 +23,13 @@ type List = []
 
 data (f :*: g) a = (:*:)
     { left  :: f a
-    , right :: g a 
-    } deriving (Eq, Show, Functor, Foldable, Traversable)
+    , right :: g a } 
+  deriving 
+    ( Eq
+    , Show
+    , Functor
+    , Foldable
+    , Traversable )
 
 infixl 3 :*:
 
