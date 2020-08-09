@@ -42,6 +42,7 @@ data InferError
     | ImplementationError
     | InfiniteType
     | UnboundVariable Name
+    | EmptyCaseStatement
     deriving (Show, Eq)
 
 instance (Monad m) => MonadFail (InferT m) where

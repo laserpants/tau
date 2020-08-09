@@ -62,6 +62,9 @@ infer = cata $ \case
              , a1 <> a2 <> a3
              , c1 <> c2 <> c3 <> [Equality t1 tBool, Equality t2 t3] )
 
+    CaseS _ [] ->
+        throwError EmptyCaseStatement
+
     CaseS expr clss -> do
         beta <- supply
         (tex1, a1, c1) <- expr

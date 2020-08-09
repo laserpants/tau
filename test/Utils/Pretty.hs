@@ -73,15 +73,25 @@ expr = cata alg
             "case " <> expr <> " of { " <> Text.concat (intersperse "; " $ clause <$> clss) <> " }"
 
         OpS ops ->
-            "TODO"
+            op ops
 
         AnnS expr ty ->
             "TODO"
 
+op :: OpF Text -> Text
+op (AddS a b) = a <> " + " <> b
+op (SubS a b) = a <> " - " <> b
+op (MulS a b) = a <> " * " <> b
+op (EqS a b) = a <> " == " <> b
+op (LtS a b) = a <> " < " <> b
+op (GtS a b) = a <> " > " <> b
+op (NegS a) = "-" <> a
+op (NotS a) = "not " <> a
+
 clause :: (Pattern, Text) -> Text
-clause (p, e) = pttrn p <> " => " <> e
+clause (p, e) = pttrn p <> "=> " <> e
   where
-    pttrn (VarP name) = name
-    pttrn (ConP name ps) = name <> " " <> Text.concat (intersperse " " $ pttrn <$> ps)
-    pttrn (LitP prim) = pack (show prim)
-    pttrn AnyP = "_"
+    pttrn (VarP name)    = name <> " "
+    pttrn (ConP name ps) = name <> " " <> Text.concat (pttrn <$> ps)
+    pttrn (LitP prim)    = pack (show prim) <> " "
+    pttrn AnyP           = "_ "
