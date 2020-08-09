@@ -88,7 +88,7 @@ getVars = cata alg where
     alg :: PatternF [Name] -> [Name]
     alg (VarP v)    = [v]
     alg (ConP _ ps) = concat ps
-    alg _ = []
+    alg _           = []
 
 inferClause
     :: Type
