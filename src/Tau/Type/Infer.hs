@@ -90,7 +90,6 @@ getVars = cata alg where
     alg (ConP _ ps) = concat ps
     alg _ = []
 
-
 inferClause
     :: Type
     -> Type
