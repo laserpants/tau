@@ -48,8 +48,8 @@ infer = cata $ \case
         t <- inferPrim prim
         pure ( t >*< LitS prim, [], [] )
 
-    LetS parts body ->
-        foldr inferLet body parts
+    LetS pairs body ->
+        foldr inferLet body pairs
 
     IfS isTrue true false -> do
         (tex1, a1, c1) <- isTrue
