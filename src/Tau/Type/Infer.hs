@@ -13,7 +13,6 @@ import Data.Map.Strict (Map, notMember)
 import Data.Text (Text)
 import Data.Tuple.Extra (first3)
 import Tau.Ast
-import Debug.Trace
 import Tau.Core
 import Tau.Pattern
 import Tau.Prim
@@ -27,10 +26,10 @@ import qualified Data.Map.Strict as Map
 (>*<) :: Type -> ExprF (Fix (Const Type :*: ExprF)) -> TypedExpr
 t >*< a = TypedExpr $ Fix $ Const t :*: a
 
-fx
+typefx
     :: Infer (TypedExpr, [Assumption], [Constraint])
     -> Infer (Type, Fix TypedExprF, [Assumption], [Constraint])
-fx expr = do
+typefx expr = do
     (e, as, cs) <- first3 runTypedExpr <$> expr
     let Const t :*: _ = unfix e
     pure (t, e, as, cs)
@@ -65,11 +64,11 @@ infer = cata $ \case
     LetS pairs body ->
         foldr inferLet body pairs
 
-    IfS isTrue true false -> do
-        (t1, _isTrue, a1, c1) <- fx isTrue
-        (t2, _true, a2, c2) <- fx true
-        (t3, _false, a3, c3) <- fx false
-        pure ( t2 >*< IfS _isTrue _true _false
+    IfS cond true false -> do
+        (t1, _cond, a1, c1) <- typefx cond
+        (t2, _true, a2, c2) <- typefx true
+        (t3, _false, a3, c3) <- typefx false
+        pure ( t2 >*< IfS _cond _true _false
              , a1 <> a2 <> a3
              , c1 <> c2 <> c3 <> [Equality t1 tBool, Equality t2 t3] )
 
@@ -78,7 +77,7 @@ infer = cata $ \case
 
     CaseS expr clss -> do
         beta <- supply
-        (t1, _expr, a1, c1) <- fx expr
+        (t1, _expr, a1, c1) <- typefx expr
         (clss', as, cs) <- foldrM (inferClause beta t1) ([], [], []) clss
         pure ( beta >*< CaseS _expr clss'
              , a1 <> as
@@ -107,10 +106,9 @@ inferClause
     -> ([(Pattern, Fix (Const Type :*: ExprF))], [Assumption], [Constraint])
     -> Infer ([(Pattern, Fix (Const Type :*: ExprF))], [Assumption], [Constraint])
 inferClause beta t (pttrn, expr) (ps, as, cs) = do
-     (tex1, a1, c1) <- local (insertMany vars) expr
-     let Const t1 :*: e = unfix (runTypedExpr tex1)
+     (t1, _expr, a1, c1) <- typefx (local (insertMany vars) expr)
      (t2, a2, c2) <- inferPattern pttrn
-     pure ( (pttrn, Fix $ Const t1 :*: e):ps
+     pure ( (pttrn, _expr):ps
           , as <> removeMany vars a1
                <> removeMany vars a2
           , cs <> c1 <> c2
@@ -126,7 +124,6 @@ inferPattern = cata $ \case
         pure (beta, [(var, beta)], [])
 
     ConP name ps -> do
-        traceShowM "ConP"
         beta <- supply
         (ts, as's, cs's) <- (fmap unzip3 . sequence) ps
         pure ( beta
@@ -146,12 +143,10 @@ inferApp
     -> Infer (TypedExpr, [Assumption], [Constraint])
     -> Infer (TypedExpr, [Assumption], [Constraint])
 inferApp fun arg = do
-    (tex1, a1, c1) <- fun
-    (tex2, a2, c2) <- arg
-    let Const t1 :*: e1 = unfix (runTypedExpr tex1)
-    let Const t2 :*: e2 = unfix (runTypedExpr tex2)
+    (t1, _e1, a1, c1) <- typefx fun
+    (t2, _e2, a2, c2) <- typefx arg
     beta <- supply
-    pure ( beta >*< AppS [Fix $ Const t1 :*: e1, Fix $ Const t2 :*: e2]
+    pure ( beta >*< AppS [_e1, _e2]
          , a1 <> a2
          , c1 <> c2 <> [Equality t1 (TArr t2 beta)] )
 
@@ -170,12 +165,10 @@ inferLet
     -> Infer (TypedExpr, [Assumption], [Constraint])
     -> Infer (TypedExpr, [Assumption], [Constraint])
 inferLet (var, expr) body = do
-    (tex1, a1, c1) <- expr
-    (tex2, a2, c2) <- body
-    let Const t1 :*: e1 = unfix (runTypedExpr tex1)
-    let Const t2 :*: e2 = unfix (runTypedExpr tex2)
+    (t1, _e1, a1, c1) <- typefx expr
+    (t2, _e2, a2, c2) <- typefx body
     set <- ask
-    pure ( t2 >*< LetS [(var, Fix $ Const t1 :*: e1)] (Fix $ Const t2 :*: e2)
+    pure ( t2 >*< LetS [(var, _e1)] _e2
          , removeAssumption var a1 <> removeAssumption var a2
          , c1 <> c2 <> [Implicit t t1 set | (y, t) <- a1 <> a2, var == y] )
 
@@ -191,8 +184,8 @@ inferOp = \case
      NegS e -> unOp NegS e tInt
      NotS e -> unOp NotS e tBool
      EqS e1 e2 -> do
-         (t1, _e1, a1, c1) <- fx e1
-         (t2, _e2, a2, c2) <- fx e2
+         (t1, _e1, a1, c1) <- typefx e1
+         (t2, _e2, a2, c2) <- typefx e2
          beta <- supply
          pure ( beta >*< OpS (EqS _e1 _e2)
               , a1 <> a2
@@ -204,7 +197,7 @@ unOp
     -> Type
     -> Infer (TypedExpr, [Assumption], [Constraint])
 unOp op expr t = do
-    (t1, _e1, a1, c1) <- fx expr
+    (t1, _e1, a1, c1) <- typefx expr
     beta <- supply
     pure ( beta >*< OpS (op _e1)
          , a1
@@ -218,8 +211,8 @@ binOp
     -> Type
     -> Infer (TypedExpr, [Assumption], [Constraint])
 binOp op e1 e2 t0 t = do
-    (t1, _e1, a1, c1) <- fx e1
-    (t2, _e2, a2, c2) <- fx e2
+    (t1, _e1, a1, c1) <- typefx e1
+    (t2, _e2, a2, c2) <- typefx e2
     beta <- supply
     pure ( beta >*< OpS (op _e1 _e2)
          , a1 <> a2

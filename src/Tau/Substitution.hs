@@ -23,7 +23,7 @@ substitute name val = cata $ \case
     LetS pairs body ->
         undefined
 
-    IfS isTrue true false ->
+    IfS cond true false ->
         undefined
 
     CaseS expr clss -> 
