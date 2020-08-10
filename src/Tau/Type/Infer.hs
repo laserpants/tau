@@ -71,7 +71,7 @@ infer = cata $ \case
         inferOp op
 
     AnnS expr ty ->
-        undefined -- TODO
+        undefined  -- TODO
 
 insertMany :: [Name] -> Monoset -> Monoset
 insertMany = flip (foldr insertIntoMonoset)
