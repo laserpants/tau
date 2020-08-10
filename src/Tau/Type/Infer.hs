@@ -25,9 +25,9 @@ import Tau.Type.Substitution
 import Tau.Type.TypedAst
 import qualified Data.Map.Strict as Map
 
-type Fixed = Fix TypedExprF
+type Tex = Fix TypedExprF
 
-type InferFixed = Infer (Fixed, Type, [Assumption], [Constraint])
+type InferTex = Infer (Tex, Type, [Assumption], [Constraint])
 
 infer :: Expr -> Infer (TypedExpr, [Assumption], [Constraint])
 infer = cata (fmap unfixt >>> alg) where
@@ -92,12 +92,12 @@ getVars = cata alg where
     alg (ConP _ ps) = concat ps
     alg _           = []
 
-type Clause = (Pattern, Fixed)
+type Clause = (Pattern, Tex)
 
 inferClause
     :: Type
     -> Type
-    -> (Pattern, InferFixed)
+    -> (Pattern, InferTex)
     -> ([Clause], [Assumption], [Constraint])
     -> Infer ([Clause], [Assumption], [Constraint])
 inferClause beta t (pttrn, expr) (ps, as, cs) = do
@@ -133,7 +133,7 @@ inferPattern = cata $ \case
         beta <- supply
         pure (beta, [], [])
 
-inferApp :: InferFixed -> InferFixed -> InferFixed
+inferApp :: InferTex -> InferTex -> InferTex
 inferApp fun arg = do
     (_e1, t1, a1, c1) <- fun
     (_e2, t2, a2, c2) <- arg
@@ -153,7 +153,7 @@ inferPrim = pure . \case
     Char{}    -> tChar
     String{}  -> tString
 
-inferLet :: (Name, InferFixed) -> InferFixed -> InferFixed
+inferLet :: (Name, InferTex) -> InferTex -> InferTex
 inferLet (var, expr) body = do
     (_e1, t1, a1, c1) <- expr
     (_e2, t2, a2, c2) <- body
@@ -163,7 +163,7 @@ inferLet (var, expr) body = do
          , removeAssumption var a1 <> removeAssumption var a2
          , c1 <> c2 <> [Implicit t t1 set | (y, t) <- a1 <> a2, var == y] )
 
-inferOp :: OpF InferFixed -> Infer (TypedExpr, [Assumption], [Constraint])
+inferOp :: OpF InferTex -> Infer (TypedExpr, [Assumption], [Constraint])
 inferOp = \case
      AddS e1 e2 -> binOp AddS e1 e2 tInt tInt
      SubS e1 e2 -> binOp SubS e1 e2 tInt tInt
@@ -181,8 +181,8 @@ inferOp = \case
               , c1 <> c2 <> [Equality t1 t2, Equality beta tBool] )
 
 unOp
-    :: (Fixed -> OpF Fixed)
-    -> InferFixed
+    :: (Tex -> OpF Tex)
+    -> InferTex
     -> Type
     -> Infer (TypedExpr, [Assumption], [Constraint])
 unOp op expr t = do
@@ -193,9 +193,9 @@ unOp op expr t = do
          , c1 <> [Equality (TArr t1 beta) (TArr t t)] )
 
 binOp
-    :: (Fixed -> Fixed -> OpF Fixed)
-    -> InferFixed
-    -> InferFixed
+    :: (Tex -> Tex -> OpF Tex)
+    -> InferTex
+    -> InferTex
     -> Type
     -> Type
     -> Infer (TypedExpr, [Assumption], [Constraint])
@@ -221,10 +221,10 @@ inferType (Context env) expr = do
         (var:_) ->
             throwError (UnboundVariable var)
 
-(>*<) :: Type -> ExprF Fixed -> TypedExpr
+(>*<) :: Type -> ExprF Tex -> TypedExpr
 t >*< a = TypedExpr $ Fix $ Const t :*: a
 
-unfixt :: Infer (TypedExpr, [Assumption], [Constraint]) -> InferFixed
+unfixt :: Infer (TypedExpr, [Assumption], [Constraint]) -> InferTex
 unfixt expr = do
     (e, as, cs) <- first3 runTypedExpr <$> expr
     let Const t :*: _ = unfix e
