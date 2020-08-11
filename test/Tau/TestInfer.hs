@@ -145,6 +145,10 @@ test062 = caseS (appS [varS "Cons", litInt 6, appS [varS "Nil"]])
     [ (conP "Cons" [varP "y", varP "ys"], varS "y")
     , (anyP, litString "two") ]
 
+-- case Nil of {}
+test063 :: Expr
+test063 = caseS (appS [varS "Nil"]) []
+
 listA :: Type
 listA = TApp (TCon "List") (TVar "a")
 
@@ -240,6 +244,9 @@ testInfer = do
 
     testFailWithError
         (test062, testContext) CannotUnify "test062"
+
+    testFailWithError
+        (test063, testContext) EmptyCaseStatement "test063"
 
 testSuccess :: (Expr, Context) -> Type -> Text -> SpecWith ()
 testSuccess (expr, context) ty name =
