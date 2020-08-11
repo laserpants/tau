@@ -165,20 +165,20 @@ inferLet (var, expr) body = do
 
 inferOp :: OpF InferTExpr -> Infer (TypedExpr, [Assumption], [Constraint])
 inferOp = \case
-     AddS e1 e2 -> binOp AddS e1 e2 tInt tInt
-     SubS e1 e2 -> binOp SubS e1 e2 tInt tInt
-     MulS e1 e2 -> binOp MulS e1 e2 tInt tInt
-     LtS e1 e2 -> binOp LtS e1 e2 tInt tBool
-     GtS e1 e2 -> binOp GtS e1 e2 tInt tBool
-     NegS e -> unOp NegS e tInt
-     NotS e -> unOp NotS e tBool
-     EqS e1 e2 -> do
-         (_e1, t1, a1, c1) <- e1
-         (_e2, t2, a2, c2) <- e2
-         beta <- supply
-         pure ( beta >*< OpS (EqS _e1 _e2)
-              , a1 <> a2
-              , c1 <> c2 <> [Equality t1 t2, Equality beta tBool] )
+    AddS e1 e2 -> binOp AddS e1 e2 tInt tInt
+    SubS e1 e2 -> binOp SubS e1 e2 tInt tInt
+    MulS e1 e2 -> binOp MulS e1 e2 tInt tInt
+    LtS e1 e2 -> binOp LtS e1 e2 tInt tBool
+    GtS e1 e2 -> binOp GtS e1 e2 tInt tBool
+    NegS e -> unOp NegS e tInt
+    NotS e -> unOp NotS e tBool
+    EqS e1 e2 -> do
+        (_e1, t1, a1, c1) <- e1
+        (_e2, t2, a2, c2) <- e2
+        beta <- supply
+        pure ( beta >*< OpS (EqS _e1 _e2)
+             , a1 <> a2
+             , c1 <> c2 <> [Equality t1 t2, Equality beta tBool] )
 
 unOp
     :: (TExpr -> OpF TExpr)
