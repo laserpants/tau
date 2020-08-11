@@ -101,14 +101,14 @@ inferClause
     -> ([Clause], [Assumption], [Constraint])
     -> Infer ([Clause], [Assumption], [Constraint])
 inferClause beta t (pttrn, expr) (ps, as, cs) = do
-     (_expr, t1, a1, c1) <- local (insertMany vars) expr
-     (t2, a2, c2) <- inferPattern pttrn
-     pure ( (pttrn, _expr):ps
-          , as <> removeMany vars a1
-               <> removeMany vars a2
-          , cs <> c1 <> c2
-               <> [Equality beta t1, Equality t t2]
-               <> [Equality t' t'' | (y1, t') <- a1, (y2, t'') <- a2, var <- vars, var == y1 && var == y2] )
+    (_expr, t1, a1, c1) <- local (insertMany vars) expr
+    (t2, a2, c2) <- inferPattern pttrn
+    pure ( (pttrn, _expr):ps
+         , as <> removeMany vars a1
+              <> removeMany vars a2
+         , cs <> c1 <> c2
+              <> [Equality beta t1, Equality t t2]
+              <> [Equality t' t'' | (y1, t') <- a1, (y2, t'') <- a2, var <- vars, var == y1 && var == y2] )
   where
     vars = getVars pttrn
 
