@@ -92,7 +92,13 @@ clause :: (Pattern, Text) -> Text
 clause (p, e) = cata alg p <> "=> " <> e
   where
     alg :: PatternF Text -> Text
-    alg (VarP name)    = name <> " "
-    alg (ConP name ps) = name <> " " <> Text.concat ps
-    alg (LitP prim)    = pack (show prim) <> " "
-    alg AnyP           = "_ "
+    alg (VarP name)       = name <> " "
+    alg (ConP name ps)    = name <> " " <> Text.concat ps
+    alg (LitP Unit)       = "() "
+    alg (LitP (Bool b))   = pack (show b) <> " "
+    alg (LitP (Float r))  = pack (show r) <> " "
+    alg (LitP (Char c))   = pack (show c) <> " "
+    alg (LitP (String s)) = pack (show s) <> " "
+    alg (LitP (Int n))    = pack (show n) <> " "
+    alg (LitP prim)       = pack (show prim) <> " "
+    alg AnyP              = "_ "
