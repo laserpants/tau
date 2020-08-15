@@ -20,7 +20,7 @@ data ExprF a
     | LamS Name a
     | AppS [a]
     | LitS Prim
-    | LetS [(Name, a)] a
+    | LetS Name a a
     | IfS a a a
     | CaseS a [(Pattern, a)]
     | OpS (OpF a)
@@ -58,8 +58,8 @@ litS :: Prim -> Expr
 litS = Fix . LitS
 
 -- | LetS constructor
-letS :: [(Name, Expr)] -> Expr -> Expr
-letS a = Fix . LetS a
+letS :: Name -> Expr -> Expr -> Expr
+letS a1 a2 = Fix . LetS a1 a2
 
 -- | IfS constructor
 ifS :: Expr -> Expr -> Expr -> Expr

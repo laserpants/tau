@@ -18,7 +18,7 @@ import qualified Data.Map.Strict as Map
 import qualified Utils.Pretty as Pretty
 
 test010 :: Expr
-test010 = letS [("const", lamS "a" (lamS "b" (varS "a")))] (appS [varS "const", litUnit])
+test010 = letS "const" (lamS "a" (lamS "b" (varS "a"))) (appS [varS "const", litUnit])
 
 test011 :: Expr
 test011 = appS [varS "const", litInt 5, litUnit]
@@ -36,7 +36,7 @@ test015 :: Expr
 test015 = lamS "a" (lamS "b" (varS "a"))
 
 test020 :: Expr
-test020 = letS [("const", lamS "a" (lamS "b" (varS "a")))] (appS [varS "const", litUnit, litInt 5])
+test020 = letS "const" (lamS "a" (lamS "b" (varS "a"))) (appS [varS "const", litUnit, litInt 5])
 
 test030 :: Expr
 test030 = appS [lamS "xs" (caseS (varS "xs") clauses), appS [varS "Cons", litInt 5, appS [varS "Nil"]]]
@@ -64,7 +64,7 @@ test033 = appS [lamS "xs" (caseS (varS "xs") clauses), appS [varS "Cons", litInt
     clauses = [ (conP "Cons" [varP "y", varP "ys"], litInt 1) ]
 
 test034 :: Expr
-test034 = letS [("xs", appS [varS "Baz"])] (caseS (varS "xs") [ (conP "Baz" [], litString "hello")])
+test034 = letS "xs" (appS [varS "Baz"]) (caseS (varS "xs") [ (conP "Baz" [], litString "hello")])
 
 test040 :: Expr
 test040 = appS [lamS "xs" (caseS (varS "xs") [(conP "Cons" [varP "y", varP "ys"], litInt 1), (conP "Nil" [], litInt 2)]), appS [varS "Nil"]]
@@ -100,10 +100,7 @@ test054 :: Expr
 test054 = caseS (appS [varS "Cons", litInt 6, appS [varS "Nil"]]) [(conP "Cons" [varP "y", varP "ys"], opS (AddS (varS "y") (litInt 1)))]
 
 test055 :: Expr
-test055 = letS
-    [ ("xs", appS [varS "Cons", litBool True, appS [varS "Nil"]])
-    , ("ys", appS [varS "Cons", litInt 1, appS [varS "Nil"]])
-    ] (litInt 5)
+test055 = letS "xs" (appS [varS "Cons", litBool True, appS [varS "Nil"]]) (letS "ys" (appS [varS "Cons", litInt 1, appS [varS "Nil"]]) (litInt 5))
 
 -- case Cons 6 Nil of { Cons y ys -> y + 1; Cons 4 ys -> 5 })
 test056 :: Expr

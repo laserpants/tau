@@ -2,6 +2,7 @@
 module Tau.Substitution where
 
 import Data.Functor.Foldable
+import Debug.Trace
 import Tau.Ast
 import Tau.Core
 import Tau.Pattern
@@ -12,11 +13,11 @@ substitute name val = para alg where
     alg = \case
         VarS var
             | name == var -> val
-            | otherwise -> varS var
+            | otherwise   -> varS var
 
         LamS var (expr, body)
             | name == var -> lamS var expr
-            | otherwise -> lamS var body
+            | otherwise   -> lamS var body
 
         AppS exprs ->
             appS (snd <$> exprs)
@@ -24,8 +25,9 @@ substitute name val = para alg where
         LitS prim ->
             litS prim
 
-        LetS pairs body ->
-            undefined
+        LetS var body expr ->
+            let get = if name == var then fst else snd
+             in letS var (get body) (get expr)
 
         IfS (_, cond) (_, true) (_, false) ->
             ifS cond true false
@@ -39,35 +41,5 @@ substitute name val = para alg where
         AnnS expr ty ->
             undefined  -- TODO
 
---substitute name val = cata $ \case
---    VarS var
---        | name == var -> val
---        | otherwise -> varS var
---
---    LamS var body
---        | name == var -> body
---        | otherwise -> lamS var body
---
---    AppS exprs ->
---        appS exprs
---
---    LitS prim ->
---        litS prim
---
---    LetS pairs body ->
---        letS pairs body
---
---    IfS cond true false ->
---        ifS cond true false
---
---    CaseS expr clss ->
---        caseS expr (xxx clss)
---
---    OpS op ->
---        opS op
---
---    AnnS expr ty ->
---        undefined  -- TODO
---
 --xxx :: [(Pattern, Expr)] -> [(Pattern, Expr)]
 --xxx = id

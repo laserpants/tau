@@ -57,15 +57,8 @@ expr = cata alg
         LitS prim ->
             pack (show prim)
 
-        LetS pairs a ->
-            "let" <> Text.concat (intersperse ";" $ binding <$> pairs)
-                  <> " in "
-                  <> a
-              where
-                binding (name, val) =
-                    " " <> name
-                        <> " = "
-                        <> val
+        LetS name expr body ->
+            "let " <> name <> " = " <> expr <> " in " <> body
 
         IfS cond true false ->
             "if " <> cond <> " then " <> true <> " else " <> false

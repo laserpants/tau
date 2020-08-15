@@ -53,9 +53,13 @@ infer = cata (fmap unfixt >>> alg) where
             t <- inferPrim prim
             pure ( t >*< LitS prim, [], [] )
 
-        LetS pairs body -> do
-            (_expr, _, as, cs) <- foldr inferLet body pairs
-            pure (TypedExpr _expr, as, cs)
+        LetS var expr body -> do
+            (_e1, t1, a1, c1) <- expr
+            (_e2, t2, a2, c2) <- body
+            set <- ask
+            pure ( t2 >*< LetS var _e1 _e2
+                 , removeAssumption var a1 <> removeAssumption var a2
+                 , c1 <> c2 <> [Implicit t t1 set | (y, t) <- a1 <> a2, var == y] )
 
         IfS cond true false -> do
             (_cond, t1, a1, c1) <- cond
@@ -152,16 +156,6 @@ inferPrim = pure . \case
     Float{}   -> tFloat
     Char{}    -> tChar
     String{}  -> tString
-
-inferLet :: (Name, InferTExpr) -> InferTExpr -> InferTExpr
-inferLet (var, expr) body = do
-    (_e1, t1, a1, c1) <- expr
-    (_e2, t2, a2, c2) <- body
-    set <- ask
-    pure ( Fix (Const t2 :*: LetS [(var, _e1)] _e2)
-         , t2
-         , removeAssumption var a1 <> removeAssumption var a2
-         , c1 <> c2 <> [Implicit t t1 set | (y, t) <- a1 <> a2, var == y] )
 
 inferOp :: OpF InferTExpr -> Infer (TypedExpr, [Assumption], [Constraint])
 inferOp = \case
