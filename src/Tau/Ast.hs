@@ -25,6 +25,7 @@ data ExprF a
     | CaseS a [(Pattern, a)]
     | OpS (OpF a)
     | AnnS a Type
+    | Err
     deriving (Show, Eq, Functor, Foldable, Traversable)
 
 type Expr = Fix ExprF
@@ -74,6 +75,9 @@ opS :: OpF Expr -> Expr
 opS = Fix . OpS
 
 -- annS = TODO
+
+errS :: Expr
+errS = Fix Err
 
 -- | AddS constructor
 addS :: Expr -> Expr -> Expr
