@@ -63,26 +63,25 @@ test070 =
     ]
     -- True
 
-test080 :: ([[Pattern]], [Pattern])
+test080 :: ([Pattern], Pattern)
 test080 =
-    ( [ [conP "Cons" [varP "x", varP "ys"]]
-      , [varP "x"] ]
-    , [ conP "Nil" [] ] )
+    ( [ conP "Cons" [varP "x", varP "ys"]
+      , varP "x" ]
+    , conP "Nil" [] )
     -- False
 
-test090 :: ([[Pattern]], [Pattern])
+test090 :: ([Pattern], Pattern)
 test090 =
-    ( [ [conP "Cons" [varP "x", varP "ys"]]
-      , [varP "x"]
-      , [conP "Nil" [] ]
-    ] , [ conP "Nil" [] ] )
+    ( [ conP "Cons" [varP "x", varP "ys"]
+      , varP "x"
+      , conP "Nil" [] ]
+    , conP "Nil" [] )
     -- False
 
-test100 :: ([[Pattern]], [Pattern])
+test100 :: ([Pattern], Pattern)
 test100 =
-    ( [ [conP "Cons" [varP "x", varP "ys"]]
-      ]
-    , [ conP "Nil" [] ] )
+    ( [ conP "Cons" [varP "x", varP "ys"] ]
+    , conP "Nil" [] )
     -- True
 
 testPatternCheck :: SpecWith ()
@@ -141,16 +140,19 @@ testNotExhaustive pttrns name =
 
         _ ->
             expectationFailure describeFailure
+
 runExhaustiveTest :: [Pattern] -> Either PatternCheckError Bool
 runExhaustiveTest pttrns = runPatternCheck (exhaustive pttrns) testConstructors
 
-testNotUseful :: ([[Pattern]], [Pattern]) -> Text -> SpecWith ()
+testNotUseful :: ([Pattern], Pattern) -> Text -> SpecWith ()
 testNotUseful pair name =
     describe description (it describeSuccess test)
   where
-    description = unpack (name <> ": ")
+    description = unpack (name <> ": " <> Pretty.patterns (fst pair))
 
-    describeSuccess = unpack "✗ clause is NOT useful"
+    describeSuccess = unpack $
+        "✗ clause " <> Pretty._pattern (snd pair)
+                    <> " is NOT useful"
 
     describeFailure = unpack
         "Expected useful check to return False"
@@ -165,13 +167,15 @@ testNotUseful pair name =
         _ ->
             expectationFailure describeFailure
 
-testIsUseful :: ([[Pattern]], [Pattern]) -> Text -> SpecWith ()
+testIsUseful :: ([Pattern], Pattern) -> Text -> SpecWith ()
 testIsUseful pair name =
     describe description (it describeSuccess test)
   where
-    description = unpack (name <> ": ")
+    description = unpack (name <> ": " <> Pretty.patterns (fst pair))
 
-    describeSuccess = unpack "✔ is exhaustive"
+    describeSuccess = unpack $
+        "✔ clause " <> Pretty._pattern (snd pair)
+                    <> " is useful"
 
     describeFailure = unpack
         "Expected useful check to return True"
@@ -186,5 +190,6 @@ testIsUseful pair name =
         _ ->
             expectationFailure describeFailure
 
-runIsUsefulTest :: ([[Pattern]], [Pattern]) -> Either PatternCheckError Bool
-runIsUsefulTest pair = runPatternCheck (uncurry useful pair) testConstructors
+runIsUsefulTest :: ([Pattern], Pattern) -> Either PatternCheckError Bool
+runIsUsefulTest (ps, p) =
+    runPatternCheck (uncurry useful (map (:[]) ps, [p])) testConstructors

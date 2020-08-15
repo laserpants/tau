@@ -4,6 +4,7 @@ module Utils.Pretty where
 
 import Data.Functor.Foldable
 import Data.List (intersperse)
+import Data.Maybe (fromMaybe)
 import Data.Text (Text, pack, unpack)
 import Tau.Ast
 import Tau.Pattern
@@ -57,7 +58,7 @@ expr = cata alg
             pack (show prim)
 
         LetS pairs a ->
-            "let" <> Text.concat (intersperse "; " $ binding <$> pairs)
+            "let" <> Text.concat (intersperse ";" $ binding <$> pairs)
                   <> " in "
                   <> a
               where
@@ -92,10 +93,11 @@ op (NegS a) = "-" <> a
 op (NotS a) = "not " <> a
 
 clause :: (Pattern, Text) -> Text
-clause (p, e) = _pattern p <> "=> " <> e
+clause (p, e) = _pattern p <> " => " <> e
 
 _pattern :: Pattern -> Text
-_pattern = cata alg where
+_pattern = trim . cata alg where
+    trim = dropPrefix . dropSuffix . Text.dropWhileEnd (== ' ')
     alg (VarP name)       = name <> " "
     alg (ConP name [])    = name <> " "
     alg (ConP name ps)    = "(" <> name <> " " <> Text.dropEnd 1 (Text.concat ps) <> ") "
@@ -107,6 +109,12 @@ _pattern = cata alg where
     alg (LitP (Int n))    = pack (show n) <> " "
     alg (LitP prim)       = pack (show prim) <> " "
     alg AnyP              = "_ "
+
+dropPrefix :: Text -> Text
+dropPrefix txt = fromMaybe txt $ Text.stripPrefix "(" txt
+
+dropSuffix :: Text -> Text
+dropSuffix txt = fromMaybe txt $ Text.stripSuffix ")" txt
 
 patterns :: [Pattern] -> Text
 patterns = Text.concat . intersperse "\n    - " . (:) "" . map _pattern
