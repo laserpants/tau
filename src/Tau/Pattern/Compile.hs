@@ -48,8 +48,10 @@ data EqGroup
     deriving (Show, Eq)
 
 groups :: [Equation] -> [EqGroup]
-groups qs = let (cs, gs) = foldr (uncurry arrange) (ConEqs [], []) qs in cs:gs
+groups qs = cs:gs
   where
+    (cs, gs) = foldr (uncurry arrange) (ConEqs [], []) qs
+
     arrange (Fix (ConP name qs):ps) expr =
         let c = ConHead { conName  = name
                         , conArity = length qs
