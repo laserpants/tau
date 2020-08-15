@@ -1,4 +1,5 @@
 import Tau.TestInfer
+import Tau.TestPatternCheck
 import Tau.TestUnify
 import Test.Hspec
 
@@ -8,3 +9,4 @@ main =
 --        describe "Eval" testEval
         describe "Unify" testUnify
         describe "Infer" testInfer
+        describe "PatternCheck" testPatternCheck

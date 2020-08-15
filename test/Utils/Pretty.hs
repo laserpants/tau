@@ -69,6 +69,9 @@ expr = cata alg
         IfS cond true false ->
             "if " <> cond <> " then " <> true <> " else " <> false
 
+        CaseS expr [] ->
+            "case {} of"
+
         CaseS expr clss ->
             "case " <> expr <> " of { " <> Text.concat (intersperse "; " $ clause <$> clss) <> " }"
 
@@ -89,11 +92,13 @@ op (NegS a) = "-" <> a
 op (NotS a) = "not " <> a
 
 clause :: (Pattern, Text) -> Text
-clause (p, e) = cata alg p <> "=> " <> e
-  where
-    alg :: PatternF Text -> Text
+clause (p, e) = _pattern p <> "=> " <> e
+
+_pattern :: Pattern -> Text
+_pattern = cata alg where
     alg (VarP name)       = name <> " "
-    alg (ConP name ps)    = name <> " " <> Text.concat ps
+    alg (ConP name [])    = name <> " "
+    alg (ConP name ps)    = "(" <> name <> " " <> Text.dropEnd 1 (Text.concat ps) <> ") "
     alg (LitP Unit)       = "() "
     alg (LitP (Bool b))   = pack (show b) <> " "
     alg (LitP (Float r))  = pack (show r) <> " "
@@ -102,3 +107,6 @@ clause (p, e) = cata alg p <> "=> " <> e
     alg (LitP (Int n))    = pack (show n) <> " "
     alg (LitP prim)       = pack (show prim) <> " "
     alg AnyP              = "_ "
+
+patterns :: [Pattern] -> Text
+patterns = Text.concat . intersperse "\n    - " . (:) "" . map _pattern
