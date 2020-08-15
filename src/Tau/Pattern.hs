@@ -29,6 +29,13 @@ data PatternF a
 
 type Pattern = Fix PatternF
 
+getVars :: Pattern -> [Name]
+getVars = cata alg where
+    alg :: PatternF [Name] -> [Name]
+    alg (VarP v)    = [v]
+    alg (ConP _ ps) = concat ps
+    alg _           = []
+
 -- VarP constructor
 varP :: Name -> Pattern
 varP = Fix . VarP

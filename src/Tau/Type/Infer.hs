@@ -89,13 +89,6 @@ infer = cata (fmap unfixt >>> alg) where
 insertMany :: [Name] -> Monoset -> Monoset
 insertMany = flip (foldr insertIntoMonoset)
 
-getVars :: Pattern -> [Name]
-getVars = cata alg where
-    alg :: PatternF [Name] -> [Name]
-    alg (VarP v)    = [v]
-    alg (ConP _ ps) = concat ps
-    alg _           = []
-
 type Clause = (Pattern, TExpr)
 
 inferClause

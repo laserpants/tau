@@ -32,14 +32,12 @@ substitute name val = para alg where
         IfS (_, cond) (_, true) (_, false) ->
             ifS cond true false
 
-        CaseS expr clss ->
-            undefined
+        CaseS (_, expr) clss ->
+            caseS expr (fun <$> clss) where
+                fun (p, e) = (p, if name `elem` getVars p then fst e else snd e)
 
         OpS op ->
             opS (snd <$> op)
 
         AnnS expr ty ->
             undefined  -- TODO
-
---xxx :: [(Pattern, Expr)] -> [(Pattern, Expr)]
---xxx = id
