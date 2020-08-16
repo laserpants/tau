@@ -11,6 +11,7 @@ import Tau.Pattern
 import Tau.Prim
 import Tau.Type
 import Tau.Util
+import Tau.Value
 import qualified Data.Text as Text
 
 _type :: Type -> Text
@@ -91,17 +92,20 @@ clause (p, e) = _pattern p <> " => " <> e
 _pattern :: Pattern -> Text
 _pattern = trim . cata alg where
     trim = dropPrefix . dropSuffix . Text.dropWhileEnd (== ' ')
-    alg (VarP name)       = name <> " "
-    alg (ConP name [])    = name <> " "
-    alg (ConP name ps)    = "(" <> name <> " " <> Text.dropEnd 1 (Text.concat ps) <> ") "
-    alg (LitP Unit)       = "() "
-    alg (LitP (Bool b))   = pack (show b) <> " "
-    alg (LitP (Float r))  = pack (show r) <> " "
-    alg (LitP (Char c))   = pack (show c) <> " "
-    alg (LitP (String s)) = pack (show s) <> " "
-    alg (LitP (Int n))    = pack (show n) <> " "
-    alg (LitP prim)       = pack (show prim) <> " "
-    alg AnyP              = "_ "
+    alg (VarP name)    = name <> " "
+    alg (ConP name []) = name <> " "
+    alg (ConP name ps) = "(" <> name <> " " <> Text.dropEnd 1 (Text.concat ps) <> ") "
+    alg (LitP p)       = prim p <> " "
+    alg AnyP           = "_ "
+
+prim :: Prim -> Text
+prim Unit        = "()"
+prim (Bool b)    = pack (show b)
+prim (Float r)   = pack (show r)
+prim (Char c)    = pack (show c)
+prim (String s)  = s
+prim (Int n)     = pack (show n)
+prim (Integer n) = pack (show n)
 
 dropPrefix :: Text -> Text
 dropPrefix txt = fromMaybe txt $ Text.stripPrefix "(" txt
@@ -111,3 +115,8 @@ dropSuffix txt = fromMaybe txt $ Text.stripSuffix ")" txt
 
 patterns :: [Pattern] -> Text
 patterns = Text.concat . intersperse "\n    - " . (:) "" . map _pattern
+
+value :: Value m -> Text
+value (Value p)        = prim p 
+value (Data name args) = name <> " " <> Text.concat (intersperse " " (value <$> args))
+value Closure{}        = "<<function>>"

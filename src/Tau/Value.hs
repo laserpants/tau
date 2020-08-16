@@ -14,7 +14,7 @@ type Env m = Map Name (Value m)
 -- constructor, or a function closure.
 data Value m
     = Value Prim                           -- ^ Literal value
-    | Data Name [Value m]                  -- ^ Applifed data constructor
+    | Data Name [Value m]                  -- ^ Applied data constructor
     | Closure Name (m (Value m)) ~(Env m)  -- ^ Function closure
 
 instance Show (Value m) where

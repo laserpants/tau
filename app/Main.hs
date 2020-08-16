@@ -2,6 +2,7 @@ module Main where
 
 import Tau.Ast
 import Tau.Core
+import Tau.Eval
 import Tau.Pattern
 import Tau.Pattern.Compile
 import Tau.Type
