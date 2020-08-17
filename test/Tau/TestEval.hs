@@ -4,14 +4,15 @@ module Tau.TestEval where
 import Control.Monad.Reader
 import Data.Text (Text, pack, unpack)
 import Tau.Ast
+import Tau.Core
 import Tau.Eval
 import Tau.Pattern
 import Tau.Prim
 import Tau.Value
 import Test.Hspec
 import Utils
-import qualified Utils.Pretty as Pretty
 import qualified Data.Map.Strict as Map
+import qualified Utils.Pretty as Pretty
 
 -- \a -> \b -> a
 test000 :: Expr
@@ -81,40 +82,11 @@ testEvalsTo (expr, val) name =
         (Right result, _) ->
             expectationFailure $ unpack ("Unexpected result: " <> Pretty.value result)
 
--- (Con "Just" [Var "x"])
-
--- (Lam "xs" (Con "Cons" [Var "x", Var "xs"]))
-
---abc :: Eval (Value Eval)
---abc = do
---    one <- eval (varS "x")
---    two <- eval (varS "xs")
---    pure $ Data "Just" [one, two]
---
-----def = 
-----    pure (Closure "xs" abc mempty)
-----
-----testEnv :: Env Eval
-----testEnv = Map.fromList
-----    [ ( "Just", Closure "x" def mempty) -- Closure "x" abc mempty )
-------    , ( "Nil", Data "Nil" [] )
-------    , ( "Cons", Closure "x" undefined mempty )
-----    ]
---
---
---xxx = lamS "x" (lamS "xs" (appS [varS "Cons", varS "x", varS "xs"]))
---
-
-blob =
-    pure (Data "Just" [])
-
+testEnv :: Env Eval
 testEnv = Map.fromList
-    [ ( "Just", Closure "x" blob (Map.fromList []) )
+    [ ("Cons", dataCon "Cons" 2)
+    , ("Nil", dataCon "Nil" 0)
     ]
-
---testEnv = Map.fromList
---    [ ("Just", )
---    ]
 
 runTest :: Expr -> Either EvalError (Value Eval)
 runTest = evalExpr testEnv
