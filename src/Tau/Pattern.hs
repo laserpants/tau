@@ -31,7 +31,7 @@ type Pattern = Fix PatternF
 
 getVars :: Pattern -> [Name]
 getVars = cata alg where
-    alg :: PatternF [Name] -> [Name]
+    alg :: Algebra PatternF [Name]
     alg (VarP v)    = [v]
     alg (ConP _ ps) = concat ps
     alg _           = []

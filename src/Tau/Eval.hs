@@ -50,7 +50,7 @@ evalMaybe err = maybe (throwError err) pure
 eval :: (MonadFail m, MonadError EvalError m, MonadReader (Env m) m) => Expr -> m (Value m)
 eval = cata alg
 
-alg :: (MonadFail m, MonadError EvalError m, MonadReader (Env m) m) => ExprF (m (Value m)) -> m (Value m)
+alg :: (MonadFail m, MonadError EvalError m, MonadReader (Env m) m) => Algebra ExprF (m (Value m))
 alg = \case
     VarS name -> do
         env <- ask

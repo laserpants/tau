@@ -39,5 +39,7 @@ anyM p (x:xs) = do
     q <- p x
     if q then return True else anyM p xs
 
+type Algebra f a = f a -> a
+
 $(deriveShow1 ''(:*:))
 $(deriveEq1   ''(:*:))
