@@ -13,5 +13,5 @@ main =
         describe "Unify" testUnify
         describe "Infer" testInfer
         describe "PatternCheck" testPatternCheck
---      describe "PatternCompile" testPatternCompile
+        describe "PatternCompile" testPatternCompile
         describe "Substitute" testSubstitute
