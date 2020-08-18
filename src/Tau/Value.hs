@@ -25,7 +25,7 @@ data Value m
 instance Eq (Value m) where
     Value v   == Value w   = v == w
     Data c vs == Data d ws = c == d && vs == ws
-    _ == _                 = False
+    _         == _         = False
 
 instance Show (Value m) where
     showsPrec p (Value val) =
