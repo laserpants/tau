@@ -13,7 +13,6 @@ testConstructors = lookupFromList
     [ ("Nil", ["Nil", "Cons"])
     , ("Cons", ["Nil", "Cons"])
     ]
-    -- True
 
 test010 :: [Pattern]
 test010 =
