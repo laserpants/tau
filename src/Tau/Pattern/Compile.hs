@@ -15,6 +15,7 @@ import Data.Foldable (foldrM)
 import Data.Functor.Foldable
 import Data.List.Extra (groupSortOn)
 import Data.Text (pack)
+import Data.Tuple.Extra (first)
 import Tau.Ast
 import Tau.Core
 import Tau.Pattern
@@ -153,3 +154,57 @@ matchDefault def (u:us) qs = foldrM (flip run) def (groups qs) where
                 fun LitHead{..} false = do
                     true <- matchDefault def us [(litPttns, litExpr)]
                     pure (ifS (eqS u (litS litPrim)) true false)
+
+-- | A simple pattern is either a variable or a constructor where all the
+-- subpatterns are variables.
+isSimple :: Pattern -> Bool
+isSimple = fun . unfix where
+    fun AnyP        = True
+    fun (VarP _)    = True
+    fun (ConP _ ps) = all isSimple ps
+    fun _           = False
+
+allSimple :: Expr -> Bool
+allSimple = cata alg where
+    alg :: Algebra ExprF Bool
+    alg = \case
+        LamS _ expr ->
+            expr
+
+        AppS exprs ->
+            and exprs
+
+        LetS _ expr body ->
+            expr && body
+
+        IfS cond true false ->
+            cond && true && false
+
+        OpS (AddS a b) -> a && b
+        OpS (SubS a b) -> a && b
+        OpS (MulS a b) -> a && b
+        OpS (EqS a b) -> a && b
+        OpS (LtS a b) -> a && b
+        OpS (GtS a b) -> a && b
+        OpS (NegS a) -> a
+        OpS (NotS a) -> a
+
+        AnnS expr _ ->
+            expr
+
+        CaseS expr clss ->
+            expr && and (snd <$> clss)
+                 && and (isSimple . fst <$> clss)
+
+        _ ->
+            True
+
+compileAll :: Expr -> Expr
+compileAll = cata alg where
+    alg :: Algebra ExprF Expr
+    alg = \case
+        CaseS expr clss ->
+            runPatternCompile (compile [expr] (first (:[]) <$> clss))
+
+        expr ->
+            Fix expr
