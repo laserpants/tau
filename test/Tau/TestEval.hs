@@ -38,6 +38,11 @@ test030 = appS [lamS "xs" (caseS (varS "xs") [(conP "Cons" [varP "y", varP "ys"]
 test040 :: Expr
 test040 = appS [lamS "xs" (caseS (varS "xs") [(conP "Cons" [varP "y", varP "ys"], litInt 1), (conP "Nil" [], litInt 2)]), appS [varS "Nil"]]
 
+-- let plus = \a -> \b -> a + b in let plus5 = plus 5 in let id = \x -> x in (id plus5) (id 3)
+-- 8
+test050 :: Expr
+test050 = letS "plus" (lamS "a" (lamS "b" (addS (varS "a") (varS "b")))) (letS "plus5" (appS [varS "plus", litInt 5]) (letS "id" (lamS "x" (varS "x")) (appS [appS [varS "id", varS "plus5"], appS [varS "id", litInt 3]])))
+
 testEval :: SpecWith ()
 testEval = do
     testIsFunction test000               "test000"
@@ -45,6 +50,7 @@ testEval = do
     testEvalsTo (test020, Value Unit)    "test020"
     testEvalsTo (test030, Value (Int 1)) "test030"
     testEvalsTo (test040, Value (Int 2)) "test040"
+    testEvalsTo (test050, Value (Int 8)) "test050"
 
 testIsFunction :: Expr -> Text -> SpecWith ()
 testIsFunction expr name = 

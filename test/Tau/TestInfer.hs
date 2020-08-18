@@ -85,12 +85,6 @@ test044 = appS [varS "Cons", litInt 5, appS [varS "Cons", litBool True, appS [va
 test050 :: Expr
 test050 = caseS (appS [varS "Cons", litInt 5, appS [varS "Nil"]]) [(conP "Cons" [varP "y", varP "ys"], opS (AddS (varS "y") (litInt 1))), (conP "Nil" [], litInt 0)]
 
-test0aa :: Expr
-test0aa = ifS (eqS (litInt 1) (litBool True)) (litInt 1) (litInt 0)
-
-test0ab :: Expr
-test0ab = ifS (eqS (appS [varS "Cons", litBool True, appS [varS "Nil"]]) (appS [varS "Cons", litInt 1, appS [varS "Nil"]])) (litInt 1) (litInt 0)
-
 -- case Cons "a" Nil of { Cons y ys -> y + 1 })
 test053 :: Expr
 test053 = caseS (appS [varS "Cons", litString "a", appS [varS "Nil"]]) [(conP "Cons" [varP "y", varP "ys"], opS (AddS (varS "y") (litInt 1)))]
@@ -145,6 +139,17 @@ test062 = caseS (appS [varS "Cons", litInt 6, appS [varS "Nil"]])
 -- case Nil of {}
 test063 :: Expr
 test063 = caseS (appS [varS "Nil"]) []
+
+-- if 1 == True then 1 else 0
+test070 :: Expr
+test070 = ifS (eqS (litInt 1) (litBool True)) (litInt 1) (litInt 0)
+
+-- if Cons True Nil == Cons 1 Nil then 1 else 0
+test075 :: Expr
+test075 = ifS (eqS (appS [varS "Cons", litBool True, appS [varS "Nil"]]) (appS [varS "Cons", litInt 1, appS [varS "Nil"]])) (litInt 1) (litInt 0)
+
+test080 :: Expr
+test080 = letS "plus" (lamS "a" (lamS "b" (addS (varS "a") (varS "b")))) (letS "plus5" (appS [varS "plus", litInt 5]) (letS "id" (lamS "x" (varS "x")) (appS [appS [varS "id", varS "plus5"], appS [varS "id", litInt 3]])))
 
 listA :: Type
 listA = TApp (TCon "List") (TVar "a")
@@ -244,6 +249,15 @@ testInfer = do
 
     testFailWithError
         (test063, testContext) EmptyCaseStatement "test063"
+
+    testFailWithError
+        (test070, testContext) CannotUnify "test070"
+
+    testFailWithError
+        (test075, testContext) CannotUnify "test075"
+
+    testSuccess
+        (test080, testContext) tInt "test080"
 
 testSuccess :: (Expr, Context) -> Type -> Text -> SpecWith ()
 testSuccess (expr, context) ty name =
