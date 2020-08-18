@@ -22,6 +22,11 @@ data Value m
     | Data Name [Value m]                  -- ^ Applied data constructor
     | Closure Name (m (Value m)) ~(Env m)  -- ^ Function closure
 
+instance Eq (Value m) where
+    Value v   == Value w   = v == w
+    Data c vs == Data d ws = c == d && vs == ws
+    _ == _                 = False
+
 instance Show (Value m) where
     showsPrec p (Value val) =
         showParen (p >= 11)

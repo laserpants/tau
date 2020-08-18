@@ -105,7 +105,7 @@ prim (Float r)   = pack (show r)
 prim (Char c)    = pack (show c)
 prim (Int n)     = pack (show n)
 prim (Integer n) = pack (show n)
-prim (String s)  = s
+prim (String s)  = "\"" <> s <> "\""
 
 dropPrefix :: Text -> Text
 dropPrefix txt = fromMaybe txt $ Text.stripPrefix "(" txt
