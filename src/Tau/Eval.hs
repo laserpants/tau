@@ -44,13 +44,21 @@ runEvalT a = runExceptT . runReaderT (unEvalT a)
 evalExpr :: Env Eval -> Expr -> Either EvalError (Value Eval)
 evalExpr env expr = runIdentity (runEvalT (eval expr) env)
 
-evalMaybe :: (MonadFail m, MonadError EvalError m, MonadReader (Env m) m) => EvalError -> Maybe (Value m) -> m (Value m)
+evalMaybe
+  :: (MonadFail m, MonadError EvalError m, MonadReader (Env m) m)
+  => EvalError -> Maybe (Value m)
+  -> m (Value m)
 evalMaybe err = maybe (throwError err) pure
 
-eval :: (MonadFail m, MonadError EvalError m, MonadReader (Env m) m) => Expr -> m (Value m)
+eval
+  :: (MonadFail m, MonadError EvalError m, MonadReader (Env m) m)
+  => Expr
+  -> m (Value m)
 eval = cata alg
 
-alg :: (MonadFail m, MonadError EvalError m, MonadReader (Env m) m) => Algebra ExprF (m (Value m))
+alg
+  :: (MonadFail m, MonadError EvalError m, MonadReader (Env m) m)
+  => Algebra ExprF (m (Value m))
 alg = \case
     VarS name -> do
         env <- ask

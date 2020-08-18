@@ -92,11 +92,11 @@ insertMany = flip (foldr insertIntoMonoset)
 type Clause = (Pattern, TExpr)
 
 inferClause
-    :: Type
-    -> Type
-    -> (Pattern, InferTExpr)
-    -> ([Clause], [Assumption], [Constraint])
-    -> Infer ([Clause], [Assumption], [Constraint])
+  :: Type
+  -> Type
+  -> (Pattern, InferTExpr)
+  -> ([Clause], [Assumption], [Constraint])
+  -> Infer ([Clause], [Assumption], [Constraint])
 inferClause beta t (pttrn, expr) (ps, as, cs) = do
     (_expr, t1, a1, c1) <- local (insertMany vars) expr
     (t2, a2, c2) <- inferPattern pttrn
@@ -168,10 +168,10 @@ inferOp = \case
              , c1 <> c2 <> [Equality t1 t2, Equality beta tBool] )
 
 unOp
-    :: (TExpr -> OpF TExpr)
-    -> InferTExpr
-    -> Type
-    -> Infer (TypedExpr, [Assumption], [Constraint])
+  :: (TExpr -> OpF TExpr)
+  -> InferTExpr
+  -> Type
+  -> Infer (TypedExpr, [Assumption], [Constraint])
 unOp op expr t = do
     (_e1, t1, a1, c1) <- expr
     beta <- supply
@@ -180,12 +180,12 @@ unOp op expr t = do
          , c1 <> [Equality (TArr t1 beta) (TArr t t)] )
 
 binOp
-    :: (TExpr -> TExpr -> OpF TExpr)
-    -> InferTExpr
-    -> InferTExpr
-    -> Type
-    -> Type
-    -> Infer (TypedExpr, [Assumption], [Constraint])
+  :: (TExpr -> TExpr -> OpF TExpr)
+  -> InferTExpr
+  -> InferTExpr
+  -> Type
+  -> Type
+  -> Infer (TypedExpr, [Assumption], [Constraint])
 binOp op e1 e2 ta tb = do
     (_e1, t1, a1, c1) <- e1
     (_e2, t2, a2, c2) <- e2

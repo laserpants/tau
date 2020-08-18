@@ -56,9 +56,9 @@ choice :: [Constraint] -> Maybe (Constraint, [Constraint])
 choice xs = find isSolvable [(x, ys) | x <- xs, let ys = delete x xs]
 
 solve
-    :: (MonadError InferError m, MonadSupply Type m)
-    => [Constraint]
-    -> m Substitution
+  :: (MonadError InferError m, MonadSupply Type m)
+  => [Constraint]
+  -> m Substitution
 solve [] = pure empty
 solve xs =
     maybe (throwError CannotSolve) pure (choice xs)
