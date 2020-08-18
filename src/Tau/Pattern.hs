@@ -130,7 +130,7 @@ useful pss@(ps:_) qs =
         pure (Map.findWithDefault mempty name lookup == Set.fromList names)
 
 exhaustive :: Monad m => [Pattern] -> PatternCheckT m Bool
-exhaustive ps = not <$> useful ((:[]) <$> ps) [Fix AnyP]
+exhaustive ps = not <$> useful ((:[]) <$> ps) [anyP]
 
 $(deriveShow1 ''PatternF)
 $(deriveEq1   ''PatternF)
