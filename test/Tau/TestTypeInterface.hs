@@ -74,13 +74,11 @@ testHasType name (expr, ty) =
         name <> ": " <> Pretty.expr expr
 
     describeSuccess = unpack $
-        "✔ has type ("
-            <> Pretty._type ty
-            <> ")"
+        "✔ has type : " <> Pretty._type ty
 
     describeFailure = unpack $
-        "Expected type to be identical to "
-            <> "(" <> Pretty._type ty <> ")"
+        "Expected type to be identical to : "
+            <> Pretty._type ty
             <> " (up to isomorphism)"
 
     test = case runInferTypeTest testContext expr of
@@ -102,5 +100,5 @@ runInferTypeTest context expr =
 testContext :: Context
 testContext = Context (Map.fromList
     [ ("Show" , Forall ["a"] (TArr (TArr (TVar "a") tString) (TApp (TCon "Show") (TVar "a"))))
-    , ("id" , Forall ["a"] (TArr (TVar "a") (TVar "a")))
+    , ("id"   , Forall ["a"] (TArr (TVar "a") (TVar "a")))
     ])

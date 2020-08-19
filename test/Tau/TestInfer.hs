@@ -286,13 +286,12 @@ testSuccess (expr, context) ty name =
         name <> ": " <> Pretty.expr expr
 
     describeSuccess = unpack $
-        "✔ has type ("
+        "✔ has type : "
             <> Pretty._type ty
-            <> ")"
 
     describeFailure = unpack $
-        "Expected type to be identical to "
-            <> "(" <> Pretty._type ty <> ")"
+        "Expected type to be identical to : "
+            <> Pretty._type ty
             <> " (up to isomorphism)"
 
     test = case runTest context expr of
@@ -313,13 +312,12 @@ testFailure (expr, context) ty name =
         name <> ": " <> Pretty.expr expr
 
     describeSuccess = unpack $
-        "✗ does not have type ("
+        "✗ does not have type : "
             <> Pretty._type ty
-            <> ")"
 
     describeFailure = unpack $
-        "Expected type NOT to be identical to "
-            <> "(" <> Pretty._type ty <> ")"
+        "Expected type NOT to be identical to : "
+            <> Pretty._type ty
 
     test = case runTest context expr of
         Left err ->

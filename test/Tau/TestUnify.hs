@@ -102,11 +102,9 @@ describeTest test outcome (t1, t2) name =
         it outcome $ test (t1, t2)
   where
     description = unpack $
-        name <> ": The types ("
-             <> Pretty._type t1
-             <> ") and ("
-             <> Pretty._type t2
-             <> ")"
+        name <> ": The types \n"
+             <> "    " <> Pretty._type t1
+             <> "\n    - and -\n    " <> Pretty._type t2
 
 testSuccess, testFailure :: (Type, Type) -> Text -> SpecWith ()
 testSuccess = describeTest shouldUnify "✔ should unify"
