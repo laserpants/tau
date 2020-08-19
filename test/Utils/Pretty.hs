@@ -35,7 +35,7 @@ expr = cata alg
                  <> a
 
         AppS exprs ->
-            Text.concat (intersperse " " exprs)
+            foldl1 (\f x -> "(" <> f <> " " <> x <> ")") exprs
 
         LitS Unit ->
             "()"
