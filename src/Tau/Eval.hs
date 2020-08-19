@@ -25,8 +25,7 @@ data EvalError
 
 type EvalTStack m a = ReaderT (Env Eval) (ExceptT EvalError m) a
 
-newtype EvalT m a = EvalT { unEvalT :: EvalTStack m a }
-  deriving
+newtype EvalT m a = EvalT { unEvalT :: EvalTStack m a } deriving
     ( Functor
     , Applicative
     , Monad

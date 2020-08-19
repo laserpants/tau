@@ -7,6 +7,7 @@ import Data.Text (Text, pack, unpack)
 import Tau.Ast
 import Tau.Core
 import Tau.Eval
+import Tau.Pattern
 import Tau.Prim
 import Tau.Type
 import Tau.Type.Infer
@@ -18,29 +19,25 @@ import Utils
 import qualified Data.Map.Strict as Map
 import qualified Utils.Pretty as Pretty
 
--- show 123
+-- (\s -> \a -> case s of { Show f => f a }) (Show id) "hello"
+-- "hello" : String
 test000 :: Expr
-test000 = appS [varS "show", litInt 123]
+test000 = appS [lamS "s" (lamS "a" (caseS (varS "s") [(conP "Show" [varP "f"], appS [varS "f", varS "a"])])), appS [varS "Show", varS "id"], litString "hello"]
 
--- show False
+-- (\s -> \a -> case s of { Show f => f a }) (Show (\x -> if x then "True" else "False")) False
+-- "False" : String
 test010 :: Expr
-test010 = appS [varS "show", litBool False]
-
--- show "abc"
-test020 :: Expr
-test020 = appS [varS "show", litString "abc"]
+test010 = appS [lamS "s" (lamS "a" (caseS (varS "s") [(conP "Show" [varP "f"], appS [varS "f", varS "a"])])), appS [varS "Show", lamS "x" (ifS (varS "x") (litString "True") (litString "False"))], litBool False]
 
 testTypeInterface :: SpecWith ()
 testTypeInterface = do
-    testEvalsTo (test000, Value (String "123"))   "test000"
-    testHasType (test000, tString)                "test000"
-    testEvalsTo (test010, Value (String "False")) "test010"
-    testHasType (test010, tString)                "test010"
-    testEvalsTo (test020, Value (String "abc"))   "test020"
-    testHasType (test020, tString)                "test020"
+    testHasType "test000" (test000, tString)
+    testEvalsTo "test000" (test000, Value (String "hello"))
+    testHasType "test010" (test010, tString)
+    testEvalsTo "test010" (test010, Value (String "False"))
 
-testEvalsTo :: (Expr, Value Eval) -> Text -> SpecWith ()
-testEvalsTo (expr, val) name =
+testEvalsTo :: Text -> (Expr, Value Eval) -> SpecWith ()
+testEvalsTo name (expr, val) =
     describe description (it describeSuccess test)
   where
     description = unpack $ name <> ": " <> Pretty.expr expr
@@ -62,14 +59,15 @@ evalE expr = result where Right result = evalExpr mempty expr
 
 testEnv :: Env Eval
 testEnv = Map.fromList
-    [ --("show" , undefined)
+    [ ("Show" , dataCon "Show" 1)
+    , ("id"   , evalE (lamS "x" (varS "x")))
     ]
 
 runEvalTest :: Expr -> Either EvalError (Value Eval)
 runEvalTest = evalExpr testEnv
 
-testHasType :: (Expr, Type) -> Name -> SpecWith ()
-testHasType (expr, ty) name =
+testHasType :: Name -> (Expr, Type) -> SpecWith ()
+testHasType name (expr, ty) =
     describe description (it describeSuccess test)
   where
     description = unpack $
@@ -103,5 +101,6 @@ runInferTypeTest context expr =
 
 testContext :: Context
 testContext = Context (Map.fromList
-    [ ("show" , Forall ["a"] (TArr (TVar "a") tString))
+    [ ("Show" , Forall ["a"] (TArr (TArr (TVar "a") tString) (TApp (TCon "Show") (TVar "a"))))
+    , ("id" , Forall ["a"] (TArr (TVar "a") (TVar "a")))
     ])

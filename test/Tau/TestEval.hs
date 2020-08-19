@@ -54,6 +54,9 @@ test060 = letS "id" (lamS "x" (varS "x")) (letS "x" (appS [varS "Tuple2", varS "
 test070 :: Expr
 test070 = letS "id" (lamS "x" (varS "x")) (letS "x" (appS [varS "Tuple2", varS "id", litInt 4]) (appS [varS "fst", varS "x"]))
 
+test080 :: Expr
+test080 = letS "x" (varS "x") (varS "x")
+
 testEval :: SpecWith ()
 testEval = do
     testIsFunction test000               "test000"
@@ -64,6 +67,25 @@ testEval = do
     testEvalsTo (test050, Value (Int 8)) "test050"
     testEvalsTo (test060, Value (Int 5)) "test060"
     testIsFunction test070               "test070"
+    testFailsWithError (test080, UnboundVariable "x") "test080"
+
+testFailsWithError :: (Expr, EvalError) -> Name -> SpecWith ()
+testFailsWithError (expr, err) name =
+    describe description (it describeSuccess test)
+  where
+    description = unpack $ name <> ": " <> Pretty.expr expr
+
+    describeSuccess = unpack "✗ fails with error " <> show err
+
+    test = case runTest expr of
+        Left err' | err' == err ->
+            pass
+
+        Left err ->
+            expectationFailure ("Unexpected error: " <> show err)
+
+        Right{} ->
+            expectationFailure ("Expected evaluation to fail with " <> show err)
 
 testIsFunction :: Expr -> Text -> SpecWith ()
 testIsFunction expr name = 

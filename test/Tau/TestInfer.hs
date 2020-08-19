@@ -155,6 +155,9 @@ test080 = letS "plus" (lamS "a" (lamS "b" (addS (varS "a") (varS "b")))) (letS "
 test090 :: Expr
 test090 = letS "id" (lamS "x" (varS "x")) (letS "x" (appS [varS "Tuple2", varS "id", litInt 4]) (addS (appS [varS "fst", varS "x", varS "snd", varS "x"]) (litInt 1)))
 
+test100 :: Expr
+test100 = letS "x" (varS "x") (varS "x")
+
 listA :: Type
 listA = TApp (TCon "List") (TVar "a")
 
@@ -271,6 +274,9 @@ testInfer = do
 
     testSuccess
         (test090, testContext) tInt "test090"
+
+    testFailWithError
+        (test100, testContext) (UnboundVariable "x") "test100"
 
 testSuccess :: (Expr, Context) -> Type -> Text -> SpecWith ()
 testSuccess (expr, context) ty name =

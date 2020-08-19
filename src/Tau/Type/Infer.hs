@@ -58,7 +58,8 @@ infer = cata (fmap unfixt >>> alg) where
             (_e2, t2, a2, c2) <- body
             set <- ask
             pure ( t2 >*< LetS var _e1 _e2
-                 , removeAssumption var a1 <> removeAssumption var a2
+                 --, removeAssumption var a1 <> removeAssumption var a2
+                 , a1 <> removeAssumption var a2
                  , c1 <> c2 <> [Implicit t t1 set | (y, t) <- a1 <> a2, var == y] )
 
         IfS cond true false -> do
