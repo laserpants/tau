@@ -3,6 +3,7 @@ import Tau.TestInfer
 import Tau.TestPatternCheck
 import Tau.TestPatternCompile
 import Tau.TestSubstitute
+import Tau.TestTypeInterface
 import Tau.TestUnify
 import Test.Hspec
 
@@ -15,3 +16,4 @@ main =
         describe "PatternCheck" testPatternCheck
         describe "PatternCompile" testPatternCompile
         describe "Substitute" testSubstitute
+        describe "Type Interface" testTypeInterface

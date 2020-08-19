@@ -151,17 +151,27 @@ test075 = ifS (eqS (appS [varS "Cons", litBool True, appS [varS "Nil"]]) (appS [
 test080 :: Expr
 test080 = letS "plus" (lamS "a" (lamS "b" (addS (varS "a") (varS "b")))) (letS "plus5" (appS [varS "plus", litInt 5]) (letS "id" (lamS "x" (varS "x")) (appS [appS [varS "id", varS "plus5"], appS [varS "id", litInt 3]])))
 
+-- let id = \x -> x in let x = (id, 4) in (fst x) (snd x) + 1
+test090 :: Expr
+test090 = letS "id" (lamS "x" (varS "x")) (letS "x" (appS [varS "Tuple2", varS "id", litInt 4]) (addS (appS [varS "fst", varS "x", varS "snd", varS "x"]) (litInt 1)))
+
 listA :: Type
 listA = TApp (TCon "List") (TVar "a")
 
+tuple2AB :: Type
+tuple2AB = TApp (TApp (TCon "Tuple2") (TVar "a")) (TVar "b")
+
 testContext :: Context
 testContext = Context (Map.fromList
-    [ ("Nil", Forall ["a"] listA)
-    , ("Cons", Forall ["a"] (TArr (TVar "a") (TArr listA listA)))
-    , ("const", Forall ["a", "b"] (TArr (TVar "a") (TArr (TVar "b") (TVar "a"))))
-    , ("foo", Forall ["a"] (TArr (TVar "a") (TVar "a")))
-    , ("Foo", Forall ["a"] (TArr (TVar "a") (TApp (TCon "List") (TVar "a"))))
-    , ("Baz", Forall [] tBool)
+    [ ("Nil"    , Forall ["a"] listA)
+    , ("Cons"   , Forall ["a"] (TArr (TVar "a") (TArr listA listA)))
+    , ("const"  , Forall ["a", "b"] (TArr (TVar "a") (TArr (TVar "b") (TVar "a"))))
+    , ("foo"    , Forall ["a"] (TArr (TVar "a") (TVar "a")))
+    , ("Foo"    , Forall ["a"] (TArr (TVar "a") (TApp (TCon "List") (TVar "a"))))
+    , ("Baz"    , Forall [] tBool)
+    , ("Tuple2" , Forall ["a", "b"] (TArr (TVar "a") (TArr (TVar "b") tuple2AB)))
+    , ("fst"    , Forall ["a", "b"] (TArr tuple2AB (TVar "a")))
+    , ("snd"    , Forall ["a", "b"] (TArr tuple2AB (TVar "b")))
     ])
 
 testInfer :: SpecWith ()
@@ -258,6 +268,9 @@ testInfer = do
 
     testSuccess
         (test080, testContext) tInt "test080"
+
+    testSuccess
+        (test090, testContext) tInt "test090"
 
 testSuccess :: (Expr, Context) -> Type -> Text -> SpecWith ()
 testSuccess (expr, context) ty name =

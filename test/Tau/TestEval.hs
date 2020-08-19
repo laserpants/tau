@@ -3,6 +3,7 @@ module Tau.TestEval where
 
 import Control.Monad.Reader
 import Data.Text (Text, pack, unpack)
+import Data.Either (fromRight)
 import Tau.Ast
 import Tau.Core
 import Tau.Eval
@@ -43,6 +44,16 @@ test040 = appS [lamS "xs" (caseS (varS "xs") [(conP "Cons" [varP "y", varP "ys"]
 test050 :: Expr
 test050 = letS "plus" (lamS "a" (lamS "b" (addS (varS "a") (varS "b")))) (letS "plus5" (appS [varS "plus", litInt 5]) (letS "id" (lamS "x" (varS "x")) (appS [appS [varS "id", varS "plus5"], appS [varS "id", litInt 3]])))
 
+-- let id = \x -> x in let x = (id, 4) in (fst x) (snd x) + 1
+-- 5
+test060 :: Expr
+test060 = letS "id" (lamS "x" (varS "x")) (letS "x" (appS [varS "Tuple2", varS "id", litInt 4]) (addS (appS [varS "fst", varS "x", varS "snd", varS "x"]) (litInt 1)))
+
+-- let id = \x -> x in let x = (id, 4) in (fst x)
+-- <<function>>
+test070 :: Expr
+test070 = letS "id" (lamS "x" (varS "x")) (letS "x" (appS [varS "Tuple2", varS "id", litInt 4]) (appS [varS "fst", varS "x"]))
+
 testEval :: SpecWith ()
 testEval = do
     testIsFunction test000               "test000"
@@ -51,6 +62,8 @@ testEval = do
     testEvalsTo (test030, Value (Int 1)) "test030"
     testEvalsTo (test040, Value (Int 2)) "test040"
     testEvalsTo (test050, Value (Int 8)) "test050"
+    testEvalsTo (test060, Value (Int 5)) "test060"
+    testIsFunction test070               "test070"
 
 testIsFunction :: Expr -> Text -> SpecWith ()
 testIsFunction expr name = 
@@ -88,10 +101,18 @@ testEvalsTo (expr, val) name =
         (Right result, _) ->
             expectationFailure $ unpack ("Unexpected result: " <> Pretty.value result)
 
+evalE :: Expr -> Value Eval
+evalE expr = result where Right result = evalExpr mempty expr
+
 testEnv :: Env Eval
 testEnv = Map.fromList
-    [ ("Cons", dataCon "Cons" 2)
-    , ("Nil", dataCon "Nil" 0)
+    [ ("Cons"   , dataCon "Cons" 2)
+    , ("Nil"    , dataCon "Nil" 0)
+    , ("Tuple2" , dataCon "Tuple2" 2)
+                  -- \p -> case p of Tuple2 a b => a
+    , ("fst"    , evalE (lamS "p" (caseS (varS "p") [(conP "Tuple2" [varP "a", varP "b"], varS "a")])))
+                  -- \p -> case p of Tuple2 a b => b
+    , ("snd"    , evalE (lamS "p" (caseS (varS "p") [(conP "Tuple2" [varP "a", varP "b"], varS "b")])))
     ]
 
 runTest :: Expr -> Either EvalError (Value Eval)
