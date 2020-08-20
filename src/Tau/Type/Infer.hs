@@ -12,7 +12,6 @@ import Data.Functor.Const
 import Data.Functor.Foldable
 import Data.Map.Strict (Map, notMember)
 import Data.Text (Text)
-import Data.List (unzip4)
 import Data.Tuple.Extra (first3)
 import Tau.Ast
 import Tau.Core
@@ -25,13 +24,12 @@ import Tau.Type.Substitution
 import Tau.Type.TypedAst
 import qualified Data.Map.Strict as Map
 
-type TExpr = Fix TypedExprF
-
-type InferTExpr = Infer (TExpr, Type, [Assumption], [Constraint])
+type InferTExpr = Infer (Fix TypedExprF, Type, [Assumption], [Constraint])
 
 infer :: Expr -> Infer (TypedExpr, [Assumption], [Constraint])
-infer = cata (fmap unfixt >>> alg) where
-    alg = \case
+infer = cata alg where
+    alg :: Algebra ExprF (Infer (TypedExpr, [Assumption], [Constraint]))
+    alg = fmap unfixt >>> \case
         VarS name -> do
             beta <- supply
             pure ( beta >*< VarS name
@@ -90,7 +88,7 @@ infer = cata (fmap unfixt >>> alg) where
 insertMany :: [Name] -> Monoset -> Monoset
 insertMany = flip (foldr insertIntoMonoset)
 
-type Clause = (Pattern, TExpr)
+type Clause = (Pattern, Fix TypedExprF)
 
 inferClause
   :: Type
@@ -169,7 +167,7 @@ inferOp = \case
              , c1 <> c2 <> [Equality t1 t2, Equality beta tBool] )
 
 unOp
-  :: (TExpr -> OpF TExpr)
+  :: (Fix TypedExprF -> OpF (Fix TypedExprF))
   -> InferTExpr
   -> Type
   -> Infer (TypedExpr, [Assumption], [Constraint])
@@ -181,7 +179,7 @@ unOp op expr t = do
          , c1 <> [Equality (TArr t1 beta) (TArr t t)] )
 
 binOp
-  :: (TExpr -> TExpr -> OpF TExpr)
+  :: (Fix TypedExprF -> Fix TypedExprF-> OpF (Fix TypedExprF))
   -> InferTExpr
   -> InferTExpr
   -> Type
@@ -209,7 +207,7 @@ inferType (Context env) expr = do
         (var:_) ->
             throwError (UnboundVariable var)
 
-(>*<) :: Type -> ExprF TExpr -> TypedExpr
+(>*<) :: Type -> ExprF (Fix TypedExprF) -> TypedExpr
 t >*< a = TypedExpr $ Fix $ Const t :*: a
 
 unfixt :: Infer (TypedExpr, [Assumption], [Constraint]) -> InferTExpr

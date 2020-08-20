@@ -53,46 +53,44 @@ eval
   :: (MonadFail m, MonadError EvalError m, MonadReader (Env m) m)
   => Expr
   -> m (Value m)
-eval = cata alg
+eval = cata alg where
+    alg :: (MonadFail m, MonadError EvalError m, MonadReader (Env m) m)
+        => Algebra ExprF (m (Value m))
+    alg = \case
+        VarS name -> do
+            env <- ask
+            evalMaybe (UnboundVariable name) (Map.lookup name env)
 
-alg
-  :: (MonadFail m, MonadError EvalError m, MonadReader (Env m) m)
-  => Algebra ExprF (m (Value m))
-alg = \case
-    VarS name -> do
-        env <- ask
-        evalMaybe (UnboundVariable name) (Map.lookup name env)
+        LamS name expr ->
+            asks (Closure name expr)
 
-    LamS name expr ->
-        asks (Closure name expr)
+        AppS exprs ->
+            foldl1 evalApp exprs
 
-    AppS exprs ->
-        foldl1 evalApp exprs
+        LitS prim ->
+            pure (Value prim)
 
-    LitS prim ->
-        pure (Value prim)
+        LetS var expr body -> do
+            val <- expr
+            local (Map.insert var val) body
 
-    LetS var expr body -> do
-        val <- expr
-        local (Map.insert var val) body
+        IfS cond true false -> do
+            Value (Bool isTrue) <- cond
+            if isTrue then true else false
 
-    IfS cond true false -> do
-        Value (Bool isTrue) <- cond
-        if isTrue then true else false
+        CaseS expr clss -> do
+            val <- expr
+            evalCase val clss
 
-    CaseS expr clss -> do
-        val <- expr
-        evalCase val clss
+        OpS op ->
+            evalOp op
 
-    OpS op ->
-        evalOp op
+        AnnS expr ty ->
+            -- TODO
+            undefined
 
-    AnnS expr ty ->
-        -- TODO
-        undefined
-
-    Err ->
-        throwError RuntimeError
+        Err ->
+            throwError RuntimeError
 
 evalCase :: (MonadFail m, MonadError EvalError m, MonadReader (Env m) m) => Value m -> [(Pattern, m (Value m))] -> m (Value m)
 evalCase _ [] = throwError RuntimeError
