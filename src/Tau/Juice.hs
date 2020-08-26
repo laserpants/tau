@@ -867,6 +867,9 @@ substituteExpr name val = para $ \case
 testExpr :: Expr
 testExpr = lamS "a" (appS [varS "concat", appS [varS "show", varS "a"], litString "..."])
 
+testExpr2 :: Expr
+testExpr2 = lamS "a" (lamS "b" (appS [varS "(==)", varS "a", varS "b"]))
+
 listA :: Type
 listA = TApp (TCon "List") (TVar "a")
 
