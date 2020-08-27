@@ -383,7 +383,7 @@ typeInferTestFailWithError (expr, context) err name =
             expectationFailure ("Expected test to fail with error " <> show err)
 
 typeInferRunTest :: Context -> Expr -> Either TypeError Scheme
-typeInferRunTest context expr = headAnnotation <$> runInfer (inferType context expr)
+typeInferRunTest context expr = getAnnotation <$> runInfer (inferType context expr)
 
 -- ==========================
 -- ==== TestPatternCheck ====
@@ -626,6 +626,9 @@ evalTest110 = letS "f" (lamS "n" (ifS (varS "n" `eqS` litInt 0) (litInt 1) (mulS
 evalTest115 :: Expr
 evalTest115 = recS "f" (lamS "n" (ifS (varS "n" `eqS` litInt 0) (litInt 1) (mulS (varS "n") (appS [varS "f", subS (varS "n") (litInt 1)])))) (appS [varS "f", litInt 5])
 
+evalTest120 :: Expr
+evalTest120 = varS "hello"
+
 testEval :: SpecWith ()
 testEval = do
     evalTestIsFunction evalTest000               "test000"
@@ -639,6 +642,7 @@ testEval = do
     evalTestFailsWithError (evalTest080, UnboundIdentifier "x") "test080"
     evalTestFailsWithError (evalTest110, UnboundIdentifier "f") "test110"
     evalTestEvalsTo (evalTest115, Value (Int 120)) "test115"
+    evalTestFailsWithError (evalTest120, UnboundIdentifier "hello") "test120"
 
 evalTestFailsWithError :: (Expr, EvalError) -> Name -> SpecWith ()
 evalTestFailsWithError (expr, err) name =

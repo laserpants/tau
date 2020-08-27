@@ -1,9 +1,16 @@
+{-# LANGUAGE TypeOperators #-}
 module Tau.Repl where
 
 import Control.Monad.Trans
+import Data.Either.Extra (mapLeft, fromEither)
+import Data.Functor.Const
+import Data.Functor.Foldable
 import Data.List (isPrefixOf)
+import Data.Void
 import System.Console.Repline
+import Tau.Juice
 import Tau.Parser
+import Text.Megaparsec
 
 type Repl = HaskelineT IO
 
@@ -22,15 +29,26 @@ repl = evalReplOpts $ ReplOpts
     , finaliser        = replFinalizer
     }
 
-replCommand :: String -> Repl ()
-replCommand input = do
-    let expr = parseExpr input
-    case expr of
-        Left err ->
-           putStrIO "Error" 
+data ReplError
+    = ParseError (ParseErrorBundle String Void)
+    | TypeError TypeError
+    | EvalError EvalError
+    deriving (Show, Eq)
 
-        Right r ->
-            putStrIO (show r)
+replCommand :: String -> Repl ()
+replCommand input = putStrIO (fromEither (mapLeft show abc))
+  where
+    abc = do
+        expr <- mapLeft ParseError (parseExpr input)
+        pair <- mapLeft TypeError (treeTop <$> replInferType (Context mempty) expr)
+        val  <- mapLeft EvalError (evalExpr (fst pair) mempty)
+        pure (show (val, snd pair))
+
+treeTop :: AnnotatedExpr Scheme -> (Expr, Scheme)
+treeTop ann = (getExpr ann, getAnnotation ann)
+
+replInferType :: Context -> Expr -> Either TypeError (AnnotatedExpr Scheme)
+replInferType context = runInfer . inferType context
 
 replOptions :: Options Repl
 replOptions = 
@@ -39,7 +57,7 @@ replOptions =
     ]
 
 quit :: String -> Repl ()
-quit _ = printExitMessage >> abort
+quit = const (printExitMessage >> abort)
 
 help :: String -> Repl ()
 help args = putStrIO message

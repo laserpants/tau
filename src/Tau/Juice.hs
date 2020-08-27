@@ -690,8 +690,11 @@ instance Substitutable (AnnotatedExpr Type) where
     apply sub = runAnnotatedExpr >>> cata alg >>> AnnotatedExpr where
         alg (Const ty :*: expr) = Fix (Const (apply sub ty) :*: expr)
 
-headAnnotation :: AnnotatedExpr a -> a
-headAnnotation =
+getExpr :: AnnotatedExpr a -> Expr
+getExpr = cata (Fix . right) . runAnnotatedExpr
+
+getAnnotation :: AnnotatedExpr a -> a
+getAnnotation =
     getConst
       . left
       . unfix

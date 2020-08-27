@@ -9,7 +9,7 @@ import Data.Text (Text, pack, unpack)
 import Data.Void
 import Tau.Juice hiding (($>), name)
 import Text.Megaparsec
-import Text.Megaparsec.Char (alphaNumChar, letterChar, space1)
+import Text.Megaparsec.Char (alphaNumChar, letterChar, printChar, space1)
 import qualified Text.Megaparsec.Char as Megaparsec
 import qualified Text.Megaparsec.Char.Lexer as Lexer
 
@@ -38,8 +38,8 @@ withInitial char = do
 
 keyword :: String -> Parser ()
 keyword token =
-    Megaparsec.string token 
-        *> notFollowedBy alphaNumChar 
+    Megaparsec.string token
+        *> notFollowedBy alphaNumChar
         *> spaces
 
 reserved :: [String]
@@ -56,10 +56,10 @@ reserved =
 
 identifier :: Parser String
 identifier = lexeme $ try $ do
-    name <- withInitial letterChar
-    if name `elem` reserved 
-        then fail ("Reserved keyword " <> name)
-        else pure name
+    var <- withInitial letterChar
+    if var `elem` reserved
+        then fail ("Reserved keyword " <> var)
+        else pure var
 
 {-# ANN module ("HLint: ignore Use <$>" :: String) #-}
 
@@ -78,6 +78,9 @@ ast = appS <$> some atom
         <|> lambda
         <|> int
         <|> bool
+        <|> float
+        <|> char
+        <|> string
         <|> variable
 
 operator :: [[Operator Parser Expr]]
@@ -92,9 +95,6 @@ parseExpr = parse (spaces *> expr <* eof) ""
 name :: Parser Text
 name = pack <$> identifier
 
-unit :: Parser Expr
-unit = symbol "()" $> litUnit
-
 ifClause :: Parser Expr
 ifClause = do
     cond  <- keyword "if"   *> expr
@@ -103,17 +103,17 @@ ifClause = do
     pure (ifS cond true false)
 
 letrecBinding :: Parser Expr
-letrecBinding = parseLet "let rec"
+letrecBinding = parseLet recS "let rec"
 
 letBinding :: Parser Expr
-letBinding = parseLet "let"
+letBinding = parseLet letS "let"
 
-parseLet :: String -> Parser Expr
-parseLet kword = do
+parseLet :: (Name -> Expr -> Expr -> Expr) -> String -> Parser Expr
+parseLet con kword = do
     var  <- keyword kword *> name
     exp  <- symbol  "="   *> expr
     body <- keyword "in"  *> expr
-    pure (letS var exp body)
+    pure (con var exp body)
 
 lambda :: Parser Expr
 lambda = do
@@ -121,14 +121,29 @@ lambda = do
     body <- symbol "->" *> expr
     pure (lamS var body)
 
-int :: Parser Expr
-int = litInt <$> lexeme Lexer.decimal
+unit :: Parser Expr
+unit = symbol "()" $> litUnit
 
 bool :: Parser Expr
-bool = true <|> false 
+bool = true <|> false
   where
     true  = keyword "True"  $> litBool True
     false = keyword "False" $> litBool False
+
+int :: Parser Expr
+int = litInt <$> lexeme Lexer.decimal
+
+float :: Parser Expr
+float = litFloat <$> Lexer.float
+
+char :: Parser Expr
+char = litChar <$> between (symbol "'") (symbol "'") printChar
+
+string :: Parser Expr
+string = litString . pack <$> str
+  where
+    chr = Megaparsec.char
+    str = chr '"' *> takeWhileP Nothing (/= '"') <* chr '"'
 
 variable :: Parser Expr
 variable = varS <$> name
