@@ -7,6 +7,7 @@
 {-# LANGUAGE LambdaCase                 #-}
 {-# LANGUAGE MultiParamTypeClasses      #-}
 {-# LANGUAGE OverloadedStrings          #-}
+{-# LANGUAGE RecordWildCards            #-}
 {-# LANGUAGE StrictData                 #-}
 {-# LANGUAGE TemplateHaskell            #-}
 {-# LANGUAGE TypeOperators              #-}
@@ -14,6 +15,7 @@ module Tau.Juice where
 
 import Control.Arrow ((>>>))
 import Control.Monad.Except
+import Control.Monad.Extra (anyM)
 import Control.Monad.Identity
 import Control.Monad.Reader
 import Control.Monad.Supply
@@ -23,24 +25,23 @@ import Data.Function ((&))
 import Data.Functor.Const (Const(..))
 import Data.Functor.Foldable
 import Data.List (intersperse, find, delete, nub, elemIndex)
+import Data.List.Extra (groupSortOn)
 import Data.Map.Strict (Map, notMember, (!?))
 import Data.Maybe (fromMaybe, fromJust)
 import Data.Set.Monad (Set, union, intersection, member, (\\))
 import Data.Text (Text, pack, unpack)
 import Data.Tuple (swap)
-import Data.Tuple.Extra (first3)
+import Data.Tuple.Extra (first, first3)
 import Debug.Trace
 import GHC.Show (showSpace)
-import Test.Hspec
 import Text.Show.Deriving
 import qualified Data.Map.Strict as Map
 import qualified Data.Set.Monad as Set
 import qualified Data.Text as Text
-import qualified Data.Either
 
--- ==============
--- ==== Util ====
--- ==============
+-- ============================================================================
+-- =================================== Util ===================================
+-- ============================================================================
 
 type Name = Text
 
@@ -65,9 +66,9 @@ type Algebra f a = f a -> a
 $(deriveShow1 ''(:*:))
 $(deriveEq1   ''(:*:))
 
--- ==============
--- ==== Type ====
--- ==============
+-- ============================================================================
+-- =================================== Type ===================================
+-- ============================================================================
 
 -- | Type to represent types
 data Type
@@ -103,9 +104,9 @@ tChar    = TCon "Char"     -- ^ Char
 tUnit    = TCon "Unit"     -- ^ Unit
 tVoid    = TCon "Void"     -- ^ Void
 
--- ===========================
--- ==== Type.Substitution ====
--- ===========================
+-- ============================================================================
+-- ============================ Type Substitution =============================
+-- ============================================================================
 
 newtype Substitution = Substitution { runSubstitution :: Map Name Type }
     deriving (Show, Eq)
@@ -133,10 +134,10 @@ instance (Substitutable a, Substitutable b) => Substitutable (a, b) where
     apply sub pair = (apply sub (fst pair), apply sub (snd pair))
 
 instance Substitutable Type where
-    apply sub (TVar var)   = Map.findWithDefault (TVar var) var (runSubstitution sub)
-    apply sub (TArr t1 t2) = TArr (apply sub t1) (apply sub t2)
-    apply sub (TApp t1 t2) = TApp (apply sub t1) (apply sub t2)
-    apply _ ty = ty
+    apply sub ty@(TVar var) = Map.findWithDefault ty var (runSubstitution sub)
+    apply sub (TArr t1 t2)  = TArr (apply sub t1) (apply sub t2)
+    apply sub (TApp t1 t2)  = TApp (apply sub t1) (apply sub t2)
+    apply _ ty              = ty
 
 instance Substitutable Class where
     apply sub (Class name ty) = Class name (apply sub ty)
@@ -166,9 +167,9 @@ instance Free Scheme where
 instance Free Context where
     free (Context env) = free (Map.elems env)
 
--- =============
--- ==== Ast ====
--- =============
+-- ============================================================================
+-- =================================== Ast ====================================
+-- ============================================================================
 
 -- | Language primitives
 data Prim
@@ -190,13 +191,6 @@ data PatternF a
 
 type Pattern = Fix PatternF
 
-getVars :: Pattern -> [Name]
-getVars = cata alg where
-    alg :: Algebra PatternF [Name]
-    alg (VarP v)    = [v]
-    alg (ConP _ ps) = concat ps
-    alg _           = []
-
 $(deriveShow1 ''PatternF)
 $(deriveEq1   ''PatternF)
 
@@ -207,6 +201,7 @@ data ExprF a
     | AppS [a]
     | LitS Prim
     | LetS Name a a
+    | RecS Name a a
     | IfS a a a
     | CaseS a [(Pattern, a)]
     | OpS (OpF a)
@@ -234,9 +229,281 @@ $(deriveEq1   ''ExprF)
 $(deriveShow1 ''OpF)
 $(deriveEq1   ''OpF)
 
--- \\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\
--- \\\\\\\\\\\\\\\\\\\\\\\\\\\\ Smart constructors \\\\\\\\\\\\\\\\\\\\\\\\\\\\
--- \\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\
+-- ============================================================================
+-- ================================= Patterns =================================
+-- ============================================================================
+
+patternVars :: Pattern -> [Name]
+patternVars = cata alg where
+    alg :: Algebra PatternF [Name]
+    alg (VarP v)    = [v]
+    alg (ConP _ ps) = concat ps
+    alg _           = []
+
+-- | A simple pattern is either a variable or a constructor where all the
+-- subpatterns are variables.
+isSimple :: Pattern -> Bool
+isSimple = fun . unfix where
+    fun AnyP        = True
+    fun (VarP _)    = True
+    fun (ConP _ ps) = all isSimple ps
+    fun _           = False
+
+specialized :: Name -> Int -> [[Pattern]] -> [[Pattern]]
+specialized name a = concatMap fun where
+    fun (p:ps) =
+        case unfix p of
+            ConP name' ps'
+                | name' == name -> [ps' <> ps]
+                | otherwise     -> []
+
+            _ ->
+                [replicate a (Fix AnyP) <> ps]
+
+defaultMatrix :: [[Pattern]] -> [[Pattern]]
+defaultMatrix = concatMap fun where
+    fun (p:ps) =
+        case unfix p of
+            ConP{} -> []
+            _      -> [ps]
+
+data PatternCheckError = PatternCheckFail
+    deriving (Show, Eq)
+
+type Lookup = Map Name (Set Name)
+
+lookupFromList :: [(Name, [Name])] -> Lookup
+lookupFromList = Map.fromList . fmap (fmap Set.fromList)
+
+type PatternCheckTStack m a = ReaderT Lookup (ExceptT PatternCheckError m) a
+
+newtype PatternCheckT m a = PatternCheckT (PatternCheckTStack m a) deriving
+    ( Functor
+    , Applicative
+    , Monad
+    , MonadReader Lookup
+    , MonadError PatternCheckError )
+
+runPatternCheckT :: PatternCheckT m a -> Lookup -> m (Either PatternCheckError a)
+runPatternCheckT (PatternCheckT a) = runExceptT . runReaderT a
+
+type PatternCheck = PatternCheckT Identity
+
+runPatternCheck :: PatternCheck a -> Lookup -> Either PatternCheckError a
+runPatternCheck a = runIdentity . runPatternCheckT a
+
+headCons :: Monad m => [[Pattern]] -> PatternCheckT m [(Name, Int)]
+headCons = fmap concat . traverse fun where
+    fun []                     = throwError PatternCheckFail
+    fun (Fix (ConP name rs):_) = pure [(name, length rs)]
+    fun _                      = pure []
+
+useful :: Monad m => [[Pattern]] -> [Pattern] -> PatternCheckT m Bool
+useful [] qs = pure True        -- zero rows (0x0 matrix)
+useful px@(ps:_) qs =
+    case (qs, length ps) of
+        (_, 0) -> pure False    -- 1 or more rows but zero cols
+
+        ([], _) ->
+            throwError PatternCheckFail
+
+        (Fix (ConP name rs):_, n) ->
+            let special = specialized name (length rs)
+             in useful (special px) (head (special [qs]))
+
+        (_:qs1, n) -> do
+            cs <- headCons px
+            isComplete <- complete (fst <$> cs)
+            if isComplete
+                then cs |> anyM (\con ->
+                    let special = uncurry specialized con
+                     in useful (special px) (head (special [qs])))
+                else useful (defaultMatrix px) qs1
+  where
+    complete [] = pure False
+    complete names@(name:_) = do
+        lookup <- ask
+        pure (Map.findWithDefault mempty name lookup == Set.fromList names)
+
+exhaustive :: Monad m => [Pattern] -> PatternCheckT m Bool
+exhaustive ps = not <$> useful ((:[]) <$> ps) [anyP]
+
+-- ============================================================================
+-- ============================ Patterns Compiler =============================
+-- ============================================================================
+
+type Equation = ([Pattern], Expr)
+
+data ConHead = ConHead
+    { conName  :: Name
+    , conArity :: Int
+    , conPttns :: [Pattern]
+    , conExpr  :: Expr
+    } deriving (Show, Eq)
+
+data VarHead = VarHead
+    { varName  :: Maybe Name
+    , varPttns :: [Pattern]
+    , varExpr  :: Expr
+    } deriving (Show, Eq)
+
+data LitHead = LitHead
+    { litPrim  :: Prim
+    , litPttns :: [Pattern]
+    , litExpr  :: Expr
+    } deriving (Show, Eq)
+
+data EqGroup
+    = ConEqs [ConHead]
+    | VarEqs [VarHead]
+    | LitEqs [LitHead]
+    deriving (Show, Eq)
+
+groups :: [Equation] -> [EqGroup]
+groups qs = cs:gs
+  where
+    (cs, gs) = foldr (uncurry arrange) (ConEqs [], []) qs
+
+    arrange (Fix (ConP name qs):ps) expr =
+        let c = ConHead { conName  = name
+                        , conArity = length qs
+                        , conPttns = qs <> ps
+                        , conExpr  = expr }
+         in \case
+            (ConEqs cs, gs) -> (ConEqs (c:cs), gs)
+            (g, gs)         -> (ConEqs [c], g:gs)
+
+    arrange (Fix (VarP name):ps) expr =
+        let c = VarHead { varName  = Just name
+                        , varPttns = ps
+                        , varExpr  = expr }
+         in \case
+            (VarEqs cs, gs) -> (VarEqs (c:cs), gs)
+            (g, gs)         -> (VarEqs [c], g:gs)
+
+    arrange (Fix AnyP:ps) expr =
+        let c = VarHead { varName  = Nothing
+                        , varPttns = ps
+                        , varExpr  = expr }
+         in \case
+            (VarEqs cs, gs) -> (VarEqs (c:cs), gs)
+            (g, gs)         -> (VarEqs [c], g:gs)
+
+    arrange (Fix (LitP prim):ps) expr =
+        let c = LitHead { litPrim  = prim
+                        , litPttns = ps
+                        , litExpr  = expr }
+         in \case
+            (LitEqs cs, gs) -> (LitEqs (c:cs), gs)
+            (g, gs)         -> (LitEqs [c], g:gs)
+
+data ConGroup = ConGroup
+    { name      :: Name
+    , arity     :: Int
+    , equations :: [Equation]
+    } deriving (Show)
+
+conGroups :: [ConHead] -> [ConGroup]
+conGroups qs =
+    makeGroup <$> groupSortOn (\ConHead{..} -> (conName, conArity)) qs
+  where
+    makeGroup cs@(ConHead{..}:_) = ConGroup
+      { name      = conName
+      , arity     = conArity
+      , equations = (\ConHead{..} -> (conPttns, conExpr)) <$> cs }
+
+type PatternMatchCompilerTStack m a = SupplyT Name m a
+
+newtype PatternMatchCompilerT m a = PatternMatchCompilerT (PatternMatchCompilerTStack m a)
+  deriving (Functor, Applicative, Monad, MonadSupply Name)
+
+runPatternMatchCompilerT :: (Monad m) => PatternMatchCompilerT m a -> m a
+runPatternMatchCompilerT (PatternMatchCompilerT a) = evalSupplyT a (pfxed <$> [1..]) where
+    pfxed count = ":" <> pack (show count)
+
+type PatternMatchCompiler = PatternMatchCompilerT Identity
+
+runPatternMatchCompiler :: PatternMatchCompiler a -> a
+runPatternMatchCompiler = runIdentity . runPatternMatchCompilerT
+
+compilePatterns :: (MonadSupply Name m) => [Expr] -> [Equation] -> m Expr
+compilePatterns = matchDefault errS
+
+matchDefault :: (MonadSupply Name m) => Expr -> [Expr] -> [Equation] -> m Expr
+matchDefault _ [] [([], expr)] = pure expr
+matchDefault def (u:us) qs = foldrM (flip run) def (groups qs) where
+    run :: MonadSupply Name m => Expr -> EqGroup -> m Expr
+    run def = \case
+        ConEqs eqs -> do
+            css <- traverse groupClause (conGroups eqs)
+            pure $ case css <> [(anyP, def) | errS /= def] of
+                [] -> def
+                css' -> caseS u css'
+          where
+            groupClause :: MonadSupply Name m => ConGroup -> m (Pattern, Expr)
+            groupClause ConGroup{..} = do
+                vs <- replicateM arity supply
+                expr <- matchDefault def ((varS <$> vs) <> us) equations
+                pure (conP name (varP <$> vs), expr)
+
+        VarEqs eqs ->
+            matchDefault def us (fun <$> eqs) where
+                fun VarHead{..} =
+                    ( varPttns
+                    , case varName of
+                          Nothing   -> varExpr
+                          Just name -> substituteExpr name u varExpr )
+
+        LitEqs eqs ->
+            foldrM fun def eqs where
+                fun LitHead{..} false = do
+                    true <- matchDefault def us [(litPttns, litExpr)]
+                    pure (ifS (eqS u (litS litPrim)) true false)
+
+allPatternsAreSimple :: Expr -> Bool
+allPatternsAreSimple = cata $ \case
+    LamS _ expr ->
+        expr
+
+    AppS exprs ->
+        and exprs
+
+    LetS _ expr body ->
+        expr && body
+
+    IfS cond true false ->
+        cond && true && false
+
+    OpS (AddS a b) -> a && b
+    OpS (SubS a b) -> a && b
+    OpS (MulS a b) -> a && b
+    OpS (EqS a b) -> a && b
+    OpS (LtS a b) -> a && b
+    OpS (GtS a b) -> a && b
+    OpS (NegS a) -> a
+    OpS (NotS a) -> a
+
+    AnnS expr _ ->
+        expr
+
+    CaseS expr clss ->
+        expr && and (snd <$> clss)
+             && and (isSimple . fst <$> clss)
+
+    _ ->
+        True
+
+compileAll :: Expr -> Expr
+compileAll = cata $ \case
+    CaseS expr clss ->
+        runPatternMatchCompiler (compilePatterns [expr] (first (:[]) <$> clss))
+
+    expr ->
+        Fix expr
+
+-- ============================================================================
+-- ============================ Smart Constructors ============================
+-- ============================================================================
 
 -- | VarS constructor
 varS :: Name -> Expr
@@ -257,6 +524,10 @@ litS = Fix . LitS
 -- | LetS constructor
 letS :: Name -> Expr -> Expr -> Expr
 letS a1 a2 = Fix . LetS a1 a2
+
+-- | RecS constructor
+recS :: Name -> Expr -> Expr -> Expr
+recS a1 a2 = Fix . RecS a1 a2
 
 -- | IfS constructor
 ifS :: Expr -> Expr -> Expr -> Expr
@@ -344,9 +615,9 @@ litP = Fix . LitP
 anyP :: Pattern
 anyP = Fix AnyP
 
--- ========================
--- ==== Type.Inference ====
--- ========================
+-- ============================================================================
+-- ============================== Type Inference ==============================
+-- ============================================================================
 
 data TypeError
     = CannotSolve
@@ -417,6 +688,13 @@ instance Substitutable (AnnotatedExpr Type) where
     apply sub = runAnnotatedExpr >>> cata alg >>> AnnotatedExpr where
         alg (Const ty :*: expr) = Fix (Const (apply sub ty) :*: expr)
 
+headAnnotation :: AnnotatedExpr a -> a
+headAnnotation =
+    getConst
+      . left
+      . unfix
+      . runAnnotatedExpr
+
 infer
   :: (Monad m)
   => Expr
@@ -446,14 +724,11 @@ infer = cata alg where
             t <- inferPrim prim
             pure ( annotated t (LitS prim), [], [] )
 
-        LetS var expr body -> do
-            (_e1, t1, a1, c1) <- expr
-            (_e2, t2, a2, c2) <- body
-            set <- ask
-            pure ( annotated t2 (LetS var _e1 _e2)
-                 {-, removeAssumption var a1 <> removeAssumption var a2 -}
-                 , a1 <> removeAssumption var a2
-                 , c1 <> c2 <> [Implicit t t1 set | (y, t) <- runAssumption <$> a1 <> a2, var == y] )
+        LetS var expr body ->
+            inferLet var expr body False
+
+        RecS var expr body ->
+            inferLet var expr body True
 
         IfS cond true false -> do
             (_cond, t1, a1, c1) <- cond
@@ -480,6 +755,21 @@ infer = cata alg where
         AnnS expr ty ->
             undefined  -- TODO
 
+inferLet
+  :: (MonadReader Monoset m)
+  => Name
+  -> m (Fix (AnnotatedExprF Type), Type, [Assumption], [Constraint])
+  -> m (Fix (AnnotatedExprF Type), Type, [Assumption], [Constraint])
+  -> Bool
+  -> m (AnnotatedExpr Type, [Assumption], [Constraint])
+inferLet var expr body rec = do
+    (_e1, t1, a1, c1) <- expr
+    (_e2, t2, a2, c2) <- body
+    set <- ask
+    pure ( annotated t2 (LetS var _e1 _e2)
+         , (if rec then removeAssumption var a1 else a1) <> removeAssumption var a2
+         , c1 <> c2 <> [Implicit t t1 set | (y, t) <- runAssumption <$> a1 <> a2, var == y] )
+
 type Clause = (Pattern, Fix (AnnotatedExprF Type))
 
 inferClause
@@ -489,17 +779,17 @@ inferClause
   -> (Pattern, InferT m (Fix (AnnotatedExprF Type), Type, [Assumption], [Constraint]))
   -> ([Clause], [Assumption], [Constraint])
   -> InferT m ([Clause], [Assumption], [Constraint])
-inferClause beta t (pttrn, expr) (ps, as, cs) = do
+inferClause beta t (pat, expr) (ps, as, cs) = do
     (_expr, t1, a1, c1) <- local (insertManyIntoMonoset vars) expr
-    (t2, a2, c2) <- inferPattern pttrn
-    pure ( (pttrn, _expr):ps
+    (t2, a2, c2) <- inferPattern pat
+    pure ( (pat, _expr):ps
          , as <> removeManyAssumptions vars a1
               <> removeManyAssumptions vars a2
          , cs <> c1 <> c2
               <> [Equality beta t1 [], Equality t t2 []]
               <> constraints a1 a2 )
   where
-    vars = getVars pttrn
+    vars = patternVars pat
     constraints a1 a2 = do
         (y1, t1) <- runAssumption <$> a1
         (y2, t2) <- runAssumption <$> a2
@@ -652,9 +942,9 @@ expand triple = do
 
 {-# ANN inferOp ("HLint: ignore Reduce duplication" :: Text) #-}
 
--- =====================
--- ==== Type.Solver ====
--- =====================
+-- ============================================================================
+-- ============================ Constraints Solver ============================
+-- ============================================================================
 
 newtype Assumption = Assumption { runAssumption :: (Name, Type) }
     deriving (Show, Eq)
@@ -740,9 +1030,9 @@ instantiate (Forall vars clcs ty) = do
     let map = Map.fromList (zip vars vars')
     pure $ apply (Substitution map) (clcs, ty)
 
--- ==========================
--- ==== Type.Unification ====
--- ==========================
+-- ============================================================================
+-- ============================= Type.Unification =============================
+-- ============================================================================
 
 occursIn :: Name -> Type -> Bool
 occursIn var ty = var `member` free ty
@@ -768,9 +1058,9 @@ unify t u
     | t == u    = pure mempty
     | otherwise = throwError CannotUnify
 
--- ===============
--- ==== Value ====
--- ===============
+-- ============================================================================
+-- =================================== Value ==================================
+-- ============================================================================
 
 -- | The environment is a mapping from variables to values.
 type Env m = Map Name (Value m)
@@ -819,9 +1109,9 @@ dataCon name n = Closure (varName 1) val mempty
     vars = varName <$> [1..n]
     varName n = "%" <> pack (show n)
 
--- ======================
--- ==== Substitution ====
--- ======================
+-- ============================================================================
+-- =============================== Substitution ===============================
+-- ============================================================================
 
 substituteExpr :: Name -> Expr -> Expr -> Expr
 substituteExpr name val = para $ \case
@@ -840,15 +1130,17 @@ substituteExpr name val = para $ \case
         litS prim
 
     LetS var body expr ->
-        let get = if name == var then fst else snd
-         in letS var (get body) (get expr)
+        substituteLet name var body expr
+
+    RecS var body expr ->
+        substituteLet name var body expr
 
     IfS cond true false ->
         ifS (snd cond) (snd true) (snd false)
 
     CaseS expr clss ->
         caseS (snd expr) (fun <$> clss) where
-            fun (p, e) = (p, if name `elem` getVars p then fst e else snd e)
+            fun (p, e) = (p, if name `elem` patternVars p then fst e else snd e)
 
     OpS op ->
         opS (snd <$> op)
@@ -856,506 +1148,196 @@ substituteExpr name val = para $ \case
     AnnS expr ty ->
         undefined  -- TODO
 
+substituteLet :: Name -> Name -> (Expr, Expr) -> (Expr, Expr) -> Expr
+substituteLet name var body expr =
+    let get = if name == var then fst else snd
+     in letS var (get body) (get expr)
+
 -- ============================================================================
--- ============================================================================
--- ======       ===============================================================
--- ====== Tests ===============================================================
--- ======       ===============================================================
--- ============================================================================
+-- =================================== Eval ===================================
 -- ============================================================================
 
-testExpr :: Expr
-testExpr = lamS "a" (appS [varS "concat", appS [varS "show", varS "a"], litString "..."])
+data EvalError
+    = RuntimeError
+    | UnboundEnvVariable Name
+    | TypeMismatch
+    deriving (Show, Eq)
 
-testExpr2 :: Expr
-testExpr2 = lamS "a" (lamS "b" (appS [varS "(==)", varS "a", varS "b"]))
+type EvalTStack m a = ReaderT (Env (EvalT m)) (ExceptT EvalError m) a
 
-listA :: Type
-listA = TApp (TCon "List") (TVar "a")
+newtype EvalT m a = EvalT { unEvalT :: EvalTStack m a } deriving
+    ( Functor
+    , Applicative
+    , Monad
+    , MonadFix
+    , MonadReader (Env (EvalT m))
+    , MonadError EvalError )
 
-tuple2AB :: Type
-tuple2AB = TApp (TApp (TCon "Tuple2") (TVar "a")) (TVar "b")
+instance (Monad m) => MonadFail (EvalT m) where
+    fail = const (throwError RuntimeError)
 
-testContext :: Context
-testContext = Context (Map.fromList
-    [ ("concat" , Forall []         [] (TArr tString (TArr tString tString)))
-    , ("show"   , Forall ["a"] [Class "Show" (TVar "a")]
-                                       (TArr (TVar "a") tString))
-    , ("Nil"    , Forall ["a"]      [] listA)
-    , ("Cons"   , Forall ["a"]      [] (TArr (TVar "a") (TArr listA listA)))
-    , ("const"  , Forall ["a", "b"] [] (TArr (TVar "a") (TArr (TVar "b") (TVar "a"))))
-    , ("foo"    , Forall ["a"]      [] (TArr (TVar "a") (TVar "a")))
-    , ("Foo"    , Forall ["a"]      [] (TArr (TVar "a") (TApp (TCon "List") (TVar "a"))))
-    , ("Baz"    , Forall []         [] tBool)
-    , ("Tuple2" , Forall ["a", "b"] [] (TArr (TVar "a") (TArr (TVar "b") tuple2AB)))
-    , ("fst"    , Forall ["a", "b"] [] (TArr tuple2AB (TVar "a")))
-    , ("snd"    , Forall ["a", "b"] [] (TArr tuple2AB (TVar "b")))
-    ])
+type Eval = EvalT Identity
 
--- ===================
--- ==== TestInfer ====
--- ===================
+runEvalT :: EvalT m a -> Env (EvalT m) -> m (Either EvalError a)
+runEvalT a = runExceptT . runReaderT (unEvalT a)
 
-test010 :: Expr
-test010 = letS "const" (lamS "a" (lamS "b" (varS "a"))) (appS [varS "const", litUnit])
+runEval :: Eval a -> Env Eval -> Either EvalError a
+runEval a = runIdentity . runEvalT a
 
-test011 :: Expr
-test011 = appS [varS "const", litInt 5, litUnit]
+evalExprT :: (Monad m, MonadFix m) => Expr -> Env (EvalT m) -> m (Either EvalError (Value (EvalT m)))
+evalExprT = runEvalT . eval
 
-test012 :: Expr
-test012 = appS [varS "foo", litInt 5]
+evalExpr :: Expr -> Env Eval -> Either EvalError (Value Eval)
+evalExpr = runEval . eval
 
-test013 :: Expr
-test013 = appS [varS "Foo", litInt 5]
+evalMaybe :: (MonadError EvalError m) => EvalError -> Maybe (Value m) -> m (Value m)
+evalMaybe err = maybe (throwError err) pure
 
-test014 :: Expr
-test014 = lamS "a" (varS "a")
-
-test015 :: Expr
-test015 = lamS "a" (lamS "b" (varS "a"))
-
-test020 :: Expr
-test020 = letS "const" (lamS "a" (lamS "b" (varS "a"))) (appS [varS "const", litUnit, litInt 5])
-
-test030 :: Expr
-test030 = appS [lamS "xs" (caseS (varS "xs") clauses), appS [varS "Cons", litInt 5, appS [varS "Nil"]]]
+eval
+  :: (MonadFix m, MonadFail m, MonadError EvalError m, MonadReader (Env m) m)
+  => Expr
+  -> m (Value m)
+eval = cata alg
   where
-    clauses =
-        [ (conP "Cons" [varP "y", varP "ys"], litInt 1)
-        , (conP "Nil" [], litInt 2) ]
-
--- \xs -> case xs of { _ => 1 } Cons 5 Nil
-test031 :: Expr
-test031 = appS [lamS "xs" (caseS (varS "xs") clauses), appS [varS "Cons", litInt 5, appS [varS "Nil"]]]
-  where
-    clauses = [ (anyP, litInt 1) ]
-
--- \xs -> case xs of { x => 1 } Cons 5 Nil
-test032 :: Expr
-test032 = appS [lamS "xs" (caseS (varS "xs") clauses), appS [varS "Cons", litInt 5, appS [varS "Nil"]]]
-  where
-    clauses = [ (varP "x", litInt 1) ]
-
--- \xs -> case xs of { Cons y ys => 1 } Cons 5 Nil
-test033 :: Expr
-test033 = appS [lamS "xs" (caseS (varS "xs") clauses), appS [varS "Cons", litInt 5, appS [varS "Nil"]]]
-  where
-    clauses = [ (conP "Cons" [varP "y", varP "ys"], litInt 1) ]
-
-test034 :: Expr
-test034 = letS "xs" (appS [varS "Baz"]) (caseS (varS "xs") [ (conP "Baz" [], litString "hello")])
-
-test040 :: Expr
-test040 = appS [lamS "xs" (caseS (varS "xs") [(conP "Cons" [varP "y", varP "ys"], litInt 1), (conP "Nil" [], litInt 2)]), appS [varS "Nil"]]
-
-test041 :: Expr
-test041 = appS [varS "Cons", litInt 5]
-
-test042 :: Expr
-test042 = appS [varS "Cons", litInt 5, appS [varS "Nil"]]
-
-test043 :: Expr
-test043 = appS [varS "Cons", litInt 5, appS [varS "Cons", litInt 4, appS [varS "Nil"]]]
-
-test044 :: Expr
-test044 = appS [varS "Cons", litInt 5, appS [varS "Cons", litBool True, appS [varS "Nil"]]]
-
--- case Cons 5 Nil of { Cons y ys -> y + 1; Nil -> 0 })
-test050 :: Expr
-test050 = caseS (appS [varS "Cons", litInt 5, appS [varS "Nil"]]) [(conP "Cons" [varP "y", varP "ys"], opS (AddS (varS "y") (litInt 1))), (conP "Nil" [], litInt 0)]
-
--- case Cons "a" Nil of { Cons y ys -> y + 1 })
-test053 :: Expr
-test053 = caseS (appS [varS "Cons", litString "a", appS [varS "Nil"]]) [(conP "Cons" [varP "y", varP "ys"], opS (AddS (varS "y") (litInt 1)))]
-
--- case Cons 6 Nil of { Cons y ys -> y + 1 })
-test054 :: Expr
-test054 = caseS (appS [varS "Cons", litInt 6, appS [varS "Nil"]]) [(conP "Cons" [varP "y", varP "ys"], opS (AddS (varS "y") (litInt 1)))]
-
-test055 :: Expr
-test055 = letS "xs" (appS [varS "Cons", litBool True, appS [varS "Nil"]]) (letS "ys" (appS [varS "Cons", litInt 1, appS [varS "Nil"]]) (litInt 5))
-
--- case Cons 6 Nil of { Cons y ys -> y + 1; Cons 4 ys -> 5 })
-test056 :: Expr
-test056 = caseS (appS [varS "Cons", litInt 6, appS [varS "Nil"]]) [(conP "Cons" [varP "y", varP "ys"], opS (AddS (varS "y") (litInt 1))), (conP "Cons" [litP (Int 4), varP "ys"], litInt 5)]
-
--- case Cons 6 Nil of { Cons y ys -> y + 1; Cons 4 ys -> "foo" })
-test057 :: Expr
-test057 = caseS (appS [varS "Cons", litInt 6, appS [varS "Nil"]])
-    [ (conP "Cons" [varP "y", varP "ys"], opS (AddS (varS "y") (litInt 1)))
-    , (conP "Cons" [litP (Int 4), varP "ys"], litString "foo") ]
-
--- case Cons 6 Nil of { Cons y ys -> y + 1; 5 -> 1 })
-test058 :: Expr
-test058 = caseS (appS [varS "Cons", litInt 6, appS [varS "Nil"]])
-    [ (conP "Cons" [varP "y", varP "ys"], opS (AddS (varS "y") (litInt 1)))
-    , (litP (Int 5), litInt 1) ]
-
--- case Cons 6 Nil of { Cons y ys -> y + 1; Cons "w" z -> 1 })
-test059 :: Expr
-test059 = caseS (appS [varS "Cons", litInt 6, appS [varS "Nil"]])
-    [ (conP "Cons" [varP "y", varP "ys"], opS (AddS (varS "y") (litInt 1)))
-    , (conP "Cons" [litP (String "w"), varP "z"], litInt 1) ]
-
--- case Cons 6 Nil of { Cons y ys -> y + 1; Cons z 5 -> 1 })
-test060 :: Expr
-test060 = caseS (appS [varS "Cons", litInt 6, appS [varS "Nil"]])
-    [ (conP "Cons" [varP "y", varP "ys"], opS (AddS (varS "y") (litInt 1)))
-    , (conP "Cons" [varP "z", litP (Int 5)], litInt 1) ]
-
--- case Cons 6 Nil of { Cons y ys -> "one"; _ -> "two" })
-test061 :: Expr
-test061 = caseS (appS [varS "Cons", litInt 6, appS [varS "Nil"]])
-    [ (conP "Cons" [varP "y", varP "ys"], litString "one")
-    , (anyP, litString "two") ]
-
--- case Cons 6 Nil of { Cons y ys -> y; _ -> "two" })
-test062 :: Expr
-test062 = caseS (appS [varS "Cons", litInt 6, appS [varS "Nil"]])
-    [ (conP "Cons" [varP "y", varP "ys"], varS "y")
-    , (anyP, litString "two") ]
-
--- case Nil of {}
-test063 :: Expr
-test063 = caseS (appS [varS "Nil"]) []
-
--- if 1 == True then 1 else 0
-test070 :: Expr
-test070 = ifS (eqS (litInt 1) (litBool True)) (litInt 1) (litInt 0)
-
--- if Cons True Nil == Cons 1 Nil then 1 else 0
-test075 :: Expr
-test075 = ifS (eqS (appS [varS "Cons", litBool True, appS [varS "Nil"]]) (appS [varS "Cons", litInt 1, appS [varS "Nil"]])) (litInt 1) (litInt 0)
-
-test080 :: Expr
-test080 = letS "plus" (lamS "a" (lamS "b" (addS (varS "a") (varS "b")))) (letS "plus5" (appS [varS "plus", litInt 5]) (letS "id" (lamS "x" (varS "x")) (appS [appS [varS "id", varS "plus5"], appS [varS "id", litInt 3]])))
-
--- let id = \x -> x in let x = (id, 4) in (fst x) (snd x) + 1
-test090 :: Expr
-test090 = letS "id" (lamS "x" (varS "x")) (letS "x" (appS [varS "Tuple2", varS "id", litInt 4]) (addS (appS [varS "fst", varS "x", varS "snd", varS "x"]) (litInt 1)))
-
-test100 :: Expr
-test100 = letS "x" (varS "x") (varS "x")
-
-testInfer :: SpecWith ()
-testInfer = do
-    testSuccess
-        (test010, Context mempty)
-        (Forall ["a"] [] (TVar "a" `TArr` tUnit))
-        "test010"
-
-    testFailure
-        (test010, Context mempty)
-        (Forall ["a"] [] (TVar "a" `TArr` tInt))
-        "test010"
-
-    testSuccess
-        (test011, testContext) (Forall [] [] tInt) "test011"
-
-    testFailure
-        (test011, testContext) (Forall [] [] tBool) "test011"
-
-    testSuccess
-        (test012, testContext) (Forall [] [] tInt) "test012"
-
-    testSuccess
-        (test013, testContext) (Forall [] [] (TApp (TCon "List") tInt)) "test013"
-
---    testFailure
---        (test013, testContext) (TApp (TCon "List") (TVar "a")) "test013"
-
---    testSuccess
---        (test014, Context mempty) (TVar "a" `TArr` TVar "a") "test014"
-
---    testSuccess
---        (test015, Context mempty) (TVar "a" `TArr` (TVar "b" `TArr` TVar "a")) "test015"
---
---    testFailure
---        (test015, Context mempty) (TVar "a" `TArr` (TVar "b" `TArr` TVar "b")) "test015"
---
---    testFailure
---        (test015, Context mempty) (TVar "b" `TArr` (TVar "b" `TArr` TVar "a")) "test015"
-
-    testSuccess
-        (test020, testContext) (Forall [] [] tUnit) "test020"
-
-    testSuccess
-        (test030, testContext) (Forall [] [] tInt) "test030"
-
-    testSuccess
-        (test031, testContext) (Forall [] [] tInt) "test031"
-
-    testSuccess
-        (test032, testContext) (Forall [] [] tInt) "test032"
-
-    testSuccess
-        (test033, testContext) (Forall [] [] tInt) "test033"
-
-    testSuccess
-        (test034, testContext) (Forall [] [] tString) "test034"
-
-    testFailWithError
-        (test053, testContext) CannotUnify "test053"
-
-    testSuccess
-        (test054, testContext) (Forall [] [] tInt) "test054"
-
-    testSuccess
-        (test055, testContext) (Forall [] [] tInt) "test055"
-
-    testSuccess
-        (test056, testContext) (Forall [] [] tInt) "test056"
-
-    testFailWithError
-        (test057, testContext) CannotUnify "test057"
-
-    testFailWithError
-        (test058, testContext) CannotUnify "test058"
-
-    testFailWithError
-        (test059, testContext) CannotUnify "test059"
-
-    testFailWithError
-        (test060, testContext) CannotUnify "test060"
-
-    testSuccess
-        (test061, testContext) (Forall [] [] tString) "test061"
-
-    testFailWithError
-        (test062, testContext) CannotUnify "test062"
-
-    testFailWithError
-        (test063, testContext) EmptyCaseStatement "test063"
-
-    testFailWithError
-        (test070, testContext) CannotUnify "test070"
-
-    testFailWithError
-        (test075, testContext) CannotUnify "test075"
-
-    testSuccess
-        (test080, testContext) (Forall [] [] tInt) "test080"
-
-    testSuccess
-        (test090, testContext) (Forall [] [] tInt) "test090"
-
-    testFailWithError
-        (test100, testContext) (UnboundVariable "x") "test100"
-
-testSuccess :: (Expr, Context) -> Scheme -> Text -> SpecWith ()
-testSuccess (expr, context) ty name =
-    describe description (it describeSuccess test)
-  where
-    description = unpack $
-        name <> ": " <> prettyExpr expr
-
-    describeSuccess = unpack $
-        "✔ has type : "
-            <> prettyScheme ty
-
-    describeFailure = unpack $
-        "Expected type to be identical to : "
-            <> prettyScheme ty
-            <> " (up to isomorphism)"
-
-    test = case runTest context expr of
-        Left err ->
-            expectationFailure ("Type inference error: " <> show err)
-
-        Right ty' | isoTypes ty ty'  ->
-            pass
-
-        _ ->
-            expectationFailure describeFailure
-
-testFailure :: (Expr, Context) -> Scheme -> Text -> SpecWith ()
-testFailure (expr, context) ty name =
-    describe description (it describeSuccess test)
-  where
-    description = unpack $
-        name <> ": " <> prettyExpr expr
-
-    describeSuccess = unpack $
-        "✗ does not have type : "
-            <> prettyScheme ty
-
-    describeFailure = unpack $
-        "Expected type NOT to be identical to : "
-            <> prettyScheme ty
-
-    test = case runTest context expr of
-        Left err ->
-            expectationFailure ("Type inference error: " <> show err)
-
-        Right ty' | isoTypes ty ty'  ->
-            expectationFailure describeFailure
-
-        _ ->
-            pass
-
-testFailWithError :: (Expr, Context) -> TypeError -> Text -> SpecWith ()
-testFailWithError (expr, context) err name =
-    describe description (it describeSuccess test)
-  where
-    description = unpack $
-        name <> ": " <> prettyExpr expr
-
-    describeSuccess = "✗ fails with error " <> show err
-
-    test = case runTest context expr of
-        Left e | err == e ->
-            pass
-
-        _ ->
-            expectationFailure ("Expected test to fail with error " <> show err)
-
-runTest :: Context -> Expr -> Either TypeError Scheme
-runTest context expr =
-    getConst . left . unfix . runAnnotatedExpr <$> errorOrTypedExpr
-  where
-    errorOrTypedExpr = runInfer (inferType context expr)
-
--- =========================
--- ==== Pretty printing ====
--- =========================
-
-pass :: Expectation
-pass = pure ()
-
-data TypeRep
-    = ConRep Name
-    | VarRep Int
-    | ArrRep TypeRep TypeRep
-    | AppRep TypeRep TypeRep
-  deriving (Show, Eq)
-
-canonical :: Scheme -> Scheme
-canonical scheme = apply sub scheme
-  where
-    cod = enumFrom 1 >>= fmap (TVar . pack) . flip replicateM ['a'..'z']
-    dom = nub $ Set.toList $ free scheme
-    sub = Substitution $ Map.fromList (dom `zip` cod)
-
-isoTypes :: Scheme -> Scheme -> Bool
-isoTypes t u = canonical t == canonical u
-
-prettyScheme :: Scheme -> Text
-prettyScheme (Forall vars clcs ty) =
-    quantifiedVars <> constraints <> prettyType ty
-  where
-    quantifiedVars
-        | null vars = ""
-        | otherwise = "forall " <> Text.concat (intersperse " " vars) <> ". "
-    constraints
-        | null clcs = ""
-        | otherwise = Text.concat (intersperse ", " $ prettyClcs <$> clcs) <> " => "
-
-prettyClcs :: Class -> Text
-prettyClcs (Class name ty) = name <> " " <> prettyType ty
-
-prettyType :: Type -> Text
-prettyType = \case
-    TCon name  -> name
-    TVar name  -> name
-    TApp t1 t2 -> prettyType t1 <> " " <> prettyType t2
-    TArr t1 t2 -> prettyType t1 <> " -> " <> prettyType t2
-
-prettyExpr :: Expr -> Text
-prettyExpr = cata alg
-  where
-    alg :: Algebra ExprF Text
+    alg :: (MonadFix m, MonadFail m, MonadError EvalError m, MonadReader (Env m) m)
+        => Algebra ExprF (m (Value m))
     alg = \case
-        VarS name ->
-            name
+        VarS name -> do
+            env <- ask
+            evalMaybe (UnboundEnvVariable name) (Map.lookup name env)
 
-        LamS name a ->
-            "\\" <> name
-                 <> " -> "
-                 <> a
+        LamS name expr ->
+            asks (Closure name expr)
 
         AppS exprs ->
-            foldl1 (\f x -> "(" <> f <> " " <> x <> ")") exprs
-
-        LitS Unit ->
-            "()"
-
-        LitS (Bool bool) ->
-            pack (show bool)
-
-        LitS (Int n) ->
-            pack (show n)
-
-        LitS (Float r) ->
-            pack (show r)
-
-        LitS (Char c) ->
-            pack (show c)
-
-        LitS (String str) ->
-            pack (show str)
+            foldl1 evalApp exprs
 
         LitS prim ->
-            pack (show prim)
+            pure (Value prim)
 
-        LetS name expr body ->
-            "let " <> name <> " = " <> expr <> " in " <> body
+        LetS var expr body -> do
+            val <- expr
+            local (Map.insert var val) body
 
-        IfS cond true false ->
-            "if " <> cond <> " then " <> true <> " else " <> false
+        RecS var expr body -> do
+            val <- mfix (\val -> local (Map.insert var val) expr)
+            local (Map.insert var val) body
 
-        CaseS expr [] ->
-            "case {} of"
+        IfS cond true false -> do
+            Value (Bool isTrue) <- cond
+            if isTrue then true else false
 
-        CaseS expr clss ->
-            "case " <> expr <> " of { " <> Text.concat (intersperse "; " $ prettyClause <$> clss) <> " }"
+        CaseS expr clss -> do
+            val <- expr
+            evalCase val clss
 
-        OpS ops ->
-            prettyOp ops
+        OpS op ->
+            evalOp op
 
         AnnS expr ty ->
-            "TODO"
+            -- TODO
+            undefined
 
-prettyOp :: OpF Text -> Text
-prettyOp (AddS a b) = a <> " + " <> b
-prettyOp (SubS a b) = a <> " - " <> b
-prettyOp (MulS a b) = a <> " * " <> b
-prettyOp (EqS a b) = a <> " == " <> b
-prettyOp (LtS a b) = a <> " < " <> b
-prettyOp (GtS a b) = a <> " > " <> b
-prettyOp (NegS a) = "-" <> a
-prettyOp (NotS a) = "not " <> a
+        Err ->
+            throwError RuntimeError
 
-prettyClause :: (Pattern, Text) -> Text
-prettyClause (p, e) = prettyPattern p <> " => " <> e
+evalCase
+  :: (MonadError EvalError m, MonadReader (Env m) m)
+  => Value m
+  -> [(Pattern, m (Value m))]
+  -> m (Value m)
+evalCase _ [] = throwError RuntimeError
+evalCase val ((match, expr):cs) =
+    case unfix match of
+        AnyP ->
+            expr
 
-prettyPattern :: Pattern -> Text
-prettyPattern = trim . cata alg where
-    trim = dropPrefix . dropSuffix . Text.dropWhileEnd (== ' ')
-    alg (VarP name)    = name <> " "
-    alg (ConP name []) = name <> " "
-    alg (ConP name ps) = "(" <> name <> " " <> Text.dropEnd 1 (Text.concat ps) <> ") "
-    alg (LitP p)       = prettyPrim p <> " "
-    alg AnyP           = "_ "
+        VarP var ->
+            local (Map.insert var val) expr
 
-prettyPrim :: Prim -> Text
-prettyPrim Unit        = "()"
-prettyPrim (Bool b)    = pack (show b)
-prettyPrim (Float r)   = pack (show r)
-prettyPrim (Char c)    = pack (show c)
-prettyPrim (Int n)     = pack (show n)
-prettyPrim (Integer n) = pack (show n)
-prettyPrim (String s)  = "\"" <> s <> "\""
+        con ->
+            case matched con val of
+                Just pairs ->
+                    local (insertManyIntoEnv pairs) expr
 
-dropPrefix :: Text -> Text
-dropPrefix txt = fromMaybe txt $ Text.stripPrefix "(" txt
+                Nothing ->
+                    evalCase val cs
 
-dropSuffix :: Text -> Text
-dropSuffix txt = fromMaybe txt $ Text.stripSuffix ")" txt
+insertManyIntoEnv :: [(Name, Value m)] -> Env m -> Env m
+insertManyIntoEnv = flip (foldr (uncurry Map.insert))
 
-patterns :: [Pattern] -> Text
-patterns = Text.concat . intersperse "\n    - " . (:) "" . map prettyPattern
+matched :: PatternF Pattern -> Value m -> Maybe [(Name, Value m)]
+matched (ConP n ps) (Data m vs) | n == m = Just (zip (getVarName <$> ps) vs)
+matched _ _ = Nothing
 
-value :: Value m -> Text
-value (Value p)        = prettyPrim p
-value (Data name args) = name <> " " <> Text.concat (intersperse " " (value <$> args))
-value Closure{}        = "<<function>>"
+getVarName :: Pattern -> Name
+getVarName (Fix (VarP name)) = name
+
+evalApp
+  :: (MonadFail m, MonadReader (Env m) m)
+  => m (Value m)
+  -> m (Value m)
+  -> m (Value m)
+evalApp fun arg = do
+    Closure var body closure <- fun
+    val <- arg
+    local (const (Map.insert var val closure)) body
+
+evalOp
+  :: (MonadFail m, MonadError EvalError m)
+  => OpF (m (Value m))
+  -> m (Value m)
+evalOp = \case
+    AddS a b -> numOp (+) a b
+    SubS a b -> numOp (-) a b
+    MulS a b -> numOp (*) a b
+    EqS a b  -> do
+        Value val1 <- a
+        Value val2 <- b
+        case (val1, val2) of
+            (Int m, Int n) ->
+                bool (m == n)
+
+            (Bool a, Bool b) ->
+                bool (a == b)
+
+            (Unit, Unit) ->
+                bool True
+
+            _ -> throwError TypeMismatch
+
+
+    LtS a b -> do
+        Value (Int m) <- a
+        Value (Int n) <- b
+        bool (m < n)
+
+    GtS a b -> do
+        Value (Int m) <- a
+        Value (Int n) <- b
+        bool (m > n)
+
+    NegS a -> do
+        Value val <- a
+        case val of
+            Int n ->
+                int (negate n)
+
+            Float p ->
+                float (negate p)
+
+            _ -> throwError TypeMismatch
+
+    NotS a -> do
+        Value (Bool b) <- a
+        bool (not b)
+
+  where
+    numOp op a b = do
+        Value (Int m) <- a
+        Value (Int n) <- b
+        int (op m n)
+
+    bool  = pure . Value . Bool
+    int   = pure . Value . Int
+    float = pure . Value . Float
