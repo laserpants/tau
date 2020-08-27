@@ -206,7 +206,7 @@ data ExprF a
     | CaseS a [(Pattern, a)]
     | OpS (OpF a)
     | AnnS a Type
-    | Err
+    | ErrS
     deriving (Show, Eq, Functor, Foldable, Traversable)
 
 type Expr = Fix ExprF
@@ -544,7 +544,7 @@ opS = Fix . OpS
 -- annS = TODO
 
 errS :: Expr
-errS = Fix Err
+errS = Fix ErrS
 
 -- | AddS constructor
 addS :: Expr -> Expr -> Expr
@@ -1238,7 +1238,7 @@ eval = cata alg
             -- TODO
             undefined
 
-        Err ->
+        ErrS ->
             throwError RuntimeError
 
 evalCase
