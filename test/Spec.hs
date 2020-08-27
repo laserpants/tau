@@ -636,8 +636,8 @@ testEval = do
     evalTestEvalsTo (evalTest050, Value (Int 8)) "test050"
     evalTestEvalsTo (evalTest060, Value (Int 5)) "test060"
     evalTestIsFunction evalTest070               "test070"
-    evalTestFailsWithError (evalTest080, UnboundEnvVariable "x") "test080"
-    evalTestFailsWithError (evalTest110, UnboundEnvVariable "f") "test110"
+    evalTestFailsWithError (evalTest080, UnboundIdentifier "x") "test080"
+    evalTestFailsWithError (evalTest110, UnboundIdentifier "f") "test110"
     evalTestEvalsTo (evalTest115, Value (Int 120)) "test115"
 
 evalTestFailsWithError :: (Expr, EvalError) -> Name -> SpecWith ()

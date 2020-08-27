@@ -1161,7 +1161,7 @@ substituteLet name var body expr =
 
 data EvalError
     = RuntimeError
-    | UnboundEnvVariable Name
+    | UnboundIdentifier Name
     | TypeMismatch
     deriving (Show, Eq)
 
@@ -1206,7 +1206,7 @@ eval = cata alg
     alg = \case
         VarS name -> do
             env <- ask
-            evalMaybe (UnboundEnvVariable name) (Map.lookup name env)
+            evalMaybe (UnboundIdentifier name) (Map.lookup name env)
 
         LamS name expr ->
             asks (Closure name expr)
