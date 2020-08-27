@@ -216,6 +216,7 @@ data OpF a
     = AddS a a
     | SubS a a
     | MulS a a
+    | DivS a a
     | EqS a a
     | LtS a a
     | GtS a a
@@ -559,6 +560,10 @@ subS a1 a2 = opS (SubS a1 a2)
 -- | MulS constructor
 mulS :: Expr -> Expr -> Expr
 mulS a1 a2 = opS (MulS a1 a2)
+
+-- | DivS constructor
+divS :: Expr -> Expr -> Expr
+divS a1 a2 = opS (DivS a1 a2)
 
 -- | EqS constructor
 eqS :: Expr -> Expr -> Expr

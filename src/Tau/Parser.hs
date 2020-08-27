@@ -74,7 +74,7 @@ ast = appS <$> some atom
         <|> parens expr
         <|> ifClause
         <|> letBinding
-        <|> letrecBinding
+        <|> letRecBinding
         <|> lambda
         <|> int
         <|> bool
@@ -84,7 +84,23 @@ ast = appS <$> some atom
         <|> variable
 
 operator :: [[Operator Parser Expr]]
-operator = []
+operator =
+    [
+--      [ Prefix (Op . Neg <$ symbol "-")
+--      ]
+--    , [ Prefix (Op . Not <$ (symbol "not" *> spaces))
+--      ]
+      [ InfixL (mulS <$ symbol "*")
+      , InfixL (divS <$ symbol "/")
+      ]
+    , [ InfixL (addS <$ symbol "+")
+      , InfixL (subS <$ symbol "-")
+      ]
+--    , [ InfixN (binop Eq <$ symbol "==")
+--      , InfixN (binop Lt <$ symbol "<")
+--      , InfixN (binop Gt <$ symbol ">")
+--      ]
+    ]
 
 expr :: Parser Expr
 expr = makeExprParser ast operator
@@ -102,8 +118,8 @@ ifClause = do
     false <- keyword "else" *> expr
     pure (ifS cond true false)
 
-letrecBinding :: Parser Expr
-letrecBinding = parseLet recS "let rec"
+letRecBinding :: Parser Expr
+letRecBinding = parseLet recS "let rec"
 
 letBinding :: Parser Expr
 letBinding = parseLet letS "let"
