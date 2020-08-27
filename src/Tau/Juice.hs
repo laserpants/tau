@@ -302,7 +302,7 @@ useful :: Monad m => [[Pattern]] -> [Pattern] -> PatternCheckT m Bool
 useful [] qs = pure True        -- zero rows (0x0 matrix)
 useful px@(ps:_) qs =
     case (qs, length ps) of
-        (_, 0) -> pure False    -- 1 or more rows but zero cols
+        (_, 0) -> pure False    -- 1 or more rows but no columns
 
         ([], _) ->
             throwError PatternCheckFail
@@ -418,7 +418,9 @@ newtype PatternMatchCompilerT m a = PatternMatchCompilerT (PatternMatchCompilerT
   deriving (Functor, Applicative, Monad, MonadSupply Name)
 
 runPatternMatchCompilerT :: (Monad m) => PatternMatchCompilerT m a -> m a
-runPatternMatchCompilerT (PatternMatchCompilerT a) = evalSupplyT a (pfxed <$> [1..]) where
+runPatternMatchCompilerT (PatternMatchCompilerT a) = 
+    evalSupplyT a (pfxed <$> [1..]) 
+  where
     pfxed count = ":" <> pack (show count)
 
 type PatternMatchCompiler = PatternMatchCompilerT Identity
