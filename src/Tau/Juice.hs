@@ -878,6 +878,7 @@ inferOp = \case
     AddS e1 e2 -> op2 AddS e1 e2 numericOp2
     SubS e1 e2 -> op2 SubS e1 e2 numericOp2
     MulS e1 e2 -> op2 MulS e1 e2 numericOp2
+    DivS e1 e2 -> op2 DivS e1 e2 numericOp2
     LtS e1 e2 -> op2 LtS e1 e2 comparisonOp
     GtS e1 e2 -> op2 GtS e1 e2 comparisonOp
     EqS e1 e2 -> op2 EqS e1 e2 equalityOp
@@ -911,17 +912,19 @@ inferType (Context env) expr = do
     (ty, as, cs) <- infer expr
     case unboundVars env as of
         [] -> do
-            sub <- solve $ cs <> do
-                (x, s) <- runAssumption <$> as
-                (y, t) <- Map.toList env
-                guard (x == y)
-                pure (Explicit s t)
-
+            sub <- solve $ cs <> envConstraints as
             annotate sub ty
 
         (var:_) ->
             throwError (UnboundVariable var)
   where
+    envConstraints :: [Assumption] -> [Constraint]
+    envConstraints as = do
+        (x, s) <- runAssumption <$> as
+        (y, t) <- Map.toList env
+        guard (x == y)
+        pure (Explicit s t)
+
     annotate
       :: (Monad m)
       => Map Name Signature
@@ -1307,6 +1310,18 @@ evalOp = \case
     AddS a b -> numOp (+) a b
     SubS a b -> numOp (-) a b
     MulS a b -> numOp (*) a b
+    DivS a b -> do
+        Value v <- a
+        Value w <- b
+        case (v, w) of
+            (Int m, Int n) ->
+                int (m `div` n)
+
+            (Float p, Float q) ->
+                float (p / q)
+
+            _ -> throwError TypeMismatch
+
     EqS a b  -> do
         Value val1 <- a
         Value val2 <- b
@@ -1321,7 +1336,6 @@ evalOp = \case
                 bool True
 
             _ -> throwError TypeMismatch
-
 
     LtS a b -> do
         Value (Int m) <- a
