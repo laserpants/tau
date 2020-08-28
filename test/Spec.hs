@@ -8,6 +8,7 @@ import Data.Functor.Foldable
 import Data.List (intersperse, find, delete, nub, elemIndex)
 import Data.Maybe (fromMaybe, fromJust)
 import Data.Text (Text, pack, unpack)
+import Tau.Parser
 import Tau.Juice
 import qualified Data.Map.Strict as Map
 import qualified Data.Set.Monad as Set
@@ -23,6 +24,7 @@ main =
         describe "Substitute" testSubstitute
         describe "Type Classes" testTypeClasses
         describe "PatternCompile" testPatternCompile
+        describe "Parser" testParser
 
 typeInferTestExpr :: Expr
 typeInferTestExpr = lamS "a" (appS [varS "concat", appS [varS "show", varS "a"], litString "..."])
@@ -1213,6 +1215,42 @@ tclcsTestContext = Context (Map.fromList
     [ ("Show" , Forall ["a"] [] (TArr (TArr (TVar "a") tString) (TApp (TCon "Show") (TVar "a"))))
     , ("id"   , Forall ["a"] [] (TArr (TVar "a") (TVar "a")))
     ])
+
+-- ====================
+-- ==== TestParser ====
+-- ====================
+
+parserTest000 :: String
+parserTest000 = "4.3"
+
+parserTest010 :: String
+parserTest010 = "let x = 3 in x"
+
+testParser :: SpecWith ()
+testParser = do
+    testParsesTo "test000" (parserTest000, litFloat 4.3)
+    testParsesTo "test010" (parserTest010, letS "x" (litInt 3) (varS "x"))
+
+testParsesTo :: Name -> (String, Expr) -> SpecWith ()
+testParsesTo name (input, expr) =
+    describe description (it describeSuccess test)
+  where
+    description :: String
+    description = unpack $
+        name <> ": " <> pack input
+
+    describeSuccess = unpack $
+        "✔ parses to : " <> prettyExpr expr
+
+    test = case parseExpr input of
+        Left err ->
+            expectationFailure ("Unexpected error: " <> show err)
+
+        Right result | result == expr ->
+            pass
+
+        Right result ->
+            expectationFailure $ unpack ("Unexpected result: " <> pack (show result))
 
 -- ========================
 -- ==== Test utilities ====

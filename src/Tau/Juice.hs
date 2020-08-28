@@ -419,8 +419,8 @@ newtype PatternMatchCompilerT m a = PatternMatchCompilerT (PatternMatchCompilerT
   deriving (Functor, Applicative, Monad, MonadSupply Name)
 
 runPatternMatchCompilerT :: (Monad m) => PatternMatchCompilerT m a -> m a
-runPatternMatchCompilerT (PatternMatchCompilerT a) = 
-    evalSupplyT a (pfxed <$> [1..]) 
+runPatternMatchCompilerT (PatternMatchCompilerT a) =
+    evalSupplyT a (pfxed <$> [1..])
   where
     pfxed count = ":" <> pack (show count)
 
@@ -579,11 +579,11 @@ gtS a1 a2 = opS (GtS a1 a2)
 
 -- | NegS constructor
 negS :: Expr -> Expr
-negS a = opS (NegS a)
+negS = opS . NegS
 
 -- | NotS constructor
 notS :: Expr -> Expr
-notS a = opS (NotS a)
+notS = opS . NotS
 
 litUnit :: Expr
 litUnit = litS Unit
@@ -842,54 +842,59 @@ inferApp fun arg = do
          , a1 <> a2
          , c1 <> c2 <> [Equality t1 (TArr t2 beta) []] )
 
+op1
+  :: (MonadSupply Type m) =>
+     (Fix (AnnotatedExprF Type) -> OpF (Fix (AnnotatedExprF Type)))
+     -> m (Fix (AnnotatedExprF Type), Type, [Assumption], [Constraint])
+     -> Scheme
+     -> m (AnnotatedExpr Type, [Assumption], [Constraint])
+op1 con e1 sig = do
+    (_e1, t1, a1, c1) <- e1
+    beta <- supply
+    pure ( annotated beta (OpS (con _e1))
+         , a1
+         , c1 <> [Explicit (TArr t1 beta) sig] )
+
+op2
+  :: (MonadSupply Type m) =>
+     (Fix (AnnotatedExprF Type) -> Fix (AnnotatedExprF Type) -> OpF (Fix (AnnotatedExprF Type)))
+     -> m (Fix (AnnotatedExprF Type), Type, [Assumption], [Constraint])
+     -> m (Fix (AnnotatedExprF Type), Type, [Assumption], [Constraint])
+     -> Scheme
+     -> m (AnnotatedExpr Type, [Assumption], [Constraint])
+op2 con e1 e2 sig = do
+    (_e1, t1, a1, c1) <- e1
+    (_e2, t2, a2, c2) <- e2
+    beta <- supply
+    pure ( annotated beta (OpS (con _e1 _e2))
+         , a1 <> a2
+         , c1 <> c2 <> [Explicit (TArr t1 (TArr t2 beta)) sig] )
+
 inferOp
   :: (Monad m)
   => OpF (InferT m (Fix (AnnotatedExprF Type), Type, [Assumption], [Constraint]))
   -> InferT m (AnnotatedExpr Type, [Assumption], [Constraint])
 inferOp = \case
-    AddS e1 e2 -> binOp AddS e1 e2 tInt tInt
-    SubS e1 e2 -> binOp SubS e1 e2 tInt tInt
-    MulS e1 e2 -> binOp MulS e1 e2 tInt tInt
-    LtS e1 e2 -> binOp LtS e1 e2 tInt tBool
-    GtS e1 e2 -> binOp GtS e1 e2 tInt tBool
-    NegS e -> unOp NegS e tInt
-    NotS e -> unOp NotS e tBool
-    EqS e1 e2 -> do
-        (_e1, t1, a1, c1) <- e1
-        (_e2, t2, a2, c2) <- e2
-        beta <- supply
-        pure ( annotated beta (OpS (EqS _e1 _e2))
-             , a1 <> a2
-             , c1 <> c2 <> [Equality t1 t2 [], Equality beta tBool []] )
+    AddS e1 e2 -> op2 AddS e1 e2 numericOp2
+    SubS e1 e2 -> op2 SubS e1 e2 numericOp2
+    MulS e1 e2 -> op2 MulS e1 e2 numericOp2
+    LtS e1 e2 -> op2 LtS e1 e2 comparisonOp
+    GtS e1 e2 -> op2 GtS e1 e2 comparisonOp
+    EqS e1 e2 -> op2 EqS e1 e2 equalityOp
+    NegS e -> op1 NegS e numericOp1
+    NotS e -> op1 NotS e numericOp1
 
-unOp
-  :: (Monad m)
-  => (Fix (AnnotatedExprF Type) -> OpF (Fix (AnnotatedExprF Type)))
-  -> InferT m (Fix (AnnotatedExprF Type), Type, [Assumption], [Constraint])
-  -> Type
-  -> InferT m (AnnotatedExpr Type, [Assumption], [Constraint])
-unOp op expr t = do
-    (_e1, t1, a1, c1) <- expr
-    beta <- supply
-    pure ( annotated beta (OpS (op _e1))
-         , a1
-         , c1 <> [Equality (TArr t1 beta) (TArr t t) []] )
+numericOp1 :: Scheme
+numericOp1 = Forall ["a"] [Class "Num" (TVar "a")] (TArr (TVar "a") (TVar "a"))
 
-binOp
-  :: (Monad m)
-  => (Fix (AnnotatedExprF Type) -> Fix (AnnotatedExprF Type) -> OpF (Fix (AnnotatedExprF Type)))
-  -> InferT m (Fix (AnnotatedExprF Type), Type, [Assumption], [Constraint])
-  -> InferT m (Fix (AnnotatedExprF Type), Type, [Assumption], [Constraint])
-  -> Type
-  -> Type
-  -> InferT m (AnnotatedExpr Type, [Assumption], [Constraint])
-binOp op e1 e2 ta tb = do
-    (_e1, t1, a1, c1) <- e1
-    (_e2, t2, a2, c2) <- e2
-    beta <- supply
-    pure ( annotated beta (OpS (op _e1 _e2))
-         , a1 <> a2
-         , c1 <> c2 <> [Equality (TArr t1 (TArr t2 beta)) (TArr ta (TArr ta tb)) []] )
+numericOp2 :: Scheme
+numericOp2 = Forall ["a"] [Class "Num" (TVar "a")] (TArr (TVar "a") (TArr (TVar "a") (TVar "a")))
+
+equalityOp :: Scheme
+equalityOp = Forall ["a"] [Class "Eq" (TVar "a")] (TArr (TVar "a") (TArr (TVar "a") tBool))
+
+comparisonOp :: Scheme
+comparisonOp = Forall ["a"] [Class "Ord" (TVar "a")] (TArr (TVar "a") (TArr (TVar "a") tBool))
 
 inferPrim :: (Monad m) => Prim -> InferT m Type
 inferPrim = pure . \case
@@ -933,7 +938,10 @@ inferType (Context env) expr = do
             let cod = enumFrom 1 >>= fmap (TVar . pack) . flip replicateM ['a'..'z']
                 dom = nub $ Set.toList $ free ty
                 sub = Substitution $ Map.fromList (dom `zip` cod)
-             in annotated $ generalize mempty (apply sub clcs) (apply sub ty)
+                ty' = apply sub ty
+                clcs' = filter (\(Class _ ty) -> and [var `elem` free ty' | var <- Set.toList (free ty)]) clcs
+                -- TODO --
+             in annotated $ generalize mempty (apply sub clcs') ty'
 
 unboundVars :: Map Name a -> [Assumption] -> [Name]
 unboundVars env as = filter (`notMember` env) (fst . runAssumption <$> as)
@@ -949,8 +957,6 @@ expand triple = do
     (e, as, cs) <- first3 runAnnotatedExpr <$> triple
     let Const t :*: _ = unfix e
     pure (e, t, as, cs)
-
-{-# ANN inferOp ("HLint: ignore Reduce duplication" :: Text) #-}
 
 -- ============================================================================
 -- ============================ Constraints Solver ============================
@@ -1041,7 +1047,7 @@ instantiate (Forall vars clcs ty) = do
     pure $ apply (Substitution map) (clcs, ty)
 
 -- ============================================================================
--- ============================= Type.Unification =============================
+-- ============================= Type Unification =============================
 -- ============================================================================
 
 occursIn :: Name -> Type -> Bool

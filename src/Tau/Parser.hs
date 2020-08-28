@@ -5,6 +5,7 @@ import Control.Applicative ((<|>))
 import Control.Monad (void)
 import Control.Monad.Combinators.Expr
 import Data.Functor (($>))
+import Data.Functor.Foldable
 import Data.Text (Text, pack, unpack)
 import Data.Void
 import Tau.Juice hiding (($>), name)
@@ -61,24 +62,25 @@ identifier = lexeme $ try $ do
         then fail ("Reserved keyword " <> var)
         else pure var
 
-{-# ANN module ("HLint: ignore Use <$>" :: String) #-}
-
 -- ============================================================================
 -- =================================== Ast ====================================
 -- ============================================================================
 
 ast :: Parser Expr
-ast = appS <$> some atom
+ast = do
+    atoms <- some atom
+    pure $ case atoms of
+        (e:_) -> e
+        exprs -> appS exprs
   where
     atom = unit
         <|> parens expr
         <|> ifClause
-        <|> letBinding
         <|> letRecBinding
+        <|> letBinding
         <|> lambda
-        <|> int
+        <|> number
         <|> bool
-        <|> float
         <|> char
         <|> string
         <|> variable
@@ -86,20 +88,20 @@ ast = appS <$> some atom
 operator :: [[Operator Parser Expr]]
 operator =
     [
---      [ Prefix (Op . Neg <$ symbol "-")
---      ]
---    , [ Prefix (Op . Not <$ (symbol "not" *> spaces))
---      ]
-      [ InfixL (mulS <$ symbol "*")
+      [ Prefix (negS <$ symbol "-")
+      ]
+    , [ Prefix (notS <$ (symbol "not" *> spaces))
+      ]
+    , [ InfixL (mulS <$ symbol "*")
       , InfixL (divS <$ symbol "/")
       ]
     , [ InfixL (addS <$ symbol "+")
       , InfixL (subS <$ symbol "-")
       ]
---    , [ InfixN (binop Eq <$ symbol "==")
---      , InfixN (binop Lt <$ symbol "<")
---      , InfixN (binop Gt <$ symbol ">")
---      ]
+    , [ InfixN (eqS <$ symbol "==")
+      , InfixN (ltS <$ symbol "<")
+      , InfixN (gtS <$ symbol ">")
+      ]
     ]
 
 expr :: Parser Expr
@@ -150,7 +152,10 @@ int :: Parser Expr
 int = litInt <$> lexeme Lexer.decimal
 
 float :: Parser Expr
-float = litFloat <$> Lexer.float
+float = litFloat <$> lexeme Lexer.float
+
+number :: Parser Expr
+number = try float <|> int
 
 char :: Parser Expr
 char = litChar <$> between (symbol "'") (symbol "'") printChar
