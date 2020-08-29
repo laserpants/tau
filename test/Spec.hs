@@ -81,35 +81,35 @@ typeInferTest020 :: Expr
 typeInferTest020 = letS "const" (lamS "a" (lamS "b" (varS "a"))) (appS [varS "const", litUnit, litInt 5])
 
 typeInferTest030 :: Expr
-typeInferTest030 = appS [lamS "xs" (caseS (varS "xs") clauses), appS [varS "Cons", litInt 5, appS [varS "Nil"]]]
+typeInferTest030 = appS [lamS "xs" (matchS (varS "xs") clauses), appS [varS "Cons", litInt 5, appS [varS "Nil"]]]
   where
     clauses =
         [ (conP "Cons" [varP "y", varP "ys"], litInt 1)
         , (conP "Nil" [], litInt 2) ]
 
--- \xs -> case xs of { _ => 1 } Cons 5 Nil
+-- (\xs -> match xs with | _ => 1) (Cons 5 Nil)
 typeInferTest031 :: Expr
-typeInferTest031 = appS [lamS "xs" (caseS (varS "xs") clauses), appS [varS "Cons", litInt 5, appS [varS "Nil"]]]
+typeInferTest031 = appS [lamS "xs" (matchS (varS "xs") clauses), appS [varS "Cons", litInt 5, appS [varS "Nil"]]]
   where
     clauses = [ (anyP, litInt 1) ]
 
--- \xs -> case xs of { x => 1 } Cons 5 Nil
+-- (\xs -> match xs with | x => 1) (Cons 5 Nil)
 typeInferTest032 :: Expr
-typeInferTest032 = appS [lamS "xs" (caseS (varS "xs") clauses), appS [varS "Cons", litInt 5, appS [varS "Nil"]]]
+typeInferTest032 = appS [lamS "xs" (matchS (varS "xs") clauses), appS [varS "Cons", litInt 5, appS [varS "Nil"]]]
   where
     clauses = [ (varP "x", litInt 1) ]
 
--- \xs -> case xs of { Cons y ys => 1 } Cons 5 Nil
+-- (\xs -> match xs with | Cons y ys => 1) (Cons 5 Nil)
 typeInferTest033 :: Expr
-typeInferTest033 = appS [lamS "xs" (caseS (varS "xs") clauses), appS [varS "Cons", litInt 5, appS [varS "Nil"]]]
+typeInferTest033 = appS [lamS "xs" (matchS (varS "xs") clauses), appS [varS "Cons", litInt 5, appS [varS "Nil"]]]
   where
     clauses = [ (conP "Cons" [varP "y", varP "ys"], litInt 1) ]
 
 typeInferTest034 :: Expr
-typeInferTest034 = letS "xs" (appS [varS "Baz"]) (caseS (varS "xs") [ (conP "Baz" [], litString "hello")])
+typeInferTest034 = letS "xs" (appS [varS "Baz"]) (matchS (varS "xs") [ (conP "Baz" [], litString "hello")])
 
 typeInferTest040 :: Expr
-typeInferTest040 = appS [lamS "xs" (caseS (varS "xs") [(conP "Cons" [varP "y", varP "ys"], litInt 1), (conP "Nil" [], litInt 2)]), appS [varS "Nil"]]
+typeInferTest040 = appS [lamS "xs" (matchS (varS "xs") [(conP "Cons" [varP "y", varP "ys"], litInt 1), (conP "Nil" [], litInt 2)]), appS [varS "Nil"]]
 
 typeInferTest041 :: Expr
 typeInferTest041 = appS [varS "Cons", litInt 5]
@@ -123,64 +123,64 @@ typeInferTest043 = appS [varS "Cons", litInt 5, appS [varS "Cons", litInt 4, app
 typeInferTest044 :: Expr
 typeInferTest044 = appS [varS "Cons", litInt 5, appS [varS "Cons", litBool True, appS [varS "Nil"]]]
 
--- case Cons 5 Nil of { Cons y ys -> y + 1; Nil -> 0 })
+-- match Cons 5 Nil with | Cons y ys -> y + 1 | Nil -> 0
 typeInferTest050 :: Expr
-typeInferTest050 = caseS (appS [varS "Cons", litInt 5, appS [varS "Nil"]]) [(conP "Cons" [varP "y", varP "ys"], opS (AddS (varS "y") (litInt 1))), (conP "Nil" [], litInt 0)]
+typeInferTest050 = matchS (appS [varS "Cons", litInt 5, appS [varS "Nil"]]) [(conP "Cons" [varP "y", varP "ys"], opS (AddS (varS "y") (litInt 1))), (conP "Nil" [], litInt 0)]
 
--- case Cons "a" Nil of { Cons y ys -> y + 1 })
+-- match Cons "a" Nil with | Cons y ys -> y + 1
 typeInferTest053 :: Expr
-typeInferTest053 = caseS (appS [varS "Cons", litString "a", appS [varS "Nil"]]) [(conP "Cons" [varP "y", varP "ys"], opS (AddS (varS "y") (litInt 1)))]
+typeInferTest053 = matchS (appS [varS "Cons", litString "a", appS [varS "Nil"]]) [(conP "Cons" [varP "y", varP "ys"], opS (AddS (varS "y") (litInt 1)))]
 
--- case Cons 6 Nil of { Cons y ys -> y + 1 })
+-- match Cons 6 Nil with | Cons y ys -> y + 1
 typeInferTest054 :: Expr
-typeInferTest054 = caseS (appS [varS "Cons", litInt 6, appS [varS "Nil"]]) [(conP "Cons" [varP "y", varP "ys"], opS (AddS (varS "y") (litInt 1)))]
+typeInferTest054 = matchS (appS [varS "Cons", litInt 6, appS [varS "Nil"]]) [(conP "Cons" [varP "y", varP "ys"], opS (AddS (varS "y") (litInt 1)))]
 
 typeInferTest055 :: Expr
 typeInferTest055 = letS "xs" (appS [varS "Cons", litBool True, appS [varS "Nil"]]) (letS "ys" (appS [varS "Cons", litInt 1, appS [varS "Nil"]]) (litInt 5))
 
--- case Cons 6 Nil of { Cons y ys -> y + 1; Cons 4 ys -> 5 })
+-- match Cons 6 Nil with | Cons y ys -> y + 1 | Cons 4 ys -> 5
 typeInferTest056 :: Expr
-typeInferTest056 = caseS (appS [varS "Cons", litInt 6, appS [varS "Nil"]]) [(conP "Cons" [varP "y", varP "ys"], opS (AddS (varS "y") (litInt 1))), (conP "Cons" [litP (Int 4), varP "ys"], litInt 5)]
+typeInferTest056 = matchS (appS [varS "Cons", litInt 6, appS [varS "Nil"]]) [(conP "Cons" [varP "y", varP "ys"], opS (AddS (varS "y") (litInt 1))), (conP "Cons" [litP (Int 4), varP "ys"], litInt 5)]
 
--- case Cons 6 Nil of { Cons y ys -> y + 1; Cons 4 ys -> "foo" })
+-- match Cons 6 Nil with | Cons y ys -> y + 1 | Cons 4 ys -> "foo"
 typeInferTest057 :: Expr
-typeInferTest057 = caseS (appS [varS "Cons", litInt 6, appS [varS "Nil"]])
+typeInferTest057 = matchS (appS [varS "Cons", litInt 6, appS [varS "Nil"]])
     [ (conP "Cons" [varP "y", varP "ys"], opS (AddS (varS "y") (litInt 1)))
     , (conP "Cons" [litP (Int 4), varP "ys"], litString "foo") ]
 
--- case Cons 6 Nil of { Cons y ys -> y + 1; 5 -> 1 })
+-- match Cons 6 Nil with | Cons y ys -> y + 1 | 5 -> 1
 typeInferTest058 :: Expr
-typeInferTest058 = caseS (appS [varS "Cons", litInt 6, appS [varS "Nil"]])
+typeInferTest058 = matchS (appS [varS "Cons", litInt 6, appS [varS "Nil"]])
     [ (conP "Cons" [varP "y", varP "ys"], opS (AddS (varS "y") (litInt 1)))
     , (litP (Int 5), litInt 1) ]
 
--- case Cons 6 Nil of { Cons y ys -> y + 1; Cons "w" z -> 1 })
+-- match Cons 6 Nil with | Cons y ys -> y + 1 | Cons "w" z -> 1
 typeInferTest059 :: Expr
-typeInferTest059 = caseS (appS [varS "Cons", litInt 6, appS [varS "Nil"]])
+typeInferTest059 = matchS (appS [varS "Cons", litInt 6, appS [varS "Nil"]])
     [ (conP "Cons" [varP "y", varP "ys"], opS (AddS (varS "y") (litInt 1)))
     , (conP "Cons" [litP (String "w"), varP "z"], litInt 1) ]
 
--- case Cons 6 Nil of { Cons y ys -> y + 1; Cons z 5 -> 1 })
+-- match Cons 6 Nil with | Cons y ys -> y + 1 | Cons z 5 -> 1
 typeInferTest060 :: Expr
-typeInferTest060 = caseS (appS [varS "Cons", litInt 6, appS [varS "Nil"]])
+typeInferTest060 = matchS (appS [varS "Cons", litInt 6, appS [varS "Nil"]])
     [ (conP "Cons" [varP "y", varP "ys"], opS (AddS (varS "y") (litInt 1)))
     , (conP "Cons" [varP "z", litP (Int 5)], litInt 1) ]
 
--- case Cons 6 Nil of { Cons y ys -> "one"; _ -> "two" })
+-- match Cons 6 Nil with | Cons y ys -> "one" | _ -> "two"
 typeInferTest061 :: Expr
-typeInferTest061 = caseS (appS [varS "Cons", litInt 6, appS [varS "Nil"]])
+typeInferTest061 = matchS (appS [varS "Cons", litInt 6, appS [varS "Nil"]])
     [ (conP "Cons" [varP "y", varP "ys"], litString "one")
     , (anyP, litString "two") ]
 
--- case Cons 6 Nil of { Cons y ys -> y; _ -> "two" })
+-- match Cons 6 Nil with | Cons y ys -> y | _ -> "two"
 typeInferTest062 :: Expr
-typeInferTest062 = caseS (appS [varS "Cons", litInt 6, appS [varS "Nil"]])
+typeInferTest062 = matchS (appS [varS "Cons", litInt 6, appS [varS "Nil"]])
     [ (conP "Cons" [varP "y", varP "ys"], varS "y")
     , (anyP, litString "two") ]
 
--- case Nil of {}
+-- match Nil with []
 typeInferTest063 :: Expr
-typeInferTest063 = caseS (appS [varS "Nil"]) []
+typeInferTest063 = matchS (appS [varS "Nil"]) []
 
 -- if 1 == True then 1 else 0
 typeInferTest070 :: Expr
@@ -205,6 +205,9 @@ typeInferTest110 = letS "f" (lamS "n" (ifS (varS "n" `eqS` litInt 0) (litInt 1) 
 
 typeInferTest115 :: Expr
 typeInferTest115 = recS "f" (lamS "n" (ifS (varS "n" `eqS` litInt 0) (litInt 1) (mulS (varS "n") (appS [varS "f", subS (varS "n") (litInt 1)])))) (appS [varS "f", litInt 5])
+
+typeInferTest130 :: Expr
+typeInferTest130 = appS [lamS "x" (matchS (varS "x") [(litP (Int 1), litInt 2), (litP (Int 2), litInt 3)]), litInt 1]
 
 testInfer :: SpecWith ()
 testInfer = do
@@ -294,7 +297,7 @@ testInfer = do
         (typeInferTest062, testContext) CannotUnify "test062"
 
     typeInferTestFailWithError
-        (typeInferTest063, testContext) EmptyCaseStatement "test063"
+        (typeInferTest063, testContext) EmptyMatchStatement "test063"
 
     typeInferTestFailWithError
         (typeInferTest070, testContext) CannotUnify "test070"
@@ -316,6 +319,9 @@ testInfer = do
 
     typeInferTestSuccess
         (typeInferTest115, testContext) (Forall [] [] tInt) "test115"
+
+    typeInferTestSuccess
+        (typeInferTest130, testContext) (Forall [] [] tInt) "test130"
 
 typeInferTestSuccess :: (Expr, Context) -> Scheme -> Text -> SpecWith ()
 typeInferTestSuccess (expr, context) ty name =
@@ -340,7 +346,7 @@ typeInferTestSuccess (expr, context) ty name =
         Right ty' | isoTypes ty ty'  ->
             pass
 
-        _ ->
+        t ->
             expectationFailure describeFailure
 
 typeInferTestFailure :: (Expr, Context) -> Scheme -> Text -> SpecWith ()
@@ -597,12 +603,12 @@ evalTest020 = letS "const" (lamS "a" (lamS "b" (varS "a"))) (appS [varS "const",
 -- (\xs -> case xs of { Cons y ys -> 1; Nil -> 2 }) (Cons 5 Nil)
 -- 1
 evalTest030 :: Expr
-evalTest030 = appS [lamS "xs" (caseS (varS "xs") [(conP "Cons" [varP "y", varP "ys"], litInt 1), (conP "Nil" [], litInt 2)]), appS [varS "Cons", litInt 5, appS [varS "Nil"]]]
+evalTest030 = appS [lamS "xs" (matchS (varS "xs") [(conP "Cons" [varP "y", varP "ys"], litInt 1), (conP "Nil" [], litInt 2)]), appS [varS "Cons", litInt 5, appS [varS "Nil"]]]
 
 -- (\xs -> case xs of { Cons y ys -> 1; Nil -> 2 }) Nil
 -- 2
 evalTest040 :: Expr
-evalTest040 = appS [lamS "xs" (caseS (varS "xs") [(conP "Cons" [varP "y", varP "ys"], litInt 1), (conP "Nil" [], litInt 2)]), appS [varS "Nil"]]
+evalTest040 = appS [lamS "xs" (matchS (varS "xs") [(conP "Cons" [varP "y", varP "ys"], litInt 1), (conP "Nil" [], litInt 2)]), appS [varS "Nil"]]
 
 -- let plus = \a -> \b -> a + b in let plus5 = plus 5 in let id = \x -> x in (id plus5) (id 3)
 -- 8
@@ -631,6 +637,9 @@ evalTest115 = recS "f" (lamS "n" (ifS (varS "n" `eqS` litInt 0) (litInt 1) (mulS
 evalTest120 :: Expr
 evalTest120 = varS "hello"
 
+evalTest130 :: Expr
+evalTest130 = compileAll $ appS [lamS "x" (matchS (varS "x") [(litP (Int 1), litInt 2), (litP (Int 2), litInt 3)]), litInt 1]
+
 testEval :: SpecWith ()
 testEval = do
     evalTestIsFunction evalTest000               "test000"
@@ -645,6 +654,7 @@ testEval = do
     evalTestFailsWithError (evalTest110, UnboundIdentifier "f") "test110"
     evalTestEvalsTo (evalTest115, Value (Int 120)) "test115"
     evalTestFailsWithError (evalTest120, UnboundIdentifier "hello") "test120"
+    evalTestEvalsTo (evalTest130, Value (Int 2)) "test130"
 
 evalTestFailsWithError :: (Expr, EvalError) -> Name -> SpecWith ()
 evalTestFailsWithError (expr, err) name =
@@ -709,9 +719,9 @@ evalTestEnv = Map.fromList
     , ("Nil"    , dataCon "Nil" 0)
     , ("Tuple2" , dataCon "Tuple2" 2)
                   -- \p -> case p of Tuple2 a b => a
-    , ("fst"    , evalE (lamS "p" (caseS (varS "p") [(conP "Tuple2" [varP "a", varP "b"], varS "a")])))
+    , ("fst"    , evalE (lamS "p" (matchS (varS "p") [(conP "Tuple2" [varP "a", varP "b"], varS "a")])))
                   -- \p -> case p of Tuple2 a b => b
-    , ("snd"    , evalE (lamS "p" (caseS (varS "p") [(conP "Tuple2" [varP "a", varP "b"], varS "b")])))
+    , ("snd"    , evalE (lamS "p" (matchS (varS "p") [(conP "Tuple2" [varP "a", varP "b"], varS "b")])))
     ]
 
 evalRunTest :: Expr -> Either EvalError (Value Eval)
@@ -875,39 +885,39 @@ substTest070 =
 
 -- case xs of { x => 5 } [ x := 123 ]
 substTest080 =
-    ( caseS (varS "xs") [(varP "x", litInt 5)]
+    ( matchS (varS "xs") [(varP "x", litInt 5)]
     , ("x", litInt 123)
-    , caseS (varS "xs") [(varP "x", litInt 5)] )
+    , matchS (varS "xs") [(varP "x", litInt 5)] )
 
 -- case xs of { x => x } [ x := 123 ]
 substTest085 =
-    ( caseS (varS "xs") [(varP "x", varS "x")]
+    ( matchS (varS "xs") [(varP "x", varS "x")]
     , ("x", litInt 123)
-    , caseS (varS "xs") [(varP "x", varS "x")] )
+    , matchS (varS "xs") [(varP "x", varS "x")] )
 
 -- case xs of { y => x } [ x := 123 ]
 substTest090 =
-    ( caseS (varS "xs") [(varP "y", varS "x")]
+    ( matchS (varS "xs") [(varP "y", varS "x")]
     , ("x", litInt 123)
-    , caseS (varS "xs") [(varP "y", litInt 123)] )
+    , matchS (varS "xs") [(varP "y", litInt 123)] )
 
 -- case xs of { Cons x xs => x } [ x := 123 ]
 substTest100 =
-    ( caseS (varS "xs") [(conP "Cons" [varP "x", varP "xs"], varS "x")]
+    ( matchS (varS "xs") [(conP "Cons" [varP "x", varP "xs"], varS "x")]
     , ("x", litInt 123)
-    , caseS (varS "xs") [(conP "Cons" [varP "x", varP "xs"], varS "x")] )
+    , matchS (varS "xs") [(conP "Cons" [varP "x", varP "xs"], varS "x")] )
 
 -- case xs of { Cons y xs => x } [ x := 123 ]
 substTest110 =
-    ( caseS (varS "xs") [(conP "Cons" [varP "y", varP "xs"], varS "x")]
+    ( matchS (varS "xs") [(conP "Cons" [varP "y", varP "xs"], varS "x")]
     , ("x", litInt 123)
-    , caseS (varS "xs") [(conP "Cons" [varP "y", varP "xs"], litInt 123)] )
+    , matchS (varS "xs") [(conP "Cons" [varP "y", varP "xs"], litInt 123)] )
 
 -- case x of { _ => x } [ x := 123 ]
 substTest120 =
-    ( caseS (varS "x") [(anyP, varS "x")]
+    ( matchS (varS "x") [(anyP, varS "x")]
     , ("x", litInt 123)
-    , caseS (litInt 123) [(anyP, litInt 123)] )
+    , matchS (litInt 123) [(anyP, litInt 123)] )
 
 testSubstitute :: SpecWith ()
 testSubstitute = do
@@ -954,7 +964,7 @@ testSubst (body, (var, expr), expected) name =
 
 patternCompilerTestExpr1 :: Expr
 patternCompilerTestExpr1 =
-    lamS "xs" (caseS (varS "xs")
+    lamS "xs" (matchS (varS "xs")
         -- Cons 5 Nil => "one"
         [ (conP "Cons" [litP (Int 5), conP "Nil" []], litString "one")
         -- Cons x (Cons 3 ys) => "two"
@@ -971,7 +981,7 @@ patternCompilerTestExpr1 =
 
 patternCompilerTestExpr2 :: Expr
 patternCompilerTestExpr2 =
-    lamS "xs" (caseS (varS "xs")
+    lamS "xs" (matchS (varS "xs")
         -- Cons 5 Nil => #1
         [ (conP "Cons" [litP (Int 5), conP "Nil" []], litString "#1")
         -- Cons x (Cons x xs) => #2
@@ -982,7 +992,7 @@ patternCompilerTestExpr2 =
 
 patternCompilerTestExpr3 :: Expr
 patternCompilerTestExpr3 =
-    lamS "xs" (caseS (varS "xs")
+    lamS "xs" (matchS (varS "xs")
         -- Just 1 => 1
         [ (conP "Just" [litP (Int 1)], litInt 1)
         -- Just 2 => 2
@@ -1096,8 +1106,7 @@ patternCompilerTestSuccess (expr1, expr2, expected) name =
   where
     description = unpack
         ( name <> ": ("
-               <> Text.take 30 (prettyExpr expr1)
-               <> "...) "
+               <> prettyExpr expr1
                <> prettyExpr expr2 )
 
     describeSuccess =
@@ -1120,8 +1129,7 @@ patternCompilerTestFailure (expr1, expr2, expected) name =
   where
     description = unpack
         ( name <> ": ("
-               <> Text.take 30 (prettyExpr expr1)
-               <> "...) "
+               <> prettyExpr expr1
                <> prettyExpr expr2 )
 
     describeSuccess =
@@ -1144,12 +1152,12 @@ patternCompilerTestFailure (expr1, expr2, expected) name =
 -- (\s -> \a -> case s of { Show f => f a }) (Show id) "hello"
 -- "hello" : String
 tclcsTest000 :: Expr
-tclcsTest000 = appS [lamS "s" (lamS "a" (caseS (varS "s") [(conP "Show" [varP "f"], appS [varS "f", varS "a"])])), appS [varS "Show", varS "id"], litString "hello"]
+tclcsTest000 = appS [lamS "s" (lamS "a" (matchS (varS "s") [(conP "Show" [varP "f"], appS [varS "f", varS "a"])])), appS [varS "Show", varS "id"], litString "hello"]
 
 -- (\s -> \a -> case s of { Show f => f a }) (Show (\x -> if x then "True" else "False")) False
 -- "False" : String
 tclcsTest010 :: Expr
-tclcsTest010 = appS [lamS "s" (lamS "a" (caseS (varS "s") [(conP "Show" [varP "f"], appS [varS "f", varS "a"])])), appS [varS "Show", lamS "x" (ifS (varS "x") (litString "True") (litString "False"))], litBool False]
+tclcsTest010 = appS [lamS "s" (lamS "a" (matchS (varS "s") [(conP "Show" [varP "f"], appS [varS "f", varS "a"])])), appS [varS "Show", lamS "x" (ifS (varS "x") (litString "True") (litString "False"))], litBool False]
 
 testTypeClasses :: SpecWith ()
 testTypeClasses = do
@@ -1223,13 +1231,45 @@ tclcsTestContext = Context (Map.fromList
 parserTest000 :: String
 parserTest000 = "4.3"
 
+parserTest005 :: String
+parserTest005 = "4"
+
 parserTest010 :: String
 parserTest010 = "let x = 3 in x"
+
+parserTest020 :: String
+parserTest020 = "f x"
+
+parserTest030 :: String
+parserTest030 = "x"
+
+parserTest040 :: String
+parserTest040 = "f (g y)"
+
+parserTest050 :: String
+parserTest050 = "f g h i"
+
+parserTest060 :: String
+parserTest060 = "()"
+
+parserTest070 :: String
+parserTest070 = "(())"
+
+parserTest080 :: String
+parserTest080 = "match n with | 1 -> True | 2 -> False"
 
 testParser :: SpecWith ()
 testParser = do
     testParsesTo "test000" (parserTest000, litFloat 4.3)
+    testParsesTo "test005" (parserTest005, litInt 4)
     testParsesTo "test010" (parserTest010, letS "x" (litInt 3) (varS "x"))
+    testParsesTo "test020" (parserTest020, appS [varS "f", varS "x"])
+    testParsesTo "test030" (parserTest030, varS "x")
+    testParsesTo "test040" (parserTest040, appS [varS "f", appS [varS "g", varS "y"]])
+    testParsesTo "test050" (parserTest050, appS (varS <$> ["f", "g", "h", "i"]))
+    testParsesTo "test060" (parserTest060, litUnit)
+    testParsesTo "test070" (parserTest070, litUnit)
+    testParsesTo "test080" (parserTest080, matchS (varS "n") [(litP (Int 1), litS (Bool True)), (litP (Int 2), litS (Bool False))])
 
 testParsesTo :: Name -> (String, Expr) -> SpecWith ()
 testParsesTo name (input, expr) =
@@ -1267,11 +1307,11 @@ data TypeRep
   deriving (Show, Eq)
 
 canonical :: Scheme -> Scheme
-canonical scheme = apply sub scheme
+canonical (Forall vars clcs ty) =
+    Forall names (apply sub clcs) (apply sub ty)
   where
-    cod = enumFrom 1 >>= fmap (TVar . pack) . flip replicateM ['a'..'z']
-    dom = nub $ Set.toList $ free scheme
-    sub = Substitution $ Map.fromList (dom `zip` cod)
+    names = take (length vars) (enumFrom 1 >>= fmap pack . flip replicateM ['a'..'z'])
+    sub = Substitution $ Map.fromList $ zip vars (TVar <$> names)
 
 isoTypes :: Scheme -> Scheme -> Bool
 isoTypes t u = canonical t == canonical u
@@ -1306,9 +1346,11 @@ prettyExpr = cata alg
             name
 
         LamS name a ->
+            "("  <>
             "\\" <> name
                  <> " -> "
                  <> a
+                 <> ")"
 
         AppS exprs ->
             foldl1 (\f x -> "(" <> f <> " " <> x <> ")") exprs
@@ -1322,6 +1364,9 @@ prettyExpr = cata alg
         LitS (Int n) ->
             pack (show n)
 
+        LitS (Integer n) ->
+            pack (show n)
+
         LitS (Float r) ->
             pack (show r)
 
@@ -1331,9 +1376,6 @@ prettyExpr = cata alg
         LitS (String str) ->
             pack (show str)
 
-        LitS prim ->
-            pack (show prim)
-
         LetS name expr body ->
             "let " <> name <> " = " <> expr <> " in " <> body
 
@@ -1341,19 +1383,22 @@ prettyExpr = cata alg
             "let rec " <> name <> " = " <> expr <> " in " <> body
 
         IfS cond true false ->
-            "if " <> cond <> " then " <> true <> " else " <> false
+            "("  <> "if " <> cond <> " then " <> true <> " else " <> false <> ")"
 
-        CaseS expr [] ->
-            "case {} of"
+        MatchS expr [] ->
+            "match [] with"
 
-        CaseS expr clss ->
-            "case " <> expr <> " of { " <> Text.concat (intersperse "; " $ prettyClause <$> clss) <> " }"
+        MatchS expr clss ->
+            "match " <> expr <> " with | " <> Text.concat (intersperse " | " $ prettyClause <$> clss)
 
         OpS ops ->
             prettyOp ops
 
         AnnS expr ty ->
             "TODO"
+
+        ErrS ->
+            "<<error>>"
 
 prettyOp :: OpF Text -> Text
 prettyOp (AddS a b) = a <> " + " <> b

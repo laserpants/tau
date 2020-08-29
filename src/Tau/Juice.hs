@@ -19,6 +19,7 @@ import Control.Monad.Extra (anyM)
 import Control.Monad.Identity
 import Control.Monad.Reader
 import Control.Monad.Supply
+import Control.Monad.Writer
 import Data.Eq.Deriving
 import Data.Foldable (foldrM)
 import Data.Function ((&))
@@ -130,9 +131,6 @@ class Substitutable a where
 instance (Substitutable a) => Substitutable [a] where
     apply = fmap . apply
 
-instance (Substitutable a, Substitutable b) => Substitutable (a, b) where
-    apply sub pair = (apply sub (fst pair), apply sub (snd pair))
-
 instance Substitutable Type where
     apply sub ty@(TVar var) = Map.findWithDefault ty var (runSubstitution sub)
     apply sub (TArr t1 t2)  = TArr (apply sub t1) (apply sub t2)
@@ -202,8 +200,8 @@ data ExprF a
     | LitS Prim
     | LetS Name a a
     | RecS Name a a
-    | IfS a a a
-    | CaseS a [(Pattern, a)]
+    | IfS a ~a ~a
+    | MatchS a [(Pattern, a)]
     | OpS (OpF a)
     | AnnS a Type
     | ErrS
@@ -303,7 +301,7 @@ useful :: Monad m => [[Pattern]] -> [Pattern] -> PatternCheckT m Bool
 useful [] qs = pure True        -- zero rows (0x0 matrix)
 useful px@(ps:_) qs =
     case (qs, length ps) of
-        (_, 0) -> pure False    -- 1 or more rows but no columns
+        (_, 0) -> pure False    -- one or more rows but no columns
 
         ([], _) ->
             throwError PatternCheckFail
@@ -441,7 +439,7 @@ matchDefault def (u:us) qs = foldrM (flip run) def (groups qs) where
             css <- traverse groupClause (conGroups eqs)
             pure $ case css <> [(anyP, def) | errS /= def] of
                 [] -> def
-                css' -> caseS u css'
+                css' -> matchS u css'
           where
             groupClause :: MonadSupply Name m => ConGroup -> m (Pattern, Expr)
             groupClause ConGroup{..} = do
@@ -489,7 +487,7 @@ allPatternsAreSimple = cata $ \case
     AnnS expr _ ->
         expr
 
-    CaseS expr clss ->
+    MatchS expr clss ->
         expr && and (snd <$> clss)
              && and (isSimple . fst <$> clss)
 
@@ -498,7 +496,7 @@ allPatternsAreSimple = cata $ \case
 
 compileAll :: Expr -> Expr
 compileAll = cata $ \case
-    CaseS expr clss ->
+    MatchS expr clss ->
         runPatternMatchCompiler (compilePatterns [expr] (first (:[]) <$> clss))
 
     expr ->
@@ -536,9 +534,9 @@ recS a1 a2 = Fix . RecS a1 a2
 ifS :: Expr -> Expr -> Expr -> Expr
 ifS a1 a2 a3 = Fix (IfS a1 a2 a3)
 
--- | CaseS constructor
-caseS :: Expr -> [(Pattern, Expr)] -> Expr
-caseS a = Fix . CaseS a
+-- | MatchS constructor
+matchS :: Expr -> [(Pattern, Expr)] -> Expr
+matchS a = Fix . MatchS a
 
 -- | OpS constructor
 opS :: OpF Expr -> Expr
@@ -631,7 +629,7 @@ data TypeError
     | CannotUnify
     | InfiniteType
     | UnboundVariable Name
-    | EmptyCaseStatement
+    | EmptyMatchStatement
     | ImplementationError
     deriving (Show, Eq)
 
@@ -724,7 +722,7 @@ infer = cata alg where
             (_expr, t1, a1, c1) <- local (insertIntoMonoset var) expr
             pure ( annotated (TArr beta t1) (LamS name _expr)
                  , removeAssumption name a1
-                 , c1 <> [Equality t beta [] | (y, t) <- runAssumption <$> a1, name == y] )
+                 , c1 <> [Equality t beta | (y, t) <- runAssumption <$> a1, name == y] )
 
         AppS exprs -> do
             (_expr, _, as, cs) <- foldl1 inferApp exprs
@@ -746,16 +744,16 @@ infer = cata alg where
             (_false, t3, a3, c3) <- false
             pure ( annotated t2 (IfS _cond _true _false)
                  , a1 <> a2 <> a3
-                 , c1 <> c2 <> c3 <> [Equality t1 tBool [], Equality t2 t3 []] )
+                 , c1 <> c2 <> c3 <> [Equality t1 tBool, Equality t2 t3] )
 
-        CaseS _ [] ->
-            throwError EmptyCaseStatement
+        MatchS _ [] ->
+            throwError EmptyMatchStatement
 
-        CaseS expr clss -> do
+        MatchS expr clss -> do
             beta <- supply
             (_expr, t1, a1, c1) <- expr
             (_clss, as, cs) <- foldrM (inferClause beta t1) ([], [], []) clss
-            pure ( annotated beta (CaseS _expr _clss)
+            pure ( annotated beta (MatchS _expr _clss)
                  , a1 <> as
                  , c1 <> cs )
 
@@ -796,7 +794,7 @@ inferClause beta t (pat, expr) (ps, as, cs) = do
          , as <> removeManyAssumptions vars a1
               <> removeManyAssumptions vars a2
          , cs <> c1 <> c2
-              <> [Equality beta t1 [], Equality t t2 []]
+              <> [Equality beta t1, Equality t t2]
               <> constraints a1 a2 )
   where
     vars = patternVars pat
@@ -805,7 +803,7 @@ inferClause beta t (pat, expr) (ps, as, cs) = do
         (y2, t2) <- runAssumption <$> a2
         var <- vars
         guard (var == y1 && var == y2)
-        pure (Equality t1 t2 [])
+        pure (Equality t1 t2)
 
 inferPattern :: (Monad m) => Pattern -> InferT m (Type, [Assumption], [Constraint])
 inferPattern = cata $ \case
@@ -840,7 +838,7 @@ inferApp fun arg = do
     pure ( Fix (Const beta :*: AppS [_e1, _e2])
          , beta
          , a1 <> a2
-         , c1 <> c2 <> [Equality t1 (TArr t2 beta) []] )
+         , c1 <> c2 <> [Equality t1 (TArr t2 beta)] )
 
 op1
   :: (MonadSupply Type m) =>
@@ -912,7 +910,18 @@ inferType (Context env) expr = do
     (ty, as, cs) <- infer expr
     case unboundVars env as of
         [] -> do
-            sub <- solve $ cs <> envConstraints as
+            --let xxx = solve ([], cs <> envConstraints as)
+            (sub, clcs) <- runWriterT (solve (cs <> envConstraints as))
+            --pure (apply sub ty)
+            --sub <- solve (cs <> envConstraints as)
+--            traceShowM ">>>> 1"
+--            traceShowM ty
+--            traceShowM ">>>> 2"
+--            traceShowM sub
+--            traceShowM ">>>> 3"
+--            traceShowM clcs
+            traceShowM clcs
+--            traceShowM ">>>>"
             annotate sub ty
 
         (var:_) ->
@@ -925,26 +934,33 @@ inferType (Context env) expr = do
         guard (x == y)
         pure (Explicit s t)
 
-    annotate
-      :: (Monad m)
-      => Map Name Signature
-      -> AnnotatedExpr Type
-      -> InferT m (AnnotatedExpr Scheme)
-    annotate map = cata alg . runAnnotatedExpr
-      where
-        alg
-          :: (Monad m)
-          => Algebra (AnnotatedExprF Type) (InferT m (AnnotatedExpr Scheme))
-        alg (Const ty :*: expr) =
-            forall (applySigMap map [] ty) . fmap runAnnotatedExpr <$> sequence expr
-        forall (clcs, ty) =
-            let cod = enumFrom 1 >>= fmap (TVar . pack) . flip replicateM ['a'..'z']
-                dom = nub $ Set.toList $ free ty
-                sub = Substitution $ Map.fromList (dom `zip` cod)
-                ty' = apply sub ty
-                clcs' = filter (\(Class _ ty) -> and [var `elem` free ty' | var <- Set.toList (free ty)]) clcs
-                -- TODO --
-             in annotated $ generalize mempty (apply sub clcs') ty'
+    annotate sub = cata alg . runAnnotatedExpr where
+        alg :: Monad m => Algebra (AnnotatedExprF Type) (InferT m (AnnotatedExpr Scheme))
+        alg (Const ty :*: expr) = do
+            zz <- fmap runAnnotatedExpr <$> sequence expr
+            pure $ annotated (generalize mempty [] (apply sub ty)) zz
+
+--    annotate
+--      :: (Monad m)
+--      => Map Name Signature
+--      -> AnnotatedExpr Type
+--      -> InferT m (AnnotatedExpr Scheme)
+--    annotate map = cata alg . runAnnotatedExpr
+--      where
+--        alg
+--          :: (Monad m)
+--          => Algebra (AnnotatedExprF Type) (InferT m (AnnotatedExpr Scheme))
+--        alg (Const ty :*: expr) =
+--            forall (applySigMap map [] ty) . fmap runAnnotatedExpr <$> sequence expr
+--        forall (clcs, ty) =
+--            let
+--                cod = enumFrom 1 >>= fmap (TVar . pack) . flip replicateM ['a'..'z']
+--                dom = nub $ Set.toList $ free ty
+--                sub = Substitution $ Map.fromList (dom `zip` cod)
+--                ty' = apply sub ty
+--                clcs' = filter (\(Class _ ty) -> and [var `elem` free ty' | var <- Set.toList (free ty)]) clcs
+--                -- TODO --
+--             in annotated $ generalize mempty (apply sub clcs') ty'
 
 unboundVars :: Map Name a -> [Assumption] -> [Name]
 unboundVars env as = filter (`notMember` env) (fst . runAssumption <$> as)
@@ -975,13 +991,13 @@ removeManyAssumptions :: [Name] -> [Assumption] -> [Assumption]
 removeManyAssumptions = flip (foldr removeAssumption)
 
 data Constraint
-    = Equality Type Type [Class]
+    = Equality Type Type
     | Implicit Type Type Monoset
     | Explicit Type Scheme
     deriving (Show, Eq)
 
 instance Substitutable Constraint where
-    apply sub (Equality t1 t2 clcs) = Equality (apply sub t1) (apply sub t2) (apply sub clcs)
+    apply sub (Equality t1 t2)      = Equality (apply sub t1) (apply sub t2)
     apply sub (Implicit t1 t2 mono) = Implicit (apply sub t1) (apply sub t2) (apply sub mono)
     apply sub (Explicit t1 scheme)  = Explicit (apply sub t1) (apply sub scheme)
 
@@ -989,7 +1005,7 @@ class Active a where
     active :: a -> Set Name
 
 instance Active Constraint where
-    active (Equality t1 t2 _)    = free t1 `union` free t2
+    active (Equality t1 t2)      = free t1 `union` free t2
     active (Implicit t1 t2 mono) = free t1 `union` (free mono `intersection` free t2)
     active (Explicit ty scheme)  = free ty `union` free scheme
 
@@ -1004,50 +1020,37 @@ isSolvable _ _ = True
 choice :: [Constraint] -> Maybe ([Constraint], Constraint)
 choice xs = find (uncurry isSolvable) [(ys, x) | x <- xs, let ys = delete x xs]
 
-type Signature = ([Class], Type)
-
-combine :: (Type -> Type -> Type) -> Signature -> Signature -> Signature
-combine con (clcs1, t1) (clcs2, t2) = (nub (clcs1 <> clcs2), con t1 t2)
-
-applySigMap :: Map Name Signature -> [Class] -> Type -> Signature
-applySigMap map clcs = fun where
-    fun ty@(TVar var) = Map.findWithDefault (clcs, ty) var map
-    fun (TArr t1 t2)  = combine TArr (fun t1) (fun t2)
-    fun (TApp t1 t2)  = combine TApp (fun t1) (fun t2)
-    fun ty            = (clcs, ty)
-
-composeMaps :: [Class] -> Map Name Signature -> Substitution -> Map Name Signature
-composeMaps clcs map1 (Substitution map2) =
-    Map.union (Map.map (applySigMap map1 clcs) map2) map1
-
 solve
   :: (MonadError TypeError m, MonadSupply Type m)
   => [Constraint]
-  -> m (Map Name Signature)
+  -> WriterT [Class] m Substitution
 solve [] = pure mempty
-solve xs = maybe (throwError CannotSolve) pure (choice xs) >>= uncurry run
+solve xs =
+    maybe (throwError CannotSolve) pure (choice xs) >>= uncurry run
   where
     run cs = \case
-        Equality t1 t2 clcs -> do
+        Equality t1 t2 -> do
             sub1 <- unify t1 t2
             sub2 <- solve (apply sub1 cs)
-            pure (composeMaps clcs sub2 sub1)
+            pure (sub2 `compose` sub1)
 
         Implicit t1 t2 (Monoset vars) ->
             solve (Explicit t1 (generalize vars [] t2):cs)
 
         Explicit t1 scheme -> do
-            (clcs, t2) <- instantiate scheme
-            solve (Equality t1 t2 clcs:cs)
+            t2 <- instantiate scheme
+            solve (Equality t1 t2:cs)
 
 generalize :: Set Name -> [Class] -> Type -> Scheme
 generalize vars clcs ty = Forall (Set.toList (free ty \\ vars)) clcs ty
 
-instantiate :: (MonadSupply Type m) => Scheme -> m Signature
+instantiate :: (MonadSupply Type m, MonadWriter [Class] m) => Scheme -> m Type
 instantiate (Forall vars clcs ty) = do
-    vars' <- traverse (const supply) vars
-    let map = Map.fromList (zip vars vars')
-    pure $ apply (Substitution map) (clcs, ty)
+    sub <- Substitution . map <$> traverse (const supply) vars
+    tell (apply sub clcs)
+    pure (apply sub ty)
+  where
+    map = Map.fromList . zip vars
 
 -- ============================================================================
 -- ============================= Type Unification =============================
@@ -1157,8 +1160,8 @@ substituteExpr name val = para $ \case
     IfS cond true false ->
         ifS (snd cond) (snd true) (snd false)
 
-    CaseS expr clss ->
-        caseS (snd expr) (fun <$> clss) where
+    MatchS expr clss ->
+        matchS (snd expr) (fun <$> clss) where
             fun (p, e) = (p, if name `elem` patternVars p then fst e else snd e)
 
     OpS op ->
@@ -1179,6 +1182,7 @@ substituteLet name var body expr =
 data EvalError
     = RuntimeError
     | UnboundIdentifier Name
+    | NonSimplePattern
     | TypeMismatch
     deriving (Show, Eq)
 
@@ -1246,7 +1250,7 @@ eval = cata alg
             Value (Bool isTrue) <- cond
             if isTrue then true else false
 
-        CaseS expr clss -> do
+        MatchS expr clss -> do
             val <- expr
             evalCase val clss
 
@@ -1266,7 +1270,8 @@ evalCase
   -> [(Pattern, m (Value m))]
   -> m (Value m)
 evalCase _ [] = throwError RuntimeError
-evalCase val ((match, expr):cs) =
+evalCase val ((match, expr):cs) = do
+    unless (isSimple match) (throwError NonSimplePattern)
     case unfix match of
         AnyP ->
             expr

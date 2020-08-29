@@ -7,6 +7,7 @@ import Data.Functor.Const
 import Data.Functor.Foldable
 import Data.List (isPrefixOf)
 import Data.Void
+import Debug.Trace
 import System.Console.Repline
 import Tau.Juice
 import Tau.Parser
@@ -41,7 +42,7 @@ replCommand input = putStrIO (fromEither (mapLeft show abc))
     abc = do
         expr <- mapLeft ParseError (parseExpr input)
         pair <- mapLeft TypeError (treeTop <$> replInferType (Context mempty) expr)
-        val  <- mapLeft EvalError (evalExpr (fst pair) mempty)
+        val  <- mapLeft EvalError (evalExpr (compileAll (fst pair)) mempty)
         pure (show (val, snd pair))
 
 treeTop :: AnnotatedExpr Scheme -> (Expr, Scheme)
@@ -51,7 +52,7 @@ replInferType :: Context -> Expr -> Either TypeError (AnnotatedExpr Scheme)
 replInferType context = runInfer . inferType context
 
 replOptions :: Options Repl
-replOptions = 
+replOptions =
     [ ("quit", quit)
     , ("help", help)
     ]
@@ -66,7 +67,7 @@ help args = putStrIO message
 
 replCompleter :: WordCompleter IO
 replCompleter input = pure $ filter (isPrefixOf input) names
-  where 
+  where
     names =
         [ ":quit"
         , ":help"
@@ -82,4 +83,4 @@ printWelcomeMessage :: Repl ()
 printWelcomeMessage = putStrIO "Welcome!"
 
 printExitMessage :: Repl ()
-printExitMessage = putStrIO "Bye!" 
+printExitMessage = putStrIO "Bye!"

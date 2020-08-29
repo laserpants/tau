@@ -10,7 +10,7 @@ import Data.Text (Text, pack, unpack)
 import Data.Void
 import Tau.Juice hiding (($>), name)
 import Text.Megaparsec
-import Text.Megaparsec.Char (alphaNumChar, letterChar, printChar, space1)
+import Text.Megaparsec.Char (alphaNumChar, letterChar, printChar, space1, lowerChar, upperChar)
 import qualified Text.Megaparsec.Char as Megaparsec
 import qualified Text.Megaparsec.Char.Lexer as Lexer
 
@@ -50,6 +50,8 @@ reserved =
     , "if"
     , "then"
     , "else"
+    , "match"
+    , "with"
     , "True"
     , "False"
     , "not"
@@ -57,10 +59,13 @@ reserved =
 
 identifier :: Parser String
 identifier = lexeme $ try $ do
-    var <- withInitial letterChar
+    var <- withInitial lowerChar
     if var `elem` reserved
         then fail ("Reserved keyword " <> var)
         else pure var
+
+constructor :: Parser String
+constructor = lexeme $ try $ withInitial upperChar
 
 -- ============================================================================
 -- =================================== Ast ====================================
@@ -68,22 +73,26 @@ identifier = lexeme $ try $ do
 
 ast :: Parser Expr
 ast = do
-    atoms <- some atom
-    pure $ case atoms of
-        (e:_) -> e
-        exprs -> appS exprs
+    exprs <- appS <$> some atom
+    pure $ case unfix exprs of
+        AppS [e] -> e
+        _        -> exprs
   where
-    atom = unit
-        <|> parens expr
-        <|> ifClause
+    atom = ifClause
         <|> letRecBinding
         <|> letBinding
+        <|> matchWith
         <|> lambda
-        <|> number
-        <|> bool
-        <|> char
-        <|> string
+        <|> literal
+        <|> parens expr
         <|> variable
+
+prim :: Parser Prim
+prim = unit
+    <|> bool
+    <|> number
+    <|> char
+    <|> string
 
 operator :: [[Operator Parser Expr]]
 operator =
@@ -133,38 +142,74 @@ parseLet con kword = do
     body <- keyword "in"  *> expr
     pure (con var exp body)
 
+matchWith :: Parser Expr
+matchWith = do
+    expr <- keyword "match" *> expr
+    clss <- keyword "with"  *> many clause
+    pure (matchS expr clss)
+
+clause :: Parser (Pattern, Expr)
+clause = do
+    pat  <- symbol "|"  *> parsePattern
+    expr <- symbol "->" *> expr
+    pure (pat, expr)
+
+parsePattern :: Parser Pattern
+parsePattern = wildcard
+    <|> conPattern
+    <|> litPattern
+    <|> varPattern
+
+varPattern :: Parser Pattern
+varPattern = varP <$> name
+
+conPattern :: Parser Pattern
+conPattern = do
+    con <- pack <$> constructor
+    pts <- many parsePattern
+    pure (conP con pts)
+
+litPattern :: Parser Pattern
+litPattern = litP <$> prim
+
+wildcard :: Parser Pattern
+wildcard = symbol "_" $> anyP
+
 lambda :: Parser Expr
 lambda = do
     var  <- symbol "\\" *> name
     body <- symbol "->" *> expr
     pure (lamS var body)
 
-unit :: Parser Expr
-unit = symbol "()" $> litUnit
+unit :: Parser Prim
+unit = symbol "()" $> Unit
 
-bool :: Parser Expr
+bool :: Parser Prim
 bool = true <|> false
   where
-    true  = keyword "True"  $> litBool True
-    false = keyword "False" $> litBool False
+    true  = keyword "True"  $> Bool True
+    false = keyword "False" $> Bool False
 
-int :: Parser Expr
-int = litInt <$> lexeme Lexer.decimal
+int :: Parser Prim
+int = Int <$> lexeme Lexer.decimal
 
-float :: Parser Expr
-float = litFloat <$> lexeme Lexer.float
+float :: Parser Prim
+float = Float <$> lexeme Lexer.float
 
-number :: Parser Expr
+number :: Parser Prim
 number = try float <|> int
 
-char :: Parser Expr
-char = litChar <$> between (symbol "'") (symbol "'") printChar
+char :: Parser Prim
+char = Char <$> between (symbol "'") (symbol "'") printChar
 
-string :: Parser Expr
-string = litString . pack <$> str
+string :: Parser Prim
+string = String . pack <$> str
   where
     chr = Megaparsec.char
     str = chr '"' *> takeWhileP Nothing (/= '"') <* chr '"'
+
+literal :: Parser Expr
+literal = litS <$> prim
 
 variable :: Parser Expr
 variable = varS <$> name
