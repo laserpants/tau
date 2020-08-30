@@ -34,16 +34,22 @@ data ReplError
     = ParseError (ParseErrorBundle String Void)
     | TypeError TypeError
     | EvalError EvalError
+    | NonExhaustivePattern
     deriving (Show, Eq)
 
 replCommand :: String -> Repl ()
-replCommand input = putStrIO (fromEither (mapLeft show abc))
-  where
-    abc = do
-        expr <- mapLeft ParseError (parseExpr input)
-        pair <- mapLeft TypeError (treeTop <$> replInferType (Context mempty) expr)
-        val  <- mapLeft EvalError (evalExpr (compileAll (fst pair)) mempty)
-        pure (show (val, snd pair))
+replCommand input = undefined -- putStrIO (fromEither (mapLeft show abc))
+--  where
+--    abc = do
+--        undefined
+--        expr <- mapLeft ParseError (parseExpr input)
+--        pair <- mapLeft TypeError (treeTop <$> replInferType (Context mempty) expr)
+--        if allPatternsAreExhaustive (fst pair)
+--            then do
+--                val <- mapLeft EvalError (evalExpr (compileAll (fst pair)) mempty)
+--                pure (show (val, snd pair))
+--            else
+--                Left NonExhaustivePattern
 
 treeTop :: AnnotatedExpr Scheme -> (Expr, Scheme)
 treeTop ann = (getExpr ann, getAnnotation ann)

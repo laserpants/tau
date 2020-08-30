@@ -15,11 +15,11 @@ module Tau.Juice where
 
 import Control.Arrow ((>>>))
 import Control.Monad.Except
-import Control.Monad.Extra (anyM)
+import Control.Monad.Extra (anyM, (&&^))
 import Control.Monad.Identity
 import Control.Monad.Reader
 import Control.Monad.Supply
-import Control.Monad.Writer
+import Control.Monad.State
 import Data.Eq.Deriving
 import Data.Foldable (foldrM)
 import Data.Function ((&))
@@ -244,27 +244,26 @@ patternVars = cata alg where
 isSimple :: Pattern -> Bool
 isSimple = fun . unfix where
     fun AnyP        = True
-    fun (VarP _)    = True
+    fun VarP{}      = True
     fun (ConP _ ps) = all isSimple ps
     fun _           = False
 
 specialized :: Name -> Int -> [[Pattern]] -> [[Pattern]]
-specialized name a = concatMap fun where
-    fun (p:ps) =
-        case unfix p of
-            ConP name' ps'
-                | name' == name -> [ps' <> ps]
-                | otherwise     -> []
+specialized name a = concatMap $ \(p:ps) ->
+    case unfix p of
+        ConP name' ps'
+            | name' == name -> [ps' <> ps]
+            | otherwise     -> []
 
-            _ ->
-                [replicate a (Fix AnyP) <> ps]
+        _ ->
+            [replicate a (Fix AnyP) <> ps]
 
 defaultMatrix :: [[Pattern]] -> [[Pattern]]
-defaultMatrix = concatMap fun where
-    fun (p:ps) =
-        case unfix p of
-            ConP{} -> []
-            _      -> [ps]
+defaultMatrix = concatMap $ \(p:ps) ->
+    case unfix p of
+        ConP{} -> []
+        LitP{} -> []
+        _      -> [ps]
 
 data PatternCheckError = PatternCheckFail
     deriving (Show, Eq)
@@ -293,9 +292,18 @@ runPatternCheck a = runIdentity . runPatternCheckT a
 
 headCons :: Monad m => [[Pattern]] -> PatternCheckT m [(Name, Int)]
 headCons = fmap concat . traverse fun where
-    fun []                     = throwError PatternCheckFail
-    fun (Fix (ConP name rs):_) = pure [(name, length rs)]
-    fun _                      = pure []
+    fun [] = throwError PatternCheckFail
+    fun ps = pure $ case unfix (head ps) of
+        LitP (Bool True)  -> [("$True", 0)]
+        LitP (Bool False) -> [("$False", 0)]
+        LitP Unit         -> [("$()", 0)]
+        LitP Int{}        -> [("$Int", 0)]
+        LitP Integer{}    -> [("$Integer", 0)]
+        LitP Float{}      -> [("$Float", 0)]
+        LitP Char{}       -> [("$Char", 0)]
+        LitP String{}     -> [("$String", 0)]
+        ConP name rs      -> [(name, length rs)]
+        _                 -> []
 
 useful :: Monad m => [[Pattern]] -> [Pattern] -> PatternCheckT m Bool
 useful [] qs = pure True        -- zero rows (0x0 matrix)
@@ -322,10 +330,75 @@ useful px@(ps:_) qs =
     complete [] = pure False
     complete names@(name:_) = do
         lookup <- ask
-        pure (Map.findWithDefault mempty name lookup == Set.fromList names)
+        let map = lookup `Map.union` lookupFromList builtin
+        pure (Map.findWithDefault mempty name map == Set.fromList names)
+
+    builtin =
+        [ ("$True",     ["$True", "$False"])
+        , ("$False",    ["$True", "$False"])
+        , ("$()",       ["$()"])
+        , ("$Int",      [])
+        , ("$Integer",  [])
+        , ("$Float",    [])
+        , ("$Char",     [])
+        , ("$String",   [])
+        ]
 
 exhaustive :: Monad m => [Pattern] -> PatternCheckT m Bool
 exhaustive ps = not <$> useful ((:[]) <$> ps) [anyP]
+
+checkPatterns :: (Monad m) => ([(Pattern, Bool)] -> m Bool) -> Expr -> m Bool
+checkPatterns pred = cata $ \case
+    LamS _ expr ->
+        expr
+
+    AppS exprs ->
+        and <$> sequence exprs
+
+    LetS _ expr body ->
+        expr &&^ body
+
+    RecS _ expr body ->
+        expr &&^ body
+
+    IfS cond true false ->
+        cond &&^ true &&^ false
+
+    OpS (AddS a b) -> a &&^ b
+    OpS (SubS a b) -> a &&^ b
+    OpS (MulS a b) -> a &&^ b
+    OpS (EqS a b) -> a &&^ b
+    OpS (LtS a b) -> a &&^ b
+    OpS (GtS a b) -> a &&^ b
+    OpS (NegS a) -> a
+    OpS (NotS a) -> a
+
+    AnnS expr _ ->
+        expr
+
+    MatchS expr clss -> do
+        let (patterns, exprs) = unzip clss
+        clss' <- zip patterns <$> sequence exprs
+        expr &&^ pred clss'
+
+    _ ->
+        pure True
+
+allPatternsAreSimple :: (Monad m) => Expr -> m Bool
+allPatternsAreSimple = checkPatterns (pure . uncurry pred . unzip) where
+    pred patterns exprs =
+        and exprs &&
+        and (isSimple <$> patterns)
+
+allPatternsAreExhaustive
+  :: (Monad m)
+  => Expr
+  -> Lookup
+  -> m (Either PatternCheckError Bool)
+allPatternsAreExhaustive expr =
+    expr
+        |> checkPatterns (exhaustive . fmap fst)
+        |> runPatternCheckT
 
 -- ============================================================================
 -- ============================ Patterns Compiler =============================
@@ -461,39 +534,6 @@ matchDefault def (u:us) qs = foldrM (flip run) def (groups qs) where
                     true <- matchDefault def us [(litPttns, litExpr)]
                     pure (ifS (eqS u (litS litPrim)) true false)
 
-allPatternsAreSimple :: Expr -> Bool
-allPatternsAreSimple = cata $ \case
-    LamS _ expr ->
-        expr
-
-    AppS exprs ->
-        and exprs
-
-    LetS _ expr body ->
-        expr && body
-
-    IfS cond true false ->
-        cond && true && false
-
-    OpS (AddS a b) -> a && b
-    OpS (SubS a b) -> a && b
-    OpS (MulS a b) -> a && b
-    OpS (EqS a b) -> a && b
-    OpS (LtS a b) -> a && b
-    OpS (GtS a b) -> a && b
-    OpS (NegS a) -> a
-    OpS (NotS a) -> a
-
-    AnnS expr _ ->
-        expr
-
-    MatchS expr clss ->
-        expr && and (snd <$> clss)
-             && and (isSimple . fst <$> clss)
-
-    _ ->
-        True
-
 compileAll :: Expr -> Expr
 compileAll = cata $ \case
     MatchS expr clss ->
@@ -542,7 +582,8 @@ matchS a = Fix . MatchS a
 opS :: OpF Expr -> Expr
 opS = Fix . OpS
 
--- annS = TODO
+annS :: Expr -> Type -> Expr
+annS a = Fix . AnnS a
 
 errS :: Expr
 errS = Fix ErrS
@@ -774,7 +815,7 @@ inferLet var expr body rec = do
     (_e1, t1, a1, c1) <- expr
     (_e2, t2, a2, c2) <- body
     set <- ask
-    pure ( annotated t2 (LetS var _e1 _e2)
+    pure ( annotated t2 ((if rec then RecS else LetS) var _e1 _e2)
          , (if rec then removeAssumption var a1 else a1) <> removeAssumption var a2
          , c1 <> c2 <> [Implicit t t1 set | (y, t) <- runAssumption <$> a1 <> a2, var == y] )
 
@@ -911,17 +952,10 @@ inferType (Context env) expr = do
     case unboundVars env as of
         [] -> do
             --let xxx = solve ([], cs <> envConstraints as)
-            (sub, clcs) <- runWriterT (solve (cs <> envConstraints as))
+            (sub, clcs) <- runStateT (solve (cs <> envConstraints as)) []
             --pure (apply sub ty)
             --sub <- solve (cs <> envConstraints as)
---            traceShowM ">>>> 1"
---            traceShowM ty
---            traceShowM ">>>> 2"
---            traceShowM sub
---            traceShowM ">>>> 3"
---            traceShowM clcs
             traceShowM clcs
---            traceShowM ">>>>"
             annotate sub ty
 
         (var:_) ->
@@ -1023,7 +1057,7 @@ choice xs = find (uncurry isSolvable) [(ys, x) | x <- xs, let ys = delete x xs]
 solve
   :: (MonadError TypeError m, MonadSupply Type m)
   => [Constraint]
-  -> WriterT [Class] m Substitution
+  -> StateT [Class] m Substitution
 solve [] = pure mempty
 solve xs =
     maybe (throwError CannotSolve) pure (choice xs) >>= uncurry run
@@ -1031,6 +1065,7 @@ solve xs =
     run cs = \case
         Equality t1 t2 -> do
             sub1 <- unify t1 t2
+            modify (apply sub1)
             sub2 <- solve (apply sub1 cs)
             pure (sub2 `compose` sub1)
 
@@ -1044,10 +1079,10 @@ solve xs =
 generalize :: Set Name -> [Class] -> Type -> Scheme
 generalize vars clcs ty = Forall (Set.toList (free ty \\ vars)) clcs ty
 
-instantiate :: (MonadSupply Type m, MonadWriter [Class] m) => Scheme -> m Type
+instantiate :: (MonadSupply Type m, MonadState [Class] m) => Scheme -> m Type
 instantiate (Forall vars clcs ty) = do
     sub <- Substitution . map <$> traverse (const supply) vars
-    tell (apply sub clcs)
+    modify (nub . apply sub . (<>) clcs)
     pure (apply sub ty)
   where
     map = Map.fromList . zip vars
@@ -1152,10 +1187,10 @@ substituteExpr name val = para $ \case
         litS prim
 
     LetS var body expr ->
-        substituteLet name var body expr
+        substituteLet name var body expr False
 
     RecS var body expr ->
-        substituteLet name var body expr
+        substituteLet name var body expr True
 
     IfS cond true false ->
         ifS (snd cond) (snd true) (snd false)
@@ -1168,12 +1203,12 @@ substituteExpr name val = para $ \case
         opS (snd <$> op)
 
     AnnS expr ty ->
-        undefined  -- TODO
+        annS (snd expr) ty
 
-substituteLet :: Name -> Name -> (Expr, Expr) -> (Expr, Expr) -> Expr
-substituteLet name var body expr =
+substituteLet :: Name -> Name -> (Expr, Expr) -> (Expr, Expr) -> Bool -> Expr
+substituteLet name var body expr rec =
     let get = if name == var then fst else snd
-     in letS var (get body) (get expr)
+     in (if rec then recS else letS) var (get body) (get expr)
 
 -- ============================================================================
 -- =================================== Eval ===================================
@@ -1258,8 +1293,7 @@ eval = cata alg
             evalOp op
 
         AnnS expr ty ->
-            -- TODO
-            undefined
+            expr
 
         ErrS ->
             throwError RuntimeError

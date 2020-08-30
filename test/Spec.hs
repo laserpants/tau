@@ -53,6 +53,8 @@ testContext = Context (Map.fromList
     , ("fst"    , Forall ["a", "b"] [] (TArr tuple2AB (TVar "a")))
     , ("snd"    , Forall ["a", "b"] [] (TArr tuple2AB (TVar "b")))
     , ("(==)"   , Forall ["a"] [Class "Eq" (TVar "a")] (TArr (TVar "a") (TArr (TVar "a") tBool)))
+    , ("(+)"    , Forall ["a"] [Class "Num" (TVar "a")] (TArr (TVar "a") (TArr (TVar "a") (TVar "a"))))
+    --, ("(+)"    , Forall [] [] (TArr (TCon "Int") (TArr (TCon "Int") (TCon "Int"))))
     ])
 
 -- ===================
@@ -399,7 +401,7 @@ typeInferRunTest context expr = getAnnotation <$> runInfer (inferType context ex
 
 patternCheckTestConstructors :: Lookup
 patternCheckTestConstructors = lookupFromList
-    [ ("Nil", ["Nil", "Cons"])
+    [ ("Nil",  ["Nil", "Cons"])
     , ("Cons", ["Nil", "Cons"])
     ]
 
@@ -472,6 +474,53 @@ patternCheckTest100 =
     , conP "Nil" [] )
     -- True
 
+patternCheckTest110 :: [Pattern]
+patternCheckTest110 =
+    [ litP (Int 5)
+    , varP "x"
+    ]
+
+patternCheckTest120 :: [Pattern]
+patternCheckTest120 =
+    [ litP (Int 5)
+    , litP (Int 4)
+    ]
+
+patternCheckTest130 :: [Pattern]
+patternCheckTest130 =
+    [ litP (Bool True)
+    , litP (Bool False)
+    ]
+
+patternCheckTest135 :: [Pattern]
+patternCheckTest135 =
+    [ litP (Bool True)
+    , anyP
+    ]
+
+patternCheckTest140 :: [Pattern]
+patternCheckTest140 =
+    [ litP (Bool True)
+    ]
+
+patternCheckTest150 :: [Pattern]
+patternCheckTest150 =
+    [ litP Unit
+    ]
+
+patternCheckTest160 :: [Pattern]
+patternCheckTest160 =
+    [ litP (String "x")
+    , litP (String "y")
+    ]
+
+patternCheckTest170 :: [Pattern]
+patternCheckTest170 =
+    [ litP (String "x")
+    , litP (String "y")
+    , anyP
+    ]
+
 testPatternCheck :: SpecWith ()
 testPatternCheck = do
     patternCheckTestIsExhaustive  patternCheckTest010 "test010"
@@ -484,6 +533,14 @@ testPatternCheck = do
     patternCheckTestNotUseful     patternCheckTest080 "test080"
     patternCheckTestNotUseful     patternCheckTest090 "test090"
     patternCheckTestIsUseful      patternCheckTest100 "test100"
+    patternCheckTestIsExhaustive  patternCheckTest110 "test110"
+    patternCheckTestNotExhaustive patternCheckTest120 "test120"
+    patternCheckTestIsExhaustive  patternCheckTest130 "test130"
+    patternCheckTestIsExhaustive  patternCheckTest135 "test135"
+    patternCheckTestNotExhaustive patternCheckTest140 "test140"
+    patternCheckTestIsExhaustive  patternCheckTest150 "test150"
+    patternCheckTestNotExhaustive patternCheckTest160 "test160"
+    patternCheckTestIsExhaustive  patternCheckTest170 "test170"
 
 patternCheckTestIsExhaustive :: [Pattern] -> Text -> SpecWith ()
 patternCheckTestIsExhaustive pttrns name =
@@ -640,6 +697,12 @@ evalTest120 = varS "hello"
 evalTest130 :: Expr
 evalTest130 = compileAll $ appS [lamS "x" (matchS (varS "x") [(litP (Int 1), litInt 2), (litP (Int 2), litInt 3)]), litInt 1]
 
+evalTest140 :: Expr
+evalTest140 = letS "f" (lamS "n" (ifS (eqS (varS "n") (litInt 0)) (litInt 1) (mulS (varS "n") (appS [varS "f", subS (varS "n") (litInt 1)])))) (appS [varS "f", litInt 5])
+
+evalTest150 :: Expr
+evalTest150 = recS "f" (lamS "n" (ifS (eqS (varS "n") (litInt 0)) (litInt 1) (mulS (varS "n") (appS [varS "f", subS (varS "n") (litInt 1)])))) (appS [varS "f", litInt 5])
+
 testEval :: SpecWith ()
 testEval = do
     evalTestIsFunction evalTest000               "test000"
@@ -655,6 +718,8 @@ testEval = do
     evalTestEvalsTo (evalTest115, Value (Int 120)) "test115"
     evalTestFailsWithError (evalTest120, UnboundIdentifier "hello") "test120"
     evalTestEvalsTo (evalTest130, Value (Int 2)) "test130"
+    evalTestFailsWithError (evalTest140, UnboundIdentifier "f") "test140"
+    evalTestEvalsTo (evalTest150, Value (Int 120)) "test150"
 
 evalTestFailsWithError :: (Expr, EvalError) -> Name -> SpecWith ()
 evalTestFailsWithError (expr, err) name =
