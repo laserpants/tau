@@ -239,7 +239,7 @@ patternVars = cata alg where
     alg (ConP _ ps) = concat ps
     alg _           = []
 
--- | A simple pattern is a variable, a wildcard or a constructor where all the
+-- | A simple pattern is a variable, a wildcard, or a constructor where all the
 -- subpatterns are simple.
 isSimple :: Pattern -> Bool
 isSimple = fun . unfix where
