@@ -555,15 +555,10 @@ patternCheckTestIsExhaustive pttrns name =
     describeFailure = unpack
         "Expected exhaustive check to return True"
 
-    patternCheckTest = case patternCheckRunExhaustiveTest pttrns of
-        Right True ->
-            pass
-
-        Left err ->
-            expectationFailure ("Unexpected error: " <> show err)
-
-        _ ->
-            expectationFailure describeFailure
+    patternCheckTest =
+        if patternCheckRunExhaustiveTest pttrns
+            then pass
+            else expectationFailure describeFailure
 
 patternCheckTestNotExhaustive :: [Pattern] -> Text -> SpecWith ()
 patternCheckTestNotExhaustive pttrns name =
@@ -577,17 +572,12 @@ patternCheckTestNotExhaustive pttrns name =
     describeFailure = unpack
         "Expected exhaustive check to return False"
 
-    patternCheckTest = case patternCheckRunExhaustiveTest pttrns of
-        Right False ->
-            pass
+    patternCheckTest =
+        if patternCheckRunExhaustiveTest pttrns
+            then expectationFailure describeFailure
+            else pass
 
-        Left err ->
-            expectationFailure ("Unexpected error: " <> show err)
-
-        _ ->
-            expectationFailure describeFailure
-
-patternCheckRunExhaustiveTest :: [Pattern] -> Either PatternCheckError Bool
+patternCheckRunExhaustiveTest :: [Pattern] -> Bool
 patternCheckRunExhaustiveTest pttrns = runPatternCheck (exhaustive pttrns) patternCheckTestConstructors
 
 patternCheckTestNotUseful :: ([Pattern], Pattern) -> Text -> SpecWith ()
@@ -603,15 +593,10 @@ patternCheckTestNotUseful pair name =
     describeFailure = unpack
         "Expected useful check to return False"
 
-    patternCheckTest = case patternCheckRunInUsefulTest pair of
-        Right False ->
-            pass
-
-        Left err ->
-            expectationFailure ("Unexpected error: " <> show err)
-
-        _ ->
-            expectationFailure describeFailure
+    patternCheckTest =
+        if patternCheckRunInUsefulTest pair
+            then expectationFailure describeFailure
+            else pass
 
 patternCheckTestIsUseful :: ([Pattern], Pattern) -> Text -> SpecWith ()
 patternCheckTestIsUseful pair name =
@@ -626,17 +611,12 @@ patternCheckTestIsUseful pair name =
     describeFailure = unpack
         "Expected useful check to return True"
 
-    patternCheckTest = case patternCheckRunInUsefulTest pair of
-        Right True ->
-            pass
+    patternCheckTest =
+        if patternCheckRunInUsefulTest pair
+            then pass
+            else expectationFailure describeFailure
 
-        Left err ->
-            expectationFailure ("Unexpected error: " <> show err)
-
-        _ ->
-            expectationFailure describeFailure
-
-patternCheckRunInUsefulTest :: ([Pattern], Pattern) -> Either PatternCheckError Bool
+patternCheckRunInUsefulTest :: ([Pattern], Pattern) -> Bool
 patternCheckRunInUsefulTest (ps, p) =
     runPatternCheck (uncurry useful (map (:[]) ps, [p])) patternCheckTestConstructors
 
@@ -1227,11 +1207,11 @@ tclcsTest010 = appS [lamS "s" (lamS "a" (matchS (varS "s") [(conP "Show" [varP "
 
 -- let rec map = \f -> \xs -> match xs with | Nil -> Nil | Cons x1 xs1 -> Cons (f x1) (map f xs1) in map (\x -> x == 0)
 tclcsTest020 :: Expr
-tclcsTest020 = recS "map" (lamS "f" (lamS "xs" (matchS (varS "xs") [(conP "Nil" [], appS [varS "Nil"]), (conP "Cons" [varP "x1", varP "xs1"], appS [varS "Cons", appS [varS "f", varS "x1"], appS [varS "map", varS "f", varS "xs1"]])]))) (appS [varS "map", lamS "x" (eqS (varS "x") (litInt 0))]) 
+tclcsTest020 = recS "map" (lamS "f" (lamS "xs" (matchS (varS "xs") [(conP "Nil" [], appS [varS "Nil"]), (conP "Cons" [varP "x1", varP "xs1"], appS [varS "Cons", appS [varS "f", varS "x1"], appS [varS "map", varS "f", varS "xs1"]])]))) (appS [varS "map", lamS "x" (eqS (varS "x") (litInt 0))])
 
 -- let rec map = \f -> \xs -> match xs with | Nil -> Nil | Cons x1 xs1 -> Cons (f x1) (map f xs1) in map (\x -> x == x)
 tclcsTest021 :: Expr
-tclcsTest021 = recS "map" (lamS "f" (lamS "xs" (matchS (varS "xs") [(conP "Nil" [], appS [varS "Nil"]), (conP "Cons" [varP "x1", varP "xs1"], appS [varS "Cons", appS [varS "f", varS "x1"], appS [varS "map", varS "f", varS "xs1"]])]))) (appS [varS "map", lamS "x" (eqS (varS "x") (varS "x"))]) 
+tclcsTest021 = recS "map" (lamS "f" (lamS "xs" (matchS (varS "xs") [(conP "Nil" [], appS [varS "Nil"]), (conP "Cons" [varP "x1", varP "xs1"], appS [varS "Cons", appS [varS "f", varS "x1"], appS [varS "map", varS "f", varS "xs1"]])]))) (appS [varS "map", lamS "x" (eqS (varS "x") (varS "x"))])
 
 -- let f = \a -> \b -> a + b in f
 tclcsTest025 :: Expr
@@ -1250,7 +1230,6 @@ tclcsTest030 =  lamS "x" (letS "xs" (appS [varS "Cons", varS "x", appS [varS "Ni
 --    , ("id"   , Forall ["a"] [] (TArr (TVar "a") (TVar "a")))
 --    ])
 
-
 testTypeClasses :: SpecWith ()
 testTypeClasses = do
     testTclcsHasType "test000" (tclcsTest000, Forall [] [] tString)
@@ -1263,7 +1242,7 @@ testTypeClasses = do
     testSolveExprType "test030" (tclcsTest030, TArr (TVar "a11") (TCon "String"), [Class "Show" (TApp (TCon "List") (TVar "a11"))])
 
 testSolveExprType :: Text -> (Expr, Type, [Class]) -> SpecWith ()
-testSolveExprType name (expr, ty, clcs) = 
+testSolveExprType name (expr, ty, clcs) =
     describe description (it describeSuccess test)
   where
     description = unpack $ name <> ": " <> prettyExpr expr
@@ -1276,7 +1255,7 @@ testSolveExprType name (expr, ty, clcs) =
 
         Right (tree, sub, clcs') -> do
             let ty' = apply sub (getAnnotation tree) -- generalize mempty (apply sub $ getAnnotation tree)
-             in do 
+             in do
                    --traceShowM (generalize mempty ty)
                    --traceShowM ty'
                    --traceShowM clcs
@@ -1383,6 +1362,21 @@ parserTest090 = "let rec map = \\f -> \\xs -> match xs with | Nil -> Nil | Cons 
 parserTest100 :: String
 parserTest100 = "let rec map = \\f -> \\xs -> match xs with | Nil -> Nil | Cons x1 xs1 -> Cons (f x1) (map f xs1) in map (\\x -> x == 0)"
 
+parserTest110 :: String
+parserTest110 = "let str = \"hello\" in str"
+
+parserTest120 :: String
+parserTest120 = "\"hello\" == \"what\""
+
+parserTest130 :: String
+parserTest130 = "\"hello\""
+
+parserTest140 :: String
+parserTest140 = "'a' == 'b'"
+
+parserTest150 :: String
+parserTest150 = "let chr = 'a' in chr == chr"
+
 testParser :: SpecWith ()
 testParser = do
     testParsesTo "test000" (parserTest000, litFloat 4.3)
@@ -1397,6 +1391,11 @@ testParser = do
     testParsesTo "test080" (parserTest080, matchS (varS "n") [(litP (Int 1), litS (Bool True)), (litP (Int 2), litS (Bool False))])
     testParsesTo "test090" (parserTest090, recS "map" (lamS "f" (lamS "xs" (matchS (varS "xs") [(conP "Nil" [], appS [varS "Nil"]), (conP "Cons" [varP "x1", varP "xs1"], appS [varS "Cons", appS [varS "f", varS "x1"], appS [varS "map", varS "f", varS "xs1"]])]))) (varS "map"))
     testParsesTo "test100" (parserTest100, recS "map" (lamS "f" (lamS "xs" (matchS (varS "xs") [(conP "Nil" [], appS [varS "Nil"]), (conP "Cons" [varP "x1", varP "xs1"], appS [varS "Cons", appS [varS "f", varS "x1"], appS [varS "map", varS "f", varS "xs1"]])]))) (appS [varS "map", lamS "x" (eqS (varS "x") (litInt 0))]))
+    testParsesTo "test110" (parserTest110, letS "str" (litString "hello") (varS "str"))
+    testParsesTo "test120" (parserTest120, eqS (litString "hello") (litString "what"))
+    testParsesTo "test130" (parserTest130, litString "hello")
+    testParsesTo "test140" (parserTest140, eqS (litChar 'a') (litChar 'b'))
+    testParsesTo "test150" (parserTest150, letS "chr" (litChar 'a') (eqS (varS "chr") (varS "chr")))
 
 testParsesTo :: Name -> (String, Expr) -> SpecWith ()
 testParsesTo name (input, expr) =

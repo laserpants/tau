@@ -15,7 +15,7 @@ import Debug.Trace
 import System.Console.Repline
 import Tau.Juice
 import Tau.Parser
-import Text.Megaparsec
+import Text.Megaparsec.Error (errorBundlePretty)
 
 type Repl = HaskelineT IO
 
@@ -35,20 +35,29 @@ repl = evalReplOpts $ ReplOpts
     }
 
 data ReplError
-    = ParseError (ParseErrorBundle Text Void)
+    = ParseError ParseError
     | TypeError TypeError
     | EvalError EvalError
     | NonExhaustivePattern
     deriving (Show, Eq)
 
 replCommand :: String -> Repl ()
-replCommand input = putStrIO (fromEither (mapLeft show run))
+replCommand input =
+    putStrIO $ case run of
+        Left (ParseError err) -> 
+            errorBundlePretty err
+
+        Left err -> 
+            show err
+
+        Right r ->
+            show r
   where
     run = do
         expr <- mapLeft ParseError (parseExpr (pack input))
         (expr', ty) <- mapLeft TypeError (treeTop <$> replInferType (Context mempty) expr)
         exhaustive <- allPatternsAreExhaustive expr' mempty
-        unless (Right True == exhaustive) (Left NonExhaustivePattern)
+        unless exhaustive (Left NonExhaustivePattern)
         val <- mapLeft EvalError (evalExpr (compileAll expr') mempty)
         pure (show (val, ty))
 

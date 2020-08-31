@@ -265,34 +265,30 @@ defaultMatrix = concatMap $ \(p:ps) ->
         LitP{} -> []
         _      -> [ps]
 
-data PatternCheckError = PatternCheckFail
-    deriving (Show, Eq)
-
 type Lookup = Map Name (Set Name)
 
 lookupFromList :: [(Name, [Name])] -> Lookup
 lookupFromList = Map.fromList . fmap (fmap Set.fromList)
 
-type PatternCheckTStack m a = ReaderT Lookup (ExceptT PatternCheckError m) a
+type PatternCheckTStack m a = ReaderT Lookup m a
 
 newtype PatternCheckT m a = PatternCheckT (PatternCheckTStack m a) deriving
     ( Functor
     , Applicative
     , Monad
-    , MonadReader Lookup
-    , MonadError PatternCheckError )
+    , MonadReader Lookup )
 
-runPatternCheckT :: PatternCheckT m a -> Lookup -> m (Either PatternCheckError a)
-runPatternCheckT (PatternCheckT a) = runExceptT . runReaderT a
+runPatternCheckT :: PatternCheckT m a -> Lookup -> m a
+runPatternCheckT (PatternCheckT a) = runReaderT a
 
 type PatternCheck = PatternCheckT Identity
 
-runPatternCheck :: PatternCheck a -> Lookup -> Either PatternCheckError a
+runPatternCheck :: PatternCheck a -> Lookup -> a
 runPatternCheck a = runIdentity . runPatternCheckT a
 
-headCons :: Monad m => [[Pattern]] -> PatternCheckT m [(Name, Int)]
+headCons :: Monad m => [[Pattern]] -> m [(Name, Int)]
 headCons = fmap concat . traverse fun where
-    fun [] = throwError PatternCheckFail
+    fun [] = error "Fatal error in pattern anomaly check"
     fun ps = pure $ case unfix (head ps) of
         LitP (Bool True)  -> [("$True", 0)]
         LitP (Bool False) -> [("$False", 0)]
@@ -305,14 +301,14 @@ headCons = fmap concat . traverse fun where
         ConP name rs      -> [(name, length rs)]
         _                 -> []
 
-useful :: Monad m => [[Pattern]] -> [Pattern] -> PatternCheckT m Bool
+useful :: (MonadReader Lookup m) => [[Pattern]] -> [Pattern] -> m Bool
 useful [] qs = pure True        -- zero rows (0x0 matrix)
 useful px@(ps:_) qs =
     case (qs, length ps) of
         (_, 0) -> pure False    -- one or more rows but no columns
 
         ([], _) ->
-            throwError PatternCheckFail
+            error "Fatal error in pattern anomaly check"
 
         (Fix (ConP name rs):_, n) ->
             let special = specialized name (length rs)
@@ -344,7 +340,7 @@ useful px@(ps:_) qs =
         , ("$String",   [])
         ]
 
-exhaustive :: Monad m => [Pattern] -> PatternCheckT m Bool
+exhaustive :: (Monad m) => [Pattern] -> PatternCheckT m Bool
 exhaustive ps = not <$> useful ((:[]) <$> ps) [anyP]
 
 checkPatterns :: (Monad m) => ([(Pattern, Bool)] -> m Bool) -> Expr -> m Bool
@@ -390,11 +386,7 @@ allPatternsAreSimple = checkPatterns (pure . uncurry pred . unzip) where
         and exprs &&
         and (isSimple <$> patterns)
 
-allPatternsAreExhaustive
-  :: (Monad m)
-  => Expr
-  -> Lookup
-  -> m (Either PatternCheckError Bool)
+allPatternsAreExhaustive :: (Monad m) => Expr -> Lookup -> m Bool
 allPatternsAreExhaustive =
     runPatternCheckT . checkPatterns (exhaustive . fmap fst)
 

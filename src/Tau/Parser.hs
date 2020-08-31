@@ -3,16 +3,19 @@ module Tau.Parser where
 
 import Control.Monad.Combinators.Expr
 import Data.Char (isUpper)
+import Data.Function ((&))
 import Data.Functor (($>))
 import Data.Functor.Foldable (Fix(..), unfix)
 import Data.Text (Text, pack, unpack)
 import Data.Void
 import Tau.Juice hiding (($>), name)
-import Text.Megaparsec
-import Text.Megaparsec.Char (alphaNumChar, letterChar, lowerChar, upperChar, printChar, space1)
+import Text.Megaparsec hiding (ParseError)
+import Text.Megaparsec.Char
 import qualified Data.Text as Text
 import qualified Text.Megaparsec.Char as Megaparsec
 import qualified Text.Megaparsec.Char.Lexer as Lexer
+
+type ParseError = ParseErrorBundle Text Void
 
 type Parser = Parsec Void Text
 
@@ -90,16 +93,16 @@ ast = do
         <|> parens expr
         <|> identifier
 
-isAdt :: Expr -> Bool
-isAdt (Fix (VarS name)) | not (Text.null name) = isUpper (Text.head name)
-isAdt _ = False
-
 prim :: Parser Prim
 prim = unit
     <|> bool
     <|> number
-    <|> char
-    <|> string
+    <|> charPrim
+    <|> stringPrim
+
+isAdt :: Expr -> Bool
+isAdt (Fix (VarS name)) | not (Text.null name) = isUpper (Text.head name)
+isAdt _ = False
 
 operator :: [[Operator Parser Expr]]
 operator =
@@ -123,7 +126,7 @@ operator =
 expr :: Parser Expr
 expr = makeExprParser ast operator
 
-parseExpr :: Text -> Either (ParseErrorBundle Text Void) Expr
+parseExpr :: Text -> Either ParseError Expr
 parseExpr = parse (spaces *> expr <* eof) ""
 
 ifClause :: Parser Expr
@@ -203,13 +206,12 @@ float = Float <$> lexeme Lexer.float
 number :: Parser Prim
 number = try float <|> int
 
-char :: Parser Prim
-char = Char <$> between (symbol "'") (symbol "'") printChar
+charPrim :: Parser Prim
+charPrim = Char <$> between (symbol "'") (symbol "'") printChar
 
-string :: Parser Prim
-string = String . pack <$> chars
-  where
-    chars = Megaparsec.char '\"' *> manyTill Lexer.charLiteral (Megaparsec.char '\"')
+stringPrim :: Parser Prim
+stringPrim = lexeme (String . pack <$> chars) where
+    chars = char '\"' *> manyTill Lexer.charLiteral (char '\"')
 
 literal :: Parser Expr
 literal = litS <$> prim
