@@ -35,7 +35,7 @@ withInitial :: Parser Char -> Parser Text
 withInitial char = do
     head <- char
     tail <- many alphaNumChar
-    pure $ pack (head : tail)
+    pure $ pack (head:tail)
 
 keyword :: Text -> Parser ()
 keyword token =
