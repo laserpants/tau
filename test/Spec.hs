@@ -8,6 +8,7 @@ import Data.Functor.Foldable
 import Data.List (intersperse, find, delete, nub, elemIndex)
 import Data.Maybe (fromMaybe, fromJust)
 import Data.Text (Text, pack, unpack)
+import Debug.Trace
 import Tau.Parser
 import Tau.Juice
 import qualified Data.Map.Strict as Map
@@ -1224,12 +1225,65 @@ tclcsTest000 = appS [lamS "s" (lamS "a" (matchS (varS "s") [(conP "Show" [varP "
 tclcsTest010 :: Expr
 tclcsTest010 = appS [lamS "s" (lamS "a" (matchS (varS "s") [(conP "Show" [varP "f"], appS [varS "f", varS "a"])])), appS [varS "Show", lamS "x" (ifS (varS "x") (litString "True") (litString "False"))], litBool False]
 
+-- let rec map = \f -> \xs -> match xs with | Nil -> Nil | Cons x1 xs1 -> Cons (f x1) (map f xs1) in map (\x -> x == 0)
+tclcsTest020 :: Expr
+tclcsTest020 = recS "map" (lamS "f" (lamS "xs" (matchS (varS "xs") [(conP "Nil" [], appS [varS "Nil"]), (conP "Cons" [varP "x1", varP "xs1"], appS [varS "Cons", appS [varS "f", varS "x1"], appS [varS "map", varS "f", varS "xs1"]])]))) (appS [varS "map", lamS "x" (eqS (varS "x") (litInt 0))]) 
+
+-- let rec map = \f -> \xs -> match xs with | Nil -> Nil | Cons x1 xs1 -> Cons (f x1) (map f xs1) in map (\x -> x == x)
+tclcsTest021 :: Expr
+tclcsTest021 = recS "map" (lamS "f" (lamS "xs" (matchS (varS "xs") [(conP "Nil" [], appS [varS "Nil"]), (conP "Cons" [varP "x1", varP "xs1"], appS [varS "Cons", appS [varS "f", varS "x1"], appS [varS "map", varS "f", varS "xs1"]])]))) (appS [varS "map", lamS "x" (eqS (varS "x") (varS "x"))]) 
+
+-- let f = \a -> \b -> a + b in f
+tclcsTest025 :: Expr
+tclcsTest025 =  letS "f" (lamS "a" (lamS "b" (addS (varS "a") (varS "b")))) (varS "f")
+
+-- \x -> let xs = Cons x Nil in show xs
+tclcsTest030 :: Expr
+tclcsTest030 =  lamS "x" (letS "xs" (appS [varS "Cons", varS "x", appS [varS "Nil"]]) (appS [varS "show", varS "xs"]))
+
+
+--typeInferRunTest testContext tclcsTest020
+
+--tclcsTestContext :: Context
+--tclcsTestContext = Context (Map.fromList
+--    [ ("Show" , Forall ["a"] [] (TArr (TArr (TVar "a") tString) (TApp (TCon "Show") (TVar "a"))))
+--    , ("id"   , Forall ["a"] [] (TArr (TVar "a") (TVar "a")))
+--    ])
+
+
 testTypeClasses :: SpecWith ()
 testTypeClasses = do
     testTclcsHasType "test000" (tclcsTest000, Forall [] [] tString)
     testTclcsEvalsTo "test000" (tclcsTest000, Value (String "hello"))
     testTclcsHasType "test010" (tclcsTest010, Forall [] [] tString)
     testTclcsEvalsTo "test010" (tclcsTest010, Value (String "False"))
+    testSolveExprType "test020" (tclcsTest020, TArr (TApp (TCon "List") (TCon "Int")) (TApp (TCon "List") (TCon "Bool")), [Class "Eq" (TCon "Int")])
+    testSolveExprType "test021" (tclcsTest021, TArr (TApp (TCon "List") (TVar "a35")) (TApp (TCon "List") (TCon "Bool")), [Class "Eq" (TVar "a35")])
+    testSolveExprType "test025" (tclcsTest025, TArr (TVar "a8") (TArr (TVar "a8") (TVar "a8")), [Class "Num" (TVar "a8")])
+    testSolveExprType "test030" (tclcsTest030, TArr (TVar "a11") (TCon "String"), [Class "Show" (TApp (TCon "List") (TVar "a11"))])
+
+testSolveExprType :: Text -> (Expr, Type, [Class]) -> SpecWith ()
+testSolveExprType name (expr, ty, clcs) = 
+    describe description (it describeSuccess test)
+  where
+    description = unpack $ name <> ": " <> prettyExpr expr
+
+    describeSuccess = unpack $ "✔ OK"
+
+    test = case runInfer (solveExprType testContext expr) of
+        Left err ->
+            expectationFailure ("Unexpected error: " <> show err)
+
+        Right (tree, sub, clcs') -> do
+            let ty' = apply sub (getAnnotation tree) -- generalize mempty (apply sub $ getAnnotation tree)
+             in do 
+                   --traceShowM (generalize mempty ty)
+                   --traceShowM ty'
+                   --traceShowM clcs
+                   --traceShowM clcs'
+                   if ty == ty' && clcs == clcs'
+                       then pass
+                       else expectationFailure "failed"
 
 testTclcsEvalsTo :: Text -> (Expr, Value Eval) -> SpecWith ()
 testTclcsEvalsTo name (expr, val) =
@@ -1323,6 +1377,12 @@ parserTest070 = "(())"
 parserTest080 :: String
 parserTest080 = "match n with | 1 -> True | 2 -> False"
 
+parserTest090 :: String
+parserTest090 = "let rec map = \\f -> \\xs -> match xs with | Nil -> Nil | Cons x1 xs1 -> Cons (f x1) (map f xs1) in map"
+
+parserTest100 :: String
+parserTest100 = "let rec map = \\f -> \\xs -> match xs with | Nil -> Nil | Cons x1 xs1 -> Cons (f x1) (map f xs1) in map (\\x -> x == 0)"
+
 testParser :: SpecWith ()
 testParser = do
     testParsesTo "test000" (parserTest000, litFloat 4.3)
@@ -1335,14 +1395,15 @@ testParser = do
     testParsesTo "test060" (parserTest060, litUnit)
     testParsesTo "test070" (parserTest070, litUnit)
     testParsesTo "test080" (parserTest080, matchS (varS "n") [(litP (Int 1), litS (Bool True)), (litP (Int 2), litS (Bool False))])
+    testParsesTo "test090" (parserTest090, recS "map" (lamS "f" (lamS "xs" (matchS (varS "xs") [(conP "Nil" [], appS [varS "Nil"]), (conP "Cons" [varP "x1", varP "xs1"], appS [varS "Cons", appS [varS "f", varS "x1"], appS [varS "map", varS "f", varS "xs1"]])]))) (varS "map"))
+    testParsesTo "test100" (parserTest100, recS "map" (lamS "f" (lamS "xs" (matchS (varS "xs") [(conP "Nil" [], appS [varS "Nil"]), (conP "Cons" [varP "x1", varP "xs1"], appS [varS "Cons", appS [varS "f", varS "x1"], appS [varS "map", varS "f", varS "xs1"]])]))) (appS [varS "map", lamS "x" (eqS (varS "x") (litInt 0))]))
 
 testParsesTo :: Name -> (String, Expr) -> SpecWith ()
 testParsesTo name (input, expr) =
     describe description (it describeSuccess test)
   where
     description :: String
-    description = unpack $
-        name <> ": " <> pack input
+    description = unpack $ name <> ": " <> pack input
 
     describeSuccess = unpack $
         "✔ parses to : " <> prettyExpr expr
@@ -1476,7 +1537,7 @@ prettyOp (NegS a)   = "-" <> a
 prettyOp (NotS a)   = "not " <> a
 
 prettyClause :: (Pattern, Text) -> Text
-prettyClause (p, e) = prettyPattern p <> " => " <> e
+prettyClause (p, e) = prettyPattern p <> " -> " <> e
 
 prettyPattern :: Pattern -> Text
 prettyPattern = trim . cata alg where

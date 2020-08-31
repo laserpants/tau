@@ -1,6 +1,9 @@
 {-# LANGUAGE TypeOperators #-}
 module Tau.Repl where
 
+import Control.Arrow ((&&&))
+import Control.Monad
+import Control.Monad.Extra (unlessM)
 import Control.Monad.Trans
 import Data.Either.Extra (mapLeft, fromEither)
 import Data.Functor.Const
@@ -38,21 +41,18 @@ data ReplError
     deriving (Show, Eq)
 
 replCommand :: String -> Repl ()
-replCommand input = undefined -- putStrIO (fromEither (mapLeft show abc))
---  where
---    abc = do
---        undefined
---        expr <- mapLeft ParseError (parseExpr input)
---        pair <- mapLeft TypeError (treeTop <$> replInferType (Context mempty) expr)
---        if allPatternsAreExhaustive (fst pair)
---            then do
---                val <- mapLeft EvalError (evalExpr (compileAll (fst pair)) mempty)
---                pure (show (val, snd pair))
---            else
---                Left NonExhaustivePattern
+replCommand input = putStrIO (fromEither (mapLeft show run))
+  where
+    run = do
+        expr <- mapLeft ParseError (parseExpr input)
+        (expr', ty) <- mapLeft TypeError (treeTop <$> replInferType (Context mempty) expr)
+        exhaustive <- allPatternsAreExhaustive expr' mempty
+        unless (Right True == exhaustive) (Left NonExhaustivePattern)
+        val <- mapLeft EvalError (evalExpr (compileAll expr') mempty)
+        pure (show (val, ty))
 
 treeTop :: AnnotatedExpr Scheme -> (Expr, Scheme)
-treeTop ann = (getExpr ann, getAnnotation ann)
+treeTop = getExpr &&& getAnnotation
 
 replInferType :: Context -> Expr -> Either TypeError (AnnotatedExpr Scheme)
 replInferType context = runInfer . inferType context

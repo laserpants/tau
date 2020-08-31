@@ -239,8 +239,8 @@ patternVars = cata alg where
     alg (ConP _ ps) = concat ps
     alg _           = []
 
--- | A simple pattern is either a variable or a constructor where all the
--- subpatterns are variables.
+-- | A simple pattern is a variable, a wildcard or a constructor where all the
+-- subpatterns are simple.
 isSimple :: Pattern -> Bool
 isSimple = fun . unfix where
     fun AnyP        = True
@@ -322,7 +322,7 @@ useful px@(ps:_) qs =
             cs <- headCons px
             isComplete <- complete (fst <$> cs)
             if isComplete
-                then cs |> anyM (\con ->
+                then cs & anyM (\con ->
                     let special = uncurry specialized con
                      in useful (special px) (head (special [qs])))
                 else useful (defaultMatrix px) qs1
@@ -395,10 +395,8 @@ allPatternsAreExhaustive
   => Expr
   -> Lookup
   -> m (Either PatternCheckError Bool)
-allPatternsAreExhaustive expr =
-    expr
-        |> checkPatterns (exhaustive . fmap fst)
-        |> runPatternCheckT
+allPatternsAreExhaustive =
+    runPatternCheckT . checkPatterns (exhaustive . fmap fst)
 
 -- ============================================================================
 -- ============================ Patterns Compiler =============================
@@ -946,20 +944,19 @@ inferPrim = pure . \case
     Char{}    -> tChar
     String{}  -> tString
 
-inferType :: (Monad m) => Context -> Expr -> InferT m (AnnotatedExpr Scheme)
-inferType (Context env) expr = do
+solveExprType
+  :: (Monad m)
+  => Context
+  -> Expr
+  -> InferT m (AnnotatedExpr Type, Substitution, [Class])
+solveExprType (Context env) expr = do
     (ty, as, cs) <- infer expr
     case unboundVars env as of
-        [] -> do
-            --let xxx = solve ([], cs <> envConstraints as)
-            (sub, clcs) <- runStateT (solve (cs <> envConstraints as)) []
-            --pure (apply sub ty)
-            --sub <- solve (cs <> envConstraints as)
-            traceShowM clcs
-            annotate sub ty
-
         (var:_) ->
             throwError (UnboundVariable var)
+        [] -> do
+            (sub, clcs) <- runStateT (solve (cs <> envConstraints as)) []
+            pure (ty, sub, clcs)
   where
     envConstraints :: [Assumption] -> [Constraint]
     envConstraints as = do
@@ -968,11 +965,24 @@ inferType (Context env) expr = do
         guard (x == y)
         pure (Explicit s t)
 
+inferType :: (Monad m) => Context -> Expr -> InferT m (AnnotatedExpr Scheme)
+inferType context expr = do
+    (ty, sub, clcs) <- solveExprType context expr
+    traceShowM (apply sub (getAnnotation ty))
+    traceShowM (apply sub clcs)
+    annotate sub ty
+  where
+    annotate
+      :: (Monad m)
+      => Substitution
+      -> AnnotatedExpr Type
+      -> InferT m (AnnotatedExpr Scheme)
     annotate sub = cata alg . runAnnotatedExpr where
         alg :: Monad m => Algebra (AnnotatedExprF Type) (InferT m (AnnotatedExpr Scheme))
         alg (Const ty :*: expr) = do
             zz <- fmap runAnnotatedExpr <$> sequence expr
-            pure $ annotated (generalize mempty [] (apply sub ty)) zz
+            --pure $ annotated (generalize mempty [] (apply sub ty)) zz
+            pure $ annotated (generalize mempty (apply sub ty)) zz
 
 --    annotate
 --      :: (Monad m)
@@ -1067,22 +1077,27 @@ solve xs =
             sub1 <- unify t1 t2
             modify (apply sub1)
             sub2 <- solve (apply sub1 cs)
+            modify (apply sub2)
             pure (sub2 `compose` sub1)
 
         Implicit t1 t2 (Monoset vars) ->
-            solve (Explicit t1 (generalize vars [] t2):cs)
+            --solve (Explicit t1 (generalize vars [] t2):cs)
+            solve (Explicit t1 (generalize vars t2):cs)
 
         Explicit t1 scheme -> do
             t2 <- instantiate scheme
             solve (Equality t1 t2:cs)
 
-generalize :: Set Name -> [Class] -> Type -> Scheme
-generalize vars clcs ty = Forall (Set.toList (free ty \\ vars)) clcs ty
+-- generalize :: Set Name -> [Class] -> Type -> Scheme
+-- generalize vars clcs ty = Forall (Set.toList (free ty \\ vars)) clcs ty
+
+generalize :: Set Name -> Type -> Scheme
+generalize vars ty = Forall (Set.toList (free ty \\ vars)) [] ty
 
 instantiate :: (MonadSupply Type m, MonadState [Class] m) => Scheme -> m Type
 instantiate (Forall vars clcs ty) = do
     sub <- Substitution . map <$> traverse (const supply) vars
-    modify (nub . apply sub . (<>) clcs)
+    modify (nub . apply sub . (<> clcs))
     pure (apply sub ty)
   where
     map = Map.fromList . zip vars

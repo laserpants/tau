@@ -4,13 +4,16 @@ module Tau.Parser where
 import Control.Applicative ((<|>))
 import Control.Monad (void)
 import Control.Monad.Combinators.Expr
+import Data.Char (isUpper)
 import Data.Functor (($>))
 import Data.Functor.Foldable
+import Data.Maybe (fromMaybe)
 import Data.Text (Text, pack, unpack)
 import Data.Void
 import Tau.Juice hiding (($>), name)
 import Text.Megaparsec
 import Text.Megaparsec.Char (alphaNumChar, letterChar, printChar, space1, lowerChar, upperChar)
+import qualified Data.Text as Text
 import qualified Text.Megaparsec.Char as Megaparsec
 import qualified Text.Megaparsec.Char.Lexer as Lexer
 
@@ -57,26 +60,33 @@ reserved =
     , "not"
     ]
 
-identifier :: Parser String
-identifier = lexeme $ try $ do
-    var <- withInitial lowerChar
+word :: Parser String -> Parser String
+word parser = lexeme $ try $ do
+    var <- parser
     if var `elem` reserved
         then fail ("Reserved keyword " <> var)
         else pure var
 
-constructor :: Parser String
-constructor = lexeme $ try $ withInitial upperChar
+name :: Parser Name
+name = pack <$> word (withInitial lowerChar)
+
+constructor :: Parser Name
+constructor = pack <$> word (withInitial upperChar)
 
 -- ============================================================================
 -- =================================== Ast ====================================
 -- ============================================================================
 
+isAdt :: Expr -> Bool
+isAdt (Fix (VarS name)) | not (Text.null name) = isUpper (Text.head name)
+isAdt _ = False
+
 ast :: Parser Expr
 ast = do
     exprs <- appS <$> some atom
     pure $ case unfix exprs of
-        AppS [e] -> e
-        _        -> exprs
+        AppS [e] | not (isAdt e) -> e
+        _ -> exprs
   where
     atom = ifClause
         <|> letRecBinding
@@ -85,7 +95,7 @@ ast = do
         <|> lambda
         <|> literal
         <|> parens expr
-        <|> variable
+        <|> identifier
 
 prim :: Parser Prim
 prim = unit
@@ -118,9 +128,6 @@ expr = makeExprParser ast operator
 
 parseExpr :: String -> Either (ParseErrorBundle String Void) Expr
 parseExpr = parse (spaces *> expr <* eof) ""
-
-name :: Parser Text
-name = pack <$> identifier
 
 ifClause :: Parser Expr
 ifClause = do
@@ -165,9 +172,9 @@ varPattern = varP <$> name
 
 conPattern :: Parser Pattern
 conPattern = do
-    con <- pack <$> constructor
-    pts <- many parsePattern
-    pure (conP con pts)
+    name <- constructor
+    pats <- many parsePattern
+    pure (conP name pats)
 
 litPattern :: Parser Pattern
 litPattern = litP <$> prim
@@ -211,5 +218,5 @@ string = String . pack <$> str
 literal :: Parser Expr
 literal = litS <$> prim
 
-variable :: Parser Expr
-variable = varS <$> name
+identifier :: Parser Expr
+identifier = varS . pack <$> word (withInitial letterChar)
