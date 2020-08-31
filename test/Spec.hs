@@ -1408,7 +1408,7 @@ testParsesTo name (input, expr) =
     describeSuccess = unpack $
         "✔ parses to : " <> prettyExpr expr
 
-    test = case parseExpr input of
+    test = case parseExpr (pack input) of
         Left err ->
             expectationFailure ("Unexpected error: " <> show err)
 

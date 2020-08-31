@@ -1,28 +1,25 @@
 {-# LANGUAGE OverloadedStrings #-}
 module Tau.Parser where
 
-import Control.Applicative ((<|>))
-import Control.Monad (void)
 import Control.Monad.Combinators.Expr
 import Data.Char (isUpper)
 import Data.Functor (($>))
-import Data.Functor.Foldable
-import Data.Maybe (fromMaybe)
+import Data.Functor.Foldable (Fix(..), unfix)
 import Data.Text (Text, pack, unpack)
 import Data.Void
 import Tau.Juice hiding (($>), name)
 import Text.Megaparsec
-import Text.Megaparsec.Char (alphaNumChar, letterChar, printChar, space1, lowerChar, upperChar)
+import Text.Megaparsec.Char (alphaNumChar, letterChar, lowerChar, upperChar, printChar, space1)
 import qualified Data.Text as Text
 import qualified Text.Megaparsec.Char as Megaparsec
 import qualified Text.Megaparsec.Char.Lexer as Lexer
 
-type Parser = Parsec Void String
+type Parser = Parsec Void Text
 
 lexeme :: Parser a -> Parser a
 lexeme = Lexer.lexeme spaces
 
-symbol :: String -> Parser String
+symbol :: Text -> Parser Text
 symbol = Lexer.symbol spaces
 
 spaces :: Parser ()
@@ -34,19 +31,19 @@ spaces = Lexer.space
 parens :: Parser a -> Parser a
 parens = between (symbol "(") (symbol ")")
 
-withInitial :: Parser Char -> Parser String
+withInitial :: Parser Char -> Parser Text
 withInitial char = do
     head <- char
     tail <- many alphaNumChar
-    pure (head : tail)
+    pure $ pack (head : tail)
 
-keyword :: String -> Parser ()
+keyword :: Text -> Parser ()
 keyword token =
     Megaparsec.string token
         *> notFollowedBy alphaNumChar
         *> spaces
 
-reserved :: [String]
+reserved :: [Text]
 reserved =
     [ "let"
     , "in"
@@ -60,26 +57,22 @@ reserved =
     , "not"
     ]
 
-word :: Parser String -> Parser String
+word :: Parser Text -> Parser Text
 word parser = lexeme $ try $ do
     var <- parser
     if var `elem` reserved
-        then fail ("Reserved keyword " <> var)
+        then fail ("Reserved keyword " <> unpack var)
         else pure var
 
-name :: Parser Name
-name = pack <$> word (withInitial lowerChar)
+name :: Parser Text
+name = word (withInitial lowerChar)
 
 constructor :: Parser Name
-constructor = pack <$> word (withInitial upperChar)
+constructor = word (withInitial upperChar)
 
 -- ============================================================================
 -- =================================== Ast ====================================
 -- ============================================================================
-
-isAdt :: Expr -> Bool
-isAdt (Fix (VarS name)) | not (Text.null name) = isUpper (Text.head name)
-isAdt _ = False
 
 ast :: Parser Expr
 ast = do
@@ -96,6 +89,10 @@ ast = do
         <|> literal
         <|> parens expr
         <|> identifier
+
+isAdt :: Expr -> Bool
+isAdt (Fix (VarS name)) | not (Text.null name) = isUpper (Text.head name)
+isAdt _ = False
 
 prim :: Parser Prim
 prim = unit
@@ -126,7 +123,7 @@ operator =
 expr :: Parser Expr
 expr = makeExprParser ast operator
 
-parseExpr :: String -> Either (ParseErrorBundle String Void) Expr
+parseExpr :: Text -> Either (ParseErrorBundle Text Void) Expr
 parseExpr = parse (spaces *> expr <* eof) ""
 
 ifClause :: Parser Expr
@@ -142,7 +139,7 @@ letRecBinding = parseLet recS "let rec"
 letBinding :: Parser Expr
 letBinding = parseLet letS "let"
 
-parseLet :: (Name -> Expr -> Expr -> Expr) -> String -> Parser Expr
+parseLet :: (Name -> Expr -> Expr -> Expr) -> Text -> Parser Expr
 parseLet con kword = do
     var  <- keyword kword *> name
     exp  <- symbol  "="   *> expr
@@ -210,13 +207,12 @@ char :: Parser Prim
 char = Char <$> between (symbol "'") (symbol "'") printChar
 
 string :: Parser Prim
-string = String . pack <$> str
+string = String . pack <$> chars
   where
-    chr = Megaparsec.char
-    str = chr '"' *> takeWhileP Nothing (/= '"') <* chr '"'
+    chars = Megaparsec.char '\"' *> manyTill Lexer.charLiteral (Megaparsec.char '\"')
 
 literal :: Parser Expr
 literal = litS <$> prim
 
 identifier :: Parser Expr
-identifier = varS . pack <$> word (withInitial letterChar)
+identifier = varS <$> word (withInitial letterChar)

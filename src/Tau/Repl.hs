@@ -9,6 +9,7 @@ import Data.Either.Extra (mapLeft, fromEither)
 import Data.Functor.Const
 import Data.Functor.Foldable
 import Data.List (isPrefixOf)
+import Data.Text (Text, pack)
 import Data.Void
 import Debug.Trace
 import System.Console.Repline
@@ -34,7 +35,7 @@ repl = evalReplOpts $ ReplOpts
     }
 
 data ReplError
-    = ParseError (ParseErrorBundle String Void)
+    = ParseError (ParseErrorBundle Text Void)
     | TypeError TypeError
     | EvalError EvalError
     | NonExhaustivePattern
@@ -44,7 +45,7 @@ replCommand :: String -> Repl ()
 replCommand input = putStrIO (fromEither (mapLeft show run))
   where
     run = do
-        expr <- mapLeft ParseError (parseExpr input)
+        expr <- mapLeft ParseError (parseExpr (pack input))
         (expr', ty) <- mapLeft TypeError (treeTop <$> replInferType (Context mempty) expr)
         exhaustive <- allPatternsAreExhaustive expr' mempty
         unless (Right True == exhaustive) (Left NonExhaustivePattern)
