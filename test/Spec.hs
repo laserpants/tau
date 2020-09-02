@@ -34,28 +34,28 @@ typeInferTestExpr2 :: Expr
 typeInferTestExpr2 = lamS "a" (lamS "b" (appS [varS "(==)", varS "a", varS "b"]))
 
 listA :: Type
-listA = TApp (TCon "List") (TVar "a")
+listA = AppT (ConT "List") (VarT "a")
 
 tuple2AB :: Type
-tuple2AB = TApp (TApp (TCon "Tuple2") (TVar "a")) (TVar "b")
+tuple2AB = AppT (AppT (ConT "Tuple2") (VarT "a")) (VarT "b")
 
 testContext :: Context
 testContext = Context (Map.fromList
-    [ ("concat" , Forall []         [] (TArr tString (TArr tString tString)))
-    , ("show"   , Forall ["a"] [Class "Show" (TVar "a")]
-                                       (TArr (TVar "a") tString))
+    [ ("concat" , Forall []         [] (ArrT tString (ArrT tString tString)))
+    , ("show"   , Forall ["a"] [Class "Show" (VarT "a")]
+                                       (ArrT (VarT "a") tString))
     , ("Nil"    , Forall ["a"]      [] listA)
-    , ("Cons"   , Forall ["a"]      [] (TArr (TVar "a") (TArr listA listA)))
-    , ("const"  , Forall ["a", "b"] [] (TArr (TVar "a") (TArr (TVar "b") (TVar "a"))))
-    , ("foo"    , Forall ["a"]      [] (TArr (TVar "a") (TVar "a")))
-    , ("Foo"    , Forall ["a"]      [] (TArr (TVar "a") (TApp (TCon "List") (TVar "a"))))
+    , ("Cons"   , Forall ["a"]      [] (ArrT (VarT "a") (ArrT listA listA)))
+    , ("const"  , Forall ["a", "b"] [] (ArrT (VarT "a") (ArrT (VarT "b") (VarT "a"))))
+    , ("foo"    , Forall ["a"]      [] (ArrT (VarT "a") (VarT "a")))
+    , ("Foo"    , Forall ["a"]      [] (ArrT (VarT "a") (AppT (ConT "List") (VarT "a"))))
     , ("Baz"    , Forall []         [] tBool)
-    , ("Tuple2" , Forall ["a", "b"] [] (TArr (TVar "a") (TArr (TVar "b") tuple2AB)))
-    , ("fst"    , Forall ["a", "b"] [] (TArr tuple2AB (TVar "a")))
-    , ("snd"    , Forall ["a", "b"] [] (TArr tuple2AB (TVar "b")))
-    , ("(==)"   , Forall ["a"] [Class "Eq" (TVar "a")] (TArr (TVar "a") (TArr (TVar "a") tBool)))
-    , ("(+)"    , Forall ["a"] [Class "Num" (TVar "a")] (TArr (TVar "a") (TArr (TVar "a") (TVar "a"))))
-    --, ("(+)"    , Forall [] [] (TArr (TCon "Int") (TArr (TCon "Int") (TCon "Int"))))
+    , ("Tuple2" , Forall ["a", "b"] [] (ArrT (VarT "a") (ArrT (VarT "b") tuple2AB)))
+    , ("fst"    , Forall ["a", "b"] [] (ArrT tuple2AB (VarT "a")))
+    , ("snd"    , Forall ["a", "b"] [] (ArrT tuple2AB (VarT "b")))
+    , ("(==)"   , Forall ["a"] [Class "Eq" (VarT "a")] (ArrT (VarT "a") (ArrT (VarT "a") tBool)))
+    , ("(+)"    , Forall ["a"] [Class "Num" (VarT "a")] (ArrT (VarT "a") (ArrT (VarT "a") (VarT "a"))))
+    --, ("(+)"    , Forall [] [] (ArrT (ConT "Int") (ArrT (ConT "Int") (ConT "Int"))))
     ])
 
 -- ===================
@@ -216,12 +216,12 @@ testInfer :: SpecWith ()
 testInfer = do
     typeInferTestSuccess
         (typeInferTest010, Context mempty)
-        (Forall ["a"] [] (TVar "a" `TArr` tUnit))
+        (Forall ["a"] [] (VarT "a" `ArrT` tUnit))
         "test010"
 
     typeInferTestFailure
         (typeInferTest010, Context mempty)
-        (Forall ["a"] [] (TVar "a" `TArr` tInt))
+        (Forall ["a"] [] (VarT "a" `ArrT` tInt))
         "test010"
 
     typeInferTestSuccess
@@ -234,22 +234,22 @@ testInfer = do
         (typeInferTest012, testContext) (Forall [] [] tInt) "test012"
 
     typeInferTestSuccess
-        (typeInferTest013, testContext) (Forall [] [] (TApp (TCon "List") tInt)) "test013"
+        (typeInferTest013, testContext) (Forall [] [] (AppT (ConT "List") tInt)) "test013"
 
     typeInferTestFailure
-        (typeInferTest013, testContext) (Forall [] [] (TApp (TCon "List") (TVar "a"))) "test013"
+        (typeInferTest013, testContext) (Forall [] [] (AppT (ConT "List") (VarT "a"))) "test013"
 
     typeInferTestSuccess
-        (typeInferTest014, Context mempty) (Forall ["a"] [] (TVar "a" `TArr` TVar "a")) "test014"
+        (typeInferTest014, Context mempty) (Forall ["a"] [] (VarT "a" `ArrT` VarT "a")) "test014"
 
     typeInferTestSuccess
-        (typeInferTest015, Context mempty) (Forall ["a", "b"] [] (TVar "a" `TArr` (TVar "b" `TArr` TVar "a"))) "test015"
+        (typeInferTest015, Context mempty) (Forall ["a", "b"] [] (VarT "a" `ArrT` (VarT "b" `ArrT` VarT "a"))) "test015"
 
     typeInferTestFailure
-        (typeInferTest015, Context mempty) (Forall ["a", "b"] [] (TVar "a" `TArr` (TVar "b" `TArr` TVar "b"))) "test015"
+        (typeInferTest015, Context mempty) (Forall ["a", "b"] [] (VarT "a" `ArrT` (VarT "b" `ArrT` VarT "b"))) "test015"
 
     typeInferTestFailure
-        (typeInferTest015, Context mempty) (Forall ["a", "b"] [] (TVar "b" `TArr` (TVar "b" `TArr` TVar "a"))) "test015"
+        (typeInferTest015, Context mempty) (Forall ["a", "b"] [] (VarT "b" `ArrT` (VarT "b" `ArrT` VarT "a"))) "test015"
 
     typeInferTestSuccess
         (typeInferTest020, testContext) (Forall [] [] tUnit) "test020"
@@ -779,49 +779,49 @@ evalRunTest = flip evalExpr evalTestEnv
 
 uniTest010 :: (Type, Type)
 uniTest010 =
-    ( TArr (TVar "a") (TVar "b")                     -- a -> b
-    , TArr tInt tInt                                 -- Int -> Int
+    ( ArrT (VarT "a") (VarT "b")                     -- a -> b
+    , ArrT tInt tInt                                 -- Int -> Int
     )
 
 uniTest020 :: (Type, Type)
 uniTest020 =
-    ( TArr (TVar "a") (TVar "a")                     -- a -> a
-    , TArr tInt tBool                                -- Int -> Bool
+    ( ArrT (VarT "a") (VarT "a")                     -- a -> a
+    , ArrT tInt tBool                                -- Int -> Bool
     )
 
 uniTest030 :: (Type, Type)
 uniTest030 =
-    ( TArr (TVar "a") (TVar "a")                     -- a -> a
-    , TArr tInt tInt                                 -- Int -> Int
+    ( ArrT (VarT "a") (VarT "a")                     -- a -> a
+    , ArrT tInt tInt                                 -- Int -> Int
     )
 
 uniTest040 :: (Type, Type)
 uniTest040 =
-    ( TArr (TVar "a") (TArr (TVar "b") (TVar "a"))   -- a -> (b -> a)
-    , TArr (TVar "a") (TArr tInt (TVar "a"))         -- a -> (Int -> a)
+    ( ArrT (VarT "a") (ArrT (VarT "b") (VarT "a"))   -- a -> (b -> a)
+    , ArrT (VarT "a") (ArrT tInt (VarT "a"))         -- a -> (Int -> a)
     )
 
 uniTest041 :: (Type, Type)
 uniTest041 =
-    ( TArr (TVar "a") (TArr (TVar "b") (TVar "a"))   -- a -> (b -> a)
-    , TArr (TVar "a") (TArr tInt (TVar "b"))         -- a -> (Int -> b)
+    ( ArrT (VarT "a") (ArrT (VarT "b") (VarT "a"))   -- a -> (b -> a)
+    , ArrT (VarT "a") (ArrT tInt (VarT "b"))         -- a -> (Int -> b)
     )
 
 uniTest042 :: (Type, Type)
 uniTest042 =
-    ( TArr (TVar "a") (TArr (TVar "b") (TVar "a"))   -- a -> (b -> a)
-    , TArr tInt (TArr tInt tBool)                    -- Int -> (Int -> Bool)
+    ( ArrT (VarT "a") (ArrT (VarT "b") (VarT "a"))   -- a -> (b -> a)
+    , ArrT tInt (ArrT tInt tBool)                    -- Int -> (Int -> Bool)
     )
 
 uniTest050 :: (Type, Type)
 uniTest050 =
-    ( TApp (TCon "List") (TVar "a")                  -- List a
-    , TApp (TCon "List") tInt                        -- List Int
+    ( AppT (ConT "List") (VarT "a")                  -- List a
+    , AppT (ConT "List") tInt                        -- List Int
     )
 
 uniTest060 :: (Type, Type)
 uniTest060 =
-    ( TApp (TCon "List") (TVar "a")                  -- List a
+    ( AppT (ConT "List") (VarT "a")                  -- List a
     , tInt                                           -- Int
     )
 
@@ -1226,8 +1226,8 @@ tclcsTest030 =  lamS "x" (letS "xs" (appS [varS "Cons", varS "x", appS [varS "Ni
 
 --tclcsTestContext :: Context
 --tclcsTestContext = Context (Map.fromList
---    [ ("Show" , Forall ["a"] [] (TArr (TArr (TVar "a") tString) (TApp (TCon "Show") (TVar "a"))))
---    , ("id"   , Forall ["a"] [] (TArr (TVar "a") (TVar "a")))
+--    [ ("Show" , Forall ["a"] [] (ArrT (ArrT (VarT "a") tString) (AppT (ConT "Show") (VarT "a"))))
+--    , ("id"   , Forall ["a"] [] (ArrT (VarT "a") (VarT "a")))
 --    ])
 
 testTypeClasses :: SpecWith ()
@@ -1236,10 +1236,10 @@ testTypeClasses = do
     testTclcsEvalsTo "test000" (tclcsTest000, Value (String "hello"))
     testTclcsHasType "test010" (tclcsTest010, Forall [] [] tString)
     testTclcsEvalsTo "test010" (tclcsTest010, Value (String "False"))
-    testSolveExprType "test020" (tclcsTest020, TArr (TApp (TCon "List") (TCon "Int")) (TApp (TCon "List") (TCon "Bool")), [Class "Eq" (TCon "Int")])
-    testSolveExprType "test021" (tclcsTest021, TArr (TApp (TCon "List") (TVar "a35")) (TApp (TCon "List") (TCon "Bool")), [Class "Eq" (TVar "a35")])
-    testSolveExprType "test025" (tclcsTest025, TArr (TVar "a8") (TArr (TVar "a8") (TVar "a8")), [Class "Num" (TVar "a8")])
-    testSolveExprType "test030" (tclcsTest030, TArr (TVar "a11") (TCon "String"), [Class "Show" (TApp (TCon "List") (TVar "a11"))])
+    testSolveExprType "test020" (tclcsTest020, ArrT (AppT (ConT "List") (ConT "Int")) (AppT (ConT "List") (ConT "Bool")), [Class "Eq" (ConT "Int")])
+    testSolveExprType "test021" (tclcsTest021, ArrT (AppT (ConT "List") (VarT "a35")) (AppT (ConT "List") (ConT "Bool")), [Class "Eq" (VarT "a35")])
+    testSolveExprType "test025" (tclcsTest025, ArrT (VarT "a8") (ArrT (VarT "a8") (VarT "a8")), [Class "Num" (VarT "a8")])
+    testSolveExprType "test030" (tclcsTest030, ArrT (VarT "a11") (ConT "String"), [Class "Show" (AppT (ConT "List") (VarT "a11"))])
 
 testSolveExprType :: Text -> (Expr, Type, [Class]) -> SpecWith ()
 testSolveExprType name (expr, ty, clcs) =
@@ -1318,8 +1318,8 @@ testTclcsHasType name (expr, ty) =
 
 tclcsTestContext :: Context
 tclcsTestContext = Context (Map.fromList
-    [ ("Show" , Forall ["a"] [] (TArr (TArr (TVar "a") tString) (TApp (TCon "Show") (TVar "a"))))
-    , ("id"   , Forall ["a"] [] (TArr (TVar "a") (TVar "a")))
+    [ ("Show" , Forall ["a"] [] (ArrT (ArrT (VarT "a") tString) (AppT (ConT "Show") (VarT "a"))))
+    , ("id"   , Forall ["a"] [] (ArrT (VarT "a") (VarT "a")))
     ])
 
 -- ====================
@@ -1436,7 +1436,7 @@ canonical (Forall vars clcs ty) =
     Forall names (apply sub clcs) (apply sub ty)
   where
     names = take (length vars) (enumFrom 1 >>= fmap pack . flip replicateM ['a'..'z'])
-    sub = Substitution $ Map.fromList $ zip vars (TVar <$> names)
+    sub = Substitution $ Map.fromList $ zip vars (VarT <$> names)
 
 isoTypes :: Scheme -> Scheme -> Bool
 isoTypes t u = canonical t == canonical u
@@ -1457,10 +1457,10 @@ prettyClcs (Class name ty) = name <> " " <> prettyType ty
 
 prettyType :: Type -> Text
 prettyType = \case
-    TCon name  -> name
-    TVar name  -> name
-    TApp t1 t2 -> prettyType t1 <> " " <> prettyType t2
-    TArr t1 t2 -> prettyType t1 <> " -> " <> prettyType t2
+    ConT name  -> name
+    VarT name  -> name
+    AppT t1 t2 -> prettyType t1 <> " " <> prettyType t2
+    ArrT t1 t2 -> prettyType t1 <> " -> " <> prettyType t2
 
 prettyExpr :: Expr -> Text
 prettyExpr = cata alg
