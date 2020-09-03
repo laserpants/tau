@@ -88,7 +88,7 @@ ast = do
         <|> letRecBinding
         <|> letBinding
         <|> matchWith
-        -- TODO \match
+        <|> lamMatch
         <|> lambda
         <|> literal
         <|> parens expr
@@ -164,6 +164,11 @@ matchWith = do
     expr <- keyword "match" *> expr
     clss <- keyword "with"  *> some clause
     pure (matchS expr clss)
+
+lamMatch :: Parser Expr
+lamMatch = do
+    clss <- keyword "\\match" *> some clause
+    pure (lamMatchS clss)
 
 clause :: Parser (Pattern, Expr)
 clause = do

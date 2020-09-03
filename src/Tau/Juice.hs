@@ -629,6 +629,10 @@ ifS a1 a2 a3 = Fix (IfS a1 a2 a3)
 matchS :: Expr -> [MatchClause Expr] -> Expr
 matchS a = Fix . MatchS a
 
+-- | LamMatchS constructor
+lamMatchS :: [MatchClause Expr] -> Expr
+lamMatchS = Fix . LamMatchS
+
 -- | OpS constructor
 opS :: OpF Expr -> Expr
 opS = Fix . OpS
