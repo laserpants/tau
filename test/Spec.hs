@@ -767,6 +767,9 @@ evalTest140 = letS "f" (lamS "n" (ifS (eqS (varS "n") (litInt 0)) (litInt 1) (mu
 evalTest150 :: Expr
 evalTest150 = recS "f" (lamS "n" (ifS (eqS (varS "n") (litInt 0)) (litInt 1) (mulS (varS "n") (appS [varS "f", subS (varS "n") (litInt 1)])))) (appS [varS "f", litInt 5])
 
+evalTest160 :: Expr
+evalTest160 = recS "length" (lamS "xs" (matchS (varS "xs") [(conP "Nil" [], litInt 0), (conP "Cons" [varP "x", varP "xs"], addS (litInt 1) (appS [varS "length", varS "xs"]))])) (appS [varS "length", appS [varS "Cons", litInt 1, appS [varS "Cons", litInt 1, appS [varS "Nil"]]]])
+
 testEval :: SpecWith ()
 testEval = do
     evalTestIsFunction evalTest000               "test000"
@@ -784,6 +787,7 @@ testEval = do
     evalTestEvalsTo (evalTest130, Value (Int 2)) "test130"
     evalTestFailsWithError (evalTest140, UnboundIdentifier "f") "test140"
     evalTestEvalsTo (evalTest150, Value (Int 120)) "test150"
+    evalTestEvalsTo (evalTest160, Value (Int 2)) "test160"
 
 evalTestFailsWithError :: (Expr, EvalError) -> Name -> SpecWith ()
 evalTestFailsWithError (expr, err) name =

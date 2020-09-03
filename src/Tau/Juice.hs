@@ -102,7 +102,7 @@ data Scheme = Forall
 data KindF a
     = ArrowK a a           -- ^ Type arrow
     | StarK                -- ^ Concrete type
-    | VarK Name            -- ^ Kind variable placeholder
+    | VarK Name            -- ^ Kind placeholder variable
     deriving (Show, Eq)
 
 type Kind = Fix KindF
@@ -192,7 +192,7 @@ instance Substitutable Kind Kind where
     apply sub (Fix (ArrowK k1 k2)) = arrowK (apply sub k1) (apply sub k2)
     apply _ (Fix StarK)            = starK
 
--- | Class of types that contain free type variables
+-- | Class of types that may contain free type variables
 class Free t where
     free :: t -> Set Name
 
@@ -255,11 +255,14 @@ data ExprF a
     | LetS Name a a
     | RecS Name a a
     | IfS a ~a ~a
-    | MatchS a [(Pattern, a)]
+    | MatchS a [MatchClause a]
+    | LamMatchS [MatchClause a]
     | OpS (OpF a)
     | AnnS a Type
     | ErrS
     deriving (Show, Eq, Functor, Foldable, Traversable)
+
+type MatchClause a = (Pattern, a)
 
 type Expr = Fix ExprF
 
@@ -401,7 +404,7 @@ useful px@(ps:_) qs =
 exhaustive :: (Monad m) => [Pattern] -> PatternCheckT m Bool
 exhaustive ps = not <$> useful ((:[]) <$> ps) [anyP]
 
-checkPatterns :: (Monad m) => ([(Pattern, Bool)] -> m Bool) -> Expr -> m Bool
+checkPatterns :: (Monad m) => ([MatchClause Bool] -> m Bool) -> Expr -> m Bool
 checkPatterns pred = cata $ \case
     LamS _ expr ->
         expr
@@ -562,7 +565,7 @@ matchDefault def (u:us) qs = foldrM (flip run) def (groups qs) where
                 [] -> def
                 css' -> matchS u css'
           where
-            groupClause :: MonadSupply Name m => ConGroup -> m (Pattern, Expr)
+            groupClause :: MonadSupply Name m => ConGroup -> m (MatchClause Expr)
             groupClause ConGroup{..} = do
                 vs <- replicateM arity supply
                 expr <- matchDefault def ((varS <$> vs) <> us) equations
@@ -623,7 +626,7 @@ ifS :: Expr -> Expr -> Expr -> Expr
 ifS a1 a2 a3 = Fix (IfS a1 a2 a3)
 
 -- | MatchS constructor
-matchS :: Expr -> [(Pattern, Expr)] -> Expr
+matchS :: Expr -> [MatchClause Expr] -> Expr
 matchS a = Fix . MatchS a
 
 -- | OpS constructor
@@ -921,7 +924,7 @@ infer = cata alg where
             (_expr, t1, a1, c1) <- local (insertIntoMonoset var) expr
             pure ( annotated (arrT beta t1) (LamS name _expr)
                  , removeAssumption name a1
-                 , c1 <> [Equality t beta | (y, t) <- runAssumption <$> a1, name == y] )
+                 , c1 <> [Equality t beta | (y, t) <- getAssumption <$> a1, name == y] )
 
         AppS exprs -> do
             (_expr, _, as, cs) <- foldl1 inferApp exprs
@@ -948,6 +951,9 @@ infer = cata alg where
         MatchS _ [] ->
             throwError EmptyMatchStatement
 
+        LamMatchS [] ->
+            throwError EmptyMatchStatement
+
         MatchS expr clss -> do
             beta <- supply
             (_expr, t1, a1, c1) <- expr
@@ -955,6 +961,9 @@ infer = cata alg where
             pure ( annotated beta (MatchS _expr _clss)
                  , a1 <> as
                  , c1 <> cs )
+
+        LamMatchS clcss ->
+            undefined  -- TODO
 
         OpS op ->
             inferOp op
@@ -975,17 +984,15 @@ inferLet var expr body rec = do
     set <- ask
     pure ( annotated t2 ((if rec then RecS else LetS) var _e1 _e2)
          , (if rec then removeAssumption var a1 else a1) <> removeAssumption var a2
-         , c1 <> c2 <> [Implicit t t1 set | (y, t) <- runAssumption <$> a1 <> a2, var == y] )
-
-type Clause = (Pattern, Fix (AnnotatedExprF Type))
+         , c1 <> c2 <> [Implicit t t1 set | (y, t) <- getAssumption <$> a1 <> a2, var == y] )
 
 inferClause
   :: (Monad m)
   => Type
   -> Type
-  -> (Pattern, InferT m (Fix (AnnotatedExprF Type), Type, [Assumption], [Constraint]))
-  -> ([Clause], [Assumption], [Constraint])
-  -> InferT m ([Clause], [Assumption], [Constraint])
+  -> MatchClause (InferT m (Fix (AnnotatedExprF Type), Type, [Assumption], [Constraint]))
+  -> ([MatchClause (Fix (AnnotatedExprF Type))], [Assumption], [Constraint])
+  -> InferT m ([MatchClause (Fix (AnnotatedExprF Type))], [Assumption], [Constraint])
 inferClause beta t (pat, expr) (ps, as, cs) = do
     (_expr, t1, a1, c1) <- local (insertManyIntoMonoset vars) expr
     (t2, a2, c2) <- inferPattern pat
@@ -998,8 +1005,8 @@ inferClause beta t (pat, expr) (ps, as, cs) = do
   where
     vars = patternVars pat
     constraints a1 a2 = do
-        (y1, t1) <- runAssumption <$> a1
-        (y2, t2) <- runAssumption <$> a2
+        (y1, t1) <- getAssumption <$> a1
+        (y2, t2) <- getAssumption <$> a2
         var <- vars
         guard (var == y1 && var == y2)
         pure (Equality t1 t2)
@@ -1141,7 +1148,7 @@ solveExprType (Env env) expr = do
   where
     envConstraints :: [Assumption] -> [Constraint]
     envConstraints as = do
-        (x, s) <- runAssumption <$> as
+        (x, s) <- getAssumption <$> as
         (y, t) <- Map.toList env
         guard (x == y)
         pure (Explicit s t)
@@ -1188,7 +1195,7 @@ inferType context expr = do
 --             in annotated $ generalize mempty (apply sub clcs') ty'
 
 unboundVars :: Map Name a -> [Assumption] -> [Name]
-unboundVars env as = filter (`notMember` env) (fst . runAssumption <$> as)
+unboundVars env as = filter (`notMember` env) (fst . getAssumption <$> as)
 
 annotated :: t -> ExprF (Fix (AnnotatedExprF t)) -> AnnotatedExpr t
 annotated t a = AnnotatedExpr $ Fix $ Const t :*: a
@@ -1206,11 +1213,14 @@ expand triple = do
 -- ============================ Constraints Solver ============================
 -- ============================================================================
 
-newtype Assumption = Assumption { runAssumption :: (Name, Type) }
+newtype Assumption = Assumption { getAssumption :: (Name, Type) }
     deriving (Show, Eq)
 
+assumptionName :: Assumption -> Name
+assumptionName = fst . getAssumption
+
 removeAssumption :: Name -> [Assumption] -> [Assumption]
-removeAssumption var = filter fun where fun (Assumption a) = fst a /= var
+removeAssumption var = filter ((/=) var . assumptionName)
 
 removeManyAssumptions :: [Name] -> [Assumption] -> [Assumption]
 removeManyAssumptions = flip (foldr removeAssumption)
@@ -1537,7 +1547,7 @@ eval = cata alg
 evalMatch
   :: (MonadError EvalError m, MonadReader (EvalEnv m) m)
   => Value m
-  -> [(Pattern, m (Value m))]
+  -> [MatchClause (m (Value m))]
   -> m (Value m)
 evalMatch _ [] = throwError RuntimeError
 evalMatch val ((match, expr):cs) = do

@@ -1,4 +1,5 @@
-{-# LANGUAGE TypeOperators #-}
+{-# LANGUAGE OverloadedStrings #-}
+{-# LANGUAGE TypeOperators     #-}
 module Tau.Repl where
 
 import Control.Arrow ((&&&))
@@ -57,11 +58,28 @@ replCommand input =
   where
     run = do
         expr <- mapLeft ParseError (parseExpr (pack input))
-        (expr', ty) <- mapLeft TypeError (treeTop <$> replInferType (Env mempty) expr)
-        exhaustive <- allPatternsAreExhaustive expr' mempty
+        (expr', ty) <- mapLeft TypeError (treeTop <$> replInferType replTypeEnv expr)
+        exhaustive <- allPatternsAreExhaustive expr' replConstructorEnv
         unless exhaustive (Left NonExhaustivePattern)
-        val <- mapLeft EvalError (evalExpr (compileAll expr') mempty)
+        val <- mapLeft EvalError (evalExpr (compileAll expr') replEvalEnv)
         pure (show (val, ty))
+
+replTypeEnv :: Env Scheme
+replTypeEnv = Env.fromList
+    [ ("Nil"  , Forall ["a"] [] list)
+    , ("Cons" , Forall ["a"] [] (arrT (varT "a") (arrT list list))) ]
+  where
+    list = appT (conT "List") (varT "a")
+
+replEvalEnv :: EvalEnv Eval
+replEvalEnv = Env.fromList
+    [ ("Cons"   , dataCon "Cons" 2)
+    , ("Nil"    , dataCon "Nil" 0) ]
+
+replConstructorEnv :: ConstructorEnv
+replConstructorEnv = constructorEnv
+    [ ("Nil",  ["Nil", "Cons"])
+    , ("Cons", ["Nil", "Cons"]) ]
 
 treeTop :: AnnotatedExpr Scheme -> (Expr, Scheme)
 treeTop = getExpr &&& getAnnotation
