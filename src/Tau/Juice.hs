@@ -226,12 +226,12 @@ occursFreeIn var context = var `member` free context
 -- | Language primitives
 data Prim
     = Unit                   -- ^ Unit value
-    | Bool Bool              -- ^ Boolean
+    | Bool Bool              -- ^ Booleans
     | Int Int                -- ^ Machine-level integers (32 or 64 bit)
-    | Integer Integer        -- ^ Arbitrary precision integer
-    | Float Double           -- ^ Floating point number
-    | Char Char              -- ^ Char
-    | String Text            -- ^ String
+    | Integer Integer        -- ^ Arbitrary precision integers
+    | Float Double           -- ^ Floating point numbers
+    | Char Char              -- ^ Chars
+    | String Text            -- ^ Strings
     deriving (Show, Eq)
 
 data PatternF a
