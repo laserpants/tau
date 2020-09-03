@@ -37,10 +37,12 @@ import Data.Tuple (swap)
 import Data.Tuple.Extra (first, first3, both)
 import Debug.Trace
 import GHC.Show (showSpace)
+import Tau.Env (Env(..))
 import Text.Show.Deriving
 import qualified Data.Map.Strict as Map
 import qualified Data.Set.Monad as Set
 import qualified Data.Text as Text
+import qualified Tau.Env as Env
 
 -- ============================================================================
 -- =================================== Util ===================================
@@ -108,9 +110,6 @@ type Kind = Fix KindF
 $(deriveShow1 ''KindF)
 $(deriveEq1   ''KindF)
 
-newtype Context a = Context (Map Name a)
-    deriving (Show, Eq)
-
 tInt, tInteger, tBool, tFloat, tString, tChar, tUnit, tVoid :: Type
 
 tInt     = conT "Int"      -- ^ Int
@@ -156,7 +155,7 @@ newtype Substitution a = Substitution { getSubstitution :: Map Name a }
 
 compose :: (Substitutable a a) => Substitution a -> Substitution a -> Substitution a
 compose sub@(Substitution map1) (Substitution map2) =
-    Substitution (Map.union (Map.map (apply sub) map2) map1)
+    Substitution (Map.map (apply sub) map2 `Map.union` map1)
 
 substitute :: Name -> a -> Substitution a
 substitute name = Substitution . Map.singleton name
@@ -209,16 +208,16 @@ instance Free Type where
 instance Free Scheme where
     free (Forall vars _ ty) = free ty \\ Set.fromList vars
 
-instance (Free a) => Free (Context a) where
-    free (Context env) = free (Map.elems env)
+instance (Free a) => Free (Env a) where
+    free = free . Env.elems
 
 instance Free Kind where
     free (Fix (ArrowK k l)) = free k `union` free l
     free (Fix (VarK name))  = Set.singleton name
     free _                  = mempty
 
-occursIn :: (Free t) => Name -> t -> Bool
-occursIn var ty = var `member` free ty
+occursFreeIn :: (Free t) => Name -> t -> Bool
+occursFreeIn var context = var `member` free context
 
 -- ============================================================================
 -- =================================== Ast ====================================
@@ -275,8 +274,8 @@ data OpF a
     | GtS a a
     | NegS a
     | NotS a
-    | OrS ~a ~a
-    | AndS ~a ~a
+    | OrS a ~a
+    | AndS a ~a
     deriving (Show, Eq, Functor, Foldable, Traversable)
 
 $(deriveShow1 ''ExprF)
@@ -322,25 +321,25 @@ defaultMatrix = concatMap $ \(p:ps) ->
         LitP{} -> []
         _      -> [ps]
 
-type Lookup = Map Name (Set Name)
+type ConstructorEnv = Env (Set Name)
 
-lookupFromList :: [(Name, [Name])] -> Lookup
-lookupFromList = Map.fromList . fmap (fmap Set.fromList)
+lookupFromList :: [(Name, [Name])] -> ConstructorEnv
+lookupFromList = Env.fromList . fmap (fmap Set.fromList)
 
-type PatternCheckTStack m a = ReaderT Lookup m a
+type PatternCheckTStack m a = ReaderT ConstructorEnv m a
 
 newtype PatternCheckT m a = PatternCheckT (PatternCheckTStack m a) deriving
     ( Functor
     , Applicative
     , Monad
-    , MonadReader Lookup )
+    , MonadReader ConstructorEnv )
 
-runPatternCheckT :: PatternCheckT m a -> Lookup -> m a
+runPatternCheckT :: PatternCheckT m a -> ConstructorEnv -> m a
 runPatternCheckT (PatternCheckT a) = runReaderT a
 
 type PatternCheck = PatternCheckT Identity
 
-runPatternCheck :: PatternCheck a -> Lookup -> a
+runPatternCheck :: PatternCheck a -> ConstructorEnv -> a
 runPatternCheck a = runIdentity . runPatternCheckT a
 
 headCons :: (Monad m) => [[Pattern]] -> m [(Name, Int)]
@@ -359,7 +358,7 @@ headCons = fmap concat . traverse fun where
     prim Char{}       = "$Char"
     prim String{}     = "$String"
 
-useful :: (MonadReader Lookup m) => [[Pattern]] -> [Pattern] -> m Bool
+useful :: (MonadReader ConstructorEnv m) => [[Pattern]] -> [Pattern] -> m Bool
 useful [] qs = pure True        -- zero rows (0x0 matrix)
 useful px@(ps:_) qs =
     case (qs, length ps) of
@@ -383,8 +382,9 @@ useful px@(ps:_) qs =
   where
     complete [] = pure False
     complete names@(name:_) = do
+        -- TODO refactor
         lookup <- ask
-        let map = lookup `Map.union` lookupFromList builtIn
+        let Env map = lookup `Env.union` lookupFromList builtIn
         pure (Map.findWithDefault mempty name map == Set.fromList names)
 
     builtIn =
@@ -444,7 +444,7 @@ allPatternsAreSimple = checkPatterns (pure . uncurry pred . unzip) where
         and exprs &&
         and (isSimple <$> patterns)
 
-allPatternsAreExhaustive :: (Monad m) => Expr -> Lookup -> m Bool
+allPatternsAreExhaustive :: (Monad m) => Expr -> ConstructorEnv -> m Bool
 allPatternsAreExhaustive =
     runPatternCheckT . checkPatterns (exhaustive . fmap fst)
 
@@ -762,8 +762,8 @@ inferK = cata alg where
         kvar <- supply
         pure ( kvar, [(name, kvar)], [] )
 
-inferKind :: (MonadSupply Kind m) => Context Kind -> Type -> m Kind
-inferKind (Context env) ty = do
+inferKind :: (MonadSupply Kind m) => Env Kind -> Type -> m Kind
+inferKind (Env env) ty = do
     (kind, as, cs) <- inferK ty
     sub <- solveKinds (cs <> envConstraints as)
     pure (apply sub kind)
@@ -788,7 +788,7 @@ isPrim _         = False
 
 --instance Unifiable Kind where
 --    toVar = varK
---    unify (Fix (ArrowK k1 k2)) (Fix (ArrowK l1 l2)) = 
+--    unify (Fix (ArrowK k1 k2)) (Fix (ArrowK l1 l2)) =
 --        unifyPairX (k1, k2) (l1, l2)
 --    unify (Fix (VarK k1)) k2 = bindX k1 k2
 --    unify k1 (Fix (VarK k2)) = bindX k2 k1
@@ -796,9 +796,9 @@ isPrim _         = False
 
 bindKinds :: (Monad m) => Name -> Kind -> m (Substitution Kind)
 bindKinds var kind
-    | varK var == kind    = pure mempty
-    | var `occursIn` kind = error "Infinite type"
-    | otherwise           = pure (substitute var kind)
+    | varK var == kind        = pure mempty
+    | var `occursFreeIn` kind = error "Infinite type"
+    | otherwise               = pure (substitute var kind)
 
 unifyKinds :: (Monad m) => Kind -> Kind -> m (Substitution Kind)
 unifyKinds (Fix (ArrowK k1 k2)) (Fix (ArrowK l1 l2)) = do
@@ -883,7 +883,7 @@ instance Substitutable Type Monoset where
 
 type AnnotatedExprF a = Const a :*: ExprF
 
--- | Type-annotated syntax tree
+-- | Annotated syntax tree
 newtype AnnotatedExpr a = AnnotatedExpr
     { runAnnotatedExpr :: Fix (AnnotatedExprF a) }
     deriving (Eq, Show)
@@ -1126,10 +1126,10 @@ inferPrim = pure . \case
 
 solveExprType
   :: (Monad m)
-  => Context Scheme
+  => Env Scheme
   -> Expr
   -> InferT m (AnnotatedExpr Type, Substitution Type, [Class])
-solveExprType (Context env) expr = do
+solveExprType (Env env) expr = do
     (ty, as, cs) <- infer expr
     case unboundVars env as of
         (var:_) ->
@@ -1146,7 +1146,7 @@ solveExprType (Context env) expr = do
         guard (x == y)
         pure (Explicit s t)
 
-inferType :: (Monad m) => Context Scheme -> Expr -> InferT m (AnnotatedExpr Scheme)
+inferType :: (Monad m) => Env Scheme -> Expr -> InferT m (AnnotatedExpr Scheme)
 inferType context expr = do
     (ty, sub, clcs) <- solveExprType context expr
 --    traceShowM (apply sub (getAnnotation ty))
@@ -1283,17 +1283,17 @@ instantiate (Forall vars clcs ty) = do
 -- ============================= Type Unification =============================
 -- ============================================================================
 
--- data UnificationError 
---     = CannotUnify 
---     | InfiniteType 
+-- data UnificationError
+--     = CannotUnify
+--     | InfiniteType
 --     deriving (Show, Eq)
--- 
+--
 -- class Unifiable t where
 --     unify :: (MonadError UnificationError m) => t -> t -> m (Substitution t)
 --     toVar :: Name -> t
 --     err1 :: UnificationError
 --     err2 :: UnificationError
--- 
+--
 -- instance Unifiable Type where
 --     toVar = varT
 --     unify (Fix (ArrT t1 t2)) (Fix (ArrT u1 u2)) = unifyPairX (t1, t2) (u1, u2)
@@ -1301,19 +1301,19 @@ instantiate (Forall vars clcs ty) = do
 --     unify (Fix (VarT a)) t = bindX a t
 --     unify t (Fix (VarT a)) = bindX a t
 --     unify t u = unifyDefaultX t u
--- 
--- --bindX 
--- --  :: (MonadError UnificationError m, Eq a, Unifiable a, Free a, Substitutable a a) 
--- --  => Name 
--- --  -> a 
+--
+-- --bindX
+-- --  :: (MonadError UnificationError m, Eq a, Unifiable a, Free a, Substitutable a a)
+-- --  => Name
+-- --  -> a
 -- --  -> m (Substitution a)
 -- bindX var ty
 --     | toVar var == ty   = pure mempty
---     | var `occursIn` ty = throwError InfiniteType
+--     | var `occursFreeIn` ty = throwError InfiniteType
 --     | otherwise         = pure (substitute var ty)
--- 
--- --unifyPairX 
--- --    :: (MonadError UnificationError m, Unifiable a, Substitutable a a) 
+--
+-- --unifyPairX
+-- --    :: (MonadError UnificationError m, Unifiable a, Substitutable a a)
 -- --    => (a, a)
 -- --    -> (a, a)
 -- --    -> m (Substitution a)
@@ -1321,19 +1321,19 @@ instantiate (Forall vars clcs ty) = do
 --     sub1 <- unify t1 u1
 --     sub2 <- unify (apply sub1 t2) (apply sub1 u2)
 --     pure (sub2 <> sub1)
--- 
+--
 -- --unifyDefaultX :: (MonadError UnificationError m, Eq a, Substitutable a a) => a -> a -> m (Substitution a)
 -- unifyDefaultX t u
 --     | t == u    = pure mempty
 --     | otherwise = throwError CannotUnify
--- 
+--
 -- -- <<
 
 bind :: (MonadError TypeError m) => Name -> Type -> m (Substitution Type)
 bind var ty
-    | varT var == ty    = pure mempty
-    | var `occursIn` ty = throwError InfiniteType
-    | otherwise         = pure (substitute var ty)
+    | varT var == ty        = pure mempty
+    | var `occursFreeIn` ty = throwError InfiniteType
+    | otherwise             = pure (substitute var ty)
 
 unifyPair :: (MonadError TypeError m) => (Type, Type) -> (Type, Type) -> m (Substitution Type)
 unifyPair (t1, t2) (u1, u2) = do
@@ -1355,14 +1355,14 @@ unify t u
 -- ============================================================================
 
 -- | The environment is a mapping from variables to values.
-type Env m = Map Name (Value m)
+type EvalEnv m = Env (Value m)
 
 -- | An expression evaluates to a primitive value, a fully applied data
 -- constructor, or a function closure.
 data Value m
-    = Value Prim                           -- ^ Literal value
-    | Data Name [Value m]                  -- ^ Applied data constructor
-    | Closure Name (m (Value m)) ~(Env m)  -- ^ Function closure
+    = Value Prim                               -- ^ Literal value
+    | Data Name [Value m]                      -- ^ Applied data constructor
+    | Closure Name (m (Value m)) ~(EvalEnv m)  -- ^ Function closure
 
 instance Eq (Value m) where
     (==) (Value v) (Value w)     = v == w
@@ -1385,7 +1385,7 @@ instance Show (Value m) where
     showsPrec _ Closure{} =
         showString "<<function>>"
 
-dataCon :: (MonadReader (Env m) m) => Name -> Int -> Value m
+dataCon :: (MonadReader (EvalEnv m) m) => Name -> Int -> Value m
 dataCon name 0 = Data name []
 dataCon name n = Closure (varName 1) val mempty
   where
@@ -1394,7 +1394,7 @@ dataCon name n = Closure (varName 1) val mempty
         & foldr (\name -> asks . Closure name)
 
     init = do
-        env <- ask
+        Env env <- ask
         let args = fmap (env Map.!) vars
         pure (Data name args)
 
@@ -1457,14 +1457,14 @@ data EvalError
     | TypeMismatch
     deriving (Show, Eq)
 
-type EvalTStack m a = ReaderT (Env (EvalT m)) (ExceptT EvalError m) a
+type EvalTStack m a = ReaderT (EvalEnv (EvalT m)) (ExceptT EvalError m) a
 
 newtype EvalT m a = EvalT { unEvalT :: EvalTStack m a } deriving
     ( Functor
     , Applicative
     , Monad
     , MonadFix
-    , MonadReader (Env (EvalT m))
+    , MonadReader (EvalEnv (EvalT m))
     , MonadError EvalError )
 
 instance (Monad m) => MonadFail (EvalT m) where
@@ -1472,32 +1472,32 @@ instance (Monad m) => MonadFail (EvalT m) where
 
 type Eval = EvalT Identity
 
-runEvalT :: EvalT m a -> Env (EvalT m) -> m (Either EvalError a)
+runEvalT :: EvalT m a -> EvalEnv (EvalT m) -> m (Either EvalError a)
 runEvalT a = runExceptT . runReaderT (unEvalT a)
 
-runEval :: Eval a -> Env Eval -> Either EvalError a
+runEval :: Eval a -> EvalEnv Eval -> Either EvalError a
 runEval a = runIdentity . runEvalT a
 
-evalExprT :: (Monad m, MonadFix m) => Expr -> Env (EvalT m) -> m (Either EvalError (Value (EvalT m)))
+evalExprT :: (Monad m, MonadFix m) => Expr -> EvalEnv (EvalT m) -> m (Either EvalError (Value (EvalT m)))
 evalExprT = runEvalT . eval
 
-evalExpr :: Expr -> Env Eval -> Either EvalError (Value Eval)
+evalExpr :: Expr -> EvalEnv Eval -> Either EvalError (Value Eval)
 evalExpr = runEval . eval
 
 evalMaybe :: (MonadError EvalError m) => EvalError -> Maybe (Value m) -> m (Value m)
 evalMaybe err = maybe (throwError err) pure
 
 eval
-  :: (MonadFix m, MonadFail m, MonadError EvalError m, MonadReader (Env m) m)
+  :: (MonadFix m, MonadFail m, MonadError EvalError m, MonadReader (EvalEnv m) m)
   => Expr
   -> m (Value m)
 eval = cata alg
   where
-    alg :: (MonadFix m, MonadFail m, MonadError EvalError m, MonadReader (Env m) m)
+    alg :: (MonadFix m, MonadFail m, MonadError EvalError m, MonadReader (EvalEnv m) m)
         => Algebra ExprF (m (Value m))
     alg = \case
         VarS name -> do
-            env <- ask
+            Env env <- ask
             evalMaybe (UnboundIdentifier name) (Map.lookup name env)
 
         LamS name expr ->
@@ -1511,11 +1511,11 @@ eval = cata alg
 
         LetS var expr body -> do
             val <- expr
-            local (Map.insert var val) body
+            local (Env.insert var val) body
 
         RecS var expr body -> do
-            val <- mfix (\val -> local (Map.insert var val) expr)
-            local (Map.insert var val) body
+            val <- mfix (\val -> local (Env.insert var val) expr)
+            local (Env.insert var val) body
 
         IfS cond true false -> do
             Value (Bool isTrue) <- cond
@@ -1535,7 +1535,7 @@ eval = cata alg
             throwError RuntimeError
 
 evalCase
-  :: (MonadError EvalError m, MonadReader (Env m) m)
+  :: (MonadError EvalError m, MonadReader (EvalEnv m) m)
   => Value m
   -> [(Pattern, m (Value m))]
   -> m (Value m)
@@ -1547,18 +1547,15 @@ evalCase val ((match, expr):cs) = do
             expr
 
         VarP var ->
-            local (Map.insert var val) expr
+            local (Env.insert var val) expr
 
         con ->
             case matched con val of
                 Just pairs ->
-                    local (insertManyIntoEnv pairs) expr
+                    local (Env.insertMany pairs) expr
 
                 Nothing ->
                     evalCase val cs
-
-insertManyIntoEnv :: [(Name, Value m)] -> Env m -> Env m
-insertManyIntoEnv = flip (foldr (uncurry Map.insert))
 
 matched :: PatternF Pattern -> Value m -> Maybe [(Name, Value m)]
 matched (ConP n ps) (Data m vs) | n == m = Just (zip (getVarName <$> ps) vs)
@@ -1568,14 +1565,14 @@ getVarName :: Pattern -> Name
 getVarName (Fix (VarP name)) = name
 
 evalApp
-  :: (MonadFail m, MonadReader (Env m) m)
+  :: (MonadFail m, MonadReader (EvalEnv m) m)
   => m (Value m)
   -> m (Value m)
   -> m (Value m)
 evalApp fun arg = do
-    Closure var body closure <- fun
+    Closure var body (Env closure) <- fun
     val <- arg
-    local (const (Map.insert var val closure)) body
+    local (const (Env (Map.insert var val closure))) body
 
 evalOp
   :: (MonadFail m, MonadError EvalError m)

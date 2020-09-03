@@ -2,18 +2,22 @@
 {-# LANGUAGE OverloadedStrings #-}
 import Test.Hspec
 
-import Data.Functor.Const
 import Control.Monad
+import Data.Functor.Const
 import Data.Functor.Foldable
 import Data.List (intersperse, find, delete, nub, elemIndex)
+import Data.Map.Strict (Map)
 import Data.Maybe (fromMaybe, fromJust)
+import Data.Set.Monad (Set)
 import Data.Text (Text, pack, unpack)
 import Debug.Trace
-import Tau.Parser
+import Tau.Env (Env(..))
 import Tau.Juice
+import Tau.Parser
 import qualified Data.Map.Strict as Map
 import qualified Data.Set.Monad as Set
 import qualified Data.Text as Text
+import qualified Tau.Env as Env
 
 main :: IO ()
 main =
@@ -40,8 +44,8 @@ listA = appT (conT "List") (varT "a")
 tuple2AB :: Type
 tuple2AB = appT (appT (conT "Tuple2") (varT "a")) (varT "b")
 
-testContext :: Context Scheme
-testContext = Context (Map.fromList
+testContext :: Env Scheme
+testContext = Env (Map.fromList
     [ ("concat" , Forall []         [] (arrT tString (arrT tString tString)))
     , ("show"   , Forall ["a"] [Class "Show" (varT "a")]
                                        (arrT (varT "a") tString))
@@ -108,7 +112,7 @@ testInferKinds = do
     kindInferTestSuccess
         (test060, testKindContext) (arrowK starK starK) "test060"
 
-kindInferTestSuccess :: (Type, Context Kind) -> Kind -> Text -> SpecWith ()
+kindInferTestSuccess :: (Type, Env Kind) -> Kind -> Text -> SpecWith ()
 kindInferTestSuccess (ty, context) kind name =
     describe description (it describeSuccess test)
   where
@@ -128,11 +132,11 @@ kindInferTestSuccess (ty, context) kind name =
         _ ->
             pass
 
-kindInferRunTest :: Context Kind -> Type -> Maybe Kind
+kindInferRunTest :: Env Kind -> Type -> Maybe Kind
 kindInferRunTest context ty = runInferK (inferKind testKindContext ty)
 
-testKindContext :: Context Kind
-testKindContext = Context (Map.fromList
+testKindContext :: Env Kind
+testKindContext = Env (Map.fromList
     [ ("List"  , (arrowK starK starK))
     , ("State" , arrowK starK (arrowK starK starK) )
     ])
@@ -294,12 +298,12 @@ typeInferTest130 = appS [lamS "x" (matchS (varS "x") [(litP (Int 1), litInt 2), 
 testInfer :: SpecWith ()
 testInfer = do
     typeInferTestSuccess
-        (typeInferTest010, Context mempty)
+        (typeInferTest010, Env mempty)
         (Forall ["a"] [] (varT "a" `arrT` tUnit))
         "test010"
 
     typeInferTestFailure
-        (typeInferTest010, Context mempty)
+        (typeInferTest010, Env mempty)
         (Forall ["a"] [] (varT "a" `arrT` tInt))
         "test010"
 
@@ -319,16 +323,16 @@ testInfer = do
         (typeInferTest013, testContext) (Forall [] [] (appT (conT "List") (varT "a"))) "test013"
 
     typeInferTestSuccess
-        (typeInferTest014, Context mempty) (Forall ["a"] [] (varT "a" `arrT` varT "a")) "test014"
+        (typeInferTest014, Env mempty) (Forall ["a"] [] (varT "a" `arrT` varT "a")) "test014"
 
     typeInferTestSuccess
-        (typeInferTest015, Context mempty) (Forall ["a", "b"] [] (varT "a" `arrT` (varT "b" `arrT` varT "a"))) "test015"
+        (typeInferTest015, Env mempty) (Forall ["a", "b"] [] (varT "a" `arrT` (varT "b" `arrT` varT "a"))) "test015"
 
     typeInferTestFailure
-        (typeInferTest015, Context mempty) (Forall ["a", "b"] [] (varT "a" `arrT` (varT "b" `arrT` varT "b"))) "test015"
+        (typeInferTest015, Env mempty) (Forall ["a", "b"] [] (varT "a" `arrT` (varT "b" `arrT` varT "b"))) "test015"
 
     typeInferTestFailure
-        (typeInferTest015, Context mempty) (Forall ["a", "b"] [] (varT "b" `arrT` (varT "b" `arrT` varT "a"))) "test015"
+        (typeInferTest015, Env mempty) (Forall ["a", "b"] [] (varT "b" `arrT` (varT "b" `arrT` varT "a"))) "test015"
 
     typeInferTestSuccess
         (typeInferTest020, testContext) (Forall [] [] tUnit) "test020"
@@ -405,7 +409,7 @@ testInfer = do
     typeInferTestSuccess
         (typeInferTest130, testContext) (Forall [] [] tInt) "test130"
 
-typeInferTestSuccess :: (Expr, Context Scheme) -> Scheme -> Text -> SpecWith ()
+typeInferTestSuccess :: (Expr, Env Scheme) -> Scheme -> Text -> SpecWith ()
 typeInferTestSuccess (expr, context) ty name =
     describe description (it describeSuccess test)
   where
@@ -431,7 +435,7 @@ typeInferTestSuccess (expr, context) ty name =
         t ->
             expectationFailure describeFailure
 
-typeInferTestFailure :: (Expr, Context Scheme) -> Scheme -> Text -> SpecWith ()
+typeInferTestFailure :: (Expr, Env Scheme) -> Scheme -> Text -> SpecWith ()
 typeInferTestFailure (expr, context) ty name =
     describe description (it describeSuccess test)
   where
@@ -456,7 +460,7 @@ typeInferTestFailure (expr, context) ty name =
         _ ->
             pass
 
-typeInferTestFailWithError :: (Expr, Context Scheme) -> TypeError -> Text -> SpecWith ()
+typeInferTestFailWithError :: (Expr, Env Scheme) -> TypeError -> Text -> SpecWith ()
 typeInferTestFailWithError (expr, context) err name =
     describe description (it describeSuccess test)
   where
@@ -472,14 +476,14 @@ typeInferTestFailWithError (expr, context) err name =
         _ ->
             expectationFailure ("Expected test to fail with error " <> show err)
 
-typeInferRunTest :: Context Scheme -> Expr -> Either TypeError Scheme
+typeInferRunTest :: Env Scheme -> Expr -> Either TypeError Scheme
 typeInferRunTest context expr = getAnnotation <$> runInfer (inferType context expr)
 
 -- ==========================
 -- ==== TestPatternCheck ====
 -- ==========================
 
-patternCheckTestConstructors :: Lookup
+patternCheckTestConstructors :: Env (Set Name)
 patternCheckTestConstructors = lookupFromList
     [ ("Nil",  ["Nil", "Cons"])
     , ("Cons", ["Nil", "Cons"])
@@ -697,7 +701,7 @@ patternCheckTestIsUseful pair name =
 
 patternCheckRunInUsefulTest :: ([Pattern], Pattern) -> Bool
 patternCheckRunInUsefulTest (ps, p) =
-    runPatternCheck (uncurry useful (map (:[]) ps, [p])) patternCheckTestConstructors
+    runPatternCheck (uncurry useful (fmap (:[]) ps, [p])) patternCheckTestConstructors
 
 -- ==================
 -- ==== TestEval ====
@@ -838,8 +842,8 @@ evalTestEvalsTo (expr, val) name =
 evalE :: Expr -> Value Eval
 evalE expr = result where Right result = evalExpr expr mempty
 
-evalTestEnv :: Env Eval
-evalTestEnv = Map.fromList
+evalTestEnv :: EvalEnv Eval
+evalTestEnv = Env.fromList
     [ ("Cons"   , dataCon "Cons" 2)
     , ("Nil"    , dataCon "Nil" 0)
     , ("Tuple2" , dataCon "Tuple2" 2)
@@ -1126,8 +1130,8 @@ patternCompilerTestExpr3 =
         , (conP "Nothing" [], litInt 3)
         ])
 
-patternCompilerTestEnv :: Env Eval
-patternCompilerTestEnv = Map.fromList
+patternCompilerTestEnv :: EvalEnv Eval
+patternCompilerTestEnv = Env.fromList
     [ ("Cons", dataCon "Cons" 2)
     , ("Nil", dataCon "Nil" 0)
     , ("Just", dataCon "Just" 1)
@@ -1361,8 +1365,8 @@ testTclcsEvalsTo name (expr, val) =
         (Right result, _) ->
             expectationFailure $ unpack ("Unexpected result: " <> prettyValue result)
 
-tclcsTestEnv :: Env Eval
-tclcsTestEnv = Map.fromList
+tclcsTestEnv :: EvalEnv Eval
+tclcsTestEnv = Env.fromList
     [ ("Show" , dataCon "Show" 1)
     , ("id"   , evalE (lamS "x" (varS "x")))
     ]
@@ -1395,8 +1399,8 @@ testTclcsHasType name (expr, ty) =
         _ ->
             expectationFailure describeFailure
 
-tclcsTestContext :: Context Scheme
-tclcsTestContext = Context (Map.fromList
+tclcsTestContext :: Env Scheme
+tclcsTestContext = Env (Map.fromList
     [ ("Show" , Forall ["a"] [] (arrT (arrT (varT "a") tString) (appT (conT "Show") (varT "a"))))
     , ("id"   , Forall ["a"] [] (arrT (varT "a") (varT "a")))
     ])

@@ -13,9 +13,11 @@ import Data.Text (Text, pack)
 import Data.Void
 import Debug.Trace
 import System.Console.Repline
+import Tau.Env (Env(..))
 import Tau.Juice
 import Tau.Parser
 import Text.Megaparsec.Error (errorBundlePretty)
+import qualified Tau.Env as Env
 
 type Repl = HaskelineT IO
 
@@ -55,7 +57,7 @@ replCommand input =
   where
     run = do
         expr <- mapLeft ParseError (parseExpr (pack input))
-        (expr', ty) <- mapLeft TypeError (treeTop <$> replInferType (Context mempty) expr)
+        (expr', ty) <- mapLeft TypeError (treeTop <$> replInferType (Env mempty) expr)
         exhaustive <- allPatternsAreExhaustive expr' mempty
         unless exhaustive (Left NonExhaustivePattern)
         val <- mapLeft EvalError (evalExpr (compileAll expr') mempty)
@@ -64,7 +66,7 @@ replCommand input =
 treeTop :: AnnotatedExpr Scheme -> (Expr, Scheme)
 treeTop = getExpr &&& getAnnotation
 
-replInferType :: Context Scheme -> Expr -> Either TypeError (AnnotatedExpr Scheme)
+replInferType :: Env Scheme -> Expr -> Either TypeError (AnnotatedExpr Scheme)
 replInferType context = runInfer . inferType context
 
 replOptions :: Options Repl
@@ -77,13 +79,11 @@ quit :: String -> Repl ()
 quit = const (printExitMessage >> abort)
 
 help :: String -> Repl ()
-help args = putStrIO message
-  where
+help args = putStrIO message where
     message = "Help: TODO " <> args
 
 replCompleter :: WordCompleter IO
-replCompleter input = pure $ filter (isPrefixOf input) names
-  where
+replCompleter input = pure $ filter (isPrefixOf input) names where
     names =
         [ ":quit"
         , ":help"
