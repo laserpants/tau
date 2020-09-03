@@ -19,7 +19,8 @@ main :: IO ()
 main =
     hspec $ do
         describe "Eval" testEval
-        describe "Infer " testInfer
+        describe "Infer" testInfer
+        describe "Infer Kinds" testInferKinds
         describe "Pattern Check" testPatternCheck
         describe "Unify" testUnify
         describe "Substitute" testSubstitute
@@ -34,28 +35,106 @@ typeInferTestExpr2 :: Expr
 typeInferTestExpr2 = lamS "a" (lamS "b" (appS [varS "(==)", varS "a", varS "b"]))
 
 listA :: Type
-listA = AppT (ConT "List") (VarT "a")
+listA = appT (conT "List") (varT "a")
 
 tuple2AB :: Type
-tuple2AB = AppT (AppT (ConT "Tuple2") (VarT "a")) (VarT "b")
+tuple2AB = appT (appT (conT "Tuple2") (varT "a")) (varT "b")
 
-testContext :: Context
+testContext :: Context Scheme
 testContext = Context (Map.fromList
-    [ ("concat" , Forall []         [] (ArrT tString (ArrT tString tString)))
-    , ("show"   , Forall ["a"] [Class "Show" (VarT "a")]
-                                       (ArrT (VarT "a") tString))
+    [ ("concat" , Forall []         [] (arrT tString (arrT tString tString)))
+    , ("show"   , Forall ["a"] [Class "Show" (varT "a")]
+                                       (arrT (varT "a") tString))
     , ("Nil"    , Forall ["a"]      [] listA)
-    , ("Cons"   , Forall ["a"]      [] (ArrT (VarT "a") (ArrT listA listA)))
-    , ("const"  , Forall ["a", "b"] [] (ArrT (VarT "a") (ArrT (VarT "b") (VarT "a"))))
-    , ("foo"    , Forall ["a"]      [] (ArrT (VarT "a") (VarT "a")))
-    , ("Foo"    , Forall ["a"]      [] (ArrT (VarT "a") (AppT (ConT "List") (VarT "a"))))
+    , ("Cons"   , Forall ["a"]      [] (arrT (varT "a") (arrT listA listA)))
+    , ("const"  , Forall ["a", "b"] [] (arrT (varT "a") (arrT (varT "b") (varT "a"))))
+    , ("foo"    , Forall ["a"]      [] (arrT (varT "a") (varT "a")))
+    , ("Foo"    , Forall ["a"]      [] (arrT (varT "a") (appT (conT "List") (varT "a"))))
     , ("Baz"    , Forall []         [] tBool)
-    , ("Tuple2" , Forall ["a", "b"] [] (ArrT (VarT "a") (ArrT (VarT "b") tuple2AB)))
-    , ("fst"    , Forall ["a", "b"] [] (ArrT tuple2AB (VarT "a")))
-    , ("snd"    , Forall ["a", "b"] [] (ArrT tuple2AB (VarT "b")))
-    , ("(==)"   , Forall ["a"] [Class "Eq" (VarT "a")] (ArrT (VarT "a") (ArrT (VarT "a") tBool)))
-    , ("(+)"    , Forall ["a"] [Class "Num" (VarT "a")] (ArrT (VarT "a") (ArrT (VarT "a") (VarT "a"))))
-    --, ("(+)"    , Forall [] [] (ArrT (ConT "Int") (ArrT (ConT "Int") (ConT "Int"))))
+    , ("Tuple2" , Forall ["a", "b"] [] (arrT (varT "a") (arrT (varT "b") tuple2AB)))
+    , ("fst"    , Forall ["a", "b"] [] (arrT tuple2AB (varT "a")))
+    , ("snd"    , Forall ["a", "b"] [] (arrT tuple2AB (varT "b")))
+    , ("(==)"   , Forall ["a"] [Class "Eq" (varT "a")] (arrT (varT "a") (arrT (varT "a") tBool)))
+    , ("(+)"    , Forall ["a"] [Class "Num" (varT "a")] (arrT (varT "a") (arrT (varT "a") (varT "a"))))
+    --, ("(+)"    , Forall [] [] (arrT (conT "Int") (arrT (conT "Int") (conT "Int"))))
+    ])
+
+-- ========================
+-- ==== TestInferKinds ====
+-- ========================
+
+-- State a Int
+test010 :: [KindConstraint]
+test010 =
+  [ (varK "1", arrowK (varK "2") (varK "3"))
+  , (varK "3", arrowK starK (varK "4"))
+  , (varK "1", arrowK starK (arrowK starK starK))
+  ]
+
+-- List a
+test020 :: Type
+test020 = appT (conT "List") (varT "a")
+
+-- State a Int
+test030 :: Type
+test030 = appT (appT (conT "State") (varT "a")) (conT "Int")
+
+-- m a
+test040 :: Type
+test040 = appT (varT "m") (varT "a")
+
+-- List a -> List Int
+test050 :: Type
+test050 = arrT (appT (conT "List") (varT "a")) (appT (conT "List") (conT "Int"))
+
+-- List
+test060 :: Type
+test060 = conT "List"
+
+testInferKinds :: SpecWith ()
+testInferKinds = do
+    kindInferTestSuccess
+        (test020, testKindContext) starK "test020"
+
+    kindInferTestSuccess
+        (test030, testKindContext) starK "test030"
+
+    kindInferTestSuccess
+        (test040, testKindContext) starK "test040"
+
+    kindInferTestSuccess
+        (test050, testKindContext) starK "test050"
+
+    kindInferTestSuccess
+        (test060, testKindContext) (arrowK starK starK) "test060"
+
+kindInferTestSuccess :: (Type, Context Kind) -> Kind -> Text -> SpecWith ()
+kindInferTestSuccess (ty, context) kind name =
+    describe description (it describeSuccess test)
+  where
+    description = unpack $
+        name <> ": " <> prettyType ty
+
+    describeSuccess = unpack $
+        "✔ has kind : " <> prettyKind kind
+
+    describeFailure = unpack $
+        "Expected kind to be : " <> prettyKind kind
+
+    test = case runInferK (inferKind testKindContext ty) of
+        Nothing ->
+            expectationFailure describeFailure
+
+        _ ->
+            pass
+
+kindInferRunTest :: Context Kind -> Type -> Maybe Kind
+kindInferRunTest context ty = runInferK (inferKind testKindContext ty)
+
+testKindContext :: Context Kind
+testKindContext = Context (Map.fromList
+    [ ("List"  , (arrowK starK starK))
+    , ("State" , arrowK starK (arrowK starK starK) )
     ])
 
 -- ===================
@@ -216,12 +295,12 @@ testInfer :: SpecWith ()
 testInfer = do
     typeInferTestSuccess
         (typeInferTest010, Context mempty)
-        (Forall ["a"] [] (VarT "a" `ArrT` tUnit))
+        (Forall ["a"] [] (varT "a" `arrT` tUnit))
         "test010"
 
     typeInferTestFailure
         (typeInferTest010, Context mempty)
-        (Forall ["a"] [] (VarT "a" `ArrT` tInt))
+        (Forall ["a"] [] (varT "a" `arrT` tInt))
         "test010"
 
     typeInferTestSuccess
@@ -234,22 +313,22 @@ testInfer = do
         (typeInferTest012, testContext) (Forall [] [] tInt) "test012"
 
     typeInferTestSuccess
-        (typeInferTest013, testContext) (Forall [] [] (AppT (ConT "List") tInt)) "test013"
+        (typeInferTest013, testContext) (Forall [] [] (appT (conT "List") tInt)) "test013"
 
     typeInferTestFailure
-        (typeInferTest013, testContext) (Forall [] [] (AppT (ConT "List") (VarT "a"))) "test013"
+        (typeInferTest013, testContext) (Forall [] [] (appT (conT "List") (varT "a"))) "test013"
 
     typeInferTestSuccess
-        (typeInferTest014, Context mempty) (Forall ["a"] [] (VarT "a" `ArrT` VarT "a")) "test014"
+        (typeInferTest014, Context mempty) (Forall ["a"] [] (varT "a" `arrT` varT "a")) "test014"
 
     typeInferTestSuccess
-        (typeInferTest015, Context mempty) (Forall ["a", "b"] [] (VarT "a" `ArrT` (VarT "b" `ArrT` VarT "a"))) "test015"
+        (typeInferTest015, Context mempty) (Forall ["a", "b"] [] (varT "a" `arrT` (varT "b" `arrT` varT "a"))) "test015"
 
     typeInferTestFailure
-        (typeInferTest015, Context mempty) (Forall ["a", "b"] [] (VarT "a" `ArrT` (VarT "b" `ArrT` VarT "b"))) "test015"
+        (typeInferTest015, Context mempty) (Forall ["a", "b"] [] (varT "a" `arrT` (varT "b" `arrT` varT "b"))) "test015"
 
     typeInferTestFailure
-        (typeInferTest015, Context mempty) (Forall ["a", "b"] [] (VarT "b" `ArrT` (VarT "b" `ArrT` VarT "a"))) "test015"
+        (typeInferTest015, Context mempty) (Forall ["a", "b"] [] (varT "b" `arrT` (varT "b" `arrT` varT "a"))) "test015"
 
     typeInferTestSuccess
         (typeInferTest020, testContext) (Forall [] [] tUnit) "test020"
@@ -326,7 +405,7 @@ testInfer = do
     typeInferTestSuccess
         (typeInferTest130, testContext) (Forall [] [] tInt) "test130"
 
-typeInferTestSuccess :: (Expr, Context) -> Scheme -> Text -> SpecWith ()
+typeInferTestSuccess :: (Expr, Context Scheme) -> Scheme -> Text -> SpecWith ()
 typeInferTestSuccess (expr, context) ty name =
     describe description (it describeSuccess test)
   where
@@ -352,7 +431,7 @@ typeInferTestSuccess (expr, context) ty name =
         t ->
             expectationFailure describeFailure
 
-typeInferTestFailure :: (Expr, Context) -> Scheme -> Text -> SpecWith ()
+typeInferTestFailure :: (Expr, Context Scheme) -> Scheme -> Text -> SpecWith ()
 typeInferTestFailure (expr, context) ty name =
     describe description (it describeSuccess test)
   where
@@ -377,7 +456,7 @@ typeInferTestFailure (expr, context) ty name =
         _ ->
             pass
 
-typeInferTestFailWithError :: (Expr, Context) -> TypeError -> Text -> SpecWith ()
+typeInferTestFailWithError :: (Expr, Context Scheme) -> TypeError -> Text -> SpecWith ()
 typeInferTestFailWithError (expr, context) err name =
     describe description (it describeSuccess test)
   where
@@ -393,7 +472,7 @@ typeInferTestFailWithError (expr, context) err name =
         _ ->
             expectationFailure ("Expected test to fail with error " <> show err)
 
-typeInferRunTest :: Context -> Expr -> Either TypeError Scheme
+typeInferRunTest :: Context Scheme -> Expr -> Either TypeError Scheme
 typeInferRunTest context expr = getAnnotation <$> runInfer (inferType context expr)
 
 -- ==========================
@@ -779,49 +858,49 @@ evalRunTest = flip evalExpr evalTestEnv
 
 uniTest010 :: (Type, Type)
 uniTest010 =
-    ( ArrT (VarT "a") (VarT "b")                     -- a -> b
-    , ArrT tInt tInt                                 -- Int -> Int
+    ( arrT (varT "a") (varT "b")                     -- a -> b
+    , arrT tInt tInt                                 -- Int -> Int
     )
 
 uniTest020 :: (Type, Type)
 uniTest020 =
-    ( ArrT (VarT "a") (VarT "a")                     -- a -> a
-    , ArrT tInt tBool                                -- Int -> Bool
+    ( arrT (varT "a") (varT "a")                     -- a -> a
+    , arrT tInt tBool                                -- Int -> Bool
     )
 
 uniTest030 :: (Type, Type)
 uniTest030 =
-    ( ArrT (VarT "a") (VarT "a")                     -- a -> a
-    , ArrT tInt tInt                                 -- Int -> Int
+    ( arrT (varT "a") (varT "a")                     -- a -> a
+    , arrT tInt tInt                                 -- Int -> Int
     )
 
 uniTest040 :: (Type, Type)
 uniTest040 =
-    ( ArrT (VarT "a") (ArrT (VarT "b") (VarT "a"))   -- a -> (b -> a)
-    , ArrT (VarT "a") (ArrT tInt (VarT "a"))         -- a -> (Int -> a)
+    ( arrT (varT "a") (arrT (varT "b") (varT "a"))   -- a -> (b -> a)
+    , arrT (varT "a") (arrT tInt (varT "a"))         -- a -> (Int -> a)
     )
 
 uniTest041 :: (Type, Type)
 uniTest041 =
-    ( ArrT (VarT "a") (ArrT (VarT "b") (VarT "a"))   -- a -> (b -> a)
-    , ArrT (VarT "a") (ArrT tInt (VarT "b"))         -- a -> (Int -> b)
+    ( arrT (varT "a") (arrT (varT "b") (varT "a"))   -- a -> (b -> a)
+    , arrT (varT "a") (arrT tInt (varT "b"))         -- a -> (Int -> b)
     )
 
 uniTest042 :: (Type, Type)
 uniTest042 =
-    ( ArrT (VarT "a") (ArrT (VarT "b") (VarT "a"))   -- a -> (b -> a)
-    , ArrT tInt (ArrT tInt tBool)                    -- Int -> (Int -> Bool)
+    ( arrT (varT "a") (arrT (varT "b") (varT "a"))   -- a -> (b -> a)
+    , arrT tInt (arrT tInt tBool)                    -- Int -> (Int -> Bool)
     )
 
 uniTest050 :: (Type, Type)
 uniTest050 =
-    ( AppT (ConT "List") (VarT "a")                  -- List a
-    , AppT (ConT "List") tInt                        -- List Int
+    ( appT (conT "List") (varT "a")                  -- List a
+    , appT (conT "List") tInt                        -- List Int
     )
 
 uniTest060 :: (Type, Type)
 uniTest060 =
-    ( AppT (ConT "List") (VarT "a")                  -- List a
+    ( appT (conT "List") (varT "a")                  -- List a
     , tInt                                           -- Int
     )
 
@@ -1236,10 +1315,10 @@ testTypeClasses = do
     testTclcsEvalsTo "test000" (tclcsTest000, Value (String "hello"))
     testTclcsHasType "test010" (tclcsTest010, Forall [] [] tString)
     testTclcsEvalsTo "test010" (tclcsTest010, Value (String "False"))
-    testSolveExprType "test020" (tclcsTest020, ArrT (AppT (ConT "List") (ConT "Int")) (AppT (ConT "List") (ConT "Bool")), [Class "Eq" (ConT "Int")])
-    testSolveExprType "test021" (tclcsTest021, ArrT (AppT (ConT "List") (VarT "a35")) (AppT (ConT "List") (ConT "Bool")), [Class "Eq" (VarT "a35")])
-    testSolveExprType "test025" (tclcsTest025, ArrT (VarT "a8") (ArrT (VarT "a8") (VarT "a8")), [Class "Num" (VarT "a8")])
-    testSolveExprType "test030" (tclcsTest030, ArrT (VarT "a11") (ConT "String"), [Class "Show" (AppT (ConT "List") (VarT "a11"))])
+    testSolveExprType "test020" (tclcsTest020, arrT (appT (conT "List") (conT "Int")) (appT (conT "List") (conT "Bool")), [Class "Eq" (conT "Int")])
+    testSolveExprType "test021" (tclcsTest021, arrT (appT (conT "List") (varT "a35")) (appT (conT "List") (conT "Bool")), [Class "Eq" (varT "a35")])
+    testSolveExprType "test025" (tclcsTest025, arrT (varT "a8") (arrT (varT "a8") (varT "a8")), [Class "Num" (varT "a8")])
+    testSolveExprType "test030" (tclcsTest030, arrT (varT "a11") (conT "String"), [Class "Show" (appT (conT "List") (varT "a11"))])
 
 testSolveExprType :: Text -> (Expr, Type, [Class]) -> SpecWith ()
 testSolveExprType name (expr, ty, clcs) =
@@ -1316,10 +1395,10 @@ testTclcsHasType name (expr, ty) =
         _ ->
             expectationFailure describeFailure
 
-tclcsTestContext :: Context
+tclcsTestContext :: Context Scheme
 tclcsTestContext = Context (Map.fromList
-    [ ("Show" , Forall ["a"] [] (ArrT (ArrT (VarT "a") tString) (AppT (ConT "Show") (VarT "a"))))
-    , ("id"   , Forall ["a"] [] (ArrT (VarT "a") (VarT "a")))
+    [ ("Show" , Forall ["a"] [] (arrT (arrT (varT "a") tString) (appT (conT "Show") (varT "a"))))
+    , ("id"   , Forall ["a"] [] (arrT (varT "a") (varT "a")))
     ])
 
 -- ====================
@@ -1424,6 +1503,11 @@ testParsesTo name (input, expr) =
 pass :: Expectation
 pass = pure ()
 
+prettyKind :: Kind -> Text
+prettyKind (Fix StarK)          = "*"
+prettyKind (Fix (ArrowK k1 k2)) = prettyKind k1 <> " -> " <> prettyKind k2
+prettyKind (Fix (VarK name))    = name
+
 data TypeRep
     = ConRep Name
     | VarRep Int
@@ -1436,7 +1520,7 @@ canonical (Forall vars clcs ty) =
     Forall names (apply sub clcs) (apply sub ty)
   where
     names = take (length vars) (enumFrom 1 >>= fmap pack . flip replicateM ['a'..'z'])
-    sub = Substitution $ Map.fromList $ zip vars (VarT <$> names)
+    sub = Substitution $ Map.fromList $ zip vars (varT <$> names)
 
 isoTypes :: Scheme -> Scheme -> Bool
 isoTypes t u = canonical t == canonical u
@@ -1457,10 +1541,10 @@ prettyClcs (Class name ty) = name <> " " <> prettyType ty
 
 prettyType :: Type -> Text
 prettyType = \case
-    ConT name  -> name
-    VarT name  -> name
-    AppT t1 t2 -> prettyType t1 <> " " <> prettyType t2
-    ArrT t1 t2 -> prettyType t1 <> " -> " <> prettyType t2
+    Fix (ConT name)  -> name
+    Fix (VarT name)  -> name
+    Fix (AppT t1 t2) -> prettyType t1 <> " " <> prettyType t2
+    Fix (ArrT t1 t2) -> prettyType t1 <> " -> " <> prettyType t2
 
 prettyExpr :: Expr -> Text
 prettyExpr = cata alg

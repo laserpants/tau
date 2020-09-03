@@ -14,13 +14,14 @@
 {-# LANGUAGE UndecidableInstances       #-}
 module Tau.Juice where
 
-import Control.Arrow ((>>>))
+import Control.Arrow ((>>>), (***))
 import Control.Monad.Except
 import Control.Monad.Extra (anyM, (&&^))
 import Control.Monad.Identity
 import Control.Monad.Reader
 import Control.Monad.State
 import Control.Monad.Supply
+import Data.Either.Extra (mapLeft)
 import Data.Eq.Deriving
 import Data.Foldable (foldrM)
 import Data.Function ((&))
@@ -47,11 +48,9 @@ import qualified Data.Text as Text
 
 type Name = Text
 
-(|>) = (&)
-($>) = (&)
+(#) = (&)
 
-infixl 1 |>
-infixl 0 $>
+infixl 0 #
 
 data (f :*: g) a = (:*:)
     { left  :: f a
@@ -63,22 +62,27 @@ data (f :*: g) a = (:*:)
     , Foldable
     , Traversable )
 
-type Algebra f a = f a -> a
-
 $(deriveShow1 ''(:*:))
 $(deriveEq1   ''(:*:))
+
+type Algebra f a = f a -> a
 
 -- ============================================================================
 -- =================================== Type ===================================
 -- ============================================================================
 
 -- | Type to represent types
-data Type
+data TypeF a
     = ConT Name            -- ^ Type constructor
     | VarT Name            -- ^ Type variable
-    | ArrT Type Type       -- ^ Functions type
-    | AppT Type Type       -- ^ Type application
-    deriving (Show, Eq, Ord)
+    | ArrT a a             -- ^ Functions type
+    | AppT a a             -- ^ Type application
+    deriving (Show, Eq, Ord, Functor, Foldable, Traversable)
+
+$(deriveShow1 ''TypeF)
+$(deriveEq1   ''TypeF)
+
+type Type = Fix TypeF
 
 -- | Type class constraint
 data Class = Class
@@ -93,23 +97,55 @@ data Scheme = Forall
     , schemeType        :: Type
     } deriving (Show, Eq)
 
-data Kind
-    = Arrow Kind Kind      -- ^ Type arrow
-    | Star                 -- ^ Concrete type
+data KindF a
+    = ArrowK a a           -- ^ Type arrow
+    | StarK                -- ^ Concrete type
+    | VarK Name            -- ^ Kind variable
     deriving (Show, Eq)
 
--- | Type context
-newtype Context = Context (Map Name Scheme)
+type Kind = Fix KindF
+
+$(deriveShow1 ''KindF)
+$(deriveEq1   ''KindF)
+
+newtype Context a = Context (Map Name a)
     deriving (Show, Eq)
 
-tInt     = ConT "Int"      -- ^ Int
-tInteger = ConT "Integer"  -- ^ Integer
-tBool    = ConT "Bool"     -- ^ Bool
-tFloat   = ConT "Float"    -- ^ Float
-tString  = ConT "String"   -- ^ String
-tChar    = ConT "Char"     -- ^ Char
-tUnit    = ConT "Unit"     -- ^ Unit
-tVoid    = ConT "Void"     -- ^ Void
+tInt, tInteger, tBool, tFloat, tString, tChar, tUnit, tVoid :: Type
+
+tInt     = conT "Int"      -- ^ Int
+tInteger = conT "Integer"  -- ^ Integer
+tBool    = conT "Bool"     -- ^ Bool
+tFloat   = conT "Float"    -- ^ Float
+tString  = conT "String"   -- ^ String
+tChar    = conT "Char"     -- ^ Char
+tUnit    = conT "Unit"     -- ^ Unit
+tVoid    = conT "Void"     -- ^ Void
+
+-- ----------------------------------------------------------------------------
+-- ---------------------------- Smart Constructors ----------------------------
+-- ----------------------------------------------------------------------------
+
+conT :: Name -> Type
+conT = Fix . ConT
+
+varT :: Name -> Type
+varT = Fix . VarT
+
+arrT :: Type -> Type -> Type
+arrT a1 a2 = Fix (ArrT a1 a2)
+
+appT :: Type -> Type -> Type
+appT a1 a2 = Fix (AppT a1 a2)
+
+arrowK :: Kind -> Kind -> Kind
+arrowK a1 a2 = Fix (ArrowK a1 a2)
+
+starK :: Kind
+starK = Fix StarK
+
+varK :: Name -> Kind
+varK = Fix . VarK
 
 -- ============================================================================
 -- ============================ Type Substitution =============================
@@ -138,10 +174,10 @@ instance (Substitutable t a) => Substitutable t [a] where
     apply = fmap . apply
 
 instance Substitutable Type Type where
-    apply sub ty@(VarT var) = Map.findWithDefault ty var (getSubstitution sub)
-    apply sub (ArrT t1 t2)  = ArrT (apply sub t1) (apply sub t2)
-    apply sub (AppT t1 t2)  = AppT (apply sub t1) (apply sub t2)
-    apply _ ty              = ty
+    apply sub ty@(Fix (VarT var)) = Map.findWithDefault ty var (getSubstitution sub)
+    apply sub (Fix (ArrT t1 t2))  = arrT (apply sub t1) (apply sub t2)
+    apply sub (Fix (AppT t1 t2))  = appT (apply sub t1) (apply sub t2)
+    apply _ ty                    = ty
 
 instance Substitutable Type Class where
     apply sub (Class name ty) = Class name (apply sub ty)
@@ -152,42 +188,10 @@ instance Substitutable Type Scheme where
       where
         sub = Substitution (foldr Map.delete map vars)
 
---newtype Substitution = Substitution { getSubstitution :: Map Name Type }
---    deriving (Show, Eq)
---
---compose :: Substitution -> Substitution -> Substitution
---compose sub@(Substitution map1) (Substitution map2) =
---    Substitution (Map.union (Map.map (apply sub) map2) map1)
---
---substitute :: Name -> Type -> Substitution
---substitute name ty = Substitution (Map.singleton name ty)
---
---instance Semigroup Substitution where
---    (<>) = compose
---
---instance Monoid Substitution where
---    mempty = Substitution mempty
---
---class Substitutable a where
---    apply :: Substitution -> a -> a
---
---instance (Substitutable a) => Substitutable [a] where
---    apply = fmap . apply
---
---instance Substitutable Type where
---    apply sub ty@(VarT var) = Map.findWithDefault ty var (getSubstitution sub)
---    apply sub (ArrT t1 t2)  = ArrT (apply sub t1) (apply sub t2)
---    apply sub (AppT t1 t2)  = AppT (apply sub t1) (apply sub t2)
---    apply _ ty              = ty
---
---instance Substitutable Class where
---    apply sub (Class name ty) = Class name (apply sub ty)
---
---instance Substitutable Scheme where
---    apply (Substitution map) (Forall vars clcs ty) =
---        Forall vars (apply sub clcs) (apply sub ty)
---      where
---        sub = Substitution (foldr Map.delete map vars)
+instance Substitutable Kind Kind where
+    apply sub (Fix (VarK name))    = Map.findWithDefault (varK name) name (getSubstitution sub)
+    apply sub (Fix (ArrowK k1 k2)) = arrowK (apply sub k1) (apply sub k2)
+    apply _ (Fix StarK)            = starK
 
 -- | Class of types that support the notion of free type variables
 class Free t where
@@ -197,18 +201,23 @@ instance (Free t) => Free [t] where
     free = foldr (union . free) mempty
 
 instance Free Type where
-    free (VarT var)   = Set.singleton var
-    free (ArrT t1 t2) = free t1 `union` free t2
-    free (AppT t1 t2) = free t1 `union` free t2
-    free _            = mempty
+    free (Fix (VarT var))   = Set.singleton var
+    free (Fix (ArrT t1 t2)) = free t1 `union` free t2
+    free (Fix (AppT t1 t2)) = free t1 `union` free t2
+    free _                  = mempty
 
 instance Free Scheme where
     free (Forall vars _ ty) = free ty \\ Set.fromList vars
 
-instance Free Context where
+instance Free a => Free (Context a) where
     free (Context env) = free (Map.elems env)
 
-occursIn :: (Free a) => Name -> a -> Bool
+instance Free Kind where
+    free (Fix (ArrowK k l)) = free k `union` free l
+    free (Fix (VarK name))  = Set.singleton name
+    free _                  = mempty
+
+occursIn :: (Free t) => Name -> t -> Bool
 occursIn var ty = var `member` free ty
 
 -- ============================================================================
@@ -233,10 +242,10 @@ data PatternF a
     | AnyP                   -- ^ Wildcard pattern
     deriving (Show, Eq, Functor, Foldable, Traversable)
 
-type Pattern = Fix PatternF
-
 $(deriveShow1 ''PatternF)
 $(deriveEq1   ''PatternF)
+
+type Pattern = Fix PatternF
 
 -- | Source language expression tree
 data ExprF a
@@ -266,6 +275,8 @@ data OpF a
     | GtS a a
     | NegS a
     | NotS a
+    | OrS ~a ~a
+    | AndS ~a ~a
     deriving (Show, Eq, Functor, Foldable, Traversable)
 
 $(deriveShow1 ''ExprF)
@@ -302,7 +313,7 @@ specialized name a = concatMap $ \(p:ps) ->
             | otherwise     -> []
 
         _ ->
-            [replicate a (Fix AnyP) <> ps]
+            [replicate a anyP <> ps]
 
 defaultMatrix :: [[Pattern]] -> [[Pattern]]
 defaultMatrix = concatMap $ \(p:ps) ->
@@ -332,7 +343,7 @@ type PatternCheck = PatternCheckT Identity
 runPatternCheck :: PatternCheck a -> Lookup -> a
 runPatternCheck a = runIdentity . runPatternCheckT a
 
-headCons :: Monad m => [[Pattern]] -> m [(Name, Int)]
+headCons :: (Monad m) => [[Pattern]] -> m [(Name, Int)]
 headCons = fmap concat . traverse fun where
     fun [] = error "Fatal error in pattern anomalies check"
     fun ps = pure $ case unfix (head ps) of
@@ -446,19 +457,19 @@ type Equation = ([Pattern], Expr)
 data ConHead = ConHead
     { conName  :: Name
     , conArity :: Int
-    , conPttns :: [Pattern]
+    , conPats  :: [Pattern]
     , conExpr  :: Expr
     } deriving (Show, Eq)
 
 data VarHead = VarHead
     { varName  :: Maybe Name
-    , varPttns :: [Pattern]
+    , varPats  :: [Pattern]
     , varExpr  :: Expr
     } deriving (Show, Eq)
 
 data LitHead = LitHead
     { litPrim  :: Prim
-    , litPttns :: [Pattern]
+    , litPats  :: [Pattern]
     , litExpr  :: Expr
     } deriving (Show, Eq)
 
@@ -476,32 +487,32 @@ groups qs = cs:gs
     arrange (Fix (ConP name qs):ps) expr =
         let c = ConHead { conName  = name
                         , conArity = length qs
-                        , conPttns = qs <> ps
+                        , conPats  = qs <> ps
                         , conExpr  = expr }
          in \case
             (ConEqs cs, gs) -> (ConEqs (c:cs), gs)
             (g, gs)         -> (ConEqs [c], g:gs)
 
     arrange (Fix (VarP name):ps) expr =
-        let c = VarHead { varName  = Just name
-                        , varPttns = ps
-                        , varExpr  = expr }
+        let c = VarHead { varName = Just name
+                        , varPats = ps
+                        , varExpr = expr }
          in \case
             (VarEqs cs, gs) -> (VarEqs (c:cs), gs)
             (g, gs)         -> (VarEqs [c], g:gs)
 
     arrange (Fix AnyP:ps) expr =
-        let c = VarHead { varName  = Nothing
-                        , varPttns = ps
-                        , varExpr  = expr }
+        let c = VarHead { varName = Nothing
+                        , varPats = ps
+                        , varExpr = expr }
          in \case
             (VarEqs cs, gs) -> (VarEqs (c:cs), gs)
             (g, gs)         -> (VarEqs [c], g:gs)
 
     arrange (Fix (LitP prim):ps) expr =
-        let c = LitHead { litPrim  = prim
-                        , litPttns = ps
-                        , litExpr  = expr }
+        let c = LitHead { litPrim = prim
+                        , litPats = ps
+                        , litExpr = expr }
          in \case
             (LitEqs cs, gs) -> (LitEqs (c:cs), gs)
             (g, gs)         -> (LitEqs [c], g:gs)
@@ -519,7 +530,7 @@ conGroups qs =
     makeGroup cs@(ConHead{..}:_) = ConGroup
       { name      = conName
       , arity     = conArity
-      , equations = (\ConHead{..} -> (conPttns, conExpr)) <$> cs }
+      , equations = (\ConHead{..} -> (conPats, conExpr)) <$> cs }
 
 type PatternMatchCompilerTStack m a = SupplyT Name m a
 
@@ -560,7 +571,7 @@ matchDefault def (u:us) qs = foldrM (flip run) def (groups qs) where
         VarEqs eqs ->
             matchDefault def us (fun <$> eqs) where
                 fun VarHead{..} =
-                    ( varPttns
+                    ( varPats
                     , case varName of
                           Nothing   -> varExpr
                           Just name -> substituteExpr name u varExpr )
@@ -568,7 +579,7 @@ matchDefault def (u:us) qs = foldrM (flip run) def (groups qs) where
         LitEqs eqs ->
             foldrM fun def eqs where
                 fun LitHead{..} false = do
-                    true <- matchDefault def us [(litPttns, litExpr)]
+                    true <- matchDefault def us [(litPats, litExpr)]
                     pure (ifS (eqS u (litS litPrim)) true false)
 
 compileAll :: Expr -> Expr
@@ -579,9 +590,9 @@ compileAll = cata $ \case
     expr ->
         Fix expr
 
--- ============================================================================
--- ============================ Smart Constructors ============================
--- ============================================================================
+-- ----------------------------------------------------------------------------
+-- ---------------------------- Smart Constructors ----------------------------
+-- ----------------------------------------------------------------------------
 
 -- | VarS constructor
 varS :: Name -> Expr
@@ -661,6 +672,12 @@ negS = opS . NegS
 notS :: Expr -> Expr
 notS = opS . NotS
 
+orS :: Expr -> Expr -> Expr
+orS a1 a2 = opS (OrS a1 a2)
+
+andS :: Expr -> Expr -> Expr
+andS a1 a2 = opS (AndS a1 a2)
+
 litUnit :: Expr
 litUnit = litS Unit
 
@@ -702,64 +719,61 @@ anyP = Fix AnyP
 -- ============================== Kind Inference ==============================
 -- ============================================================================
 
-type XAssumption = (Type, XKind)
-type XConstraint = (XKind, XKind)
+type KindAssumption = (Name, Kind)
+type KindConstraint = (Kind, Kind)
 
-data XKind
-    = XArrow XKind XKind
-    | XStar                          -- KBase a
-    | Placeholder Name
-    deriving (Show, Eq)
+instance Substitutable KindConstraint KindConstraint where
+    apply sub = apply (fst <$> sub) *** apply (snd <$> sub)
 
-instance Substitutable XKind XKind where
-    apply sub (Placeholder name) = Map.findWithDefault (Placeholder name) name (getSubstitution sub)
-    apply sub (XArrow k1 k2)     = XArrow (apply sub k1) (apply sub k2)
-    apply _ XStar                = XStar
-
-instance Substitutable XConstraint XConstraint where
-    apply sub (k1, k2) = (apply (fst <$> sub) k1, apply (snd <$> sub) k2)
-
-instance Free XKind where
-    free (XArrow k l)       = free k `union` free l
-    free (Placeholder name) = Set.singleton name
-    free _                  = mempty
-
-runInferK :: (Monad m) => SupplyT XKind m a -> m a
-runInferK = flip evalSupplyT (Placeholder . pack . show <$> [1..])
+runInferK :: (Monad m) => SupplyT Kind m a -> m a
+runInferK = flip evalSupplyT (varK . pack . show <$> [1..])
 
 inferK
-  :: (MonadSupply XKind m)
+  :: (MonadSupply Kind m)
   => Type
-  -> [XAssumption]
-  -> [XConstraint]
-  -> m (XKind, [XAssumption], [XConstraint])
-inferK ty as cs =
-    case ty of
+  -> m (Kind, [KindAssumption], [KindConstraint])
+inferK = cata alg where
+    alg
+      :: (MonadSupply Kind m)
+      => Algebra TypeF (m (Kind, [KindAssumption], [KindConstraint]))
+    alg = \case
         ArrT t1 t2 -> do
-            (k1, as1, cs1) <- inferK t1 as cs
-            (k2, as2, cs2) <- inferK t2 as cs
-            pure ( XStar
-                  , as <> as1 <> as2
-                  , cs <> cs1 <> cs2 <> [(k1, XStar), (k2, XStar)] )
+            (k1, as1, cs1) <- t1
+            (k2, as2, cs2) <- t2
+            pure ( starK
+                  , as1 <> as2
+                  , cs1 <> cs2 <> [(k1, starK), (k2, starK)] )
 
         AppT t1 t2 -> do
-            (k1, as1, cs1) <- inferK t1 as cs
-            (k2, as2, cs2) <- inferK t2 as cs
+            (k1, as1, cs1) <- t1
+            (k2, as2, cs2) <- t2
             kvar <- supply
             pure ( kvar
-                 , as <> as1 <> as2
-                 , cs <> cs1 <> cs2 <> [(k1, XArrow k2 kvar)] )
+                 , as1 <> as2
+                 , cs1 <> cs2 <> [(k1, arrowK k2 kvar)] )
 
         ConT con | isPrim con ->
-            pure ( XStar
-                 , as
-                 , cs )
+            pure ( starK, [], [] )
 
-        ty -> do
-            kvar <- supply
-            pure ( kvar
-                 , as <> [(ty, kvar)]
-                 , cs )
+        ConT con -> assumeVar con
+        VarT var -> assumeVar var
+
+    assumeVar name = do
+        kvar <- supply
+        pure ( kvar, [(name, kvar)], [] )
+
+inferKind :: (MonadSupply Kind m) => Context Kind -> Type -> m Kind
+inferKind (Context env) ty = do
+    (kind, as, cs) <- inferK ty
+    sub <- solveKinds (cs <> envConstraints as)
+    pure (apply sub kind)
+  where
+    envConstraints :: [KindAssumption] -> [KindConstraint]
+    envConstraints as = do
+        (x, k) <- as
+        (y, l) <- Map.toList env
+        guard (x == y)
+        pure (k, l)
 
 isPrim :: Name -> Bool
 isPrim "Int"     = True
@@ -772,35 +786,36 @@ isPrim "Unit"    = True
 isPrim "Void"    = True
 isPrim _         = False
 
-bindK :: (Monad m) => Name -> XKind -> m (Substitution XKind)
-bindK var kind
-    | Placeholder var == kind = pure mempty
-    | var `occursIn` kind     = error "Infinite type"
-    | otherwise               = pure (substitute var kind)
+--instance Unifiable Kind where
+--    toVar = varK
+--    unify (Fix (ArrowK k1 k2)) (Fix (ArrowK l1 l2)) = 
+--        unifyPairX (k1, k2) (l1, l2)
+--    unify (Fix (VarK k1)) k2 = bindX k1 k2
+--    unify k1 (Fix (VarK k2)) = bindX k2 k1
+--    unify k1 k2 = unifyDefaultX k1 k2
 
-unifyK :: (Monad m) => XKind -> XKind -> m (Substitution XKind)
-unifyK (XArrow k1 k2) (XArrow l1 l2) = do
-    sub1 <- unifyK k1 l1
-    sub2 <- unifyK (apply sub1 k2) (apply sub1 l2)
+bindKinds :: (Monad m) => Name -> Kind -> m (Substitution Kind)
+bindKinds var kind
+    | varK var == kind    = pure mempty
+    | var `occursIn` kind = error "Infinite type"
+    | otherwise           = pure (substitute var kind)
+
+unifyKinds :: (Monad m) => Kind -> Kind -> m (Substitution Kind)
+unifyKinds (Fix (ArrowK k1 k2)) (Fix (ArrowK l1 l2)) = do
+    sub1 <- unifyKinds k1 l1
+    sub2 <- unifyKinds (apply sub1 k2) (apply sub1 l2)
     pure (sub2 <> sub1)
-unifyK (Placeholder k1) k2 = bindK k1 k2
-unifyK k1 (Placeholder k2) = bindK k2 k1
-unifyK k1 k2
+unifyKinds (Fix (VarK k1)) k2 = bindKinds k1 k2
+unifyKinds k1 (Fix (VarK k2)) = bindKinds k2 k1
+unifyKinds k1 k2
     | k1 == k2  = pure mempty
     | otherwise = error "Cannot unify"
 
--- State a Int
-test1 =
-  [ (Placeholder "1", XArrow (Placeholder "2") (Placeholder "3"))
-  , (Placeholder "3", XArrow XStar (Placeholder "4"))
-  , (Placeholder "1", XArrow XStar (XArrow XStar XStar))
-  ]
-
-solveK :: (Monad m) => [XConstraint] -> m (Substitution XKind)
-solveK [] = pure mempty
-solveK ((k1, k2):cs) = do
-    sub1 <- unifyK k1 k2
-    sub2 <- solveK (both (apply sub1) <$> cs)
+solveKinds :: (Monad m) => [KindConstraint] -> m (Substitution Kind)
+solveKinds [] = pure mempty
+solveKinds ((k1, k2):cs) = do
+    sub1 <- unifyKinds k1 k2
+    sub2 <- solveKinds (both (apply sub1) <$> cs)
     pure (sub2 <> sub1)
 
 -- ============================================================================
@@ -811,6 +826,7 @@ data TypeError
     = CannotSolve
     | CannotUnify
     | InfiniteType
+--    | UnificationError UnificationError
     | UnboundVariable Name
     | EmptyMatchStatement
     | ImplementationError
@@ -833,16 +849,16 @@ newtype InferT m a = InferT (InferTStack m a) deriving
     , MonadError TypeError )
 
 freshVars :: [Type]
-freshVars = VarT . pfxed <$> [1..] where
+freshVars = varT . pfxed <$> [1..] where
     pfxed count = "a" <> pack (show count)
 
 runInferT :: (Monad m) => InferT m a -> m (Either TypeError a)
 runInferT (InferT a) =
     freshVars
-        $> Monoset mempty
-        |> runReaderT a
-        |> runExceptT
-        |> evalSupplyT
+        # Monoset mempty
+        & runReaderT a
+        & runExceptT
+        & evalSupplyT
 
 type Infer a = InferT Identity a
 
@@ -863,7 +879,7 @@ instance Free Monoset where
     free (Monoset set) = set
 
 instance Substitutable Type Monoset where
-    apply sub (Monoset set) = Monoset (free . apply sub . VarT =<< set)
+    apply sub (Monoset set) = Monoset (free . apply sub . varT =<< set)
 
 type AnnotatedExprF a = Const a :*: ExprF
 
@@ -901,9 +917,9 @@ infer = cata alg where
                  , [] )
 
         LamS name expr -> do
-            beta@(VarT var) <- supply
+            beta@(Fix (VarT var)) <- supply
             (_expr, t1, a1, c1) <- local (insertIntoMonoset var) expr
-            pure ( annotated (ArrT beta t1) (LamS name _expr)
+            pure ( annotated (arrT beta t1) (LamS name _expr)
                  , removeAssumption name a1
                  , c1 <> [Equality t beta | (y, t) <- runAssumption <$> a1, name == y] )
 
@@ -998,7 +1014,7 @@ inferPattern = cata $ \case
         beta <- supply
         (ts, ass, css) <- (fmap unzip3 . sequence) ps
         pure ( beta
-             , concat ass <> [Assumption (name, foldr ArrT beta ts)]
+             , concat ass <> [Assumption (name, foldr arrT beta ts)]
              , concat css )
 
     LitP prim -> do
@@ -1021,7 +1037,7 @@ inferApp fun arg = do
     pure ( Fix (Const beta :*: AppS [_e1, _e2])
          , beta
          , a1 <> a2
-         , c1 <> c2 <> [Equality t1 (ArrT t2 beta)] )
+         , c1 <> c2 <> [Equality t1 (arrT t2 beta)] )
 
 op1
   :: (MonadSupply Type m) =>
@@ -1034,7 +1050,7 @@ op1 con e1 sig = do
     beta <- supply
     pure ( annotated beta (OpS (con _e1))
          , a1
-         , c1 <> [Explicit (ArrT t1 beta) sig] )
+         , c1 <> [Explicit (arrT t1 beta) sig] )
 
 op2
   :: (MonadSupply Type m) =>
@@ -1049,7 +1065,7 @@ op2 con e1 e2 sig = do
     beta <- supply
     pure ( annotated beta (OpS (con _e1 _e2))
          , a1 <> a2
-         , c1 <> c2 <> [Explicit (ArrT t1 (ArrT t2 beta)) sig] )
+         , c1 <> c2 <> [Explicit (arrT t1 (arrT t2 beta)) sig] )
 
 inferOp
   :: (Monad m)
@@ -1065,18 +1081,38 @@ inferOp = \case
     EqS e1 e2 -> op2 EqS e1 e2 equalityOp
     NegS e -> op1 NegS e numericOp1
     NotS e -> op1 NotS e numericOp1
+    OrS e1 e2 -> op2 OrS e1 e2 logicalOp
+    AndS e1 e2 -> op2 AndS e1 e2 logicalOp
 
 numericOp1 :: Scheme
-numericOp1 = Forall ["a"] [Class "Num" (VarT "a")] (ArrT (VarT "a") (VarT "a"))
+numericOp1 =
+    Forall ["a"]
+    [Class "Num" (varT "a")]
+    (arrT (varT "a") (varT "a"))
 
 numericOp2 :: Scheme
-numericOp2 = Forall ["a"] [Class "Num" (VarT "a")] (ArrT (VarT "a") (ArrT (VarT "a") (VarT "a")))
+numericOp2 =
+    Forall ["a"]
+    [Class "Num" (varT "a")]
+    (arrT (varT "a") (arrT (varT "a") (varT "a")))
 
 equalityOp :: Scheme
-equalityOp = Forall ["a"] [Class "Eq" (VarT "a")] (ArrT (VarT "a") (ArrT (VarT "a") tBool))
+equalityOp =
+    Forall ["a"]
+    [Class "Eq" (varT "a")]
+    (arrT (varT "a") (arrT (varT "a") tBool))
 
 comparisonOp :: Scheme
-comparisonOp = Forall ["a"] [Class "Ord" (VarT "a")] (ArrT (VarT "a") (ArrT (VarT "a") tBool))
+comparisonOp =
+    Forall ["a"]
+    [Class "Ord" (varT "a")]
+    (arrT (varT "a") (arrT (varT "a") tBool))
+
+logicalOp :: Scheme
+logicalOp =
+    Forall []
+    []
+    (arrT tBool (arrT tBool tBool))
 
 inferPrim :: (Monad m) => Prim -> InferT m Type
 inferPrim = pure . \case
@@ -1090,7 +1126,7 @@ inferPrim = pure . \case
 
 solveExprType
   :: (Monad m)
-  => Context
+  => Context Scheme
   -> Expr
   -> InferT m (AnnotatedExpr Type, Substitution Type, [Class])
 solveExprType (Context env) expr = do
@@ -1098,6 +1134,7 @@ solveExprType (Context env) expr = do
     case unboundVars env as of
         (var:_) ->
             throwError (UnboundVariable var)
+
         [] -> do
             (sub, clcs) <- runStateT (solve (cs <> envConstraints as)) []
             pure (ty, sub, clcs)
@@ -1109,11 +1146,11 @@ solveExprType (Context env) expr = do
         guard (x == y)
         pure (Explicit s t)
 
-inferType :: (Monad m) => Context -> Expr -> InferT m (AnnotatedExpr Scheme)
+inferType :: (Monad m) => Context Scheme -> Expr -> InferT m (AnnotatedExpr Scheme)
 inferType context expr = do
     (ty, sub, clcs) <- solveExprType context expr
-    traceShowM (apply sub (getAnnotation ty))
-    traceShowM (apply sub clcs)
+--    traceShowM (apply sub (getAnnotation ty))
+--    traceShowM (apply sub clcs)
     annotate sub ty
   where
     annotate
@@ -1246,9 +1283,55 @@ instantiate (Forall vars clcs ty) = do
 -- ============================= Type Unification =============================
 -- ============================================================================
 
+-- data UnificationError 
+--     = CannotUnify 
+--     | InfiniteType 
+--     deriving (Show, Eq)
+-- 
+-- class Unifiable t where
+--     unify :: (MonadError UnificationError m) => t -> t -> m (Substitution t)
+--     toVar :: Name -> t
+--     err1 :: UnificationError
+--     err2 :: UnificationError
+-- 
+-- instance Unifiable Type where
+--     toVar = varT
+--     unify (Fix (ArrT t1 t2)) (Fix (ArrT u1 u2)) = unifyPairX (t1, t2) (u1, u2)
+--     unify (Fix (AppT t1 t2)) (Fix (AppT u1 u2)) = unifyPairX (t1, t2) (u1, u2)
+--     unify (Fix (VarT a)) t = bindX a t
+--     unify t (Fix (VarT a)) = bindX a t
+--     unify t u = unifyDefaultX t u
+-- 
+-- --bindX 
+-- --  :: (MonadError UnificationError m, Eq a, Unifiable a, Free a, Substitutable a a) 
+-- --  => Name 
+-- --  -> a 
+-- --  -> m (Substitution a)
+-- bindX var ty
+--     | toVar var == ty   = pure mempty
+--     | var `occursIn` ty = throwError InfiniteType
+--     | otherwise         = pure (substitute var ty)
+-- 
+-- --unifyPairX 
+-- --    :: (MonadError UnificationError m, Unifiable a, Substitutable a a) 
+-- --    => (a, a)
+-- --    -> (a, a)
+-- --    -> m (Substitution a)
+-- unifyPairX (t1, t2) (u1, u2) = do
+--     sub1 <- unify t1 u1
+--     sub2 <- unify (apply sub1 t2) (apply sub1 u2)
+--     pure (sub2 <> sub1)
+-- 
+-- --unifyDefaultX :: (MonadError UnificationError m, Eq a, Substitutable a a) => a -> a -> m (Substitution a)
+-- unifyDefaultX t u
+--     | t == u    = pure mempty
+--     | otherwise = throwError CannotUnify
+-- 
+-- -- <<
+
 bind :: (MonadError TypeError m) => Name -> Type -> m (Substitution Type)
 bind var ty
-    | VarT var == ty    = pure mempty
+    | varT var == ty    = pure mempty
     | var `occursIn` ty = throwError InfiniteType
     | otherwise         = pure (substitute var ty)
 
@@ -1259,10 +1342,10 @@ unifyPair (t1, t2) (u1, u2) = do
     pure (sub2 <> sub1)
 
 unify :: (MonadError TypeError m) => Type -> Type -> m (Substitution Type)
-unify (ArrT t1 t2) (ArrT u1 u2) = unifyPair (t1, t2) (u1, u2)
-unify (AppT t1 t2) (AppT u1 u2) = unifyPair (t1, t2) (u1, u2)
-unify (VarT a) t = bind a t
-unify t (VarT a) = bind a t
+unify (Fix (ArrT t1 t2)) (Fix (ArrT u1 u2)) = unifyPair (t1, t2) (u1, u2)
+unify (Fix (AppT t1 t2)) (Fix (AppT u1 u2)) = unifyPair (t1, t2) (u1, u2)
+unify (Fix (VarT a)) t = bind a t
+unify t (Fix (VarT a)) = bind a t
 unify t u
     | t == u    = pure mempty
     | otherwise = throwError CannotUnify
@@ -1307,8 +1390,8 @@ dataCon name 0 = Data name []
 dataCon name n = Closure (varName 1) val mempty
   where
     val = tail vars
-        $> init
-        |> foldr (\name -> asks . Closure name)
+        # init
+        & foldr (\name -> asks . Closure name)
 
     init = do
         env <- ask
@@ -1357,10 +1440,11 @@ substituteExpr name val = para $ \case
     AnnS expr ty ->
         annS (snd expr) ty
 
-substituteLet :: Name -> Name -> (Expr, Expr) -> (Expr, Expr) -> Bool -> Expr
-substituteLet name var body expr rec =
-    let get = if name == var then fst else snd
-     in (if rec then recS else letS) var (get body) (get expr)
+  where
+    substituteLet :: Name -> Name -> (Expr, Expr) -> (Expr, Expr) -> Bool -> Expr
+    substituteLet name var body expr rec =
+        let get = if name == var then fst else snd
+         in (if rec then recS else letS) var (get body) (get expr)
 
 -- ============================================================================
 -- =================================== Eval ===================================
@@ -1553,11 +1637,21 @@ evalOp = \case
         Value (Bool b) <- a
         bool (not b)
 
+    OrS a b -> do
+        Value (Bool l) <- a
+        Value (Bool r) <- b
+        bool (l || r)
+
+    AndS a b -> do
+        Value (Bool l) <- a
+        Value (Bool r) <- b
+        bool (l && r)
+
   where
     numOp op a b = do
         Value (Int m) <- a
         Value (Int n) <- b
-        int (op m n)
+        int (m `op` n)
 
     bool  = pure . Value . Bool
     int   = pure . Value . Int

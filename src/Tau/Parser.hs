@@ -121,6 +121,9 @@ operator =
       , InfixN (ltS <$ symbol "<")
       , InfixN (gtS <$ symbol ">")
       ]
+    , [ InfixN (orS  <$ symbol "||")
+      , InfixN (andS <$ symbol "&&")
+      ]
     ]
 
 expr :: Parser Expr

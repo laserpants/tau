@@ -64,7 +64,7 @@ replCommand input =
 treeTop :: AnnotatedExpr Scheme -> (Expr, Scheme)
 treeTop = getExpr &&& getAnnotation
 
-replInferType :: Context -> Expr -> Either TypeError (AnnotatedExpr Scheme)
+replInferType :: Context Scheme -> Expr -> Either TypeError (AnnotatedExpr Scheme)
 replInferType context = runInfer . inferType context
 
 replOptions :: Options Repl
