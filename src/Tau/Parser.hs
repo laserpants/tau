@@ -81,7 +81,7 @@ ast :: Parser Expr
 ast = do
     exprs <- appS <$> some atom
     pure $ case unfix exprs of
-        AppS [e] | not (isAdt e) -> e
+        AppS [e] | not (isConstructor e) -> e
         _ -> exprs
   where
     atom = ifClause
@@ -100,9 +100,15 @@ prim = unit
     <|> charPrim
     <|> stringPrim
 
-isAdt :: Expr -> Bool
-isAdt (Fix (VarS name)) | not (Text.null name) = isUpper (Text.head name)
-isAdt _ = False
+isConstructor :: Expr -> Bool
+isConstructor (Fix (VarS name)) | not (Text.null name) = isUpper (Text.head name)
+isConstructor _ = False
+
+literal :: Parser Expr
+literal = litS <$> prim
+
+identifier :: Parser Expr
+identifier = varS <$> word (withInitial letterChar)
 
 operator :: [[Operator Parser Expr]]
 operator =
@@ -215,9 +221,3 @@ charPrim = Char <$> between (symbol "'") (symbol "'") printChar
 stringPrim :: Parser Prim
 stringPrim = lexeme (String . pack <$> chars) where
     chars = char '\"' *> manyTill Lexer.charLiteral (char '\"')
-
-literal :: Parser Expr
-literal = litS <$> prim
-
-identifier :: Parser Expr
-identifier = varS <$> word (withInitial letterChar)

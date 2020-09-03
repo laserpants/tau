@@ -1523,7 +1523,7 @@ eval = cata alg
 
         MatchS expr clss -> do
             val <- expr
-            evalCase val clss
+            evalMatch val clss
 
         OpS op ->
             evalOp op
@@ -1534,13 +1534,13 @@ eval = cata alg
         ErrS ->
             throwError RuntimeError
 
-evalCase
+evalMatch
   :: (MonadError EvalError m, MonadReader (EvalEnv m) m)
   => Value m
   -> [(Pattern, m (Value m))]
   -> m (Value m)
-evalCase _ [] = throwError RuntimeError
-evalCase val ((match, expr):cs) = do
+evalMatch _ [] = throwError RuntimeError
+evalMatch val ((match, expr):cs) = do
     unless (isSimple match) (throwError NonSimplePattern)
     case unfix match of
         AnyP ->
@@ -1555,7 +1555,7 @@ evalCase val ((match, expr):cs) = do
                     local (Env.insertMany pairs) expr
 
                 Nothing ->
-                    evalCase val cs
+                    evalMatch val cs
 
 matched :: PatternF Pattern -> Value m -> Maybe [(Name, Value m)]
 matched (ConP n ps) (Data m vs) | n == m = Just (zip (getVarName <$> ps) vs)
