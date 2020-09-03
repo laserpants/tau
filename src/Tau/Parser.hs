@@ -161,7 +161,7 @@ parseLet con kword = do
 matchWith :: Parser Expr
 matchWith = do
     expr <- keyword "match" *> expr
-    clss <- keyword "with"  *> many clause
+    clss <- keyword "with"  *> some clause
     pure (matchS expr clss)
 
 clause :: Parser (Pattern, Expr)

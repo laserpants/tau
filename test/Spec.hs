@@ -483,8 +483,8 @@ typeInferRunTest context expr = getAnnotation <$> runInfer (inferType context ex
 -- ==== TestPatternCheck ====
 -- ==========================
 
-patternCheckTestConstructors :: Env (Set Name)
-patternCheckTestConstructors = lookupFromList
+patternCheckTestConstructors :: ConstructorEnv
+patternCheckTestConstructors = constructorEnv
     [ ("Nil",  ["Nil", "Cons"])
     , ("Cons", ["Nil", "Cons"])
     ]

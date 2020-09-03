@@ -323,8 +323,8 @@ defaultMatrix = concatMap $ \(p:ps) ->
 
 type ConstructorEnv = Env (Set Name)
 
-lookupFromList :: [(Name, [Name])] -> ConstructorEnv
-lookupFromList = Env.fromList . fmap (fmap Set.fromList)
+constructorEnv :: [(Name, [Name])] -> ConstructorEnv
+constructorEnv = Env.fromList . fmap (fmap Set.fromList)
 
 type PatternCheckTStack m a = ReaderT ConstructorEnv m a
 
@@ -384,7 +384,7 @@ useful px@(ps:_) qs =
     complete names@(name:_) = do
         -- TODO refactor
         lookup <- ask
-        let Env map = lookup `Env.union` lookupFromList builtIn
+        let Env map = lookup `Env.union` constructorEnv builtIn
         pure (Map.findWithDefault mempty name map == Set.fromList names)
 
     builtIn =
