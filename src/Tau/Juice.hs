@@ -100,7 +100,7 @@ data Scheme = Forall
 data KindF a
     = ArrowK a a           -- ^ Type arrow
     | StarK                -- ^ Concrete type
-    | VarK Name            -- ^ Kind variable
+    | VarK Name            -- ^ Kind variable placeholder
     deriving (Show, Eq)
 
 type Kind = Fix KindF
@@ -193,7 +193,7 @@ instance Substitutable Kind Kind where
     apply sub (Fix (ArrowK k1 k2)) = arrowK (apply sub k1) (apply sub k2)
     apply _ (Fix StarK)            = starK
 
--- | Class of types that support the notion of free type variables
+-- | Class of types that contain free type variables
 class Free t where
     free :: t -> Set Name
 
@@ -209,7 +209,7 @@ instance Free Type where
 instance Free Scheme where
     free (Forall vars _ ty) = free ty \\ Set.fromList vars
 
-instance Free a => Free (Context a) where
+instance (Free a) => Free (Context a) where
     free (Context env) = free (Map.elems env)
 
 instance Free Kind where
