@@ -3,6 +3,8 @@
 import Test.Hspec
 
 import Control.Monad
+import Control.Monad.Except
+import Control.Monad.Supply
 import Data.Functor.Const
 import Data.Functor.Foldable
 import Data.List (intersperse, find, delete, nub, elemIndex)
@@ -125,15 +127,16 @@ kindInferTestSuccess (ty, context) kind name =
     describeFailure = unpack $
         "Expected kind to be : " <> prettyKind kind
 
-    test = case runInferK (inferKind testKindContext ty) of
-        Nothing ->
+    test = case runInferT (inferKind testKindContext ty) of
+        Left{} ->
             expectationFailure describeFailure
 
-        _ ->
+        Right{} ->
             pass
 
-kindInferRunTest :: Env Kind -> Type -> Maybe Kind
-kindInferRunTest context ty = runInferK (inferKind testKindContext ty)
+
+--kindInferRunTest :: Env Kind -> Type -> Maybe Kind
+--kindInferRunTest context ty = runInferK (inferKind testKindContext ty)
 
 testKindContext :: Env Kind
 testKindContext = Env (Map.fromList
@@ -173,6 +176,21 @@ typeInferTest030 = appS [lamS "xs" (matchS (varS "xs") clauses), appS [varS "Con
         [ (conP "Cons" [varP "y", varP "ys"], litInt 1)
         , (conP "Nil" [], litInt 2) ]
 
+typeInferTest03b :: Expr
+typeInferTest03b = appS [lamMatchS clauses, appS [varS "Cons", litInt 5, appS [varS "Nil"]]]
+  where
+    clauses =
+        [ (conP "Cons" [varP "y", varP "ys"], litInt 1)
+        , (conP "Nil" [], litInt 2) ]
+
+typeInferTest03c :: Expr
+typeInferTest03c = lamMatchS clauses
+  where
+    clauses =
+        [ (conP "Cons" [varP "y", varP "ys"], litInt 1)
+        , (conP "Nil" [], litInt 2) ]
+
+
 -- (\xs -> match xs with | _ => 1) (Cons 5 Nil)
 typeInferTest031 :: Expr
 typeInferTest031 = appS [lamS "xs" (matchS (varS "xs") clauses), appS [varS "Cons", litInt 5, appS [varS "Nil"]]]
@@ -196,6 +214,9 @@ typeInferTest034 = letS "xs" (appS [varS "Baz"]) (matchS (varS "xs") [ (conP "Ba
 
 typeInferTest040 :: Expr
 typeInferTest040 = appS [lamS "xs" (matchS (varS "xs") [(conP "Cons" [varP "y", varP "ys"], litInt 1), (conP "Nil" [], litInt 2)]), appS [varS "Nil"]]
+
+typeInferTest04b :: Expr
+typeInferTest04b = appS [lamMatchS [(conP "Cons" [varP "y", varP "ys"], litInt 1), (conP "Nil" [], litInt 2)], appS [varS "Nil"]]
 
 typeInferTest041 :: Expr
 typeInferTest041 = appS [varS "Cons", litInt 5]
@@ -341,6 +362,12 @@ testInfer = do
         (typeInferTest030, testContext) (Forall [] [] tInt) "test030"
 
     typeInferTestSuccess
+        (typeInferTest03b, testContext) (Forall [] [] tInt) "test03b"
+
+    typeInferTestSuccess
+        (typeInferTest03c, testContext) (Forall ["a"] [] (arrT (appT (conT "List") (varT "a")) tInt)) "test03c"
+
+    typeInferTestSuccess
         (typeInferTest031, testContext) (Forall [] [] tInt) "test031"
 
     typeInferTestSuccess
@@ -352,8 +379,14 @@ testInfer = do
     typeInferTestSuccess
         (typeInferTest034, testContext) (Forall [] [] tString) "test034"
 
+    typeInferTestSuccess
+        (typeInferTest040, testContext) (Forall [] [] tInt) "test040"
+
+    typeInferTestSuccess
+        (typeInferTest04b, testContext) (Forall [] [] tInt) "test04b"
+
     typeInferTestFailWithError
-        (typeInferTest053, testContext) CannotUnify "test053"
+        (typeInferTest053, testContext) (UnificationError CannotUnify) "test053"
 
     typeInferTestSuccess
         (typeInferTest054, testContext) (Forall [] [] tInt) "test054"
@@ -365,31 +398,31 @@ testInfer = do
         (typeInferTest056, testContext) (Forall [] [] tInt) "test056"
 
     typeInferTestFailWithError
-        (typeInferTest057, testContext) CannotUnify "test057"
+        (typeInferTest057, testContext) (UnificationError CannotUnify) "test057"
 
     typeInferTestFailWithError
-        (typeInferTest058, testContext) CannotUnify "test058"
+        (typeInferTest058, testContext) (UnificationError CannotUnify) "test058"
 
     typeInferTestFailWithError
-        (typeInferTest059, testContext) CannotUnify "test059"
+        (typeInferTest059, testContext) (UnificationError CannotUnify) "test059"
 
     typeInferTestFailWithError
-        (typeInferTest060, testContext) CannotUnify "test060"
+        (typeInferTest060, testContext) (UnificationError CannotUnify) "test060"
 
     typeInferTestSuccess
         (typeInferTest061, testContext) (Forall [] [] tString) "test061"
 
     typeInferTestFailWithError
-        (typeInferTest062, testContext) CannotUnify "test062"
+        (typeInferTest062, testContext) (UnificationError CannotUnify) "test062"
 
     typeInferTestFailWithError
         (typeInferTest063, testContext) EmptyMatchStatement "test063"
 
     typeInferTestFailWithError
-        (typeInferTest070, testContext) CannotUnify "test070"
+        (typeInferTest070, testContext) (UnificationError CannotUnify) "test070"
 
     typeInferTestFailWithError
-        (typeInferTest075, testContext) CannotUnify "test075"
+        (typeInferTest075, testContext) (UnificationError CannotUnify) "test075"
 
     typeInferTestSuccess
         (typeInferTest080, testContext) (Forall [] [] tInt) "test080"
@@ -721,10 +754,16 @@ evalTest010 = letS "const" (lamS "a" (lamS "b" (varS "a"))) (appS [varS "const",
 evalTest020 :: Expr
 evalTest020 = letS "const" (lamS "a" (lamS "b" (varS "a"))) (appS [varS "const", litUnit, litInt 5])
 
--- (\xs -> case xs of { Cons y ys -> 1; Nil -> 2 }) (Cons 5 Nil)
+-- (\xs -> match xs with | Cons y ys -> 1 | Nil -> 2) (Cons 5 Nil)
 -- 1
 evalTest030 :: Expr
 evalTest030 = appS [lamS "xs" (matchS (varS "xs") [(conP "Cons" [varP "y", varP "ys"], litInt 1), (conP "Nil" [], litInt 2)]), appS [varS "Cons", litInt 5, appS [varS "Nil"]]]
+
+-- (\match | Cons y ys -> 1 | Nil -> 2) (Cons 5 Nil)
+-- 1
+evalTest035 :: Expr
+evalTest035 = appS [lamMatchS [(conP "Cons" [varP "y", varP "ys"], litInt 1), (conP "Nil" [], litInt 2)], appS [varS "Cons", litInt 5, appS [varS "Nil"]]]
+
 
 -- (\xs -> case xs of { Cons y ys -> 1; Nil -> 2 }) Nil
 -- 2
@@ -776,6 +815,7 @@ testEval = do
     evalTestIsFunction evalTest010               "test010"
     evalTestEvalsTo (evalTest020, Value Unit)    "test020"
     evalTestEvalsTo (evalTest030, Value (Int 1)) "test030"
+    evalTestEvalsTo (evalTest035, Value (Int 1)) "test035"
     evalTestEvalsTo (evalTest040, Value (Int 2)) "test040"
     evalTestEvalsTo (evalTest050, Value (Int 8)) "test050"
     evalTestEvalsTo (evalTest060, Value (Int 5)) "test060"
@@ -925,7 +965,7 @@ testUnify = do
 
 shouldUnify :: (Type, Type) -> Expectation
 shouldUnify (t1, t2) =
-    case runInfer (unify t1 t2) of
+    case runInfer (liftErrors (unify t1 t2)) of
         Left{} ->
             expectationFailure "Unification failed"
 
@@ -938,7 +978,7 @@ shouldUnify (t1, t2) =
 
 shouldFailToUnify :: (Type, Type) -> Expectation
 shouldFailToUnify (t1, t2) =
-    case runInfer (unify t1 t2) of
+    case runInfer (liftErrors (unify t1 t2)) of
         Left{} ->
             pass
 
@@ -1607,6 +1647,9 @@ prettyExpr = cata alg
 
         MatchS expr clss ->
             "match " <> expr <> " with | " <> Text.concat (intersperse " | " $ prettyClause <$> clss)
+
+        LamMatchS clss ->
+            "\\match | " <> Text.concat (intersperse " | " $ prettyClause <$> clss)
 
         OpS ops ->
             prettyOp ops

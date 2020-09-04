@@ -81,6 +81,8 @@ replConstructorEnv = constructorEnv
     [ ("Nil",  ["Nil", "Cons"])
     , ("Cons", ["Nil", "Cons"]) ]
 
+-- ===============================
+
 treeTop :: AnnotatedExpr Scheme -> (Expr, Scheme)
 treeTop = getExpr &&& getAnnotation
 
