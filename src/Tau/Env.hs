@@ -26,3 +26,12 @@ union (Env a) (Env b) = Env (Map.union a b)
 
 elems :: Env a -> [a]
 elems (Env map) = Map.elems map
+
+lookup :: Name -> Env a -> Maybe a
+lookup name (Env map) = Map.lookup name map
+
+findWithDefault :: a -> Name -> Env a -> a
+findWithDefault value key (Env map) = Map.findWithDefault value key map
+
+findWithDefaultEmpty :: (Monoid a) => Name -> Env a -> a
+findWithDefaultEmpty key (Env map) = Map.findWithDefault mempty key map

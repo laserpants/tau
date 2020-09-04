@@ -391,12 +391,11 @@ useful px@(ps:_) qs =
   where
     complete [] = pure False
     complete names@(name:_) = do
-        -- TODO refactor
-        lookup <- ask
-        let Env map = lookup `Env.union` constructorEnv builtIn
-        pure (Map.findWithDefault mempty name map == Set.fromList names)
+        defined <- ask
+        let constructors = defined `Env.union` builtIn
+        pure (Env.findWithDefaultEmpty name constructors == Set.fromList names)
 
-    builtIn =
+    builtIn = constructorEnv
         [ ("$True",     ["$True", "$False"])
         , ("$False",    ["$True", "$False"])
         , ("$()",       ["$()"])
@@ -1493,6 +1492,11 @@ evalExpr = runEval . eval
 evalMaybe :: (MonadError EvalError m) => EvalError -> Maybe (Value m) -> m (Value m)
 evalMaybe err = maybe (throwError err) pure
 
+evalVar :: (MonadError EvalError m, MonadReader (EvalEnv m) m) => Name -> m (Value m)
+evalVar name = do
+    env <- ask
+    evalMaybe (UnboundIdentifier name) (Env.lookup name env)
+
 eval
   :: (MonadFix m, MonadFail m, MonadError EvalError m, MonadReader (EvalEnv m) m)
   => Expr
@@ -1502,9 +1506,8 @@ eval = cata alg
     alg :: (MonadFix m, MonadFail m, MonadError EvalError m, MonadReader (EvalEnv m) m)
         => Algebra ExprF (m (Value m))
     alg = \case
-        VarS name -> do
-            Env env <- ask
-            evalMaybe (UnboundIdentifier name) (Map.lookup name env)
+        VarS name ->
+            evalVar name
 
         LamS name expr ->
             asks (Closure name expr)
@@ -1527,20 +1530,11 @@ eval = cata alg
             Value (Bool isTrue) <- cond
             if isTrue then true else false
 
-        MatchS expr clss -> do
-            val <- expr
-            evalMatch val clss
+        MatchS expr clss ->
+            expr >>= evalMatch clss
 
-        LamMatchS clss -> do
-            --eval (lamS "x" (matchS (varS "x") clss))
-            --eval (lamS "x" (matchS (varS "x") (undefined clss)))
-            --expr <- (VarS "x") :: Int
-            --undefined
-            env <- ask
-            undefined
-            --let expr = undefined :: Value m
-            --asks (Closure "x" (evalMatch expr clss))
-            --evalMatch (varS "x") clss
+        LamMatchS clss ->
+            asks (Closure "$" (evalVar "$" >>= evalMatch clss))
 
         OpS op ->
             evalOp op
@@ -1553,11 +1547,11 @@ eval = cata alg
 
 evalMatch
   :: (MonadError EvalError m, MonadReader (EvalEnv m) m)
-  => Value m
-  -> [MatchClause (m (Value m))]
+  => [MatchClause (m (Value m))]
+  -> Value m
   -> m (Value m)
-evalMatch _ [] = throwError RuntimeError
-evalMatch val ((match, expr):cs) = do
+evalMatch [] _ = throwError RuntimeError
+evalMatch ((match, expr):cs) val = do
     unless (isSimple match) (throwError NonSimplePattern)
     case unfix match of
         AnyP ->
@@ -1572,7 +1566,7 @@ evalMatch val ((match, expr):cs) = do
                     local (Env.insertMany pairs) expr
 
                 Nothing ->
-                    evalMatch val cs
+                    evalMatch cs val
 
 matched :: PatternF Pattern -> Value m -> Maybe [(Name, Value m)]
 matched (ConP n ps) (Data m vs) | n == m = Just (zip (getVarName <$> ps) vs)
@@ -1717,7 +1711,7 @@ unifyDefault
   -> a
   -> Either UnificationError (Substitution a)
 unifyDefault t u
-    | t == u    = pure mempty
+    | t == u = pure mempty
     | otherwise = throwError CannotUnify
 
 bind
