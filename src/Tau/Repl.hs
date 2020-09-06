@@ -87,10 +87,10 @@ replConstructorEnv = constructorEnv
 
 -- ===============================
 
-treeTop :: AnnotatedExpr Scheme -> (Expr, Scheme)
+treeTop :: AnnotatedAst Scheme -> (Expr, Scheme)
 treeTop = getExpr &&& getAnnotation
 
-replInferType :: Env Scheme -> Expr -> Either TypeError (AnnotatedExpr Scheme)
+replInferType :: Env Scheme -> Expr -> Either TypeError (AnnotatedAst Scheme)
 replInferType context = runInfer . inferType context
 
 replOptions :: Options Repl

@@ -63,7 +63,7 @@
 
 ##### Format: `set <field_name>`
 
-    set name : String -> User -> User
+    set name : t -> { a | name : t } -> { a | name : t }
 
 
 

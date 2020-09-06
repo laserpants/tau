@@ -15,7 +15,6 @@
 {-# LANGUAGE UndecidableInstances       #-}
 module Tau.Juice where
 
-import Debug.Trace
 import Control.Arrow ((>>>), (***))
 import Control.Monad.Except
 import Control.Monad.Extra (anyM, (&&^))
@@ -35,6 +34,7 @@ import Data.Map.Strict (Map, notMember)
 import Data.Set.Monad (Set, union, intersection, member, (\\))
 import Data.Text (Text, pack)
 import Data.Tuple.Extra (first, first3, both)
+import Debug.Trace
 import GHC.Show (showSpace)
 import Tau.Env (Env(..))
 import Text.Show.Deriving
@@ -795,34 +795,34 @@ instance Free Monoset where
 instance Substitutable Type Monoset where
     apply sub (Monoset set) = Monoset (free . apply sub . varT =<< set)
 
-type AnnotatedExprF a = Const a :*: ExprF
+type AnnotatedAstF a = Const a :*: ExprF
 
 -- | Annotated syntax tree
-newtype AnnotatedExpr a = AnnotatedExpr
-    { runAnnotatedExpr :: Fix (AnnotatedExprF a)
+newtype AnnotatedAst a = AnnotatedAst
+    { runAnnotatedAst :: Fix (AnnotatedAstF a)
     } deriving (Eq, Show)
 
-instance Substitutable Type (AnnotatedExpr Type) where
-    apply sub = runAnnotatedExpr >>> cata alg >>> AnnotatedExpr where
+instance Substitutable Type (AnnotatedAst Type) where
+    apply sub = runAnnotatedAst >>> cata alg >>> AnnotatedAst where
         alg (Const ty :*: expr) = Fix (Const (apply sub ty) :*: expr)
 
-getExpr :: AnnotatedExpr a -> Expr
-getExpr = cata (Fix . right) . runAnnotatedExpr
+getExpr :: AnnotatedAst a -> Expr
+getExpr = cata (Fix . right) . runAnnotatedAst
 
-getAnnotation :: AnnotatedExpr a -> a
+getAnnotation :: AnnotatedAst a -> a
 getAnnotation =
     getConst
       . left
       . unfix
-      . runAnnotatedExpr
+      . runAnnotatedAst
 
 infer
   :: (Monad m)
   => Expr
-  -> InferT m (AnnotatedExpr Type, [Assumption], [Constraint])
+  -> InferT m (AnnotatedAst Type, [Assumption], [Constraint])
 infer = cata alg where
     alg :: (Monad m)
-        => Algebra ExprF (InferT m (AnnotatedExpr Type, [Assumption], [Constraint]))
+        => Algebra ExprF (InferT m (AnnotatedAst Type, [Assumption], [Constraint]))
     alg = fmap expand >>> \case
         VarS name -> do
             beta <- varT <$> supply
@@ -840,7 +840,7 @@ infer = cata alg where
 
         AppS exprs -> do
             (_expr, _, as, cs) <- foldl1 inferApp exprs
-            pure ( AnnotatedExpr _expr, as, cs )
+            pure ( AnnotatedAst _expr, as, cs )
 
         LitS prim -> do
             t <- inferPrim prim
@@ -889,10 +889,10 @@ infer = cata alg where
 inferLet
   :: (MonadReader Monoset m)
   => Name
-  -> m (Fix (AnnotatedExprF Type), Type, [Assumption], [Constraint])
-  -> m (Fix (AnnotatedExprF Type), Type, [Assumption], [Constraint])
+  -> m (Fix (AnnotatedAstF Type), Type, [Assumption], [Constraint])
+  -> m (Fix (AnnotatedAstF Type), Type, [Assumption], [Constraint])
   -> Bool
-  -> m (AnnotatedExpr Type, [Assumption], [Constraint])
+  -> m (AnnotatedAst Type, [Assumption], [Constraint])
 inferLet var expr body rec = do
     (_e1, t1, a1, c1) <- expr
     (_e2, t2, a2, c2) <- body
@@ -905,9 +905,9 @@ inferClause
   :: (Monad m)
   => Type
   -> Type
-  -> MatchClause (InferT m (Fix (AnnotatedExprF Type), Type, [Assumption], [Constraint]))
-  -> ([MatchClause (Fix (AnnotatedExprF Type))], [Assumption], [Constraint])
-  -> InferT m ([MatchClause (Fix (AnnotatedExprF Type))], [Assumption], [Constraint])
+  -> MatchClause (InferT m (Fix (AnnotatedAstF Type), Type, [Assumption], [Constraint]))
+  -> ([MatchClause (Fix (AnnotatedAstF Type))], [Assumption], [Constraint])
+  -> InferT m ([MatchClause (Fix (AnnotatedAstF Type))], [Assumption], [Constraint])
 inferClause beta t (pat, expr) (ps, as, cs) = do
     (_expr, t1, a1, c1) <- local (insertManyIntoMonoset vars) expr
     (t2, a2, c2) <- inferPattern pat
@@ -949,9 +949,9 @@ inferPattern = cata $ \case
 
 inferApp
   :: (Monad m)
-  => InferT m (Fix (AnnotatedExprF Type), Type, [Assumption], [Constraint])
-  -> InferT m (Fix (AnnotatedExprF Type), Type, [Assumption], [Constraint])
-  -> InferT m (Fix (AnnotatedExprF Type), Type, [Assumption], [Constraint])
+  => InferT m (Fix (AnnotatedAstF Type), Type, [Assumption], [Constraint])
+  -> InferT m (Fix (AnnotatedAstF Type), Type, [Assumption], [Constraint])
+  -> InferT m (Fix (AnnotatedAstF Type), Type, [Assumption], [Constraint])
 inferApp fun arg = do
     (_e1, t1, a1, c1) <- fun
     (_e2, t2, a2, c2) <- arg
@@ -963,10 +963,10 @@ inferApp fun arg = do
 
 op1
   :: (MonadSupply Name m) =>
-     (Fix (AnnotatedExprF Type) -> OpF (Fix (AnnotatedExprF Type)))
-     -> m (Fix (AnnotatedExprF Type), Type, [Assumption], [Constraint])
+     (Fix (AnnotatedAstF Type) -> OpF (Fix (AnnotatedAstF Type)))
+     -> m (Fix (AnnotatedAstF Type), Type, [Assumption], [Constraint])
      -> Scheme
-     -> m (AnnotatedExpr Type, [Assumption], [Constraint])
+     -> m (AnnotatedAst Type, [Assumption], [Constraint])
 op1 con e1 sig = do
     (_e1, t1, a1, c1) <- e1
     beta <- varT <$> supply
@@ -976,11 +976,11 @@ op1 con e1 sig = do
 
 op2
   :: (MonadSupply Name m) =>
-     (Fix (AnnotatedExprF Type) -> Fix (AnnotatedExprF Type) -> OpF (Fix (AnnotatedExprF Type)))
-     -> m (Fix (AnnotatedExprF Type), Type, [Assumption], [Constraint])
-     -> m (Fix (AnnotatedExprF Type), Type, [Assumption], [Constraint])
+     (Fix (AnnotatedAstF Type) -> Fix (AnnotatedAstF Type) -> OpF (Fix (AnnotatedAstF Type)))
+     -> m (Fix (AnnotatedAstF Type), Type, [Assumption], [Constraint])
+     -> m (Fix (AnnotatedAstF Type), Type, [Assumption], [Constraint])
      -> Scheme
-     -> m (AnnotatedExpr Type, [Assumption], [Constraint])
+     -> m (AnnotatedAst Type, [Assumption], [Constraint])
 op2 con e1 e2 sig = do
     (_e1, t1, a1, c1) <- e1
     (_e2, t2, a2, c2) <- e2
@@ -991,8 +991,8 @@ op2 con e1 e2 sig = do
 
 inferOp
   :: (Monad m)
-  => OpF (InferT m (Fix (AnnotatedExprF Type), Type, [Assumption], [Constraint]))
-  -> InferT m (AnnotatedExpr Type, [Assumption], [Constraint])
+  => OpF (InferT m (Fix (AnnotatedAstF Type), Type, [Assumption], [Constraint]))
+  -> InferT m (AnnotatedAst Type, [Assumption], [Constraint])
 inferOp = \case
     AddS e1 e2 -> op2 AddS e1 e2 numericOp2
     SubS e1 e2 -> op2 SubS e1 e2 numericOp2
@@ -1050,7 +1050,7 @@ solveExprType
   :: (Monad m)
   => Env Scheme
   -> Expr
-  -> InferT m (AnnotatedExpr Type, Substitution Type, [Class])
+  -> InferT m (AnnotatedAst Type, Substitution Type, [Class])
 solveExprType (Env env) expr = do
     (ty, as, cs) <- infer expr
     case unboundVars env as of
@@ -1068,37 +1068,40 @@ solveExprType (Env env) expr = do
         guard (x == y)
         pure (Explicit s t)
 
-inferType :: (Monad m) => Env Scheme -> Expr -> InferT m (AnnotatedExpr Scheme)
+inferType :: (Monad m) => Env Scheme -> Expr -> InferT m (AnnotatedAst Scheme)
 inferType context expr = do
     (ty, sub, clcs) <- solveExprType context expr
---    traceShowM (apply sub (getAnnotation ty))
---    traceShowM (apply sub clcs)
+    traceShowM ty
+    traceShowM sub
+    traceShowM clcs
+    --traceShowM (apply sub (getAnnotation ty))
+    --traceShowM (apply sub clcs)
     annotate sub ty
   where
     annotate
       :: (Monad m)
       => Substitution Type
-      -> AnnotatedExpr Type
-      -> InferT m (AnnotatedExpr Scheme)
-    annotate sub = cata alg . runAnnotatedExpr where
-        alg :: Monad m => Algebra (AnnotatedExprF Type) (InferT m (AnnotatedExpr Scheme))
+      -> AnnotatedAst Type
+      -> InferT m (AnnotatedAst Scheme)
+    annotate sub = cata alg . runAnnotatedAst where
+        alg :: Monad m => Algebra (AnnotatedAstF Type) (InferT m (AnnotatedAst Scheme))
         alg (Const ty :*: expr) = do
-            zz <- fmap runAnnotatedExpr <$> sequence expr
+            zz <- fmap runAnnotatedAst <$> sequence expr
             ----pure $ annotated (generalize mempty [] (apply sub ty)) zz
             pure $ annotated (generalize mempty (apply sub ty)) zz
 
 --    annotate
 --      :: (Monad m)
 --      => Map Name Signature
---      -> AnnotatedExpr Type
---      -> InferT m (AnnotatedExpr Scheme)
---    annotate map = cata alg . runAnnotatedExpr
+--      -> AnnotatedAst Type
+--      -> InferT m (AnnotatedAst Scheme)
+--    annotate map = cata alg . runAnnotatedAst
 --      where
 --        alg
 --          :: (Monad m)
---          => Algebra (AnnotatedExprF Type) (InferT m (AnnotatedExpr Scheme))
+--          => Algebra (AnnotatedAstF Type) (InferT m (AnnotatedAst Scheme))
 --        alg (Const ty :*: expr) =
---            forall (applySigMap map [] ty) . fmap runAnnotatedExpr <$> sequence expr
+--            forall (applySigMap map [] ty) . fmap runAnnotatedAst <$> sequence expr
 --        forall (clcs, ty) =
 --            let
 --                cod = enumFrom 1 >>= fmap (VarT . pack) . flip replicateM ['a'..'z']
@@ -1112,15 +1115,15 @@ inferType context expr = do
 unboundVars :: Map Name a -> [Assumption] -> [Name]
 unboundVars env as = filter (`notMember` env) (fst . getAssumption <$> as)
 
-annotated :: t -> ExprF (Fix (AnnotatedExprF t)) -> AnnotatedExpr t
-annotated t a = AnnotatedExpr $ Fix $ Const t :*: a
+annotated :: t -> ExprF (Fix (AnnotatedAstF t)) -> AnnotatedAst t
+annotated t a = AnnotatedAst $ Fix $ Const t :*: a
 
 expand
   :: (Monad m)
-  => m (AnnotatedExpr Type, [Assumption], [Constraint])
-  -> m (Fix (AnnotatedExprF Type), Type, [Assumption], [Constraint])
+  => m (AnnotatedAst Type, [Assumption], [Constraint])
+  -> m (Fix (AnnotatedAstF Type), Type, [Assumption], [Constraint])
 expand triple = do
-    (e, as, cs) <- first3 runAnnotatedExpr <$> triple
+    (e, as, cs) <- first3 runAnnotatedAst <$> triple
     let Const t :*: _ = unfix e
     pure (e, t, as, cs)
 

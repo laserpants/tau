@@ -1528,6 +1528,9 @@ tclcsTestContext :: Env Scheme
 tclcsTestContext = Env (Map.fromList
     [ ("Show" , Forall ["a"] [] (arrT (arrT (varT "a") tString) (appT (conT "Show") (varT "a"))))
     , ("id"   , Forall ["a"] [] (arrT (varT "a") (varT "a")))
+    , ("show" , Forall ["a"] [Class "Show" (varT "a")] (arrT (varT "a") (conT "String")))
+    , ("Nil"    , Forall ["a"] [] listA)
+    , ("Cons"   , Forall ["a"] [] (arrT (varT "a") (arrT listA listA)))
     ])
 
 -- ====================
