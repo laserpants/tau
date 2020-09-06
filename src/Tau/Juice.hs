@@ -145,89 +145,6 @@ varK :: Name -> Kind
 varK = Fix . VarK
 
 -- ============================================================================
--- ============================== Substitutable ===============================
--- ============================================================================
-
-newtype Substitution a = Substitution { getSubstitution :: Map Name a }
-    deriving (Show, Eq, Functor)
-
-class Substitutable t a where
-    apply :: Substitution t -> a -> a
-
-deleteFromSub :: Name -> Substitution a -> Substitution a
-deleteFromSub name = Substitution . Map.delete name . getSubstitution
-
-deleteManyFromSub :: [Name] -> Substitution a -> Substitution a
-deleteManyFromSub = flip (foldr deleteFromSub)
-
-compose
-  :: (Substitutable a a)
-  => Substitution a
-  -> Substitution a
-  -> Substitution a
-compose sub@(Substitution map1) (Substitution map2) =
-    Substitution (Map.map (apply sub) map2 `Map.union` map1)
-
-sub :: Name -> a -> Substitution a
-sub name = Substitution . Map.singleton name
-
-instance (Substitutable a a) => Semigroup (Substitution a) where
-    (<>) = compose
-
-instance (Substitutable a a) => Monoid (Substitution a) where
-    mempty = Substitution mempty
-
-instance (Substitutable t a) => Substitutable t [a] where
-    apply = fmap . apply
-
-instance Substitutable Type Type where
-    apply sub ty@(Fix (VarT var)) = Map.findWithDefault ty var (getSubstitution sub)
-    apply sub (Fix (ArrT t1 t2))  = arrT (apply sub t1) (apply sub t2)
-    apply sub (Fix (AppT t1 t2))  = appT (apply sub t1) (apply sub t2)
-    apply _ ty                    = ty
-
-instance Substitutable Type Class where
-    apply sub (Class name ty) = Class name (apply sub ty)
-
-instance Substitutable Type Scheme where
-    apply (Substitution map) (Forall vars clcs ty) =
-        Forall vars (apply sub clcs) (apply sub ty)
-      where
-        sub = Substitution (foldr Map.delete map vars)
-
-instance Substitutable Kind Kind where
-    apply sub (Fix (VarK name))    = Map.findWithDefault (varK name) name (getSubstitution sub)
-    apply sub (Fix (ArrowK k1 k2)) = arrowK (apply sub k1) (apply sub k2)
-    apply _ (Fix StarK)            = starK
-
--- | Class of types that may contain free type variables
-class Free t where
-    free :: t -> Set Name
-
-instance (Free t) => Free [t] where
-    free = foldr (union . free) mempty
-
-instance Free Type where
-    free (Fix (VarT var))   = Set.singleton var
-    free (Fix (ArrT t1 t2)) = free t1 `union` free t2
-    free (Fix (AppT t1 t2)) = free t1 `union` free t2
-    free _                  = mempty
-
-instance Free Scheme where
-    free (Forall vars _ ty) = free ty \\ Set.fromList vars
-
-instance (Free a) => Free (Env a) where
-    free = free . Env.elems
-
-instance Free Kind where
-    free (Fix (ArrowK k l)) = free k `union` free l
-    free (Fix (VarK name))  = Set.singleton name
-    free _                  = mempty
-
-occursFreeIn :: (Free t) => Name -> t -> Bool
-occursFreeIn var context = var `member` free context
-
--- ============================================================================
 -- =================================== Ast ====================================
 -- ============================================================================
 
@@ -588,7 +505,6 @@ matchDefault def (u:us) qs = foldrM (flip run) def (groups qs) where
                     ( varPats
                     , case varName of
                           Nothing   -> varExpr
-                          --Just name -> substituteExpr name u varExpr )
                           Just name -> apply (sub name u) varExpr )
 
         LitEqs eqs ->
@@ -1333,7 +1249,40 @@ dataCon name n = Closure first val mempty
     vars@(first:rest) = take n (freshNames "%")
 
 -- ============================================================================
+-- ============================== Substitutable ===============================
 -- ============================================================================
+
+newtype Substitution a = Substitution { getSubstitution :: Map Name a }
+    deriving (Show, Eq, Functor)
+
+class Substitutable t a where
+    apply :: Substitution t -> a -> a
+
+deleteFromSub :: Name -> Substitution a -> Substitution a
+deleteFromSub name = Substitution . Map.delete name . getSubstitution
+
+deleteManyFromSub :: [Name] -> Substitution a -> Substitution a
+deleteManyFromSub = flip (foldr deleteFromSub)
+
+compose
+  :: (Substitutable a a)
+  => Substitution a
+  -> Substitution a
+  -> Substitution a
+compose sub@(Substitution map1) (Substitution map2) =
+    Substitution (Map.map (apply sub) map2 `Map.union` map1)
+
+sub :: Name -> a -> Substitution a
+sub name = Substitution . Map.singleton name
+
+instance (Substitutable a a) => Semigroup (Substitution a) where
+    (<>) = compose
+
+instance (Substitutable a a) => Monoid (Substitution a) where
+    mempty = Substitution mempty
+
+instance (Substitutable t a) => Substitutable t [a] where
+    apply = fmap . apply
 
 instance Substitutable Expr Expr where
     apply sub = para $ \case
@@ -1375,6 +1324,53 @@ instance Substitutable Expr Expr where
         substituteClause pat (expr, _) =
             ( pat
             , apply (deleteManyFromSub (patternVars pat) sub) expr )
+
+instance Substitutable Type Type where
+    apply sub ty@(Fix (VarT var)) = Map.findWithDefault ty var (getSubstitution sub)
+    apply sub (Fix (ArrT t1 t2))  = arrT (apply sub t1) (apply sub t2)
+    apply sub (Fix (AppT t1 t2))  = appT (apply sub t1) (apply sub t2)
+    apply _ ty                    = ty
+
+instance Substitutable Type Class where
+    apply sub (Class name ty) = Class name (apply sub ty)
+
+instance Substitutable Type Scheme where
+    apply (Substitution map) (Forall vars clcs ty) =
+        Forall vars (apply sub clcs) (apply sub ty)
+      where
+        sub = Substitution (foldr Map.delete map vars)
+
+instance Substitutable Kind Kind where
+    apply sub (Fix (VarK name))    = Map.findWithDefault (varK name) name (getSubstitution sub)
+    apply sub (Fix (ArrowK k1 k2)) = arrowK (apply sub k1) (apply sub k2)
+    apply _ (Fix StarK)            = starK
+
+-- | Class of types that may contain free type variables
+class Free t where
+    free :: t -> Set Name
+
+instance (Free t) => Free [t] where
+    free = foldr (union . free) mempty
+
+instance Free Type where
+    free (Fix (VarT var))   = Set.singleton var
+    free (Fix (ArrT t1 t2)) = free t1 `union` free t2
+    free (Fix (AppT t1 t2)) = free t1 `union` free t2
+    free _                  = mempty
+
+instance Free Scheme where
+    free (Forall vars _ ty) = free ty \\ Set.fromList vars
+
+instance (Free a) => Free (Env a) where
+    free = free . Env.elems
+
+instance Free Kind where
+    free (Fix (ArrowK k l)) = free k `union` free l
+    free (Fix (VarK name))  = Set.singleton name
+    free _                  = mempty
+
+occursFreeIn :: (Free t) => Name -> t -> Bool
+occursFreeIn var context = var `member` free context
 
 -- ============================================================================
 -- =================================== Eval ===================================
