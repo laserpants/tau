@@ -34,6 +34,9 @@ spaces = Lexer.space
 parens :: Parser a -> Parser a
 parens = between (symbol "(") (symbol ")")
 
+surroundedBy :: Parser Text -> Parser a -> Parser a
+surroundedBy p = between p p
+
 withInitial :: Parser Char -> Parser Text
 withInitial char = do
     head <- char
@@ -78,7 +81,7 @@ constructor = word (withInitial upperChar)
 -- ============================================================================
 
 ast :: Parser Expr
-ast = do 
+ast = do
     app <- appS <$> some atom
     pure $ case unfix app of
         AppS [e] -> e
@@ -209,17 +212,24 @@ bool = true <|> false
     true  = keyword "True"  $> Bool True
     false = keyword "False" $> Bool False
 
-int :: Parser Prim
-int = Int <$> lexeme Lexer.decimal
+integral :: Parser Prim
+integral = do
+    n <- lexeme Lexer.decimal
+    pure $ if n > max || n < min
+        then Integer n
+        else Int (fromIntegral n)
+  where
+    max = fromIntegral (maxBound :: Int)
+    min = fromIntegral (minBound :: Int)
 
 float :: Parser Prim
 float = Float <$> lexeme Lexer.float
 
 number :: Parser Prim
-number = try float <|> int
+number = try float <|> integral
 
 charPrim :: Parser Prim
-charPrim = Char <$> between (symbol "'") (symbol "'") printChar
+charPrim = Char <$> surroundedBy (symbol "'") printChar
 
 stringPrim :: Parser Prim
 stringPrim = lexeme (String . pack <$> chars) where

@@ -69,13 +69,13 @@ $(deriveEq1   ''(:*:))
 type Algebra f a = f a -> a
 
 freshNames :: Text -> [Name]
-freshNames prefix = (prefix <>) . pack . show <$> ([1..] :: [Int])
+freshNames prefix = (prefix <>) . pack . show <$> ([1..] :: [Integer])
 
 -- ============================================================================
 -- =================================== Type ===================================
 -- ============================================================================
 
--- | Type to represent types
+-- | Type that represents types in the target language
 data TypeF a
     = ConT Name            -- ^ Type constructor
     | VarT Name            -- ^ Type variable
@@ -223,14 +223,17 @@ patternVars = cata alg where
     alg (ConP _ ps) = concat ps
     alg _           = []
 
--- | A simple pattern is a variable, a wildcard, or a constructor where all the
--- subpatterns are simple.
+-- | A simple pattern is
+--   - a variable,
+--   - a wildcard, or
+--   - a constructor where all the subpatterns are simple.
 isSimple :: Pattern -> Bool
-isSimple = fun . unfix where
-    fun AnyP        = True
-    fun VarP{}      = True
-    fun (ConP _ ps) = all isSimple ps
-    fun _           = False
+isSimple = cata alg where
+    alg :: Algebra PatternF Bool
+    alg AnyP        = True
+    alg VarP{}      = True
+    alg (ConP _ ps) = and ps
+    alg _           = False
 
 specialized :: Name -> Int -> [[Pattern]] -> [[Pattern]]
 specialized name a = concatMap $ \(p:ps) ->

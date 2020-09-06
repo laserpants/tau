@@ -1556,6 +1556,15 @@ parserTest150 = "let chr = 'a' in chr == chr"
 parserTest160 :: String
 parserTest160 = "(\\match | (Cons x (Cons y ys)) -> 4) Nil"
 
+parserTest170 :: String
+parserTest170 = "123"
+
+bigNumber :: Integer
+bigNumber = (fromIntegral (maxBound :: Int) :: Integer) + 1
+
+parserTest180 :: String
+parserTest180 = show bigNumber
+
 testParser :: SpecWith ()
 testParser = do
     testParsesTo "test000" (parserTest000, litFloat 4.3)
@@ -1576,6 +1585,8 @@ testParser = do
     testParsesTo "test140" (parserTest140, eqS (litChar 'a') (litChar 'b'))
     testParsesTo "test140" (parserTest140, eqS (litChar 'a') (litChar 'b'))
     testParsesTo "test160" (parserTest160, appS [lamMatchS [(conP "Cons" [varP "x", conP "Cons" [varP "y", varP "ys"]], litInt 4)], varS "Nil"])
+    testParsesTo "test170" (parserTest170, litInt 123)
+    testParsesTo "test180" (parserTest180, litInteger bigNumber)
 
 testParsesTo :: Name -> (String, Expr) -> SpecWith ()
 testParsesTo name (input, expr) =
