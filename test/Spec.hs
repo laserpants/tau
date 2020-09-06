@@ -16,6 +16,7 @@ import Debug.Trace
 import Tau.Env (Env(..))
 import Tau.Juice
 import Tau.Parser
+import Tau.Print
 import qualified Data.Map.Strict as Map
 import qualified Data.Set.Monad as Set
 import qualified Data.Text as Text
@@ -119,13 +120,13 @@ kindInferTestSuccess (ty, context) kind name =
     describe description (it describeSuccess test)
   where
     description = unpack $
-        name <> ": " <> prettyType ty
+        name <> ": " <> prettyPrint ty
 
     describeSuccess = unpack $
-        "✔ has kind : " <> prettyKind kind
+        "✔ has kind : " <> prettyPrint kind
 
     describeFailure = unpack $
-        "Expected kind to be : " <> prettyKind kind
+        "Expected kind to be : " <> prettyPrint kind
 
     test = case runInferT (inferKind testKindContext ty) of
         Left{} ->
@@ -197,6 +198,13 @@ typeInferTest031 = appS [lamS "xs" (matchS (varS "xs") clauses), appS [varS "Con
   where
     clauses = [ (anyP, litInt 1) ]
 
+-- (\xs -> match xs with | _ => 1) (Cons 5 Nil)
+typeInferTest03x :: Expr
+typeInferTest03x = appS [lamS "xs" (matchS (varS "xs") clauses), appS [varS "Cons", litInt 5, varS "Nil"]]
+  where
+    clauses = [ (anyP, litInt 1) ]
+
+
 -- (\xs -> match xs with | x => 1) (Cons 5 Nil)
 typeInferTest032 :: Expr
 typeInferTest032 = appS [lamS "xs" (matchS (varS "xs") clauses), appS [varS "Cons", litInt 5, appS [varS "Nil"]]]
@@ -217,6 +225,9 @@ typeInferTest040 = appS [lamS "xs" (matchS (varS "xs") [(conP "Cons" [varP "y", 
 
 typeInferTest04b :: Expr
 typeInferTest04b = appS [lamMatchS [(conP "Cons" [varP "y", varP "ys"], litInt 1), (conP "Nil" [], litInt 2)], appS [varS "Nil"]]
+
+typeInferTest04bx :: Expr
+typeInferTest04bx = appS [lamMatchS [(conP "Cons" [varP "y", varP "ys"], litInt 1), (conP "Nil" [], litInt 2)], varS "Nil"]
 
 typeInferTest041 :: Expr
 typeInferTest041 = appS [varS "Cons", litInt 5]
@@ -371,6 +382,9 @@ testInfer = do
         (typeInferTest031, testContext) (Forall [] [] tInt) "test031"
 
     typeInferTestSuccess
+        (typeInferTest03x, testContext) (Forall [] [] tInt) "test03x"
+
+    typeInferTestSuccess
         (typeInferTest032, testContext) (Forall [] [] tInt) "test032"
 
     typeInferTestSuccess
@@ -384,6 +398,9 @@ testInfer = do
 
     typeInferTestSuccess
         (typeInferTest04b, testContext) (Forall [] [] tInt) "test04b"
+
+    typeInferTestSuccess
+        (typeInferTest04bx, testContext) (Forall [] [] tInt) "test04bx"
 
     typeInferTestFailWithError
         (typeInferTest053, testContext) (UnificationError CannotUnify) "test053"
@@ -447,15 +464,15 @@ typeInferTestSuccess (expr, context) ty name =
     describe description (it describeSuccess test)
   where
     description = unpack $
-        name <> ": " <> prettyExpr expr
+        name <> ": " <> prettyPrint expr
 
     describeSuccess = unpack $
         "✔ has type : "
-            <> prettyScheme ty
+            <> prettyPrint ty
 
     describeFailure = unpack $
         "Expected type to be identical to : "
-            <> prettyScheme ty
+            <> prettyPrint ty
             <> " (up to isomorphism)"
 
     test = case typeInferRunTest context expr of
@@ -473,15 +490,15 @@ typeInferTestFailure (expr, context) ty name =
     describe description (it describeSuccess test)
   where
     description = unpack $
-        name <> ": " <> prettyExpr expr
+        name <> ": " <> prettyPrint expr
 
     describeSuccess = unpack $
         "✗ does not have type : "
-            <> prettyScheme ty
+            <> prettyPrint ty
 
     describeFailure = unpack $
         "Expected type NOT to be identical to : "
-            <> prettyScheme ty
+            <> prettyPrint ty
 
     test = case typeInferRunTest context expr of
         Left err ->
@@ -498,7 +515,7 @@ typeInferTestFailWithError (expr, context) err name =
     describe description (it describeSuccess test)
   where
     description = unpack $
-        name <> ": " <> prettyExpr expr
+        name <> ": " <> prettyPrint expr
 
     describeSuccess = "✗ fails with error " <> show err
 
@@ -664,7 +681,7 @@ patternCheckTestIsExhaustive pttrns name =
     describe description (it describeSuccess patternCheckTest)
   where
     description = unpack $
-        name <> ": " <> prettyPatterns pttrns
+        name <> ": " <> prettyPrint pttrns
 
     describeSuccess = unpack "✔ is exhaustive"
 
@@ -681,7 +698,7 @@ patternCheckTestNotExhaustive pttrns name =
     describe description (it describeSuccess patternCheckTest)
   where
     description = unpack $
-        name <> ": " <> prettyPatterns pttrns
+        name <> ": " <> prettyPrint pttrns
 
     describeSuccess = unpack "✗ is NOT exhaustive"
 
@@ -700,10 +717,10 @@ patternCheckTestNotUseful :: ([Pattern], Pattern) -> Text -> SpecWith ()
 patternCheckTestNotUseful pair name =
     describe description (it describeSuccess patternCheckTest)
   where
-    description = unpack (name <> ": " <> prettyPatterns (fst pair))
+    description = unpack (name <> ": " <> prettyPrint (fst pair))
 
     describeSuccess = unpack $
-        "✗ clause " <> prettyPattern (snd pair)
+        "✗ clause " <> prettyPrint (snd pair)
                     <> " is NOT useful"
 
     describeFailure = unpack
@@ -718,10 +735,10 @@ patternCheckTestIsUseful :: ([Pattern], Pattern) -> Text -> SpecWith ()
 patternCheckTestIsUseful pair name =
     describe description (it describeSuccess patternCheckTest)
   where
-    description = unpack (name <> ": " <> prettyPatterns (fst pair))
+    description = unpack (name <> ": " <> prettyPrint (fst pair))
 
     describeSuccess = unpack $
-        "✔ clause " <> prettyPattern (snd pair)
+        "✔ clause " <> prettyPrint (snd pair)
                     <> " is useful"
 
     describeFailure = unpack
@@ -758,6 +775,11 @@ evalTest020 = letS "const" (lamS "a" (lamS "b" (varS "a"))) (appS [varS "const",
 -- 1
 evalTest030 :: Expr
 evalTest030 = appS [lamS "xs" (matchS (varS "xs") [(conP "Cons" [varP "y", varP "ys"], litInt 1), (conP "Nil" [], litInt 2)]), appS [varS "Cons", litInt 5, appS [varS "Nil"]]]
+
+-- (\xs -> match xs with | Cons y ys -> 1 | Nil -> 2) (Cons 5 Nil)
+-- 1
+evalTest030b :: Expr
+evalTest030b = appS [lamS "xs" (matchS (varS "xs") [(conP "Cons" [varP "y", varP "ys"], litInt 1), (conP "Nil" [], litInt 2)]), appS [varS "Cons", litInt 5, varS "Nil"]]
 
 evalTest031 = lamS "xs" (matchS (varS "xs") [(conP "Cons" [varP "y", varP "ys"], litInt 1), (conP "Nil" [], litInt 2)])
 
@@ -814,12 +836,19 @@ evalTest160 = recS "length" (lamS "xs" (matchS (varS "xs") [(conP "Nil" [], litI
 evalTest170 :: Expr
 evalTest170 = recS "length" (lamMatchS [(conP "Nil" [], litInt 0), (conP "Cons" [varP "x", varP "xs"], addS (litInt 1) (appS [varS "length", varS "xs"]))]) (appS [varS "length", appS [varS "Cons", litInt 1, appS [varS "Cons", litInt 1, appS [varS "Nil"]]]])
 
+-- let rec map = \f -> \xs -> match xs with | Nil -> Nil | Cons x1 xs1 -> Cons (f x1) (map f xs1) in map (\x -> x == 1) (Cons 1 (Cons 2 (Cons 3 Nil)))
+evalTest180 = recS "map" (lamS "f" (lamS "xs" (matchS (varS "xs") [(conP "Nil" [], varS "Nil"), (conP "Cons" [varP "x1", varP "xs1"], appS [varS "Cons", appS [varS "f", varS "x1"], appS [varS "map", varS "f", varS "xs1"]])]))) (appS [varS "map", lamS "x" (eqS (varS "x") (litInt 1)), appS [varS "Cons", litInt 1, appS [varS "Cons", litInt 2, appS [varS "Cons", litInt 3, varS "Nil"]]]])
+
+-- let rec map = \f -> \match | Nil -> Nil | Cons x1 xs1 -> Cons (f x1) (map f xs1) in map (\x -> x == 1) (Cons 1 (Cons 2 (Cons 3 Nil)))
+evalTest190 = recS "map" (lamS "f" (lamMatchS [(conP "Nil" [], varS "Nil"), (conP "Cons" [varP "x1", varP "xs1"], appS [varS "Cons", appS [varS "f", varS "x1"], appS [varS "map", varS "f", varS "xs1"]])])) (appS [varS "map", lamS "x" (eqS (varS "x") (litInt 1)), appS [varS "Cons", litInt 1, appS [varS "Cons", litInt 2, appS [varS "Cons", litInt 3, varS "Nil"]]]])
+
 testEval :: SpecWith ()
 testEval = do
     evalTestIsFunction evalTest000               "test000"
     evalTestIsFunction evalTest010               "test010"
     evalTestEvalsTo (evalTest020, Value Unit)    "test020"
     evalTestEvalsTo (evalTest030, Value (Int 1)) "test030"
+    evalTestEvalsTo (evalTest030b, Value (Int 1)) "test030b"
     evalTestEvalsTo (evalTest035, Value (Int 1)) "test035"
     evalTestEvalsTo (evalTest040, Value (Int 2)) "test040"
     evalTestEvalsTo (evalTest050, Value (Int 8)) "test050"
@@ -834,12 +863,17 @@ testEval = do
     evalTestEvalsTo (evalTest150, Value (Int 120)) "test150"
     evalTestEvalsTo (evalTest160, Value (Int 2)) "test160"
     evalTestEvalsTo (evalTest170, Value (Int 2)) "test170"
+    evalTestEvalsTo (evalTest180, Data "Cons" [Value (Bool True),Data "Cons" [Value (Bool False),Data "Cons" [Value (Bool False),Data "Nil" []]]]) "test180"
+    evalTestEvalsTo (evalTest190, Data "Cons" [Value (Bool True),Data "Cons" [Value (Bool False),Data "Cons" [Value (Bool False),Data "Nil" []]]]) "test190"
+
+--parserTest100 :: String
+--parserTest100 = "let rec map = \\f -> \\xs -> match xs with | Nil -> Nil | Cons x1 xs1 -> Cons (f x1) (map f xs1) in map (\\x -> x == 0)"
 
 evalTestFailsWithError :: (Expr, EvalError) -> Name -> SpecWith ()
 evalTestFailsWithError (expr, err) name =
     describe description (it describeSuccess evalTest)
   where
-    description = unpack $ name <> ": " <> prettyExpr expr
+    description = unpack $ name <> ": " <> prettyPrint expr
 
     describeSuccess = unpack "✗ fails with error " <> show err
 
@@ -857,7 +891,7 @@ evalTestIsFunction :: Expr -> Text -> SpecWith ()
 evalTestIsFunction expr name =
     describe description (it describeSuccess evalTest)
   where
-    description = unpack $ name <> ": " <> prettyExpr expr
+    description = unpack $ name <> ": " <> prettyPrint expr
 
     describeSuccess = unpack "✔ is a function"
 
@@ -866,7 +900,7 @@ evalTestIsFunction expr name =
             pass
 
         Right result ->
-            expectationFailure $ unpack ("Unexpected result: " <> prettyValue result)
+            expectationFailure $ unpack ("Unexpected result: " <> prettyPrint result)
 
         Left err ->
             expectationFailure ("Unexpected error: " <> show err)
@@ -875,19 +909,19 @@ evalTestEvalsTo :: (Expr, Value Eval) -> Text -> SpecWith ()
 evalTestEvalsTo (expr, val) name =
     describe description (it describeSuccess evalTest)
   where
-    description = unpack $ name <> ": " <> prettyExpr expr
+    description = unpack $ name <> ": " <> prettyPrint expr
 
-    describeSuccess = unpack $ "✔ evaluates to " <> prettyValue val
+    describeSuccess = unpack $ "✔ evaluates to " <> prettyPrint val
 
     evalTest = case (evalRunTest expr, val) of
         (Left err, _) ->
             expectationFailure ("Unexpected error: " <> show err)
 
-        (Right (Value v1), Value v2) | v1 == v2 ->
+        (Right v1, v2) | v1 == v2 ->
             pass
 
         (Right result, _) ->
-            expectationFailure $ unpack ("Unexpected result: " <> prettyValue result)
+            expectationFailure $ unpack ("Unexpected result: " <> prettyPrint result)
 
 evalE :: Expr -> Value Eval
 evalE expr = result where Right result = evalExpr expr mempty
@@ -1003,8 +1037,8 @@ describeUniTest test outcome (t1, t2) name =
   where
     description = unpack $
         name <> ": The types \n"
-             <> "    " <> prettyType t1
-             <> "\n    - and -\n    " <> prettyType t2
+             <> "    " <> prettyPrint t1
+             <> "\n    - and -\n    " <> prettyPrint t2
 
 uniTestSuccess, uniTestFailure :: (Type, Type) -> Text -> SpecWith ()
 uniTestSuccess = describeUniTest shouldUnify "✔ should unify"
@@ -1120,17 +1154,17 @@ testSubst (body, (var, expr), expected) name =
   where
     description = unpack
         ( name <> ": "
-               <> prettyExpr body
+               <> prettyPrint body
                <> " [ "
-               <> var <> " := " <> prettyExpr expr
+               <> var <> " := " <> prettyPrint expr
                <> " ]" )
 
     describeSuccess = unpack
-        ( "✔ Got: " <> prettyExpr result )
+        ( "✔ Got: " <> prettyPrint result )
 
     describeFailure = unpack
-        ( "Expected: " <> prettyExpr expected <>
-             "\nGot: " <> prettyExpr result )
+        ( "Expected: " <> prettyPrint expected <>
+             "\nGot: " <> prettyPrint result )
 
     result = substituteExpr var expr body
 
@@ -1285,11 +1319,12 @@ patternCompilerTestSuccess (expr1, expr2, expected) name =
   where
     description = unpack
         ( name <> ": ("
-               <> prettyExpr expr1
-               <> prettyExpr expr2 )
+               <> prettyPrint expr1
+               <> " --- "
+               <> prettyPrint expr2 )
 
     describeSuccess =
-        unpack ("✔ evaluates to " <> prettyValue expected)
+        unpack ("✔ evaluates to " <> prettyPrint expected)
 
     patternCompilerTest = case evalExpr (appS [compileAll expr1, expr2]) patternCompilerTestEnv of
         Left err ->
@@ -1299,8 +1334,8 @@ patternCompilerTestSuccess (expr1, expr2, expected) name =
             if expected == result
                 then pass
                 else expectationFailure $ unpack
-                        ( "Expected: " <> prettyValue expected <>
-                             "\nGot: " <> prettyValue result )
+                        ( "Expected: " <> prettyPrint expected <>
+                             "\nGot: " <> prettyPrint result )
 
 patternCompilerTestFailure :: (Expr, Expr, Value Eval) -> Text -> SpecWith ()
 patternCompilerTestFailure (expr1, expr2, expected) name =
@@ -1308,8 +1343,9 @@ patternCompilerTestFailure (expr1, expr2, expected) name =
   where
     description = unpack
         ( name <> ": ("
-               <> prettyExpr expr1
-               <> prettyExpr expr2 )
+               <> prettyPrint expr1
+               <> " --- "
+               <> prettyPrint expr2 )
 
     describeSuccess =
         unpack "✗ failed to evaluate with RuntimeError"
@@ -1378,7 +1414,7 @@ testSolveExprType :: Text -> (Expr, Type, [Class]) -> SpecWith ()
 testSolveExprType name (expr, ty, clcs) =
     describe description (it describeSuccess test)
   where
-    description = unpack $ name <> ": " <> prettyExpr expr
+    description = unpack $ name <> ": " <> prettyPrint expr
 
     describeSuccess = unpack $ "✔ OK"
 
@@ -1401,9 +1437,9 @@ testTclcsEvalsTo :: Text -> (Expr, Value Eval) -> SpecWith ()
 testTclcsEvalsTo name (expr, val) =
     describe description (it describeSuccess test)
   where
-    description = unpack $ name <> ": " <> prettyExpr expr
+    description = unpack $ name <> ": " <> prettyPrint expr
 
-    describeSuccess = unpack $ "✔ evaluates to " <> prettyValue val
+    describeSuccess = unpack $ "✔ evaluates to " <> prettyPrint val
 
     test = case (tclcsRunTest expr, val) of
         (Left err, _) ->
@@ -1413,7 +1449,7 @@ testTclcsEvalsTo name (expr, val) =
             pass
 
         (Right result, _) ->
-            expectationFailure $ unpack ("Unexpected result: " <> prettyValue result)
+            expectationFailure $ unpack ("Unexpected result: " <> prettyPrint result)
 
 tclcsTestEnv :: EvalEnv Eval
 tclcsTestEnv = Env.fromList
@@ -1429,14 +1465,14 @@ testTclcsHasType name (expr, ty) =
     describe description (it describeSuccess test)
   where
     description = unpack $
-        name <> ": " <> prettyExpr expr
+        name <> ": " <> prettyPrint expr
 
     describeSuccess = unpack $
-        "✔ has type : " <> prettyScheme ty
+        "✔ has type : " <> prettyPrint ty
 
     describeFailure = unpack $
         "Expected type to be identical to : "
-            <> prettyScheme ty
+            <> prettyPrint ty
             <> " (up to isomorphism)"
 
     test = case typeInferRunTest tclcsTestContext expr of
@@ -1510,6 +1546,9 @@ parserTest140 = "'a' == 'b'"
 parserTest150 :: String
 parserTest150 = "let chr = 'a' in chr == chr"
 
+parserTest160 :: String
+parserTest160 = "(\\match | (Cons x (Cons y ys)) -> 4) Nil"
+
 testParser :: SpecWith ()
 testParser = do
     testParsesTo "test000" (parserTest000, litFloat 4.3)
@@ -1522,13 +1561,14 @@ testParser = do
     testParsesTo "test060" (parserTest060, litUnit)
     testParsesTo "test070" (parserTest070, litUnit)
     testParsesTo "test080" (parserTest080, matchS (varS "n") [(litP (Int 1), litS (Bool True)), (litP (Int 2), litS (Bool False))])
-    testParsesTo "test090" (parserTest090, recS "map" (lamS "f" (lamS "xs" (matchS (varS "xs") [(conP "Nil" [], appS [varS "Nil"]), (conP "Cons" [varP "x1", varP "xs1"], appS [varS "Cons", appS [varS "f", varS "x1"], appS [varS "map", varS "f", varS "xs1"]])]))) (varS "map"))
-    testParsesTo "test100" (parserTest100, recS "map" (lamS "f" (lamS "xs" (matchS (varS "xs") [(conP "Nil" [], appS [varS "Nil"]), (conP "Cons" [varP "x1", varP "xs1"], appS [varS "Cons", appS [varS "f", varS "x1"], appS [varS "map", varS "f", varS "xs1"]])]))) (appS [varS "map", lamS "x" (eqS (varS "x") (litInt 0))]))
+    testParsesTo "test090" (parserTest090, recS "map" (lamS "f" (lamS "xs" (matchS (varS "xs") [(conP "Nil" [], varS "Nil"), (conP "Cons" [varP "x1", varP "xs1"], appS [varS "Cons", appS [varS "f", varS "x1"], appS [varS "map", varS "f", varS "xs1"]])]))) (varS "map"))
+    testParsesTo "test100" (parserTest100, recS "map" (lamS "f" (lamS "xs" (matchS (varS "xs") [(conP "Nil" [], varS "Nil"), (conP "Cons" [varP "x1", varP "xs1"], appS [varS "Cons", appS [varS "f", varS "x1"], appS [varS "map", varS "f", varS "xs1"]])]))) (appS [varS "map", lamS "x" (eqS (varS "x") (litInt 0))]))
     testParsesTo "test110" (parserTest110, letS "str" (litString "hello") (varS "str"))
     testParsesTo "test120" (parserTest120, eqS (litString "hello") (litString "what"))
     testParsesTo "test130" (parserTest130, litString "hello")
     testParsesTo "test140" (parserTest140, eqS (litChar 'a') (litChar 'b'))
-    testParsesTo "test150" (parserTest150, letS "chr" (litChar 'a') (eqS (varS "chr") (varS "chr")))
+    testParsesTo "test140" (parserTest140, eqS (litChar 'a') (litChar 'b'))
+    testParsesTo "test160" (parserTest160, appS [lamMatchS [(conP "Cons" [varP "x", conP "Cons" [varP "y", varP "ys"]], litInt 4)], varS "Nil"])
 
 testParsesTo :: Name -> (String, Expr) -> SpecWith ()
 testParsesTo name (input, expr) =
@@ -1538,7 +1578,7 @@ testParsesTo name (input, expr) =
     description = unpack $ name <> ": " <> pack input
 
     describeSuccess = unpack $
-        "✔ parses to : " <> prettyExpr expr
+        "✔ parses to : " <> prettyPrint expr
 
     test = case parseExpr (pack input) of
         Left err ->
@@ -1557,10 +1597,10 @@ testParsesTo name (input, expr) =
 pass :: Expectation
 pass = pure ()
 
-prettyKind :: Kind -> Text
-prettyKind (Fix StarK)          = "*"
-prettyKind (Fix (ArrowK k1 k2)) = prettyKind k1 <> " -> " <> prettyKind k2
-prettyKind (Fix (VarK name))    = name
+--prettyKind :: Kind -> Text
+--prettyKind (Fix StarK)          = "*"
+--prettyKind (Fix (ArrowK k1 k2)) = prettyPrint k1 <> " -> " <> prettyPrint k2
+--prettyKind (Fix (VarK name))    = name
 
 data TypeRep
     = ConRep Name
@@ -1579,134 +1619,182 @@ canonical (Forall vars clcs ty) =
 isoTypes :: Scheme -> Scheme -> Bool
 isoTypes t u = canonical t == canonical u
 
-prettyScheme :: Scheme -> Text
-prettyScheme (Forall vars clcs ty) =
-    quantifiedVars <> constraints <> prettyType ty
-  where
-    quantifiedVars
-        | null vars = ""
-        | otherwise = "forall " <> Text.concat (intersperse " " vars) <> ". "
-    constraints
-        | null clcs = ""
-        | otherwise = Text.concat (intersperse ", " $ prettyClcs <$> clcs) <> " => "
+--prettyScheme :: Scheme -> Text
+--prettyScheme (Forall vars clcs ty) =
+--    quantifiedVars <> constraints <> prettyPrint ty
+--  where
+--    quantifiedVars
+--        | null vars = ""
+--        | otherwise = "forall " <> Text.concat (intersperse " " vars) <> ". "
+--    constraints
+--        | null clcs = ""
+--        | otherwise = Text.concat (intersperse ", " $ prettyClcs <$> clcs) <> " => "
 
 prettyClcs :: Class -> Text
-prettyClcs (Class name ty) = name <> " " <> prettyType ty
+prettyClcs (Class name ty) = name <> " " <> prettyPrint ty
 
-prettyType :: Type -> Text
-prettyType = \case
-    Fix (ConT name)  -> name
-    Fix (VarT name)  -> name
-    Fix (AppT t1 t2) -> prettyType t1 <> " " <> prettyType t2
-    Fix (ArrT t1 t2) -> prettyType t1 <> " -> " <> prettyType t2
+--prettyType :: Type -> Text
+--prettyType = \case
+--    Fix (ConT name)  -> name
+--    Fix (VarT name)  -> name
+--    Fix (AppT t1 t2) -> prettyPrint t1 <> " " <> prettyPrint t2
+--    Fix (ArrT t1 t2) -> prettyPrint t1 <> " -> " <> prettyPrint t2
 
-prettyExpr :: Expr -> Text
-prettyExpr = cata alg
-  where
-    alg :: Algebra ExprF Text
-    alg = \case
-        VarS name ->
-            name
+--prettyExpr :: Expr -> Text
+--prettyExpr = cata alg
+--  where
+--    alg :: Algebra ExprF Text
+--    alg = \case
+--        VarS name ->
+--            name
+--
+--        LamS name a ->
+--            "("  <>
+--            "\\" <> name
+--                 <> " -> "
+--                 <> a
+--                 <> ")"
+--
+--        AppS exprs ->
+--            foldl1 (\f x -> "(" <> f <> " " <> x <> ")") exprs
+--
+--        LitS Unit ->
+--            "()"
+--
+--        LitS (Bool bool) ->
+--            pack (show bool)
+--
+--        LitS (Int n) ->
+--            pack (show n)
+--
+--        LitS (Integer n) ->
+--            pack (show n)
+--
+--        LitS (Float r) ->
+--            pack (show r)
+--
+--        LitS (Char c) ->
+--            pack (show c)
+--
+--        LitS (String str) ->
+--            pack (show str)
+--
+--        LetS name expr body ->
+--            "let " <> name <> " = " <> expr <> " in " <> body
+--
+--        RecS name expr body ->
+--            "let rec " <> name <> " = " <> expr <> " in " <> body
+--
+--        IfS cond true false ->
+--            "("  <> "if " <> cond <> " then " <> true <> " else " <> false <> ")"
+--
+--        MatchS expr [] ->
+--            "match [] with"
+--
+--        MatchS expr clss ->
+--            "match " <> expr <> " with | " <> Text.concat (intersperse " | " $ prettyClause <$> clss)
+--
+--        LamMatchS clss ->
+--            "\\match | " <> Text.concat (intersperse " | " $ prettyClause <$> clss)
+--
+--        OpS ops ->
+--            prettyOp ops
+--
+--        AnnS expr ty ->
+--            "TODO"
+--
+--        ErrS ->
+--            "<<error>>"
+--
+--prettyOp :: OpF Text -> Text
+--prettyOp (AddS a b) = a <> " + " <> b
+--prettyOp (SubS a b) = a <> " - " <> b
+--prettyOp (MulS a b) = a <> " * " <> b
+--prettyOp (EqS a b)  = a <> " == " <> b
+--prettyOp (LtS a b)  = a <> " < " <> b
+--prettyOp (GtS a b)  = a <> " > " <> b
+--prettyOp (NegS a)   = "-" <> a
+--prettyOp (NotS a)   = "not " <> a
 
-        LamS name a ->
-            "("  <>
-            "\\" <> name
-                 <> " -> "
-                 <> a
-                 <> ")"
+--prettyClause :: (Pattern, Text) -> Text
+--prettyClause (p, e) = prettyPattern p <> " -> " <> e
+--
+--prettyPattern :: Pattern -> Text
+--prettyPattern = trim . cata alg where
+--    trim = dropPrefix . dropSuffix . Text.dropWhileEnd (== ' ')
+--    alg (VarP name)    = name <> " "
+--    alg (ConP name []) = name <> " "
+--    alg (ConP name ps) = "(" <> name <> " " <> Text.dropEnd 1 (Text.concat ps) <> ") "
+--    alg (LitP p)       = prettyPrim p <> " "
+--    alg AnyP           = "_ "
 
-        AppS exprs ->
-            foldl1 (\f x -> "(" <> f <> " " <> x <> ")") exprs
+--prettyPatterns :: [Pattern] -> Text
+--prettyPatterns = Text.concat . intersperse "\n    - " . (:) "" . map prettyPattern
 
-        LitS Unit ->
-            "()"
+--prettyPrim :: Prim -> Text
+--prettyPrim Unit        = "()"
+--prettyPrim (Bool b)    = pack (show b)
+--prettyPrim (Float r)   = pack (show r)
+--prettyPrim (Char c)    = pack (show c)
+--prettyPrim (Int n)     = pack (show n)
+--prettyPrim (Integer n) = pack (show n)
+--prettyPrim (String s)  = "\"" <> s <> "\""
 
-        LitS (Bool bool) ->
-            pack (show bool)
-
-        LitS (Int n) ->
-            pack (show n)
-
-        LitS (Integer n) ->
-            pack (show n)
-
-        LitS (Float r) ->
-            pack (show r)
-
-        LitS (Char c) ->
-            pack (show c)
-
-        LitS (String str) ->
-            pack (show str)
-
-        LetS name expr body ->
-            "let " <> name <> " = " <> expr <> " in " <> body
-
-        RecS name expr body ->
-            "let rec " <> name <> " = " <> expr <> " in " <> body
-
-        IfS cond true false ->
-            "("  <> "if " <> cond <> " then " <> true <> " else " <> false <> ")"
-
-        MatchS expr [] ->
-            "match [] with"
-
-        MatchS expr clss ->
-            "match " <> expr <> " with | " <> Text.concat (intersperse " | " $ prettyClause <$> clss)
-
-        LamMatchS clss ->
-            "\\match | " <> Text.concat (intersperse " | " $ prettyClause <$> clss)
-
-        OpS ops ->
-            prettyOp ops
-
-        AnnS expr ty ->
-            "TODO"
-
-        ErrS ->
-            "<<error>>"
-
-prettyOp :: OpF Text -> Text
-prettyOp (AddS a b) = a <> " + " <> b
-prettyOp (SubS a b) = a <> " - " <> b
-prettyOp (MulS a b) = a <> " * " <> b
-prettyOp (EqS a b)  = a <> " == " <> b
-prettyOp (LtS a b)  = a <> " < " <> b
-prettyOp (GtS a b)  = a <> " > " <> b
-prettyOp (NegS a)   = "-" <> a
-prettyOp (NotS a)   = "not " <> a
-
-prettyClause :: (Pattern, Text) -> Text
-prettyClause (p, e) = prettyPattern p <> " -> " <> e
-
-prettyPattern :: Pattern -> Text
-prettyPattern = trim . cata alg where
-    trim = dropPrefix . dropSuffix . Text.dropWhileEnd (== ' ')
-    alg (VarP name)    = name <> " "
-    alg (ConP name []) = name <> " "
-    alg (ConP name ps) = "(" <> name <> " " <> Text.dropEnd 1 (Text.concat ps) <> ") "
-    alg (LitP p)       = prettyPrim p <> " "
-    alg AnyP           = "_ "
-
-prettyPatterns :: [Pattern] -> Text
-prettyPatterns = Text.concat . intersperse "\n    - " . (:) "" . map prettyPattern
-
-prettyPrim :: Prim -> Text
-prettyPrim Unit        = "()"
-prettyPrim (Bool b)    = pack (show b)
-prettyPrim (Float r)   = pack (show r)
-prettyPrim (Char c)    = pack (show c)
-prettyPrim (Int n)     = pack (show n)
-prettyPrim (Integer n) = pack (show n)
-prettyPrim (String s)  = "\"" <> s <> "\""
-
-prettyValue :: Value m -> Text
-prettyValue (Value p)        = prettyPrim p
-prettyValue (Data name args) = name <> " " <> Text.concat (intersperse " " (prettyValue <$> args))
-prettyValue Closure{}        = "<<function>>"
+--prettyValue :: Value m -> Text
+--prettyValue (Value p)        = prettyPrim p
+--prettyValue (Data name args) = name <> " " <> Text.concat (intersperse " " (pretty <$> args))
+--prettyValue Closure{}        = "<<function>>"
 
 dropPrefix :: Text -> Text
 dropPrefix txt = fromMaybe txt $ Text.stripPrefix "(" txt
 
 dropSuffix :: Text -> Text
 dropSuffix txt = fromMaybe txt $ Text.stripSuffix ")" txt
+
+printTests =
+    [ "\\x -> x + 1"
+    , "\\x -> f x"
+    , "\\x -> f g x"
+    , "\\x -> (f g) x"
+    , "\\match | _ -> 4"
+    , "(\\match | _ -> 4) Nil"
+    , "(\\match | _ -> 4) (Cons x xs)"
+    , "Cons x xs"
+    , "Cons x (Cons y ys)"
+    , "Cons x (Cons y (Cons z zs))"
+    , "Nil"
+    , "(\\x -> x) (Cons x xs)"
+    , "1 * (2 + 3)"
+    , "1 * 2 + 3"
+    , "f x"
+    , "let rec x = 5 in Cons x (Cons y xs)"
+    , "Cons x xs == Cons 5 Nil"
+    , "5 * (3 + 3) == 3 + 3 + 3 + 3"
+    , "(\\x -> x) (3 + 3)"
+    , "(5 - 5) - 5"
+    , "5 - (5 - 5)"
+    , "(\\match | Cons x Nil -> 4 | Nil -> 4 | _ -> 3) Nil"
+    , "(\\match | Cons x (Cons y ys) -> 4) Nil"
+    , "let rec f = \\n -> if n == 0 then 1 else n * f (n - 1) in f 40"
+    , "let rec map = \\f -> \\match | Nil -> Nil | Cons x1 xs1 -> Cons (f x1) (map f xs1) in map (\\x -> x == 1) (Cons 1 (Cons 2 (Cons 3 Nil)))"
+    , "(let f = \\x -> x in f) 5"
+    , "f (let x = 5 in x)"
+    , "3 < 5"
+    , "3 < (x + 3)"
+    , "3 < (if x > 3 then 4 else 5)"
+    , "3 < (if x > 3 then 3 == 5 else False)"
+    , "-(-(-3))"
+    , "3 + (3 - 3)"
+    , "7 + (4 - 3)"
+    , "1 + 1 + 1 + 1"
+    , "3 * 3 * 3 * (4 + 2) * 3"
+    , "not True"
+    , "not (not True)"
+    , "((4 + 3) * 5 == 2 + 2 + 2) > 7"
+    , "2 > 7"
+    ]
+
+forceRight (Right r) = r
+
+testPrint = mapM_ (print . pretty . forceRight . parseExpr) printTests
+

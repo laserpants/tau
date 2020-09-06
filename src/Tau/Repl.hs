@@ -10,13 +10,14 @@ import Data.Either.Extra (mapLeft, fromEither)
 import Data.Functor.Const
 import Data.Functor.Foldable
 import Data.List (isPrefixOf)
-import Data.Text (Text, pack)
+import Data.Text (Text, pack, unpack)
 import Data.Void
 import Debug.Trace
 import System.Console.Repline
 import Tau.Env (Env(..))
 import Tau.Juice
 import Tau.Parser
+import Tau.Print
 import Text.Megaparsec.Error (errorBundlePretty)
 import qualified Tau.Env as Env
 
@@ -24,6 +25,9 @@ type Repl = HaskelineT IO
 
 putStrIO :: String -> HaskelineT IO ()
 putStrIO = liftIO . putStrLn
+
+putTextIO :: Text -> HaskelineT IO ()
+putTextIO = putStrIO . unpack 
 
 repl :: IO ()
 repl = evalReplOpts $ ReplOpts
@@ -46,15 +50,15 @@ data ReplError
 
 replCommand :: String -> Repl ()
 replCommand input =
-    putStrIO $ case run of
+    case run of
         Left (ParseError err) -> 
-            errorBundlePretty err
+            putStrIO (errorBundlePretty err)
 
         Left err -> 
-            show err
+            putStrIO (show err)
 
-        Right r ->
-            show r
+        Right (val, ty) -> 
+            putTextIO (prettyPrint val <> " : " <> prettyPrint ty)
   where
     run = do
         expr <- mapLeft ParseError (parseExpr (pack input))
@@ -62,7 +66,7 @@ replCommand input =
         exhaustive <- allPatternsAreExhaustive expr' replConstructorEnv
         unless exhaustive (Left NonExhaustivePattern)
         val <- mapLeft EvalError (evalExpr (compileAll expr') replEvalEnv)
-        pure (show (val, ty))
+        pure (val, ty)
 
 replTypeEnv :: Env Scheme
 replTypeEnv = Env.fromList
@@ -78,8 +82,8 @@ replEvalEnv = Env.fromList
 
 replConstructorEnv :: ConstructorEnv
 replConstructorEnv = constructorEnv
-    [ ("Nil",  ["Nil", "Cons"])
-    , ("Cons", ["Nil", "Cons"]) ]
+    [ ("Nil"  , ["Nil", "Cons"])
+    , ("Cons" , ["Nil", "Cons"]) ]
 
 -- ===============================
 
@@ -116,7 +120,7 @@ replFinalizer :: Repl ExitDecision
 replFinalizer = printExitMessage >> pure Exit
 
 printWelcomeMessage :: Repl ()
-printWelcomeMessage = putStrIO "Welcome!"
+printWelcomeMessage = putStrIO "Welcome!\nFlow with the universe — like a ship on a vast and majestic river."
 
 printExitMessage :: Repl ()
 printExitMessage = putStrIO "Bye!"

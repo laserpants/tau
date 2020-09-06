@@ -15,6 +15,7 @@
 {-# LANGUAGE UndecidableInstances       #-}
 module Tau.Juice where
 
+--import Debug.Trace
 import Control.Arrow ((>>>), (***))
 import Control.Monad.Except
 import Control.Monad.Extra (anyM, (&&^))
@@ -28,23 +29,17 @@ import Data.Foldable (foldrM)
 import Data.Function ((&))
 import Data.Functor.Const (Const(..))
 import Data.Functor.Foldable
-import Data.List (intersperse, find, delete, nub, elemIndex)
+import Data.List (find, delete, nub)
 import Data.List.Extra (groupSortOn)
-import Data.Map.Strict (Map, notMember, (!?))
-import Data.Maybe (fromMaybe, fromJust)
+import Data.Map.Strict (Map, notMember)
 import Data.Set.Monad (Set, union, intersection, member, (\\))
-import Data.Text (Text, pack, unpack)
-import Data.Tuple (swap)
+import Data.Text (Text, pack)
 import Data.Tuple.Extra (first, first3, both)
-import Debug.Trace
 import GHC.Show (showSpace)
 import Tau.Env (Env(..))
 import Text.Show.Deriving
-import Data.Void
-import Text.Megaparsec (ParsecT)
 import qualified Data.Map.Strict as Map
 import qualified Data.Set.Monad as Set
-import qualified Data.Text as Text
 import qualified Tau.Env as Env
 
 -- ============================================================================
@@ -53,6 +48,7 @@ import qualified Tau.Env as Env
 
 type Name = Text
 
+(#) :: a -> (a -> b) -> b
 (#) = (&)
 
 infixl 0 #
@@ -73,7 +69,7 @@ $(deriveEq1   ''(:*:))
 type Algebra f a = f a -> a
 
 freshNames :: Text -> [Name]
-freshNames prefix = (prefix <>) . pack . show <$> [1..]
+freshNames prefix = (prefix <>) . pack . show <$> ([1..] :: [Int])
 
 -- ============================================================================
 -- =================================== Type ===================================
@@ -109,7 +105,7 @@ data KindF a
     = ArrowK a a           -- ^ Type arrow
     | StarK                -- ^ Concrete type
     | VarK Name            -- ^ Kind placeholder variable
-    deriving (Show, Eq)
+    deriving (Show, Eq, Functor)
 
 type Kind = Fix KindF
 
@@ -368,7 +364,7 @@ headCons = fmap concat . traverse fun where
     prim String{}     = "$String"
 
 useful :: (MonadReader ConstructorEnv m) => [[Pattern]] -> [Pattern] -> m Bool
-useful [] qs = pure True        -- zero rows (0x0 matrix)
+useful [] _ = pure True         -- zero rows (0x0 matrix)
 useful px@(ps:_) qs =
     case (qs, length ps) of
         (_, 0) -> pure False    -- one or more rows but no columns
@@ -376,11 +372,11 @@ useful px@(ps:_) qs =
         ([], _) ->
             error "Fatal error in pattern anomalies check"
 
-        (Fix (ConP name rs):_, n) ->
+        (Fix (ConP name rs):_, _) ->
             let special = specialized name (length rs)
              in useful (special px) (head (special [qs]))
 
-        (_:qs1, n) -> do
+        (_:qs1, _) -> do
             cs <- headCons px
             isComplete <- complete (fst <$> cs)
             if isComplete
@@ -410,7 +406,7 @@ exhaustive :: (Monad m) => [Pattern] -> PatternCheckT m Bool
 exhaustive ps = not <$> useful ((:[]) <$> ps) [anyP]
 
 checkPatterns :: (Monad m) => ([MatchClause Bool] -> m Bool) -> Expr -> m Bool
-checkPatterns pred = cata $ \case
+checkPatterns check = cata $ \case
     LamS _ expr ->
         expr
 
@@ -439,10 +435,10 @@ checkPatterns pred = cata $ \case
         expr
 
     MatchS expr clss ->
-        expr &&^ (checkClauses clss >>= pred)
+        expr &&^ (checkClauses clss >>= check)
 
     LamMatchS clss ->
-        checkClauses clss >>= pred
+        checkClauses clss >>= check
 
     _ ->
         pure True
@@ -453,8 +449,8 @@ checkClauses clss = do
     zip patterns <$> sequence exprs
 
 allPatternsAreSimple :: (Monad m) => Expr -> m Bool
-allPatternsAreSimple = checkPatterns (pure . uncurry pred . unzip) where
-    pred patterns exprs =
+allPatternsAreSimple = checkPatterns (pure . uncurry check . unzip) where
+    check patterns exprs =
         and exprs &&
         and (isSimple <$> patterns)
 
