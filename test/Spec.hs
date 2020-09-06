@@ -1082,7 +1082,13 @@ substTest040 =
 substTest050 =
     ( letS "x" (addS (varS "x") (litInt 3)) (litInt 45)
     , ("x", litInt 2)
-    , letS "x" (addS (varS "x") (litInt 3)) (litInt 45) )
+    , letS "x" (addS (litInt 2) (litInt 3)) (litInt 45) )
+
+-- let rec x = x + 3 in 45 [x := 2]  ==>  let x = x + 3 in 45
+substTest055 =
+    ( recS "x" (addS (varS "x") (litInt 3)) (litInt 45)
+    , ("x", litInt 2)
+    , recS "x" (addS (varS "x") (litInt 3)) (litInt 45) )
 
 -- let x = 3 in let y = x + 1 in 45 [x := 2]  ==>  let x = 3 in let y = x + 1 in 45
 substTest060 =
@@ -1139,6 +1145,7 @@ testSubstitute = do
     testSubst substTest030 "test030"
     testSubst substTest040 "test040"
     testSubst substTest050 "test050"
+    testSubst substTest055 "test055"
     testSubst substTest060 "test060"
     testSubst substTest070 "test070"
     testSubst substTest080 "test080"
@@ -1166,7 +1173,7 @@ testSubst (body, (var, expr), expected) name =
         ( "Expected: " <> prettyPrint expected <>
              "\nGot: " <> prettyPrint result )
 
-    result = substituteExpr var expr body
+    result = apply (sub var expr) body
 
     test =
         if result == expected then pass else expectationFailure describeFailure

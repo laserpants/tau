@@ -120,7 +120,7 @@ replFinalizer :: Repl ExitDecision
 replFinalizer = printExitMessage >> pure Exit
 
 printWelcomeMessage :: Repl ()
-printWelcomeMessage = putStrIO "Welcome!\nFlow with the universe — like a ship on a vast and majestic river."
+printWelcomeMessage = putStrIO "Welcome!\nFlow with the universe; like a ship on a vast and majestic river."
 
 printExitMessage :: Repl ()
 printExitMessage = putStrIO "Bye!"

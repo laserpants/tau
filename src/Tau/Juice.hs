@@ -154,6 +154,12 @@ newtype Substitution a = Substitution { getSubstitution :: Map Name a }
 class Substitutable t a where
     apply :: Substitution t -> a -> a
 
+deleteFromSub :: Name -> Substitution a -> Substitution a
+deleteFromSub name = Substitution . Map.delete name . getSubstitution
+
+deleteManyFromSub :: [Name] -> Substitution a -> Substitution a
+deleteManyFromSub = flip (foldr deleteFromSub)
+
 compose
   :: (Substitutable a a)
   => Substitution a
@@ -162,8 +168,8 @@ compose
 compose sub@(Substitution map1) (Substitution map2) =
     Substitution (Map.map (apply sub) map2 `Map.union` map1)
 
-substitute :: Name -> a -> Substitution a
-substitute name = Substitution . Map.singleton name
+sub :: Name -> a -> Substitution a
+sub name = Substitution . Map.singleton name
 
 instance (Substitutable a a) => Semigroup (Substitution a) where
     (<>) = compose
@@ -582,7 +588,8 @@ matchDefault def (u:us) qs = foldrM (flip run) def (groups qs) where
                     ( varPats
                     , case varName of
                           Nothing   -> varExpr
-                          Just name -> substituteExpr name u varExpr )
+                          --Just name -> substituteExpr name u varExpr )
+                          Just name -> apply (sub name u) varExpr )
 
         LitEqs eqs ->
             foldrM fun def eqs where
@@ -1326,55 +1333,48 @@ dataCon name n = Closure first val mempty
     vars@(first:rest) = take n (freshNames "%")
 
 -- ============================================================================
--- =============================== Substitution ===============================
 -- ============================================================================
 
-substituteExpr :: Name -> Expr -> Expr -> Expr
-substituteExpr name val = para $ \case
-    VarS var
-        | name == var -> val
-        | otherwise   -> varS var
+instance Substitutable Expr Expr where
+    apply sub = para $ \case
+        VarS var ->
+            Map.findWithDefault (varS var) var (getSubstitution sub)
 
-    LamS var (expr, body)
-        | name == var -> lamS var expr
-        | otherwise   -> lamS var body
+        LamS var (expr, _) ->
+            lamS var (apply (deleteFromSub var sub) expr)
 
-    AppS exprs ->
-        appS (snd <$> exprs)
+        AppS exprs ->
+            appS (snd <$> exprs)
 
-    LitS prim ->
-        litS prim
+        LitS prim ->
+            litS prim
 
-    LetS var body expr ->
-        substituteLet name var body expr False
+        LetS var (_, body) (expr, _) ->
+            letS var body (apply (deleteFromSub var sub) expr)
 
-    RecS var body expr ->
-        substituteLet name var body expr True
+        RecS var (body, _) (expr, _) ->
+            let sub' = deleteFromSub var sub
+             in recS var (apply sub' body) (apply sub' expr)
 
-    IfS cond true false ->
-        ifS (snd cond) (snd true) (snd false)
+        IfS cond true false ->
+            ifS (snd cond) (snd true) (snd false)
 
-    MatchS expr clss ->
-        matchS (snd expr) (uncurry substituteClause <$> clss)
+        MatchS (_, expr) clss ->
+            matchS expr (uncurry substituteClause <$> clss)
 
-    LamMatchS clss ->
-        lamMatchS (uncurry substituteClause <$> clss)
+        LamMatchS clss ->
+            lamMatchS (uncurry substituteClause <$> clss)
 
-    OpS op ->
-        opS (snd <$> op)
+        OpS op ->
+            opS (snd <$> op)
 
-    AnnS expr ty ->
-        annS (snd expr) ty
+        AnnS (_, expr) ty ->
+            annS expr ty
 
-  where
-    substituteClause :: Pattern -> (Expr, Expr) -> MatchClause Expr
-    substituteClause pat expr =
-        (pat, if name `elem` patternVars pat then fst expr else snd expr)
-
-    substituteLet :: Name -> Name -> (Expr, Expr) -> (Expr, Expr) -> Bool -> Expr
-    substituteLet name var body expr rec =
-        let get = if name == var then fst else snd
-         in (if rec then recS else letS) var (get body) (get expr)
+      where
+        substituteClause pat (expr, _) =
+            ( pat
+            , apply (deleteManyFromSub (patternVars pat) sub) expr )
 
 -- ============================================================================
 -- =================================== Eval ===================================
@@ -1647,4 +1647,4 @@ bind
 bind var ty
     | toVar var == ty       = pure mempty
     | var `occursFreeIn` ty = throwError InfiniteType
-    | otherwise             = pure (substitute var ty)
+    | otherwise             = pure (sub var ty)
