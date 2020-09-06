@@ -15,7 +15,7 @@
 {-# LANGUAGE UndecidableInstances       #-}
 module Tau.Juice where
 
---import Debug.Trace
+import Debug.Trace
 import Control.Arrow ((>>>), (***))
 import Control.Monad.Except
 import Control.Monad.Extra (anyM, (&&^))
@@ -519,9 +519,10 @@ matchDefault def (u:us) qs = foldrM (flip run) def (groups qs) where
 compileAll :: Expr -> Expr
 compileAll = cata $ \case
     MatchS expr clss -> run [expr] clss
-    LamMatchS clss   -> run [] clss
+    LamMatchS clss   -> lamS "$" (run [varS "$"] clss)
     expr             -> Fix expr
   where
+    run :: [Expr] -> [MatchClause Expr] -> Expr
     run exprs clss = first (:[]) <$> clss
         & compilePatterns exprs
         & runPatternMatchCompiler

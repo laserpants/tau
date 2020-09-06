@@ -1306,6 +1306,18 @@ patternCompilerTest110 =
     , appS [varS "Nil"]
     , Value (Int 1) )
 
+patternCompilerTest120 :: (Expr, Expr)
+patternCompilerTest120 =
+    ( lamS "xs" (matchS (varS "xs") [(anyP, litInt 3)]) 
+    , lamS "xs" (litInt 3)
+    )
+
+patternCompilerTest130 :: (Expr, Expr)
+patternCompilerTest130 =
+    ( lamMatchS [(anyP, litInt 3)]
+    , lamS "$" (litInt 3)
+    )
+
 testPatternCompile :: SpecWith ()
 testPatternCompile = do
     patternCompilerTestSuccess patternCompilerTest010 "test010"
@@ -1319,6 +1331,26 @@ testPatternCompile = do
     patternCompilerTestFailure patternCompilerTest090 "test090"
     patternCompilerTestSuccess patternCompilerTest100 "test100"
     patternCompilerTestFailure patternCompilerTest110 "test110"
+    patternCompilerTestResult patternCompilerTest120 "test120"
+    patternCompilerTestResult patternCompilerTest130 "test130"
+
+patternCompilerTestResult :: (Expr, Expr) -> Text -> SpecWith ()
+patternCompilerTestResult (expr1, expected) name =
+    describe description (it describeSuccess test)
+  where
+    description = unpack
+        ( name <> ": ("
+               <> prettyPrint expr1
+               <> " ===> "
+               <> prettyPrint expected )
+
+    describeSuccess = 
+        unpack ("✔ compiles to " <> prettyPrint expected)
+
+    describeFailure = unpack ("fail")
+
+    test = 
+        if compileAll expr1 == expected then pass else expectationFailure describeFailure
 
 patternCompilerTestSuccess :: (Expr, Expr, Value Eval) -> Text -> SpecWith ()
 patternCompilerTestSuccess (expr1, expr2, expected) name =
@@ -1327,7 +1359,7 @@ patternCompilerTestSuccess (expr1, expr2, expected) name =
     description = unpack
         ( name <> ": ("
                <> prettyPrint expr1
-               <> " --- "
+               <> " ===> "
                <> prettyPrint expr2 )
 
     describeSuccess =
@@ -1351,7 +1383,7 @@ patternCompilerTestFailure (expr1, expr2, expected) name =
     description = unpack
         ( name <> ": ("
                <> prettyPrint expr1
-               <> " --- "
+               <> " ===> "
                <> prettyPrint expr2 )
 
     describeSuccess =
