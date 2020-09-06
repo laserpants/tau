@@ -227,6 +227,7 @@ patternVars = cata alg where
 --   - a variable,
 --   - a wildcard, or
 --   - a constructor where all the subpatterns are simple.
+--
 isSimple :: Pattern -> Bool
 isSimple = cata alg where
     alg :: Algebra PatternF Bool
@@ -518,13 +519,13 @@ matchDefault def (u:us) qs = foldrM (flip run) def (groups qs) where
 
 compileAll :: Expr -> Expr
 compileAll = cata $ \case
-    MatchS expr clss -> run [expr] clss
-    LamMatchS clss   -> lamS "$" (run [varS "$"] clss)
+    MatchS expr clss -> run expr clss
+    LamMatchS clss   -> lamS "$" (run (varS "$") clss)
     expr             -> Fix expr
   where
-    run :: [Expr] -> [MatchClause Expr] -> Expr
-    run exprs clss = first (:[]) <$> clss
-        & compilePatterns exprs
+    run :: Expr -> [MatchClause Expr] -> Expr
+    run expr clss = first (:[]) <$> clss
+        & compilePatterns [expr]
         & runPatternMatchCompiler
 
 -- ----------------------------------------------------------------------------
