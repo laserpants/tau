@@ -4,3 +4,5 @@ dist
 *.cabal
 *.bak
 .history
+
+src/Temp.hs
