@@ -18,6 +18,8 @@ dependencies:
   - set-monad
   - text
   - extra
+  - recursion-schemes
+  - deriving-compat
 
 executables:
   temp:

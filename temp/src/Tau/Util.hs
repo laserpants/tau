@@ -1,3 +1,4 @@
+{-# LANGUAGE StrictData #-}
 module Tau.Util where
 
 import Data.Text (Text)
@@ -12,3 +13,5 @@ nameSupply prefix = (prefix <>) . toText <$> nats
   where
     nats   = [1..] :: [Integer]
     toText = Text.toStrict . toLazyText . decimal
+
+type Algebra f a = f a -> a

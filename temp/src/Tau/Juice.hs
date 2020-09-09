@@ -1,10 +1,13 @@
 {-# LANGUAGE FlexibleInstances     #-}
 {-# LANGUAGE MultiParamTypeClasses #-}
+{-# LANGUAGE StrictData            #-}
 {-# LANGUAGE UndecidableInstances  #-}
 module Tau.Juice where
 
 import Control.Monad.Except
 import Control.Monad.State
+import Data.Function (on)
+import Data.Functor.Foldable
 import Data.Map.Strict (Map)
 import Data.Set.Monad (Set, union, member, (\\))
 import Tau.Type
@@ -40,10 +43,12 @@ substituteWithDefault :: a -> Name -> Substitution a -> a
 substituteWithDefault def name = Map.findWithDefault def name . getSub
 
 instance Substitutable Type Type where
-    apply sub ty@(VarT var) = substituteWithDefault ty var sub
-    apply sub (ArrT t1 t2)  = ArrT (apply sub t1) (apply sub t2)
-    apply sub (AppT t1 t2)  = AppT (apply sub t1) (apply sub t2)
-    apply _ ty              = ty
+    apply sub = cata alg where
+        alg :: Algebra TypeF Type
+        alg (VarT var)    = substituteWithDefault (varT var) var sub
+        alg (ArrT t1 t2)  = arrT t1 t2
+        alg (AppT t1 t2)  = appT t1 t2
+        alg ty            = Fix ty
 
 instance Substitutable Type Scheme where
     apply sub (Forall vars tycls ty) =
@@ -54,12 +59,14 @@ instance Substitutable Type TyClass where
     apply sub (TyCl name ty) = TyCl name (apply sub ty)
 
 instance (Substitutable Type t) => Substitutable Name t where
-    apply = apply . Substitution . fmap VarT . getSub
+    apply = apply . Substitution . fmap varT . getSub
 
 instance Substitutable Kind Kind where
-    apply sub (VarK name)  = substituteWithDefault (VarK name) name sub
-    apply sub (ArrK k1 k2) = ArrK (apply sub k1) (apply sub k2)
-    apply _ StarK          = StarK
+    apply sub = cata alg where
+        alg :: Algebra KindF Kind
+        alg (VarK name)  = substituteWithDefault (varK name) name sub
+        alg (ArrK k1 k2) = arrK k1 k2
+        alg StarK        = starK
 
 instance (Substitutable t t) => Semigroup (Substitution t) where
     (<>) = compose
@@ -80,17 +87,19 @@ class Unifiable t where
     unify :: t -> t -> Either UnificationError (Substitution t)
 
 instance Unifiable Type where
-    unify (ArrT t1 t2) (ArrT u1 u2) = unifyPair (t1, t2) (u1, u2)
-    unify (AppT t1 t2) (AppT u1 u2) = unifyPair (t1, t2) (u1, u2)
-    unify (VarT a) t                = bind VarT a t
-    unify t (VarT a)                = bind VarT a t
-    unify t u                       = unifyDefault t u
+    unify = run `on` unfix where
+        run (ArrT t1 t2) (ArrT u1 u2) = unifyPair (t1, t2) (u1, u2)
+        run (AppT t1 t2) (AppT u1 u2) = unifyPair (t1, t2) (u1, u2)
+        run (VarT a) t                = bind varT a (Fix t)
+        run t (VarT a)                = bind varT a (Fix t)
+        run t u                       = unifyDefault (Fix t) (Fix u)
 
 instance Unifiable Kind where
-    unify (ArrK k1 k2) (ArrK l1 l2) = unifyPair (k1, k2) (l1, l2)
-    unify (VarK a) k                = bind VarK a k
-    unify k (VarK a)                = bind VarK a k
-    unify k l                       = unifyDefault k l
+    unify = run `on` unfix where
+        run (ArrK k1 k2) (ArrK l1 l2) = unifyPair (k1, k2) (l1, l2)
+        run (VarK a) k                = bind varK a (Fix k)
+        run k (VarK a)                = bind varK a (Fix k)
+        run k l                       = unifyDefault (Fix k) (Fix l)
 
 unifyPair 
   :: (Unifiable t, Substitutable t t) 
@@ -129,10 +138,11 @@ instance (Free t) => Free [t] where
     free = foldr (union . free) mempty
 
 instance Free Type where
-    free (VarT var)   = Set.singleton var
-    free (ArrT t1 t2) = free t1 `union` free t2
-    free (AppT t1 t2) = free t1 `union` free t2
-    free _            = mempty
+    free = cata alg where
+        alg (VarT var)   = Set.singleton var
+        alg (ArrT t1 t2) = t1 `union` t2
+        alg (AppT t1 t2) = t1 `union` t2
+        alg _            = mempty
 
 instance Free TyClass where
     free (TyCl name ty) = free ty
@@ -140,10 +150,11 @@ instance Free TyClass where
 instance Free Scheme where
     free (Forall vars _ ty) = free ty \\ Set.fromList vars
 
-instance Free Kind where
-    free (ArrK k l)  = free k `union` free l
-    free (VarK name) = Set.singleton name
-    free _           = mempty
+instance Free Kind where 
+    free = cata alg where
+        alg (ArrK k l)  = k `union` l
+        alg (VarK name) = Set.singleton name
+        alg _           = mempty
 
 occursFreeIn :: (Free t) => Name -> t -> Bool
 occursFreeIn var context = var `member` free context

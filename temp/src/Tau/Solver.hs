@@ -1,11 +1,14 @@
-{-# LANGUAGE MultiParamTypeClasses #-}
 {-# LANGUAGE FlexibleContexts      #-}
+{-# LANGUAGE FlexibleInstances     #-}
+{-# LANGUAGE MultiParamTypeClasses #-}
+{-# LANGUAGE StrictData            #-}
 module Tau.Solver where
 
 import Control.Monad.Except
 import Control.Monad.State
 import Control.Monad.Supply
 import Data.Either.Extra (mapLeft)
+import Data.Functor.Foldable
 import Data.List (find, delete)
 import Data.Set.Monad (Set, union, intersection, member, (\\))
 import Data.Tuple.Extra (both)
@@ -26,7 +29,7 @@ instance Free Monoset where
     free (Monoset set) = set
 
 instance Substitutable Type Monoset where
-    apply sub (Monoset set) = Monoset (free . apply sub . VarT =<< set)
+    apply sub (Monoset set) = Monoset (free . apply sub . varT =<< set)
 
 data TypeConstraint
     = Equality Type Type
