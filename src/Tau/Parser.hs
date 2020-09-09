@@ -6,6 +6,7 @@ import Data.Char (isUpper)
 import Data.Function ((&))
 import Data.Functor (($>))
 import Data.Functor.Foldable (Fix(..), unfix)
+import Data.Maybe (fromMaybe)
 import Data.Text (Text, pack, unpack)
 import Data.Void
 import Tau.Juice hiding (($>), name)
@@ -61,6 +62,7 @@ reserved =
     , "True"
     , "False"
     , "not"
+    , "forall"
     ]
 
 word :: Parser Text -> Parser Text
@@ -234,3 +236,33 @@ charPrim = Char <$> surroundedBy (symbol "'") printChar
 stringPrim :: Parser Prim
 stringPrim = lexeme (String . pack <$> chars) where
     chars = char '\"' *> manyTill Lexer.charLiteral (char '\"')
+
+-- ============================================================================
+-- ================================== Type ====================================
+-- ============================================================================
+
+ty :: Parser Type
+ty = makeExprParser expr [[ InfixR (arrT <$ symbol "->") ]]
+  where
+    expr :: Parser Type
+    expr = do
+        atoms <- some atom
+        pure (foldl1 appT atoms)
+      where
+        atom = parens ty 
+           <|> varT <$> name
+           <|> conT <$> constructor
+
+tyCl :: Parser TyCl
+tyCl = TyCl <$> constructor <*> ty
+
+quantifier :: Parser (Maybe [Name])
+quantifier = optional (keyword "forall" *> some name <* symbol ".")
+
+classConstraints :: Parser (Maybe [TyCl])
+classConstraints = optional (parens (some tyCl) <* symbol "=>")
+
+scheme :: Parser Scheme
+scheme = Forall <$> (fromMaybe [] <$> quantifier)
+                <*> (fromMaybe [] <$> classConstraints)
+                <*> ty

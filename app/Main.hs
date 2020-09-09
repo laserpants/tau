@@ -5,4 +5,4 @@ import Tau.Parser
 import Tau.Repl
 
 main :: IO ()
-main = repl
+main = pure () -- repl
