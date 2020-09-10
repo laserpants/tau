@@ -3,9 +3,8 @@ module Tau.Env where
 
 import Data.Map.Strict (Map)
 import Data.Text (Text)
+import Tau.Util
 import qualified Data.Map.Strict as Map
-
-type Name = Text
 
 newtype Env a = Env { getEnv :: Map Name a }
     deriving (Show, Eq, Semigroup, Monoid)
