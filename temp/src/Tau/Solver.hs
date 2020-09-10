@@ -54,7 +54,10 @@ isSolvable _ _ = True
 choice :: [TypeConstraint] -> Maybe ([TypeConstraint], TypeConstraint)
 choice xs = find (uncurry isSolvable) [(ys, x) | x <- xs, let ys = delete x xs]
 
-liftErrors :: (MonadError (TypeError UnificationError) m) => Either UnificationError a -> m a
+liftErrors 
+  :: (MonadError (TypeError UnificationError) m) 
+  => Either UnificationError a 
+  -> m a
 liftErrors = liftEither . mapLeft UnificationError
 
 solveTypes
@@ -104,8 +107,8 @@ type KindConstraint = (Kind, Kind)
 
 solveKinds 
   :: (MonadError (TypeError UnificationError) m, MonadSupply Name m) 
-   => [KindConstraint] 
-   -> m (Substitution Kind)
+  => [KindConstraint] 
+  -> m (Substitution Kind)
 solveKinds [] = pure mempty
 solveKinds ((k1, k2):cs) = do
     sub1 <- liftErrors (unify k1 k2)
