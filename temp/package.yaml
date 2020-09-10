@@ -17,6 +17,7 @@ dependencies:
   - deriving-compat
   - extra
   - mtl
+  - prettyprinter
   - recursion-schemes
   - set-monad
   - text

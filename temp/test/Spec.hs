@@ -1,12 +1,21 @@
 {-# LANGUAGE OverloadedStrings #-}
 import Data.Either
-import Test.Hspec
+import Data.Text (pack, unpack)
+import Tau.Print
 import Tau.Type
+import Test.Hspec
+
+prettyString :: (Pretty p) => p -> String
+prettyString = unpack . prettyPrint
+
+description :: Type -> Type -> String
+description t1 t2 =
+    "The types (" <> prettyString t1 <> ") and (" <> prettyString t2 <> ")"
 
 failUnifyTypes :: Type -> Type -> SpecWith ()
 failUnifyTypes t1 t2 = do
     let result = unify t1 t2
-    describe "The types t1 and t2" $
+    describe (description t1 t2) $
 
         it "✗ fails to unify" $
             isLeft result
@@ -14,12 +23,12 @@ failUnifyTypes t1 t2 = do
 succeedUnifyTypes :: Type -> Type -> SpecWith ()
 succeedUnifyTypes t1 t2 = do
     let result = unify t1 t2
-    describe "The types t1 and t2" $ do
+    describe (description t1 t2) $ do
 
         it "✔ yields a substitution" $
             isRight result
 
-        it "✔ that unifies the types" $ do
+        it "✔ and it unifies the types" $ do
             let Right sub = result
             apply sub t1 == apply sub t2
 
