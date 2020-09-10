@@ -1,8 +1,9 @@
 {-# LANGUAGE OverloadedStrings #-}
 import Data.Either
-import Data.Text (pack, unpack)
-import Tau.Print
+import Data.Text (unpack)
+import Data.Text.Prettyprint.Doc (Pretty)
 import Tau.Type
+import Tau.Util
 import Test.Hspec
 
 prettyString :: (Pretty p) => p -> String

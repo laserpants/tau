@@ -16,7 +16,9 @@ dependencies:
   - containers
   - deriving-compat
   - extra
+  - megaparsec
   - mtl
+  - parser-combinators
   - prettyprinter
   - recursion-schemes
   - set-monad
@@ -26,6 +28,8 @@ library:
   source-dirs: 
     - src/
     - monad-supply/src/
+  ghc-options:
+    - -Wall
 
 executables:
   temp:

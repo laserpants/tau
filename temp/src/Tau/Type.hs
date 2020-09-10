@@ -2,6 +2,7 @@
 {-# LANGUAGE DeriveFunctor         #-}
 {-# LANGUAGE DeriveTraversable     #-}
 {-# LANGUAGE FlexibleInstances     #-}
+{-# LANGUAGE LambdaCase            #-}
 {-# LANGUAGE MultiParamTypeClasses #-}
 {-# LANGUAGE OverloadedStrings     #-}
 {-# LANGUAGE StrictData            #-}
@@ -15,10 +16,12 @@ import Data.Function (on)
 import Data.Functor.Foldable
 import Data.Map.Strict (Map)
 import Data.Set.Monad (Set, union, member, (\\))
+import Data.Text.Prettyprint.Doc
 import Tau.Util
 import Text.Show.Deriving
 import qualified Data.Map.Strict as Map
 import qualified Data.Set.Monad as Set
+import qualified Data.Text as Text
 
 data TypeF  a
     = ConT Name            -- ^ Type constructor
@@ -245,3 +248,32 @@ class Active a where
 
 instance (Active a) => Active [a] where
     active = join . Set.fromList . fmap active
+
+-- ============================================================================
+-- == Pretty Printing
+-- ============================================================================
+
+instance Pretty Type where
+    pretty = cata $ \case
+        ConT name -> pretty name
+        VarT name -> pretty name
+        ArrT a b  -> a <+> "->" <+> b
+        AppT a b  -> a <+> b
+
+instance Pretty Kind where
+    pretty = cata $ \case
+        VarK name -> pretty name
+        ArrK a b  -> a <+> "->" <+> b
+        StarK     -> "*"
+
+instance Pretty TyClass where
+    pretty (TyCl name ty) = pretty name <+> pretty ty
+
+instance Pretty Scheme where
+    pretty (Forall vars clcs ty) = forall <> classes <> pretty ty where
+        forall
+          | null vars = mempty
+          | otherwise = "forall" <+> pretty (Text.unwords vars) <> dot <> space
+        classes
+          | null clcs = mempty
+          | otherwise = tupled (pretty <$> clcs) <+> "=>" <> space

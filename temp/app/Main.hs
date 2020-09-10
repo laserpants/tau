@@ -7,6 +7,7 @@ import Control.Monad.Except
 import Control.Monad.Supply
 import Tau.Solver
 import Tau.Type
+import Tau.Parser
 import Tau.Util
 
 main :: IO ()
