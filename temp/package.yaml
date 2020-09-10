@@ -7,7 +7,7 @@ license:             BSD3
 author:              Author name here
 maintainer:          example@example.com
 copyright:           2020 Author name here
-category:            Web
+category:            Tau
 extra-source-files:
 - README.md
 
@@ -30,7 +30,7 @@ executables:
   temp:
     source-dirs:      app/
     main:             Main.hs
-    ghc-options:
+    # ghc-options:
       #- -Wall
     dependencies:
     - tau
