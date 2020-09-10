@@ -1,4 +1,4 @@
-name:                temp
+name:                tau
 version:             0.1.0.0
 #synopsis:
 #description:
@@ -21,15 +21,19 @@ dependencies:
   - set-monad
   - text
 
+library:
+  source-dirs: 
+    - src/
+    - monad-supply/src/
+
 executables:
   temp:
-    source-dirs:      src
+    source-dirs:      app/
     main:             Main.hs
     ghc-options:
-    - -threaded
-    - -rtsopts
-    - -with-rtsopts=-N
       #- -Wall
+    dependencies:
+    - tau
 
 tests:
   tau-test:
@@ -39,6 +43,7 @@ tests:
     - -threaded
     - -rtsopts
     - -with-rtsopts=-N
-      #    - -Wall
+      #- -Wall
     dependencies:
+    - tau
     - hspec

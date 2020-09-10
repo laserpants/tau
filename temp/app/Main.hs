@@ -1,11 +1,11 @@
 {-# LANGUAGE OverloadedStrings #-}
 module Main where
 
+--import Debug.Trace
+--import Tau.Expr
 import Control.Monad.Except
 import Control.Monad.Supply
---import Debug.Trace
 import Tau.Solver
---import Tau.Expr
 import Tau.Type
 import Tau.Util
 
