@@ -15,6 +15,12 @@ import Tau.Type
 import Tau.Util
 import qualified Data.Set.Monad as Set
 
+liftErrors 
+  :: (MonadError TypeError m) 
+  => Either UnificationError a 
+  -> m a
+liftErrors = liftEither . mapLeft UnificationError
+
 -- ============================================================================
 -- == Type Constraints Solver
 -- ============================================================================
@@ -52,12 +58,6 @@ isSolvable _ _ = True
 
 choice :: [TypeConstraint] -> Maybe ([TypeConstraint], TypeConstraint)
 choice xs = find (uncurry isSolvable) [(ys, x) | x <- xs, let ys = delete x xs]
-
-liftErrors 
-  :: (MonadError TypeError m) 
-  => Either UnificationError a 
-  -> m a
-liftErrors = liftEither . mapLeft UnificationError
 
 solveTypes
   :: (MonadError TypeError m, MonadSupply Name m) 
