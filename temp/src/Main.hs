@@ -6,6 +6,7 @@ import Control.Monad.Supply
 import Debug.Trace
 import Tau.Juice
 import Tau.Solver
+import Tau.Expr
 import Tau.Type
 import Tau.Util
 

@@ -8,7 +8,6 @@ import Control.Monad.Except
 import Control.Monad.State
 import Control.Monad.Supply
 import Data.Either.Extra (mapLeft)
-import Data.Functor.Foldable
 import Data.List (find, delete)
 import Data.Set.Monad (Set, union, intersection, member, (\\))
 import Data.Tuple.Extra (both)

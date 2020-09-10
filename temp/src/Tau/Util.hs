@@ -1,6 +1,12 @@
 {-# LANGUAGE StrictData #-}
-module Tau.Util where
+module Tau.Util 
+  ( module Data.Functor.Foldable
+  , Name
+  , Algebra
+  , nameSupply
+  ) where
 
+import Data.Functor.Foldable
 import Data.Text (Text)
 import Data.Text.Lazy.Builder (toLazyText)
 import Data.Text.Lazy.Builder.Int (decimal)

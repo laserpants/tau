@@ -1,12 +1,12 @@
-{-# LANGUAGE DeriveFunctor     #-}
 {-# LANGUAGE DeriveFoldable    #-}
+{-# LANGUAGE DeriveFunctor     #-}
 {-# LANGUAGE DeriveTraversable #-}
+{-# LANGUAGE OverloadedStrings #-}
 {-# LANGUAGE StrictData        #-}
 {-# LANGUAGE TemplateHaskell   #-}
 module Tau.Type where
 
 import Data.Eq.Deriving
-import Data.Functor.Foldable
 import Data.Text (Text)
 import Tau.Util
 import Text.Show.Deriving
