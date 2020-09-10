@@ -18,5 +18,5 @@ cs1 =
     , Explicit (varT "a1") (Forall ["a"] [TyCl "Num" (varT "a")] (arrT (varT "a") (arrT (varT "a") (varT "a"))))
     ]
 
-runSolver :: IO (Either (TypeError UnificationError) (Substitution Type, [TyClass]))
+runSolver :: IO (Either TypeError (Substitution Type, [TyClass]))
 runSolver = evalSupplyT (runExceptT (solveTypes cs1)) (nameSupply "$$a")

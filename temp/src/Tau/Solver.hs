@@ -54,19 +54,19 @@ choice :: [TypeConstraint] -> Maybe ([TypeConstraint], TypeConstraint)
 choice xs = find (uncurry isSolvable) [(ys, x) | x <- xs, let ys = delete x xs]
 
 liftErrors 
-  :: (MonadError (TypeError UnificationError) m) 
+  :: (MonadError TypeError m) 
   => Either UnificationError a 
   -> m a
 liftErrors = liftEither . mapLeft UnificationError
 
 solveTypes
-  :: (MonadError (TypeError UnificationError) m, MonadSupply Name m) 
+  :: (MonadError TypeError m, MonadSupply Name m) 
   => [TypeConstraint] 
   -> m (Substitution Type, [TyClass])
 solveTypes = flip runStateT [] . solver where
     solver 
-      :: (MonadError (TypeError UnificationError) m, MonadSupply Name m) 
-      => [TypeConstraint] 
+      :: (MonadError TypeError m, MonadSupply Name m)
+      => [TypeConstraint]
       -> StateT [TyClass] m (Substitution Type)
     solver [] = pure (Substitution mempty)
     solver constraints = do
@@ -105,7 +105,7 @@ instantiate (Forall vars tycls ty) = do
 type KindConstraint = (Kind, Kind)
 
 solveKinds 
-  :: (MonadError (TypeError UnificationError) m, MonadSupply Name m) 
+  :: (MonadError TypeError m, MonadSupply Name m) 
   => [KindConstraint] 
   -> m (Substitution Kind)
 solveKinds [] = pure mempty

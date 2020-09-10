@@ -15,9 +15,9 @@ import qualified Data.Text.Lazy as Text (toStrict)
 type Name = Text
 
 nameSupply :: Text -> [Name]
-nameSupply prefix = (prefix <>) . toText <$> nats
+nameSupply prefix = (prefix <>) . pack <$> nats
   where
-    nats   = [1..] :: [Integer]
-    toText = Text.toStrict . toLazyText . decimal
+    nats = [1..] :: [Integer]
+    pack = Text.toStrict . toLazyText . decimal
 
 type Algebra f a = f a -> a

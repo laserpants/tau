@@ -42,9 +42,14 @@ data TyClass = TyCl Name Type
 data Scheme = Forall [Name] [TyClass] Type
     deriving (Show, Eq)
 
-data TypeError a
+data UnificationError
+    = CannotUnify
+    | InfiniteType
+    deriving (Show, Eq)
+
+data TypeError
     = CannotSolve
-    | UnificationError a
+    | UnificationError UnificationError
     deriving (Show, Eq)
 
 data KindF a
@@ -156,11 +161,6 @@ instance (Substitutable t t) => Monoid (Substitution t) where
 -- ============================================================================
 -- == Unifiable
 -- ============================================================================
-
-data UnificationError
-    = CannotUnify
-    | InfiniteType
-    deriving (Show, Eq)
 
 class Unifiable t where
     unify :: t -> t -> Either UnificationError (Substitution t)
