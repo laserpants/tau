@@ -13,13 +13,13 @@ extra-source-files:
 
 dependencies:
   - base >= 4.7 && < 5
-  - mtl
   - containers
+  - deriving-compat
+  - extra
+  - mtl
+  - recursion-schemes
   - set-monad
   - text
-  - extra
-  - recursion-schemes
-  - deriving-compat
 
 executables:
   temp:
@@ -29,4 +29,4 @@ executables:
     - -threaded
     - -rtsopts
     - -with-rtsopts=-N
-      #    - -Wall
+    - -Wall

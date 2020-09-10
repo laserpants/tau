@@ -2,7 +2,6 @@
 module Tau.Env where
 
 import Data.Map.Strict (Map)
-import Data.Text (Text)
 import Tau.Util
 import qualified Data.Map.Strict as Map
 

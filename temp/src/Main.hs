@@ -3,9 +3,9 @@ module Main where
 
 import Control.Monad.Except
 import Control.Monad.Supply
-import Debug.Trace
+--import Debug.Trace
 import Tau.Solver
-import Tau.Expr
+--import Tau.Expr
 import Tau.Type
 import Tau.Util
 

@@ -10,13 +10,11 @@
 module Tau.Type where
 
 import Control.Monad.Except
-import Control.Monad.State
 import Data.Eq.Deriving
 import Data.Function (on)
 import Data.Functor.Foldable
 import Data.Map.Strict (Map)
 import Data.Set.Monad (Set, union, member, (\\))
-import Data.Text (Text)
 import Tau.Util
 import Text.Show.Deriving
 import qualified Data.Map.Strict as Map
@@ -224,7 +222,7 @@ instance Free Type where
         alg _            = mempty
 
 instance Free TyClass where
-    free (TyCl name ty) = free ty
+    free (TyCl _ ty) = free ty
 
 instance Free Scheme where
     free (Forall vars _ ty) = free ty \\ Set.fromList vars

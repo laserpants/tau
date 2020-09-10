@@ -9,7 +9,7 @@ import Control.Monad.State
 import Control.Monad.Supply
 import Data.Either.Extra (mapLeft)
 import Data.List (find, delete)
-import Data.Set.Monad (Set, union, intersection, member, (\\))
+import Data.Set.Monad (Set, union, intersection, (\\))
 import Data.Tuple.Extra (both)
 import Tau.Type
 import Tau.Util
