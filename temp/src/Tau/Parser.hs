@@ -169,7 +169,7 @@ lamMatch = do
 clause :: Parser (Pattern, Expr)
 clause = do
     pat  <- symbol "|"  *> parsePattern
-    term <- symbol "->" *> expr
+    term <- symbol "=>" *> expr
     pure (pat, term)
 
 parsePattern :: Parser Pattern
@@ -197,7 +197,7 @@ wildcard = symbol "_" $> anyP
 lambda :: Parser Expr
 lambda = do
     var  <- symbol "\\" *> name
-    body <- symbol "->" *> expr
+    body <- symbol "=>" *> expr
     pure (lamS var body)
 
 unit :: Parser Prim
@@ -243,10 +243,10 @@ type_ = makeExprParser parser [[ InfixR (arrT <$ symbol "->") ]]
     parser = do
         atoms <- some atom
         pure (foldl1 appT atoms)
-      where
-        atom = parens type_
-           <|> varT <$> name
-           <|> conT <$> constructor
+    atom :: Parser Type
+    atom = parens type_
+       <|> varT <$> name
+       <|> conT <$> constructor
 
 tyClass :: Parser TyClass
 tyClass = TyCl <$> constructor <*> type_
