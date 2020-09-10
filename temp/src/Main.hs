@@ -4,7 +4,6 @@ module Main where
 import Control.Monad.Except
 import Control.Monad.Supply
 import Debug.Trace
-import Tau.Juice
 import Tau.Solver
 import Tau.Expr
 import Tau.Type

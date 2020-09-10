@@ -11,7 +11,6 @@ import Data.Either.Extra (mapLeft)
 import Data.List (find, delete)
 import Data.Set.Monad (Set, union, intersection, member, (\\))
 import Data.Tuple.Extra (both)
-import Tau.Juice
 import Tau.Type
 import Tau.Util
 import qualified Data.Set.Monad as Set
