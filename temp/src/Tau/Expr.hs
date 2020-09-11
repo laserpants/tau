@@ -375,8 +375,8 @@ instance Pretty Prim where
         Int n     -> pretty n
         Integer n -> pretty n
         Float f   -> pretty f
-        Char c    -> pretty c
-        String s  -> pretty s
+        Char c    -> squotes (pretty c)
+        String s  -> dquotes (pretty s)
 
 instance Pretty Pattern where
     pretty = unfix >>> \case

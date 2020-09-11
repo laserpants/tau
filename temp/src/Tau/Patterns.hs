@@ -44,7 +44,7 @@ constructorEnv = Env.fromList . fmap (fmap Set.fromList)
 
 headCons :: (Monad m) => [[Pattern]] -> m [(Name, Int)]
 headCons = fmap concat . traverse fun where
-    fun [] = error "Fatal error in pattern anomalies check"
+    fun [] = error "Implementation error in pattern anomalies check"
     fun ps = pure $ case unfix (head ps) of
         LitP lit     -> [(prim lit, 0)]
         ConP name rs -> [(name, length rs)]
@@ -65,7 +65,7 @@ useful px@(ps:_) qs =
         (_, 0) -> pure False    -- one or more rows but no columns
 
         ([], _) ->
-            error "Fatal error in pattern anomalies check"
+            error "Implementation error in pattern anomalies check"
 
         (Fix (ConP name rs):_, _) ->
             let special = specialized name (length rs)
@@ -221,7 +221,7 @@ groups eqs = grp:grps
             (LitEqs cs, gs) -> (LitEqs (c:cs), gs)
             (g, gs)         -> (LitEqs [c], g:gs)
 
-    arrange [] _ = error "Fatal pattern compiler error"
+    arrange [] _ = error "Implementation error"
 
 data ConGroup = ConGroup
     { name      :: Name
@@ -238,14 +238,14 @@ conGroups qs =
       , arity     = arity
       , equations = (\ConHead{..} -> (conPats, conExpr)) <$> cs }
 
-    makeGroup [] = error "Fatal pattern compiler error"
+    makeGroup [] = error "Implementation error"
 
 compilePatterns :: (MonadSupply Name m) => [Expr] -> [Equation] -> m Expr
 compilePatterns = matchDefault errS
 
 matchDefault :: (MonadSupply Name m) => Expr -> [Expr] -> [Equation] -> m Expr
 matchDefault _ [] [([], expr)] = pure expr
-matchDefault _ [] _ = error "Fatal pattern compiler error"
+matchDefault _ [] _ = error "Implementation error"
 matchDefault d (u:us) qs = foldrM (flip run) d (groups qs)
   where
     run :: MonadSupply Name m => Expr -> EqGroup -> m Expr

@@ -7,6 +7,14 @@ import Tau.Parser
 import Test.Hspec
 import Utils
 
+failParse :: Text -> SpecWith ()
+failParse input =
+    describe (unpack input) $ do
+        let result = parseExpr input
+
+        it "✔ ✗ fails to parse" $
+            isLeft result 
+
 succeedParse :: Text -> Expr -> SpecWith ()
 succeedParse input expect = 
     describe (unpack input) $ do
@@ -106,3 +114,5 @@ testParser = do
     succeedParse
         (pack (show bigNumber))
         (litInteger bigNumber)
+
+    failParse "let chr = let in x"
