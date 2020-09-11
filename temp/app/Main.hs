@@ -5,17 +5,18 @@ module Main where
 --import Debug.Trace
 --import Tau.Expr
 import Control.Monad.Except
-import Control.Monad.Identity
-import Control.Monad.Reader
+--import Control.Monad.Identity
+--import Control.Monad.Reader
 import Control.Monad.Supply
-import Data.Void
+--import Data.Void
 import Tau.Solver
 import Tau.Type
-import Tau.Parser
+--import Tau.Eval
+--import Tau.Parser
 import Tau.Util
-import Tau.Value
-import Text.Megaparsec hiding (ParseError)
-import Text.Megaparsec.Char
+--import Tau.Value
+--import Text.Megaparsec hiding (ParseError)
+--import Text.Megaparsec.Char
 
 --type Parser = ParsecT Void String
 --

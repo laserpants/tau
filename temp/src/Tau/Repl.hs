@@ -1,12 +1,17 @@
+{-# LANGUAGE OverloadedStrings     #-}
 module Tau.Repl where
 
-import Control.Monad.Except
+import Control.Monad.Reader
 import Data.List (isPrefixOf)
 import Data.Text (pack, unpack)
 import System.Console.Repline
+import Tau.Eval
 import Tau.Parser
+import Tau.Patterns
 import Tau.Util
+import Tau.Value
 import Text.Megaparsec.Error (errorBundlePretty)
+import qualified Tau.Env as Env
 
 type Repl = HaskelineT IO
 
@@ -27,12 +32,61 @@ repl = evalReplOpts $ ReplOpts
 
 replCommand :: String -> Repl ()
 replCommand input =
-    putStrIO $ case parseExpr (pack input) of
+    case parseExpr (pack input) of
         Left err ->
-            errorBundlePretty err
+            putStrIO $ errorBundlePretty err
 
-        Right result ->
-            unpack (prettyPrint result)
+        Right result -> do
+            putStrIO $ unpack (prettyPrint result)
+            -- type check
+
+            -- exhaustive check
+            if allPatternsAreExhaustive result replConstructorEnv
+                then do
+                    putStrIO (unpack (prettyPrint result))
+                    case evalExpr (compileAll result) replValueEnv of
+                        Nothing ->
+                            putStrIO "Runtime error"
+
+                        Just val ->
+                            putStrIO (unpack (prettyPrint val))
+
+                else
+                    putStrIO "Non-exhaustive patterns"
+
+--data Environments = Environments 
+--    { constructorEnv :: ConstructorEnv
+--    , valueEnv       :: ValueEnv
+--    , optionsEnv     :: Options Repl
+--    }
+--
+--environments :: Environments
+--environments = Environments
+--    { constructorEnv =
+--        [ ("Nil"  , ["Nil", "Cons"])
+--        , ("Cons" , ["Nil", "Cons"]) 
+--        ]
+--    , valueEnv =
+--        [ ("Cons"   , apply "Cons" 2)
+--        , ("Nil"    , apply "Nil" 0) 
+--        ]
+--    , optionsEnv =
+--        [ ("quit", quit)
+--        , ("help", help)
+--        ]
+--    }
+
+replConstructorEnv :: ConstructorEnv
+replConstructorEnv = constructorEnv
+    [ ("Nil"  , ["Nil", "Cons"])
+    , ("Cons" , ["Nil", "Cons"]) 
+    ]
+
+replValueEnv :: ValueEnv Eval
+replValueEnv = Env.fromList
+    [ ("Cons"   , apply "Cons" 2)
+    , ("Nil"    , apply "Nil" 0) 
+    ]
 
 replOptions :: Options Repl
 replOptions =

@@ -99,7 +99,7 @@ patternVars = cata alg where
 -- | Predicate to check whether a pattern is /simple/. A simple pattern is
 --     - a variable,
 --     - a wildcard, or
---     - a constructor where all the subpatterns are simple.
+--     - a constructor where all subpatterns are simple.
 --
 isSimple :: Pattern -> Bool
 isSimple = cata alg where
@@ -325,11 +325,11 @@ prettyExpr n = unfix >>> \case
     ErrS ->
         "<<error>>"
 
-    MatchS _ [] ->
-        error "Empty match statement"
+    MatchS expr [] ->
+        wrap n $ "match" <+> pretty expr <+> equals <+> "{}"
 
     LamMatchS [] ->
-        error "Empty match statement"
+        wrap n $ backslash <> "match" <+> equals <+> "{}"
 
 wrap :: Int -> Doc a -> Doc a
 wrap 0 doc = doc

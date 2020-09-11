@@ -5,17 +5,18 @@
 {-# LANGUAGE FlexibleContexts  #-}
 module Tau.Patterns where
 
-import Data.Foldable (foldrM)
 import Control.Monad.Extra (anyM, (&&^))
-import Control.Monad.Supply
+import Control.Monad.Identity
 import Control.Monad.Reader
+import Control.Monad.Supply
+import Data.Foldable (foldrM)
 import Data.Function ((&))
 import Data.List.Extra (groupSortOn)
 import Data.Set.Monad (Set)
+import Data.Tuple.Extra (first)
 import Tau.Env
 import Tau.Expr
 import Tau.Type
-import Data.Tuple.Extra (first)
 import Tau.Util
 import qualified Data.Set.Monad as Set
 import qualified Tau.Env as Env
@@ -143,14 +144,15 @@ checkClauses clss = do
     let (patterns, exprs) = unzip clss
     zip patterns <$> sequence exprs
 
-allPatternsAreSimple :: (Monad m) => Expr -> m Bool
-allPatternsAreSimple = checkPatterns (pure . uncurry check . unzip) where
+allPatternsAreSimple :: Expr -> Bool
+allPatternsAreSimple = 
+    runIdentity . checkPatterns (pure . uncurry check . unzip) where
     check patterns exprs =
         and exprs &&
         and (isSimple <$> patterns)
 
-allPatternsAreExhaustive :: (Monad m) => Expr -> ConstructorEnv -> m Bool
-allPatternsAreExhaustive = runReaderT . checkPatterns (exhaustive . fmap fst)
+allPatternsAreExhaustive :: Expr -> ConstructorEnv -> Bool
+allPatternsAreExhaustive = runReader . checkPatterns (exhaustive . fmap fst)
 
 -- ============================================================================
 -- == Patterns Compiler

@@ -12,7 +12,7 @@ failParse input =
     describe (unpack input) $ do
         let result = parseExpr input
 
-        it "✔ ✗ fails to parse" $
+        it "✗ fails to parse" $
             isLeft result 
 
 succeedParse :: Text -> Expr -> SpecWith ()
@@ -23,7 +23,7 @@ succeedParse input expect =
         it "✔ succeeds to parse" $
             isRight result 
 
-        it ("✔ and is the expected result: " <> prettyString expect) $
+        it ("✔ and gives the expected result: " <> prettyString expect) $
             Right expect == result
 
 bigNumber :: Integer
