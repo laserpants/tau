@@ -3,14 +3,17 @@
     (\x => x + 1) 4
 
 
-    match isTrue with
-      | True  => afsda
-      | False => afsda
+    match isTrue 
+      = True  => 1
+      | False => 0
 
 
     \match
-      | True  => afsda
-      | False => afsda
+      = True  => 1
+      | False => 0
+
+
+    \match = True => 1 | False => 0
 
 
     type Bool
@@ -87,13 +90,13 @@
 
 
     fun = \x =>
-      match x with
-        | True  => 1
+      match x 
+        = True  => 1
         | False => 2
 
 
     fun = \match
-      | True  => 1
+      = True  => 1
       | False => 2
 
 
