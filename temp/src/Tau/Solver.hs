@@ -7,19 +7,12 @@ module Tau.Solver where
 import Control.Monad.Except
 import Control.Monad.State
 import Control.Monad.Supply
-import Data.Either.Extra (mapLeft)
 import Data.List (find, delete)
 import Data.Set.Monad (Set, union, intersection, (\\))
 import Data.Tuple.Extra (both)
 import Tau.Type
 import Tau.Util
 import qualified Data.Set.Monad as Set
-
-liftErrors 
-  :: (MonadError TypeError m) 
-  => Either UnificationError a 
-  -> m a
-liftErrors = liftEither . mapLeft UnificationError
 
 -- ============================================================================
 -- == Type Constraints Solver
@@ -60,33 +53,34 @@ choice :: [TypeConstraint] -> Maybe ([TypeConstraint], TypeConstraint)
 choice xs = find (uncurry isSolvable) [(ys, x) | x <- xs, let ys = delete x xs]
 
 solveTypes
-  :: (MonadError TypeError m, MonadSupply Name m) 
-  => [TypeConstraint] 
+  :: (MonadError UnificationError m, MonadSupply Name m)
+  => [TypeConstraint]
   -> m (Substitution Type, [TyClass])
-solveTypes = flip runStateT [] . solver where
-    solver 
-      :: (MonadError TypeError m, MonadSupply Name m)
-      => [TypeConstraint]
-      -> StateT [TyClass] m (Substitution Type)
-    solver [] = pure (Substitution mempty)
-    solver constraints = do
-        (cs, c) <- maybe (throwError CannotSolve) pure (choice constraints)
-        case c of
-            Equality t1 t2 -> do
-                sub1 <- liftErrors (unify t1 t2)
-                modify (apply sub1 <$>)
-                sub2 <- solver (apply sub1 <$> cs)
-                modify (apply sub2 <$>)
-                pure (sub2 <> sub1)
+solveTypes = flip runStateT [] . solver
 
-            Implicit t1 t2 (Monoset vars) -> do
-                tycls <- get
-                solver (Explicit t1 (generalize vars tycls t2):cs)
+solver
+  :: (MonadError UnificationError m, MonadSupply Name m)
+  => [TypeConstraint]
+  -> StateT [TyClass] m (Substitution Type)
+solver [] = pure (Substitution mempty)
+solver constraints = do
+    (cs, c) <- maybe (error "Unsolvable constraints") pure (choice constraints)
+    case c of
+        Equality t1 t2 -> do
+            sub1 <- liftEither (unify t1 t2)
+            modify (apply sub1 <$>)
+            sub2 <- solver (apply sub1 <$> cs)
+            modify (apply sub2 <$>)
+            pure (sub2 <> sub1)
 
-            Explicit t1 scheme -> do
-                (t2, tycls) <- instantiate scheme
-                modify (tycls <>)
-                solver (Equality t1 t2:cs)
+        Implicit t1 t2 (Monoset vars) -> do
+            tycls <- get
+            solver (Explicit t1 (generalize vars tycls t2):cs)
+
+        Explicit t1 scheme -> do
+            (t2, tycls) <- instantiate scheme
+            modify (tycls <>)
+            solver (Equality t1 t2:cs)
 
 generalize :: Set Name -> [TyClass] -> Type -> Scheme
 generalize vars tycls ty = Forall vars' (filter (inSet . free) tycls) ty where
@@ -104,12 +98,12 @@ instantiate (Forall vars tycls ty) = do
 
 type KindConstraint = (Kind, Kind)
 
-solveKinds 
-  :: (MonadError TypeError m, MonadSupply Name m) 
-  => [KindConstraint] 
+solveKinds
+  :: (MonadError UnificationError m, MonadSupply Name m)
+  => [KindConstraint]
   -> m (Substitution Kind)
 solveKinds [] = pure mempty
 solveKinds ((k1, k2):cs) = do
-    sub1 <- liftErrors (unify k1 k2)
+    sub1 <- liftEither (unify k1 k2)
     sub2 <- solveKinds (both (apply sub1) <$> cs)
     pure (sub2 <> sub1)

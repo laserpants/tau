@@ -1,18 +1,20 @@
-{-# LANGUAGE DeriveFoldable    #-}
-{-# LANGUAGE DeriveFunctor     #-}
-{-# LANGUAGE DeriveTraversable #-}
-{-# LANGUAGE FlexibleInstances #-}
-{-# LANGUAGE LambdaCase        #-}
-{-# LANGUAGE OverloadedStrings #-}
-{-# LANGUAGE StrictData        #-}
-{-# LANGUAGE TemplateHaskell   #-}
+{-# LANGUAGE DeriveFoldable        #-}
+{-# LANGUAGE DeriveFunctor         #-}
+{-# LANGUAGE DeriveTraversable     #-}
+{-# LANGUAGE FlexibleContexts      #-}
+{-# LANGUAGE FlexibleInstances     #-}
+{-# LANGUAGE LambdaCase            #-}
+{-# LANGUAGE MultiParamTypeClasses #-}
+{-# LANGUAGE OverloadedStrings     #-}
+{-# LANGUAGE StrictData            #-}
+{-# LANGUAGE TemplateHaskell       #-}
 module Tau.Expr where
 
 import Control.Arrow ((>>>))
-import Data.List (intersperse)
-import Data.Text.Prettyprint.Doc
 import Data.Eq.Deriving
+import Data.List (intersperse)
 import Data.Text (Text)
+import Data.Text.Prettyprint.Doc
 import Tau.Type
 import Tau.Util
 import Text.Show.Deriving
@@ -82,6 +84,30 @@ $(deriveEq1   ''ExprF)
 
 $(deriveShow1 ''OpF)
 $(deriveEq1   ''OpF)
+
+patternVars :: Pattern -> [Name]
+patternVars = cata alg where
+    alg :: Algebra PatternF [Name]
+    alg (VarP v)    = [v]
+    alg (ConP _ ps) = concat ps
+    alg _           = []
+
+-- ============================================================================
+-- == Patterns
+-- ============================================================================
+
+-- | Predicate to check whether a pattern is /simple/. A simple pattern is
+--     - a variable,
+--     - a wildcard, or
+--     - a constructor where all the subpatterns are simple.
+--
+isSimple :: Pattern -> Bool
+isSimple = cata alg where
+    alg :: Algebra PatternF Bool
+    alg AnyP        = True
+    alg VarP{}      = True
+    alg (ConP _ ps) = and ps
+    alg _           = False
 
 -- ============================================================================
 -- == Constructors
@@ -190,6 +216,54 @@ anyP :: Pattern
 anyP = Fix AnyP
 
 -- ============================================================================
+-- == Substitutable
+-- ============================================================================
+
+instance Substitutable Expr Expr where
+    apply sub = para $ \case
+        VarS var ->
+            substituteWithDefault (varS var) var sub
+
+        LamS var (expr, _) ->
+            lamS var (apply (deleteFromSub var sub) expr)
+
+        AppS exprs ->
+            appS (snd <$> exprs)
+
+        LitS prim ->
+            litS prim
+
+        LetS var (_, body) (expr, _) ->
+            letS var body (apply (deleteFromSub var sub) expr)
+
+        RecS var (body, _) (expr, _) ->
+            let deleteVarIn = apply (deleteFromSub var sub)
+             in recS var (deleteVarIn body) (deleteVarIn expr)
+
+        IfS cond true false ->
+            ifS (snd cond) (snd true) (snd false)
+
+        MatchS (_, expr) clss ->
+            matchS expr (uncurry substituteClause <$> clss)
+
+        LamMatchS clss ->
+            lamMatchS (uncurry substituteClause <$> clss)
+
+        OpS op ->
+            opS (snd <$> op)
+
+        AnnS (_, expr) ty ->
+            annS expr ty
+
+        ErrS ->
+            errS
+
+      where
+        substituteClause pat (expr, _) =
+            ( pat
+            , apply (deleteManyFromSub (patternVars pat) sub) expr )
+
+-- ============================================================================
 -- == Pretty Printing
 -- ============================================================================
 
@@ -202,47 +276,67 @@ prettyExpr n = unfix >>> \case
         pretty name
 
     LamS name body ->
-        wrap n (backslash <> pretty name <+> "=>" <+> pretty body)
+        wrap n $ backslash <> pretty name <+> "=>" <+> pretty body
 
     AppS [expr] ->
         prettyExpr n expr
 
     AppS exprs ->
-        wrap n (hsep (prettyExpr (succ n) <$> exprs))
+        wrap n $ hsep (prettyExpr (succ n) <$> exprs)
 
     LitS prim ->
         pretty prim
 
     LetS name expr body ->
-        wrap n ("let" <+> pretty name <+> equals <+> pretty expr <+> "in" <+> pretty body)
+        wrap n $ "let"
+        <+> pretty name <+> equals
+        <+> pretty expr <+> "in"
+        <+> pretty body
 
     RecS name expr body ->
-        wrap n ("let rec" <+> pretty name <+> equals <+> pretty expr <+> "in" <+> pretty body)
+        wrap n $ "let rec"
+        <+> pretty name <+> equals
+        <+> pretty expr <+> "in"
+        <+> pretty body
 
     IfS cond true false ->
-        wrap n ("if" <+> pretty cond <+> "then" <+> pretty true <+> "else" <+> pretty false)
+        wrap n $ "if"
+        <+> pretty cond <+> "then"
+        <+> pretty true <+> "else"
+        <+> pretty false
 
-    MatchS expr clss ->
-        wrap n ("match" <+> pretty expr <+> "with" <+> hsep (matchClause <$> clss))
+    MatchS expr (cls:clss) ->
+        wrap n $ "match"
+        <+> pretty expr
+        <+> matchClause equals cls
+        <+> hsep (matchClause pipe <$> clss)
 
-    LamMatchS clss ->
-        wrap n (backslash <> "match" <+> hsep (matchClause <$> clss))
+    LamMatchS (cls:clss) ->
+        wrap n $ backslash <> "match"
+        <+> matchClause equals cls
+        <+> hsep (matchClause pipe <$> clss)
 
     OpS ops ->
-        wrap n (prettyOp 0 ops)
+        wrap n $ prettyOp 0 ops
 
     AnnS expr ty ->
-        wrap n (pretty expr <+> colon <+> pretty ty)
+        wrap n $ pretty expr <+> colon <+> pretty ty
 
     ErrS ->
         "<<error>>"
+
+    MatchS _ [] ->
+        error "Empty match statement"
+
+    LamMatchS [] ->
+        error "Empty match statement"
 
 wrap :: Int -> Doc a -> Doc a
 wrap 0 doc = doc
 wrap _ doc = parens doc
 
-matchClause :: (Pattern, Expr) -> Doc a
-matchClause (pat, expr) = pipe <+> pretty pat <+> "=>" <+> pretty expr
+matchClause :: Doc a -> (Pattern, Expr) -> Doc a
+matchClause sym (pat, expr) = sym <+> pretty pat <+> "=>" <+> pretty expr
 
 prettyOp :: Int -> Op -> Doc a
 prettyOp n = \case

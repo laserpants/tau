@@ -25,14 +25,5 @@ nameSupply prefix = (prefix <>) . pack <$> nats
 
 type Algebra f a = f a -> a
 
---instance Pretty (Value m) where
---    pretty (Data name args) = pretty name <+> hsep (prettyArg <$> args)
---    pretty value = prettyArg value
---
---prettyArg (Value prim)   = pretty prim
---prettyArg (Data name []) = pretty name
---prettyArg dat@Data{}     = parens (pretty dat)
---prettyArg Closure{}      = "<<function>>"
-
 prettyPrint :: (Pretty p) => p -> Text
 prettyPrint = renderStrict . layoutPretty defaultLayoutOptions . pretty

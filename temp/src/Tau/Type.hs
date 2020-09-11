@@ -48,11 +48,6 @@ data UnificationError
     | InfiniteType
     deriving (Show, Eq)
 
-data TypeError
-    = CannotSolve
-    | UnificationError UnificationError
-    deriving (Show, Eq)
-
 data KindF a
     = VarK Name            -- ^ Kind placeholder variable
     | ArrK a a             -- ^ Type-level function
@@ -113,10 +108,10 @@ class Substitutable s t where
 fromList :: [(Name, a)] -> Substitution a
 fromList = Substitution . Map.fromList
 
-compose 
-  :: (Substitutable a a) 
-  => Substitution a 
-  -> Substitution a 
+compose
+  :: (Substitutable a a)
+  => Substitution a
+  -> Substitution a
   -> Substitution a
 compose sub1 sub2 = Substitution sub where
     sub = Map.map (apply sub1) (getSub sub2) `Map.union` getSub sub1
@@ -126,6 +121,12 @@ mapsTo name = Substitution . Map.singleton name
 
 substituteWithDefault :: a -> Name -> Substitution a -> a
 substituteWithDefault def name = Map.findWithDefault def name . getSub
+
+deleteFromSub :: Name -> Substitution a -> Substitution a
+deleteFromSub name = Substitution . Map.delete name . getSub
+
+deleteManyFromSub :: [Name] -> Substitution a -> Substitution a
+deleteManyFromSub = flip (foldr deleteFromSub)
 
 instance Substitutable Type Type where
     apply sub = cata alg where
@@ -181,21 +182,21 @@ instance Unifiable Kind where
         run k (VarK a)                = bind varK a (Fix k)
         run k l                       = unifyDefault (Fix k) (Fix l)
 
-unifyPair 
-  :: (Unifiable t, Substitutable t t) 
-  => (t, t) 
-  -> (t, t) 
+unifyPair
+  :: (Unifiable t, Substitutable t t)
+  => (t, t)
+  -> (t, t)
   -> Either UnificationError (Substitution t)
 unifyPair (t1, t2) (u1, u2) = do
     sub1 <- unify t1 u1
     sub2 <- unify (apply sub1 t2) (apply sub1 u2)
     pure (sub2 <> sub1)
 
-bind 
-  :: (Eq a, Free a) 
-  => (Name -> a) 
-  -> Name 
-  -> a 
+bind
+  :: (Eq a, Free a)
+  => (Name -> a)
+  -> Name
+  -> a
   -> Either UnificationError (Substitution a)
 bind con var ty
     | con var == ty         = pure (Substitution mempty)
@@ -203,7 +204,7 @@ bind con var ty
     | otherwise             = pure (var `mapsTo` ty)
 
 unifyDefault :: (Eq a) => a -> a -> Either UnificationError (Substitution a)
-unifyDefault t u 
+unifyDefault t u
     | t == u    = pure (Substitution mempty)
     | otherwise = throwError CannotUnify
 
@@ -230,7 +231,7 @@ instance Free TyClass where
 instance Free Scheme where
     free (Forall vars _ ty) = free ty \\ Set.fromList vars
 
-instance Free Kind where 
+instance Free Kind where
     free = cata alg where
         alg (ArrK k l)  = k `union` l
         alg (VarK name) = Set.singleton name

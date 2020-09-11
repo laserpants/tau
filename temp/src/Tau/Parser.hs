@@ -53,7 +53,6 @@ reserved =
     , "then"
     , "else"
     , "match"
-    , "with"
     , "True"
     , "False"
     , "not"
@@ -133,7 +132,7 @@ expr :: Parser Expr
 expr = makeExprParser ast operator
 
 parseExpr :: Text -> Either ParseError Expr
-parseExpr = parse (spaces *> expr <* eof) ""
+parseExpr = runParser (spaces *> expr <* eof) ""
 
 ifClause :: Parser Expr
 ifClause = do
@@ -157,18 +156,21 @@ parseLet con kword = do
 
 matchWith :: Parser Expr
 matchWith = do
-    term <- keyword "match" *> expr
-    clss <- keyword "with"  *> some clause
-    pure (matchS term clss)
+    term  <- keyword "match" *> expr
+    first <- clause "="
+    rest  <- many (clause "|")
+    pure (matchS term (first:rest))
 
 lamMatch :: Parser Expr
 lamMatch = do
-    clss <- keyword "\\match" *> some clause
-    pure (lamMatchS clss)
+    keyword "\\match"
+    first <- clause "="
+    rest  <- many (clause "|")
+    pure (lamMatchS (first:rest))
 
-clause :: Parser (Pattern, Expr)
-clause = do
-    pat  <- symbol "|"  *> parsePattern
+clause :: Text -> Parser (Pattern, Expr)
+clause sym = do
+    pat  <- symbol sym  *> parsePattern
     term <- symbol "=>" *> expr
     pure (pat, term)
 
@@ -239,11 +241,10 @@ stringPrim = lexeme (String . pack <$> chars) where
 type_ :: Parser Type
 type_ = makeExprParser parser [[ InfixR (arrT <$ symbol "->") ]]
   where
-    parser :: Parser Type
     parser = do
         atoms <- some atom
         pure (foldl1 appT atoms)
-    atom :: Parser Type
+
     atom = parens type_
        <|> varT <$> name
        <|> conT <$> constructor
