@@ -12,9 +12,9 @@ import qualified Tau.Env as Env
 
 testValueEnv :: ValueEnv Eval
 testValueEnv = Env.fromList
-    [ ("Cons"   , apply "Cons" 2)
-    , ("Nil"    , apply "Nil" 0) 
-    , ("Tuple2" , apply "Tuple2" 2)
+    [ ("Cons"   , saturate "Cons" 2)
+    , ("Nil"    , saturate "Nil" 0) 
+    , ("Tuple2" , saturate "Tuple2" 2)
     , ("fst"    , evald (lamS "p" (matchS (varS "p") [(conP "Tuple2" [varP "a", varP "b"], varS "a")])))
     , ("snd"    , evald (lamS "p" (matchS (varS "p") [(conP "Tuple2" [varP "a", varP "b"], varS "b")])))
     ]

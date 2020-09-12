@@ -59,6 +59,18 @@ type Kind = Fix KindF
 $(deriveShow1 ''KindF)
 $(deriveEq1   ''KindF)
 
+newtype Assumption a = Assumption { getAssumption :: (Name, a) }
+    deriving (Show, Eq, Functor, Foldable, Traversable)
+
+removeAssumption :: Name -> [Assumption a] -> [Assumption a]
+removeAssumption var = filter ((/=) var . assumptionName)
+
+removeManyAssumptions :: [Name] -> [Assumption a] -> [Assumption a]
+removeManyAssumptions = flip (foldr removeAssumption)
+
+assumptionName :: Assumption a -> Name
+assumptionName = fst . getAssumption
+
 -- ============================================================================
 -- == Constructors
 -- ============================================================================
@@ -105,8 +117,8 @@ newtype Substitution a = Substitution { getSub :: Map Name a }
 class Substitutable s t where
     apply :: Substitution s -> t -> t
 
-fromList :: [(Name, a)] -> Substitution a
-fromList = Substitution . Map.fromList
+subFromList :: [(Name, a)] -> Substitution a
+subFromList = Substitution . Map.fromList
 
 compose
   :: (Substitutable a a)

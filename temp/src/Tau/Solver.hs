@@ -22,6 +22,12 @@ import qualified Data.Set.Monad as Set
 newtype Monoset = Monoset { getMonoset :: Set Name }
     deriving (Show, Eq)
 
+insertIntoMonoset :: Name -> Monoset -> Monoset
+insertIntoMonoset var (Monoset set) = Monoset (Set.insert var set)
+
+insertManyIntoMonoset :: [Name] -> Monoset -> Monoset
+insertManyIntoMonoset = flip (foldr insertIntoMonoset)
+
 instance Free Monoset where
     free (Monoset set) = set
 
@@ -89,7 +95,7 @@ generalize vars tycls ty = Forall vars' (filter (inSet . free) tycls) ty where
 
 instantiate :: (MonadSupply Name m) => Scheme -> m (Type, [TyClass])
 instantiate (Forall vars tycls ty) = do
-    sub <- fromList <$> (zip <$> pure vars <*> traverse (const supply) vars)
+    sub <- subFromList <$> (zip <$> pure vars <*> traverse (const supply) vars)
     pure (apply sub ty, apply sub <$> tycls)
 
 -- ============================================================================
@@ -99,7 +105,7 @@ instantiate (Forall vars tycls ty) = do
 type KindConstraint = (Kind, Kind)
 
 solveKinds
-  :: (MonadError UnificationError m, MonadSupply Name m)
+  :: (MonadError UnificationError m)
   => [KindConstraint]
   -> m (Substitution Kind)
 solveKinds [] = pure mempty

@@ -67,8 +67,8 @@ replCommand input =
 --        , ("Cons" , ["Nil", "Cons"]) 
 --        ]
 --    , valueEnv =
---        [ ("Cons"   , apply "Cons" 2)
---        , ("Nil"    , apply "Nil" 0) 
+--        [ ("Cons"   , saturate "Cons" 2)
+--        , ("Nil"    , saturate "Nil" 0) 
 --        ]
 --    , optionsEnv =
 --        [ ("quit", quit)
@@ -84,8 +84,8 @@ replConstructorEnv = constructorEnv
 
 replValueEnv :: ValueEnv Eval
 replValueEnv = Env.fromList
-    [ ("Cons"   , apply "Cons" 2)
-    , ("Nil"    , apply "Nil" 0) 
+    [ ("Cons"   , saturate "Cons" 2)
+    , ("Nil"    , saturate "Nil" 0) 
     ]
 
 replOptions :: Options Repl

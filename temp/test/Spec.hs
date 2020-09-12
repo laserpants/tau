@@ -1,8 +1,10 @@
 import Tau.EvalTests
+import Tau.KindInferenceTests
 import Tau.ParserTests
 import Tau.PatternAnomaliesCheckTests
 import Tau.PatternCompilerTests
 import Tau.SubstitutionTests
+import Tau.TypeInferenceTests
 import Tau.TypeUnificationTests
 import Test.Hspec
 
@@ -15,3 +17,5 @@ main =
         describe "\nPattern anomalies check\n" testPatternAnomaliesCheck
         describe "\nEval\n" testEval
         describe "\nSubstitutions\n" testSubstitute
+        describe "\nType inference\n" testTypeInference
+        describe "\nKind inference\n" testKindInference
