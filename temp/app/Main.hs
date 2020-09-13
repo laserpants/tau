@@ -63,11 +63,11 @@ import Tau.Util
 main :: IO ()
 main = pure ()
 
-cs1 :: [TypeConstraint]
-cs1 = 
-    [ Implicit (varT "a2") (varT "a1") (Monoset mempty)
-    , Explicit (varT "a1") (Forall ["a"] [TyCl "Num" (varT "a")] (arrT (varT "a") (arrT (varT "a") (varT "a"))))
-    ]
-
-runSolver :: IO (Either UnificationError (Substitution Type, [TyClass]))
-runSolver = evalSupplyT (runExceptT (solveTypes cs1)) (nameSupply "$$a")
+--cs1 :: [TypeConstraint]
+--cs1 = 
+--    [ Implicit (varT "a2") (varT "a1") (Monoset mempty)
+--    , Explicit (varT "a1") (Forall ["a"] [TyCl "Num" (varT "a")] (arrT (varT "a") (arrT (varT "a") (varT "a"))))
+--    ]
+--
+--runSolver :: IO (Either UnificationError (Substitution Type, [TyClass]))
+--runSolver = evalSupplyT (runExceptT (solveTypes cs1)) (nameSupply "$$a")

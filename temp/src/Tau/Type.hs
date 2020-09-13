@@ -14,6 +14,7 @@ import Control.Monad.Except
 import Data.Eq.Deriving
 import Data.Function (on)
 import Data.Functor.Foldable
+import Data.List (nub)
 import Data.Map.Strict (Map)
 import Data.Set.Monad (Set, union, member, (\\))
 import Data.Text.Prettyprint.Doc
@@ -101,6 +102,25 @@ tString  = conT "String"   -- ^ String
 tChar    = conT "Char"     -- ^ Char
 tUnit    = conT "Unit"     -- ^ Unit
 tVoid    = conT "Void"     -- ^ Void
+
+normalize :: Scheme -> Scheme
+normalize (Forall vars tycls ty) =
+    Forall (updateVar <$> vars) 
+           (apply sub <$> tycls) 
+           (apply sub ty)
+  where
+    updateVar v = Map.findWithDefault v v map1
+    letters = [1..] >>= flip replicateM ['a'..'z'] >>= (:[]) . Text.pack
+    map1 = Map.fromList (nub (allVars ty) `zip` letters)
+    sub = Substitution (varT <$> map1)
+
+allVars :: Type -> [Name]
+allVars = cata alg where
+  alg = \case
+    VarT v   -> [v]
+    AppT t u -> t <> u
+    ArrT t u -> t <> u
+    ConT{}   -> []
 
 -- ============================================================================
 -- == Substitutable

@@ -21,6 +21,7 @@ import qualified Tau.Env as Env
 
 data TypeError
     = UnboundVariable Name
+    | CannotSolve
     | UnificationError UnificationError
     | EmptyMatchStatement
     deriving (Show, Eq)
@@ -37,6 +38,9 @@ newtype InferType a = InferType { unInferType :: InferTypeStack a } deriving
     , MonadSupply Name
     , MonadReader Monoset )
 
+instance MonadFail InferType where
+    fail _ = throwError CannotSolve
+
 runInferType :: Env Scheme -> Expr -> Either TypeError (Type, Substitution Type, [TyClass])
 runInferType env = runInfer . inferType env
 
@@ -47,12 +51,12 @@ runInfer = unInferType
     >>> flip evalSupply (nameSupply "a")
 
 liftErrors :: (MonadError TypeError m) => (ExceptT UnificationError m) a -> m a
-liftErrors = runExceptT  
-    >>> (mapLeft UnificationError <$>) 
-    >>> (liftEither =<<) 
+liftErrors = runExceptT
+    >>> (mapLeft UnificationError <$>)
+    >>> (liftEither =<<)
 
-inferType 
-  :: (MonadError TypeError m, MonadSupply Name m, MonadReader Monoset m) 
+inferType
+  :: (MonadFail m, MonadError TypeError m, MonadSupply Name m, MonadReader Monoset m)
   => Env Scheme
   -> Expr
   -> m (Type, Substitution Type, [TyClass])
@@ -76,39 +80,39 @@ failIfExists _ = pure ()
 unboundVars :: Env a -> [Assumption b] -> [Name]
 unboundVars env as = Env.namesNotIn env (fst . getAssumption <$> as)
 
-infer 
-  :: (MonadError TypeError m, MonadSupply Name m, MonadReader Monoset m) 
-  => Expr 
+infer
+  :: (MonadError TypeError m, MonadSupply Name m, MonadReader Monoset m)
+  => Expr
   -> m (Type, [TypeAssumption], [TypeConstraint])
 infer = fmap to3 . runWriterT . cata alg where
-    alg 
-      :: (MonadError TypeError m, MonadSupply Name m, MonadReader Monoset m) 
+    alg
+      :: (MonadError TypeError m, MonadSupply Name m, MonadReader Monoset m)
       => Algebra ExprF (WriterT [TypeConstraint] m (Type, [TypeAssumption]))
     alg = \case
         VarS name -> do
            beta <- varT <$> supply
            pure (beta, [Assumption (name, beta)])
- 
+
         LamS name expr -> do
            var <- supply
            let beta = varT var
            (t1, a1) <- local (insertIntoMonoset var) expr
            tell [Equality t beta | (y, t) <- getAssumption <$> a1, name == y]
            pure (beta `arrT` t1, removeAssumption name a1)
- 
+
         AppS exprs ->
            foldl1 inferApp exprs
- 
+
         LitS prim -> do
            t <- inferPrim prim
            pure (t, [])
- 
+
         LetS var expr body ->
            inferLet var expr body False
- 
+
         RecS var expr body ->
            inferLet var expr body True
- 
+
         IfS cond true false -> do
            (t1, a1) <- cond
            (t2, a2) <- true
@@ -116,31 +120,31 @@ infer = fmap to3 . runWriterT . cata alg where
            tell [Equality t1 tBool]
            tell [Equality t2 t3]
            pure (t2, a1 <> a2 <> a3)
- 
+
         MatchS _ [] ->
            throwError EmptyMatchStatement
- 
+
         LamMatchS [] ->
            throwError EmptyMatchStatement
- 
+
         MatchS expr clss -> do
             beta <- varT <$> supply
             (t1, a1) <- expr
             as <- foldrM (inferClause beta t1) [] clss
             pure (beta, a1 <> as)
- 
+
         LamMatchS clss -> do
             beta <- varT <$> supply
             zeta <- varT <$> supply
             as <- foldrM (inferClause beta zeta) [] clss
             pure (zeta `arrT` beta, as)
- 
+
         OpS op ->
            inferOp op
- 
+
         AnnS{} ->
            undefined  -- TODO
- 
+
         ErrS ->
            pure (conT "", [])
 
@@ -158,7 +162,7 @@ inferClause beta t (pat, expr) as = do
     tell [Equality t t2]
     tell (constraints a1 a2)
     pure (as <> removeManyAssumptions vars a1 <> removeManyAssumptions vars a2)
-              
+
   where
     vars = patternVars pat
     constraints a1 a2 = do
@@ -223,9 +227,9 @@ inferLet var expr body rec = do
     tell [Implicit t t1 set | (y, t) <- getAssumption <$> a1 <> a2, var == y]
     pure (t2, (if rec then removeAssumption var a1 else a1) <> removeAssumption var a2)
 
-inferOp 
-  :: (MonadSupply Name m, MonadWriter [TypeConstraint] m) 
-  => OpF (m (Type, [TypeAssumption])) 
+inferOp
+  :: (MonadSupply Name m, MonadWriter [TypeConstraint] m)
+  => OpF (m (Type, [TypeAssumption]))
   -> m (Type, [TypeAssumption])
 inferOp = \case
     AddS e1 e2 -> op2 e1 e2 numericOp2
@@ -241,7 +245,7 @@ inferOp = \case
     NotS e     -> op1 e numericOp1
 
 op1
-  :: (MonadSupply Name m, MonadWriter [TypeConstraint] m) 
+  :: (MonadSupply Name m, MonadWriter [TypeConstraint] m)
   => m (Type, [TypeAssumption])
   -> Scheme
   -> m (Type, [TypeAssumption])
@@ -249,10 +253,10 @@ op1 e1 sig = do
     (t1, a1) <- e1
     beta <- varT <$> supply
     tell [Explicit (t1 `arrT` beta) sig]
-    pure (beta, a1) 
+    pure (beta, a1)
 
 op2
-  :: (MonadSupply Name m, MonadWriter [TypeConstraint] m) 
+  :: (MonadSupply Name m, MonadWriter [TypeConstraint] m)
   => m (Type, [TypeAssumption])
   -> m (Type, [TypeAssumption])
   -> Scheme
