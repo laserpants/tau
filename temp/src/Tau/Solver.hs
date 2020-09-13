@@ -65,9 +65,11 @@ solveTypes
 solveTypes = flip runStateT [] . solver
 
 solver
-  :: (MonadError UnificationError m, MonadSupply Name m)
-  => [TypeConstraint]
-  -> StateT [TyClass] m (Substitution Type)
+  :: ( MonadState [TyClass] m
+     , MonadError UnificationError m
+     , MonadSupply Name m )
+  => [TypeConstraint] 
+  -> m (Substitution Type)
 solver [] = pure (Substitution mempty)
 solver constraints = do
     (cs, c) <- maybe (error "Unsolvable constraints") pure (choice constraints)

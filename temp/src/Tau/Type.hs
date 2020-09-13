@@ -43,11 +43,6 @@ data TyClass = TyCl Name Type
 data Scheme = Forall [Name] [TyClass] Type
     deriving (Show, Eq)
 
-data UnificationError
-    = CannotUnify
-    | InfiniteType
-    deriving (Show, Eq)
-
 data KindF a
     = VarK Name            -- ^ Kind placeholder variable
     | ArrK a a             -- ^ Type-level function
@@ -175,6 +170,11 @@ instance (Substitutable t t) => Monoid (Substitution t) where
 -- ============================================================================
 -- == Unifiable
 -- ============================================================================
+
+data UnificationError
+    = CannotUnify
+    | InfiniteType
+    deriving (Show, Eq)
 
 class Unifiable t where
     unify :: t -> t -> Either UnificationError (Substitution t)

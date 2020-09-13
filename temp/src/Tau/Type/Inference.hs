@@ -12,7 +12,6 @@ import Control.Monad.Supply
 import Control.Monad.Writer
 import Data.Either.Extra (mapLeft)
 import Data.Foldable (foldrM)
-import Data.Function ((&))
 import Tau.Env
 import Tau.Expr
 import Tau.Solver
@@ -48,7 +47,9 @@ runInfer = unInferType
     >>> flip evalSupply (nameSupply "a")
 
 liftErrors :: (MonadError TypeError m) => (ExceptT UnificationError m) a -> m a
-liftErrors = (liftEither =<<) . (mapLeft UnificationError <$>) . runExceptT  
+liftErrors = runExceptT  
+    >>> (mapLeft UnificationError <$>) 
+    >>> (liftEither =<<) 
 
 inferType 
   :: (MonadError TypeError m, MonadSupply Name m, MonadReader Monoset m) 
@@ -62,7 +63,7 @@ inferType env expr = do
             throwError (UnboundVariable var)
 
         [] -> do
-            (sub, tycls) <- solveTypes (cs <> envConstraints as) & liftErrors 
+            (sub, tycls) <- liftErrors (solveTypes (cs <> envConstraints as) )
             pure (ty, sub, tycls)
   where
     envConstraints :: [TypeAssumption] -> [TypeConstraint]

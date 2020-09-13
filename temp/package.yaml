@@ -24,6 +24,7 @@ dependencies:
   - repline
   - set-monad
   - text
+  - transformers
 
 library:
   source-dirs: 

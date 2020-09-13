@@ -7,6 +7,7 @@ module Tau.Util
   , nameSupply
   , prettyPrint
   , to3
+  , liftMaybe
   ) where
 
 import Data.Functor.Foldable
@@ -33,3 +34,7 @@ prettyPrint = renderStrict . layoutPretty defaultLayoutOptions . pretty
 
 to3 :: ((a, b), c) -> (a, b, c)
 to3 ((a, b), c) = (a, b, c)
+
+liftMaybe :: (MonadFail m) => String -> Maybe a -> m a
+liftMaybe err Nothing = fail err 
+liftMaybe _ (Just ok) = pure ok
