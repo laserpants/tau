@@ -177,6 +177,7 @@ typeInferTest030 = appS [lamS "xs" (matchS (varS "xs") clauses), appS [varS "Con
         [ (conP "Cons" [varP "y", varP "ys"], litInt 1)
         , (conP "Nil" [], litInt 2) ]
 
+-- HERE --
 typeInferTest03b :: Expr
 typeInferTest03b = appS [lamMatchS clauses, appS [varS "Cons", litInt 5, appS [varS "Nil"]]]
   where
