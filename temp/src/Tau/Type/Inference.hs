@@ -75,7 +75,7 @@ inferType env expr = do
 
 failIfExists :: (MonadError TypeError m) => [Name] -> m ()
 failIfExists (var:_) = throwError (UnboundVariable var)
-failIfExists _ = pure ()
+failIfExists _       = pure ()
 
 unboundVars :: Env a -> [Assumption b] -> [Name]
 unboundVars env as = Env.namesNotIn env (fst . getAssumption <$> as)
