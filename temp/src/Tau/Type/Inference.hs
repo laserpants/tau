@@ -58,13 +58,9 @@ inferType
   -> m (Type, Substitution Type, [TyClass])
 inferType env expr = do
     (ty, as, cs) <- infer expr
-    case unboundVars env as of
-        (var:_) ->
-            throwError (UnboundVariable var)
-
-        [] -> do
-            (sub, tycls) <- liftErrors (solveTypes (cs <> envConstraints as) )
-            pure (ty, sub, tycls)
+    failIfExists (unboundVars env as)
+    (sub, tycls) <- liftErrors (solveTypes (cs <> envConstraints as) )
+    pure (ty, sub, tycls)
   where
     envConstraints :: [TypeAssumption] -> [TypeConstraint]
     envConstraints as = do
@@ -73,6 +69,10 @@ inferType env expr = do
         guard (x == y)
         pure (Explicit s t)
 
+failIfExists :: (MonadError TypeError m) => [Name] -> m ()
+failIfExists (var:_) = throwError (UnboundVariable var)
+failIfExists _ = pure ()
+
 unboundVars :: Env a -> [Assumption b] -> [Name]
 unboundVars env as = Env.namesNotIn env (fst . getAssumption <$> as)
 
@@ -80,8 +80,10 @@ infer
   :: (MonadError TypeError m, MonadSupply Name m, MonadReader Monoset m) 
   => Expr 
   -> m (Type, [TypeAssumption], [TypeConstraint])
-infer = fmap to3 . runWriterT . cata alg 
-  where
+infer = fmap to3 . runWriterT . cata alg where
+    alg 
+      :: (MonadError TypeError m, MonadSupply Name m, MonadReader Monoset m) 
+      => Algebra ExprF (WriterT [TypeConstraint] m (Type, [TypeAssumption]))
     alg = \case
         VarS name -> do
            beta <- varT <$> supply
