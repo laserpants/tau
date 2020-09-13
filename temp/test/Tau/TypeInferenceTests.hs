@@ -52,10 +52,10 @@ testTypeEnv = Env.fromList
       , Forall ["a", "b"] []
         (arrT (appT (appT (conT "Tuple2") (varT "a")) (varT "b")) (varT "b"))
       )
---    , ( "Baz"
---      , Forall [] []
---        tBool
---      )
+    , ( "Baz"
+      , Forall [] []
+        tBool
+      )
 --    , ( "(==)"
 --      , Forall ["a"] [TyCl "Eq" (varT "a")]
 --        (arrT (varT "a") (arrT (varT "a") tBool))
@@ -113,3 +113,74 @@ testTypeInference = do
         (appS [lamS "xs" (matchS (varS "xs") [ (conP "Cons" [varP "y", varP "ys"], litInt 1), (conP "Nil" [], litInt 2) ]), appS [varS "Cons", litInt 5, appS [varS "Nil"]]])
         (Forall [] [] tInt)
 
+    succeedInferType
+        (appS [lamMatchS [ (conP "Cons" [varP "y", varP "ys"], litInt 1), (conP "Nil" [], litInt 2) ], appS [varS "Cons", litInt 5, appS [varS "Nil"]]])
+        (Forall [] [] tInt)
+
+    succeedInferType
+        (lamMatchS [ (conP "Cons" [varP "y", varP "ys"], litInt 1) , (conP "Nil" [], litInt 2) ])
+        (Forall ["a"] [] (arrT (appT (conT "List") (varT "a")) tInt))
+
+    succeedInferType
+        (appS [lamS "xs" (matchS (varS "xs") [ (anyP, litInt 1) ]), appS [varS "Cons", litInt 5, appS [varS "Nil"]]])
+        (Forall [] [] tInt)
+
+    succeedInferType
+        (appS [lamS "xs" (matchS (varS "xs") [ (anyP, litInt 1) ]), appS [varS "Cons", litInt 5, varS "Nil"]])
+        (Forall [] [] tInt)
+
+    succeedInferType
+        (appS [lamS "xs" (matchS (varS "xs") [ (varP "x", litInt 1) ]), appS [varS "Cons", litInt 5, appS [varS "Nil"]]])
+        (Forall [] [] tInt)
+        
+    succeedInferType
+        (appS [lamS "xs" (matchS (varS "xs") [ (conP "Cons" [varP "y", varP "ys"], litInt 1) ]), appS [varS "Cons", litInt 5, appS [varS "Nil"]]])
+        (Forall [] [] tInt)
+
+    succeedInferType
+        (letS "xs" (appS [varS "Baz"]) (matchS (varS "xs") [ (conP "Baz" [], litString "hello")]))
+        (Forall [] [] tString)
+
+    succeedInferType
+        (appS [lamS "xs" (matchS (varS "xs") [(conP "Cons" [varP "y", varP "ys"], litInt 1), (conP "Nil" [], litInt 2)]), appS [varS "Nil"]])
+        (Forall [] [] tInt)
+
+    succeedInferType
+        (appS [lamMatchS [(conP "Cons" [varP "y", varP "ys"], litInt 1), (conP "Nil" [], litInt 2)], appS [varS "Nil"]])
+        (Forall [] [] tInt)
+
+    succeedInferType
+        (appS [lamMatchS [(conP "Cons" [varP "y", varP "ys"], litInt 1), (conP "Nil" [], litInt 2)], varS "Nil"])
+        (Forall [] [] tInt)
+
+    succeedInferType
+        (matchS (appS [varS "Cons", litInt 6, appS [varS "Nil"]]) [(conP "Cons" [varP "y", varP "ys"], opS (AddS (varS "y") (litInt 1)))])
+        (Forall [] [] tInt)
+
+    succeedInferType
+        (letS "xs" (appS [varS "Cons", litBool True, appS [varS "Nil"]]) (letS "ys" (appS [varS "Cons", litInt 1, appS [varS "Nil"]]) (litInt 5)))
+        (Forall [] [] tInt)
+
+    succeedInferType
+        (matchS (appS [varS "Cons", litInt 6, appS [varS "Nil"]]) [(conP "Cons" [varP "y", varP "ys"], opS (AddS (varS "y") (litInt 1))), (conP "Cons" [litP (Int 4), varP "ys"], litInt 5)])
+        (Forall [] [] tInt)
+
+    succeedInferType
+        (matchS (appS [varS "Cons", litInt 6, appS [varS "Nil"]]) [ (conP "Cons" [varP "y", varP "ys"], litString "one") , (anyP, litString "two") ])
+        (Forall [] [] tString)
+
+    succeedInferType
+        (letS "plus" (lamS "a" (lamS "b" (addS (varS "a") (varS "b")))) (letS "plus5" (appS [varS "plus", litInt 5]) (letS "id" (lamS "x" (varS "x")) (appS [appS [varS "id", varS "plus5"], appS [varS "id", litInt 3]]))))
+        (Forall [] [] tInt)
+
+    succeedInferType
+        (letS "id" (lamS "x" (varS "x")) (letS "x" (appS [varS "Tuple2", varS "id", litInt 4]) (addS (appS [varS "fst", varS "x", varS "snd", varS "x"]) (litInt 1))))
+        (Forall [] [] tInt)
+
+    succeedInferType
+        (recS "f" (lamS "n" (ifS (varS "n" `eqS` litInt 0) (litInt 1) (mulS (varS "n") (appS [varS "f", subS (varS "n") (litInt 1)])))) (appS [varS "f", litInt 5]))
+        (Forall [] [] tInt)
+
+    succeedInferType
+        (appS [lamS "x" (matchS (varS "x") [(litP (Int 1), litInt 2), (litP (Int 2), litInt 3)]), litInt 1])
+        (Forall [] [] tInt)
