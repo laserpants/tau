@@ -1,7 +1,9 @@
 {-# LANGUAGE OverloadedStrings #-}
+{-# LANGUAGE TemplateHaskell   #-}
 module Tau.EvalTests where
 
 import Data.Maybe (fromJust, isNothing)
+import TH
 import Tau.Eval
 import Tau.Expr
 import Tau.Patterns
@@ -15,8 +17,8 @@ testValueEnv = Env.fromList
     [ ("Cons"   , saturate "Cons" 2)
     , ("Nil"    , saturate "Nil" 0) 
     , ("Tuple2" , saturate "Tuple2" 2)
-    , ("fst"    , evald (lamS "p" (matchS (varS "p") [(conP "Tuple2" [varP "a", varP "b"], varS "a")])))
-    , ("snd"    , evald (lamS "p" (matchS (varS "p") [(conP "Tuple2" [varP "a", varP "b"], varS "b")])))
+    , ("fst"    , evald $(mkExpr "\\p => match p = Tuple2 a b => a")) 
+    , ("snd"    , evald $(mkExpr "\\p => match p = Tuple2 a b => b"))
     ]
 
 evald :: Expr -> Value Eval
@@ -49,94 +51,94 @@ succeedEvalFunction expr =
 testEval :: SpecWith ()
 testEval = do
     succeedEval 
-        (appS [lamS "x" (matchS (varS "x") [(litP (Int 3), litInt 1), (varP "x", varS "x")]), litInt 3])
+        $(mkExpr "(\\x => match x = 3 => 1 | x => x) 3")
         (Value (Int 1))
 
     succeedEval 
-        (appS [lamS "x" (matchS (varS "x") [(litP (Int 3), litInt 1), (varP "x", varS "x")]), litInt 5])
+        $(mkExpr "(\\x => match x = 3 => 1 | x => x) 5")
         (Value (Int 5))
 
     succeedEval 
-        (appS [lamMatchS [(litP (Int 3), litInt 1), (varP "x", varS "x")], litInt 3])
+        $(mkExpr "(\\match = 3 => 1 | x => x) 3")
         (Value (Int 1))
 
     succeedEval 
-        (appS [lamMatchS [(litP (Int 3), litInt 1), (varP "x", varS "x")], litInt 5])
+        $(mkExpr "(\\match = 3 => 1 | x => x) 5")
         (Value (Int 5))
 
     succeedEvalFunction
-        (lamS "a" (lamS "b" (varS "a")))
+        $(mkExpr "(\\a => \\b => a)")
 
     succeedEvalFunction
-        (letS "const" (lamS "a" (lamS "b" (varS "a"))) (appS [varS "const", litUnit]))
+        $(mkExpr "let const = \\a => \\b => a in const ()")
 
     succeedEval 
-        (letS "const" (lamS "a" (lamS "b" (varS "a"))) (appS [varS "const", litUnit, litInt 5]))
+        $(mkExpr "let const = \\a => \\b => a in const () 5")
         (Value Unit)
 
     succeedEval 
-        (appS [lamS "xs" (matchS (varS "xs") [(conP "Cons" [varP "y", varP "ys"], litInt 1), (conP "Nil" [], litInt 2)]), appS [varS "Cons", litInt 5, appS [varS "Nil"]]])
+        $(mkExpr "(\\xs => match xs = Cons y ys => 1 | Nil => 2) (Cons 5 Nil)")
         (Value (Int 1))
 
     succeedEval 
-        (appS [lamS "xs" (matchS (varS "xs") [(conP "Cons" [varP "y", varP "ys"], litInt 1), (conP "Nil" [], litInt 2)]), appS [varS "Cons", litInt 5, varS "Nil"]])
+        $(mkExpr "(\\xs => match xs = Cons y ys => 1 | Nil => 2) (Cons 5 Nil)")
         (Value (Int 1))
 
     succeedEval 
-        (appS [lamMatchS [(conP "Cons" [varP "y", varP "ys"], litInt 1), (conP "Nil" [], litInt 2)], appS [varS "Cons", litInt 5, appS [varS "Nil"]]])
+        $(mkExpr "(\\match = Cons y ys => 1 | Nil => 2) (Cons 5 Nil)")
         (Value (Int 1))
 
     succeedEval 
-        (appS [lamS "xs" (matchS (varS "xs") [(conP "Cons" [varP "y", varP "ys"], litInt 1), (conP "Nil" [], litInt 2)]), appS [varS "Nil"]])
+        $(mkExpr "(\\xs => match xs = Cons y ys => 1 | Nil => 2) Nil")
         (Value (Int 2))
 
     succeedEval 
-        (letS "plus" (lamS "a" (lamS "b" (addS (varS "a") (varS "b")))) (letS "plus5" (appS [varS "plus", litInt 5]) (letS "id" (lamS "x" (varS "x")) (appS [appS [varS "id", varS "plus5"], appS [varS "id", litInt 3]]))))
+        $(mkExpr "let plus = \\a => \\b => a + b in let plus5 = plus 5 in let id = \\x => x in (id plus5) (id 3)")
         (Value (Int 8))
 
     succeedEval 
-        (letS "id" (lamS "x" (varS "x")) (letS "x" (appS [varS "Tuple2", varS "id", litInt 4]) (addS (appS [varS "fst", varS "x", varS "snd", varS "x"]) (litInt 1))))
+        $(mkExpr "let id = \\x => x in let x = Tuple2 id 4 in (fst x snd x) + 1")
         (Value (Int 5))
 
     succeedEvalFunction
-        (letS "id" (lamS "x" (varS "x")) (letS "x" (appS [varS "Tuple2", varS "id", litInt 4]) (appS [varS "fst", varS "x"])))
+        $(mkExpr "let id = \\x => x in let x = Tuple2 id 4 in fst x")
 
     failEval 
-        (letS "x" (varS "x") (varS "x"))
+        $(mkExpr "let x = x in x")
 
     failEval 
-        (letS "f" (lamS "n" (ifS (varS "n" `eqS` litInt 0) (litInt 1) (mulS (varS "n") (appS [varS "f", subS (varS "n") (litInt 1)])))) (appS [varS "f", litInt 5]))
+        $(mkExpr "let f = \\n => if n == 0 then 1 else n * (f (n - 1)) in f 5")
 
     succeedEval 
-        (recS "f" (lamS "n" (ifS (varS "n" `eqS` litInt 0) (litInt 1) (mulS (varS "n") (appS [varS "f", subS (varS "n") (litInt 1)])))) (appS [varS "f", litInt 5]))
+        $(mkExpr "let rec f = \\n => if n == 0 then 1 else n * (f (n - 1)) in f 5")
         (Value (Int 120))
 
     failEval 
         (varS "hello")
 
     succeedEval 
-        (appS [lamS "x" (matchS (varS "x") [(litP (Int 1), litInt 2), (litP (Int 2), litInt 3)]), litInt 1])
+        $(mkExpr "(\\x => match x = 1 => 2 | 2 => 3) 1")
         (Value (Int 2))
 
     failEval 
-        (letS "f" (lamS "n" (ifS (eqS (varS "n") (litInt 0)) (litInt 1) (mulS (varS "n") (appS [varS "f", subS (varS "n") (litInt 1)])))) (appS [varS "f", litInt 5]))
+        $(mkExpr "let f = \\n => if n == 0 then 1 else n * (f (n - 1)) in f 5")
 
     succeedEval 
-        (recS "f" (lamS "n" (ifS (eqS (varS "n") (litInt 0)) (litInt 1) (mulS (varS "n") (appS [varS "f", subS (varS "n") (litInt 1)])))) (appS [varS "f", litInt 5]))
+        $(mkExpr "let rec f = \\n => if n == 0 then 1 else n * (f (n - 1)) in f 5")
         (Value (Int 120))
 
     succeedEval 
-        (recS "length" (lamS "xs" (matchS (varS "xs") [(conP "Nil" [], litInt 0), (conP "Cons" [varP "x", varP "xs"], addS (litInt 1) (appS [varS "length", varS "xs"]))])) (appS [varS "length", appS [varS "Cons", litInt 1, appS [varS "Cons", litInt 1, appS [varS "Nil"]]]]))
+        $(mkExpr "let rec length = \\xs => match xs = Nil => 0 | Cons x xs => 1 + (length xs) in length (Cons 1 (Cons 1 Nil))")
         (Value (Int 2))
 
     succeedEval 
-        (recS "length" (lamMatchS [(conP "Nil" [], litInt 0), (conP "Cons" [varP "x", varP "xs"], addS (litInt 1) (appS [varS "length", varS "xs"]))]) (appS [varS "length", appS [varS "Cons", litInt 1, appS [varS "Cons", litInt 1, appS [varS "Nil"]]]]))
+        $(mkExpr "let rec length = \\match = Nil => 0 | Cons x xs => 1 + (length xs) in length (Cons 1 (Cons 1 Nil))")
         (Value (Int 2))
 
     succeedEval 
-        (recS "map" (lamS "f" (lamS "xs" (matchS (varS "xs") [(conP "Nil" [], varS "Nil"), (conP "Cons" [varP "x1", varP "xs1"], appS [varS "Cons", appS [varS "f", varS "x1"], appS [varS "map", varS "f", varS "xs1"]])]))) (appS [varS "map", lamS "x" (eqS (varS "x") (litInt 1)), appS [varS "Cons", litInt 1, appS [varS "Cons", litInt 2, appS [varS "Cons", litInt 3, varS "Nil"]]]]))
+        $(mkExpr "let rec map = \\f => \\xs => match xs = Nil => Nil | Cons x1 xs1 => Cons (f x1) (map f xs1) in map (\\x => x == 1) (Cons 1 (Cons 2 (Cons 3 Nil)))")
         (Data "Cons" [Value (Bool True), Data "Cons" [Value (Bool False), Data "Cons" [Value (Bool False), Data "Nil" []]]])
 
     succeedEval 
-        (recS "map" (lamS "f" (lamMatchS [(conP "Nil" [], varS "Nil"), (conP "Cons" [varP "x1", varP "xs1"], appS [varS "Cons", appS [varS "f", varS "x1"], appS [varS "map", varS "f", varS "xs1"]])])) (appS [varS "map", lamS "x" (eqS (varS "x") (litInt 1)), appS [varS "Cons", litInt 1, appS [varS "Cons", litInt 2, appS [varS "Cons", litInt 3, varS "Nil"]]]]))
+        $(mkExpr "let rec map = \\f => \\match = Nil => Nil | Cons x1 xs1 => Cons (f x1) (map f xs1) in map (\\x => x == 1) (Cons 1 (Cons 2 (Cons 3 Nil)))")
         (Data "Cons" [Value (Bool True), Data "Cons" [Value (Bool False), Data "Cons" [Value (Bool False), Data "Nil" []]]])

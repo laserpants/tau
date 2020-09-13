@@ -1,7 +1,9 @@
 {-# LANGUAGE OverloadedStrings #-}
+{-# LANGUAGE TemplateHaskell   #-}
 module Tau.TypeUnificationTests where
 
 import Data.Either
+import TH
 import Tau.Type
 import Test.Hspec
 import Utils
@@ -15,7 +17,6 @@ failUnifyTypes :: Type -> Type -> SpecWith ()
 failUnifyTypes t1 t2 = do
     let result = unify t1 t2
     describe (description t1 t2) $
-
         it "✗ fails to unify" $
             isLeft result
 
@@ -23,7 +24,6 @@ succeedUnifyTypes :: Type -> Type -> SpecWith ()
 succeedUnifyTypes t1 t2 = do
     let result = unify t1 t2
     describe (description t1 t2) $ do
-
         it "✔ yields a substitution" $
             isRight result
 
@@ -34,33 +34,33 @@ succeedUnifyTypes t1 t2 = do
 testTypeUnification :: SpecWith ()
 testTypeUnification = do
     succeedUnifyTypes
-        (arrT (varT "a") (varT "b"))
-        (arrT tInt tInt)
+        $(mkType "a -> b")
+        $(mkType "Int -> Int")
 
     failUnifyTypes
-        (arrT (varT "a") (varT "a"))
-        (arrT tInt tBool)
+        $(mkType "a -> a")
+        $(mkType "Int -> Bool")
 
     succeedUnifyTypes
-        (arrT (varT "a") (varT "a"))
-        (arrT tInt tInt)
+        $(mkType "a -> a")
+        $(mkType "Int -> Int")
 
     succeedUnifyTypes
-        (arrT (varT "a") (arrT (varT "b") (varT "a")))
-        (arrT (varT "a") (arrT tInt (varT "a")))
+        $(mkType "a -> b -> a")
+        $(mkType "a -> Int -> a")
 
     succeedUnifyTypes
-        (arrT (varT "a") (arrT (varT "b") (varT "a")))
-        (arrT (varT "a") (arrT tInt (varT "b")))
+        $(mkType "a -> b -> a")
+        $(mkType "a -> Int -> b")
 
     failUnifyTypes
-        (arrT (varT "a") (arrT (varT "b") (varT "a")))
-        (arrT tInt (arrT tInt tBool))
+        $(mkType "a -> b -> a")
+        $(mkType "Int -> Int -> Bool")
 
     succeedUnifyTypes
-        (appT (conT "List") (varT "a"))
-        (appT (conT "List") tInt)
+        $(mkType "List a")
+        $(mkType "List Int")
 
     failUnifyTypes
-        (appT (conT "List") (varT "a"))
+        $(mkType "List a")
         tInt

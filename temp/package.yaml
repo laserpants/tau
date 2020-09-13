@@ -55,4 +55,5 @@ tests:
       #- -Wall
     dependencies:
     - tau
+    - template-haskell
     - hspec

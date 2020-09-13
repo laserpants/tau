@@ -1,6 +1,8 @@
 {-# LANGUAGE OverloadedStrings #-}
+{-# LANGUAGE TemplateHaskell   #-}
 module Tau.TypeInferenceTests where
 
+import TH
 import Tau.Env (Env(..))
 import Tau.Expr
 import Tau.Solver
@@ -12,58 +14,19 @@ import qualified Tau.Env as Env
 
 testTypeEnv :: Env Scheme
 testTypeEnv = Env.fromList
-    [ ( "concat"
-      , Forall [] []
-        (arrT tString (arrT tString tString))
-      )
-    , ( "show"
-      , Forall ["a"] [TyCl "Show" (varT "a")]
-        (arrT (varT "a") tString)
-      )
-    , ( "Nil"
-      , Forall ["a"] []
-        (appT (conT "List") (varT "a"))
-      )
-    , ( "Cons"
-      , Forall ["a"] []
-        (arrT (varT "a") (arrT (appT (conT "List") (varT "a")) (appT (conT "List") (varT "a"))))
-      )
-    , ( "const"
-      , Forall ["a", "b"] []
-        (arrT (varT "a") (arrT (varT "b") (varT "a")))
-      )
-    , ( "foo"
-      , Forall ["a"] []
-        (arrT (varT "a") (varT "a"))
-      )
-    , ( "Foo"
-      , Forall ["a"] []
-        (arrT (varT "a") (appT (conT "List") (varT "a")))
-      )
-    , ( "Tuple2"
-      , Forall ["a", "b"] []
-        (arrT (varT "a") (arrT (varT "b") (appT (appT (conT "Tuple2") (varT "a")) (varT "b"))))
-      )
-    , ( "fst"
-      , Forall ["a", "b"] []
-        (arrT (appT (appT (conT "Tuple2") (varT "a")) (varT "b")) (varT "a"))
-      )
-    , ( "snd"
-      , Forall ["a", "b"] []
-        (arrT (appT (appT (conT "Tuple2") (varT "a")) (varT "b")) (varT "b"))
-      )
-    , ( "Baz"
-      , Forall [] []
-        tBool
-      )
---    , ( "(==)"
---      , Forall ["a"] [TyCl "Eq" (varT "a")]
---        (arrT (varT "a") (arrT (varT "a") tBool))
---      )
---    , ( "(+)"
---      , Forall ["a"] [TyCl "Num" (varT "a")]
---        (arrT (varT "a") (arrT (varT "a") (varT "a")))
---      )
+    [ ( "concat" , $(mkScheme "String -> String -> String") )
+    , ( "show"   , $(mkScheme "forall a. (Show a) => a -> String") )
+    , ( "Nil"    , $(mkScheme "forall a. List a") )
+    , ( "Cons"   , $(mkScheme "forall a. a -> List a -> List a") )
+    , ( "const"  , $(mkScheme "forall a b. a -> b -> a") )
+    , ( "foo"    , $(mkScheme "forall a. a -> a") )
+    , ( "Foo"    , $(mkScheme "forall a. a -> List a") )
+    , ( "Tuple2" , $(mkScheme "forall a b. a -> b -> Tuple2 a b") )
+    , ( "fst"    , $(mkScheme "forall a b. Tuple2 a b -> a") )
+    , ( "snd"    , $(mkScheme "forall a b. Tuple2 a b -> b") )
+    , ( "Baz"    , $(mkScheme "Bool") )
+    , ( "equals" , $(mkScheme "forall a. (Eq a) => a -> a -> Bool") )
+    , ( "plus"   , $(mkScheme "forall a. (Num a) => a -> a -> a") )
     ]
 
 runTest :: Expr -> Either TypeError (Type, [TyClass])
@@ -71,116 +34,156 @@ runTest expr = do
     (ty, sub, tycls) <- runInferType testTypeEnv expr
     pure (apply sub ty, apply sub <$> tycls)
 
+result :: Expr -> Either TypeError Scheme
+result expr = normalize . generalize mempty [] . fst <$> runTest expr
+
 succeedInferType :: Expr -> Scheme -> SpecWith ()
 succeedInferType expr expected =
     describe ("The expression : " <> prettyString expr) $
         it ("✔ has type " <> prettyString expected) $
-            got == Right (normalize expected)
-  where
-    got = normalize . generalize mempty [] . fst <$> runTest expr
+            result expr == Right (normalize expected)
+
+failInferTypeWithError :: TypeError -> Expr -> SpecWith ()
+failInferTypeWithError err expr =
+    describe ("The expression : " <> prettyString expr) $
+        it ("✗ fails to unify with error " <> show err) $
+            result expr == Left err
 
 testTypeInference :: SpecWith ()
 testTypeInference = do
     succeedInferType
-        (letS "const" (lamS "a" (lamS "b" (varS "a"))) (appS [varS "const", litUnit]))
-        (Forall ["a"] [] (varT "a" `arrT` tUnit))
+        $(mkExpr "let const = \\a => \\b => a in const ()")
+        $(mkScheme "forall a. a -> Unit")
 
     succeedInferType
-        (appS [varS "const", litInt 5, litUnit])
-        (Forall [] [] tInt)
+        $(mkExpr "const 5 ()")
+        $(mkScheme "Int")
 
     succeedInferType
-        (appS [varS "foo", litInt 5])
-        (Forall [] [] tInt)
+        $(mkExpr "foo 5")
+        $(mkScheme "Int")
 
     succeedInferType
-        (appS [varS "Foo", litInt 5])
-        (Forall [] [] (appT (conT "List") tInt))
+        $(mkExpr "Foo 5")
+        $(mkScheme "List Int")
 
     succeedInferType
-        (lamS "a" (varS "a"))
-        (Forall ["a"] [] (varT "a" `arrT` varT "a"))
+        $(mkExpr "\\a => a")
+        $(mkScheme "forall a. a -> a")
 
     succeedInferType
-        (lamS "a" (lamS "b" (varS "a")))
-        (Forall ["a", "b"] [] (varT "a" `arrT` (varT "b" `arrT` varT "a")))
+        $(mkExpr "\\a => \\b => a")
+        $(mkScheme "forall a b. a -> b -> a")
 
     succeedInferType
-        (letS "const" (lamS "a" (lamS "b" (varS "a"))) (appS [varS "const", litUnit, litInt 5]))
-        (Forall [] [] tUnit)
+        $(mkExpr "\\a => \\b => a")
+        $(mkScheme "forall a b. a -> (b -> a)")
 
     succeedInferType
-        (appS [lamS "xs" (matchS (varS "xs") [ (conP "Cons" [varP "y", varP "ys"], litInt 1), (conP "Nil" [], litInt 2) ]), appS [varS "Cons", litInt 5, appS [varS "Nil"]]])
-        (Forall [] [] tInt)
+        $(mkExpr "let const = \\a => \\b => a in const () 5")
+        $(mkScheme "Unit")
 
     succeedInferType
-        (appS [lamMatchS [ (conP "Cons" [varP "y", varP "ys"], litInt 1), (conP "Nil" [], litInt 2) ], appS [varS "Cons", litInt 5, appS [varS "Nil"]]])
-        (Forall [] [] tInt)
+        $(mkExpr "(\\xs => match xs = Cons y ys => 1 | Nil => 2) (Cons 5 Nil)")
+        $(mkScheme "Int")
 
     succeedInferType
-        (lamMatchS [ (conP "Cons" [varP "y", varP "ys"], litInt 1) , (conP "Nil" [], litInt 2) ])
-        (Forall ["a"] [] (arrT (appT (conT "List") (varT "a")) tInt))
+        $(mkExpr "(\\match = Cons y ys => 1 | Nil => 2) (Cons 5 Nil)")
+        $(mkScheme "Int")
 
     succeedInferType
-        (appS [lamS "xs" (matchS (varS "xs") [ (anyP, litInt 1) ]), appS [varS "Cons", litInt 5, appS [varS "Nil"]]])
-        (Forall [] [] tInt)
+        $(mkExpr "\\match = Cons y ys => 1 | Nil => 2")
+        $(mkScheme "forall a. List a -> Int")
 
     succeedInferType
-        (appS [lamS "xs" (matchS (varS "xs") [ (anyP, litInt 1) ]), appS [varS "Cons", litInt 5, varS "Nil"]])
-        (Forall [] [] tInt)
+        $(mkExpr "(\\xs => match xs = _ => 1) (Cons 5 Nil)")
+        $(mkScheme "Int")
 
     succeedInferType
-        (appS [lamS "xs" (matchS (varS "xs") [ (varP "x", litInt 1) ]), appS [varS "Cons", litInt 5, appS [varS "Nil"]]])
-        (Forall [] [] tInt)
+        $(mkExpr "(\\xs => match xs = x => 1) (Cons 5 Nil)")
+        $(mkScheme "Int")
         
     succeedInferType
-        (appS [lamS "xs" (matchS (varS "xs") [ (conP "Cons" [varP "y", varP "ys"], litInt 1) ]), appS [varS "Cons", litInt 5, appS [varS "Nil"]]])
-        (Forall [] [] tInt)
+        $(mkExpr "(\\xs => match xs = Cons y ys => 1) (Cons 5 Nil)")
+        $(mkScheme "Int")
 
     succeedInferType
-        (letS "xs" (appS [varS "Baz"]) (matchS (varS "xs") [ (conP "Baz" [], litString "hello")]))
-        (Forall [] [] tString)
+        $(mkExpr "let xs = Baz in match xs = Baz => \"hello\"")
+        $(mkScheme "String")
 
     succeedInferType
-        (appS [lamS "xs" (matchS (varS "xs") [(conP "Cons" [varP "y", varP "ys"], litInt 1), (conP "Nil" [], litInt 2)]), appS [varS "Nil"]])
-        (Forall [] [] tInt)
+        $(mkExpr "(\\xs => match xs = Cons y ys => 1 | Nil => 2) Nil")
+        $(mkScheme "Int")
 
     succeedInferType
         (appS [lamMatchS [(conP "Cons" [varP "y", varP "ys"], litInt 1), (conP "Nil" [], litInt 2)], appS [varS "Nil"]])
-        (Forall [] [] tInt)
+        $(mkScheme "Int")
 
     succeedInferType
         (appS [lamMatchS [(conP "Cons" [varP "y", varP "ys"], litInt 1), (conP "Nil" [], litInt 2)], varS "Nil"])
-        (Forall [] [] tInt)
+        $(mkScheme "Int")
 
     succeedInferType
-        (matchS (appS [varS "Cons", litInt 6, appS [varS "Nil"]]) [(conP "Cons" [varP "y", varP "ys"], opS (AddS (varS "y") (litInt 1)))])
-        (Forall [] [] tInt)
+        $(mkExpr "match Cons 6 Nil = Cons y ys => y + 1")
+        $(mkScheme "Int")
 
     succeedInferType
-        (letS "xs" (appS [varS "Cons", litBool True, appS [varS "Nil"]]) (letS "ys" (appS [varS "Cons", litInt 1, appS [varS "Nil"]]) (litInt 5)))
-        (Forall [] [] tInt)
+        $(mkExpr "let xs = Cons True Nil in let ys = Cons 1 Nil in 5")
+        $(mkScheme "Int")
 
     succeedInferType
-        (matchS (appS [varS "Cons", litInt 6, appS [varS "Nil"]]) [(conP "Cons" [varP "y", varP "ys"], opS (AddS (varS "y") (litInt 1))), (conP "Cons" [litP (Int 4), varP "ys"], litInt 5)])
-        (Forall [] [] tInt)
+        $(mkExpr "match Cons 6 Nil = Cons y ys => y + 1 | Cons 4 ys => 5")
+        $(mkScheme "Int")
 
     succeedInferType
-        (matchS (appS [varS "Cons", litInt 6, appS [varS "Nil"]]) [ (conP "Cons" [varP "y", varP "ys"], litString "one") , (anyP, litString "two") ])
-        (Forall [] [] tString)
+        $(mkExpr "match Cons 6 Nil = Cons y ys => \"one\" | _ => \"two\"")
+        $(mkScheme "String")
 
     succeedInferType
-        (letS "plus" (lamS "a" (lamS "b" (addS (varS "a") (varS "b")))) (letS "plus5" (appS [varS "plus", litInt 5]) (letS "id" (lamS "x" (varS "x")) (appS [appS [varS "id", varS "plus5"], appS [varS "id", litInt 3]]))))
-        (Forall [] [] tInt)
+        $(mkExpr "let plus = \\a => \\b => a + b in let plus5 = plus 5 in let id = \\x => x in (id plus5) (id 3)")
+        $(mkScheme "Int")
 
     succeedInferType
-        (letS "id" (lamS "x" (varS "x")) (letS "x" (appS [varS "Tuple2", varS "id", litInt 4]) (addS (appS [varS "fst", varS "x", varS "snd", varS "x"]) (litInt 1))))
-        (Forall [] [] tInt)
+        $(mkExpr "let id = \\x => x in let x = Tuple2 id 4 in (fst x snd x) + 1")
+        $(mkScheme "Int")
 
     succeedInferType
-        (recS "f" (lamS "n" (ifS (varS "n" `eqS` litInt 0) (litInt 1) (mulS (varS "n") (appS [varS "f", subS (varS "n") (litInt 1)])))) (appS [varS "f", litInt 5]))
-        (Forall [] [] tInt)
+        $(mkExpr "let rec f = \\n => if n == 0 then 1 else n * (f (n - 1)) in f 5")
+        $(mkScheme "Int")
 
     succeedInferType
-        (appS [lamS "x" (matchS (varS "x") [(litP (Int 1), litInt 2), (litP (Int 2), litInt 3)]), litInt 1])
-        (Forall [] [] tInt)
+        $(mkExpr "(\\x => match x = 1 => 2 | 2 => 3) 1")
+        $(mkScheme "Int")
+
+    failInferTypeWithError (UnificationError CannotUnify)
+        $(mkExpr "match Cons \"a\" Nil = Cons y ys => y + 1")
+
+    failInferTypeWithError (UnificationError CannotUnify)
+        $(mkExpr "match Cons 6 Nil = Cons y ys => y + 1 | Cons 4 ys => \"foo\"")
+
+    failInferTypeWithError (UnificationError CannotUnify)
+        $(mkExpr "match Cons 6 Nil = Cons y ys => y + 1 | 5 => 1")
+
+    failInferTypeWithError (UnificationError CannotUnify)
+        $(mkExpr "match Cons 6 Nil = Cons y ys => y + 1 | Cons \"w\" z => 1")
+
+    failInferTypeWithError (UnificationError CannotUnify)
+        $(mkExpr "match Cons 6 Nil = Cons y ys => y + 1 | Cons z 5 => 1")
+
+    failInferTypeWithError (UnificationError CannotUnify)
+        $(mkExpr "match Cons 6 Nil = Cons y ys => y | _ => \"two\"")
+
+    failInferTypeWithError EmptyMatchStatement
+        (matchS (appS [varS "Nil"]) [])
+
+    failInferTypeWithError (UnificationError CannotUnify)
+        $(mkExpr "if 1 == True then 1 else 0")
+
+    failInferTypeWithError (UnificationError CannotUnify)
+        $(mkExpr "if Cons True Nil == Cons 1 Nil then 1 else 0")
+
+    failInferTypeWithError (UnboundVariable "x")
+        $(mkExpr "let x = x in x")
+
+    failInferTypeWithError (UnboundVariable "f")
+        $(mkExpr "let f = \\n => if n == 0 then 1 else n * (f (n - 1)) in f 5")

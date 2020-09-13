@@ -1,10 +1,12 @@
 {-# LANGUAGE OverloadedStrings #-}
+{-# LANGUAGE TemplateHaskell   #-}
 module Tau.PatternAnomaliesCheckTests where
 
 import Control.Monad.Reader
-import Test.Hspec
+import TH
 import Tau.Expr
 import Tau.Patterns
+import Test.Hspec
 import Utils
 
 testConstructorEnv :: ConstructorEnv
@@ -57,44 +59,43 @@ notUsefulPattern pat patterns =
 
 testPatternAnomaliesCheck :: SpecWith ()
 testPatternAnomaliesCheck = do
-
     exhaustivePatterns
-        [ conP "Cons" [varP "x", conP "Cons" [varP "y", varP "ys"]]
-        , conP "Nil" []
-        , conP "Cons" [varP "z", varP "zs"]
+        [ $(mkPattern "Cons x (Cons y ys)")
+        , $(mkPattern "Nil")
+        , $(mkPattern "Cons z zs")
         ]
 
     nonExhaustivePatterns
-        [ conP "Cons" [varP "x", conP "Cons" [varP "y", varP "ys"]]
-        , conP "Cons" [varP "z", varP "zs"]
+        [ $(mkPattern "Cons x (Cons y ys)")
+        , $(mkPattern "Cons z zs")
         ]
 
     nonExhaustivePatterns
-        [ conP "Cons" [varP "x", conP "Cons" [varP "y", varP "ys"]]
-        , conP "Cons" [varP "z", varP "zs"]
-        , conP "Cons" [anyP, anyP]
-        ]
-
-    exhaustivePatterns
-        [ conP "Cons" [varP "x", conP "Cons" [varP "y", varP "ys"]]
-        , conP "Cons" [varP "z", varP "zs"]
-        , conP "Cons" [anyP, anyP]
-        , conP "Nil" []
+        [ $(mkPattern "Cons x (Cons y ys)")
+        , $(mkPattern "Cons z zs")
+        , $(mkPattern "Cons _ _")
         ]
 
     exhaustivePatterns
-        [ conP "Cons" [varP "x", conP "Cons" [varP "y", varP "ys"]]
-        , conP "Nil" []
-        , conP "Cons" [varP "z", conP "Nil" []]
+        [ $(mkPattern "Cons x (Cons y ys)")
+        , $(mkPattern "Cons z zs")
+        , $(mkPattern "Cons _ _")
+        , $(mkPattern "Nil")
+        ]
+
+    exhaustivePatterns
+        [ $(mkPattern "Cons x (Cons y ys)")
+        , $(mkPattern "Nil")
+        , $(mkPattern "Cons z Nil")
         ]
 
     nonExhaustivePatterns
-        [ conP "Cons" [varP "x", conP "Cons" [varP "y", varP "ys"]]
-        , conP "Nil" []
+        [ $(mkPattern "Cons x (Cons y ys)")
+        , $(mkPattern "Nil")
         ]
 
     nonExhaustivePatterns
-        [ conP "Nil" []
+        [ $(mkPattern "Nil")
         ]
 
     exhaustivePatterns
@@ -102,13 +103,13 @@ testPatternAnomaliesCheck = do
         ]
 
     exhaustivePatterns
-        [ conP "Cons" [varP "x", varP "ys"]
-        , conP "Nil" []
+        [ $(mkPattern "Cons x ys")
+        , $(mkPattern "Nil")
         ]
 
     exhaustivePatterns
-        [ conP "Cons" [varP "x", varP "ys"]
-        , varP "x"
+        [ $(mkPattern "Cons x ys")
+        , $(mkPattern "x")
         ]
 
     exhaustivePatterns
@@ -152,18 +153,18 @@ testPatternAnomaliesCheck = do
 
     notUsefulPattern
         (conP "Nil" [])
-        [ conP "Cons" [varP "x", varP "ys"]
-        , varP "x" 
+        [ $(mkPattern "Cons x ys")
+        , $(mkPattern "x")
         ]
 
     notUsefulPattern
         (conP "Nil" [])
-        [ conP "Cons" [varP "x", varP "ys"]
-        , varP "x"
-        , conP "Nil" [] 
+        [ $(mkPattern "Cons x ys")
+        , $(mkPattern "x")
+        , $(mkPattern "Nil")
         ]
 
     usefulPattern
         (conP "Nil" [])
-        [ conP "Cons" [varP "x", varP "ys"]
+        [ $(mkPattern "Cons x ys")
         ]

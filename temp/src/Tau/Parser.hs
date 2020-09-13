@@ -262,3 +262,11 @@ scheme :: Parser Scheme
 scheme = Forall <$> (fromMaybe [] <$> quantifier)
                 <*> (fromMaybe [] <$> classConstraints)
                 <*> type_
+
+-- ============================================================================
+-- == Kind
+-- ============================================================================
+
+kind :: Parser Kind
+kind = makeExprParser parser [[ InfixR (arrK <$ symbol "->") ]] where
+    parser = parens kind <|> (symbol "*" $> starK)

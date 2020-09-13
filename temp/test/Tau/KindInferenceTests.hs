@@ -1,6 +1,8 @@
 {-# LANGUAGE OverloadedStrings #-}
+{-# LANGUAGE TemplateHaskell   #-}
 module Tau.KindInferenceTests where
 
+import TH
 import Tau.Env
 import Tau.Kind.Inference
 import Tau.Type
@@ -10,9 +12,9 @@ import qualified Tau.Env as Env
 
 testKindEnv :: Env Kind
 testKindEnv = Env.fromList
-    [ ("List"  , arrK starK starK)
-    , ("State" , arrK starK (arrK starK starK))
-    , ("Monad" , arrK starK starK)
+    [ ( "List"  , $(mkKind "* -> *") )
+    , ( "State" , $(mkKind "* -> * -> *") )
+    , ( "Monad" , $(mkKind "* -> *") )
     ]
 
 succeedInferKind :: Type -> Kind -> SpecWith ()
@@ -24,12 +26,12 @@ succeedInferKind ty expected =
 testKindInference :: SpecWith ()
 testKindInference = do
     succeedInferKind
-        (appT (conT "List") (varT "a"))
-        starK
+        $(mkType "List a")
+        $(mkKind "*")
 
     succeedInferKind
-        (appT (appT (conT "State") (varT "a")) (conT "Int"))
-        starK
+        $(mkType "State a Int")
+        $(mkKind "*")
 
 -- TODO
 --    succeedInferKind
@@ -37,9 +39,9 @@ testKindInference = do
 --        starK
 
     succeedInferKind
-        (arrT (appT (conT "List") (varT "a")) (appT (conT "List") (conT "Int")))
-        starK
+        $(mkType "List a -> List Int")
+        $(mkKind "*")
 
     succeedInferKind
-        (conT "List") 
-        (arrK starK starK)
+        $(mkType "List")
+        $(mkKind "* -> *")

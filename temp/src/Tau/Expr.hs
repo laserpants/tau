@@ -306,15 +306,10 @@ prettyExpr n = unfix >>> \case
         <+> pretty false
 
     MatchS expr (cls:clss) ->
-        wrap n $ "match"
-        <+> pretty expr
-        <+> matchClause equals cls
-        <+> hsep (matchClause pipe <$> clss)
+        wrap n $ "match" <+> pretty expr <+> prettyMatch cls clss
 
     LamMatchS (cls:clss) ->
-        wrap n $ backslash <> "match"
-        <+> matchClause equals cls
-        <+> hsep (matchClause pipe <$> clss)
+        wrap n $ backslash <> "match" <+> prettyMatch cls clss
 
     OpS ops ->
         wrap n $ prettyOp 0 ops
@@ -335,8 +330,13 @@ wrap :: Int -> Doc a -> Doc a
 wrap 0 doc = doc
 wrap _ doc = parens doc
 
-matchClause :: Doc a -> (Pattern, Expr) -> Doc a
-matchClause sym (pat, expr) = sym <+> pretty pat <+> "=>" <+> pretty expr
+prettyMatch :: MatchClause Expr -> [MatchClause Expr] -> Doc a
+prettyMatch cls clss =
+    clause equals cls
+        <> (if not (null clss) then space else mempty)
+        <> hsep (clause pipe <$> clss)
+  where
+    clause sym (pat, expr) = sym <+> pretty pat <+> "=>" <+> pretty expr
 
 prettyOp :: Int -> Op -> Doc a
 prettyOp n = \case
