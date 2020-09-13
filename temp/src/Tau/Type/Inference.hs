@@ -63,7 +63,7 @@ inferType
 inferType env expr = do
     (ty, as, cs) <- infer expr
     failIfExists (unboundVars env as)
-    (sub, tycls) <- liftErrors (solveTypes (cs <> envConstraints as) )
+    Just (sub, tycls) <- liftErrors (solveTypes (cs <> envConstraints as) )
     pure (ty, sub, tycls)
   where
     envConstraints :: [TypeAssumption] -> [TypeConstraint]

@@ -7,6 +7,7 @@ module Tau.Solver where
 import Control.Monad.Except
 import Control.Monad.State
 import Control.Monad.Supply
+import Control.Monad.Trans.Maybe
 import Data.List (find, delete)
 import Data.Set.Monad (Set, union, intersection, (\\))
 import Data.Tuple.Extra (both)
@@ -59,10 +60,10 @@ choice :: [TypeConstraint] -> Maybe ([TypeConstraint], TypeConstraint)
 choice xs = find (uncurry isSolvable) [(ys, x) | x <- xs, let ys = delete x xs]
 
 solveTypes
-  :: (MonadFail m, MonadError UnificationError m, MonadSupply Name m)
+  :: (MonadError UnificationError m, MonadSupply Name m)
   => [TypeConstraint]
-  -> m (Substitution Type, [TyClass])
-solveTypes = flip runStateT [] . solver
+  -> m (Maybe (Substitution Type, [TyClass]))
+solveTypes = runMaybeT . flip runStateT [] . solver
 
 solver
   :: ( MonadFail m
