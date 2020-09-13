@@ -46,7 +46,7 @@ succeedInferType expr expected =
 failInferTypeWithError :: TypeError -> Expr -> SpecWith ()
 failInferTypeWithError err expr =
     describe ("The expression : " <> prettyString expr) $
-        it ("✗ fails to unify with error " <> show err) $
+        it ("✗ fails with error " <> show err) $
             result expr == Left err
 
 testTypeInference :: SpecWith ()
@@ -181,6 +181,12 @@ testTypeInference = do
 
     failInferTypeWithError (UnificationError CannotUnify)
         $(mkExpr "if Cons True Nil == Cons 1 Nil then 1 else 0")
+
+    failInferTypeWithError (UnificationError CannotUnify)
+        $(mkExpr "if Cons True Nil == Foo 1 Nil then 1 else 0")
+
+    failInferTypeWithError (UnificationError CannotUnify)
+        $(mkExpr "if Cons True Nil == Cons then 1 else 0")
 
     failInferTypeWithError (UnboundVariable "x")
         $(mkExpr "let x = x in x")
