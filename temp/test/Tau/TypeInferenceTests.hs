@@ -40,21 +40,21 @@ testTypeEnv = Env.fromList
       , Forall ["a"] []
         (arrT (varT "a") (appT (conT "List") (varT "a")))
       )
+    , ( "Tuple2"
+      , Forall ["a", "b"] []
+        (arrT (varT "a") (arrT (varT "b") (appT (appT (conT "Tuple2") (varT "a")) (varT "b"))))
+      )
+    , ( "fst"
+      , Forall ["a", "b"] []
+        (arrT (appT (appT (conT "Tuple2") (varT "a")) (varT "b")) (varT "a"))
+      )
+    , ( "snd"
+      , Forall ["a", "b"] []
+        (arrT (appT (appT (conT "Tuple2") (varT "a")) (varT "b")) (varT "b"))
+      )
 --    , ( "Baz"
 --      , Forall [] []
 --        tBool
---      )
---    , ( "Tuple2"
---      , Forall ["a", "b"] []
---        (arrT (varT "a") (arrT (varT "b") (appT (appT (conT "Tuple2") (varT "a")) (varT "b"))))
---      )
---    , ( "fst"
---      , Forall ["a", "b"] []
---        (arrT (appT (appT (conT "Tuple2") (varT "a")) (varT "b")) (varT "a"))
---      )
---    , ( "snd"
---      , Forall ["a", "b"] []
---        (arrT (appT (appT (conT "Tuple2") (varT "a")) (varT "b")) (varT "b"))
 --      )
 --    , ( "(==)"
 --      , Forall ["a"] [TyCl "Eq" (varT "a")]
