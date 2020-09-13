@@ -8,10 +8,12 @@
 {-# LANGUAGE OverloadedStrings     #-}
 {-# LANGUAGE StrictData            #-}
 {-# LANGUAGE TemplateHaskell       #-}
+{-# LANGUAGE TypeOperators         #-}
 module Tau.Expr where
 
 import Control.Arrow ((>>>))
 import Data.Eq.Deriving
+import Data.Functor.Const
 import Data.List (intersperse)
 import Data.Text (Text)
 import Data.Text.Prettyprint.Doc
@@ -108,6 +110,27 @@ isSimple = cata alg where
     alg VarP{}      = True
     alg (ConP _ ps) = and ps
     alg _           = False
+
+-- ============================================================================
+-- == Annotated AST
+-- ============================================================================
+
+type AnnotatedAstF a = Const a :*: ExprF
+
+-- | Annotated syntax tree
+newtype AnnotatedAst a = AnnotatedAst
+    { getAnnotatedAst :: Fix (AnnotatedAstF a)
+    } deriving (Eq, Show)
+
+instance Substitutable Type (AnnotatedAst Type) where
+    apply sub = getAnnotatedAst >>> cata alg >>> AnnotatedAst where
+        alg (Const ty :*: expr) = Fix (Const (apply sub ty) :*: expr)
+
+toExpr :: AnnotatedAst a -> Expr
+toExpr = cata (Fix . right) . getAnnotatedAst
+
+getAnnotation :: AnnotatedAst a -> a
+getAnnotation = getConst . left . unfix . getAnnotatedAst
 
 -- ============================================================================
 -- == Constructors
