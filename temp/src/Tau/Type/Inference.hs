@@ -5,13 +5,14 @@
 {-# LANGUAGE OverloadedStrings          #-}
 module Tau.Type.Inference where
 
-import Control.Arrow ((>>>))
+import Control.Arrow ((>>>), (&&&), first)
 import Control.Monad.Except
 import Control.Monad.Reader
 import Control.Monad.Supply
 import Control.Monad.Writer
 import Data.Either.Extra (mapLeft)
 import Data.Foldable (foldrM)
+import Data.Functor.Const
 import Tau.Env
 import Tau.Expr
 import Tau.Solver
@@ -79,6 +80,37 @@ failIfExists _       = pure ()
 
 unboundVars :: Env a -> [Assumption b] -> [Name]
 unboundVars env as = Env.namesNotIn env (fst . getAssumption <$> as)
+
+annotated :: t -> ExprF (Fix (AnnotatedAstF t)) -> AnnotatedAst t
+annotated t a = AnnotatedAst $ Fix $ Const t :*: a
+
+expand :: AnnotatedAst t -> (Fix (AnnotatedAstF t), t)
+expand = (id &&& getConst . left . unfix) . getAnnotatedAst
+
+inferX
+  :: (MonadError TypeError m, MonadSupply Name m, MonadReader Monoset m)
+  => Expr
+  -> m (AnnotatedAst Type, [TypeAssumption], [TypeConstraint])
+inferX = fmap to3 . runWriterT . cata alg where
+    alg
+      :: (MonadError TypeError m, MonadSupply Name m, MonadReader Monoset m)
+      => Algebra ExprF (WriterT [TypeConstraint] m (AnnotatedAst Type, [TypeAssumption]))
+    alg = fmap (to3 . first expand <$>) >>> \case
+        VarS name -> do
+            beta <- varT <$> supply
+            pure ( annotated beta (VarS name)
+                 , [Assumption (name, beta)] )
+
+        LamS name expr -> do
+            var <- supply
+            let beta = varT var
+            (expr', t1, a1) <- local (insertIntoMonoset var) expr
+            tell [Equality t beta | (y, t) <- getAssumption <$> a1, name == y]
+            pure ( annotated (beta `arrT` t1) (LamS name expr')
+                 , removeAssumption name a1 )
+
+        _ ->
+            undefined
 
 infer
   :: (MonadError TypeError m, MonadSupply Name m, MonadReader Monoset m)
