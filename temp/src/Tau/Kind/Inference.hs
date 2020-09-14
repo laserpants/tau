@@ -1,7 +1,7 @@
 {-# LANGUAGE FlexibleContexts  #-}
 {-# LANGUAGE LambdaCase        #-}
 {-# LANGUAGE OverloadedStrings #-}
-module Tau.Kind.Inference 
+module Tau.Kind.Inference
   ( KindAssumption
   , inferKind
   , runInferKind
@@ -18,19 +18,26 @@ import qualified Tau.Env as Env
 
 type KindAssumption = Assumption Kind
 
-tellAssumption :: (MonadWriter ([KindAssumption], [KindConstraint]) m) => Name -> Kind -> m ()
+tellAssumption
+  :: (MonadWriter ([KindAssumption], [KindConstraint]) m)
+  => Name
+  -> Kind
+  -> m ()
 tellAssumption name kind = tell ([Assumption (name, kind)], mempty)
 
-tellConstraint :: (MonadWriter ([KindAssumption], [KindConstraint]) m) => KindConstraint -> m ()
+tellConstraint
+  :: (MonadWriter ([KindAssumption], [KindConstraint]) m)
+  => KindConstraint
+  -> m ()
 tellConstraint constraint = tell (mempty, [constraint])
 
 runInferKind :: Env Kind -> Type -> Either UnificationError Kind
 runInferKind env = flip evalSupply (nameSupply "") . runExceptT . inferKind env
 
-inferKind 
-  :: (MonadSupply Name m, MonadError UnificationError m) 
-  => Env Kind 
-  -> Type 
+inferKind
+  :: (MonadSupply Name m, MonadError UnificationError m)
+  => Env Kind
+  -> Type
   -> m Kind
 inferKind env ty = do
     (kind, (as, cs)) <- runWriterT (infer ty)
@@ -45,8 +52,8 @@ inferKind env ty = do
          pure (k, l)
 
 infer
-  :: (MonadSupply Name m, MonadWriter ([KindAssumption], [KindConstraint]) m) 
-  => Type 
+  :: (MonadSupply Name m, MonadWriter ([KindAssumption], [KindConstraint]) m)
+  => Type
   -> m Kind
 infer = cata $ \case
      ArrT t1 t2 -> do
