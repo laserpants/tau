@@ -13,6 +13,7 @@ import Control.Monad.Writer
 import Data.Either.Extra (mapLeft)
 import Data.Foldable (foldrM)
 import Data.Functor.Const
+import Data.Tuple.Extra (first3)
 import Tau.Env
 import Tau.Expr
 import Tau.Solver
@@ -42,8 +43,19 @@ newtype InferType a = InferType { unInferType :: InferTypeStack a } deriving
 instance MonadFail InferType where
     fail _ = throwError CannotSolve
 
-runInferType :: Env Scheme -> Expr -> Either TypeError (Type, Substitution Type, [TyClass])
-runInferType env = runInfer . inferType env
+type TypeInfo = (Fix (AnnotatedAstF Type), Type, [TypeAssumption])
+
+runInferType
+  :: Env Scheme
+  -> Expr
+  -> Either TypeError (Type, Substitution Type, [TyClass])
+runInferType env = (first3 getAnnotation <$>) . runInferTree env
+
+runInferTree
+  :: Env Scheme
+  -> Expr
+  -> Either TypeError (AnnotatedAst Type, Substitution Type, [TyClass])
+runInferTree env = runInfer . inferTypeTree env
 
 runInfer :: InferType a -> Either TypeError a
 runInfer = unInferType
@@ -52,20 +64,18 @@ runInfer = unInferType
     >>> flip evalSupply (nameSupply "a")
 
 liftErrors :: (MonadError TypeError m) => (ExceptT UnificationError m) a -> m a
-liftErrors = runExceptT
-    >>> (mapLeft UnificationError <$>)
-    >>> (liftEither =<<)
+liftErrors = runExceptT >>> (mapLeft UnificationError <$>) >>> (liftEither =<<)
 
-inferType
+inferTypeTree
   :: (MonadFail m, MonadError TypeError m, MonadSupply Name m, MonadReader Monoset m)
   => Env Scheme
   -> Expr
-  -> m (Type, Substitution Type, [TyClass])
-inferType env expr = do
-    (ty, as, cs) <- infer expr
+  -> m (AnnotatedAst Type, Substitution Type, [TyClass])
+inferTypeTree env expr = do
+    (tree, as, cs) <- inferTree expr
     failIfExists (unboundVars env as)
     Just (sub, tycls) <- liftErrors (solveTypes (cs <> envConstraints as) )
-    pure (ty, sub, tycls)
+    pure (tree, sub, tycls)
   where
     envConstraints :: [TypeAssumption] -> [TypeConstraint]
     envConstraints as = do
@@ -74,9 +84,9 @@ inferType env expr = do
         guard (x == y)
         pure (Explicit s t)
 
-failIfExists :: (MonadError TypeError m) => [Name] -> m ()
-failIfExists (var:_) = throwError (UnboundVariable var)
-failIfExists _       = pure ()
+    failIfExists :: (MonadError TypeError m) => [Name] -> m ()
+    failIfExists (var:_) = throwError (UnboundVariable var)
+    failIfExists _       = pure ()
 
 unboundVars :: Env a -> [Assumption b] -> [Name]
 unboundVars env as = Env.namesNotIn env (fst . getAssumption <$> as)
@@ -87,19 +97,18 @@ annotated t a = AnnotatedAst $ Fix $ Const t :*: a
 expand :: AnnotatedAst t -> (Fix (AnnotatedAstF t), t)
 expand = (id &&& getConst . left . unfix) . getAnnotatedAst
 
-inferX
+inferTree
   :: (MonadError TypeError m, MonadSupply Name m, MonadReader Monoset m)
   => Expr
   -> m (AnnotatedAst Type, [TypeAssumption], [TypeConstraint])
-inferX = fmap to3 . runWriterT . cata alg where
-    alg
-      :: (MonadError TypeError m, MonadSupply Name m, MonadReader Monoset m)
-      => Algebra ExprF (WriterT [TypeConstraint] m (AnnotatedAst Type, [TypeAssumption]))
-    alg = fmap (to3 . first expand <$>) >>> \case
+inferTree = fmap to3 . runWriterT . cata alg
+  where
+    alg :: (MonadError TypeError m, MonadSupply Name m, MonadReader Monoset m)
+        => Algebra ExprF (WriterT [TypeConstraint] m (AnnotatedAst Type, [TypeAssumption]))
+    alg = fmap fmap fmap (to3 . first expand) >>> \case
         VarS name -> do
             beta <- varT <$> supply
-            pure ( annotated beta (VarS name)
-                 , [Assumption (name, beta)] )
+            pure (annotated beta (VarS name), [Assumption (name, beta)])
 
         LamS name expr -> do
             var <- supply
@@ -109,92 +118,71 @@ inferX = fmap to3 . runWriterT . cata alg where
             pure ( annotated (beta `arrT` t1) (LamS name expr')
                  , removeAssumption name a1 )
 
-        _ ->
-            undefined
-
-infer
-  :: (MonadError TypeError m, MonadSupply Name m, MonadReader Monoset m)
-  => Expr
-  -> m (Type, [TypeAssumption], [TypeConstraint])
-infer = fmap to3 . runWriterT . cata alg where
-    alg
-      :: (MonadError TypeError m, MonadSupply Name m, MonadReader Monoset m)
-      => Algebra ExprF (WriterT [TypeConstraint] m (Type, [TypeAssumption]))
-    alg = \case
-        VarS name -> do
-           beta <- varT <$> supply
-           pure (beta, [Assumption (name, beta)])
-
-        LamS name expr -> do
-           var <- supply
-           let beta = varT var
-           (t1, a1) <- local (insertIntoMonoset var) expr
-           tell [Equality t beta | (y, t) <- getAssumption <$> a1, name == y]
-           pure (beta `arrT` t1, removeAssumption name a1)
-
-        AppS exprs ->
-           foldl1 inferApp exprs
+        AppS exprs -> do
+            (expr', _, as) <- foldl1 inferApp exprs
+            pure (AnnotatedAst expr', as)
 
         LitS prim -> do
-           t <- inferPrim prim
-           pure (t, [])
+            t <- inferPrim prim
+            pure (annotated t (LitS prim), [])
 
         LetS var expr body ->
-           inferLet var expr body False
+            inferLet False var expr body
 
         RecS var expr body ->
-           inferLet var expr body True
+            inferLet True var expr body
 
         IfS cond true false -> do
-           (t1, a1) <- cond
-           (t2, a2) <- true
-           (t3, a3) <- false
-           tell [Equality t1 tBool]
-           tell [Equality t2 t3]
-           pure (t2, a1 <> a2 <> a3)
+            (cond', t1, a1) <- cond
+            (true', t2, a2) <- true
+            (false', t3, a3) <- false
+            tell [Equality t1 tBool]
+            tell [Equality t2 t3]
+            pure (annotated t2 (IfS cond' true' false'), a1 <> a2 <> a3)
 
         MatchS _ [] ->
-           throwError EmptyMatchStatement
+            throwError EmptyMatchStatement
 
         LamMatchS [] ->
-           throwError EmptyMatchStatement
+            throwError EmptyMatchStatement
 
         MatchS expr clss -> do
             beta <- varT <$> supply
-            (t1, a1) <- expr
-            as <- foldrM (inferClause beta t1) [] clss
-            pure (beta, a1 <> as)
+            (expr', t1, a1) <- expr
+            (clss', as) <- foldrM (inferClause beta t1) ([], []) clss
+            pure (annotated beta (MatchS expr' clss'), a1 <> as)
 
         LamMatchS clss -> do
             beta <- varT <$> supply
             zeta <- varT <$> supply
-            as <- foldrM (inferClause beta zeta) [] clss
-            pure (zeta `arrT` beta, as)
+            (clss', as) <- foldrM (inferClause beta zeta) ([], []) clss
+            pure (annotated (zeta `arrT` beta) (LamMatchS clss'), as)
 
         OpS op ->
-           inferOp op
+            inferOp op
 
         AnnS{} ->
-           undefined  -- TODO
+            undefined  -- TODO
 
         ErrS ->
-           pure (conT "", [])
+            pure (annotated (conT "Error") ErrS, [])
 
 inferClause
   :: (MonadSupply Name m, MonadReader Monoset m, MonadWriter [TypeConstraint] m)
   => Type
   -> Type
-  -> (Pattern, m (Type, [TypeAssumption]))
-  -> [TypeAssumption]
-  -> m [TypeAssumption]
-inferClause beta t (pat, expr) as = do
-    (t1, a1) <- local (insertManyIntoMonoset vars) expr
+  -> MatchClause (m TypeInfo)
+  -> ([MatchClause (Fix (AnnotatedAstF Type))], [TypeAssumption])
+  -> m ([MatchClause (Fix (AnnotatedAstF Type))], [TypeAssumption])
+inferClause beta t (pat, expr) (ps, as) = do
+    (expr', t1, a1) <- local (insertManyIntoMonoset vars) expr
     (t2, a2) <- inferPattern pat
     tell [Equality beta t1]
     tell [Equality t t2]
     tell (constraints a1 a2)
-    pure (as <> removeManyAssumptions vars a1 <> removeManyAssumptions vars a2)
-
+    pure ( (pat, expr'):ps
+         , as <> removeManyAssumptions vars a1
+              <> removeManyAssumptions vars a2 )
   where
     vars = patternVars pat
     constraints a1 a2 = do
@@ -225,15 +213,76 @@ inferPattern = cata $ \case
 
 inferApp
   :: (MonadSupply Name m, MonadWriter [TypeConstraint] m)
-  => m (Type, [TypeAssumption])
-  -> m (Type, [TypeAssumption])
-  -> m (Type, [TypeAssumption])
+  => m TypeInfo
+  -> m TypeInfo
+  -> m TypeInfo
 inferApp fun arg = do
-    (t1, a1) <- fun
-    (t2, a2) <- arg
+    (e1', t1, a1) <- fun
+    (e2', t2, a2) <- arg
     beta <- varT <$> supply
     tell [Equality t1 (t2 `arrT` beta)]
-    pure (beta, a1 <> a2)
+    pure (Fix (Const beta :*: AppS [e1', e2']), beta, a1 <> a2)
+
+inferLet
+  :: (MonadReader Monoset m, MonadWriter [TypeConstraint] m)
+  => Bool
+  -> Name
+  -> m TypeInfo
+  -> m TypeInfo
+  -> m (AnnotatedAst Type, [TypeAssumption])
+inferLet rec var expr body = do
+    (expr', t1, a1) <- expr
+    (body', t2, a2) <- body
+    set <- ask
+    tell [Implicit t t1 set | (y, t) <- getAssumption <$> a1 <> a2, var == y]
+    let (con, as) = if rec
+        then (RecS, removeAssumption var a1)
+        else (LetS, a1)
+    pure ( annotated t2 (con var expr' body')
+         , as <> removeAssumption var a2 )
+
+inferOp
+  :: (MonadSupply Name m, MonadWriter [TypeConstraint] m)
+  => OpF (m TypeInfo)
+  -> m (AnnotatedAst Type, [TypeAssumption])
+inferOp = \case
+    AddS e1 e2 -> op2 AddS e1 e2 numericOp2
+    SubS e1 e2 -> op2 SubS e1 e2 numericOp2
+    MulS e1 e2 -> op2 MulS e1 e2 numericOp2
+    DivS e1 e2 -> op2 DivS e1 e2 numericOp2
+    LtS e1 e2  -> op2 LtS e1 e2 comparisonOp
+    GtS e1 e2  -> op2 GtS e1 e2 comparisonOp
+    EqS e1 e2  -> op2 EqS e1 e2 equalityOp
+    OrS e1 e2  -> op2 OrS e1 e2 logicalOp
+    AndS e1 e2 -> op2 AndS e1 e2 logicalOp
+    NegS e     -> op1 NegS e numericOp1
+    NotS e     -> op1 NotS e numericOp1
+
+op1
+  :: (MonadSupply Name m, MonadWriter [TypeConstraint] m)
+  => (Fix (AnnotatedAstF Type) -> OpF (Fix (AnnotatedAstF Type)))
+  -> m TypeInfo
+  -> Scheme
+  -> m (AnnotatedAst Type, [TypeAssumption])
+op1 con e1 sig = do
+    (e1', t1, a1) <- e1
+    beta <- varT <$> supply
+    tell [Explicit (t1 `arrT` beta) sig]
+    pure (annotated beta (OpS (con e1')), a1)
+
+op2
+  :: (MonadSupply Name m, MonadWriter [TypeConstraint] m)
+  => (Fix (AnnotatedAstF Type) -> Fix (AnnotatedAstF Type) -> OpF (Fix (AnnotatedAstF Type)))
+  -> m TypeInfo
+  -> m TypeInfo
+  -> Scheme
+  -> m (AnnotatedAst Type, [TypeAssumption])
+op2 con e1 e2 sig = do
+    (e1', t1, a1) <- e1
+    (e2', t2, a2) <- e2
+    beta <- varT <$> supply
+    tell [Explicit (t1 `arrT` (t2 `arrT` beta)) sig]
+    pure (annotated beta (OpS (con e1' e2')), a1 <> a2)
 
 inferPrim :: (Monad m) => Prim -> m Type
 inferPrim = pure . \case
@@ -244,61 +293,6 @@ inferPrim = pure . \case
     Float{}   -> tFloat
     Char{}    -> tChar
     String{}  -> tString
-
-inferLet
-  :: (MonadReader Monoset m, MonadWriter [TypeConstraint] m)
-  => Name
-  -> m (Type, [TypeAssumption])
-  -> m (Type, [TypeAssumption])
-  -> Bool
-  -> m (Type, [TypeAssumption])
-inferLet var expr body rec = do
-    (t1, a1) <- expr
-    (t2, a2) <- body
-    set <- ask
-    tell [Implicit t t1 set | (y, t) <- getAssumption <$> a1 <> a2, var == y]
-    pure (t2, (if rec then removeAssumption var a1 else a1) <> removeAssumption var a2)
-
-inferOp
-  :: (MonadSupply Name m, MonadWriter [TypeConstraint] m)
-  => OpF (m (Type, [TypeAssumption]))
-  -> m (Type, [TypeAssumption])
-inferOp = \case
-    AddS e1 e2 -> op2 e1 e2 numericOp2
-    SubS e1 e2 -> op2 e1 e2 numericOp2
-    MulS e1 e2 -> op2 e1 e2 numericOp2
-    DivS e1 e2 -> op2 e1 e2 numericOp2
-    LtS e1 e2  -> op2 e1 e2 comparisonOp
-    GtS e1 e2  -> op2 e1 e2 comparisonOp
-    EqS e1 e2  -> op2 e1 e2 equalityOp
-    OrS e1 e2  -> op2 e1 e2 logicalOp
-    AndS e1 e2 -> op2 e1 e2 logicalOp
-    NegS e     -> op1 e numericOp1
-    NotS e     -> op1 e numericOp1
-
-op1
-  :: (MonadSupply Name m, MonadWriter [TypeConstraint] m)
-  => m (Type, [TypeAssumption])
-  -> Scheme
-  -> m (Type, [TypeAssumption])
-op1 e1 sig = do
-    (t1, a1) <- e1
-    beta <- varT <$> supply
-    tell [Explicit (t1 `arrT` beta) sig]
-    pure (beta, a1)
-
-op2
-  :: (MonadSupply Name m, MonadWriter [TypeConstraint] m)
-  => m (Type, [TypeAssumption])
-  -> m (Type, [TypeAssumption])
-  -> Scheme
-  -> m (Type, [TypeAssumption])
-op2 e1 e2 sig = do
-    (t1, a1) <- e1
-    (t2, a2) <- e2
-    beta <- varT <$> supply
-    tell [Explicit (t1 `arrT` (t2 `arrT` beta)) sig]
-    pure (beta, a1 <> a2)
 
 numericOp1 :: Scheme
 numericOp1 =

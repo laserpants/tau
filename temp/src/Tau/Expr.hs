@@ -122,15 +122,19 @@ newtype AnnotatedAst a = AnnotatedAst
     { getAnnotatedAst :: Fix (AnnotatedAstF a)
     } deriving (Eq, Show)
 
-instance Substitutable Type (AnnotatedAst Type) where
+instance (Substitutable a a) => Substitutable a (AnnotatedAst a) where
     apply sub = getAnnotatedAst >>> cata alg >>> AnnotatedAst where
-        alg (Const ty :*: expr) = Fix (Const (apply sub ty) :*: expr)
+        alg (Const ann :*: expr) = Fix (Const (apply sub ann) :*: expr)
 
 toExpr :: AnnotatedAst a -> Expr
 toExpr = cata (Fix . right) . getAnnotatedAst
 
 getAnnotation :: AnnotatedAst a -> a
 getAnnotation = getConst . left . unfix . getAnnotatedAst
+
+updateAnnotation :: a -> AnnotatedAst a -> AnnotatedAst a
+updateAnnotation ann tree = AnnotatedAst $ Fix (Const ann :*: expr) where
+    expr = right $ unfix $ getAnnotatedAst tree
 
 -- ============================================================================
 -- == Constructors
