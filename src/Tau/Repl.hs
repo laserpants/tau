@@ -5,9 +5,12 @@ import Control.Monad.Reader
 import Data.List (isPrefixOf)
 import Data.Text (pack, unpack)
 import System.Console.Repline
+import Tau.Env (Env)
 import Tau.Eval
 import Tau.Parser
 import Tau.Patterns
+import Tau.Type.Inference
+import Tau.Type
 import Tau.Util
 import Tau.Value
 import Text.Megaparsec.Error (errorBundlePretty)
@@ -40,19 +43,25 @@ replCommand input =
             putStrIO $ unpack (prettyPrint result)
             -- type check
 
-            -- exhaustive check
-            if allPatternsAreExhaustive result replConstructorEnv
-                then do
-                    putStrIO (unpack (prettyPrint result))
-                    case evalExpr (compileAll result) replValueEnv of
-                        Nothing ->
-                            putStrIO "Runtime error"
+            case runInferType replTypeEnv result of
+                Left err ->
+                    putStrIO $ show err
 
-                        Just val ->
-                            putStrIO (unpack (prettyPrint val))
+                Right (ty, sub, _) ->
+                    -- exhaustive check
+                    if allPatternsAreExhaustive result replConstructorEnv
+                        then do
+                            --putStrIO (unpack (prettyPrint result))
+                            case evalExpr (compileAll result) replValueEnv of
+                                Nothing ->
+                                    putStrIO "Runtime error"
 
-                else
-                    putStrIO "Non-exhaustive patterns"
+                                Just val -> do
+                                    let ty' = apply sub ty
+                                    putStrIO (unpack (prettyPrint val <> " : " <> prettyPrint ty'))
+
+                        else
+                            putStrIO "Non-exhaustive patterns"
 
 --data Environments = Environments 
 --    { constructorEnv :: ConstructorEnv
@@ -75,6 +84,13 @@ replCommand input =
 --        , ("help", help)
 --        ]
 --    }
+
+replTypeEnv :: Env Scheme
+replTypeEnv = Env.fromList
+    [ ("Nil"  , Forall ["a"] [] list)
+    , ("Cons" , Forall ["a"] [] (arrT (varT "a") (arrT list list))) ]
+  where
+    list = appT (conT "List") (varT "a")
 
 replConstructorEnv :: ConstructorEnv
 replConstructorEnv = constructorEnv
