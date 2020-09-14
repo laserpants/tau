@@ -1,6 +1,0 @@
-monad-supply/
-dist
-/.stack-work
-*.cabal
-*.bak
-.history

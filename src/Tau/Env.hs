@@ -1,11 +1,9 @@
 {-# LANGUAGE GeneralizedNewtypeDeriving #-}
 module Tau.Env where
 
-import Data.Map.Strict (Map)
-import Data.Text (Text)
+import Data.Map.Strict (Map, notMember)
+import Tau.Util
 import qualified Data.Map.Strict as Map
-
-type Name = Text
 
 newtype Env a = Env { getEnv :: Map Name a }
     deriving (Show, Eq, Semigroup, Monoid)
@@ -18,6 +16,9 @@ insertMany = flip (foldr (uncurry insert))
 
 fromList :: [(Name, a)] -> Env a
 fromList = Env . Map.fromList
+
+toList :: Env a -> [(Name, a)]
+toList = Map.toList . getEnv
 
 union :: Env a -> Env a -> Env a
 union (Env a) (Env b) = Env (Map.union a b)
@@ -33,3 +34,6 @@ findWithDefault value key (Env env) = Map.findWithDefault value key env
 
 findWithDefaultEmpty :: (Monoid a) => Name -> Env a -> a
 findWithDefaultEmpty key (Env env) = Map.findWithDefault mempty key env
+
+namesNotIn :: Env a -> [Name] -> [Name]
+namesNotIn (Env env) = filter (`notMember` env)

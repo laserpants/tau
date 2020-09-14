@@ -2,17 +2,15 @@
 module Tau.Parser where
 
 import Control.Monad.Combinators.Expr
-import Data.Char (isUpper)
-import Data.Function ((&))
 import Data.Functor (($>))
-import Data.Functor.Foldable (Fix(..), unfix)
 import Data.Maybe (fromMaybe)
 import Data.Text (Text, pack, unpack)
 import Data.Void
-import Tau.Juice hiding (($>), name)
+import Tau.Expr
+import Tau.Type
+import Tau.Util
 import Text.Megaparsec hiding (ParseError)
 import Text.Megaparsec.Char
-import qualified Data.Text as Text
 import qualified Text.Megaparsec.Char as Megaparsec
 import qualified Text.Megaparsec.Char.Lexer as Lexer
 
@@ -39,14 +37,11 @@ surroundedBy :: Parser Text -> Parser a -> Parser a
 surroundedBy p = between p p
 
 withInitial :: Parser Char -> Parser Text
-withInitial char = do
-    head <- char
-    tail <- many alphaNumChar
-    pure $ pack (head:tail)
+withInitial pchar = pack <$> ((:) <$> pchar <*> many alphaNumChar)
 
 keyword :: Text -> Parser ()
-keyword token =
-    Megaparsec.string token
+keyword tok =
+    Megaparsec.string tok
         *> notFollowedBy alphaNumChar
         *> spaces
 
@@ -58,7 +53,6 @@ reserved =
     , "then"
     , "else"
     , "match"
-    , "with"
     , "True"
     , "False"
     , "not"
@@ -79,7 +73,7 @@ constructor :: Parser Name
 constructor = word (withInitial upperChar)
 
 -- ============================================================================
--- =================================== Ast ====================================
+-- == Ast
 -- ============================================================================
 
 ast :: Parser Expr
@@ -138,7 +132,7 @@ expr :: Parser Expr
 expr = makeExprParser ast operator
 
 parseExpr :: Text -> Either ParseError Expr
-parseExpr = parse (spaces *> expr <* eof) ""
+parseExpr = runParser (spaces *> expr <* eof) ""
 
 ifClause :: Parser Expr
 ifClause = do
@@ -156,26 +150,29 @@ letBinding = parseLet letS "let"
 parseLet :: (Name -> Expr -> Expr -> Expr) -> Text -> Parser Expr
 parseLet con kword = do
     var  <- keyword kword *> name
-    exp  <- symbol  "="   *> expr
+    term <- symbol  "="   *> expr
     body <- keyword "in"  *> expr
-    pure (con var exp body)
+    pure (con var term body)
 
 matchWith :: Parser Expr
 matchWith = do
-    expr <- keyword "match" *> expr
-    clss <- keyword "with"  *> some clause
-    pure (matchS expr clss)
+    term  <- keyword "match" *> expr
+    first <- clause "="
+    rest  <- many (clause "|")
+    pure (matchS term (first:rest))
 
 lamMatch :: Parser Expr
 lamMatch = do
-    clss <- keyword "\\match" *> some clause
-    pure (lamMatchS clss)
+    keyword "\\match"
+    first <- clause "="
+    rest  <- many (clause "|")
+    pure (lamMatchS (first:rest))
 
-clause :: Parser (Pattern, Expr)
-clause = do
-    pat  <- symbol "|"  *> parsePattern
-    expr <- symbol "->" *> expr
-    pure (pat, expr)
+clause :: Text -> Parser (Pattern, Expr)
+clause sym = do
+    pat  <- symbol sym  *> parsePattern
+    term <- symbol "=>" *> expr
+    pure (pat, term)
 
 parsePattern :: Parser Pattern
 parsePattern = wildcard
@@ -189,9 +186,9 @@ varPattern = varP <$> name
 
 conPattern :: Parser Pattern
 conPattern = do
-    name <- constructor
+    con <- constructor
     pats <- many parsePattern
-    pure (conP name pats)
+    pure (conP con pats)
 
 litPattern :: Parser Pattern
 litPattern = litP <$> prim
@@ -202,7 +199,7 @@ wildcard = symbol "_" $> anyP
 lambda :: Parser Expr
 lambda = do
     var  <- symbol "\\" *> name
-    body <- symbol "->" *> expr
+    body <- symbol "=>" *> expr
     pure (lamS var body)
 
 unit :: Parser Prim
@@ -217,12 +214,12 @@ bool = true <|> false
 integral :: Parser Prim
 integral = do
     n <- lexeme Lexer.decimal
-    pure $ if n > max || n < min
+    pure $ if n > maxInt || n < minInt
         then Integer n
         else Int (fromIntegral n)
   where
-    max = fromIntegral (maxBound :: Int)
-    min = fromIntegral (minBound :: Int)
+    maxInt = fromIntegral (maxBound :: Int)
+    minInt = fromIntegral (minBound :: Int)
 
 float :: Parser Prim
 float = Float <$> lexeme Lexer.float
@@ -238,31 +235,38 @@ stringPrim = lexeme (String . pack <$> chars) where
     chars = char '\"' *> manyTill Lexer.charLiteral (char '\"')
 
 -- ============================================================================
--- ================================== Type ====================================
+-- == Type
 -- ============================================================================
 
-ty :: Parser Type
-ty = makeExprParser expr [[ InfixR (arrT <$ symbol "->") ]]
+type_ :: Parser Type
+type_ = makeExprParser parser [[ InfixR (arrT <$ symbol "->") ]]
   where
-    expr :: Parser Type
-    expr = do
+    parser = do
         atoms <- some atom
         pure (foldl1 appT atoms)
-      where
-        atom = parens ty 
-           <|> varT <$> name
-           <|> conT <$> constructor
 
-tyCl :: Parser TyCl
-tyCl = TyCl <$> constructor <*> ty
+    atom = parens type_
+       <|> varT <$> name
+       <|> conT <$> constructor
+
+tyClass :: Parser TyClass
+tyClass = TyCl <$> constructor <*> type_
 
 quantifier :: Parser (Maybe [Name])
 quantifier = optional (keyword "forall" *> some name <* symbol ".")
 
-classConstraints :: Parser (Maybe [TyCl])
-classConstraints = optional (parens (some tyCl) <* symbol "=>")
+classConstraints :: Parser (Maybe [TyClass])
+classConstraints = optional (parens (some tyClass) <* symbol "=>")
 
 scheme :: Parser Scheme
 scheme = Forall <$> (fromMaybe [] <$> quantifier)
                 <*> (fromMaybe [] <$> classConstraints)
-                <*> ty
+                <*> type_
+
+-- ============================================================================
+-- == Kind
+-- ============================================================================
+
+kind :: Parser Kind
+kind = makeExprParser parser [[ InfixR (arrK <$ symbol "->") ]] where
+    parser = parens kind <|> (symbol "*" $> starK)
