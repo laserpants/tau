@@ -43,9 +43,9 @@ instance Show (Value m) where
     showsPrec _ Closure{} =
         showString "Closure <<function>>"
 
-saturate :: (MonadReader (ValueEnv m) m) => Name -> Int -> Value m
-saturate name 0 = Data name []
-saturate name n = Closure first val mempty
+dataCon :: (MonadReader (ValueEnv m) m) => Name -> Int -> Value m
+dataCon name 0 = Data name []
+dataCon name n = Closure first val mempty
   where
     val = (ini & foldr (\fun -> asks . Closure fun)) rest
     ini = do

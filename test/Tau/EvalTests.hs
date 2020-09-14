@@ -14,9 +14,9 @@ import qualified Tau.Env as Env
 
 testValueEnv :: ValueEnv Eval
 testValueEnv = Env.fromList
-    [ ("Cons"   , saturate "Cons" 2)
-    , ("Nil"    , saturate "Nil" 0) 
-    , ("Tuple2" , saturate "Tuple2" 2)
+    [ ("Cons"   , dataCon "Cons" 2)
+    , ("Nil"    , dataCon "Nil" 0) 
+    , ("Tuple2" , dataCon "Tuple2" 2)
     , ("fst"    , evald $(mkExpr "\\p => match p = Tuple2 a b => a")) 
     , ("snd"    , evald $(mkExpr "\\p => match p = Tuple2 a b => b"))
     ]
