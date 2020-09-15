@@ -333,7 +333,7 @@ prettyExpr n = unfix >>> \case
         <+> pretty false
 
     MatchS expr (cls:clss) ->
-        wrap n $ "match" <+> pretty expr <+> prettyMatch cls clss
+        wrap n $ "match" <+> pretty expr <+> "with" <+> prettyMatch cls clss
 
     LamMatchS (cls:clss) ->
         wrap n $ backslash <> "match" <+> prettyMatch cls clss
@@ -359,11 +359,11 @@ wrap _ doc = parens doc
 
 prettyMatch :: MatchClause Expr -> [MatchClause Expr] -> Doc a
 prettyMatch cls clss =
-    clause equals cls
+    clause cls
         <> (if not (null clss) then space else mempty)
-        <> hsep (clause pipe <$> clss)
+        <> hsep (clause <$> clss)
   where
-    clause sym (pat, expr) = sym <+> pretty pat <+> "=>" <+> pretty expr
+    clause (pat, expr) = pipe <+> pretty pat <+> "=>" <+> pretty expr
 
 prettyOp :: Int -> Op -> Doc a
 prettyOp n = \case
