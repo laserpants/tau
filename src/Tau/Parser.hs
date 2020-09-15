@@ -153,9 +153,10 @@ letBinding = parseLet letS "let"
 parseLet :: (Name -> Expr -> Expr -> Expr) -> Text -> Parser Expr
 parseLet con kword = do
     var  <- keyword kword *> name
+    vars <- many name
     term <- symbol  "="   *> expr
     body <- keyword "in"  *> expr
-    pure (con var term body)
+    pure (con var (foldr lamS term vars) body)
 
 matchWith :: Parser Expr
 matchWith = do
