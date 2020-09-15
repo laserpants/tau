@@ -13,15 +13,15 @@ failParse input =
         let result = parseExpr input
 
         it "✗ fails to parse" $
-            isLeft result 
+            isLeft result
 
 succeedParse :: Text -> Expr -> SpecWith ()
-succeedParse input expect = 
+succeedParse input expect =
     describe (unpack input) $ do
         let result = parseExpr input
 
         it "✔ succeeds to parse" $
-            isRight result 
+            isRight result
 
         it ("✔ and gives the expected result: " <> prettyString expect) $
             Right expect == result
@@ -54,7 +54,7 @@ testParser = do
     succeedParse
         "f (g y)"
         (appS [varS "f", appS [varS "g", varS "y"]])
-    
+
     succeedParse
         "f g h i"
         (appS (varS <$> ["f", "g", "h", "i"]))
@@ -152,3 +152,35 @@ testParser = do
     succeedParse
         "(1,2, \"hello\")"
         (appS [varS "Tuple3", litInt 1, litInt 2, litString "hello"])
+
+    succeedParse
+        "let rec map f xs = match xs with Nil => [] | Cons x1 xs1 => Cons (f x1) (map f xs1) in map"
+        (recS "map" (lamS "f" (lamS "xs" (matchS (varS "xs") [(conP "Nil" [], appS [varS "Nil"]), (conP "Cons" [varP "x1", varP "xs1"], appS [varS "Cons", appS [varS "f", varS "x1"], appS [varS "map", varS "f", varS "xs1"]])]))) (varS "map"))
+
+    succeedParse
+        "let rec map f xs = match xs with [] => [] | Cons x1 xs1 => Cons (f x1) (map f xs1) in map"
+        (recS "map" (lamS "f" (lamS "xs" (matchS (varS "xs") [(conP "Nil" [], appS [varS "Nil"]), (conP "Cons" [varP "x1", varP "xs1"], appS [varS "Cons", appS [varS "f", varS "x1"], appS [varS "map", varS "f", varS "xs1"]])]))) (varS "map"))
+
+    succeedParse
+        "let rec map f xs = match xs with [] => [] | x1::xs1 => Cons (f x1) (map f xs1) in map"
+        (recS "map" (lamS "f" (lamS "xs" (matchS (varS "xs") [(conP "Nil" [], appS [varS "Nil"]), (conP "Cons" [varP "x1", varP "xs1"], appS [varS "Cons", appS [varS "f", varS "x1"], appS [varS "map", varS "f", varS "xs1"]])]))) (varS "map"))
+
+    succeedParse
+        "let rec map f xs = match xs with [] => [] | x1::xs1 => f x1 :: map f xs1 in map"
+        (recS "map" (lamS "f" (lamS "xs" (matchS (varS "xs") [(conP "Nil" [], appS [varS "Nil"]), (conP "Cons" [varP "x1", varP "xs1"], appS [varS "Cons", appS [varS "f", varS "x1"], appS [varS "map", varS "f", varS "xs1"]])]))) (varS "map"))
+
+    succeedParse
+        "let rec map f xs = match xs with | Nil => [] | Cons x1 xs1 => Cons (f x1) (map f xs1) in map (\\x => x == 0)"
+        (recS "map" (lamS "f" (lamS "xs" (matchS (varS "xs") [(conP "Nil" [], appS [varS "Nil"]), (conP "Cons" [varP "x1", varP "xs1"], appS [varS "Cons", appS [varS "f", varS "x1"], appS [varS "map", varS "f", varS "xs1"]])]))) (appS [varS "map", lamS "x" (eqS (varS "x") (litInt 0))]))
+
+    succeedParse
+        "let rec map f xs = match xs with | [] => [] | x1::xs1 => f x1 :: map f xs1 in map (\\x => x == 0)"
+        (recS "map" (lamS "f" (lamS "xs" (matchS (varS "xs") [(conP "Nil" [], appS [varS "Nil"]), (conP "Cons" [varP "x1", varP "xs1"], appS [varS "Cons", appS [varS "f", varS "x1"], appS [varS "map", varS "f", varS "xs1"]])]))) (appS [varS "map", lamS "x" (eqS (varS "x") (litInt 0))]))
+
+    succeedParse
+        "(\\match | (1, 2) => 4) (3, 4)"
+        (appS [lamMatchS [(conP "Tuple2" [litP (Int 1), litP (Int 2)], litInt 4)], appS [varS "Tuple2", litInt 3, litInt 4]])
+
+    succeedParse
+        "(\\match | (1, 2, x) => 4) (3, 4, \"stuff\")"
+        (appS [lamMatchS [(conP "Tuple3" [litP (Int 1), litP (Int 2), varP "x"], litInt 4)], appS [varS "Tuple3", litInt 3, litInt 4, litString "stuff"]])

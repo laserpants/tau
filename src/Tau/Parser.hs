@@ -1,7 +1,8 @@
+{-# LANGUAGE LambdaCase        #-}
 {-# LANGUAGE OverloadedStrings #-}
 module Tau.Parser where
 
-import Control.Monad (void)
+import Control.Monad (when, void)
 import Control.Monad.Combinators.Expr
 import Data.Functor (($>))
 import Data.Maybe (fromMaybe)
@@ -185,16 +186,40 @@ pipe = void (symbol "|")
 
 clause :: Parser () -> Parser (Pattern, Expr)
 clause sep = do
-    pat  <- sep *> parsePattern
+    pat  <- sep *> pattern_
     term <- symbol "=>" *> expr
     pure (pat, term)
 
-parsePattern :: Parser Pattern
-parsePattern = wildcard
+pattern_ :: Parser Pattern
+pattern_ = makeExprParser patternExpr [[ InfixR (patternCons <$ symbol "::") ]]
+
+patternCons :: Pattern -> Pattern -> Pattern
+patternCons hd tl = conP "Cons" [hd, tl]
+
+patternExpr :: Parser Pattern
+patternExpr = wildcard
     <|> conPattern
     <|> litPattern
     <|> varPattern
-    <|> parens parsePattern
+    <|> listPattern
+    <|> tuplePattern
+
+listPattern :: Parser Pattern
+listPattern = do
+    void (symbol "[")
+    elems <- pattern_ `sepBy` symbol ","
+    void (symbol "]")
+    pure $ case elems of
+        [] -> conP "Nil" []
+        _  -> conP "Cons" (elems <> [varP "Nil"])
+
+tuplePattern :: Parser Pattern
+tuplePattern = do
+    void (symbol "(")
+    elems <- pattern_ `sepBy` symbol ","
+    void (symbol ")")
+    when (length elems > 8) (fail "Tuples can only have up to 8 elements")
+    pure (mkTuple conP litP elems)
 
 varPattern :: Parser Pattern
 varPattern = varP <$> name
@@ -202,7 +227,7 @@ varPattern = varP <$> name
 conPattern :: Parser Pattern
 conPattern = do
     con <- constructor
-    pats <- many parsePattern
+    pats <- many pattern_
     pure (conP con pats)
 
 litPattern :: Parser Pattern
@@ -267,19 +292,20 @@ tuple = do
     void (symbol "(")
     elems <- expr `sepBy` symbol ","
     void (symbol ")")
-    case elems of
-        []                       -> pure (litS Unit)
-        [a]                      -> pure a
-        [a, b]                   -> tupleS "Tuple2" [a, b]
-        [a, b, c]                -> tupleS "Tuple3" [a, b, c]
-        [a, b, c, d]             -> tupleS "Tuple4" [a, b, c, d]
-        [a, b, c, d, e]          -> tupleS "Tuple5" [a, b, c, d, e]
-        [a, b, c, d, e, f]       -> tupleS "Tuple6" [a, b, c, d, e, f]
-        [a, b, c, d, e, f, g]    -> tupleS "Tuple7" [a, b, c, d, e, f, g]
-        [a, b, c, d, e, f, g, h] -> tupleS "Tuple8" [a, b, c, d, e, f, g, h]
-        _                        -> fail "Tuples can only have up to 8 elements"
-  where
-    tupleS con args = pure (appS (varS con:args))
+    when (length elems > 8) (fail "Tuples can only have up to 8 elements")
+    pure (mkTuple (\con -> appS . (varS con :)) litS elems)
+
+mkTuple :: (Text -> [a] -> a) -> (Prim -> a) -> [a] -> a
+mkTuple con nil = \case
+    []                       -> nil Unit
+    [a, b]                   -> con "Tuple2" [a, b]
+    [a, b, c]                -> con "Tuple3" [a, b, c]
+    [a, b, c, d]             -> con "Tuple4" [a, b, c, d]
+    [a, b, c, d, e]          -> con "Tuple5" [a, b, c, d, e]
+    [a, b, c, d, e, f]       -> con "Tuple6" [a, b, c, d, e, f]
+    [a, b, c, d, e, f, g]    -> con "Tuple7" [a, b, c, d, e, f, g]
+    [a, b, c, d, e, f, g, h] -> con "Tuple8" [a, b, c, d, e, f, g, h]
+    a:_                      -> a
 
 -- ============================================================================
 -- == Type

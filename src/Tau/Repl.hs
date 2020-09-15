@@ -63,7 +63,7 @@ replCommand input =
                         else
                             putStrIO "Non-exhaustive patterns"
 
---data Environments = Environments 
+--data Environments = Environments
 --    { constructorEnv :: ConstructorEnv
 --    , valueEnv       :: ValueEnv
 --    , optionsEnv     :: Options Repl
@@ -73,11 +73,11 @@ replCommand input =
 --environments = Environments
 --    { constructorEnv =
 --        [ ("Nil"  , ["Nil", "Cons"])
---        , ("Cons" , ["Nil", "Cons"]) 
+--        , ("Cons" , ["Nil", "Cons"])
 --        ]
 --    , valueEnv =
 --        [ ("Cons"   , dataCon "Cons" 2)
---        , ("Nil"    , dataCon "Nil" 0) 
+--        , ("Nil"    , dataCon "Nil" 0)
 --        ]
 --    , optionsEnv =
 --        [ ("quit", quit)
@@ -87,22 +87,26 @@ replCommand input =
 
 replTypeEnv :: Env Scheme
 replTypeEnv = Env.fromList
-    [ ("Nil"  , Forall ["a"] [] list)
-    , ("Cons" , Forall ["a"] [] (arrT (varT "a") (arrT list list)))
-    , ("Show" , Forall ["a"] [] (arrT (arrT (varT "a") (conT "String")) (appT (conT "Show") (varT "a")))) ]
+    [ ("Nil"    , Forall ["a"] [] list)
+    , ("Cons"   , Forall ["a"] [] (arrT (varT "a") (arrT list list)))
+    , ("Show"   , Forall ["a"] [] (arrT (arrT (varT "a") (conT "String")) (appT (conT "Show") (varT "a"))))
+    , ("Tuple2" , Forall ["a", "b"] [] (arrT (varT "a") (arrT (varT "b") (appT (appT (conT "Tuple2") (varT "a")) (varT "b")))))
+    ]
   where
     list = appT (conT "List") (varT "a")
 
 replConstructorEnv :: ConstructorEnv
 replConstructorEnv = constructorEnv
-    [ ("Nil"  , ["Nil", "Cons"])
-    , ("Cons" , ["Nil", "Cons"]) 
+    [ ("Nil"    , ["Nil", "Cons"])
+    , ("Cons"   , ["Nil", "Cons"])
+    , ("Tuple2" , ["Tuple2"])
     ]
 
 replValueEnv :: ValueEnv Eval
 replValueEnv = Env.fromList
     [ ("Cons"   , dataCon "Cons" 2)
-    , ("Nil"    , dataCon "Nil" 0) 
+    , ("Nil"    , dataCon "Nil" 0)
+    , ("Tuple2" , dataCon "Tuple2" 2)
     ]
 
 replOptions :: Options Repl

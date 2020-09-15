@@ -23,4 +23,4 @@ mkKind :: Text -> Q Exp
 mkKind  input = runQ [| forceParser kind input |]
 
 mkPattern :: Text -> Q Exp
-mkPattern input = runQ [| forceParser parsePattern input |]
+mkPattern input = runQ [| forceParser pattern_ input |]
