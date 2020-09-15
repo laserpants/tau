@@ -74,9 +74,9 @@ testSubstitute = do
         $(mkExpr "match xs with x => x")
 
     succeedSubstitute 
-        $(mkExpr "match xs | y => x")
+        $(mkExpr "match xs with | y => x")
         ("x", litInt 123)
-        $(mkExpr "match xs | y => 123")
+        $(mkExpr "match xs with | y => 123")
 
     succeedSubstitute 
         $(mkExpr "match xs with Cons x xs => x")

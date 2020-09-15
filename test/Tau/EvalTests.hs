@@ -55,7 +55,7 @@ testEval = do
         (Value (Int 1))
 
     succeedEval
-        $(mkExpr "(\\x => match x | 3 => 1 | x => x) 5")
+        $(mkExpr "(\\x => match x with | 3 => 1 | x => x) 5")
         (Value (Int 5))
 
     succeedEval
@@ -89,7 +89,7 @@ testEval = do
         (Value (Int 1))
 
     succeedEval
-        $(mkExpr "(\\xs => match xs | Cons y ys => 1 | Nil => 2) Nil")
+        $(mkExpr "(\\xs => match xs with | Cons y ys => 1 | Nil => 2) Nil")
         (Value (Int 2))
 
     succeedEval
@@ -128,7 +128,7 @@ testEval = do
         (Value (Int 120))
 
     succeedEval
-        $(mkExpr "let rec length = \\xs => match xs | Nil => 0 | Cons x xs => 1 + (length xs) in length (Cons 1 (Cons 1 Nil))")
+        $(mkExpr "let rec length = \\xs => match xs with Nil => 0 | Cons x xs => 1 + (length xs) in length (Cons 1 (Cons 1 Nil))")
         (Value (Int 2))
 
     succeedEval

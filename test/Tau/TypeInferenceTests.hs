@@ -113,7 +113,7 @@ testTypeInference = do
         $(mkScheme "String")
 
     succeedInferType
-        $(mkExpr "(\\xs => match xs | Cons y ys => 1 | Nil => 2) Nil")
+        $(mkExpr "(\\xs => match xs with | Cons y ys => 1 | Nil => 2) Nil")
         $(mkScheme "Int")
 
     succeedInferType
