@@ -92,12 +92,12 @@ ast = do
         <|> lamMatch
         <|> lambda
         <|> literal
-        <|> parens expr
+        <|> list_
+        <|> tuple
         <|> identifier
 
 prim :: Parser Prim
-prim = unit
-    <|> bool
+prim = bool
     <|> number
     <|> charPrim
     <|> stringPrim
@@ -129,7 +129,12 @@ operator =
     , [ InfixN (orS  <$ symbol "||")
       , InfixN (andS <$ symbol "&&")
       ]
+    , [ InfixR (cons <$ symbol "::")
+      ]
     ]
+
+cons :: Expr -> Expr -> Expr
+cons hd tl = appS [varS "Cons", hd, tl]
 
 expr :: Parser Expr
 expr = makeExprParser ast operator
@@ -243,6 +248,38 @@ charPrim = Char <$> surroundedBy (symbol "'") printChar
 stringPrim :: Parser Prim
 stringPrim = lexeme (String . pack <$> chars) where
     chars = char '\"' *> manyTill Lexer.charLiteral (char '\"')
+
+-- ============================================================================
+-- == Lists and Tuples
+-- ============================================================================
+
+list_ :: Parser Expr
+list_ = do
+    void (symbol "[")
+    elems <- expr `sepBy` symbol ","
+    void (symbol "]")
+    pure (foldr cons1 (appS [varS "Nil"]) elems)
+  where
+    cons1 hd tl = appS [varS "Cons", hd, tl]
+
+tuple :: Parser Expr
+tuple = do
+    void (symbol "(")
+    elems <- expr `sepBy` symbol ","
+    void (symbol ")")
+    case elems of
+        []                       -> pure (litS Unit)
+        [a]                      -> pure a
+        [a, b]                   -> tupleS "Tuple2" [a, b]
+        [a, b, c]                -> tupleS "Tuple3" [a, b, c]
+        [a, b, c, d]             -> tupleS "Tuple4" [a, b, c, d]
+        [a, b, c, d, e]          -> tupleS "Tuple5" [a, b, c, d, e]
+        [a, b, c, d, e, f]       -> tupleS "Tuple6" [a, b, c, d, e, f]
+        [a, b, c, d, e, f, g]    -> tupleS "Tuple7" [a, b, c, d, e, f, g]
+        [a, b, c, d, e, f, g, h] -> tupleS "Tuple8" [a, b, c, d, e, f, g, h]
+        _                        -> fail "Tuples can only have up to 8 elements"
+  where
+    tupleS con args = pure (appS (varS con:args))
 
 -- ============================================================================
 -- == Type

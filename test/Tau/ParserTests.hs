@@ -128,3 +128,27 @@ testParser = do
         (litInteger bigNumber)
 
     failParse "let chr = let in x"
+
+    succeedParse
+        "[1, 2, 3]"
+        (appS [varS "Cons", litInt 1, appS [varS "Cons", litInt 2, appS [varS "Cons" ,litInt 3, appS [varS "Nil"]]]])
+
+    succeedParse
+        "1::[2, 3]"
+        (appS [varS "Cons", litInt 1, appS [varS "Cons", litInt 2, appS [varS "Cons" ,litInt 3, appS [varS "Nil"]]]])
+
+    succeedParse
+        "1::2::[3]"
+        (appS [varS "Cons", litInt 1, appS [varS "Cons", litInt 2, appS [varS "Cons" ,litInt 3, appS [varS "Nil"]]]])
+
+    succeedParse
+        "1::2::3::[]"
+        (appS [varS "Cons", litInt 1, appS [varS "Cons", litInt 2, appS [varS "Cons" ,litInt 3, appS [varS "Nil"]]]])
+
+    succeedParse
+        "(1,2)"
+        (appS [varS "Tuple2", litInt 1, litInt 2])
+
+    succeedParse
+        "(1,2, \"hello\")"
+        (appS [varS "Tuple3", litInt 1, litInt 2, litString "hello"])
