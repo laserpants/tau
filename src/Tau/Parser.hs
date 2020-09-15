@@ -159,9 +159,12 @@ parseLet con kword = do
 matchWith :: Parser Expr
 matchWith = do
     term  <- keyword "match" *> expr
-    first <- clause (void (keyword "with") <|> pipe)
+    first <- clause (with <|> pipe)
     rest  <- many (clause pipe)
     pure (matchS term (first:rest))
+
+with :: Parser ()
+with = void (keyword "with" *> optional (symbol "|"))
 
 lamMatch :: Parser Expr
 lamMatch = do

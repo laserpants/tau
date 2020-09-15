@@ -72,6 +72,10 @@ testParser = do
         (matchS (varS "n") [(litP (Int 1), litBool True), (litP (Int 2), litBool False)])
 
     succeedParse
+        "match n with | 1 => True | 2 => False"
+        (matchS (varS "n") [(litP (Int 1), litBool True), (litP (Int 2), litBool False)])
+
+    succeedParse
         "let rec map = \\f => \\xs => match xs with Nil => Nil | Cons x1 xs1 => Cons (f x1) (map f xs1) in map"
         (recS "map" (lamS "f" (lamS "xs" (matchS (varS "xs") [(conP "Nil" [], varS "Nil"), (conP "Cons" [varP "x1", varP "xs1"], appS [varS "Cons", appS [varS "f", varS "x1"], appS [varS "map", varS "f", varS "xs1"]])]))) (varS "map"))
 
