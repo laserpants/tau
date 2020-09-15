@@ -142,3 +142,19 @@ testEval = do
     succeedEval
         $(mkExpr "let rec map = \\f => \\match Nil => Nil | Cons x1 xs1 => Cons (f x1) (map f xs1) in map (\\x => x == 1) (Cons 1 (Cons 2 (Cons 3 Nil)))")
         (Data "Cons" [Value (Bool True), Data "Cons" [Value (Bool False), Data "Cons" [Value (Bool False), Data "Nil" []]]])
+
+    succeedEval
+        $(mkExpr "let fst = \\match | Tuple2 a _ => a in let rec length = \\match | Nil => 0 | Cons x xs => 1 + (length xs) in length (fst (Tuple2 (Cons 1 (Cons 2 (Cons 3 Nil))) 5))")
+        (Value (Int 3))
+
+    succeedEval
+        $(mkExpr "let fst = \\match | (a, _) => a in let rec length = \\match | Nil => 0 | x::xs => 1 + (length xs) in length (fst ([1,2,3], 5))")
+        (Value (Int 3))
+
+    succeedEval
+        $(mkExpr "let fst = \\match | (a, _) => a in let rec length = \\match | Nil => 0 | x::xs => 1 + (length xs) in (fst ([1,2,3], 5)).length")
+        (Value (Int 3))
+
+    succeedEval
+        $(mkExpr "let fst = \\match | (a, _) => a in let rec length = \\match | Nil => 0 | x::xs => 1 + (length xs) in ([1,2,3], 5).fst.length")
+        (Value (Int 3))

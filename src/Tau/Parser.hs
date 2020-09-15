@@ -114,10 +114,10 @@ operator =
     [
       [ Prefix (negS <$ symbol "-")
       ]
-    , [ Prefix (notS <$ (symbol "not" *> spaces))
+    , [ Prefix (notS <$ (keyword "not" *> spaces))
       ]
     , [ InfixL (mulS <$ symbol "*")
-      , InfixL (divS <$ symbol "/")
+      , InfixL (divS <$ try (symbol "/" <* notFollowedBy (symbol "=")))
       ]
     , [ InfixL (addS <$ symbol "+")
       , InfixL (subS <$ symbol "-")
@@ -129,9 +129,11 @@ operator =
       , InfixN (ltS  <$ symbol "<")
       , InfixN (gtS  <$ symbol ">")
       ]
-    , [ InfixN (andS <$ symbol "&&")
+    , [ InfixR (andS <$ symbol "&&")
       ]
-    , [ InfixN (orS  <$ symbol "||")
+    , [ InfixR (orS  <$ symbol "||")
+      ]
+    , [ InfixL (dotS <$ symbol ".")
       ]
     ]
 

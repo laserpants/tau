@@ -113,7 +113,7 @@ evalApp fun arg = do
     val <- arg
     local (const (Env (Map.insert var val closure))) body
 
-evalOp :: (MonadFail m) => OpF (m (Value m)) -> m (Value m) 
+evalOp :: (MonadFail m, MonadReader (ValueEnv m) m) => OpF (m (Value m)) -> m (Value m) 
 evalOp = \case
     AddS a b -> numOp (+) a b
     SubS a b -> numOp (-) a b
@@ -195,6 +195,9 @@ evalOp = \case
         Value (Bool l) <- a
         Value (Bool r) <- b
         bool (l && r)
+
+    DotS a b -> do
+        foldl1 evalApp [b, a]
 
   where
     numOp op a b = do
