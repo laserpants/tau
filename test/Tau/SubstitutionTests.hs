@@ -64,31 +64,31 @@ testSubstitute = do
         $(mkExpr "let x = 3 in let y = 2 + 1 in 45")
 
     succeedSubstitute 
-        $(mkExpr "match xs = x => 5")
+        $(mkExpr "match xs with x => 5")
         ("x", litInt 123)
-        $(mkExpr "match xs = x => 5")
+        $(mkExpr "match xs with x => 5")
 
     succeedSubstitute 
-        $(mkExpr "match xs = x => x")
+        $(mkExpr "match xs with x => x")
         ("x", litInt 123)
-        $(mkExpr "match xs = x => x")
+        $(mkExpr "match xs with x => x")
 
     succeedSubstitute 
-        $(mkExpr "match xs = y => x")
+        $(mkExpr "match xs | y => x")
         ("x", litInt 123)
-        $(mkExpr "match xs = y => 123")
+        $(mkExpr "match xs | y => 123")
 
     succeedSubstitute 
-        $(mkExpr "match xs = Cons x xs => x")
+        $(mkExpr "match xs with Cons x xs => x")
         ("x", litInt 123)
-        $(mkExpr "match xs = Cons x xs => x")
+        $(mkExpr "match xs with Cons x xs => x")
 
     succeedSubstitute 
-        $(mkExpr "match xs = Cons y xs => x")
+        $(mkExpr "match xs with Cons y xs => x")
         ("x", litInt 123)
-        $(mkExpr "match xs = Cons y xs => 123")
+        $(mkExpr "match xs with Cons y xs => 123")
 
     succeedSubstitute 
-        $(mkExpr "match x = _ => x")
+        $(mkExpr "match x with _ => x")
         ("x", litInt 123)
-        $(mkExpr "match 123 = _ => 123")
+        $(mkExpr "match 123 with _ => 123")

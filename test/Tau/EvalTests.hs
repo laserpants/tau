@@ -15,10 +15,10 @@ import qualified Tau.Env as Env
 testValueEnv :: ValueEnv Eval
 testValueEnv = Env.fromList
     [ ("Cons"   , dataCon "Cons" 2)
-    , ("Nil"    , dataCon "Nil" 0) 
+    , ("Nil"    , dataCon "Nil" 0)
     , ("Tuple2" , dataCon "Tuple2" 2)
-    , ("fst"    , evald $(mkExpr "\\p => match p = Tuple2 a b => a")) 
-    , ("snd"    , evald $(mkExpr "\\p => match p = Tuple2 a b => b"))
+    , ("fst"    , evald $(mkExpr "\\p => match p with Tuple2 a b => a"))
+    , ("snd"    , evald $(mkExpr "\\p => match p with Tuple2 a b => b"))
     ]
 
 evald :: Expr -> Value Eval
@@ -26,44 +26,44 @@ evald expr = fromJust (evalExpr expr mempty)
 
 failEval :: Expr -> SpecWith ()
 failEval expr =
-    describe ("The expression " <> prettyString expr) $ 
+    describe ("The expression " <> prettyString expr) $
         it "✗ fails to evaluate" $
             isNothing (evalExpr (compileAll expr) testValueEnv)
 
 succeedEval :: Expr -> Value Eval -> SpecWith ()
-succeedEval expr val = 
-    describe ("The expression " <> prettyString expr) $ 
+succeedEval expr val =
+    describe ("The expression " <> prettyString expr) $
         it ("✔ evaluates to the value " <> prettyString val) $
             evalExpr (compileAll expr) testValueEnv == Just val
 
 isFunction :: Value Eval -> Bool
-isFunction value = 
+isFunction value =
     case value of
         Closure{} -> True
         _ -> False
 
 succeedEvalFunction :: Expr -> SpecWith ()
 succeedEvalFunction expr =
-    describe ("The expression " <> prettyString expr) $ 
+    describe ("The expression " <> prettyString expr) $
         it "✔ evaluates to a function closure" $
             Just True == (isFunction <$> evalExpr (compileAll expr) testValueEnv)
 
 testEval :: SpecWith ()
 testEval = do
-    succeedEval 
-        $(mkExpr "(\\x => match x = 3 => 1 | x => x) 3")
+    succeedEval
+        $(mkExpr "(\\x => match x with 3 => 1 | x => x) 3")
         (Value (Int 1))
 
-    succeedEval 
-        $(mkExpr "(\\x => match x = 3 => 1 | x => x) 5")
+    succeedEval
+        $(mkExpr "(\\x => match x | 3 => 1 | x => x) 5")
         (Value (Int 5))
 
-    succeedEval 
-        $(mkExpr "(\\match = 3 => 1 | x => x) 3")
+    succeedEval
+        $(mkExpr "(\\match | 3 => 1 | x => x) 3")
         (Value (Int 1))
 
-    succeedEval 
-        $(mkExpr "(\\match = 3 => 1 | x => x) 5")
+    succeedEval
+        $(mkExpr "(\\match 3 => 1 | x => x) 5")
         (Value (Int 5))
 
     succeedEvalFunction
@@ -72,73 +72,73 @@ testEval = do
     succeedEvalFunction
         $(mkExpr "let const = \\a => \\b => a in const ()")
 
-    succeedEval 
+    succeedEval
         $(mkExpr "let const = \\a => \\b => a in const () 5")
         (Value Unit)
 
-    succeedEval 
-        $(mkExpr "(\\xs => match xs = Cons y ys => 1 | Nil => 2) (Cons 5 Nil)")
+    succeedEval
+        $(mkExpr "(\\xs => match xs with Cons y ys => 1 | Nil => 2) (Cons 5 Nil)")
         (Value (Int 1))
 
-    succeedEval 
-        $(mkExpr "(\\xs => match xs = Cons y ys => 1 | Nil => 2) (Cons 5 Nil)")
+    succeedEval
+        $(mkExpr "(\\xs => match xs with Cons y ys => 1 | Nil => 2) (Cons 5 Nil)")
         (Value (Int 1))
 
-    succeedEval 
-        $(mkExpr "(\\match = Cons y ys => 1 | Nil => 2) (Cons 5 Nil)")
+    succeedEval
+        $(mkExpr "(\\match Cons y ys => 1 | Nil => 2) (Cons 5 Nil)")
         (Value (Int 1))
 
-    succeedEval 
-        $(mkExpr "(\\xs => match xs = Cons y ys => 1 | Nil => 2) Nil")
+    succeedEval
+        $(mkExpr "(\\xs => match xs | Cons y ys => 1 | Nil => 2) Nil")
         (Value (Int 2))
 
-    succeedEval 
+    succeedEval
         $(mkExpr "let plus = \\a => \\b => a + b in let plus5 = plus 5 in let id = \\x => x in (id plus5) (id 3)")
         (Value (Int 8))
 
-    succeedEval 
+    succeedEval
         $(mkExpr "let id = \\x => x in let x = Tuple2 id 4 in (fst x snd x) + 1")
         (Value (Int 5))
 
     succeedEvalFunction
         $(mkExpr "let id = \\x => x in let x = Tuple2 id 4 in fst x")
 
-    failEval 
+    failEval
         $(mkExpr "let x = x in x")
 
-    failEval 
+    failEval
         $(mkExpr "let f = \\n => if n == 0 then 1 else n * (f (n - 1)) in f 5")
 
-    succeedEval 
+    succeedEval
         $(mkExpr "let rec f = \\n => if n == 0 then 1 else n * (f (n - 1)) in f 5")
         (Value (Int 120))
 
-    failEval 
+    failEval
         (varS "hello")
 
-    succeedEval 
-        $(mkExpr "(\\x => match x = 1 => 2 | 2 => 3) 1")
+    succeedEval
+        $(mkExpr "(\\x => match x with 1 => 2 | 2 => 3) 1")
         (Value (Int 2))
 
-    failEval 
+    failEval
         $(mkExpr "let f = \\n => if n == 0 then 1 else n * (f (n - 1)) in f 5")
 
-    succeedEval 
+    succeedEval
         $(mkExpr "let rec f = \\n => if n == 0 then 1 else n * (f (n - 1)) in f 5")
         (Value (Int 120))
 
-    succeedEval 
-        $(mkExpr "let rec length = \\xs => match xs = Nil => 0 | Cons x xs => 1 + (length xs) in length (Cons 1 (Cons 1 Nil))")
+    succeedEval
+        $(mkExpr "let rec length = \\xs => match xs | Nil => 0 | Cons x xs => 1 + (length xs) in length (Cons 1 (Cons 1 Nil))")
         (Value (Int 2))
 
-    succeedEval 
-        $(mkExpr "let rec length = \\match = Nil => 0 | Cons x xs => 1 + (length xs) in length (Cons 1 (Cons 1 Nil))")
+    succeedEval
+        $(mkExpr "let rec length = \\match Nil => 0 | Cons x xs => 1 + (length xs) in length (Cons 1 (Cons 1 Nil))")
         (Value (Int 2))
 
-    succeedEval 
-        $(mkExpr "let rec map = \\f => \\xs => match xs = Nil => Nil | Cons x1 xs1 => Cons (f x1) (map f xs1) in map (\\x => x == 1) (Cons 1 (Cons 2 (Cons 3 Nil)))")
+    succeedEval
+        $(mkExpr "let rec map = \\f => \\xs => match xs with Nil => Nil | Cons x1 xs1 => Cons (f x1) (map f xs1) in map (\\x => x == 1) (Cons 1 (Cons 2 (Cons 3 Nil)))")
         (Data "Cons" [Value (Bool True), Data "Cons" [Value (Bool False), Data "Cons" [Value (Bool False), Data "Nil" []]]])
 
-    succeedEval 
-        $(mkExpr "let rec map = \\f => \\match = Nil => Nil | Cons x1 xs1 => Cons (f x1) (map f xs1) in map (\\x => x == 1) (Cons 1 (Cons 2 (Cons 3 Nil)))")
+    succeedEval
+        $(mkExpr "let rec map = \\f => \\match Nil => Nil | Cons x1 xs1 => Cons (f x1) (map f xs1) in map (\\x => x == 1) (Cons 1 (Cons 2 (Cons 3 Nil)))")
         (Data "Cons" [Value (Bool True), Data "Cons" [Value (Bool False), Data "Cons" [Value (Bool False), Data "Nil" []]]])

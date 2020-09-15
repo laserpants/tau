@@ -88,7 +88,8 @@ replCommand input =
 replTypeEnv :: Env Scheme
 replTypeEnv = Env.fromList
     [ ("Nil"  , Forall ["a"] [] list)
-    , ("Cons" , Forall ["a"] [] (arrT (varT "a") (arrT list list))) ]
+    , ("Cons" , Forall ["a"] [] (arrT (varT "a") (arrT list list)))
+    , ("Show" , Forall ["a"] [] (arrT (arrT (varT "a") (conT "String")) (appT (conT "Show") (varT "a")))) ]
   where
     list = appT (conT "List") (varT "a")
 

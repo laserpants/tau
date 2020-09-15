@@ -68,15 +68,15 @@ testParser = do
         litUnit
 
     succeedParse
-        "match n = 1 => True | 2 => False"
+        "match n with 1 => True | 2 => False"
         (matchS (varS "n") [(litP (Int 1), litBool True), (litP (Int 2), litBool False)])
 
     succeedParse
-        "let rec map = \\f => \\xs => match xs = Nil => Nil | Cons x1 xs1 => Cons (f x1) (map f xs1) in map"
+        "let rec map = \\f => \\xs => match xs with Nil => Nil | Cons x1 xs1 => Cons (f x1) (map f xs1) in map"
         (recS "map" (lamS "f" (lamS "xs" (matchS (varS "xs") [(conP "Nil" [], varS "Nil"), (conP "Cons" [varP "x1", varP "xs1"], appS [varS "Cons", appS [varS "f", varS "x1"], appS [varS "map", varS "f", varS "xs1"]])]))) (varS "map"))
 
     succeedParse
-        "let rec map = \\f => \\xs => match xs = Nil => Nil | Cons x1 xs1 => Cons (f x1) (map f xs1) in map (\\x => x == 0)"
+        "let rec map = \\f => \\xs => match xs | Nil => Nil | Cons x1 xs1 => Cons (f x1) (map f xs1) in map (\\x => x == 0)"
         (recS "map" (lamS "f" (lamS "xs" (matchS (varS "xs") [(conP "Nil" [], varS "Nil"), (conP "Cons" [varP "x1", varP "xs1"], appS [varS "Cons", appS [varS "f", varS "x1"], appS [varS "map", varS "f", varS "xs1"]])]))) (appS [varS "map", lamS "x" (eqS (varS "x") (litInt 0))]))
 
     succeedParse
@@ -100,11 +100,11 @@ testParser = do
         (letS "chr" (litChar 'a') (eqS (varS "chr") (varS "chr")))
 
     succeedParse
-        "(\\match = (Cons x (Cons y ys)) => 4) Nil"
+        "(\\match | (Cons x (Cons y ys)) => 4) Nil"
         (appS [lamMatchS [(conP "Cons" [varP "x", conP "Cons" [varP "y", varP "ys"]], litInt 4)], varS "Nil"])
 
     succeedParse
-        "(\\match = Cons x (Cons y ys) => 4) Nil"
+        "(\\match Cons x (Cons y ys) => 4) Nil"
         (appS [lamMatchS [(conP "Cons" [varP "x", conP "Cons" [varP "y", varP "ys"]], litInt 4)], varS "Nil"])
 
     succeedParse

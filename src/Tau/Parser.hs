@@ -1,6 +1,7 @@
 {-# LANGUAGE OverloadedStrings #-}
 module Tau.Parser where
 
+import Control.Monad (void)
 import Control.Monad.Combinators.Expr
 import Data.Functor (($>))
 import Data.Maybe (fromMaybe)
@@ -53,6 +54,7 @@ reserved =
     , "then"
     , "else"
     , "match"
+    , "with"
     , "True"
     , "False"
     , "not"
@@ -157,20 +159,23 @@ parseLet con kword = do
 matchWith :: Parser Expr
 matchWith = do
     term  <- keyword "match" *> expr
-    first <- clause "="
-    rest  <- many (clause "|")
+    first <- clause (void (keyword "with") <|> pipe)
+    rest  <- many (clause pipe)
     pure (matchS term (first:rest))
 
 lamMatch :: Parser Expr
 lamMatch = do
     keyword "\\match"
-    first <- clause "="
-    rest  <- many (clause "|")
+    first <- clause (void (optional pipe))
+    rest  <- many (clause pipe)
     pure (lamMatchS (first:rest))
 
-clause :: Text -> Parser (Pattern, Expr)
-clause sym = do
-    pat  <- symbol sym  *> parsePattern
+pipe :: Parser ()
+pipe = void (symbol "|")
+
+clause :: Parser () -> Parser (Pattern, Expr)
+clause sep = do
+    pat  <- sep *> parsePattern
     term <- symbol "=>" *> expr
     pure (pat, term)
 
