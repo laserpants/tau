@@ -71,6 +71,7 @@ data OpF a
     | MulS a a
     | DivS a a
     | EqS a a
+    | NeqS a a
     | LtS a a
     | GtS a a
     | NegS a
@@ -190,6 +191,9 @@ divS a1 a2 = opS (DivS a1 a2)
 
 eqS :: Expr -> Expr -> Expr
 eqS a1 a2 = opS (EqS a1 a2)
+
+neqS :: Expr -> Expr -> Expr
+neqS a1 a2 = opS (NeqS a1 a2)
 
 ltS :: Expr -> Expr -> Expr
 ltS a1 a2 = opS (LtS a1 a2)
@@ -368,6 +372,7 @@ prettyMatch cls clss =
 prettyOp :: Int -> Op -> Doc a
 prettyOp n = \case
     EqS a b  -> pretty a <+> "==" <+> pretty b
+    NeqS a b -> pretty a <+> "/=" <+> pretty b
     AddS a b -> hsep (intersperse "+" (next <$> flattenOp AddOp [a, b]))
     MulS a b -> hsep (intersperse "*" (next <$> flattenOp MulOp [a, b]))
     AndS a b -> hsep (intersperse "&&" (next <$> flattenOp AndOp [a, b]))

@@ -145,6 +145,22 @@ evalOp = \case
 
             _ -> fail "Type mismatch"
 
+    NeqS a b  -> do
+        Value val1 <- a
+        Value val2 <- b
+        case (val1, val2) of
+            (Int m, Int n) ->
+                bool (m /= n)
+
+            (Bool x, Bool y) ->
+                bool (x /= y)
+
+            (Unit, Unit) ->
+                bool False
+
+            _ -> fail "Type mismatch"
+
+
     LtS a b -> do
         Value (Int m) <- a
         Value (Int n) <- b

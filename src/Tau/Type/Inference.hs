@@ -253,6 +253,7 @@ inferOp = \case
     LtS e1 e2  -> op2 LtS e1 e2 comparisonOp
     GtS e1 e2  -> op2 GtS e1 e2 comparisonOp
     EqS e1 e2  -> op2 EqS e1 e2 equalityOp
+    NeqS e1 e2 -> op2 NeqS e1 e2 equalityOp
     OrS e1 e2  -> op2 OrS e1 e2 logicalOp
     AndS e1 e2 -> op2 AndS e1 e2 logicalOp
     NegS e     -> op1 NegS e numericOp1

@@ -115,15 +115,16 @@ operator =
       ]
     , [ Prefix (notS <$ (symbol "not" *> spaces))
       ]
+    , [ InfixN (eqS  <$ symbol "==")
+      , InfixN (neqS <$ symbol "/=")
+      , InfixN (ltS  <$ symbol "<")
+      , InfixN (gtS  <$ symbol ">")
+      ]
     , [ InfixL (mulS <$ symbol "*")
       , InfixL (divS <$ symbol "/")
       ]
     , [ InfixL (addS <$ symbol "+")
       , InfixL (subS <$ symbol "-")
-      ]
-    , [ InfixN (eqS <$ symbol "==")
-      , InfixN (ltS <$ symbol "<")
-      , InfixN (gtS <$ symbol ">")
       ]
     , [ InfixN (orS  <$ symbol "||")
       , InfixN (andS <$ symbol "&&")
