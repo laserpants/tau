@@ -66,7 +66,7 @@ eval = cata $ \case
         expr
 
     ErrS ->
-        fail "Runtime error"
+        fail "Runtime error (1)"
 
 evalVar :: (MonadFail m, MonadReader (ValueEnv m) m) => Name -> m (Value m)
 evalVar name = do
@@ -78,7 +78,7 @@ evalMatch
   => [MatchClause (m (Value m))]
   -> Value m
   -> m (Value m)
-evalMatch [] _ = fail "Runtime error"
+evalMatch [] _ = fail "Runtime error (2)"
 evalMatch ((match, expr):cs) val =
     case unfix match of
         AnyP ->
@@ -101,7 +101,7 @@ matched _ _ = Nothing
 
 getVarName :: Pattern -> Name
 getVarName (Fix (VarP name)) = name
-getVarName _                 = "Runtime error"
+getVarName _                 = "Runtime error (3)"
 
 evalApp
   :: (MonadFail m, MonadReader (ValueEnv m) m)

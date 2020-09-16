@@ -17,8 +17,14 @@ testValueEnv = Env.fromList
     [ ("Cons"   , dataCon "Cons" 2)
     , ("Nil"    , dataCon "Nil" 0)
     , ("Tuple2" , dataCon "Tuple2" 2)
-    , ("fst"    , evald $(mkExpr "\\p => match p with Tuple2 a b => a"))
-    , ("snd"    , evald $(mkExpr "\\p => match p with Tuple2 a b => b"))
+    , ("Tuple3" , dataCon "Tuple3" 3)
+    , ("Tuple4" , dataCon "Tuple4" 4)
+    , ("Tuple5" , dataCon "Tuple5" 5)
+    , ("Tuple6" , dataCon "Tuple6" 6)
+    , ("Tuple7" , dataCon "Tuple7" 7)
+    , ("Tuple8" , dataCon "Tuple8" 8)
+    , ("fst"    , evald $(mkExpr "\\match (a, b) => a"))
+    , ("snd"    , evald $(mkExpr "\\match (a, b) => b"))
     ]
 
 evald :: Expr -> Value Eval

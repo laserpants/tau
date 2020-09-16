@@ -13,12 +13,15 @@ module Tau.Util
   , prettyPrint
   , to3
   , liftMaybe
+  , integerToText
+  , letters
   , (:*:)(..)
   ) where
 
+import Control.Monad (replicateM)
 import Data.Eq.Deriving
 import Data.Functor.Foldable
-import Data.Text (Text)
+import Data.Text (Text, pack)
 import Data.Text.Lazy.Builder (toLazyText)
 import Data.Text.Lazy.Builder.Int (decimal)
 import Data.Text.Prettyprint.Doc
@@ -30,10 +33,16 @@ import qualified Data.Text.Lazy as Text (toStrict)
 type Name = Text
 
 nameSupply :: Text -> [Name]
-nameSupply prefix = (prefix <>) . pack <$> nats
+nameSupply prefix = (prefix <>) . integerToText <$> nats
   where
     nats = [1..] :: [Integer]
-    pack = Text.toStrict . toLazyText . decimal
+
+letters :: [Text]
+letters = [1..] >>= flip replicateM ['a'..'z'] 
+                >>= (:[]) . pack
+
+integerToText :: Integer -> Text
+integerToText = Text.toStrict . toLazyText . decimal 
 
 type Algebra f a = f a -> a
 

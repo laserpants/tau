@@ -90,16 +90,33 @@ replTypeEnv = Env.fromList
     [ ("Nil"    , Forall ["a"] [] list)
     , ("Cons"   , Forall ["a"] [] (arrT (varT "a") (arrT list list)))
     , ("Show"   , Forall ["a"] [] (arrT (arrT (varT "a") (conT "String")) (appT (conT "Show") (varT "a"))))
-    , ("Tuple2" , Forall ["a", "b"] [] (arrT (varT "a") (arrT (varT "b") (appT (appT (conT "Tuple2") (varT "a")) (varT "b")))))
+    , ("Tuple2" , tupleScheme 2)
+    , ("Tuple3" , tupleScheme 3)
+    , ("Tuple4" , tupleScheme 4)
+    , ("Tuple5" , tupleScheme 5)
+    , ("Tuple6" , tupleScheme 6)
+    , ("Tuple7" , tupleScheme 7)
+    , ("Tuple8" , tupleScheme 8)
     ]
   where
     list = appT (conT "List") (varT "a")
+    tupleScheme n = 
+        Forall (take n letters) [] (foldr arrT (foldl appT (conT con) tvars) tvars)
+      where
+        con = "Tuple" <> integerToText (fromIntegral n)
+        tvars = varT <$> take n letters
 
 replConstructorEnv :: ConstructorEnv
 replConstructorEnv = constructorEnv
     [ ("Nil"    , ["Nil", "Cons"])
     , ("Cons"   , ["Nil", "Cons"])
     , ("Tuple2" , ["Tuple2"])
+    , ("Tuple3" , ["Tuple3"])
+    , ("Tuple4" , ["Tuple4"])
+    , ("Tuple5" , ["Tuple5"])
+    , ("Tuple6" , ["Tuple6"])
+    , ("Tuple7" , ["Tuple7"])
+    , ("Tuple8" , ["Tuple8"])
     ]
 
 replValueEnv :: ValueEnv Eval
@@ -107,6 +124,12 @@ replValueEnv = Env.fromList
     [ ("Cons"   , dataCon "Cons" 2)
     , ("Nil"    , dataCon "Nil" 0)
     , ("Tuple2" , dataCon "Tuple2" 2)
+    , ("Tuple3" , dataCon "Tuple3" 3)
+    , ("Tuple4" , dataCon "Tuple4" 4)
+    , ("Tuple5" , dataCon "Tuple5" 5)
+    , ("Tuple6" , dataCon "Tuple6" 6)
+    , ("Tuple7" , dataCon "Tuple7" 7)
+    , ("Tuple8" , dataCon "Tuple8" 8)
     ]
 
 replOptions :: Options Repl

@@ -111,10 +111,9 @@ normalize (Forall vars tycls ty) =
            (apply sub <$> tycls) 
            (apply sub ty)
   where
-    updateVar v = Map.findWithDefault v v map1
-    letters = [1..] >>= flip replicateM ['a'..'z'] >>= (:[]) . Text.pack
-    map1 = Map.fromList (nub (allVars ty) `zip` letters)
-    sub = Substitution (varT <$> map1)
+    updateVar v = Map.findWithDefault v v maps
+    maps = Map.fromList (nub (allVars ty) `zip` letters)
+    sub = Substitution (varT <$> maps)
 
 allVars :: Type -> [Name]
 allVars = cata alg where

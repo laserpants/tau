@@ -5,6 +5,7 @@ module Tau.Value where
 
 import Control.Monad.Reader
 import Data.Function ((&))
+import Data.Text (isPrefixOf)
 import Data.Text.Prettyprint.Doc
 import GHC.Show (showSpace)
 import Tau.Env (Env(..))
@@ -60,11 +61,24 @@ dataCon name n = Closure first val mempty
 -- ============================================================================
 
 instance Pretty (Value m) where
-    pretty (Data name args) = pretty name <+> hsep (prettyArg <$> args)
-    pretty value = prettyArg value
+    pretty (Data "Nil" [])   = "[]"
+    pretty d@(Data "Cons" _) = "[" <> hcat (listElems [d]) <> "]"
+    pretty d@(Data _ args) 
+        | isTuple d          = tupled (pretty <$> args)
+    pretty (Data name args)  = pretty name <+> hsep (prettyArg <$> args)
+    pretty value             = prettyArg value
+
+isTuple :: Value m -> Bool
+isTuple (Data con _) = "Tuple" `isPrefixOf` con
+isTuple _            = False
 
 prettyArg :: Value m -> Doc a
 prettyArg (Value prim)   = pretty prim
-prettyArg (Data name []) = pretty name
-prettyArg dat@Data{}     = parens (pretty dat)
+prettyArg (Data name []) = pretty (Data name [])
+prettyArg d@Data{}       = parens (pretty d)
 prettyArg Closure{}      = "<<function>>"
+
+listElems :: [Value m] -> [Doc a]
+listElems [Data "Cons" (x:Data "Nil" []:_)] = [pretty x]
+listElems [Data "Cons" (x:xs)]              = (pretty x <> ", "):listElems xs
+listElems _                                 = []
