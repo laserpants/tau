@@ -65,6 +65,12 @@ testPatternAnomaliesCheck = do
         , $(mkPattern "Cons z zs")
         ]
 
+    exhaustivePatterns
+        [ $(mkPattern "x :: y :: ys)")
+        , $(mkPattern "[]")
+        , $(mkPattern "z :: zs")
+        ]
+
     nonExhaustivePatterns
         [ $(mkPattern "Cons x (Cons y ys)")
         , $(mkPattern "Cons z zs")
@@ -87,6 +93,12 @@ testPatternAnomaliesCheck = do
         [ $(mkPattern "Cons x (Cons y ys)")
         , $(mkPattern "Nil")
         , $(mkPattern "Cons z Nil")
+        ]
+
+    exhaustivePatterns
+        [ $(mkPattern "x :: y :: ys")
+        , $(mkPattern "[]")
+        , $(mkPattern "[z]")
         ]
 
     nonExhaustivePatterns
