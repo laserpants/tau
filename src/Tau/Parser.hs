@@ -112,7 +112,7 @@ identifier = varS <$> word (withInitial letterChar)
 operator :: [[Operator Parser Expr]]
 operator =
     [
-      [ InfixR (cmpS <$ symbol "`")
+      [ InfixR (cmpS <$ symbol "<<")
       ]
     , [ Prefix (negS <$ symbol "-")
       ]

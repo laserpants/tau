@@ -389,7 +389,7 @@ prettyOp n = \case
     SubS a b -> next a <+> "-" <+> next b
     LtS a b  -> next a <+> "<" <+> next b
     GtS a b  -> next a <+> ">" <+> next b
-    CmpS a b -> next a <+> "`" <+> next b
+    CmpS a b -> next a <+> "<<" <+> next b
     DotS a b -> next a <> "." <> next b
     NegS a   -> "-" <> next a
     NotS a   -> "not" <+> next a
