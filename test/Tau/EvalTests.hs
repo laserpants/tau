@@ -184,3 +184,7 @@ testEval = do
     succeedEval
         $(mkExpr "let fst (a, b) = a in (1, 2).fst")
         (Value (Int 1))
+
+    succeedEval
+        $(mkExpr "(\\x y z => x + z) 2 3 4")
+        (Value (Int 6))

@@ -202,3 +202,11 @@ testTypeInference = do
     succeedInferType
         $(mkExpr "let fst = \\match (a, b) => a in (1, 2).fst")
         $(mkScheme "Int")
+
+    succeedInferType
+        $(mkExpr "let fst (a, b) = a in fst (1, 2)")
+        $(mkScheme "Int")
+
+    succeedInferType
+        $(mkExpr "(\\x y z => x + z)")
+        $(mkScheme "forall a b. a -> b -> a -> a")

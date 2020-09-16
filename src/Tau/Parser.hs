@@ -248,9 +248,10 @@ wildcard = symbol "_" $> anyP
 
 lambda :: Parser Expr
 lambda = do
-    var  <- symbol "\\" *> name
+    void (symbol "\\")
+    vars <- some name
     body <- symbol "=>" *> expr
-    pure (lamS var body)
+    pure (foldr lamS body vars)
 
 unit :: Parser Prim
 unit = symbol "()" $> Unit
