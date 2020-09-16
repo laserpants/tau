@@ -26,6 +26,7 @@ dependencies:
   - set-monad
   - text
   - transformers
+  - template-haskell
 
 library:
   source-dirs: 
@@ -55,5 +56,4 @@ tests:
       #- -Wall
     dependencies:
     - tau
-    - template-haskell
     - hspec

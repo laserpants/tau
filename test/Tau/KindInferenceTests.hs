@@ -2,19 +2,19 @@
 {-# LANGUAGE TemplateHaskell   #-}
 module Tau.KindInferenceTests where
 
-import TH
 import Tau.Env
 import Tau.Kind.Inference
 import Tau.Type
+import Tau.Util.TH
 import Test.Hspec
 import Utils
 import qualified Tau.Env as Env
 
 testKindEnv :: Env Kind
 testKindEnv = Env.fromList
-    [ ( "List"  , $(mkKind "* -> *") )
-    , ( "State" , $(mkKind "* -> * -> *") )
-    , ( "Monad" , $(mkKind "* -> *") )
+    [ ( "List"  , $(parseKind "* -> *") )
+    , ( "State" , $(parseKind "* -> * -> *") )
+    , ( "Monad" , $(parseKind "* -> *") )
     ]
 
 succeedInferKind :: Type -> Kind -> SpecWith ()
@@ -26,12 +26,12 @@ succeedInferKind ty expected =
 testKindInference :: SpecWith ()
 testKindInference = do
     succeedInferKind
-        $(mkType "List a")
-        $(mkKind "*")
+        $(parseType "List a")
+        $(parseKind "*")
 
     succeedInferKind
-        $(mkType "State a Int")
-        $(mkKind "*")
+        $(parseType "State a Int")
+        $(parseKind "*")
 
 -- TODO
 --    succeedInferKind
@@ -39,9 +39,9 @@ testKindInference = do
 --        starK
 
     succeedInferKind
-        $(mkType "List a -> List Int")
-        $(mkKind "*")
+        $(parseType "List a -> List Int")
+        $(parseKind "*")
 
     succeedInferKind
-        $(mkType "List")
-        $(mkKind "* -> *")
+        $(parseType "List")
+        $(parseKind "* -> *")

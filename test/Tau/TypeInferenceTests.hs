@@ -2,32 +2,32 @@
 {-# LANGUAGE TemplateHaskell   #-}
 module Tau.TypeInferenceTests where
 
-import TH
 import Tau.Env (Env(..))
 import Tau.Expr
 import Tau.Solver
 import Tau.Type
 import Tau.Type.Inference
+import Tau.Util.TH
 import Test.Hspec
 import Utils
 import qualified Tau.Env as Env
 
 testTypeEnv :: Env Scheme
 testTypeEnv = Env.fromList
-    [ ( "concat" , $(mkScheme "String -> String -> String") )
-    , ( "show"   , $(mkScheme "forall a. (Show a) => a -> String") )
-    , ( "Nil"    , $(mkScheme "forall a. List a") )
-    , ( "Cons"   , $(mkScheme "forall a. a -> List a -> List a") )
-    , ( "const"  , $(mkScheme "forall a b. a -> b -> a") )
-    , ( "foo"    , $(mkScheme "forall a. a -> a") )
-    , ( "Foo"    , $(mkScheme "forall a. a -> List a") )
-    , ( "Tuple2" , $(mkScheme "forall a b. a -> b -> Tuple2 a b") )
-    , ( "fst"    , $(mkScheme "forall a b. Tuple2 a b -> a") )
-    , ( "snd"    , $(mkScheme "forall a b. Tuple2 a b -> b") )
-    , ( "Baz"    , $(mkScheme "Bool") )
-    , ( "equals" , $(mkScheme "forall a. (Eq a) => a -> a -> Bool") )
-    , ( "plus"   , $(mkScheme "forall a. (Num a) => a -> a -> a") )
-    , ( "Show"   , $(mkScheme "forall a. a -> String -> Show a") )
+    [ ( "concat" , $(parseScheme "String -> String -> String") )
+    , ( "show"   , $(parseScheme "forall a. (Show a) => a -> String") )
+    , ( "Nil"    , $(parseScheme "forall a. List a") )
+    , ( "Cons"   , $(parseScheme "forall a. a -> List a -> List a") )
+    , ( "const"  , $(parseScheme "forall a b. a -> b -> a") )
+    , ( "foo"    , $(parseScheme "forall a. a -> a") )
+    , ( "Foo"    , $(parseScheme "forall a. a -> List a") )
+    , ( "Tuple2" , $(parseScheme "forall a b. a -> b -> Tuple2 a b") )
+    , ( "fst"    , $(parseScheme "forall a b. Tuple2 a b -> a") )
+    , ( "snd"    , $(parseScheme "forall a b. Tuple2 a b -> b") )
+    , ( "Baz"    , $(parseScheme "Bool") )
+    , ( "equals" , $(parseScheme "forall a. (Eq a) => a -> a -> Bool") )
+    , ( "plus"   , $(parseScheme "forall a. (Num a) => a -> a -> a") )
+    , ( "Show"   , $(parseScheme "forall a. a -> String -> Show a") )
     ]
 
 runTest :: Expr -> Either TypeError (Type, [TyClass])
@@ -53,160 +53,160 @@ failInferTypeWithError err expr =
 testTypeInference :: SpecWith ()
 testTypeInference = do
     succeedInferType
-        $(mkExpr "let const = \\a => \\b => a in const ()")
-        $(mkScheme "forall a. a -> Unit")
+        $(parseExpr "let const = \\a => \\b => a in const ()")
+        $(parseScheme "forall a. a -> Unit")
 
     succeedInferType
-        $(mkExpr "const 5 ()")
-        $(mkScheme "Int")
+        $(parseExpr "const 5 ()")
+        $(parseScheme "Int")
 
     succeedInferType
-        $(mkExpr "foo 5")
-        $(mkScheme "Int")
+        $(parseExpr "foo 5")
+        $(parseScheme "Int")
 
     succeedInferType
-        $(mkExpr "Foo 5")
-        $(mkScheme "List Int")
+        $(parseExpr "Foo 5")
+        $(parseScheme "List Int")
 
     succeedInferType
-        $(mkExpr "\\a => a")
-        $(mkScheme "forall a. a -> a")
+        $(parseExpr "\\a => a")
+        $(parseScheme "forall a. a -> a")
 
     succeedInferType
-        $(mkExpr "\\a => \\b => a")
-        $(mkScheme "forall a b. a -> b -> a")
+        $(parseExpr "\\a => \\b => a")
+        $(parseScheme "forall a b. a -> b -> a")
 
     succeedInferType
-        $(mkExpr "\\a => \\b => a")
-        $(mkScheme "forall a b. a -> (b -> a)")
+        $(parseExpr "\\a => \\b => a")
+        $(parseScheme "forall a b. a -> (b -> a)")
 
     succeedInferType
-        $(mkExpr "let const = \\a => \\b => a in const () 5")
-        $(mkScheme "Unit")
+        $(parseExpr "let const = \\a => \\b => a in const () 5")
+        $(parseScheme "Unit")
 
     succeedInferType
-        $(mkExpr "(\\xs => match xs with Cons y ys => 1 | Nil => 2) (Cons 5 Nil)")
-        $(mkScheme "Int")
+        $(parseExpr "(\\xs => match xs with Cons y ys => 1 | Nil => 2) (Cons 5 Nil)")
+        $(parseScheme "Int")
 
     succeedInferType
-        $(mkExpr "(\\match Cons y ys => 1 | Nil => 2) (Cons 5 Nil)")
-        $(mkScheme "Int")
+        $(parseExpr "(\\match Cons y ys => 1 | Nil => 2) (Cons 5 Nil)")
+        $(parseScheme "Int")
 
     succeedInferType
-        $(mkExpr "\\match Cons y ys => 1 | Nil => 2")
-        $(mkScheme "forall a. List a -> Int")
+        $(parseExpr "\\match Cons y ys => 1 | Nil => 2")
+        $(parseScheme "forall a. List a -> Int")
 
     succeedInferType
-        $(mkExpr "(\\xs => match xs with _ => 1) (Cons 5 Nil)")
-        $(mkScheme "Int")
+        $(parseExpr "(\\xs => match xs with _ => 1) (Cons 5 Nil)")
+        $(parseScheme "Int")
 
     succeedInferType
-        $(mkExpr "(\\xs => match xs with x => 1) (Cons 5 Nil)")
-        $(mkScheme "Int")
+        $(parseExpr "(\\xs => match xs with x => 1) (Cons 5 Nil)")
+        $(parseScheme "Int")
 
     succeedInferType
-        $(mkExpr "(\\xs => match xs with Cons y ys => 1) (Cons 5 Nil)")
-        $(mkScheme "Int")
+        $(parseExpr "(\\xs => match xs with Cons y ys => 1) (Cons 5 Nil)")
+        $(parseScheme "Int")
 
     succeedInferType
-        $(mkExpr "let xs = Baz in match xs with Baz => \"hello\"")
-        $(mkScheme "String")
+        $(parseExpr "let xs = Baz in match xs with Baz => \"hello\"")
+        $(parseScheme "String")
 
     succeedInferType
-        $(mkExpr "(\\xs => match xs with | Cons y ys => 1 | Nil => 2) Nil")
-        $(mkScheme "Int")
+        $(parseExpr "(\\xs => match xs with | Cons y ys => 1 | Nil => 2) Nil")
+        $(parseScheme "Int")
 
     succeedInferType
         (appS [lamMatchS [(conP "Cons" [varP "y", varP "ys"], litInt 1), (conP "Nil" [], litInt 2)], appS [varS "Nil"]])
-        $(mkScheme "Int")
+        $(parseScheme "Int")
 
     succeedInferType
         (appS [lamMatchS [(conP "Cons" [varP "y", varP "ys"], litInt 1), (conP "Nil" [], litInt 2)], varS "Nil"])
-        $(mkScheme "Int")
+        $(parseScheme "Int")
 
     succeedInferType
-        $(mkExpr "match Cons 6 Nil with Cons y ys => y + 1")
-        $(mkScheme "Int")
+        $(parseExpr "match Cons 6 Nil with Cons y ys => y + 1")
+        $(parseScheme "Int")
 
     succeedInferType
-        $(mkExpr "let xs = Cons True Nil in let ys = Cons 1 Nil in 5")
-        $(mkScheme "Int")
+        $(parseExpr "let xs = Cons True Nil in let ys = Cons 1 Nil in 5")
+        $(parseScheme "Int")
 
     succeedInferType
-        $(mkExpr "match Cons 6 Nil with Cons y ys => y + 1 | Cons 4 ys => 5")
-        $(mkScheme "Int")
+        $(parseExpr "match Cons 6 Nil with Cons y ys => y + 1 | Cons 4 ys => 5")
+        $(parseScheme "Int")
 
     succeedInferType
-        $(mkExpr "match Cons 6 Nil with Cons y ys => \"one\" | _ => \"two\"")
-        $(mkScheme "String")
+        $(parseExpr "match Cons 6 Nil with Cons y ys => \"one\" | _ => \"two\"")
+        $(parseScheme "String")
 
     succeedInferType
-        $(mkExpr "let plus = \\a => \\b => a + b in let plus5 = plus 5 in let id = \\x => x in (id plus5) (id 3)")
-        $(mkScheme "Int")
+        $(parseExpr "let plus = \\a => \\b => a + b in let plus5 = plus 5 in let id = \\x => x in (id plus5) (id 3)")
+        $(parseScheme "Int")
 
     succeedInferType
-        $(mkExpr "let id = \\x => x in let x = Tuple2 id 4 in (fst x snd x) + 1")
-        $(mkScheme "Int")
+        $(parseExpr "let id = \\x => x in let x = Tuple2 id 4 in (fst x snd x) + 1")
+        $(parseScheme "Int")
 
     succeedInferType
-        $(mkExpr "let rec f = \\n => if n == 0 then 1 else n * (f (n - 1)) in f 5")
-        $(mkScheme "Int")
+        $(parseExpr "let rec f = \\n => if n == 0 then 1 else n * (f (n - 1)) in f 5")
+        $(parseScheme "Int")
 
     succeedInferType
-        $(mkExpr "(\\x => match x with 1 => 2 | 2 => 3) 1")
-        $(mkScheme "Int")
+        $(parseExpr "(\\x => match x with 1 => 2 | 2 => 3) 1")
+        $(parseScheme "Int")
 
     failInferTypeWithError (UnificationError CannotUnify)
-        $(mkExpr "match Cons \"a\" Nil with Cons y ys => y + 1")
+        $(parseExpr "match Cons \"a\" Nil with Cons y ys => y + 1")
 
     failInferTypeWithError (UnificationError CannotUnify)
-        $(mkExpr "match Cons 6 Nil with Cons y ys => y + 1 | Cons 4 ys => \"foo\"")
+        $(parseExpr "match Cons 6 Nil with Cons y ys => y + 1 | Cons 4 ys => \"foo\"")
 
     failInferTypeWithError (UnificationError CannotUnify)
-        $(mkExpr "match Cons 6 Nil with Cons y ys => y + 1 | 5 => 1")
+        $(parseExpr "match Cons 6 Nil with Cons y ys => y + 1 | 5 => 1")
 
     failInferTypeWithError (UnificationError CannotUnify)
-        $(mkExpr "match Cons 6 Nil with Cons y ys => y + 1 | Cons \"w\" z => 1")
+        $(parseExpr "match Cons 6 Nil with Cons y ys => y + 1 | Cons \"w\" z => 1")
 
     failInferTypeWithError (UnificationError CannotUnify)
-        $(mkExpr "match Cons 6 Nil with Cons y ys => y + 1 | Cons z 5 => 1")
+        $(parseExpr "match Cons 6 Nil with Cons y ys => y + 1 | Cons z 5 => 1")
 
     failInferTypeWithError (UnificationError CannotUnify)
-        $(mkExpr "match Cons 6 Nil with Cons y ys => y | _ => \"two\"")
+        $(parseExpr "match Cons 6 Nil with Cons y ys => y | _ => \"two\"")
 
     failInferTypeWithError EmptyMatchStatement
         (matchS (appS [varS "Nil"]) [])
 
     failInferTypeWithError (UnificationError CannotUnify)
-        $(mkExpr "if 1 == True then 1 else 0")
+        $(parseExpr "if 1 == True then 1 else 0")
 
     failInferTypeWithError (UnificationError CannotUnify)
-        $(mkExpr "if Cons True Nil == Cons 1 Nil then 1 else 0")
+        $(parseExpr "if Cons True Nil == Cons 1 Nil then 1 else 0")
 
     failInferTypeWithError (UnificationError CannotUnify)
-        $(mkExpr "if Cons True Nil == Foo 1 Nil then 1 else 0")
+        $(parseExpr "if Cons True Nil == Foo 1 Nil then 1 else 0")
 
     failInferTypeWithError (UnificationError CannotUnify)
-        $(mkExpr "if Cons True Nil == Cons then 1 else 0")
+        $(parseExpr "if Cons True Nil == Cons then 1 else 0")
 
     failInferTypeWithError (UnboundVariable "x")
-        $(mkExpr "let x = x in x")
+        $(parseExpr "let x = x in x")
 
     failInferTypeWithError (UnboundVariable "f")
-        $(mkExpr "let f = \\n => if n == 0 then 1 else n * (f (n - 1)) in f 5")
+        $(parseExpr "let f = \\n => if n == 0 then 1 else n * (f (n - 1)) in f 5")
 
     succeedInferType
-        $(mkExpr "let fst = \\match (a, b) => a in fst (1, 2)")
-        $(mkScheme "Int")
+        $(parseExpr "let fst = \\match (a, b) => a in fst (1, 2)")
+        $(parseScheme "Int")
 
     succeedInferType
-        $(mkExpr "let fst = \\match (a, b) => a in (1, 2).fst")
-        $(mkScheme "Int")
+        $(parseExpr "let fst = \\match (a, b) => a in (1, 2).fst")
+        $(parseScheme "Int")
 
     succeedInferType
-        $(mkExpr "let fst (a, b) = a in fst (1, 2)")
-        $(mkScheme "Int")
+        $(parseExpr "let fst (a, b) = a in fst (1, 2)")
+        $(parseScheme "Int")
 
     succeedInferType
-        $(mkExpr "(\\x y z => x + z)")
-        $(mkScheme "forall a b. a -> b -> a -> a")
+        $(parseExpr "(\\x y z => x + z)")
+        $(parseScheme "forall a b. a -> b -> a -> a")

@@ -3,9 +3,9 @@
 module Tau.PatternAnomaliesCheckTests where
 
 import Control.Monad.Reader
-import TH
 import Tau.Expr
 import Tau.Patterns
+import Tau.Util.TH
 import Test.Hspec
 import Utils
 
@@ -60,54 +60,54 @@ notUsefulPattern pat patterns =
 testPatternAnomaliesCheck :: SpecWith ()
 testPatternAnomaliesCheck = do
     exhaustivePatterns
-        [ $(mkPattern "Cons x (Cons y ys)")
-        , $(mkPattern "Nil")
-        , $(mkPattern "Cons z zs")
+        [ $(parsePattern "Cons x (Cons y ys)")
+        , $(parsePattern "Nil")
+        , $(parsePattern "Cons z zs")
         ]
 
     exhaustivePatterns
-        [ $(mkPattern "x :: y :: ys)")
-        , $(mkPattern "[]")
-        , $(mkPattern "z :: zs")
+        [ $(parsePattern "x :: y :: ys)")
+        , $(parsePattern "[]")
+        , $(parsePattern "z :: zs")
         ]
 
     nonExhaustivePatterns
-        [ $(mkPattern "Cons x (Cons y ys)")
-        , $(mkPattern "Cons z zs")
+        [ $(parsePattern "Cons x (Cons y ys)")
+        , $(parsePattern "Cons z zs")
         ]
 
     nonExhaustivePatterns
-        [ $(mkPattern "Cons x (Cons y ys)")
-        , $(mkPattern "Cons z zs")
-        , $(mkPattern "Cons _ _")
+        [ $(parsePattern "Cons x (Cons y ys)")
+        , $(parsePattern "Cons z zs")
+        , $(parsePattern "Cons _ _")
         ]
 
     exhaustivePatterns
-        [ $(mkPattern "Cons x (Cons y ys)")
-        , $(mkPattern "Cons z zs")
-        , $(mkPattern "Cons _ _")
-        , $(mkPattern "Nil")
+        [ $(parsePattern "Cons x (Cons y ys)")
+        , $(parsePattern "Cons z zs")
+        , $(parsePattern "Cons _ _")
+        , $(parsePattern "Nil")
         ]
 
     exhaustivePatterns
-        [ $(mkPattern "Cons x (Cons y ys)")
-        , $(mkPattern "Nil")
-        , $(mkPattern "Cons z Nil")
+        [ $(parsePattern "Cons x (Cons y ys)")
+        , $(parsePattern "Nil")
+        , $(parsePattern "Cons z Nil")
         ]
 
     exhaustivePatterns
-        [ $(mkPattern "x :: y :: ys")
-        , $(mkPattern "[]")
-        , $(mkPattern "[z]")
+        [ $(parsePattern "x :: y :: ys")
+        , $(parsePattern "[]")
+        , $(parsePattern "[z]")
         ]
 
     nonExhaustivePatterns
-        [ $(mkPattern "Cons x (Cons y ys)")
-        , $(mkPattern "Nil")
+        [ $(parsePattern "Cons x (Cons y ys)")
+        , $(parsePattern "Nil")
         ]
 
     nonExhaustivePatterns
-        [ $(mkPattern "Nil")
+        [ $(parsePattern "Nil")
         ]
 
     exhaustivePatterns
@@ -115,13 +115,13 @@ testPatternAnomaliesCheck = do
         ]
 
     exhaustivePatterns
-        [ $(mkPattern "Cons x ys")
-        , $(mkPattern "Nil")
+        [ $(parsePattern "Cons x ys")
+        , $(parsePattern "Nil")
         ]
 
     exhaustivePatterns
-        [ $(mkPattern "Cons x ys")
-        , $(mkPattern "x")
+        [ $(parsePattern "Cons x ys")
+        , $(parsePattern "x")
         ]
 
     exhaustivePatterns
@@ -165,18 +165,18 @@ testPatternAnomaliesCheck = do
 
     notUsefulPattern
         (conP "Nil" [])
-        [ $(mkPattern "Cons x ys")
-        , $(mkPattern "x")
+        [ $(parsePattern "Cons x ys")
+        , $(parsePattern "x")
         ]
 
     notUsefulPattern
         (conP "Nil" [])
-        [ $(mkPattern "Cons x ys")
-        , $(mkPattern "x")
-        , $(mkPattern "Nil")
+        [ $(parsePattern "Cons x ys")
+        , $(parsePattern "x")
+        , $(parsePattern "Nil")
         ]
 
     usefulPattern
         (conP "Nil" [])
-        [ $(mkPattern "Cons x ys")
+        [ $(parsePattern "Cons x ys")
         ]

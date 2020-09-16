@@ -3,8 +3,8 @@
 module Tau.TypeUnificationTests where
 
 import Data.Either
-import TH
 import Tau.Type
+import Tau.Util.TH
 import Test.Hspec
 import Utils
 
@@ -34,33 +34,33 @@ succeedUnifyTypes t1 t2 = do
 testTypeUnification :: SpecWith ()
 testTypeUnification = do
     succeedUnifyTypes
-        $(mkType "a -> b")
-        $(mkType "Int -> Int")
+        $(parseType "a -> b")
+        $(parseType "Int -> Int")
 
     failUnifyTypes
-        $(mkType "a -> a")
-        $(mkType "Int -> Bool")
+        $(parseType "a -> a")
+        $(parseType "Int -> Bool")
 
     succeedUnifyTypes
-        $(mkType "a -> a")
-        $(mkType "Int -> Int")
+        $(parseType "a -> a")
+        $(parseType "Int -> Int")
 
     succeedUnifyTypes
-        $(mkType "a -> b -> a")
-        $(mkType "a -> Int -> a")
+        $(parseType "a -> b -> a")
+        $(parseType "a -> Int -> a")
 
     succeedUnifyTypes
-        $(mkType "a -> b -> a")
-        $(mkType "a -> Int -> b")
+        $(parseType "a -> b -> a")
+        $(parseType "a -> Int -> b")
 
     failUnifyTypes
-        $(mkType "a -> b -> a")
-        $(mkType "Int -> Int -> Bool")
+        $(parseType "a -> b -> a")
+        $(parseType "Int -> Int -> Bool")
 
     succeedUnifyTypes
-        $(mkType "List a")
-        $(mkType "List Int")
+        $(parseType "List a")
+        $(parseType "List Int")
 
     failUnifyTypes
-        $(mkType "List a")
+        $(parseType "List a")
         tInt

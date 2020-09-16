@@ -5,16 +5,14 @@ import Control.Monad.Reader
 import Data.List (isPrefixOf)
 import Data.Text (pack, unpack)
 import System.Console.Repline
-import Tau.Env (Env)
 import Tau.Eval
 import Tau.Parser
 import Tau.Patterns
 import Tau.Type.Inference
 import Tau.Type
 import Tau.Util
-import Tau.Value
 import Text.Megaparsec.Error (errorBundlePretty)
-import qualified Tau.Env as Env
+import qualified Tau.Env.Builtin as Builtin
 
 type Repl = HaskelineT IO
 
@@ -43,16 +41,16 @@ replCommand input =
             putStrIO $ unpack (prettyPrint result)
             -- type check
 
-            case runInferType replTypeEnv result of
+            case runInferType Builtin.typeSchemes result of
                 Left err ->
                     putStrIO $ show err
 
                 Right (ty, sub, _) ->
                     -- exhaustive check
-                    if allPatternsAreExhaustive result replConstructorEnv
+                    if allPatternsAreExhaustive result Builtin.constructors
                         then 
                             --putStrIO (unpack (prettyPrint result))
-                            case evalExpr (compileAll result) replValueEnv of
+                            case evalExpr (compileAll result) Builtin.values of
                                 Nothing ->
                                     putStrIO "Runtime error"
 
@@ -62,75 +60,6 @@ replCommand input =
 
                         else
                             putStrIO "Non-exhaustive patterns"
-
---data Environments = Environments
---    { constructorEnv :: ConstructorEnv
---    , valueEnv       :: ValueEnv
---    , optionsEnv     :: Options Repl
---    }
---
---environments :: Environments
---environments = Environments
---    { constructorEnv =
---        [ ("Nil"  , ["Nil", "Cons"])
---        , ("Cons" , ["Nil", "Cons"])
---        ]
---    , valueEnv =
---        [ ("Cons"   , dataCon "Cons" 2)
---        , ("Nil"    , dataCon "Nil" 0)
---        ]
---    , optionsEnv =
---        [ ("quit", quit)
---        , ("help", help)
---        ]
---    }
-
-replTypeEnv :: Env Scheme
-replTypeEnv = Env.fromList
-    [ ("Nil"    , Forall ["a"] [] list)
-    , ("Cons"   , Forall ["a"] [] (arrT (varT "a") (arrT list list)))
-    , ("Show"   , Forall ["a"] [] (arrT (arrT (varT "a") (conT "String")) (appT (conT "Show") (varT "a"))))
-    , ("Tuple2" , tupleScheme 2)
-    , ("Tuple3" , tupleScheme 3)
-    , ("Tuple4" , tupleScheme 4)
-    , ("Tuple5" , tupleScheme 5)
-    , ("Tuple6" , tupleScheme 6)
-    , ("Tuple7" , tupleScheme 7)
-    , ("Tuple8" , tupleScheme 8)
-    ]
-  where
-    list = appT (conT "List") (varT "a")
-    tupleScheme n =
-        Forall (take n letters) [] (foldr arrT (foldl appT (conT con) tvars) tvars)
-      where
-        con = "Tuple" <> integerToText (fromIntegral n)
-        tvars = varT <$> take n letters
-
-replConstructorEnv :: ConstructorEnv
-replConstructorEnv = constructorEnv
-    [ ("Nil"    , ["Nil", "Cons"])
-    , ("Cons"   , ["Nil", "Cons"])
-    , ("Tuple2" , ["Tuple2"])
-    , ("Tuple3" , ["Tuple3"])
-    , ("Tuple4" , ["Tuple4"])
-    , ("Tuple5" , ["Tuple5"])
-    , ("Tuple6" , ["Tuple6"])
-    , ("Tuple7" , ["Tuple7"])
-    , ("Tuple8" , ["Tuple8"])
-    ]
-
-replValueEnv :: ValueEnv Eval
-replValueEnv = Env.fromList
-    [ ("Cons"   , dataCon "Cons" 2)
-    , ("Nil"    , dataCon "Nil" 0)
-    , ("Tuple2" , dataCon "Tuple2" 2)
-    , ("Tuple3" , dataCon "Tuple3" 3)
-    , ("Tuple4" , dataCon "Tuple4" 4)
-    , ("Tuple5" , dataCon "Tuple5" 5)
-    , ("Tuple6" , dataCon "Tuple6" 6)
-    , ("Tuple7" , dataCon "Tuple7" 7)
-    , ("Tuple8" , dataCon "Tuple8" 8)
-    ]
 
 replOptions :: Options Repl
 replOptions =
