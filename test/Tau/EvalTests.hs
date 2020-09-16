@@ -78,8 +78,19 @@ testEval = do
     succeedEvalFunction
         $(mkExpr "let const = \\a => \\b => a in const ()")
 
+    succeedEvalFunction
+        $(mkExpr "let const a b = a in const ()")
+
     succeedEval
         $(mkExpr "let const = \\a => \\b => a in const () 5")
+        (Value Unit)
+
+    succeedEval
+        $(mkExpr "let const = \\a b => a in const () 5")
+        (Value Unit)
+
+    succeedEval
+        $(mkExpr "let const a b = a in const () 5")
         (Value Unit)
 
     succeedEval
@@ -100,6 +111,10 @@ testEval = do
 
     succeedEval
         $(mkExpr "let plus = \\a => \\b => a + b in let plus5 = plus 5 in let id = \\x => x in (id plus5) (id 3)")
+        (Value (Int 8))
+
+    succeedEval
+        $(mkExpr "let plus a b = a + b in let plus5 = plus 5 in let id x = x in (id plus5) (id 3)")
         (Value (Int 8))
 
     succeedEval
@@ -174,6 +189,14 @@ testEval = do
         (Value (Int 4))
 
     succeedEval
+        $(mkExpr "let f (a, b) = a in let rec g = \\match [] => 0 | x::xs => g xs + 1 in let h x = x + 1 in let z = h << g << f in z ([1,2,3], 4)")
+        (Value (Int 4))
+
+    succeedEval
+        $(mkExpr "let f (a, b) = a in let rec g = \\match [] => 0 | x::xs => g xs + 1 in let h x = x + 1 in let z = h << (g << f) in z ([1,2,3], 4)")
+        (Value (Int 4))
+
+    succeedEval
         $(mkExpr "let fst = \\match (a, b) => a in fst (1, 2)")
         (Value (Int 1))
 
@@ -188,3 +211,11 @@ testEval = do
     succeedEval
         $(mkExpr "(\\x y z => x + z) 2 3 4")
         (Value (Int 6))
+
+    succeedEval
+        $(mkExpr "(\\() => 5) ()")
+        (Value (Int 5))
+
+    succeedEval
+        $(mkExpr "(\\() => ()) ()")
+        (Value Unit)

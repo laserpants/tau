@@ -167,12 +167,7 @@ parseLet con kword = do
     pats <- many pattern_
     term <- symbol  "="   *> expr
     body <- keyword "in"  *> expr
-    pure (con var (val term pats) body)
-  where
-    val term pats =
-        if and (isVar <$> pats)
-            then foldr lamS term (concatMap patternVars pats)
-            else foldr (\pat a -> lamMatchS [(pat, a)]) term pats
+    pure (con var (expandLam term pats) body)
 
 matchWith :: Parser Expr
 matchWith = do
@@ -249,9 +244,15 @@ wildcard = symbol "_" $> anyP
 lambda :: Parser Expr
 lambda = do
     void (symbol "\\")
-    vars <- some name
+    pats <- some pattern_
     body <- symbol "=>" *> expr
-    pure (foldr lamS body vars)
+    pure (expandLam body pats)
+
+expandLam :: Expr -> [Pattern] -> Expr
+expandLam term pats =
+    if and (isVar <$> pats)
+        then foldr lamS term (concatMap patternVars pats)
+        else foldr (\pat a -> lamMatchS [(pat, a)]) term pats
 
 unit :: Parser Prim
 unit = symbol "()" $> Unit
