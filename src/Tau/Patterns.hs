@@ -286,6 +286,7 @@ compileAll = cata $ \case
   where
     run :: Expr -> [MatchClause Expr] -> Expr
     run expr clss =
-        first (:[]) <$> clss
-            & compilePatterns [expr]
-            & flip evalSupply (nameSupply ":")
+        undefined
+        --first (:[]) <$> clss
+        --    & compilePatterns [expr]
+        --    & flip evalSupply (nameSupply ":")

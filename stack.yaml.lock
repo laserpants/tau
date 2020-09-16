@@ -25,6 +25,13 @@ packages:
       sha256: 235d9b78cb87e21651fd36421c30ff4e0638e463fac7ec8b70887db06c3ff88f
   original:
     hackage: haskeline-0.8.0.0@sha256:0630452b759a5b40e0e3e7ca2ef4b0d55d5161d95e8d7b0dd3cf55888971437f,5440
+- completed:
+    hackage: monad-supply-0.9@sha256:4326f7e5fb93c471cb9ac9bc4be738ea3f7f77052bff2d7ebdf7e05172623284,1249
+    pantry-tree:
+      size: 272
+      sha256: 875719dcef5e614d5f029e26ad617f7f9f20777b98dbee8d8ca3e48d3ff5a81f
+  original:
+    hackage: monad-supply-0.9@sha256:4326f7e5fb93c471cb9ac9bc4be738ea3f7f77052bff2d7ebdf7e05172623284,1249
 snapshots:
 - completed:
     size: 532381

@@ -17,6 +17,7 @@ dependencies:
   - deriving-compat
   - extra
   - megaparsec
+  - monad-supply >= 0.9 && < 1.0
   - mtl
   - parser-combinators
   - prettyprinter
@@ -29,7 +30,7 @@ dependencies:
 library:
   source-dirs: 
     - src/
-    - monad-supply/src/
+    - monad-supply/src
   ghc-options:
     - -Wall
 

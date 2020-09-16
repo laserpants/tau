@@ -9,6 +9,7 @@ import Control.Arrow ((>>>), (&&&), first)
 import Control.Monad.Except
 import Control.Monad.Reader
 import Control.Monad.Supply
+import Control.Monad.Trans.Maybe
 import Control.Monad.Writer
 import Data.Either.Extra (mapLeft)
 import Data.Foldable (foldrM)
@@ -49,19 +50,20 @@ runInferType
   :: Env Scheme
   -> Expr
   -> Either TypeError (Type, Substitution Type, [TyClass])
-runInferType env = (first3 getAnnotation <$>) . runInferTree env
+runInferType env = undefined -- (first3 getAnnotation <$>) . runInferTree env
 
 runInferTree
   :: Env Scheme
   -> Expr
   -> Either TypeError (AnnotatedAst Type, Substitution Type, [TyClass])
-runInferTree env = runInfer . inferTypeTree env
+runInferTree env = undefined -- runInfer . inferTypeTree env
 
 runInfer :: InferType a -> Either TypeError a
-runInfer = unInferType
-    >>> runExceptT
-    >>> flip runReaderT (Monoset mempty)
-    >>> flip evalSupply (nameSupply "a")
+runInfer = undefined
+    -- unInferType
+    -- >>> runExceptT
+    -- >>> flip runReaderT (Monoset mempty)
+    -- >>> flip evalSupply (nameSupply "a")
 
 liftErrors :: (MonadError TypeError m) => (ExceptT UnificationError m) a -> m a
 liftErrors = runExceptT >>> (mapLeft UnificationError <$>) >>> (liftEither =<<)
