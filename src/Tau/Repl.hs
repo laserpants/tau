@@ -50,7 +50,7 @@ replCommand input =
                 Right (ty, sub, _) ->
                     -- exhaustive check
                     if allPatternsAreExhaustive result replConstructorEnv
-                        then do
+                        then 
                             --putStrIO (unpack (prettyPrint result))
                             case evalExpr (compileAll result) replValueEnv of
                                 Nothing ->
@@ -100,7 +100,7 @@ replTypeEnv = Env.fromList
     ]
   where
     list = appT (conT "List") (varT "a")
-    tupleScheme n = 
+    tupleScheme n =
         Forall (take n letters) [] (foldr arrT (foldl appT (conT con) tvars) tvars)
       where
         con = "Tuple" <> integerToText (fromIntegral n)

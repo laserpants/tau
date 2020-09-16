@@ -4,7 +4,7 @@
 {-# LANGUAGE StrictData        #-}
 {-# LANGUAGE TemplateHaskell   #-}
 {-# LANGUAGE TypeOperators     #-}
-module Tau.Util 
+module Tau.Util
   ( module Data.Functor.Foldable
   , module Debug.Trace
   , Name
@@ -38,11 +38,11 @@ nameSupply prefix = (prefix <>) . integerToText <$> nats
     nats = [1..] :: [Integer]
 
 letters :: [Text]
-letters = [1..] >>= flip replicateM ['a'..'z'] 
+letters = [1..] >>= flip replicateM ['a'..'z']
                 >>= (:[]) . pack
 
 integerToText :: Integer -> Text
-integerToText = Text.toStrict . toLazyText . decimal 
+integerToText = Text.toStrict . toLazyText . decimal
 
 type Algebra f a = f a -> a
 
@@ -53,7 +53,7 @@ to3 :: ((a, b), c) -> (a, b, c)
 to3 ((a, b), c) = (a, b, c)
 
 liftMaybe :: (MonadFail m) => String -> Maybe a -> m a
-liftMaybe err Nothing = fail err 
+liftMaybe err Nothing = fail err
 liftMaybe _ (Just ok) = pure ok
 
 data (f :*: g) a = (:*:)

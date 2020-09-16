@@ -27,7 +27,7 @@ testTypeEnv = Env.fromList
     , ( "Baz"    , $(mkScheme "Bool") )
     , ( "equals" , $(mkScheme "forall a. (Eq a) => a -> a -> Bool") )
     , ( "plus"   , $(mkScheme "forall a. (Num a) => a -> a -> a") )
-    , ( "Show"   , $(mkScheme "forall a. a -> String -> Show a") ) 
+    , ( "Show"   , $(mkScheme "forall a. a -> String -> Show a") )
     ]
 
 runTest :: Expr -> Either TypeError (Type, [TyClass])
@@ -103,7 +103,7 @@ testTypeInference = do
     succeedInferType
         $(mkExpr "(\\xs => match xs with x => 1) (Cons 5 Nil)")
         $(mkScheme "Int")
-        
+
     succeedInferType
         $(mkExpr "(\\xs => match xs with Cons y ys => 1) (Cons 5 Nil)")
         $(mkScheme "Int")

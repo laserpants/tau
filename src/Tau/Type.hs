@@ -107,8 +107,8 @@ tVoid    = conT "Void"     -- ^ Void
 
 normalize :: Scheme -> Scheme
 normalize (Forall vars tycls ty) =
-    Forall (updateVar <$> vars) 
-           (apply sub <$> tycls) 
+    Forall (updateVar <$> vars)
+           (apply sub <$> tycls)
            (apply sub ty)
   where
     updateVar v = Map.findWithDefault v v maps

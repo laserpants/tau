@@ -258,7 +258,7 @@ inferOp = \case
     AndS e1 e2 -> op2 AndS e1 e2 logicalOp
     NegS e     -> op1 NegS e numericOp1
     NotS e     -> op1 NotS e numericOp1
-    DotS e1 e2 -> op2 DotS e1 e2 (Forall ["a", "b", "c"] [] ((varT "a" `arrT` varT "b") `arrT` (varT "b" `arrT` varT "c") `arrT` varT "a" `arrT` varT "c")) 
+    DotS e1 e2 -> op2 DotS e1 e2 (Forall ["a", "b", "c"] [] ((varT "a" `arrT` varT "b") `arrT` (varT "b" `arrT` varT "c") `arrT` varT "a" `arrT` varT "c"))
     CmpS e1 e2 -> op2 CmpS e1 e2 (Forall ["a", "b", "c"] [] ((varT "b" `arrT` varT "c") `arrT` (varT "a" `arrT` varT "b") `arrT` varT "a" `arrT` varT "c"))
 
 op1
