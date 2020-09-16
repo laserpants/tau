@@ -158,3 +158,11 @@ testEval = do
     succeedEval
         $(mkExpr "let fst = \\match | (a, _) => a in let rec length = \\match | Nil => 0 | x::xs => 1 + (length xs) in ([1,2,3], 5).fst.length")
         (Value (Int 3))
+
+    succeedEval
+        $(mkExpr "let f = \\match (a, b) => a in let rec g = \\match [] => 0 | x::xs => g xs + 1 in let h = \\x => x + 1 in h (g (f ([1,2,3], 4)))")
+        (Value (Int 4))
+
+    succeedEval
+        $(mkExpr "let f = \\match (a, b) => a in let rec g = \\match [] => 0 | x::xs => g xs + 1 in let h = \\x => x + 1 in let z = h ` g ` f in z ([1,2,3], 4)")
+        (Value (Int 4))

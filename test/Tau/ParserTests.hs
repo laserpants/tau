@@ -2,9 +2,12 @@
 module Tau.ParserTests where
 
 import Data.Either
+import Data.Text.Prettyprint.Doc (Pretty)
 import Tau.Expr
 import Tau.Parser
+import Tau.Type
 import Test.Hspec
+import Text.Megaparsec hiding (ParseError)
 import Utils
 
 failParse :: Text -> SpecWith ()
@@ -16,9 +19,15 @@ failParse input =
             isLeft result
 
 succeedParse :: Text -> Expr -> SpecWith ()
-succeedParse input expect =
+succeedParse = succeedWithParser parseExpr
+
+succeedParseType :: Text -> Type -> SpecWith ()
+succeedParseType = succeedWithParser (runParser (spaces *> type_ <* eof) "")
+
+succeedWithParser :: (Pretty a, Eq a) => (Text -> Either ParseError a) -> Text -> a -> SpecWith ()
+succeedWithParser parser input expect =
     describe (unpack input) $ do
-        let result = parseExpr input
+        let result = parser input
 
         it "✔ succeeds to parse" $
             isRight result
@@ -184,3 +193,11 @@ testParser = do
     succeedParse
         "(\\match | (1, 2, x) => 4) (3, 4, \"stuff\")"
         (appS [lamMatchS [(conP "Tuple3" [litP (Int 1), litP (Int 2), varP "x"], litInt 4)], appS [varS "Tuple3", litInt 3, litInt 4, litString "stuff"]])
+
+    succeedParseType
+        "a -> b -> c"
+        (varT "a" `arrT` varT "b" `arrT` varT "c")
+
+    succeedParseType
+        "a -> (b -> c)"
+        (varT "a" `arrT` varT "b" `arrT` varT "c")

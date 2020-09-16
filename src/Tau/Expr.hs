@@ -79,6 +79,7 @@ data OpF a
     | OrS a ~a
     | AndS a ~a
     | DotS a a
+    | CmpS a a
     deriving (Show, Eq, Functor, Foldable, Traversable)
 
 type Op = OpF (Fix ExprF)
@@ -216,6 +217,9 @@ andS a1 a2 = opS (AndS a1 a2)
 
 dotS :: Expr -> Expr -> Expr
 dotS a1 a2 = opS (DotS a1 a2)
+
+cmpS :: Expr -> Expr -> Expr
+cmpS a1 a2 = opS (CmpS a1 a2)
 
 litUnit :: Expr
 litUnit = litS Unit
@@ -385,6 +389,7 @@ prettyOp n = \case
     SubS a b -> next a <+> "-" <+> next b
     LtS a b  -> next a <+> "<" <+> next b
     GtS a b  -> next a <+> ">" <+> next b
+    CmpS a b -> next a <+> "`" <+> next b
     DotS a b -> next a <> "." <> next b
     NegS a   -> "-" <> next a
     NotS a   -> "not" <+> next a

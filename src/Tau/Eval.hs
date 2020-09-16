@@ -70,7 +70,7 @@ eval = cata $ \case
 
 evalVar :: (MonadFail m, MonadReader (ValueEnv m) m) => Name -> m (Value m)
 evalVar name = do
-    env <- ask 
+    env <- ask
     maybe (fail "Unbound identifier") pure (Env.lookup name env)
 
 evalMatch
@@ -79,7 +79,7 @@ evalMatch
   -> Value m
   -> m (Value m)
 evalMatch [] _ = fail "Runtime error"
-evalMatch ((match, expr):cs) val = 
+evalMatch ((match, expr):cs) val =
     case unfix match of
         AnyP ->
             expr
@@ -87,7 +87,7 @@ evalMatch ((match, expr):cs) val =
         VarP var ->
             local (Env.insert var val) expr
 
-        con -> 
+        con ->
             case matched con val of
                 Just pairs ->
                     local (Env.insertMany pairs) expr
@@ -113,7 +113,7 @@ evalApp fun arg = do
     val <- arg
     local (const (Env (Map.insert var val closure))) body
 
-evalOp :: (MonadFail m, MonadReader (ValueEnv m) m) => OpF (m (Value m)) -> m (Value m) 
+evalOp :: (MonadFail m, MonadReader (ValueEnv m) m) => OpF (m (Value m)) -> m (Value m)
 evalOp = \case
     AddS a b -> numOp (+) a b
     SubS a b -> numOp (-) a b
@@ -196,8 +196,11 @@ evalOp = \case
         Value (Bool r) <- b
         bool (l && r)
 
-    DotS a b -> do
-        foldl1 evalApp [b, a]
+    DotS a b ->
+        evalApp b a
+
+    CmpS a b ->
+        asks (Closure "$" (evalVar "$" >>= evalApp a . evalApp b . pure))
 
   where
     numOp op a b = do

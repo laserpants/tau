@@ -80,6 +80,8 @@ varT = Fix . VarT
 arrT :: Type -> Type -> Type
 arrT a1 a2 = Fix (ArrT a1 a2)
 
+infixr 1 `arrT`
+
 appT :: Type -> Type -> Type
 appT a1 a2 = Fix (AppT a1 a2)
 
