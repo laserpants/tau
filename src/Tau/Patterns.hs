@@ -11,6 +11,7 @@ import Control.Monad.Reader
 import Control.Monad.Supply
 import Data.Foldable (foldrM)
 import Data.Function ((&))
+import Data.Maybe (fromJust)
 import Data.List.Extra (groupSortOn)
 import Data.Set.Monad (Set)
 import Data.Tuple.Extra (first)
@@ -286,7 +287,7 @@ compileAll = cata $ \case
   where
     run :: Expr -> [MatchClause Expr] -> Expr
     run expr clss =
-        undefined
-        --first (:[]) <$> clss
-        --    & compilePatterns [expr]
-        --    & flip evalSupply (nameSupply ":")
+        first (:[]) <$> clss
+            & compilePatterns [expr]
+            & flip evalSupply (nameSupply ":")
+            & fromJust

@@ -10,6 +10,7 @@ module Tau.Kind.Inference
 import Control.Monad.Except
 import Control.Monad.Supply
 import Control.Monad.Writer
+import Data.Maybe (fromJust)
 import Tau.Env
 import Tau.Solver
 import Tau.Type
@@ -32,7 +33,11 @@ tellConstraint
 tellConstraint constraint = tell (mempty, [constraint])
 
 runInferKind :: Env Kind -> Type -> Either UnificationError Kind
-runInferKind env = flip evalSupply (nameSupply "") . runExceptT . inferKind env
+runInferKind env = 
+    fromJust 
+    . flip evalSupply (nameSupply "") 
+    . runExceptT 
+    . inferKind env
 
 inferKind
   :: (MonadSupply Name m, MonadError UnificationError m)
