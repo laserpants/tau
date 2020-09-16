@@ -172,3 +172,11 @@ testEval = do
     succeedEval
         $(mkExpr "let f = \\match (a, b) => a in let rec g = \\match [] => 0 | x::xs => g xs + 1 in let h = \\x => x + 1 in let z = h << g << f in z ([1,2,3], 4)")
         (Value (Int 4))
+
+    succeedEval
+        $(mkExpr "let fst = \\match (a, b) => a in fst (1, 2)")
+        (Value (Int 1))
+
+    succeedEval
+        $(mkExpr "let fst = \\match (a, b) => a in (1, 2).fst")
+        (Value (Int 1))

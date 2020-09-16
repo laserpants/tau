@@ -194,3 +194,11 @@ testTypeInference = do
 
     failInferTypeWithError (UnboundVariable "f")
         $(mkExpr "let f = \\n => if n == 0 then 1 else n * (f (n - 1)) in f 5")
+
+    succeedInferType
+        $(mkExpr "let fst = \\match (a, b) => a in fst (1, 2)")
+        $(mkScheme "Int")
+
+    succeedInferType
+        $(mkExpr "let fst = \\match (a, b) => a in (1, 2).fst")
+        $(mkScheme "Int")
