@@ -164,10 +164,15 @@ letBinding = parseLet letS "let"
 parseLet :: (Name -> Expr -> Expr -> Expr) -> Text -> Parser Expr
 parseLet con kword = do
     var  <- keyword kword *> name
-    vars <- many name
+    pats <- many pattern_
     term <- symbol  "="   *> expr
     body <- keyword "in"  *> expr
-    pure (con var (foldr lamS term vars) body)
+    pure (con var (val term pats) body)
+  where
+    val term pats =
+        if and (isVar <$> pats)
+            then foldr lamS term (concatMap patternVars pats)
+            else foldr (\pat a -> lamMatchS [(pat, a)]) term pats
 
 matchWith :: Parser Expr
 matchWith = do

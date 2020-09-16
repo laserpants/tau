@@ -90,16 +90,20 @@ $(deriveEq1   ''ExprF)
 $(deriveShow1 ''OpF)
 $(deriveEq1   ''OpF)
 
+-- ============================================================================
+-- == Patterns
+-- ============================================================================
+
+isVar :: Pattern -> Bool
+isVar (Fix VarP{}) = True
+isVar _            = False
+
 patternVars :: Pattern -> [Name]
 patternVars = cata alg where
     alg :: Algebra PatternF [Name]
     alg (VarP v)    = [v]
     alg (ConP _ ps) = concat ps
     alg _           = []
-
--- ============================================================================
--- == Patterns
--- ============================================================================
 
 -- | Predicate to check whether a pattern is /simple/. A simple pattern is
 --     - a variable,

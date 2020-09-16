@@ -180,3 +180,7 @@ testEval = do
     succeedEval
         $(mkExpr "let fst = \\match (a, b) => a in (1, 2).fst")
         (Value (Int 1))
+
+    succeedEval
+        $(mkExpr "let fst (a, b) = a in (1, 2).fst")
+        (Value (Int 1))
