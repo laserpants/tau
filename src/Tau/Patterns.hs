@@ -113,7 +113,7 @@ checkPatterns check = cata $ \case
     LetS _ expr body ->
         expr &&^ body
 
-    RecS _ expr body ->
+    LetRecS _ expr body ->
         expr &&^ body
 
     IfS cond true false ->

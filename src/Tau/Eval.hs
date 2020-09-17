@@ -48,7 +48,7 @@ eval = cata $ \case
         val <- expr
         local (Env.insert var val) body
 
-    RecS var expr body -> do
+    LetRecS var expr body -> do
         val <- mfix (\val -> local (Env.insert var val) expr)
         local (Env.insert var val) body
 

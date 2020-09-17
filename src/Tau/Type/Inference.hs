@@ -134,7 +134,7 @@ inferTree = fmap to3 . runWriterT . cata alg
         LetS var expr body ->
             inferLet False var expr body
 
-        RecS var expr body ->
+        LetRecS var expr body ->
             inferLet True var expr body
 
         IfS cond true false -> do
@@ -245,7 +245,7 @@ inferLet rec var expr body = do
     set <- ask
     tell [Implicit t t1 set | (y, t) <- getAssumption <$> a1 <> a2, var == y]
     let (con, as) = if rec
-        then (RecS, removeAssumption var a1)
+        then (LetRecS, removeAssumption var a1)
         else (LetS, a1)
     pure ( annotated t2 (con var expr' body')
          , as <> removeAssumption var a2 )

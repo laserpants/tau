@@ -52,7 +52,7 @@ data ExprF a
     | LitS Prim
     | AtomS Name
     | LetS Name a a
-    | RecS Name a a  -- TODO rename to LetRecS
+    | LetRecS Name a a
     | IfS a ~a ~a
     | MatchS a [MatchClause a]
     | LamMatchS [MatchClause a]
@@ -168,7 +168,7 @@ letS :: Name -> Expr -> Expr -> Expr
 letS a1 a2 = Fix . LetS a1 a2
 
 recS :: Name -> Expr -> Expr -> Expr
-recS a1 a2 = Fix . RecS a1 a2
+recS a1 a2 = Fix . LetRecS a1 a2
 
 ifS :: Expr -> Expr -> Expr -> Expr
 ifS a1 a2 a3 = Fix (IfS a1 a2 a3)
@@ -290,7 +290,7 @@ instance Substitutable Expr Expr where
         LetS var (_, body) (expr, _) ->
             letS var body (apply (deleteFromSub var sub) expr)
 
-        RecS var (body, _) (expr, _) ->
+        LetRecS var (body, _) (expr, _) ->
             let deleteVarIn = apply (deleteFromSub var sub)
              in recS var (deleteVarIn body) (deleteVarIn expr)
 
@@ -353,7 +353,7 @@ prettyExpr n = unfix >>> \case
         <+> pretty expr <+> "in"
         <+> pretty body
 
-    RecS name expr body ->
+    LetRecS name expr body ->
         wrap n $ "let rec"
         <+> pretty name <+> equals
         <+> pretty expr <+> "in"
