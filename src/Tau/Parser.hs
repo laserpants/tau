@@ -5,6 +5,7 @@ module Tau.Parser where
 import Control.Monad (when, void)
 import Control.Monad.Combinators.Expr
 import Data.Functor (($>))
+import Data.List (sortOn, nub)
 import Data.Maybe (fromMaybe)
 import Data.Text (Text, pack, unpack)
 import Data.Void
@@ -94,6 +95,7 @@ ast = do
         <|> lambda
         <|> literal
         <|> list_
+        <|> record
         <|> tuple
         <|> identifier
 
@@ -318,6 +320,27 @@ mkTuple con nil = \case
     [a, b, c, d, e, f, g]    -> con "Tuple7" [a, b, c, d, e, f, g]
     [a, b, c, d, e, f, g, h] -> con "Tuple8" [a, b, c, d, e, f, g, h]
     a:_                      -> a
+
+-- ============================================================================
+-- == Records
+-- ============================================================================
+
+record :: Parser Expr
+record = do
+    void (symbol "{")
+    pairs <- sortOn fst <$> field `sepBy` symbol ","
+    when (hasDups (fst <$> pairs)) (fail "A field name appears more than once in record")
+    void (symbol "}")
+    pure (structS (appS (collect pairs)))
+  where
+    hasDups names = length names /= length (nub names)
+    collect pairs = do
+        let con = "#Struct" <> integerToText (fromIntegral (length pairs))
+        varS con:concatMap (\(k, v) -> [atomS k, v]) pairs
+    field = do
+        key <- name
+        val <- symbol "=" *> expr
+        pure (key, val)
 
 -- ============================================================================
 -- == Type

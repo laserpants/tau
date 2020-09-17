@@ -50,12 +50,14 @@ data ExprF a
     | LamS Name a
     | AppS [a]
     | LitS Prim
+    | AtomS Name
     | LetS Name a a
-    | RecS Name a a
+    | RecS Name a a  -- TODO rename to LetRecS
     | IfS a ~a ~a
     | MatchS a [MatchClause a]
     | LamMatchS [MatchClause a]
     | OpS (OpF a)
+    | StructS a
     | AnnS a Scheme
     | ErrS
     deriving (Show, Eq, Functor, Foldable, Traversable)
@@ -159,6 +161,9 @@ appS = Fix . AppS
 litS :: Prim -> Expr
 litS = Fix . LitS
 
+atomS :: Name -> Expr
+atomS = Fix . AtomS
+
 letS :: Name -> Expr -> Expr -> Expr
 letS a1 a2 = Fix . LetS a1 a2
 
@@ -176,6 +181,9 @@ lamMatchS = Fix . LamMatchS
 
 opS :: OpF Expr -> Expr
 opS = Fix . OpS
+
+structS :: Expr -> Expr
+structS = Fix . StructS 
 
 annS :: Expr -> Scheme -> Expr
 annS a = Fix . AnnS a
@@ -276,6 +284,9 @@ instance Substitutable Expr Expr where
         LitS prim ->
             litS prim
 
+        AtomS atom ->
+            atomS atom
+
         LetS var (_, body) (expr, _) ->
             letS var body (apply (deleteFromSub var sub) expr)
 
@@ -294,6 +305,9 @@ instance Substitutable Expr Expr where
 
         OpS op ->
             opS (snd <$> op)
+
+        StructS expr ->
+            structS (snd expr)
 
         AnnS (_, expr) ty ->
             annS expr ty
@@ -330,6 +344,9 @@ prettyExpr n = unfix >>> \case
     LitS prim ->
         pretty prim
 
+    AtomS atom ->
+        pretty atom
+
     LetS name expr body ->
         wrap n $ "let"
         <+> pretty name <+> equals
@@ -356,6 +373,9 @@ prettyExpr n = unfix >>> \case
 
     OpS ops ->
         wrap n $ prettyOp 0 ops
+
+    StructS _ ->
+        "<<struct>>"
 
     AnnS expr ty ->
         wrap n $ pretty expr <+> colon <+> pretty ty

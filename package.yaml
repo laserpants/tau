@@ -24,9 +24,10 @@ dependencies:
   - recursion-schemes
   - repline
   - set-monad
+  - split
+  - template-haskell
   - text
   - transformers
-  - template-haskell
 
 library:
   source-dirs: 

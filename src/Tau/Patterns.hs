@@ -128,6 +128,9 @@ checkPatterns check = cata $ \case
     OpS (NegS a) -> a
     OpS (NotS a) -> a
 
+    StructS expr ->
+        expr
+
     AnnS expr _ ->
         expr
 

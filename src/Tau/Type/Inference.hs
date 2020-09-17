@@ -128,6 +128,9 @@ inferTree = fmap to3 . runWriterT . cata alg
             t <- inferPrim prim
             pure (annotated t (LitS prim), [])
 
+        AtomS atom ->
+            pure (annotated (conT ("#" <> atom)) (AtomS atom), [])
+
         LetS var expr body ->
             inferLet False var expr body
 
@@ -162,6 +165,10 @@ inferTree = fmap to3 . runWriterT . cata alg
 
         OpS op ->
             inferOp op
+
+        StructS expr -> do
+            (expr', t, as) <- expr
+            pure (annotated t (StructS expr'), as)
 
         AnnS{} ->
             undefined  -- TODO

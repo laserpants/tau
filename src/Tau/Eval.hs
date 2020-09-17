@@ -41,6 +41,9 @@ eval = cata $ \case
     LitS prim ->
         pure (Value prim)
 
+    AtomS atom ->
+        pure (Value (String atom))
+
     LetS var expr body -> do
         val <- expr
         local (Env.insert var val) body
@@ -61,6 +64,9 @@ eval = cata $ \case
 
     OpS op ->
         evalOp op
+
+    StructS expr -> 
+        Record <$> expr
 
     AnnS expr _ ->
         expr

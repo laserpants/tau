@@ -5,6 +5,7 @@ module Tau.Value where
 
 import Control.Monad.Reader
 import Data.Function ((&))
+import Data.List.Split (chunksOf)
 import Data.Text (isPrefixOf)
 import Data.Text.Prettyprint.Doc
 import GHC.Show (showSpace)
@@ -21,11 +22,13 @@ type ValueEnv m = Env (Value m)
 data Value m
     = Value Prim                               -- ^ Literal value
     | Data Name [Value m]                      -- ^ Applied data constructor
+    | Record (Value m)                         -- ^ Record type
     | Closure Name (m (Value m)) ~(ValueEnv m) -- ^ Function closure
 
 instance Eq (Value m) where
     (==) (Value v) (Value w)     = v == w
     (==) (Data c vs) (Data d ws) = c == d && vs == ws
+    (==) (Record v) (Record w)   = v == w
     (==) _ _                     = False
 
 instance Show (Value m) where
@@ -41,6 +44,11 @@ instance Show (Value m) where
             . showsPrec 11 name
             . showSpace
             . showsPrec 11 vals
+    showsPrec p (Record val) =
+        showParen (p >= 11)
+            $ showString "Record"
+            . showSpace
+            . showsPrec 11 val
     showsPrec _ Closure{} =
         showString "Closure <<function>>"
 
@@ -75,8 +83,16 @@ isTuple _            = False
 prettyArg :: Value m -> Doc a
 prettyArg (Value prim)   = pretty prim
 prettyArg (Data name []) = pretty (Data name [])
+prettyArg (Record val)   = prettyRecord val
 prettyArg d@Data{}       = parens (pretty d)
 prettyArg Closure{}      = "<<function>>"
+
+prettyRecord :: Value m -> Doc a
+prettyRecord (Data _ args) = 
+    "{" <+> hsep (punctuate comma (field <$> chunksOf 2 args)) <+> "}" where
+    field [Value (String key), val] = pretty key <+> "=" <+> pretty val
+    field _ = ""
+prettyRecord _ = ""
 
 listElems :: [Value m] -> [Doc a]
 listElems [Data "Cons" (x:Data "Nil" []:_)] = [pretty x]
