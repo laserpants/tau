@@ -50,14 +50,14 @@ data ExprF a
     | LamS Name a
     | AppS [a]
     | LitS Prim
-    | AtomS Name
     | LetS Name a a
     | LetRecS Name a a
     | IfS a ~a ~a
     | MatchS a [MatchClause a]
     | LamMatchS [MatchClause a]
     | OpS (OpF a)
-    | StructS a
+    | DotS Name a
+    | StructS [(Name, a)]
     | AnnS a Scheme
     | ErrS
     deriving (Show, Eq, Functor, Foldable, Traversable)
@@ -80,7 +80,6 @@ data OpF a
     | NotS a
     | OrS a ~a
     | AndS a ~a
-    | DotS a a
     | CmpS a a
     deriving (Show, Eq, Functor, Foldable, Traversable)
 
@@ -161,9 +160,6 @@ appS = Fix . AppS
 litS :: Prim -> Expr
 litS = Fix . LitS
 
-atomS :: Name -> Expr
-atomS = Fix . AtomS
-
 letS :: Name -> Expr -> Expr -> Expr
 letS a1 a2 = Fix . LetS a1 a2
 
@@ -182,8 +178,11 @@ lamMatchS = Fix . LamMatchS
 opS :: OpF Expr -> Expr
 opS = Fix . OpS
 
-structS :: Expr -> Expr
-structS = Fix . StructS 
+dotS :: Name -> Expr -> Expr
+dotS a = Fix . DotS a
+
+structS :: [(Name, Expr)] -> Expr
+structS = Fix . StructS
 
 annS :: Expr -> Scheme -> Expr
 annS a = Fix . AnnS a
@@ -226,9 +225,6 @@ orS a1 a2 = opS (OrS a1 a2)
 
 andS :: Expr -> Expr -> Expr
 andS a1 a2 = opS (AndS a1 a2)
-
-dotS :: Expr -> Expr -> Expr
-dotS a1 a2 = opS (DotS a1 a2)
 
 cmpS :: Expr -> Expr -> Expr
 cmpS a1 a2 = opS (CmpS a1 a2)
@@ -284,9 +280,6 @@ instance Substitutable Expr Expr where
         LitS prim ->
             litS prim
 
-        AtomS atom ->
-            atomS atom
-
         LetS var (_, body) (expr, _) ->
             letS var body (apply (deleteFromSub var sub) expr)
 
@@ -306,8 +299,11 @@ instance Substitutable Expr Expr where
         OpS op ->
             opS (snd <$> op)
 
-        StructS expr ->
-            structS (snd expr)
+        DotS name expr ->
+            dotS name (snd expr)
+
+        StructS fields ->
+            structS (fmap snd <$> fields)
 
         AnnS (_, expr) ty ->
             annS expr ty
@@ -344,9 +340,6 @@ prettyExpr n = unfix >>> \case
     LitS prim ->
         pretty prim
 
-    AtomS atom ->
-        pretty atom
-
     LetS name expr body ->
         wrap n $ "let"
         <+> pretty name <+> equals
@@ -373,6 +366,9 @@ prettyExpr n = unfix >>> \case
 
     OpS ops ->
         wrap n $ prettyOp 0 ops
+
+    DotS a b ->
+        wrap n $ pretty b <> "." <> pretty a
 
     StructS _ ->
         "<<struct>>"
@@ -414,7 +410,6 @@ prettyOp n = \case
     LtS a b  -> next a <+> "<" <+> next b
     GtS a b  -> next a <+> ">" <+> next b
     CmpS a b -> next a <+> "<<" <+> next b
-    DotS a b -> next a <> "." <> next b
     NegS a   -> "-" <> next a
     NotS a   -> "not" <+> next a
   where

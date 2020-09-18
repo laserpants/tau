@@ -9,7 +9,7 @@ module Tau.Eval where
 import Control.Monad.Except
 import Control.Monad.Reader
 import Data.Functor.Foldable
-import Tau.Env
+import Tau.Env (Env(..))
 import Tau.Expr
 import Tau.Util
 import Tau.Value
@@ -41,9 +41,6 @@ eval = cata $ \case
     LitS prim ->
         pure (Value prim)
 
-    AtomS atom ->
-        pure (Value (String atom))
-
     LetS var expr body -> do
         val <- expr
         local (Env.insert var val) body
@@ -65,8 +62,12 @@ eval = cata $ \case
     OpS op ->
         evalOp op
 
-    StructS expr -> 
-        Record <$> expr
+    DotS name expr ->
+        evalApp (evalVar name) expr
+
+    StructS expr -> do
+        let (one, two) = unzip expr
+        Record . zip one <$> sequence two
 
     AnnS expr _ ->
         expr
@@ -201,9 +202,6 @@ evalOp = \case
         Value (Bool l) <- a
         Value (Bool r) <- b
         bool (l && r)
-
-    DotS a b ->
-        evalApp b a
 
     CmpS a b ->
         asks (Closure "$" (evalVar "$" >>= evalApp a . evalApp b . pure))

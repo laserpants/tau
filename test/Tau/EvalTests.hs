@@ -121,8 +121,15 @@ testEval = do
         $(parseExpr "let id = \\x => x in let x = Tuple2 id 4 in (fst x snd x) + 1")
         (Value (Int 5))
 
+    succeedEval
+        $(parseExpr "let id = \\x => x in let x = (id, 4) in (fst x snd x) + 1")
+        (Value (Int 5))
+
     succeedEvalFunction
         $(parseExpr "let id = \\x => x in let x = Tuple2 id 4 in fst x")
+
+    succeedEvalFunction
+        $(parseExpr "let id = \\x => x in let x = (id, 4) in fst x")
 
     failEval
         $(parseExpr "let x = x in x")
@@ -169,11 +176,27 @@ testEval = do
         (Value (Int 3))
 
     succeedEval
+        $(parseExpr "let fst = \\match | (a, _) => a in let rec length = \\match | Nil => 0 | Cons x xs => 1 + (length xs) in length (fst (Tuple2 (Cons 1 (Cons 2 (Cons 3 Nil))) 5))")
+        (Value (Int 3))
+
+    succeedEval
+        $(parseExpr "let fst = \\match | (a, _) => a in let rec length = \\match | Nil => 0 | Cons x xs => 1 + (length xs) in length (fst (1 :: 2 :: 3 :: [], 5))")
+        (Value (Int 3))
+
+    succeedEval
+        $(parseExpr "let fst = \\match | (a, _) => a in let rec length = \\match | Nil => 0 | Cons x xs => 1 + (length xs) in length (fst ([1, 2, 3], 5))")
+        (Value (Int 3))
+
+    succeedEval
         $(parseExpr "let fst = \\match | (a, _) => a in let rec length = \\match | Nil => 0 | x::xs => 1 + (length xs) in length (fst ([1,2,3], 5))")
         (Value (Int 3))
 
     succeedEval
         $(parseExpr "let fst = \\match | (a, _) => a in let rec length = \\match | Nil => 0 | x::xs => 1 + (length xs) in (fst ([1,2,3], 5)).length")
+        (Value (Int 3))
+
+    succeedEval
+        $(parseExpr "let fst = \\match | (a, _) => a in let rec length = \\match | Nil => 0 | x::xs => 1 + (length xs) in (([1,2,3], 5).fst).length")
         (Value (Int 3))
 
     succeedEval
@@ -219,3 +242,20 @@ testEval = do
     succeedEval
         $(parseExpr "(\\() => ()) ()")
         (Value Unit)
+
+    succeedEval
+        $(parseExpr "let number = \\_ => 42 in { number = 42 }.number")
+        (Value (Int 42))
+
+
+--    succeedEval
+--        $(parseExpr "{ number = 42 }.number")
+--        (Value (Int 42))
+--
+--    succeedEval
+--        $(parseExpr "let plus1 x = x + 1 in { number = 42 }.number.plus1")
+--        (Value (Int 43))
+--
+--    succeedEval
+--        $(parseExpr "let info = { number = 42 } in info.number")
+--        (Value (Int 42))

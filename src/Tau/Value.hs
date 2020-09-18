@@ -1,11 +1,10 @@
+{-# LANGUAGE FlexibleContexts  #-}
 {-# LANGUAGE OverloadedStrings #-}
 {-# LANGUAGE StrictData        #-}
-{-# LANGUAGE FlexibleContexts  #-}
 module Tau.Value where
 
 import Control.Monad.Reader
 import Data.Function ((&))
-import Data.List.Split (chunksOf)
 import Data.Text (isPrefixOf)
 import Data.Text.Prettyprint.Doc
 import GHC.Show (showSpace)
@@ -22,7 +21,7 @@ type ValueEnv m = Env (Value m)
 data Value m
     = Value Prim                               -- ^ Literal value
     | Data Name [Value m]                      -- ^ Applied data constructor
-    | Record (Value m)                         -- ^ Record type
+    | Record [(Name, Value m)]                 -- ^ Record type
     | Closure Name (m (Value m)) ~(ValueEnv m) -- ^ Function closure
 
 instance Eq (Value m) where
@@ -71,7 +70,7 @@ dataCon name n = Closure first val mempty
 instance Pretty (Value m) where
     pretty (Data "Nil" [])   = "[]"
     pretty d@(Data "Cons" _) = "[" <> hcat (listElems [d]) <> "]"
-    pretty d@(Data _ args) 
+    pretty d@(Data _ args)
         | isTuple d          = tupled (pretty <$> args)
     pretty (Data name args)  = pretty name <+> hsep (prettyArg <$> args)
     pretty value             = prettyArg value
@@ -81,18 +80,16 @@ isTuple (Data con _) = "Tuple" `isPrefixOf` con
 isTuple _            = False
 
 prettyArg :: Value m -> Doc a
-prettyArg (Value prim)   = pretty prim
-prettyArg (Data name []) = pretty (Data name [])
-prettyArg (Record val)   = prettyRecord val
-prettyArg d@Data{}       = parens (pretty d)
-prettyArg Closure{}      = "<<function>>"
+prettyArg (Value prim)    = pretty prim
+prettyArg (Data name [])  = pretty (Data name [])
+prettyArg (Record fields) = prettyRecord fields
+prettyArg d@Data{}        = parens (pretty d)
+prettyArg Closure{}       = "<<function>>"
 
-prettyRecord :: Value m -> Doc a
-prettyRecord (Data _ args) = 
-    "{" <+> hsep (punctuate comma (field <$> chunksOf 2 args)) <+> "}" where
-    field [Value (String key), val] = pretty key <+> "=" <+> pretty val
-    field _ = ""
-prettyRecord _ = ""
+prettyRecord :: [(Name, Value m)] -> Doc a
+prettyRecord fields =
+    "{" <+> hsep (punctuate comma (uncurry field <$> fields)) <+> "}" where
+    field key val = pretty key <+> "=" <+> pretty val
 
 listElems :: [Value m] -> [Doc a]
 listElems [Data "Cons" (x:Data "Nil" []:_)] = [pretty x]

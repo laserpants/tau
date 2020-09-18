@@ -5,7 +5,7 @@
 {-# LANGUAGE FlexibleContexts  #-}
 module Tau.Patterns where
 
-import Control.Monad.Extra (anyM, (&&^))
+import Control.Monad.Extra (anyM, andM, (&&^))
 import Control.Monad.Identity
 import Control.Monad.Reader
 import Control.Monad.Supply
@@ -128,8 +128,11 @@ checkPatterns check = cata $ \case
     OpS (NegS a) -> a
     OpS (NotS a) -> a
 
-    StructS expr ->
+    DotS _ expr ->
         expr
+
+    StructS expr ->
+        andM (snd <$> expr)
 
     AnnS expr _ ->
         expr

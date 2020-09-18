@@ -24,7 +24,6 @@ dependencies:
   - recursion-schemes
   - repline
   - set-monad
-  - split
   - template-haskell
   - text
   - transformers

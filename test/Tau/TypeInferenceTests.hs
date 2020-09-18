@@ -210,3 +210,29 @@ testTypeInference = do
     succeedInferType
         $(parseExpr "(\\x y z => x + z)")
         $(parseScheme "forall a b. a -> b -> a -> a")
+
+    succeedInferType
+        $(parseExpr "let key = \\_ => 5 in { key = 5 }.key")
+        $(parseScheme "Int")
+
+--    succeedInferType
+--        $(parseExpr "{ key = 5 }.key")
+--        $(parseScheme "Int")
+--
+--    succeedInferType
+--        $(parseExpr "let obj = { key = 5 } in obj.key")
+--        $(parseScheme "Int")
+--
+--    failInferTypeWithError (UnboundVariable "b")
+--        $(parseExpr "{ a = 5 }.b")
+--
+--    succeedInferType
+--        $(parseExpr "{ a = { b = 5 }}.a.b")
+--        $(parseScheme "Int")
+--
+--    succeedInferType
+--        $(parseExpr "{ a = { a = \"test\" }}.a.a")
+--        $(parseScheme "String")
+--
+--    failInferTypeWithError (UnboundVariable "a")
+--        $(parseExpr "{ a = { b = 3 } }.a.a")

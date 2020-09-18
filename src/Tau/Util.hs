@@ -15,6 +15,7 @@ module Tau.Util
   , liftMaybe
   , integerToText
   , letters
+  , hasKey
   , (:*:)(..)
   ) where
 
@@ -55,6 +56,9 @@ to3 ((a, b), c) = (a, b, c)
 liftMaybe :: (MonadFail m) => String -> Maybe a -> m a
 liftMaybe err Nothing = fail err
 liftMaybe _ (Just ok) = pure ok
+
+hasKey :: (Eq a) => a -> [(a, b)] -> Bool
+hasKey a xs = a `elem` (fst <$> xs)
 
 data (f :*: g) a = (:*:)
     { left  :: f a

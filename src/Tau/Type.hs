@@ -12,11 +12,12 @@ module Tau.Type where
 
 import Control.Monad.Except
 import Data.Eq.Deriving
-import Data.Function (on)
+import Data.Function (on, (&))
 import Data.Functor.Foldable
-import Data.List (nub)
+import Data.List (nub, sortOn, transpose)
 import Data.Map.Strict (Map)
 import Data.Set.Monad (Set, union, member, (\\))
+import Data.Text (isPrefixOf)
 import Data.Text.Prettyprint.Doc
 import Tau.Util
 import Text.Show.Deriving
@@ -282,6 +283,35 @@ class Active a where
 
 instance (Active a) => Active [a] where
     active = join . Set.fromList . fmap active
+
+-- ============================================================================
+-- == Record types
+-- ============================================================================
+
+structType :: [Name] -> [Type] -> Type
+structType fields types =
+    transpose [conT <$> fields', types']
+        & concat
+        & foldl appT (conT name)
+  where
+    name = "#Struct" <> integerToText (fromIntegral (length fields))
+    (fields', types') = unzip (sortOn fst (zip fields types))
+
+structFields :: Type -> Maybe [(Name, Type)]
+structFields ty =
+    case flatten ty of
+        Fix (ConT name):rest
+            | "#Struct" `isPrefixOf` name -> Just (pairUp rest)
+        _ -> Nothing
+  where
+    pairUp (Fix (ConT k):v:t) = (k, v) : pairUp t
+    pairUp _                  = []
+
+    flatten (Fix (AppT a b))  = flatten a <> flatten b
+    flatten t                 = [t]
+
+fieldType :: Name -> Type -> Maybe Type
+fieldType name ty = lookup name =<< structFields ty
 
 -- ============================================================================
 -- == Pretty Printing

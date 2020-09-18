@@ -15,7 +15,7 @@ import Data.Foldable (foldrM)
 import Data.Functor.Const
 import Data.Maybe (fromJust)
 import Data.Tuple.Extra (first3)
-import Tau.Env
+import Tau.Env (Env)
 import Tau.Expr
 import Tau.Solver
 import Tau.Type
@@ -76,7 +76,7 @@ inferTypeTree
 inferTypeTree env expr = do
     (tree, as, cs) <- inferTree expr
     failIfExists (unboundVars env as)
-    Just (sub, tycls) <- liftErrors (solveTypes (cs <> envConstraints as) )
+    Just (sub, tycls) <- liftErrors (solveTypes (cs <> envConstraints as))
     pure (tree, sub, tycls)
   where
     envConstraints :: [TypeAssumption] -> [TypeConstraint]
@@ -128,9 +128,6 @@ inferTree = fmap to3 . runWriterT . cata alg
             t <- inferPrim prim
             pure (annotated t (LitS prim), [])
 
-        AtomS atom ->
-            pure (annotated (conT ("#" <> atom)) (AtomS atom), [])
-
         LetS var expr body ->
             inferLet False var expr body
 
@@ -166,9 +163,17 @@ inferTree = fmap to3 . runWriterT . cata alg
         OpS op ->
             inferOp op
 
-        StructS expr -> do
-            (expr', t, as) <- expr
-            pure (annotated t (StructS expr'), as)
+        DotS name expr -> do
+            t1 <- varT <$> supply
+            (e2', t2, a2) <- expr
+            beta <- varT <$> supply
+            tell [Equality t1 (t2 `arrT` beta)]
+            pure (annotated beta (DotS name e2'), [Assumption (name, t1)] <> a2)
+
+        StructS fields -> do
+            let keys = fst <$> fields
+            (es', ts, as) <- unzip3 <$> sequence (snd <$> fields)
+            pure (annotated (structType keys ts) (StructS (zip keys es')), concat as)
 
         AnnS{} ->
             undefined  -- TODO
@@ -267,8 +272,7 @@ inferOp = \case
     AndS e1 e2 -> op2 AndS e1 e2 logicalOp
     NegS e     -> op1 NegS e numericOp1
     NotS e     -> op1 NotS e numericOp1
-    DotS e1 e2 -> op2 DotS e1 e2 (Forall ["a", "b"] [] (varT "a" `arrT` (varT "a" `arrT` varT "b") `arrT` varT "b"))
-    CmpS e1 e2 -> op2 CmpS e1 e2 (Forall ["a", "b", "c"] [] ((varT "b" `arrT` varT "c") `arrT` (varT "a" `arrT` varT "b") `arrT` (varT "a" `arrT` varT "c")))
+    CmpS e1 e2 -> op2 CmpS e1 e2 compositionOp
 
 op1
   :: (MonadSupply Name m, MonadWriter [TypeConstraint] m)
@@ -305,6 +309,18 @@ inferPrim = pure . \case
     Float{}   -> tFloat
     Char{}    -> tChar
     String{}  -> tString
+
+dotOp :: Scheme
+dotOp = 
+    Forall ["a", "b"] 
+    [] 
+    (varT "a" `arrT` (varT "a" `arrT` varT "b") `arrT` varT "b")
+
+compositionOp :: Scheme
+compositionOp = 
+    Forall ["a", "b", "c"] 
+    [] 
+    ((varT "b" `arrT` varT "c") `arrT` (varT "a" `arrT` varT "b") `arrT` (varT "a" `arrT` varT "c"))
 
 numericOp1 :: Scheme
 numericOp1 =

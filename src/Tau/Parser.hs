@@ -137,15 +137,16 @@ operator =
       ]
     , [ InfixR (orS  <$ symbol "||")
       ]
-    , [ InfixL (dotS <$ symbol ".")
-      ]
     ]
 
 cons :: Expr -> Expr -> Expr
 cons hd tl = appS [varS "Cons", hd, tl]
 
 expr :: Parser Expr
-expr = makeExprParser ast operator
+expr = flip makeExprParser operator $ do
+    term <- ast
+    dots <- many (symbol "." *> name)
+    pure (foldl (flip dotS) term dots)
 
 parseExpr :: Text -> Either ParseError Expr
 parseExpr = runParser (spaces *> expr <* eof) ""
@@ -331,12 +332,9 @@ record = do
     pairs <- sortOn fst <$> field `sepBy` symbol ","
     when (hasDups (fst <$> pairs)) (fail "A field name appears more than once in record")
     void (symbol "}")
-    pure (structS (appS (collect pairs)))
+    pure (structS pairs)
   where
     hasDups names = length names /= length (nub names)
-    collect pairs = do
-        let con = "#Struct" <> integerToText (fromIntegral (length pairs))
-        varS con:concatMap (\(k, v) -> [atomS k, v]) pairs
     field = do
         key <- name
         val <- symbol "=" *> expr
