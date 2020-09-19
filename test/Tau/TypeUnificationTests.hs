@@ -66,5 +66,5 @@ testTypeUnification = do
         tInt
 
     failUnifyTypes
-        (appT (conT "List") (conT "a"))
-        (appT (conT "List") (conT "b"))
+        (appT (conT "List") (conT "A"))
+        (appT (conT "List") (conT "B"))

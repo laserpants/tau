@@ -171,16 +171,8 @@ inferTree = fmap to3 . runWriterT . cata alg
             pure (annotated beta (DotS name e2'), [Assumption (name, t1)] <> a2)
 
         StructS fields -> do
-
-            --pure (annotated (structType keys ts) (StructS (zip keys es')), concat as)
-
-            let xyz = unpair =<< first grok <$> fields
-            --(_, _, ass) <- unzip3 <$> sequence (snd <$> fields)
-            beta <- varT <$> supply
-            let con = "#Struct" <> integerToText (fromIntegral (length fields))
-            let grokk = pure (Fix (Const beta :*: VarS con), beta, [Assumption (con, beta)])
-            (expr', _, as) <- foldl inferApp grokk xyz
-            pure (AnnotatedAst expr', as) -- <> concat ass)
+            (expr', _, as) <- inferStruct fields
+            pure (AnnotatedAst expr', as)
 
         AnnS{} ->
             undefined  -- TODO
@@ -188,13 +180,18 @@ inferTree = fmap to3 . runWriterT . cata alg
         ErrS ->
             pure (annotated (conT "Error") ErrS, [])
 
-grok 
-  :: (MonadError TypeError m, MonadSupply Name m, MonadReader Monoset m)  
-  => Name -> 
-  m TypeInfo
-grok field = do
-    let ty = conT ("#" <> field)
-    pure (Fix (Const ty :*: VarS field), ty, [])
+inferStruct
+  :: (MonadError TypeError m, MonadSupply Name m, MonadReader Monoset m, MonadWriter [TypeConstraint] m)
+  => [(Name, m TypeInfo)]
+  -> m TypeInfo
+inferStruct fields = do
+    beta <- varT <$> supply
+    let ini = (Fix (Const beta :*: VarS con), beta, [Assumption (con, beta)])
+    foldl inferApp (pure ini) (lefts >>= unpair)
+  where
+    con   = "#Struct" <> integerToText (fromIntegral (length fields))
+    lefts = first (pure . tinfo) <$> fields
+    tinfo field = let ty = conT ("#" <> field) in (Fix (Const ty :*: VarS field), ty, [])
 
 inferClause
   :: (MonadSupply Name m, MonadReader Monoset m, MonadWriter [TypeConstraint] m)
@@ -333,15 +330,14 @@ inferPrim = pure . \case
     String{}  -> tString
 
 dotOp :: Scheme
-dotOp = 
-    Forall ["a", "b"] 
-    [] 
+dotOp =
+    Forall ["a", "b"]
+    []
     (varT "a" `arrT` (varT "a" `arrT` varT "b") `arrT` varT "b")
 
 compositionOp :: Scheme
-compositionOp = 
-    Forall ["a", "b", "c"] 
-    [] 
+compositionOp =
+    Forall ["a", "b", "c"] []
     ((varT "b" `arrT` varT "c") `arrT` (varT "a" `arrT` varT "b") `arrT` (varT "a" `arrT` varT "c"))
 
 numericOp1 :: Scheme
@@ -370,6 +366,5 @@ comparisonOp =
 
 logicalOp :: Scheme
 logicalOp =
-    Forall []
-    []
+    Forall [] []
     (arrT tBool (arrT tBool tBool))
