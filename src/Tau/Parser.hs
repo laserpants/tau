@@ -376,3 +376,26 @@ scheme = Forall <$> (fromMaybe [] <$> quantifier)
 kind :: Parser Kind
 kind = makeExprParser parser [[ InfixR (arrK <$ symbol "->") ]] where
     parser = parens kind <|> (symbol "*" $> starK)
+
+-- ============================================================================
+-- == Data types
+-- ============================================================================
+
+data Product = Prod Name [Type]
+    deriving (Show, Eq)
+
+data Data = Sum Name [Name] [Product]
+    deriving (Show, Eq)
+
+datatype :: Parser Data
+datatype = do
+    keyword "type"
+    tycon <- constructor
+    vars  <- many name <* symbol "="
+    prods <- prod `sepBy` symbol "|"
+    pure (Sum tycon vars prods)
+  where
+    prod = do
+        data_ <- constructor
+        types <- many type_     -- eager?
+        pure (Prod data_ types)
