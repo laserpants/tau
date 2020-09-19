@@ -216,9 +216,8 @@ patternExpr = wildcard
 recordPattern :: Parser Pattern
 recordPattern = do 
     pairs <- fields pattern_
-    let con = "#Struct" <> integerToText (fromIntegral (length pairs))
-    pure (recP con (fst <$> pairs) (snd <$> pairs))
-    -- (unpair =<< first (const anyP) <$> pairs))
+    let con = "#Struct" <> intToText (length pairs)
+    pure (uncurry (recP con) (unzip pairs))
 
 listPattern :: Parser Pattern
 listPattern = do

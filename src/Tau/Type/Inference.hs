@@ -189,7 +189,7 @@ inferStruct fields = do
     let ini = (Fix (Const beta :*: VarS con), beta, [Assumption (con, beta)])
     foldl inferApp (pure ini) (lefts >>= unpair)
   where
-    con   = "#Struct" <> integerToText (fromIntegral (length fields))
+    con   = "#Struct" <> intToText (length fields)
     lefts = first (pure . tinfo) <$> fields
     tinfo field = let ty = conT ("#" <> field) in (Fix (Const ty :*: VarS field), ty, [])
 

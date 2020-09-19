@@ -2,7 +2,6 @@
 {-# LANGUAGE TemplateHaskell   #-}
 module Tau.Env.Builtin where
 
-import Data.Text (Text)
 import Tau.Env (Env)
 import Tau.Eval
 import Tau.Patterns
@@ -36,7 +35,7 @@ values = Env.fromList $
     <> structValues
 
 structValues :: [(Name, Value Eval)]
-structValues = [("#Struct" <> toTxt n, dataCon ("#Struct" <> toTxt n) (n*2)) | n <- [1..maxRecord]]
+structValues = [("#Struct" <> intToText n, dataCon ("#Struct" <> intToText n) (n*2)) | n <- [1..maxRecord]]
 
 typeSchemes :: Env Scheme
 typeSchemes = Env.fromList $
@@ -60,7 +59,7 @@ typeSchemes = Env.fromList $
     structSchemes
 
 structSchemes :: [(Name, Scheme)]
-structSchemes = [("#Struct" <> toTxt n, structScheme n) | n <- [1..maxRecord]]
+structSchemes = [("#Struct" <> intToText n, structScheme n) | n <- [1..maxRecord]]
 
 constructors :: ConstructorEnv
 constructors = constructorEnv $
@@ -84,7 +83,7 @@ constructors = constructorEnv $
     structConstructors
 
 structConstructors :: [(Name, [Name])]
-structConstructors = [(con, [con]) | n <- [1..maxRecord], let con = "#Struct" <> toTxt n]
+structConstructors = [(con, [con]) | n <- [1..maxRecord], let con = "#Struct" <> intToText n]
 
 kindEnv :: Env Kind
 kindEnv = Env.fromList
@@ -99,7 +98,4 @@ structScheme n = Forall names [] (foldr arrT (foldl appT (conT con) vars) vars)
   where
     names = take (n*2) letters
     vars = varT <$> names
-    con = "#Struct" <> toTxt n
-
-toTxt :: Int -> Text
-toTxt = integerToText . fromIntegral
+    con = "#Struct" <> intToText n

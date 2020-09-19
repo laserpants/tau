@@ -15,6 +15,7 @@ module Tau.Util
   , unpair
   , liftMaybe
   , integerToText
+  , intToText
   , letters
   , hasKey
   , (:*:)(..)
@@ -47,6 +48,9 @@ letters = [1..] >>= flip replicateM ['a'..'z']
 
 integerToText :: Integer -> Text
 integerToText = Text.toStrict . toLazyText . decimal
+
+intToText :: Int -> Text
+intToText = integerToText . fromIntegral
 
 prettyPrint :: (Pretty p) => p -> Text
 prettyPrint = renderStrict . layoutPretty defaultLayoutOptions . pretty

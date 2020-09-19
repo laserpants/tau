@@ -294,7 +294,7 @@ structType fields types =
         & concat
         & foldl appT (conT name)
   where
-    name = "#Struct" <> integerToText (fromIntegral (length fields))
+    name = "#Struct" <> intToText (length fields)
     (fields', types') = unzip (sortOn fst (zip fields types))
 
 structFields :: Type -> Maybe [(Name, Type)]
