@@ -244,9 +244,16 @@ testEval = do
         (Value Unit)
 
     succeedEval
-        $(parseExpr "let number = \\_ => 42 in { number = 42 }.number")
+        $(parseExpr "let number = \\_ => 42 in (4, 4).number")
         (Value (Int 42))
 
+--    succeedEval
+--        $(parseExpr "let number = \\_ => 42 in { number = 42 }.number")
+--        (Value (Int 42))
+--
+--    succeedEval
+--        $(parseExpr "match { a = 5 } with { a = 3 } => 0 | _ => 1")
+--        (Value (Int 0))
 
 --    succeedEval
 --        $(parseExpr "{ number = 42 }.number")

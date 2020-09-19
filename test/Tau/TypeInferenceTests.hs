@@ -6,10 +6,12 @@ import Tau.Env (Env(..))
 import Tau.Expr
 import Tau.Solver
 import Tau.Type
+import Tau.Patterns
 import Tau.Type.Inference
 import Tau.Util.TH
 import Test.Hspec
 import Utils
+import qualified Tau.Env.Builtin as Builtin
 import qualified Tau.Env as Env
 
 testTypeEnv :: Env Scheme
@@ -21,7 +23,6 @@ testTypeEnv = Env.fromList
     , ( "const"  , $(parseScheme "forall a b. a -> b -> a") )
     , ( "foo"    , $(parseScheme "forall a. a -> a") )
     , ( "Foo"    , $(parseScheme "forall a. a -> List a") )
-    , ( "Tuple2" , $(parseScheme "forall a b. a -> b -> Tuple2 a b") )
     , ( "fst"    , $(parseScheme "forall a b. Tuple2 a b -> a") )
     , ( "snd"    , $(parseScheme "forall a b. Tuple2 a b -> b") )
     , ( "Baz"    , $(parseScheme "Bool") )
@@ -32,7 +33,7 @@ testTypeEnv = Env.fromList
 
 runTest :: Expr -> Either TypeError (Type, [TyClass])
 runTest expr = do
-    (ty, sub, tycls) <- runInferType testTypeEnv expr
+    (ty, sub, tycls) <- runInferType (Builtin.typeSchemes `Env.union` testTypeEnv) expr
     pure (apply sub ty, apply sub <$> tycls)
 
 result :: Expr -> Either TypeError Scheme
@@ -214,6 +215,39 @@ testTypeInference = do
     succeedInferType
         $(parseExpr "let key = \\_ => 5 in { key = 5 }.key")
         $(parseScheme "Int")
+
+    failInferTypeWithError (UnificationError CannotUnify)
+        $(parseExpr "if 1 == 1 then (1, 2) else (1,2,3)")
+
+    failInferTypeWithError (UnificationError CannotUnify)
+        $(parseExpr "if 1 == 1 then (1, 2) else (1,'a')")
+
+    failInferTypeWithError (UnificationError CannotUnify)
+        $(parseExpr "if 1 == 1 then 1 :: 2 :: [] else False :: []")
+
+    failInferTypeWithError (UnificationError CannotUnify)
+        $(parseExpr "1 :: False :: []")
+
+    failInferTypeWithError (UnificationError CannotUnify)
+        $(parseExpr "if 1 == 1 then { a = 3 } else { a = 3, b = 3 }")
+
+    failInferTypeWithError (UnificationError CannotUnify)
+        $(parseExpr "if 1 == 1 then { a = 3 } else { a = False }")
+
+    failInferTypeWithError (UnificationError CannotUnify)
+        $(parseExpr "if 1 == 1 then { a = 3 } else { b = 3 }")
+
+    failInferTypeWithError (UnificationError CannotUnify)
+        $(parseExpr "match { a = 3 } with { a = 3 } => 0 | { a = 4, b = 5 } => 0 | _ => 0")
+
+    failInferTypeWithError (UnificationError CannotUnify)
+        $(parseExpr "match { a = 3 } with { a = 3 } => 0 | { b = 4 } => 0 | _ => 0")
+
+    failInferTypeWithError (UnificationError CannotUnify)
+        (compileAll $(parseExpr "match (1, 2) with (2, 3) => 0 | (2, 3, 4) => 0 | _ => 0"))
+
+    failInferTypeWithError (UnificationError CannotUnify)
+        (compileAll $(parseExpr "match (1, 2) with (2, 3) => 0 | (\"a\", 3) => 0 | _ => 0"))
 
 --    succeedInferType
 --        $(parseExpr "{ key = 5 }.key")

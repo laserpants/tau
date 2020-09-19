@@ -174,10 +174,10 @@ parseLet con kword = do
 
 matchWith :: Parser Expr
 matchWith = do
-    term  <- keyword "match" *> expr
-    first <- clause with
-    rest  <- many (clause pipe)
-    pure (matchS term (first:rest))
+    term <- keyword "match" *> expr
+    strt <- clause with
+    rest <- many (clause pipe)
+    pure (matchS term (strt:rest))
 
 with :: Parser ()
 with = void $ keyword "with" *> optional (symbol "|")
@@ -185,9 +185,9 @@ with = void $ keyword "with" *> optional (symbol "|")
 lamMatch :: Parser Expr
 lamMatch = do
     keyword "\\match"
-    first <- clause (void (optional pipe))
-    rest  <- many (clause pipe)
-    pure (lamMatchS (first:rest))
+    strt <- clause (void (optional pipe))
+    rest <- many (clause pipe)
+    pure (lamMatchS (strt:rest))
 
 pipe :: Parser ()
 pipe = void (symbol "|")
@@ -211,6 +211,14 @@ patternExpr = wildcard
     <|> varPattern
     <|> listPattern
     <|> tuplePattern
+    <|> recordPattern
+
+recordPattern :: Parser Pattern
+recordPattern = do 
+    pairs <- fields pattern_
+    let con = "#Struct" <> integerToText (fromIntegral (length pairs))
+    pure (recP con (fst <$> pairs) (snd <$> pairs))
+    -- (unpair =<< first (const anyP) <$> pairs))
 
 listPattern :: Parser Pattern
 listPattern = do
@@ -327,17 +335,20 @@ mkTuple con nil = \case
 -- ============================================================================
 
 record :: Parser Expr
-record = do
+record = structS <$> fields expr
+
+fields :: Parser a -> Parser [(Name, a)]
+fields parser = do
     void (symbol "{")
     pairs <- sortOn fst <$> field `sepBy` symbol ","
-    when (hasDups (fst <$> pairs)) (fail "A field name appears more than once in record")
     void (symbol "}")
-    pure (structS pairs)
+    when (hasDups (fst <$> pairs)) (fail "A field name appears more than once in record")
+    pure pairs
   where
     hasDups names = length names /= length (nub names)
     field = do
         key <- name
-        val <- symbol "=" *> expr
+        val <- symbol "=" *> parser
         pure (key, val)
 
 -- ============================================================================
@@ -397,5 +408,5 @@ datatype = do
   where
     prod = do
         data_ <- constructor
-        types <- many type_     -- eager?
+        types <- many type_     -- TODO: eager?
         pure (Prod data_ types)

@@ -35,5 +35,8 @@ findWithDefault value key (Env env) = Map.findWithDefault value key env
 findWithDefaultEmpty :: (Monoid a) => Name -> Env a -> a
 findWithDefaultEmpty key (Env env) = Map.findWithDefault mempty key env
 
+isMember :: Name -> Env a -> Bool
+isMember name (Env env) = Map.member name env
+
 namesNotIn :: Env a -> [Name] -> [Name]
 namesNotIn (Env env) = filter (`notMember` env)

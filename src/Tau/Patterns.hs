@@ -1,8 +1,8 @@
+{-# LANGUAGE FlexibleContexts  #-}
 {-# LANGUAGE LambdaCase        #-}
+{-# LANGUAGE OverloadedStrings #-}
 {-# LANGUAGE RecordWildCards   #-}
 {-# LANGUAGE StrictData        #-}
-{-# LANGUAGE OverloadedStrings #-}
-{-# LANGUAGE FlexibleContexts  #-}
 module Tau.Patterns where
 
 import Control.Monad.Extra (anyM, andM, (&&^))
@@ -23,19 +23,25 @@ import qualified Data.Set.Monad as Set
 import qualified Tau.Env as Env
 
 specialized :: Name -> Int -> [[Pattern]] -> [[Pattern]]
-specialized name a = concatMap $ \(p:ps) ->
-    case unfix p of
-        ConP name' ps'
-            | name' == name -> [ps' <> ps]
-            | otherwise     -> []
+specialized name a = concatMap rec where
+    rec [] = error "Implementation error"
+    rec (p:ps) =
+        case unfix p of
+            RecP name' _ ps' ->
+                rec (conP name' ps':ps)
 
-        _ ->
-            [replicate a anyP <> ps]
+            ConP name' ps'
+                | name' == name -> [ps' <> ps]
+                | otherwise     -> []
+
+            _ ->
+                [replicate a anyP <> ps]
 
 defaultMatrix :: [[Pattern]] -> [[Pattern]]
 defaultMatrix = concatMap $ \(p:ps) ->
     case unfix p of
         ConP{} -> []
+        RecP{} -> []
         LitP{} -> []
         _      -> [ps]
 
@@ -48,9 +54,10 @@ headCons :: (Monad m) => [[Pattern]] -> m [(Name, Int)]
 headCons = fmap concat . traverse fun where
     fun [] = error "Implementation error in pattern anomalies check"
     fun ps = pure $ case unfix (head ps) of
-        LitP lit     -> [(prim lit, 0)]
-        ConP name rs -> [(name, length rs)]
-        _            -> []
+        LitP lit       -> [(prim lit, 0)]
+        ConP name rs   -> [(name, length rs)]
+        RecP name _ rs -> [(name, length rs)]
+        _              -> []
     prim (Bool True)  = "$True"
     prim (Bool False) = "$False"
     prim Unit         = "$()"
@@ -68,6 +75,9 @@ useful px@(ps:_) qs =
 
         ([], _) ->
             error "Implementation error in pattern anomalies check"
+
+        (Fix (RecP name _ rs):qs', _) ->
+            useful px (conP name rs:qs')
 
         (Fix (ConP name rs):_, _) ->
             let special = specialized name (length rs)
@@ -196,6 +206,9 @@ groups :: [Equation] -> [EqGroup]
 groups eqs = grp:grps
   where
     (grp, grps) = foldr (uncurry arrange) (ConEqs [], []) eqs
+
+    arrange (Fix (RecP name _ qs):ps) expr =
+        arrange (conP name qs:ps) expr
 
     arrange (Fix (ConP name qs):ps) expr =
         let c = ConHead { conName  = name

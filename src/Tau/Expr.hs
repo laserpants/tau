@@ -35,6 +35,7 @@ data Prim
 data PatternF a
     = VarP Name              -- ^ Variable pattern
     | ConP Name [a]          -- ^ Constuctor pattern
+    | RecP Name [Name] [a]   -- ^ Record pattern
     | LitP Prim              -- ^ Literal pattern
     | AnyP                   -- ^ Wildcard pattern
     deriving (Show, Eq, Functor, Foldable, Traversable)
@@ -102,9 +103,10 @@ isVar _            = False
 patternVars :: Pattern -> [Name]
 patternVars = cata alg where
     alg :: Algebra PatternF [Name]
-    alg (VarP v)    = [v]
-    alg (ConP _ ps) = concat ps
-    alg _           = []
+    alg (VarP v)      = [v]
+    alg (ConP _ ps)   = concat ps
+    alg (RecP _ _ ps) = concat ps
+    alg _             = []
 
 -- | Predicate to check whether a pattern is /simple/. A simple pattern is
 --     - a variable,
@@ -114,10 +116,11 @@ patternVars = cata alg where
 isSimple :: Pattern -> Bool
 isSimple = cata alg where
     alg :: Algebra PatternF Bool
-    alg AnyP        = True
-    alg VarP{}      = True
-    alg (ConP _ ps) = and ps
-    alg _           = False
+    alg AnyP          = True
+    alg VarP{}        = True
+    alg (ConP _ ps)   = and ps
+    alg (RecP _ _ ps) = and ps
+    alg _             = False
 
 -- ============================================================================
 -- == Annotated AST
@@ -256,6 +259,9 @@ varP = Fix . VarP
 conP :: Name -> [Pattern] -> Pattern
 conP a = Fix . ConP a
 
+recP :: Name -> [Name] -> [Pattern] -> Pattern
+recP a1 a2 a3 = Fix (RecP a1 a2 a3)
+
 litP :: Prim -> Pattern
 litP = Fix . LitP
 
@@ -359,7 +365,10 @@ prettyExpr n = unfix >>> \case
         <+> pretty false
 
     MatchS expr (cls:clss) ->
-        wrap n $ "match" <+> pretty expr <+> "with" <+> prettyMatch cls clss
+        wrap n $ "match" 
+        <+> pretty expr 
+        <+> "with" 
+        <+> prettyMatch cls clss
 
     LamMatchS (cls:clss) ->
         wrap n $ backslash <> "match" <+> prettyMatch cls clss
@@ -370,8 +379,8 @@ prettyExpr n = unfix >>> \case
     DotS a b ->
         wrap n $ pretty b <> "." <> pretty a
 
-    StructS _ ->
-        "<<struct>>"
+    StructS fields ->
+        wrap n $ "{" <+> prettyFields fields <+> "}"
 
     AnnS expr ty ->
         wrap n $ pretty expr <+> colon <+> pretty ty
@@ -388,6 +397,10 @@ prettyExpr n = unfix >>> \case
 wrap :: Int -> Doc a -> Doc a
 wrap 0 doc = doc
 wrap _ doc = parens doc
+
+prettyFields :: (Pretty p) => [(Name, p)] -> Doc a
+prettyFields fields = hsep (punctuate comma (uncurry field <$> fields)) where
+    field key val = pretty key <+> "=" <+> pretty val
 
 prettyMatch :: MatchClause Expr -> [MatchClause Expr] -> Doc a
 prettyMatch cls clss =
@@ -442,6 +455,7 @@ instance Pretty Prim where
 instance Pretty Pattern where
     pretty = unfix >>> \case
         ConP name ps@(_:_) -> pretty name <+> hsep (prettyPattern . unfix <$> ps)
+        RecP _ ns ps       -> "{" <+> prettyFields (zip ns ps) <+> "}"
         pat                -> prettyPattern pat
 
 prettyPattern :: PatternF (Fix PatternF) -> Doc a
@@ -449,5 +463,6 @@ prettyPattern = \case
     VarP name    -> pretty name
     LitP prim    -> pretty prim
     ConP name [] -> pretty name
+    rec@RecP{}   -> pretty (Fix rec)
     con@ConP{}   -> parens $ pretty (Fix con)
     AnyP         -> "_"

@@ -64,3 +64,7 @@ testTypeUnification = do
     failUnifyTypes
         $(parseType "List a")
         tInt
+
+    failUnifyTypes
+        (appT (conT "List") (conT "a"))
+        (appT (conT "List") (conT "b"))

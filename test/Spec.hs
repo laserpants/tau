@@ -7,6 +7,7 @@ import Tau.SubstitutionTests
 import Tau.TypeInferenceTests
 import Tau.TypeUnificationTests
 import Test.Hspec
+import Utils
 
 main :: IO ()
 main =

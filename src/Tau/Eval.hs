@@ -78,6 +78,7 @@ eval = cata $ \case
 evalVar :: (MonadFail m, MonadReader (ValueEnv m) m) => Name -> m (Value m)
 evalVar name = do
     env <- ask
+    unless (Env.isMember name env) (traceShowM ("Unbound identifier " <> name))
     maybe (fail "Unbound identifier") pure (Env.lookup name env)
 
 evalMatch

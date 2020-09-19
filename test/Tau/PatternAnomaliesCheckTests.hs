@@ -8,15 +8,10 @@ import Tau.Patterns
 import Tau.Util.TH
 import Test.Hspec
 import Utils
-
-testConstructorEnv :: ConstructorEnv
-testConstructorEnv = constructorEnv
-    [ ("Nil",  ["Nil", "Cons"])
-    , ("Cons", ["Nil", "Cons"])
-    ]
+import qualified Tau.Env.Builtin as Builtin
 
 isExhaustive :: [Pattern] -> Bool
-isExhaustive = flip runReader testConstructorEnv . exhaustive
+isExhaustive = flip runReader Builtin.constructors . exhaustive
 
 describePatterns :: [Pattern] -> String
 describePatterns patterns = 
@@ -36,7 +31,7 @@ nonExhaustivePatterns patterns =
             not (isExhaustive patterns)
 
 isUseful :: Pattern -> [Pattern] -> Bool
-isUseful pat patterns = runReader (useful (fmap (:[]) patterns) [pat]) testConstructorEnv 
+isUseful pat patterns = runReader (useful (fmap (:[]) patterns) [pat]) Builtin.constructors
 
 describeUsefulPatterns :: Pattern -> [Pattern] -> String
 describeUsefulPatterns pat patterns = 
@@ -179,4 +174,46 @@ testPatternAnomaliesCheck = do
     usefulPattern
         (conP "Nil" [])
         [ $(parsePattern "Cons x ys")
+        ]
+
+    nonExhaustivePatterns
+        [ $(parsePattern "Tuple2 1 2")
+        ]
+
+    nonExhaustivePatterns
+        [ $(parsePattern "(1, 2)")
+        ]
+
+    exhaustivePatterns
+        [ $(parsePattern "Tuple2 _ _")
+        ]
+
+    exhaustivePatterns
+        [ $(parsePattern "(_, _)")
+        ]
+
+    exhaustivePatterns
+        [ $(parsePattern "Cons 5 3")
+        , $(parsePattern "Nil")
+        , $(parsePattern "Cons _ _")
+        ]
+
+    nonExhaustivePatterns
+        [ $(parsePattern "{ x = 3, y = 4 }")
+        , $(parsePattern "{ x = 6, y = 7 }")
+        ]
+
+    exhaustivePatterns
+        [ $(parsePattern "{ x = 3, y = 4 }")
+        , $(parsePattern "{ x = 6, y = 7 }")
+        , $(parsePattern "{ x = _, y = 7 }")
+        , $(parsePattern "{ x = x, y = _ }")
+        ]
+
+    exhaustivePatterns
+        [ $(parsePattern "{ x = _ }")
+        ]
+
+    exhaustivePatterns
+        [ $(parsePattern "{ x = _, y = a }")
         ]

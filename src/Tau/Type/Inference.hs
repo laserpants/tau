@@ -171,15 +171,30 @@ inferTree = fmap to3 . runWriterT . cata alg
             pure (annotated beta (DotS name e2'), [Assumption (name, t1)] <> a2)
 
         StructS fields -> do
-            let keys = fst <$> fields
-            (es', ts, as) <- unzip3 <$> sequence (snd <$> fields)
-            pure (annotated (structType keys ts) (StructS (zip keys es')), concat as)
+
+            --pure (annotated (structType keys ts) (StructS (zip keys es')), concat as)
+
+            let xyz = unpair =<< first grok <$> fields
+            --(_, _, ass) <- unzip3 <$> sequence (snd <$> fields)
+            beta <- varT <$> supply
+            let con = "#Struct" <> integerToText (fromIntegral (length fields))
+            let grokk = pure (Fix (Const beta :*: VarS con), beta, [Assumption (con, beta)])
+            (expr', _, as) <- foldl inferApp grokk xyz
+            pure (AnnotatedAst expr', as) -- <> concat ass)
 
         AnnS{} ->
             undefined  -- TODO
 
         ErrS ->
             pure (annotated (conT "Error") ErrS, [])
+
+grok 
+  :: (MonadError TypeError m, MonadSupply Name m, MonadReader Monoset m)  
+  => Name -> 
+  m TypeInfo
+grok field = do
+    let ty = conT ("#" <> field)
+    pure (Fix (Const ty :*: VarS field), ty, [])
 
 inferClause
   :: (MonadSupply Name m, MonadReader Monoset m, MonadWriter [TypeConstraint] m)
@@ -206,11 +221,18 @@ inferClause beta t (pat, expr) (ps, as) = do
         guard (var == y1 && var == y2)
         pure (Equality t1 t2)
 
-inferPattern :: (MonadSupply Name m) => Pattern -> m (Type, [TypeAssumption])
+inferPattern :: (MonadSupply Name m, MonadWriter [TypeConstraint] m) => Pattern -> m (Type, [TypeAssumption])
 inferPattern = cata $ \case
     VarP var -> do
         beta <- varT <$> supply
         pure (beta, [Assumption (var, beta)])
+
+    RecP name keys ps -> do
+        beta <- varT <$> supply
+        (ts, ass) <- (fmap unzip . sequence) ps
+        keyts <- fmap fmap fmap varT (supplies (length keys))
+        tell [Equality (conT ("#" <> k)) kt | (k, kt) <- zip keys keyts]
+        pure (beta, Assumption (name, foldr arrT beta (concat (unpair <$> zip keyts ts))):concat ass)
 
     ConP name ps -> do
         beta <- varT <$> supply

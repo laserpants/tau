@@ -12,6 +12,7 @@ module Tau.Util
   , nameSupply
   , prettyPrint
   , to3
+  , unpair
   , liftMaybe
   , integerToText
   , letters
@@ -33,6 +34,8 @@ import qualified Data.Text.Lazy as Text (toStrict)
 
 type Name = Text
 
+type Algebra f a = f a -> a
+
 nameSupply :: Text -> [Name]
 nameSupply prefix = (prefix <>) . integerToText <$> nats
   where
@@ -45,10 +48,11 @@ letters = [1..] >>= flip replicateM ['a'..'z']
 integerToText :: Integer -> Text
 integerToText = Text.toStrict . toLazyText . decimal
 
-type Algebra f a = f a -> a
-
 prettyPrint :: (Pretty p) => p -> Text
 prettyPrint = renderStrict . layoutPretty defaultLayoutOptions . pretty
+
+unpair :: (a, a) -> [a]
+unpair (f, s) = [f, s]
 
 to3 :: ((a, b), c) -> (a, b, c)
 to3 ((a, b), c) = (a, b, c)
