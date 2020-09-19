@@ -82,8 +82,7 @@ replCommand input =
         Left err ->
             putStrIO (errorBundlePretty err)
 
-        Right result -> do
-            traceShowM result
+        Right result -> 
             runExceptT (evalCommand result) >>= \case
                 Left err ->
                     putStrIO (show err)
