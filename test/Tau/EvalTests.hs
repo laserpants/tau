@@ -247,13 +247,39 @@ testEval = do
         $(parseExpr "let number = \\_ => 42 in (4, 4).number")
         (Value (Int 42))
 
---    succeedEval
---        $(parseExpr "let number = \\_ => 42 in { number = 42 }.number")
---        (Value (Int 42))
---
---    succeedEval
---        $(parseExpr "match { a = 5 } with { a = 3 } => 0 | _ => 1")
---        (Value (Int 0))
+    succeedEval
+        $(parseExpr "let number = \\_ => 42 in { number = 42 }.number")
+        (Value (Int 42))
+
+    succeedEval
+        $(parseExpr "match { a = 5 } with { a = 3 } => 0 | _ => 1")
+        (Value (Int 1))
+
+    succeedEval
+        $(parseExpr "match { a = 5 } with { a = x } => x | _ => 1")
+        (Value (Int 5))
+
+    succeedEval
+        $(parseExpr "match Tuple2 100 1 with Tuple2 x 1 => x | _ => 1")
+        (Value (Int 100))
+
+    succeedEval
+        $(parseExpr "match Tuple2 100 1 with Tuple2 101 1 => x | _ => 1")
+        (Value (Int 1))
+
+    succeedEval
+        $(parseExpr "match Tuple2 100 2 with Tuple2 x y => y | _ => 1")
+        (Value (Int 2))
+
+    succeedEval
+        $(parseExpr "match { a = 5, b = 'a', c = \"hello\" } with { a = x, b = _, c = name } => (x, name) | _ => (0, \"default\")")
+        (Data "Tuple2" [Value (Int 5), Value (String "hello")])
+
+
+
+
+--    failEval 
+--        $(parseExpr "match Tuple2 100 2 with Tuple2 x x => y | _ => 1")
 
 --    succeedEval
 --        $(parseExpr "{ number = 42 }.number")

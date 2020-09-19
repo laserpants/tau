@@ -324,6 +324,14 @@ instance Pretty Type where
         ArrT a b  -> a <+> "->" <+> b
         AppT a b  -> a <+> b
 
+isTuple :: Type -> Bool
+isTuple = check . unfix where
+    check (ConT name)
+        | "Tuple" `Text.isPrefixOf` name = True
+        | otherwise                      = False
+    check (AppT a _)                     = isTuple a
+    check _                              = False
+
 instance Pretty Kind where
     pretty = cata $ \case
         VarK name -> pretty name

@@ -201,3 +201,7 @@ testParser = do
     succeedParseType
         "a -> (b -> c)"
         (varT "a" `arrT` varT "b" `arrT` varT "c")
+
+    succeedParseType
+        "(a -> b) -> c"
+        ((varT "a" `arrT` varT "b") `arrT` varT "c")

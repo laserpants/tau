@@ -87,6 +87,8 @@ evalMatch
   -> Value m
   -> m (Value m)
 evalMatch [] _ = fail "Runtime error (2)"
+evalMatch cs (Record fields) = 
+    evalMatch cs (Data ("#Struct" <> intToText (length fields)) (snd <$> fields))
 evalMatch ((match, expr):cs) val =
     case unfix match of
         AnyP ->
@@ -94,6 +96,9 @@ evalMatch ((match, expr):cs) val =
 
         VarP var ->
             local (Env.insert var val) expr
+
+        RecP name _ ps ->
+            evalMatch ((conP name ps, expr):cs) val
 
         con ->
             case matched con val of
@@ -104,7 +109,8 @@ evalMatch ((match, expr):cs) val =
                     evalMatch cs val
 
 matched :: PatternF Pattern -> Value m -> Maybe [(Name, Value m)]
-matched (ConP n ps) (Data m vs) | n == m = Just (zip (getVarName <$> ps) vs)
+matched (ConP n ps)   (Data m vs) | n == m = Just (zip (getVarName <$> ps) vs)
+matched (RecP n _ ps) (Data m vs) | n == m = matched (ConP n ps) (Data m vs)
 matched _ _ = Nothing
 
 getVarName :: Pattern -> Name

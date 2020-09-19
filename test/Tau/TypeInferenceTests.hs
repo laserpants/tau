@@ -249,6 +249,16 @@ testTypeInference = do
     failInferTypeWithError (UnificationError CannotUnify)
         (compileAll $(parseExpr "match (1, 2) with (2, 3) => 0 | (\"a\", 3) => 0 | _ => 0"))
 
+    succeedInferType
+        $(parseExpr "match { a = 5, b = 'a', c = \"hello\" } with { a = x, b = _, c = name } => (x, name) | _ => (0, \"default\")")
+        $(parseScheme "Tuple2 Int String")
+
+    failInferTypeWithError (UnificationError CannotUnify)
+        $(parseExpr "match { a = 5, b = 'a', c = \"hello\" } with { a = x, b = _, c = name } => (x, x) | _ => (0, \"default\")")
+
+    failInferTypeWithError (UnificationError CannotUnify)
+        $(parseExpr "match { a = 5, b = 'a', c = \"hello\" } with { a = x, b = _, d = name } => (x, name) | _ => (0, \"default\")")
+
 --    succeedInferType
 --        $(parseExpr "{ key = 5 }.key")
 --        $(parseScheme "Int")

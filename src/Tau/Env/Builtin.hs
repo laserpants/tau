@@ -31,11 +31,9 @@ values = Env.fromList $
     , ("Tuple6"   , dataCon "Tuple6" 6)
     , ("Tuple7"   , dataCon "Tuple7" 7)
     , ("Tuple8"   , dataCon "Tuple8" 8)
-    ]
-    <> structValues
-
-structValues :: [(Name, Value Eval)]
-structValues = [("#Struct" <> intToText n, dataCon ("#Struct" <> intToText n) (n*2)) | n <- [1..maxRecord]]
+    , ("Mono"     , dataCon "Mono" 1)
+    ] <> 
+    [("#Struct" <> intToText n, dataCon ("#Struct" <> intToText n) (n*2)) | n <- [1..maxRecord]]
 
 typeSchemes :: Env Scheme
 typeSchemes = Env.fromList $
@@ -54,12 +52,9 @@ typeSchemes = Env.fromList $
     , ( "Tuple6"   , $(parseScheme "forall a b c d e f. a -> b -> c -> d -> e -> f -> Tuple4 a b c d e f") )
     , ( "Tuple7"   , $(parseScheme "forall a b c d e f g. a -> b -> c -> d -> e -> f -> g -> Tuple4 a b c d e f g")  )
     , ( "Tuple8"   , $(parseScheme "forall a b c d e f g h. a -> b -> c -> d -> e -> f -> g -> h -> Tuple4 a b c d e f g h")  )
-    ]
-    <>
-    structSchemes
-
-structSchemes :: [(Name, Scheme)]
-structSchemes = [("#Struct" <> intToText n, structScheme n) | n <- [1..maxRecord]]
+    , ( "Mono"     , $(parseScheme "forall a. a -> Mono a") )
+    ] <>
+    [("#Struct" <> intToText n, structScheme n) | n <- [1..maxRecord]]
 
 constructors :: ConstructorEnv
 constructors = constructorEnv $
@@ -78,12 +73,9 @@ constructors = constructorEnv $
     , ("Tuple6"   , ["Tuple6"])
     , ("Tuple7"   , ["Tuple7"])
     , ("Tuple8"   , ["Tuple8"])
-    ]
-    <>
-    structConstructors
-
-structConstructors :: [(Name, [Name])]
-structConstructors = [(con, [con]) | n <- [1..maxRecord], let con = "#Struct" <> intToText n]
+    , ("Mono"     , ["Mono"])
+    ] <> 
+    [(con, [con]) | n <- [1..maxRecord], let con = "#Struct" <> intToText n]
 
 kindEnv :: Env Kind
 kindEnv = Env.fromList

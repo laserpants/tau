@@ -189,7 +189,7 @@ inferStruct fields = do
     let ini = (Fix (Const beta :*: VarS con), beta, [Assumption (con, beta)])
     foldl inferApp (pure ini) (lefts >>= unpair)
   where
-    con   = "#Struct" <> intToText (length fields)
+    con = "#Struct" <> intToText (length fields)
     lefts = first (pure . tinfo) <$> fields
     tinfo field = let ty = conT ("#" <> field) in (Fix (Const ty :*: VarS field), ty, [])
 
@@ -227,9 +227,9 @@ inferPattern = cata $ \case
     RecP name keys ps -> do
         beta <- varT <$> supply
         (ts, ass) <- (fmap unzip . sequence) ps
-        keyts <- fmap fmap fmap varT (supplies (length keys))
-        tell [Equality (conT ("#" <> k)) kt | (k, kt) <- zip keys keyts]
-        pure (beta, Assumption (name, foldr arrT beta (concat (unpair <$> zip keyts ts))):concat ass)
+        ts' <- fmap fmap fmap varT (supplies (length keys))
+        tell [Equality (conT ("#" <> k)) kt | (k, kt) <- zip keys ts']
+        pure (beta, Assumption (name, foldr arrT beta (concat (unpair <$> zip ts' ts))):concat ass)
 
     ConP name ps -> do
         beta <- varT <$> supply

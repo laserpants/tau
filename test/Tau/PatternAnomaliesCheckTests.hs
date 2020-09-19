@@ -217,3 +217,7 @@ testPatternAnomaliesCheck = do
     exhaustivePatterns
         [ $(parsePattern "{ x = _, y = a }")
         ]
+
+    exhaustivePatterns
+        [ $(parsePattern "{ a = x }")
+        ]
