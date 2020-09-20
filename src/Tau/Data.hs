@@ -10,12 +10,13 @@ data Product = Prod Name [Type]
     deriving (Show, Eq)
 
 -- | Sum type
-data Data = Sum Type [Product]
+data Data = Sum Name [Name] [Product]
     deriving (Show, Eq)
 
 instance Pretty Data where
-    pretty (Sum ty prods) = 
-        "type" <+> pretty ty <+> "=" 
+    pretty (Sum con vars prods) =
+        "type" <+> pretty con <+> "="
+               <+> hsep (pretty <$> vars)
                <+> hsep (punctuate "|" (pretty <$> prods))
 
 instance Pretty Product where

@@ -307,8 +307,9 @@ structFields ty =
     pairUp (Fix (ConT k):v:t) = (k, v):pairUp t
     pairUp _                  = []
 
-    flatten (Fix (AppT a b))  = flatten a <> flatten b
-    flatten t                 = [t]
+flatten :: Type -> [Type]
+flatten (Fix (AppT a b))  = flatten a <> flatten b
+flatten t                 = [t]
 
 fieldType :: Name -> Type -> Maybe Type
 fieldType name ty = lookup name =<< structFields ty

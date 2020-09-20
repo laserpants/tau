@@ -404,14 +404,16 @@ kind = makeExprParser parser [[ InfixR (arrK <$ symbol "->") ]] where
 -- == Data types
 -- ============================================================================
 
+parseDatatype :: Text -> Either ParseError Data
+parseDatatype = runParser (spaces *> datatype <* eof) ""
+
 datatype :: Parser Data
 datatype = do
     keyword "type"
     tcon  <- constructor
-    tvars <- many (varT <$> name) 
-    void (symbol "=")
+    tvars <- many name <* symbol "="
     prods <- prod `sepBy` symbol "|"
-    pure (Sum (foldl appT (conT tcon) tvars) prods)
+    pure (Sum tcon tvars prods)
 
 prod :: Parser Product
 prod = do

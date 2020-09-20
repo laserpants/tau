@@ -1,13 +1,17 @@
+{-# LANGUAGE FlexibleContexts  #-}
 {-# LANGUAGE LambdaCase        #-}
 {-# LANGUAGE OverloadedStrings #-}
 {-# LANGUAGE RecordWildCards   #-}
 module Tau.Repl where
 
 import Control.Monad.Except
+import Control.Monad.Reader
 import Control.Monad.State
 import Data.List (isPrefixOf)
+import Data.Set.Monad (Set)
 import Data.Text (pack, unpack)
 import System.Console.Repline
+import Tau.Data
 import Tau.Env (Env)
 import Tau.Eval
 import Tau.Expr
@@ -20,6 +24,7 @@ import Tau.Util
 import Tau.Value
 import Text.Megaparsec (runParser)
 import Text.Megaparsec.Error (errorBundlePretty)
+import qualified Data.Set.Monad as Set
 import qualified Tau.Env as Env
 import qualified Tau.Env.Builtin as Builtin
 
@@ -27,6 +32,7 @@ data ReplEnv = ReplEnv
     { values       :: ValueEnv Eval
     , typeSchemes  :: Env Scheme
     , constructors :: ConstructorEnv
+    , kinds        :: Env Kind
     } deriving (Show, Eq)
 
 defaultEnv :: ReplEnv
@@ -34,6 +40,7 @@ defaultEnv = ReplEnv
     { values       = Builtin.values
     , typeSchemes  = Builtin.typeSchemes
     , constructors = Builtin.constructors
+    , kinds        = Builtin.kinds
     }
 
 insertValue :: Name -> Value Eval -> ReplEnv -> ReplEnv
@@ -93,7 +100,41 @@ replCommand input =
 
 letTypeCommand :: String -> Repl ()
 letTypeCommand input =
-    putStrIO "let type"
+    case parseDatatype ("type " <> pack input) of
+        Left err ->
+            putStrIO (errorBundlePretty err)
+
+        Right ty -> do
+            traceShowM ty
+            updateEnv ty
+            putStrIO "Done!"
+
+updateEnv :: Data -> Repl ()
+updateEnv ty@(Sum con _ _) =
+    modify (\ReplEnv{..} -> ReplEnv
+        { values       = Env.insertMany (dataCons ty) values
+        , typeSchemes  = Env.insertMany (typeCons ty) typeSchemes
+        , constructors = Env.insertMany (constructorMap ty) constructors
+        , kinds        = Env.insert con (typeKind ty) kinds
+        , .. })
+
+toType :: Name -> [Name] -> Type
+toType con vars = foldl appT (conT con) (varT <$> vars)
+
+constructorMap :: Data -> [(Name, Set Name)]
+constructorMap (Sum _ _ prods) = [ (c, Set.fromList constrs ) | c <- constrs ] where
+  constrs = (\(Prod n _) -> n) <$> prods
+
+typeKind :: Data -> Kind
+typeKind (Sum _ tvars _) = foldr arrK starK (fmap (const starK) tvars)
+
+typeCons :: Data -> [(Name, Scheme)]
+typeCons (Sum con vars prods) = fun <$> prods where
+    fun (Prod cname ts) = (cname, generalize mempty [] (foldr arrT (toType con vars) ts))
+
+dataCons :: (MonadReader (ValueEnv m) m) => Data -> [(Name, Value m)]
+dataCons (Sum _ _ prods) = fun <$> prods where
+    fun (Prod cname ts) = (cname, dataCon cname (length ts))
 
 letCommand :: String -> Repl ()
 letCommand input =

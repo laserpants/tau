@@ -215,11 +215,11 @@ testParser = do
 
     succeedParseDatatype
         "type Fool = Yes | No"
-        (Sum (conT "Fool") [Prod "Yes" [], Prod "No" []])
+        (Sum "Fool" [] [Prod "Yes" [], Prod "No" []])
 
     succeedParseDatatype
         "type List a = Nil | Cons a (List a)"
-        (Sum (appT (conT "List") (varT "a")) [Prod "Nil" [], Prod "Cons" [varT "a", appT (conT "List") (varT "a")]]) 
+        (Sum "List" ["a"] [Prod "Nil" [], Prod "Cons" [varT "a", appT (conT "List") (varT "a")]]) 
 
     succeedParseProd
         "Cons a (List a)"

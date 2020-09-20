@@ -75,8 +75,8 @@ constructors = constructorEnv $
     ] <>
     [(con, [con]) | n <- [1..maxRecord], let con = "#Struct" <> intToText n]
 
-kindEnv :: Env Kind
-kindEnv = Env.fromList
+kinds :: Env Kind
+kinds = Env.fromList
     [ ( "List"    , $(parseKind "* -> *") )
     , ( "Option"  , $(parseKind "* -> *") )
     , ( "Nat"     , $(parseKind "*") )
