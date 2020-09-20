@@ -1,3 +1,4 @@
+{-# LANGUAGE OverloadedStrings #-}
 module Tau.Data where
 
 import Data.Text.Prettyprint.Doc
