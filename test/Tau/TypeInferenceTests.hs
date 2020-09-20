@@ -262,6 +262,22 @@ testTypeInference = do
     failInferTypeWithError (UnboundVariable "x")
         $(parseExpr "match (100, 1) with (101, 1) => x | _ => 1")
 
+    succeedInferType
+        $(parseExpr "match { stuff = (), user = { name = \"Bob\" } } with { stuff = (), user = { name = name } } => name")
+        $(parseScheme "String")
+
+    succeedInferType
+        $(parseExpr "match { stuff = (), user = { id = 1, name = \"Bob\" } } with { stuff = (), user = { id = _, name = name } } => name")
+        $(parseScheme "String")
+
+    succeedInferType
+        $(parseExpr "match { stuff = (), user = { id = 1, data = { name = \"Bob\", shoeSize = 42 } } } with { stuff = (), user = { id = _, data = { name = name, shoeSize = 42 } } } => name")
+        $(parseScheme "String")
+
+    succeedInferType
+        $(parseExpr "match { stuff = (), user = { id = 1, data = { name = (\"Bob\", \"Doe\"), shoeSize = 42 } } } with { stuff = (), user = { id = _, data = { name = (firstName, _), shoeSize = 42 } } } => firstName")
+        $(parseScheme "String")
+
 --    succeedInferType
 --        $(parseExpr "{ key = 5 }.key")
 --        $(parseScheme "Int")

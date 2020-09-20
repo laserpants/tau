@@ -276,6 +276,26 @@ testEval = do
         $(parseExpr "match { a = 5, b = 'a', c = \"hello\" } with { a = x, b = _, c = name } => (x, name) | _ => (0, \"default\")")
         (Data "#Tuple2" [Value (Int 5), Value (String "hello")])
 
+    succeedEval
+        $(parseExpr "match { stuff = (), user = { name = \"Bob\" } } with { stuff = (), user = { name = name } } => name")
+        (Value (String "Bob"))
+
+    succeedEval
+        $(parseExpr "match { stuff = (), user = { id = 1, name = \"Bob\" } } with { stuff = (), user = { id = _, name = name } } => name")
+        (Value (String "Bob"))
+
+    succeedEval
+        $(parseExpr "match { stuff = (), user = { id = 1, data = { name = \"Bob\", shoeSize = 42 } } } with { stuff = (), user = { id = _, data = { name = name, shoeSize = 42 } } } => name")
+        (Value (String "Bob"))
+
+    succeedEval
+        $(parseExpr "match { stuff = (), user = { id = 1, data = { name = (\"Bob\", \"Doe\"), shoeSize = 42 } } } with { stuff = (), user = { id = _, data = { name = (firstName, _), shoeSize = 42 } } } => firstName")
+        (Value (String "Bob"))
+
+    succeedEval
+        $(parseExpr "match { stuff = \"abc\", user = { id = 1, data = { name = (\"Bob\", \"Doe\"), shoeSize = 44 } } } with { stuff = _, user = { id = _, data = { name = (firstName, _), shoeSize = 42 } } } => firstName | { stuff = stuff, user = { id = _, data = { name = (firstName, _), shoeSize = _ } } } => stuff")
+        (Value (String "abc"))
+
 
 
 
