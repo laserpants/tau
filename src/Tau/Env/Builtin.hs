@@ -16,7 +16,9 @@ maxRecord = 40
 
 values :: ValueEnv Eval
 values = Env.fromList $
-    [ ("Some"     , dataCon "Some" 1)
+    [ ("Cons"     , dataCon "Cons" 2)
+    , ("Nil"      , dataCon "Nil" 0)
+    , ("Some"     , dataCon "Some" 1)
     , ("None"     , dataCon "None" 0)
     , ("Succ"     , dataCon "Succ" 1)
     , ("Zero"     , dataCon "Zero" 0)
