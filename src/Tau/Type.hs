@@ -318,19 +318,38 @@ fieldType name ty = lookup name =<< structFields ty
 -- ============================================================================
 
 instance Pretty Type where
-    pretty = cata $ \case
-        ConT name -> pretty name
-        VarT name -> pretty name
-        ArrT a b  -> a <+> "->" <+> b
-        AppT a b  -> a <+> b
+    pretty (Fix (AppT a b))
+        | its == Tuple  = tupled (pretty <$> flat a <> [b])
+        | its == Record = "{" <+> prettyRecordType (pairs (flat a <> [b])) <+> "}"
+        | otherwise     = pretty a <+> pretty b
+      where
+        its = hasType a
+        pairs (v:x:xs) = (v, x):pairs xs
+        pairs _        = []
+    pretty (Fix (ConT name)) = pretty name
+    pretty (Fix (VarT name)) = pretty name
+    pretty (Fix (ArrT a b))  = pretty a <+> "->" <+> pretty b
 
-isTuple :: Type -> Bool
-isTuple = check . unfix where
-    check (ConT name)
-        | "Tuple" `Text.isPrefixOf` name = True
-        | otherwise                      = False
-    check (AppT a _)                     = isTuple a
-    check _                              = False
+prettyRecordType :: [(Type, Type)] -> Doc a
+prettyRecordType fields = hsep (punctuate comma (uncurry field <$> fields)) where
+    field (Fix (ConT key)) val = pretty (Text.stripPrefix "#" key) <+> ":" <+> pretty val
+    field _ _                  = ""
+
+flat :: Type -> [Type]
+flat = fun . unfix where
+    fun (AppT a b) = flat a <> [b]
+    fun _          = []
+
+data HasType = Record | Tuple | Generic
+    deriving (Show, Eq)
+
+hasType :: Type -> HasType
+hasType = fun . unfix where
+    fun (ConT name)
+        | "Tuple"   `isPrefixOf` name = Tuple
+        | "#Struct" `isPrefixOf` name = Record
+    fun (AppT a _)                    = hasType a
+    fun _                             = Generic
 
 instance Pretty Kind where
     pretty = cata $ \case
