@@ -91,6 +91,10 @@ replCommand input =
                 Right (val, ty) ->
                     putStrIO (unpack (prettyPrint val <> " : " <> prettyPrint ty))
 
+letTypeCommand :: String -> Repl ()
+letTypeCommand input =
+    putStrIO "let type"
+
 letCommand :: String -> Repl ()
 letCommand input =
     case runParser parser "" (pack input) of
@@ -116,6 +120,7 @@ replOptions :: Options Repl
 replOptions =
     [ ("quit" , quit)
     , ("help" , help)
+    , ("type" , letTypeCommand)
     , ("let"  , letCommand)
 --    , ("env"  , envCommand)
 --    , ("reset"  , resetCommand)

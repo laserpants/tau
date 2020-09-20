@@ -5,9 +5,11 @@ import Data.Text.Prettyprint.Doc
 import Tau.Util
 import Tau.Type
 
+-- | Product type
 data Product = Prod Name [Type]
     deriving (Show, Eq)
 
+-- | Sum type
 data Data = Sum Type [Product]
     deriving (Show, Eq)
 
