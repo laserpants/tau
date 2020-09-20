@@ -3,18 +3,22 @@ module Utils
   , prettyString
   , typeOf
   , run
+  , _expr
+  , _type
   ) where
 
 import Data.Maybe (fromJust)
 import Data.Text (Text, pack, unpack)
 import Data.Text.Prettyprint.Doc (Pretty)
 import Tau.Eval
+import Tau.Expr
 import Tau.Parser
 import Tau.Solver
 import Tau.Type
 import Tau.Type.Inference
 import Tau.Util (prettyPrint)
 import Tau.Value
+import Text.Megaparsec
 import qualified Tau.Env.Builtin as Builtin
 
 prettyString :: (Pretty p) => p -> String
@@ -28,3 +32,9 @@ typeOf str = generalize mempty [] (apply sub ty) where
 run :: Text -> Value Eval
 run str = fromJust (evalExpr item Builtin.values) where
     Right item = parseExpr str
+
+_expr :: Text -> Expr
+_expr str = let Right item = parseExpr str in item
+
+_type :: Text -> Type
+_type str = let Right item = parse type_ "" str in item

@@ -13,6 +13,7 @@ module Tau.Util
   , prettyPrint
   , to3
   , unpair
+  , unpairs
   , liftMaybe
   , integerToText
   , intToText
@@ -57,6 +58,9 @@ prettyPrint = renderStrict . layoutPretty defaultLayoutOptions . pretty
 
 unpair :: (a, a) -> [a]
 unpair (f, s) = [f, s]
+
+unpairs :: [(a, a)] -> [a]
+unpairs = concatMap unpair
 
 to3 :: ((a, b), c) -> (a, b, c)
 to3 ((a, b), c) = (a, b, c)

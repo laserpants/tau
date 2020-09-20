@@ -304,7 +304,7 @@ structFields ty =
             | "#Struct" `isPrefixOf` name -> Just (pairUp rest)
         _ -> Nothing
   where
-    pairUp (Fix (ConT k):v:t) = (k, v) : pairUp t
+    pairUp (Fix (ConT k):v:t) = (k, v):pairUp t
     pairUp _                  = []
 
     flatten (Fix (AppT a b))  = flatten a <> flatten b

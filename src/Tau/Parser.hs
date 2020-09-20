@@ -1,4 +1,3 @@
-{-# LANGUAGE LambdaCase        #-}
 {-# LANGUAGE OverloadedStrings #-}
 module Tau.Parser where
 
@@ -8,6 +7,7 @@ import Data.Functor (($>))
 import Data.List (sortOn, nub)
 import Data.Maybe (fromMaybe)
 import Data.Text (Text, pack, unpack)
+import Data.Tuple.Extra (first)
 import Data.Void
 import Tau.Expr
 import Tau.Type
@@ -214,7 +214,7 @@ patternExpr = wildcard
     <|> recordPattern
 
 recordPattern :: Parser Pattern
-recordPattern = do 
+recordPattern = do
     pairs <- fields pattern_
     let con = "#Struct" <> intToText (length pairs)
     pure (uncurry (recP con) (unzip pairs))
@@ -230,11 +230,11 @@ listPattern = do
 
 tuplePattern :: Parser Pattern
 tuplePattern = do
-    void (symbol "(")
-    elems <- pattern_ `sepBy` symbol ","
-    void (symbol ")")
-    when (length elems > 8) (fail "Tuples can only have up to 8 elements")
-    pure (mkTuple conP litP elems)
+    elems <- components pattern_
+    pure $ case elems of
+        []  -> litP Unit
+        [p] -> p
+        _   -> conP ("Tuple" <> intToText (length elems)) elems
 
 varPattern :: Parser Pattern
 varPattern = varP <$> name
@@ -311,23 +311,19 @@ list_ = do
 
 tuple :: Parser Expr
 tuple = do
+    elems <- components expr
+    pure $ case elems of
+        []  -> litS Unit
+        [e] -> e
+        _   -> appS (varS ("Tuple" <> intToText (length elems)):elems)
+
+components :: Parser a -> Parser [a]
+components parser = do
     void (symbol "(")
-    elems <- expr `sepBy` symbol ","
+    elems <- parser `sepBy` symbol ","
     void (symbol ")")
     when (length elems > 8) (fail "Tuples can only have up to 8 elements")
-    pure (mkTuple (\con -> appS . (varS con :)) litS elems)
-
-mkTuple :: (Text -> [a] -> a) -> (Prim -> a) -> [a] -> a
-mkTuple con nil = \case
-    []                       -> nil Unit
-    [a, b]                   -> con "Tuple2" [a, b]
-    [a, b, c]                -> con "Tuple3" [a, b, c]
-    [a, b, c, d]             -> con "Tuple4" [a, b, c, d]
-    [a, b, c, d, e]          -> con "Tuple5" [a, b, c, d, e]
-    [a, b, c, d, e, f]       -> con "Tuple6" [a, b, c, d, e, f]
-    [a, b, c, d, e, f, g]    -> con "Tuple7" [a, b, c, d, e, f, g]
-    [a, b, c, d, e, f, g, h] -> con "Tuple8" [a, b, c, d, e, f, g, h]
-    a:_                      -> a
+    pure elems
 
 -- ============================================================================
 -- == Records
@@ -361,9 +357,24 @@ type_ = makeExprParser parser [[ InfixR (arrT <$ symbol "->") ]]
         atoms <- some atom
         pure (foldl1 appT atoms)
 
-    atom = parens type_
-       <|> varT <$> name
+    atom = varT <$> name
        <|> conT <$> constructor
+       <|> tupleType
+       <|> recordType
+
+tupleType :: Parser Type
+tupleType = do
+    elems <- components type_
+    case elems of
+        []  -> fail "Not a type"
+        [t] -> pure t
+        _   -> pure (foldr appT (conT ("Tuple" <> intToText (length elems))) elems)
+
+recordType :: Parser Type
+recordType = do
+    pairs <- fields type_
+    let con = "#Struct" <> intToText (length pairs)
+    pure (foldr appT (conT con) (unpairs (first conT <$> pairs)))
 
 tyClass :: Parser TyClass
 tyClass = TyCl <$> constructor <*> type_
