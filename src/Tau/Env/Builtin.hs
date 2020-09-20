@@ -22,7 +22,7 @@ values = Env.fromList $
     , ("Zero"     , dataCon "Zero" 0)
     , ("Ok"       , dataCon "Ok" 1)
     , ("Fail"     , dataCon "Fail" 1)
-    , ("Mono"     , dataCon "Mono" 1)     -- TODO: remove
+    , ("Mono"     , dataCon "Mono" 1)
     , ("#Tuple2"  , dataCon "#Tuple2" 2)
     , ("#Tuple3"  , dataCon "#Tuple3" 3)
     , ("#Tuple4"  , dataCon "#Tuple4" 4)

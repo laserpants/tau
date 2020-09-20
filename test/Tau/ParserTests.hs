@@ -24,6 +24,12 @@ succeedParse = succeedWithParser parseExpr
 succeedParseType :: Text -> Type -> SpecWith ()
 succeedParseType = succeedWithParser (runParser (spaces *> type_ <* eof) "")
 
+succeedParseDatatype :: Text -> Data -> SpecWith ()
+succeedParseDatatype = succeedWithParser (runParser (spaces *> datatype <* eof) "")
+
+succeedParseProd :: Text -> Product -> SpecWith ()
+succeedParseProd = succeedWithParser (runParser (spaces *> prod <* eof) "")
+
 succeedWithParser :: (Pretty a, Eq a) => (Text -> Either ParseError a) -> Text -> a -> SpecWith ()
 succeedWithParser parser input expect =
     describe (unpack input) $ do
@@ -205,3 +211,15 @@ testParser = do
     succeedParseType
         "(a -> b) -> c"
         ((varT "a" `arrT` varT "b") `arrT` varT "c")
+
+    succeedParseDatatype
+        "type Fool = Yes | No"
+        (Sum (conT "Fool") [Prod "Yes" [], Prod "No" []])
+
+    succeedParseDatatype
+        "type List a = Nil | Cons a (List a)"
+        (Sum (appT (conT "List") (varT "a")) [Prod "Nil" [], Prod "Cons" [varT "a", appT (conT "List") (varT "a")]]) 
+
+    succeedParseProd
+        "Cons a (List a)"
+        (Prod "Cons" [varT "a", appT (conT "List") (varT "a")]) 

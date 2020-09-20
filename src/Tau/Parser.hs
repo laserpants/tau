@@ -7,6 +7,7 @@ import Data.Functor (($>))
 import Data.List (sortOn, nub)
 import Data.Maybe (fromMaybe)
 import Data.Text (Text, pack, unpack)
+import Data.Text.Prettyprint.Doc hiding (pipe, parens)
 import Data.Tuple.Extra (first)
 import Data.Void
 import Tau.Expr
@@ -193,8 +194,8 @@ pipe :: Parser ()
 pipe = void (symbol "|")
 
 clause :: Parser () -> Parser (Pattern, Expr)
-clause sep = do
-    pat  <- sep *> pattern_
+clause sym = do
+    pat  <- sym *> pattern_
     term <- symbol "=>" *> expr
     pure (pat, term)
 
@@ -406,18 +407,28 @@ kind = makeExprParser parser [[ InfixR (arrK <$ symbol "->") ]] where
 data Product = Prod Name [Type]
     deriving (Show, Eq)
 
-data Data = Sum Name [Name] [Product]
+data Data = Sum Type [Product]
     deriving (Show, Eq)
+
+instance Pretty Data where
+    pretty (Sum ty prods) = 
+        "type" <+> pretty ty <+> "=" 
+               <+> hsep (punctuate "|" (pretty <$> prods))
+
+instance Pretty Product where
+    pretty (Prod con types) = pretty con <+> hsep (pretty <$> types)
 
 datatype :: Parser Data
 datatype = do
     keyword "type"
-    tycon <- constructor
-    vars  <- many name <* symbol "="
+    tcon  <- constructor
+    tvars <- many (varT <$> name) 
+    void (symbol "=")
     prods <- prod `sepBy` symbol "|"
-    pure (Sum tycon vars prods)
-  where
-    prod = do
-        data_ <- constructor
-        types <- many type_     -- TODO: eager?
-        pure (Prod data_ types)
+    pure (Sum (foldl appT (conT tcon) tvars) prods)
+
+prod :: Parser Product
+prod = do
+    data_ <- constructor
+    types <- many $ try (varT <$> name) <|> type_
+    pure (Prod data_ types)
