@@ -3,6 +3,7 @@ module Tau.ParserTests where
 
 import Data.Either
 import Data.Text.Prettyprint.Doc (Pretty)
+import Tau.Data
 import Tau.Expr
 import Tau.Parser
 import Tau.Type

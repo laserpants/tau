@@ -7,9 +7,9 @@ import Data.Functor (($>))
 import Data.List (sortOn, nub)
 import Data.Maybe (fromMaybe)
 import Data.Text (Text, pack, unpack)
-import Data.Text.Prettyprint.Doc hiding (pipe, parens)
 import Data.Tuple.Extra (first)
 import Data.Void
+import Tau.Data
 import Tau.Expr
 import Tau.Type
 import Tau.Util
@@ -403,20 +403,6 @@ kind = makeExprParser parser [[ InfixR (arrK <$ symbol "->") ]] where
 -- ============================================================================
 -- == Data types
 -- ============================================================================
-
-data Product = Prod Name [Type]
-    deriving (Show, Eq)
-
-data Data = Sum Type [Product]
-    deriving (Show, Eq)
-
-instance Pretty Data where
-    pretty (Sum ty prods) = 
-        "type" <+> pretty ty <+> "=" 
-               <+> hsep (punctuate "|" (pretty <$> prods))
-
-instance Pretty Product where
-    pretty (Prod con types) = pretty con <+> hsep (pretty <$> types)
 
 datatype :: Parser Data
 datatype = do
