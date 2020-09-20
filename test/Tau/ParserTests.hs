@@ -156,11 +156,11 @@ testParser = do
 
     succeedParse
         "(1,2)"
-        (appS [varS "Tuple2", litInt 1, litInt 2])
+        (appS [varS "#Tuple2", litInt 1, litInt 2])
 
     succeedParse
         "(1,2, \"hello\")"
-        (appS [varS "Tuple3", litInt 1, litInt 2, litString "hello"])
+        (appS [varS "#Tuple3", litInt 1, litInt 2, litString "hello"])
 
     succeedParse
         "let rec map f xs = match xs with Nil => [] | Cons x1 xs1 => Cons (f x1) (map f xs1) in map"
@@ -188,11 +188,11 @@ testParser = do
 
     succeedParse
         "(\\match | (1, 2) => 4) (3, 4)"
-        (appS [lamMatchS [(conP "Tuple2" [litP (Int 1), litP (Int 2)], litInt 4)], appS [varS "Tuple2", litInt 3, litInt 4]])
+        (appS [lamMatchS [(conP "#Tuple2" [litP (Int 1), litP (Int 2)], litInt 4)], appS [varS "#Tuple2", litInt 3, litInt 4]])
 
     succeedParse
         "(\\match | (1, 2, x) => 4) (3, 4, \"stuff\")"
-        (appS [lamMatchS [(conP "Tuple3" [litP (Int 1), litP (Int 2), varP "x"], litInt 4)], appS [varS "Tuple3", litInt 3, litInt 4, litString "stuff"]])
+        (appS [lamMatchS [(conP "#Tuple3" [litP (Int 1), litP (Int 2), varP "x"], litInt 4)], appS [varS "#Tuple3", litInt 3, litInt 4, litString "stuff"]])
 
     succeedParseType
         "a -> b -> c"

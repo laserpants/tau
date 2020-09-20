@@ -215,7 +215,7 @@ patternExpr = wildcard
 
 recordPattern :: Parser Pattern
 recordPattern = do
-    pairs <- fields pattern_
+    pairs <- fields "=" pattern_
     let con = "#Struct" <> intToText (length pairs)
     pure (uncurry (recP con) (unzip pairs))
 
@@ -234,7 +234,7 @@ tuplePattern = do
     pure $ case elems of
         []  -> litP Unit
         [p] -> p
-        _   -> conP ("Tuple" <> intToText (length elems)) elems
+        _   -> conP ("#Tuple" <> intToText (length elems)) elems
 
 varPattern :: Parser Pattern
 varPattern = varP <$> name
@@ -315,7 +315,7 @@ tuple = do
     pure $ case elems of
         []  -> litS Unit
         [e] -> e
-        _   -> appS (varS ("Tuple" <> intToText (length elems)):elems)
+        _   -> appS (varS ("#Tuple" <> intToText (length elems)):elems)
 
 components :: Parser a -> Parser [a]
 components parser = do
@@ -330,10 +330,10 @@ components parser = do
 -- ============================================================================
 
 record :: Parser Expr
-record = structS <$> fields expr
+record = structS <$> fields "=" expr
 
-fields :: Parser a -> Parser [(Name, a)]
-fields parser = do
+fields :: Text -> Parser a -> Parser [(Name, a)]
+fields sym parser = do
     void (symbol "{")
     pairs <- sortOn fst <$> field `sepBy` symbol ","
     void (symbol "}")
@@ -343,7 +343,7 @@ fields parser = do
     hasDups names = length names /= length (nub names)
     field = do
         key <- name
-        val <- symbol "=" *> parser
+        val <- symbol sym *> parser
         pure (key, val)
 
 -- ============================================================================
@@ -368,13 +368,13 @@ tupleType = do
     case elems of
         []  -> fail "Not a type"
         [t] -> pure t
-        _   -> pure (foldr appT (conT ("Tuple" <> intToText (length elems))) elems)
+        _   -> pure (foldl appT (conT ("#Tuple" <> intToText (length elems))) elems)
 
 recordType :: Parser Type
 recordType = do
-    pairs <- fields type_
+    pairs <- fields ":" type_
     let con = "#Struct" <> intToText (length pairs)
-    pure (foldr appT (conT con) (unpairs (first conT <$> pairs)))
+    pure (foldl appT (conT con) (unpairs (first conT <$> sortOn fst pairs)))
 
 tyClass :: Parser TyClass
 tyClass = TyCl <$> constructor <*> type_

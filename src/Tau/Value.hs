@@ -76,7 +76,7 @@ instance Pretty (Value m) where
     pretty value             = prettyArg value
 
 isTuple :: Value m -> Bool
-isTuple (Data con _) = "Tuple" `isPrefixOf` con
+isTuple (Data con _) = "#Tuple" `isPrefixOf` con
 isTuple _            = False
 
 prettyArg :: Value m -> Doc a

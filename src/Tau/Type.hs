@@ -346,7 +346,7 @@ data HasType = Record | Tuple | Generic
 hasType :: Type -> HasType
 hasType = fun . unfix where
     fun (ConT name)
-        | "Tuple"   `isPrefixOf` name = Tuple
+        | "#Tuple"  `isPrefixOf` name = Tuple
         | "#Struct" `isPrefixOf` name = Record
     fun (AppT a _)                    = hasType a
     fun _                             = Generic

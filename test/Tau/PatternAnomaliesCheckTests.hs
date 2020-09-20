@@ -177,15 +177,11 @@ testPatternAnomaliesCheck = do
         ]
 
     nonExhaustivePatterns
-        [ $(parsePattern "Tuple2 1 2")
+        [ $(parsePattern "(1, 2)")
         ]
 
     nonExhaustivePatterns
         [ $(parsePattern "(1, 2)")
-        ]
-
-    exhaustivePatterns
-        [ $(parsePattern "Tuple2 _ _")
         ]
 
     exhaustivePatterns

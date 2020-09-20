@@ -23,8 +23,8 @@ testValueEnv = Env.fromList
     , ("Tuple6" , dataCon "Tuple6" 6)
     , ("Tuple7" , dataCon "Tuple7" 7)
     , ("Tuple8" , dataCon "Tuple8" 8)
-    , ("fst"    , evald $(parseExpr "\\match (a, b) => a"))
-    , ("snd"    , evald $(parseExpr "\\match (a, b) => b"))
+    , ("fst"    , evald $(parseExpr "\\match Tuple2 a b => a"))
+    , ("snd"    , evald $(parseExpr "\\match Tuple2 a b => b"))
     ]
 
 evald :: Expr -> Value Eval
