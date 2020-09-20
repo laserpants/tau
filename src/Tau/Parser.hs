@@ -375,7 +375,7 @@ recordType :: Parser Type
 recordType = do
     pairs <- fields ":" type_
     let con = "#Struct" <> intToText (length pairs)
-    pure (foldl appT (conT con) (unpairs (first conT <$> sortOn fst pairs)))
+    pure (foldl appT (conT con) (unpairs (first (conT . ("#" <>)) <$> sortOn fst pairs)))
 
 tyClass :: Parser TyClass
 tyClass = TyCl <$> constructor <*> type_

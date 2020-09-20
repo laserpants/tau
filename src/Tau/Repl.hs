@@ -89,8 +89,8 @@ replCommand input =
         Left err ->
             putStrIO (errorBundlePretty err)
 
-        Right result -> do
-            traceShowM result
+        Right result ->
+            --traceShowM result
             runExceptT (evalCommand result) >>= \case
                 Left err ->
                     putStrIO (show err)
@@ -105,12 +105,13 @@ letTypeCommand input =
             putStrIO (errorBundlePretty err)
 
         Right ty -> do
-            traceShowM ty
+            --traceShowM ty
             updateEnv ty
             putStrIO "Done!"
 
 updateEnv :: Data -> Repl ()
-updateEnv ty@(Sum con _ _) =
+updateEnv ty@(Sum con _ _) = do
+    putStrIO (show (typeCons ty))
     modify (\ReplEnv{..} -> ReplEnv
         { values       = Env.insertMany (dataCons ty) values
         , typeSchemes  = Env.insertMany (typeCons ty) typeSchemes
@@ -129,8 +130,10 @@ typeKind :: Data -> Kind
 typeKind (Sum _ tvars _) = foldr arrK starK (fmap (const starK) tvars)
 
 typeCons :: Data -> [(Name, Scheme)]
-typeCons (Sum con vars prods) = fun <$> prods where
-    fun (Prod cname ts) = (cname, generalize mempty [] (foldr arrT (toType con vars) ts))
+typeCons (Sum con vars prods) = fun <$> prods 
+  where
+    fun (Prod cname ts) = 
+        (cname, generalize mempty [] (foldr arrT (toType con vars) ts))
 
 dataCons :: (MonadReader (ValueEnv m) m) => Data -> [(Name, Value m)]
 dataCons (Sum _ _ prods) = fun <$> prods where
@@ -157,13 +160,22 @@ letCommand input =
         term <- symbol "=" *> expr
         pure (var, term)
 
+envCommand :: String -> Repl ()
+envCommand inp = do
+    ReplEnv{..} <- get
+    let key = pack inp
+    putStrIO (show (Env.lookup key values))
+    putStrIO (show (Env.lookup key typeSchemes))
+    putStrIO (show (Env.lookup key constructors))
+    putStrIO (show (Env.lookup key kinds))
+
 replOptions :: Options Repl
 replOptions =
     [ ("quit" , quit)
     , ("help" , help)
     , ("type" , letTypeCommand)
     , ("let"  , letCommand)
---    , ("env"  , envCommand)
+    , ("env"  , envCommand)
 --    , ("reset"  , resetCommand)
     ]
 
