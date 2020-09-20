@@ -11,20 +11,14 @@ import Tau.Value
 import Test.Hspec
 import Utils
 import qualified Tau.Env as Env
+import qualified Tau.Env.Builtin as Builtin
 
 testValueEnv :: ValueEnv Eval
-testValueEnv = Env.fromList
+testValueEnv = Builtin.values `Env.union` Env.fromList
     [ ("Cons"   , dataCon "Cons" 2)
     , ("Nil"    , dataCon "Nil" 0)
-    , ("Tuple2" , dataCon "Tuple2" 2)
-    , ("Tuple3" , dataCon "Tuple3" 3)
-    , ("Tuple4" , dataCon "Tuple4" 4)
-    , ("Tuple5" , dataCon "Tuple5" 5)
-    , ("Tuple6" , dataCon "Tuple6" 6)
-    , ("Tuple7" , dataCon "Tuple7" 7)
-    , ("Tuple8" , dataCon "Tuple8" 8)
-    , ("fst"    , evald $(parseExpr "\\match Tuple2 a b => a"))
-    , ("snd"    , evald $(parseExpr "\\match Tuple2 a b => b"))
+    , ("fst"    , evald $(parseExpr "\\match (a, b) => a"))
+    , ("snd"    , evald $(parseExpr "\\match (a, b) => b"))
     ]
 
 evald :: Expr -> Value Eval
@@ -122,15 +116,18 @@ testEval = do
         (Value (Int 8))
 
     succeedEval
-        $(parseExpr "let id = \\x => x in let x = Tuple2 id 4 in (fst x snd x) + 1")
+        $(parseExpr "let id = \\x => x in let x = (id, 4) in ((fst x) (snd x)) + 1")
         (Value (Int 5))
 
     succeedEval
-        $(parseExpr "let id = \\x => x in let x = (id, 4) in (fst x snd x) + 1")
+        $(parseExpr "let id = \\x => x in let x = (id, 4) in ((fst x) (snd x)) + 1")
         (Value (Int 5))
 
     succeedEvalFunction
-        $(parseExpr "let id = \\x => x in let x = Tuple2 id 4 in fst x")
+        $(parseExpr "let fst (a,b) = a in let id = \\x => x in let x = (id, 4) in fst x")
+
+    succeedEvalFunction
+        $(parseExpr "let id = \\x => x in let x = (id, 4) in fst x")
 
     succeedEvalFunction
         $(parseExpr "let id = \\x => x in let x = (id, 4) in fst x")
@@ -176,11 +173,11 @@ testEval = do
         (Data "Cons" [Value (Bool True), Data "Cons" [Value (Bool False), Data "Cons" [Value (Bool False), Data "Nil" []]]])
 
     succeedEval
-        $(parseExpr "let fst = \\match | Tuple2 a _ => a in let rec length = \\match | Nil => 0 | Cons x xs => 1 + (length xs) in length (fst (Tuple2 (Cons 1 (Cons 2 (Cons 3 Nil))) 5))")
+        $(parseExpr "let fst = \\match | (a, _) => a in let rec length = \\match | Nil => 0 | Cons x xs => 1 + (length xs) in length (fst (Cons 1 (Cons 2 (Cons 3 Nil)), 5))")
         (Value (Int 3))
 
     succeedEval
-        $(parseExpr "let fst = \\match | (a, _) => a in let rec length = \\match | Nil => 0 | Cons x xs => 1 + (length xs) in length (fst (Tuple2 (Cons 1 (Cons 2 (Cons 3 Nil))) 5))")
+        $(parseExpr "let fst = \\match | (a, _) => a in let rec length = \\match | Nil => 0 | Cons x xs => 1 + (length xs) in length (fst (Cons 1 (Cons 2 (Cons 3 Nil)), 5))")
         (Value (Int 3))
 
     succeedEval
@@ -264,26 +261,26 @@ testEval = do
         (Value (Int 5))
 
     succeedEval
-        $(parseExpr "match Tuple2 100 1 with Tuple2 x 1 => x | _ => 1")
+        $(parseExpr "match (100, 1) with (x, 1) => x | _ => 1")
         (Value (Int 100))
 
     succeedEval
-        $(parseExpr "match Tuple2 100 1 with Tuple2 101 1 => x | _ => 1")
+        $(parseExpr "match (100, 1) with (101, 1) => x | _ => 1")
         (Value (Int 1))
 
     succeedEval
-        $(parseExpr "match Tuple2 100 2 with Tuple2 x y => y | _ => 1")
+        $(parseExpr "match (100, 2) with (x, y) => y | _ => 1")
         (Value (Int 2))
 
     succeedEval
         $(parseExpr "match { a = 5, b = 'a', c = \"hello\" } with { a = x, b = _, c = name } => (x, name) | _ => (0, \"default\")")
-        (Data "Tuple2" [Value (Int 5), Value (String "hello")])
+        (Data "#Tuple2" [Value (Int 5), Value (String "hello")])
 
 
 
 
---    failEval 
---        $(parseExpr "match Tuple2 100 2 with Tuple2 x x => y | _ => 1")
+--    failEval
+--        $(parseExpr "match (100, 2) with (x, x) => y | _ => 1")
 
 --    succeedEval
 --        $(parseExpr "{ number = 42 }.number")

@@ -5,6 +5,7 @@ module Utils
   , run
   , _expr
   , _type
+  , _eval
   ) where
 
 import Data.Maybe (fromJust)
@@ -30,11 +31,13 @@ typeOf str = generalize mempty [] (apply sub ty) where
     Right item = parseExpr str
 
 run :: Text -> Value Eval
-run str = fromJust (evalExpr item Builtin.values) where
-    Right item = parseExpr str
+run str =  _eval item where Right item = parseExpr str
 
 _expr :: Text -> Expr
 _expr str = let Right item = parseExpr str in item
 
 _type :: Text -> Type
 _type str = let Right item = parse type_ "" str in item
+
+_eval :: Expr -> Value Eval
+_eval = fromJust . flip evalExpr Builtin.values 

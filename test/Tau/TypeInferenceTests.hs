@@ -23,8 +23,8 @@ testTypeEnv = Env.fromList
     , ( "const"  , $(parseScheme "forall a b. a -> b -> a") )
     , ( "foo"    , $(parseScheme "forall a. a -> a") )
     , ( "Foo"    , $(parseScheme "forall a. a -> List a") )
-    , ( "fst"    , $(parseScheme "forall a b. (a, b) -> a") )
-    , ( "snd"    , $(parseScheme "forall a b. (a, b) -> b") )
+    , ( "fst"    , Forall ["a", "b"] [] (arrT (appT (appT (conT "#Tuple2") (varT "a")) (varT "b")) (varT "a")) ) -- $(parseScheme "forall a b. (a, b) -> a") )
+    , ( "snd"    , Forall ["a", "b"] [] (arrT (appT (appT (conT "#Tuple2") (varT "a")) (varT "b")) (varT "b")) ) -- $(parseScheme "forall a b. (a, b) -> b") )
     , ( "Baz"    , $(parseScheme "Bool") )
     , ( "equals" , $(parseScheme "forall a. (Eq a) => a -> a -> Bool") )
     , ( "plus"   , $(parseScheme "forall a. (Num a) => a -> a -> a") )
@@ -251,13 +251,16 @@ testTypeInference = do
 
     succeedInferType
         $(parseExpr "match { a = 5, b = 'a', c = \"hello\" } with { a = x, b = _, c = name } => (x, name) | _ => (0, \"default\")")
-        $(parseScheme "#Tuple2 Int String")
+        $(parseScheme "(Int, String)")
 
     failInferTypeWithError (UnificationError CannotUnify)
         $(parseExpr "match { a = 5, b = 'a', c = \"hello\" } with { a = x, b = _, c = name } => (x, x) | _ => (0, \"default\")")
 
     failInferTypeWithError (UnificationError CannotUnify)
         $(parseExpr "match { a = 5, b = 'a', c = \"hello\" } with { a = x, b = _, d = name } => (x, name) | _ => (0, \"default\")")
+
+    failInferTypeWithError (UnboundVariable "x")
+        $(parseExpr "match (100, 1) with (101, 1) => x | _ => 1")
 
 --    succeedInferType
 --        $(parseExpr "{ key = 5 }.key")

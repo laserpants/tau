@@ -379,16 +379,17 @@ recordType = do
 tyClass :: Parser TyClass
 tyClass = TyCl <$> constructor <*> type_
 
-quantifier :: Parser (Maybe [Name])
-quantifier = optional (keyword "forall" *> some name <* symbol ".")
+quantifier :: Parser [Name]
+quantifier = keyword "forall" *> some name <* symbol "."
 
-classConstraints :: Parser (Maybe [TyClass])
-classConstraints = optional (parens (some tyClass) <* symbol "=>")
+classConstraints :: Parser [TyClass]
+classConstraints = parens (tyClass `sepBy1` symbol ",") <* symbol "=>"
 
 scheme :: Parser Scheme
-scheme = Forall <$> (fromMaybe [] <$> quantifier)
-                <*> (fromMaybe [] <$> classConstraints)
-                <*> type_
+scheme = Forall
+    <$> (fromMaybe [] <$> optional quantifier)
+    <*> (try classConstraints <|> pure [])
+    <*> type_
 
 -- ============================================================================
 -- == Kind

@@ -23,7 +23,14 @@ values = Env.fromList $
     , ("Ok"       , dataCon "Ok" 1)
     , ("Fail"     , dataCon "Fail" 1)
     , ("Mono"     , dataCon "Mono" 1)     -- TODO: remove
-    ] <> 
+    , ("#Tuple2"  , dataCon "#Tuple2" 2)
+    , ("#Tuple3"  , dataCon "#Tuple3" 3)
+    , ("#Tuple4"  , dataCon "#Tuple4" 4)
+    , ("#Tuple5"  , dataCon "#Tuple5" 5)
+    , ("#Tuple6"  , dataCon "#Tuple6" 6)
+    , ("#Tuple7"  , dataCon "#Tuple7" 7)
+    , ("#Tuple8"  , dataCon "#Tuple8" 8)
+    ] <>
     [("#Struct" <> intToText n, dataCon ("#Struct" <> intToText n) (n*2)) | n <- [1..maxRecord]]
 
 typeSchemes :: Env Scheme
@@ -36,13 +43,13 @@ typeSchemes = Env.fromList $
     , ( "Zero"     , $(parseScheme "Nat") )
     , ( "Ok"       , $(parseScheme "forall a b. b -> Result a b") )
     , ( "Fail"     , $(parseScheme "forall a b. a -> Result a b") )
-    , ( "#Tuple2"  , $(parseScheme "forall a b. a -> b -> #Tuple2 a b") )
-    , ( "#Tuple3"  , $(parseScheme "forall a b c. a -> b -> c -> #Tuple3 a b c") )
-    , ( "#Tuple4"  , $(parseScheme "forall a b c d. a -> b -> c -> d -> #Tuple4 a b c d") )
-    , ( "#Tuple5"  , $(parseScheme "forall a b c d e. a -> b -> c -> d -> e -> #Tuple5 a b c d e") )
-    , ( "#Tuple6"  , $(parseScheme "forall a b c d e f. a -> b -> c -> d -> e -> f -> #Tuple6 a b c d e f") )
-    , ( "#Tuple7"  , $(parseScheme "forall a b c d e f g. a -> b -> c -> d -> e -> f -> g -> #Tuple7 a b c d e f g")  )
-    , ( "#Tuple8"  , $(parseScheme "forall a b c d e f g h. a -> b -> c -> d -> e -> f -> g -> h -> #Tuple8 a b c d e f g h")  )
+    , ( "#Tuple2"  , $(parseScheme "forall a b. a -> b -> (a, b)") )
+    , ( "#Tuple3"  , $(parseScheme "forall a b c. a -> b -> c -> (a, b, c)") )
+    , ( "#Tuple4"  , $(parseScheme "forall a b c d. a -> b -> c -> d -> (a, b, c, d)") )
+    , ( "#Tuple5"  , $(parseScheme "forall a b c d e. a -> b -> c -> d -> e -> (a, b, c, d, e)") )
+    , ( "#Tuple6"  , $(parseScheme "forall a b c d e f. a -> b -> c -> d -> e -> f -> (a, b, c, d, e, f)") )
+    , ( "#Tuple7"  , $(parseScheme "forall a b c d e f g. a -> b -> c -> d -> e -> f -> g -> (a, b, c, d, e, f, g)")  )
+    , ( "#Tuple8"  , $(parseScheme "forall a b c d e f g h. a -> b -> c -> d -> e -> f -> g -> h -> (a, b, c, d, e, f, g, h)")  )
     , ( "Mono"     , $(parseScheme "forall a. a -> Mono a") )
     ] <>
     [("#Struct" <> intToText n, structScheme n) | n <- [1..maxRecord]]
@@ -65,7 +72,7 @@ constructors = constructorEnv $
     , ("#Tuple7"  , ["#Tuple7"])
     , ("#Tuple8"  , ["#Tuple8"])
     , ("Mono"     , ["Mono"])
-    ] <> 
+    ] <>
     [(con, [con]) | n <- [1..maxRecord], let con = "#Struct" <> intToText n]
 
 kindEnv :: Env Kind
