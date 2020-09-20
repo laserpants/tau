@@ -1,4 +1,4 @@
-module Utils 
+module Utils
   ( module Data.Text
   , prettyString
   , typeOf
@@ -40,4 +40,4 @@ _type :: Text -> Type
 _type str = let Right item = parse type_ "" str in item
 
 _eval :: Expr -> Value Eval
-_eval = fromJust . flip evalExpr Builtin.values 
+_eval = fromJust . flip evalExpr Builtin.values
