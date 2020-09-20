@@ -98,6 +98,10 @@ testEval = do
         (Value (Int 1))
 
     succeedEval
+        $(parseExpr "(\\xs => match xs with y :: ys => 1 | [] => 2) (5 :: [])")
+        (Value (Int 1))
+
+    succeedEval
         $(parseExpr "(\\xs => match xs with Cons y ys => 1 | Nil => 2) (Cons 5 Nil)")
         (Value (Int 1))
 
