@@ -321,7 +321,7 @@ fieldType name ty = lookup name =<< structFields ty
 instance Pretty Type where
     pretty (Fix (AppT a b))
         | its == Tuple  = tupled (pretty <$> flat a <> [b])
-        | its == Record = "{" <+> prettyRecordType (pairs (flat a <> [b])) <+> "}"
+        | its == Struct = "{" <+> prettyRecordType (pairs (flat a <> [b])) <+> "}"
         | otherwise     = pretty a <+> pretty b
       where
         its = hasType a
@@ -341,14 +341,14 @@ flat = fun . unfix where
     fun (AppT a b) = flat a <> [b]
     fun _          = []
 
-data HasType = Record | Tuple | Generic
+data HasType = Struct | Tuple | Generic
     deriving (Show, Eq)
 
 hasType :: Type -> HasType
 hasType = fun . unfix where
     fun (ConT name)
         | "#Tuple"  `isPrefixOf` name = Tuple
-        | "#Struct" `isPrefixOf` name = Record
+        | "#Struct" `isPrefixOf` name = Struct
     fun (AppT a _)                    = hasType a
     fun _                             = Generic
 
