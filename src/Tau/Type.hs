@@ -312,7 +312,7 @@ flatten (Fix (AppT a b))  = flatten a <> flatten b
 flatten t                 = [t]
 
 fieldType :: Name -> Type -> Maybe Type
-fieldType name ty = lookup name =<< structFields ty
+fieldType name ty = lookup ("#" <> name) =<< structFields ty
 
 -- ============================================================================
 -- == Pretty Printing
