@@ -418,5 +418,11 @@ datatype = do
 prod :: Parser Product
 prod = do
     data_ <- constructor
-    types <- many $ try (varT <$> name) <|> type_
+    types <- many atom
     pure (Prod data_ types)
+  where
+    atom = varT <$> name
+       <|> conT <$> constructor
+       <|> tupleType
+       <|> recordType
+       <|> parens type_

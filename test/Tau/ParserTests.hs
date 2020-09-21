@@ -226,3 +226,19 @@ testParser = do
         (Prod "Cons" [varT "a", appT (conT "List") (varT "a")]) 
 
     failParse "{}"
+
+    succeedParseDatatype
+        "type X a b c = Y (List a) b"
+        (Sum "X" ["a","b","c"] [Prod "Y" [appT (conT "List") (varT "a"), varT "b"]])
+
+    succeedParseDatatype
+        "type X a b c = Y (List a) (List b) c"
+        (Sum "X" ["a","b","c"] [Prod "Y" [appT (conT "List") (varT "a"), appT (conT "List") (varT "b"), varT "c"]])
+
+    succeedParseDatatype
+        "type X a b c = Y (List a) b c"
+        (Sum "X" ["a","b","c"] [Prod "Y" [appT (conT "List") (varT "a"), varT "b", varT "c"]])
+
+    succeedParseDatatype
+        "type X a b c = Y (List a) (Int -> Int) c"
+        (Sum "X" ["a","b","c"] [Prod "Y" [appT (conT "List") (varT "a"), arrT tInt tInt, varT "c"]])
