@@ -33,8 +33,6 @@ values = Env.fromList
     , ("#Tuple7"  , dataCon "#Tuple7" 7)
     , ("#Tuple8"  , dataCon "#Tuple8" 8)
     ]
---    ] <>
---    [("#Struct" <> intToText n, dataCon ("#Struct" <> intToText n) (n*2)) | n <- [1..maxRecord]]
 
 typeSchemes :: Env Scheme
 typeSchemes = Env.fromList $
