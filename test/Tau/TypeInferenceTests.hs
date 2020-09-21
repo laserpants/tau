@@ -278,6 +278,9 @@ testTypeInference = do
         $(parseExpr "match { stuff = (), user = { id = 1, data = { name = (\"Bob\", \"Doe\"), shoeSize = 42 } } } with { stuff = (), user = { id = _, data = { name = (firstName, _), shoeSize = 42 } } } => firstName")
         $(parseScheme "String")
 
+    failInferTypeWithError (UnificationError CannotUnify)
+        $(parseExpr "match { a = 5 } with { a = x, b = _ } => 1 | _ => 123")
+
 --    succeedInferType
 --        $(parseExpr "{ key = 5 }.key")
 --        $(parseScheme "Int")
