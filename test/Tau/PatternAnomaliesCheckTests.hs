@@ -217,3 +217,17 @@ testPatternAnomaliesCheck = do
     exhaustivePatterns
         [ $(parsePattern "{ a = x }")
         ]
+
+    exhaustivePatterns
+        [ $(parsePattern "{ x = 3, y = { a = 3 } }")
+        , $(parsePattern "{ x = 6, y = { a = 4 } }")
+        , $(parsePattern "{ x = _, y = { a = 5 } }")
+        , $(parsePattern "{ x = x, y = { a = _ } }")
+        ]
+
+    nonExhaustivePatterns
+        [ $(parsePattern "{ x = 3, y = { a = 3 } }")
+        , $(parsePattern "{ x = 6, y = { a = 4 } }")
+        , $(parsePattern "{ x = _, y = { a = 5 } }")
+        , $(parsePattern "{ x = x, y = { a = 6 } }")
+        ]
