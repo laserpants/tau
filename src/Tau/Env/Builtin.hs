@@ -15,7 +15,7 @@ maxRecord :: Int
 maxRecord = 40
 
 values :: ValueEnv Eval
-values = Env.fromList $
+values = Env.fromList
     [ ("Cons"     , dataCon "Cons" 2)
     , ("Nil"      , dataCon "Nil" 0)
     , ("Some"     , dataCon "Some" 1)
@@ -32,8 +32,9 @@ values = Env.fromList $
     , ("#Tuple6"  , dataCon "#Tuple6" 6)
     , ("#Tuple7"  , dataCon "#Tuple7" 7)
     , ("#Tuple8"  , dataCon "#Tuple8" 8)
-    ] <>
-    [("#Struct" <> intToText n, dataCon ("#Struct" <> intToText n) (n*2)) | n <- [1..maxRecord]]
+    ]
+--    ] <>
+--    [("#Struct" <> intToText n, dataCon ("#Struct" <> intToText n) (n*2)) | n <- [1..maxRecord]]
 
 typeSchemes :: Env Scheme
 typeSchemes = Env.fromList $

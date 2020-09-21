@@ -336,7 +336,7 @@ record = structS <$> fields "=" expr
 fields :: Text -> Parser a -> Parser [(Name, a)]
 fields sym parser = do
     void (symbol "{")
-    pairs <- sortOn fst <$> field `sepBy` symbol ","
+    pairs <- sortOn fst <$> field `sepBy1` symbol ","
     void (symbol "}")
     when (hasDups (fst <$> pairs)) (fail "A field name appears more than once in record")
     pure pairs

@@ -296,7 +296,13 @@ testEval = do
         $(parseExpr "match { stuff = \"abc\", user = { id = 1, data = { name = (\"Bob\", \"Doe\"), shoeSize = 44 } } } with { stuff = _, user = { id = _, data = { name = (firstName, _), shoeSize = 42 } } } => firstName | { stuff = stuff, user = { id = _, data = { name = (firstName, _), shoeSize = _ } } } => stuff")
         (Value (String "abc"))
 
+    succeedEval
+        $(parseExpr "{ a = 5 }")
+        (Record [("a", Value (Int 5))])
 
+    succeedEval
+        $(parseExpr "(4,5,6)")
+        (Data "#Tuple3" [Value (Int 4),Value (Int 5),Value (Int 6)])
 
 
 --    failEval

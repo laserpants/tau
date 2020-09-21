@@ -224,3 +224,5 @@ testParser = do
     succeedParseProd
         "Cons a (List a)"
         (Prod "Cons" [varT "a", appT (conT "List") (varT "a")]) 
+
+    failParse "{}"
