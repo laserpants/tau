@@ -17,14 +17,14 @@ import Tau.Type
 import Tau.Util
 import qualified Tau.Env as Env
 
-type KindAssumption = Assumption Kind
+type KindAssumption = (Name, Kind)
 
 tellAssumption
   :: (MonadWriter ([KindAssumption], [KindConstraint]) m)
   => Name
   -> Kind
   -> m ()
-tellAssumption name kind = tell ([Assumption (name, kind)], mempty)
+tellAssumption name kind = tell ([(name, kind)], mempty)
 
 tellConstraint
   :: (MonadWriter ([KindAssumption], [KindConstraint]) m)
@@ -51,7 +51,7 @@ inferKind env ty = do
   where
     envConstraints :: [KindAssumption] -> [KindConstraint]
     envConstraints as = do
-         (x, k) <- getAssumption <$> as
+         (x, k) <- as
          (y, l) <- Env.toList env
          guard (x == y)
          pure (k, l)

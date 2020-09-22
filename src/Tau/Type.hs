@@ -56,18 +56,6 @@ type Kind = Fix KindF
 $(deriveShow1 ''KindF)
 $(deriveEq1   ''KindF)
 
-newtype Assumption a = Assumption { getAssumption :: (Name, a) }
-    deriving (Show, Eq, Functor, Foldable, Traversable)
-
-removeAssumption :: Name -> [Assumption a] -> [Assumption a]
-removeAssumption var = filter ((/=) var . assumptionName)
-
-removeManyAssumptions :: [Name] -> [Assumption a] -> [Assumption a]
-removeManyAssumptions = flip (foldr removeAssumption)
-
-assumptionName :: Assumption a -> Name
-assumptionName = fst . getAssumption
-
 -- ============================================================================
 -- == Constructors
 -- ============================================================================
@@ -324,7 +312,7 @@ instance Pretty Type where
         | its == Struct = "{" <+> prettyRecordType (pairs (flat a <> [b])) <+> "}"
         | otherwise     = pretty a <+> pretty b
       where
-        its = hasType a
+        its = nodeType a
         pairs (v:x:xs) = (v, x):pairs xs
         pairs _        = []
     pretty (Fix (ConT name)) = pretty name
@@ -344,12 +332,12 @@ flat = fun . unfix where
 data HasType = Struct | Tuple | Generic
     deriving (Show, Eq)
 
-hasType :: Type -> HasType
-hasType = fun . unfix where
+nodeType :: Type -> HasType
+nodeType = fun . unfix where
     fun (ConT name)
         | "#Tuple"  `isPrefixOf` name = Tuple
         | "#Struct" `isPrefixOf` name = Struct
-    fun (AppT a _)                    = hasType a
+    fun (AppT a _)                    = nodeType a
     fun _                             = Generic
 
 instance Pretty Kind where

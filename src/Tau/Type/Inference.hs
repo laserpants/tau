@@ -14,8 +14,7 @@ import Control.Monad.Writer
 import Data.Either.Extra (mapLeft)
 import Data.Foldable (foldrM)
 import Data.Functor.Const
-import Data.List (partition)
-import Data.Maybe (fromJust, isJust)
+import Data.Maybe (fromJust)
 import Data.Tuple.Extra (first3)
 import Tau.Env (Env)
 import Tau.Expr
@@ -31,9 +30,10 @@ data TypeError
     | EmptyMatchStatement
     | BadRecordAccess
     | MissingField Name
+    | NameClash Name
     deriving (Show, Eq)
 
-data TypeAssumption 
+data TypeAssumption
     = TypeAssumption Name Type
     | DotOperator Name Type Type
     | Field Name
@@ -75,58 +75,87 @@ runInfer = unInferType
 liftErrors :: (MonadError TypeError m) => (ExceptT UnificationError m) a -> m a
 liftErrors = runExceptT >>> (mapLeft UnificationError <$>) >>> (liftEither =<<)
 
+removeTypeAssumption :: (MonadError TypeError m) => Name -> [TypeAssumption] -> m [TypeAssumption]
+removeTypeAssumption name = filterM fun where
+    fun (TypeAssumption name' _) = pure (name /= name')
+    fun (DotOperator name' _ _)  = pure (name /= name')
+    fun (Field name')
+        | name == name' = throwError (NameClash name)
+        | otherwise     = pure True
+
+removeManyAssumptions :: (MonadError TypeError m) => [Name] -> [TypeAssumption] -> m [TypeAssumption]
+removeManyAssumptions = flip (foldrM removeTypeAssumption)
+
 inferTypeTree
   :: (MonadFail m, MonadError TypeError m, MonadSupply Name m, MonadReader Monoset m)
   => Env Scheme
   -> Expr
   -> m (AnnotatedAst Type, Substitution Type, [TyClass])
 inferTypeTree env expr = do
-    undefined
---    (tree, as, cs) <- inferTree expr
---    let (as1, as2) = partition (\(Assumption (name, t)) -> isJust (snd t) && not (name `Env.isMember` env)) as
---    failIfExists (unboundVars env as2)
---    Just (sub, tycls) <- liftErrors (solveTypes (cs <> envConstraints as2))
---    sub1 <- foldrM fieldAccess sub as1
---    pure (tree, sub1, tycls)
---  where
---    envConstraints :: [TypeAssumption] -> [TypeConstraint]
---    envConstraints as = do
---        (x, (s, _)) <- getAssumption <$> as
---        (y, t) <- Env.toList env
---        guard (x == y)
---        pure (Explicit s t)
---
---    failIfExists :: (MonadError TypeError m) => [Name] -> m ()
---    failIfExists (var:_) = throwError (UnboundVariable var)
---    failIfExists _       = pure ()
+    (tree, as, cs) <- inferTree expr
+    failIfExists UnboundVariable (unboundVars env (takeOne as))
+    failIfExists NameClash (fieldsInEnv env (takeThree as))
+    Just (sub, tycls) <- liftErrors (solveTypes (cs <> envConstraints as))
+    sub1 <- foldrM fieldAccess sub (takeTwo env as)
+    pure (tree, sub1, tycls)
+  where
+    envConstraints :: [TypeAssumption] -> [TypeConstraint]
+    envConstraints as = do
+        (x, s) <- takeAssumptions as
+        (y, t) <- Env.toList env
+        guard (x == y)
+        pure (Explicit s t)
 
---fieldAccess
---  :: (MonadFail m, MonadError TypeError m, MonadSupply Name m, MonadReader Monoset m)
---  => TypeAssumption
---  -> Substitution Type
---  -> m (Substitution Type)
---fieldAccess (Assumption (_, (_, Nothing))) _ = error "Implementation error"
---fieldAccess (Assumption (field, (t1, Just t2))) sub =
---    case unfix (apply sub t1) of
---        ArrT ty _ | Struct == hasType ty ->
---            case fieldType field (apply sub ty) of
---                Nothing ->
---                    throwError (MissingField field)
---
---                Just ty' -> do
---                    sub1 <- liftErrors (liftEither (unify ty' (apply sub t2)))
---                    pure (sub1 <> sub)
---
---        _ -> throwError BadRecordAccess
+    failIfExists :: (MonadError TypeError m) => (Name -> TypeError) -> [Name] -> m ()
+    failIfExists e (var:_) = throwError (e var)
+    failIfExists _ _       = pure ()
 
-unboundVars :: Env a -> [Assumption b] -> [Name]
-unboundVars env as = undefined -- Env.namesNotIn env (fst . getAssumption <$> as)
+fieldAccess
+  :: (MonadFail m, MonadError TypeError m, MonadSupply Name m, MonadReader Monoset m)
+  => (Name, Type, Type)
+  -> Substitution Type
+  -> m (Substitution Type)
+fieldAccess (field, t1, t2) sub =
+    case unfix (apply sub t1) of
+        ArrT ty _ | Struct == nodeType ty ->
+            case fieldType field (apply sub ty) of
+                Nothing ->
+                    throwError (MissingField field)
+
+                Just ty' -> do
+                    sub1 <- liftErrors (liftEither (unify ty' (apply sub t2)))
+                    pure (sub1 <> sub)
+
+        _ -> throwError BadRecordAccess
+
+fieldsInEnv :: Env a -> [Name] -> [Name]
+fieldsInEnv env = filter (`Env.isMember` env)
+
+unboundVars :: Env a -> [(Name, Type)] -> [Name]
+unboundVars env ass = Env.namesNotIn env (fst <$> ass)
 
 annotated :: t -> ExprF (Fix (AnnotatedAstF t)) -> AnnotatedAst t
 annotated t a = AnnotatedAst $ Fix $ Const t :*: a
 
 expand :: AnnotatedAst t -> (Fix (AnnotatedAstF t), t)
 expand = (id &&& getConst . left . unfix) . getAnnotatedAst
+
+takeOne :: [TypeAssumption] -> [(Name, Type)]
+takeOne = concatMap fun where
+    fun (TypeAssumption name ty) = [(name, ty)]
+    fun _ = []
+
+takeTwo :: Env Scheme -> [TypeAssumption] -> [(Name, Type, Type)]
+takeTwo env = concatMap fun where
+    fun (DotOperator name t1 t2)
+        | name `Env.isMember` env = []
+        | otherwise               = [(name, t1, t2)]
+    fun _ = []
+
+takeThree :: [TypeAssumption] -> [Name]
+takeThree = concatMap fun where
+    fun (Field name) = [name]
+    fun _ = []
 
 takeAssumptions :: [TypeAssumption] -> [(Name, Type)]
 takeAssumptions = concatMap fun where
@@ -152,8 +181,8 @@ inferTree = fmap to3 . runWriterT . cata alg
             let beta = varT var
             (expr', t1, a1) <- local (insertIntoMonoset var) expr
             tell [Equality t beta | (y, t) <- takeAssumptions a1, name == y]
-            pure ( annotated (beta `arrT` t1) (LamS name expr')
-                 , removeAssumption name a1 )
+            a1' <- removeTypeAssumption name a1
+            pure (annotated (beta `arrT` t1) (LamS name expr'), a1')
 
         AppS exprs -> do
             (expr', _, as) <- foldl1 inferApp exprs
@@ -221,15 +250,16 @@ inferStruct
   -> m TypeInfo
 inferStruct fields = do
     beta <- varT <$> supply
-    let ini = (Fix (Const beta :*: VarS con), beta, [Assumption (con, (beta, Nothing))])
+    let ini = (Fix (Const beta :*: VarS con), beta, [TypeAssumption con beta])
     foldl inferApp (pure ini) (lefts >>= unpair)
   where
     con = "#Struct" <> intToText (length fields)
     lefts = first (pure . tinfo) <$> fields
-    tinfo field = let ty = conT ("#" <> field) in (Fix (Const ty :*: VarS field), ty, [])
+    as = [Field n | (n, _) <- fields]
+    tinfo field = let ty = conT ("#" <> field) in (Fix (Const ty :*: VarS field), ty, as)
 
 inferClause
-  :: (MonadSupply Name m, MonadReader Monoset m, MonadWriter [TypeConstraint] m)
+  :: (MonadError TypeError m, MonadSupply Name m, MonadReader Monoset m, MonadWriter [TypeConstraint] m)
   => Type
   -> Type
   -> MatchClause (m TypeInfo)
@@ -241,9 +271,9 @@ inferClause beta t (pat, expr) (ps, as) = do
     tell [Equality beta t1]
     tell [Equality t t2]
     tell (constraints a1 a2)
-    pure ( (pat, expr'):ps
-         , as <> removeManyAssumptions vars a1
-              <> removeManyAssumptions vars a2 )
+    a1' <- removeManyAssumptions vars a1
+    a2' <- removeManyAssumptions vars a2
+    pure ((pat, expr'):ps, as <> a1' <> a2')
   where
     vars = patternVars pat
     constraints a1 a2 = do
@@ -264,7 +294,7 @@ inferPattern = cata $ \case
         (ts, ass) <- (fmap unzip . sequence) ps
         ts' <- fmap fmap fmap varT (supplies (length keys))
         tell [Equality (conT ("#" <> k)) kt | (k, kt) <- zip keys ts']
-        pure (beta, TypeAssumption name, foldr arrT beta (concat (unpair <$> zip ts' ts)):concat ass)
+        pure (beta, TypeAssumption name (foldr arrT beta (concat (unpair <$> zip ts' ts))):concat ass)
 
     ConP name ps -> do
         beta <- varT <$> supply
@@ -292,7 +322,7 @@ inferApp fun arg = do
     pure (Fix (Const beta :*: AppS [e1', e2']), beta, a1 <> a2)
 
 inferLet
-  :: (MonadReader Monoset m, MonadWriter [TypeConstraint] m)
+  :: (MonadError TypeError m, MonadReader Monoset m, MonadWriter [TypeConstraint] m)
   => Bool
   -> Name
   -> m TypeInfo
@@ -302,12 +332,11 @@ inferLet rec var expr body = do
     (expr', t1, a1) <- expr
     (body', t2, a2) <- body
     set <- ask
-    tell [Implicit t t1 set | (y, t) <- takeAssumptions a1 <> a2, var == y]
-    let (con, as) = if rec
-        then (LetRecS, removeAssumption var a1)
-        else (LetS, a1)
-    pure ( annotated t2 (con var expr' body')
-         , as <> removeAssumption var a2 )
+    tell [Implicit t t1 set | (y, t) <- takeAssumptions (a1 <> a2), var == y]
+    a1' <- removeTypeAssumption var a1
+    a2' <- removeTypeAssumption var a2
+    let (con, as) = if rec then (LetRecS, a1') else (LetS, a1)
+    pure (annotated t2 (con var expr' body'), as <> a2')
 
 inferOp
   :: (MonadSupply Name m, MonadWriter [TypeConstraint] m)
