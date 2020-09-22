@@ -17,7 +17,7 @@ import qualified Data.Map.Strict as Map
 type ValueEnv m = Env (Value m)
 
 -- | An expression evaluates to a primitive value, a fully applied data
--- constructor, or a function closure.
+-- constructor, a record, or a function closure.
 data Value m
     = Value Prim                               -- ^ Literal value
     | Data Name [Value m]                      -- ^ Applied data constructor
