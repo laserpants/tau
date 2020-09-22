@@ -48,6 +48,7 @@ extras =
     [ ("fst", "\\(a, _) => a")
     , ("snd", "\\(_, b) => b") 
     , ("box", "{ x = 3 }") 
+    , ("map", "\\f => \\x => let rec r = \\match | [] => [] | x :: xs => (f x) :: r xs in r x") 
     ]
 
 typeExtras :: [(Text, Text)]
@@ -55,6 +56,7 @@ typeExtras =
     [ ("fst", "forall a b. (a, b) -> a")
     , ("snd", "forall a b. (a, b) -> b") 
     , ("box", "{ x : Int }") 
+    , ("map", "forall a b. (a -> b) -> List a -> List b") 
     ]
 
 defaultEnv :: ReplEnv
