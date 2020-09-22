@@ -281,6 +281,11 @@ testTypeInference = do
     failInferTypeWithError (UnificationError CannotUnify)
         $(parseExpr "match { a = 5 } with { a = x, b = _ } => 1 | _ => 123")
 
+    succeedInferType
+        $(parseExpr "let fst (a, b) = a in { a = { b = ({ stuff = ['x', 'y'] }, 3) } }.a.b.fst.stuff")
+        $(parseScheme "List Char")
+
+
 --    succeedInferType
 --        $(parseExpr "{ key = 5 }.key")
 --        $(parseScheme "Int")

@@ -308,7 +308,7 @@ structFields ty =
     pairUp _                  = []
 
 flatten :: Type -> [Type]
-flatten (Fix (AppT a b))  = flatten a <> flatten b
+flatten (Fix (AppT a b))  = flatten a <> [b]
 flatten t                 = [t]
 
 fieldType :: Name -> Type -> Maybe Type

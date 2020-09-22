@@ -9,6 +9,7 @@ module Tau.Eval where
 import Control.Monad.Except
 import Control.Monad.Reader
 import Data.Functor.Foldable
+import Data.Maybe (fromJust)
 import Tau.Env (Env(..))
 import Tau.Expr
 import Tau.Util
@@ -62,8 +63,13 @@ eval = cata $ \case
     OpS op ->
         evalOp op
 
-    DotS name expr ->
-        evalApp (evalVar name) expr
+    DotS name expr -> do
+        env <- ask
+        if Env.isMember name env
+            then evalApp (evalVar name) expr
+            else do
+                Record fields <- expr
+                pure (fromJust (lookup name fields))
 
     StructS expr -> do
         let (one, two) = unzip expr

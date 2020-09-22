@@ -304,6 +304,9 @@ testEval = do
         $(parseExpr "(4,5,6)")
         (Data "#Tuple3" [Value (Int 4),Value (Int 5),Value (Int 6)])
 
+    succeedEval
+        $(parseExpr "let fst (a, b) = a in { a = { b = ({ stuff = 123 }, 3) } }.a.b.fst.stuff")
+        (Value (Int 123))
 
 --    failEval
 --        $(parseExpr "match (100, 2) with (x, x) => y | _ => 1")
