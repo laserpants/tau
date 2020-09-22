@@ -8,7 +8,9 @@ import Control.Monad.Except
 import Control.Monad.Reader
 import Control.Monad.State
 import Data.List (isPrefixOf)
+import Data.Maybe (fromJust)
 import Data.Set.Monad (Set)
+import Data.Text (Text)
 import Data.Text (pack, unpack)
 import System.Console.Repline
 import Tau.Data
@@ -35,10 +37,26 @@ data ReplEnv = ReplEnv
     , kinds        :: Env Kind
     } deriving (Show, Eq)
 
+unsafeParse :: Text -> Value Eval
+unsafeParse text = let Right item = parseExpr text in fromJust (evalExpr item Builtin.values)
+
+unsafeParseType :: Text -> Scheme
+unsafeParseType text = let Right item = runParser scheme "" text in item
+
+extras :: [(Text, Text)]
+extras =
+    [ ("fst", "\\(a, _) => a")
+    , ("snd", "\\(_, b) => b") ]
+
+typeExtras :: [(Text, Text)]
+typeExtras =
+    [ ("fst", "forall a b. (a, b) -> a")
+    , ("snd", "forall a b. (a, b) -> b") ]
+
 defaultEnv :: ReplEnv
 defaultEnv = ReplEnv
-    { values       = Builtin.values
-    , typeSchemes  = Builtin.typeSchemes
+    { values       = Builtin.values `Env.union` Env.fromList (fmap unsafeParse <$> extras)
+    , typeSchemes  = Builtin.typeSchemes `Env.union` Env.fromList (fmap unsafeParseType <$> typeExtras)
     , constructors = Builtin.constructors
     , kinds        = Builtin.kinds
     }
@@ -130,9 +148,9 @@ typeKind :: Data -> Kind
 typeKind (Sum _ tvars _) = foldr arrK starK (fmap (const starK) tvars)
 
 typeCons :: Data -> [(Name, Scheme)]
-typeCons (Sum con vars prods) = fun <$> prods 
+typeCons (Sum con vars prods) = fun <$> prods
   where
-    fun (Prod cname ts) = 
+    fun (Prod cname ts) =
         (cname, generalize mempty [] (foldr arrT (toType con vars) ts))
 
 dataCons :: (MonadReader (ValueEnv m) m) => Data -> [(Name, Value m)]
