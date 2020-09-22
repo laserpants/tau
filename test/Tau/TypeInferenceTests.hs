@@ -212,9 +212,8 @@ testTypeInference = do
         $(parseExpr "(\\x y z => x + z)")
         $(parseScheme "forall a b. a -> b -> a -> a")
 
-    succeedInferType
+    failInferTypeWithError (NameClash "key")
         $(parseExpr "let key = \\_ => 5 in { key = 5 }.key")
-        $(parseScheme "Int")
 
     failInferTypeWithError (UnificationError CannotUnify)
         $(parseExpr "if 1 == 1 then (1, 2) else (1,2,3)")

@@ -93,15 +93,15 @@ inferTypeTree
   -> m (AnnotatedAst Type, Substitution Type, [TyClass])
 inferTypeTree env expr = do
     (tree, as, cs) <- inferTree expr
-    failIfExists UnboundVariable (unboundVars env (takeOne as))
-    failIfExists NameClash (fieldsInEnv env (takeThree as))
+    failIfExists UnboundVariable (unboundVars env (typeAssumptions as))
+    failIfExists NameClash (fieldsInEnv env (fieldAssumptions as))
     Just (sub, tycls) <- liftErrors (solveTypes (cs <> envConstraints as))
-    sub1 <- foldrM fieldAccess sub (takeTwo env as)
+    sub1 <- foldrM fieldAccess sub (operatorAssumptions env as)
     pure (tree, sub1, tycls)
   where
     envConstraints :: [TypeAssumption] -> [TypeConstraint]
     envConstraints as = do
-        (x, s) <- takeAssumptions as
+        (x, s) <- collectAssumptions as
         (y, t) <- Env.toList env
         guard (x == y)
         pure (Explicit s t)
@@ -140,25 +140,25 @@ annotated t a = AnnotatedAst $ Fix $ Const t :*: a
 expand :: AnnotatedAst t -> (Fix (AnnotatedAstF t), t)
 expand = (id &&& getConst . left . unfix) . getAnnotatedAst
 
-takeOne :: [TypeAssumption] -> [(Name, Type)]
-takeOne = concatMap fun where
+typeAssumptions :: [TypeAssumption] -> [(Name, Type)]
+typeAssumptions = concatMap fun where
     fun (TypeAssumption name ty) = [(name, ty)]
     fun _ = []
 
-takeTwo :: Env Scheme -> [TypeAssumption] -> [(Name, Type, Type)]
-takeTwo env = concatMap fun where
+operatorAssumptions :: Env Scheme -> [TypeAssumption] -> [(Name, Type, Type)]
+operatorAssumptions env = concatMap fun where
     fun (DotOperator name t1 t2)
         | name `Env.isMember` env = []
         | otherwise               = [(name, t1, t2)]
     fun _ = []
 
-takeThree :: [TypeAssumption] -> [Name]
-takeThree = concatMap fun where
+fieldAssumptions :: [TypeAssumption] -> [Name]
+fieldAssumptions = concatMap fun where
     fun (Field name) = [name]
     fun _ = []
 
-takeAssumptions :: [TypeAssumption] -> [(Name, Type)]
-takeAssumptions = concatMap fun where
+collectAssumptions :: [TypeAssumption] -> [(Name, Type)]
+collectAssumptions = concatMap fun where
     fun (TypeAssumption name ty) = [(name, ty)]
     fun (DotOperator name ty _)  = [(name, ty)]
     fun Field{} = []
@@ -180,7 +180,7 @@ inferTree = fmap to3 . runWriterT . cata alg
             var <- supply
             let beta = varT var
             (expr', t1, a1) <- local (insertIntoMonoset var) expr
-            tell [Equality t beta | (y, t) <- takeAssumptions a1, name == y]
+            tell [Equality t beta | (y, t) <- collectAssumptions a1, name == y]
             a1' <- removeTypeAssumption name a1
             pure (annotated (beta `arrT` t1) (LamS name expr'), a1')
 
@@ -277,8 +277,8 @@ inferClause beta t (pat, expr) (ps, as) = do
   where
     vars = patternVars pat
     constraints a1 a2 = do
-        (y1, t1) <- takeAssumptions a1
-        (y2, t2) <- takeAssumptions a2
+        (y1, t1) <- collectAssumptions a1
+        (y2, t2) <- collectAssumptions a2
         var <- vars
         guard (var == y1 && var == y2)
         pure (Equality t1 t2)
@@ -332,7 +332,7 @@ inferLet rec var expr body = do
     (expr', t1, a1) <- expr
     (body', t2, a2) <- body
     set <- ask
-    tell [Implicit t t1 set | (y, t) <- takeAssumptions (a1 <> a2), var == y]
+    tell [Implicit t t1 set | (y, t) <- collectAssumptions (a1 <> a2), var == y]
     a1' <- removeTypeAssumption var a1
     a2' <- removeTypeAssumption var a2
     let (con, as) = if rec then (LetRecS, a1') else (LetS, a1)
