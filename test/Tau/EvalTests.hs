@@ -308,6 +308,10 @@ testEval = do
         $(parseExpr "let fst (a, b) = a in { a = { b = ({ stuff = 123 }, 3) } }.a.b.fst.stuff")
         (Value (Int 123))
 
+    succeedEval
+        $(parseExpr "let x = { a = { b = \\() => 223 } } in x.a.b ()")
+        (Value (Int 223))
+
 --    failEval
 --        $(parseExpr "match (100, 2) with (x, x) => y | _ => 1")
 

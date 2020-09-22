@@ -285,6 +285,10 @@ testTypeInference = do
         $(parseExpr "let fst (a, b) = a in { a = { b = ({ stuff = ['x', 'y'] }, 3) } }.a.b.fst.stuff")
         $(parseScheme "List Char")
 
+    succeedInferType
+        $(parseExpr "let x = { a = { b = \\() => 123 } } in x.a.b ()")
+        $(parseScheme "Int")
+
 
 --    succeedInferType
 --        $(parseExpr "{ key = 5 }.key")
