@@ -94,7 +94,7 @@ inferTypeTree
 inferTypeTree env expr = do
     (tree, as, cs) <- inferTree expr
     failIfExists UnboundVariable (unboundVars env (typeAssumptions as))
-    failIfExists NameClash (fieldsInEnv env (fieldAssumptions as))
+    -- failIfExists NameClash (fieldsInEnv env (fieldAssumptions as))
     Just (sub, tycls) <- liftErrors (solveTypes (cs <> envConstraints as))
     sub1 <- foldrM fieldAccess sub (operatorAssumptions env as)
     pure (tree, sub1, tycls)
