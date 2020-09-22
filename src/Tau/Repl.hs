@@ -46,12 +46,16 @@ unsafeParseType text = let Right item = runParser scheme "" text in item
 extras :: [(Text, Text)]
 extras =
     [ ("fst", "\\(a, _) => a")
-    , ("snd", "\\(_, b) => b") ]
+    , ("snd", "\\(_, b) => b") 
+    , ("box", "{ x = 3 }") 
+    ]
 
 typeExtras :: [(Text, Text)]
 typeExtras =
     [ ("fst", "forall a b. (a, b) -> a")
-    , ("snd", "forall a b. (a, b) -> b") ]
+    , ("snd", "forall a b. (a, b) -> b") 
+    , ("box", "{ x : Int }") 
+    ]
 
 defaultEnv :: ReplEnv
 defaultEnv = ReplEnv
