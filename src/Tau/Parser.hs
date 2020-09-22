@@ -40,8 +40,11 @@ parens = between (symbol "(") (symbol ")")
 surroundedBy :: Parser Text -> Parser a -> Parser a
 surroundedBy p = between p p
 
+validChar :: Parser Char
+validChar = alphaNumChar <|> char '_'
+
 withInitial :: Parser Char -> Parser Text
-withInitial pchar = pack <$> ((:) <$> pchar <*> many alphaNumChar)
+withInitial pchar = pack <$> ((:) <$> pchar <*> many validChar)
 
 keyword :: Text -> Parser ()
 keyword tok =
@@ -72,7 +75,7 @@ word parser = lexeme $ try $ do
         else pure var
 
 name :: Parser Text
-name = word (withInitial lowerChar)
+name = word (withInitial (lowerChar <|> char '_'))
 
 constructor :: Parser Name
 constructor = word (withInitial upperChar)
