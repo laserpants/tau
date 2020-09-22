@@ -312,6 +312,10 @@ testEval = do
         $(parseExpr "let x = { a = { b = \\() => 223 } } in x.a.b ()")
         (Value (Int 223))
 
+    succeedEval
+        $(parseExpr "((\\{ x = y } => { z = y }) { x = \"stuff\" }).z")
+        (Value (String "stuff"))
+
 --    failEval
 --        $(parseExpr "match (100, 2) with (x, x) => y | _ => 1")
 

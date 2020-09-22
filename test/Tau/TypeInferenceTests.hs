@@ -288,6 +288,9 @@ testTypeInference = do
         $(parseExpr "let x = { a = { b = \\() => 123 } } in x.a.b ()")
         $(parseScheme "Int")
 
+    succeedInferType
+        $(parseExpr "((\\{ x = y } => { z = y }) { x = \"stuff\" }).z")
+        $(parseScheme "String")
 
 --    succeedInferType
 --        $(parseExpr "{ key = 5 }.key")
