@@ -86,6 +86,10 @@ testTypeInference = do
         $(parseScheme "Unit")
 
     succeedInferType
+        $(parseExpr "let const = \\a => \\_ => a in const () 5")
+        $(parseScheme "Unit")
+
+    succeedInferType
         $(parseExpr "(\\xs => match xs with Cons y ys => 1 | Nil => 2) (Cons 5 Nil)")
         $(parseScheme "Int")
 
