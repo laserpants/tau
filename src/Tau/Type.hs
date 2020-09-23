@@ -307,20 +307,27 @@ fieldType name ty = lookup ("#" <> name) =<< structFields ty
 -- ============================================================================
 
 instance Pretty Type where
-    pretty (Fix (AppT a b))
-        | its == Tuple  = tupled (pretty <$> flat a <> [b])
-        | its == Struct = "{" <+> prettyRecordType (pairs (flat a <> [b])) <+> "}"
-        | otherwise     = pretty a <+> pretty b
-      where
-        its = nodeType a
-        pairs (v:x:xs) = (v, x):pairs xs
-        pairs _        = []
-    pretty (Fix (ConT name)) = pretty name
-    pretty (Fix (VarT name)) = pretty name
-    pretty (Fix (ArrT a b))  = pretty a <+> "->" <+> pretty b
+    pretty = para $ \case
+        AppT a b
+            | nodeType (fst a) == Tuple  -> tupled (pretty <$> flattened)
+            | nodeType (fst a) == Struct -> "{" <+> prettyFieldsType (pairs flattened) <+> "}"
+            | otherwise                  -> snd a <+> rhs
+          where
+            rhs = case unfix (fst b) of
+                AppT{} -> parens (snd b)
+                _      -> snd b
+            flattened = flat (fst a) <> [fst b]
+            pairs (v:x:xs) = (v, x):pairs xs
+            pairs _        = []
+        ArrT a b -> lhs <+> "->" <+> snd b where
+            lhs = case unfix (fst a) of
+                ArrT{} -> parens (snd a)
+                _      -> snd a
+        ConT name -> pretty name
+        VarT name -> pretty name
 
-prettyRecordType :: [(Type, Type)] -> Doc a
-prettyRecordType fields = hsep (punctuate comma (uncurry field <$> fields)) where
+prettyFieldsType :: (Pretty p) => [(Fix TypeF, p)] -> Doc a
+prettyFieldsType fields = hsep (punctuate comma (uncurry field <$> fields)) where
     field (Fix (ConT key)) val = pretty (Text.stripPrefix "#" key) <+> ":" <+> pretty val
     field _ _                  = ""
 
@@ -329,10 +336,10 @@ flat = fun . unfix where
     fun (AppT a b) = flat a <> [b]
     fun _          = []
 
-data HasType = Struct | Tuple | Generic
+data NodeType = Struct | Tuple | Generic
     deriving (Show, Eq)
 
-nodeType :: Type -> HasType
+nodeType :: Type -> NodeType
 nodeType = fun . unfix where
     fun (ConT name)
         | "#Tuple"  `isPrefixOf` name = Tuple
@@ -341,10 +348,13 @@ nodeType = fun . unfix where
     fun _                             = Generic
 
 instance Pretty Kind where
-    pretty = cata $ \case
+    pretty = para $ \case
         VarK name -> pretty name
-        ArrK a b  -> a <+> "->" <+> b
         StarK     -> "*"
+        ArrK a b  -> lhs <+> "->" <+> snd b where
+            lhs = case unfix (fst a) of
+                ArrK{} -> parens (snd a)
+                _      -> snd a
 
 instance Pretty TyClass where
     pretty (TyCl name ty) = pretty name <+> pretty ty

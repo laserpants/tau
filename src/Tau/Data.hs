@@ -24,7 +24,7 @@ instance Pretty Data where
         dcon sym prod = sym <+> pretty prod
         prettyVars
             | null vars = mempty
-            | otherwise = hsep (pretty <$> vars)
+            | otherwise = space <> hsep (pretty <$> vars)
 
 instance Pretty Product where
     pretty (Prod con [])    = pretty con
