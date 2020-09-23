@@ -270,7 +270,7 @@ matchDefault _ [] [([], expr)] = pure expr
 matchDefault _ [] _ = error "Implementation error"
 matchDefault d (u:us) qs = foldrM (flip run) d (groups qs)
   where
-    run :: MonadSupply Name m => Expr -> EqGroup -> m Expr
+    run :: (MonadSupply Name m) => Expr -> EqGroup -> m Expr
     run def = \case
         ConEqs eqs -> do
             css <- traverse groupClause (conGroups eqs)
