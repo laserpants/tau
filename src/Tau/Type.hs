@@ -314,8 +314,8 @@ instance Pretty Type where
             | otherwise                  -> snd a <+> rhs
           where
             rhs = case unfix (fst b) of
-                AppT{} -> parens (snd b)
-                _      -> snd b
+                AppT{} | nodeType (fst b) == Generic -> parens (snd b)
+                _                                    -> snd b
             flattened = flat (fst a) <> [fst b]
             pairs (v:x:xs) = (v, x):pairs xs
             pairs _        = []
