@@ -37,6 +37,7 @@ data TypeAssumption
     = TypeAssumption Name Type
     | DotOperator Name Type Type
     | Field Name
+    deriving (Show, Eq)
 
 type InferTypeStack a = ExceptT TypeError (ReaderT Monoset (Supply Name)) a
 
