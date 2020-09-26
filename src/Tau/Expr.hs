@@ -347,16 +347,12 @@ prettyExpr n = unfix >>> \case
         pretty prim
 
     LetS name expr body ->
-        wrap n $ "let"
-        <+> pretty name <+> equals
-        <+> pretty expr <+> "in"
-        <+> pretty body
+        wrap n $ vsep [foldr hanging (pretty body)
+            [ "let" <+> pretty name <+> equals <+> pretty expr, "in" ]]
 
     LetRecS name expr body ->
-        wrap n $ "let rec"
-        <+> pretty name <+> equals
-        <+> pretty expr <+> "in"
-        <+> pretty body
+        wrap n $ wrap n $ vsep [foldr hanging (pretty body)
+            [ "let rec" <+> pretty name <+> equals <+> pretty expr, "in" ]]
 
     IfS cond true false ->
         wrap n $ "if"
@@ -384,6 +380,9 @@ prettyExpr n = unfix >>> \case
 
     ErrS ->
         "<<error>>"
+
+hanging :: Doc a -> Doc a -> Doc a
+hanging e1 e2 = hang 2 (vsep [ e1, hang 2 e2 ])
 
 wrap :: Int -> Doc a -> Doc a
 wrap 0 doc = doc
