@@ -364,14 +364,11 @@ prettyExpr n = unfix >>> \case
         <+> pretty true <+> "else"
         <+> pretty false
 
-    MatchS expr (cls:clss) ->
-        wrap n $ "match" 
-        <+> pretty expr 
-        <+> "with" 
-        <+> prettyMatch cls clss
+    MatchS expr clss ->
+        wrap n $ prettyMatch ("match" <+> pretty expr <+> "with") clss
 
-    LamMatchS (cls:clss) ->
-        wrap n $ backslash <> "match" <+> prettyMatch cls clss
+    LamMatchS clss ->
+        wrap n $ prettyMatch "\\match" clss
 
     OpS ops ->
         wrap n $ prettyOp 0 ops
@@ -388,12 +385,6 @@ prettyExpr n = unfix >>> \case
     ErrS ->
         "<<error>>"
 
-    MatchS expr [] ->
-        wrap n $ "match" <+> pretty expr <+> equals <+> "{}"
-
-    LamMatchS [] ->
-        wrap n $ backslash <> "match" <+> equals <+> "{}"
-
 wrap :: Int -> Doc a -> Doc a
 wrap 0 doc = doc
 wrap _ doc = parens doc
@@ -402,13 +393,15 @@ prettyFields :: (Pretty p) => [(Name, p)] -> Doc a
 prettyFields fields = hsep (punctuate comma (uncurry field <$> fields)) where
     field key val = pretty key <+> "=" <+> pretty val
 
-prettyMatch :: MatchClause Expr -> [MatchClause Expr] -> Doc a
-prettyMatch cls clss =
-    clause cls
-        <> (if not (null clss) then space else mempty)
-        <> hsep (clause <$> clss)
+prettyMatch :: Pretty p => Doc a -> [MatchClause p] -> Doc a
+prettyMatch a clss =
+    case clss of
+        []       -> "Empty match statement"
+        [(p, e)] -> a <+> pretty p <+> "=>" <+> pretty e
+        _        -> vsep [hang 2 (vsep (a:(clause <$> clss)))]
   where
-    clause (pat, expr) = pipe <+> pretty pat <+> "=>" <+> pretty expr
+    clause (p, e) = pipe <+> fill w (pretty p) <+> "=>" <+> pretty e
+    w = maximum (length . show . pretty . fst <$> clss)
 
 prettyOp :: Int -> Op -> Doc a
 prettyOp n = \case
