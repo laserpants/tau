@@ -397,7 +397,7 @@ prettyMatch a clss =
     case clss of
         []       -> "Empty match statement"
         [(p, e)] -> a <+> pretty p <+> "=>" <+> pretty e
-        _        -> vsep [hang 2 (vsep (a:(clause <$> clss)))]
+        _        -> line <> vsep [hang 2 (vsep (a:(clause <$> clss)))]
   where
     clause (p, e) = pipe <+> fill w (pretty p) <+> "=>" <+> pretty e
     w = maximum (length . show . pretty . fst <$> clss)
