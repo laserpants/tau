@@ -18,7 +18,7 @@ instance Pretty Data where
         case prods of
             []   -> hsep (tcon mempty)
             [p]  -> hsep (tcon (dcon equals p))
-            p:ps -> vsep [nest 2 (vsep (tcon (dcon equals p) <> (dcon pipe <$> ps)))]
+            p:ps -> vsep [hang 2 (vsep (tcon (dcon equals p) <> (dcon pipe <$> ps)))]
       where
         tcon rest = ["type" <+> pretty con <> prettyVars, rest]
         dcon sym prod = sym <+> pretty prod
