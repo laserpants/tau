@@ -1,0 +1,313 @@
+{-# LANGUAGE FlexibleContexts #-}
+{-# LANGUAGE LambdaCase       #-}
+{-# LANGUAGE StrictData       #-}
+module Tau.Expr.Patterns where
+
+import Control.Arrow
+import Control.Monad
+import Control.Monad.Supply
+import Control.Monad.Writer
+import Data.Foldable (foldrM)
+import Data.Function ((&))
+import Data.List.Extra (groupSortOn)
+import Data.Tuple.Extra (fst3, thd3)
+import Tau.Expr
+import Tau.Type
+import Tau.Util
+
+--patternVars :: Pattern -> [Name]
+--patternVars = cata alg where
+--    alg :: Algebra PatternF [Name]
+--    alg (PVar v)      = [v]
+--    alg (PCon _ ps)   = concat ps
+--    alg _             = []
+--
+---- --type PatternTrans m t p q 
+---- --   = [(Expr t p, m (Expr t q))] 
+---- --  -> [EquationF p (Expr t p, m (Expr t q))] 
+---- --  -> m (Expr t q)
+---- 
+---- --translate
+---- --  :: (MonadSupply Name m) 
+---- --  => y -> Expr t z -> m (Expr t p)  -- (a -> [EquationF Rep (Expr () Rep, b)] -> m (Expr () SimpleRep))
+---- --  -> Expr t p
+---- --  -> m (Expr t q)
+---- --translate fn = para $ \case
+---- --    EVar t var ->
+---- --        undefined
+---- --
+---- --    ELit t lit ->
+---- --        undefined
+---- --
+---- --    EApp t exprs ->
+---- --        undefined
+---- --
+---- --    ELet t pat expr1 expr2 ->
+---- --        undefined
+---- --
+---- --    ELam t pat expr ->
+---- --        undefined
+---- 
+---- patternRep :: (MonadWriter [Expr t p] m, MonadSupply Name m) => Pattern -> m Rep
+---- patternRep = unfix >>> \case
+----     PVar name -> 
+----         pure (varR name)
+---- 
+---- --    ConP name qs -> 
+---- --        conR <$> pure name <*> traverse patternRep qs
+---- --
+---- --    LitP prim -> do
+---- --        name <- supply
+---- --        tell [varE name `eqE` litE prim]
+---- --        patternRep (varP name)
+---- --
+---- --    RecP fields -> do
+---- --        let name = recordCon (length fields)
+---- --        patternRep (conP name (unPair =<< fields))
+---- --
+---- --    AnyP ->
+---- --        pure (varR wildcard)
+---- --
+---- --  where
+---- --    unPair :: (Name, Pattern) -> [Pattern]
+---- --    unPair (_, v) = [varP "$_", v]
+---- 
+---- y :: (MonadSupply Name m) => Pattern -> m Rep
+---- y = cata alg where
+----     alg :: (MonadSupply Name m) => Algebra PatternF (m Rep)
+----     alg = \case
+----         PVar var    -> pure (Fix (RVar undefined))
+----         PCon con ps -> pure (Fix (RCon undefined undefined undefined))
+----         PLit lit    -> pure (Fix (RVar undefined))
+----         PAny        -> pure (Fix (RVar undefined))
+---- 
+---- desugarPatterns :: (MonadSupply Name m) => Expr t Pattern -> m (Expr t Rep)
+---- desugarPatterns = cata alg where
+----     alg :: (MonadSupply Name m) => Algebra (ExprF t Pattern) (m (Expr t Rep))
+----     alg = \case
+----         EVar t var       -> pure (tagVar t var)
+----         ELit t lit       -> pure (tagLit t lit)
+----         EApp t exprs     -> tagApp t <$> sequence exprs
+----         ELet t pat e1 e2 -> do
+----             (zz, _) <- runWriterT (patternRep pat)
+----             a <- e1
+----             b <- e2
+----             pure (tagLet t zz a b)
+----         ELam t pat expr -> do
+----             tagLam <$> pure t <*> y pat <*> expr
+---- 
+---- yy :: (MonadSupply Name m) => Rep -> m SimpleRep
+---- yy = cata alg where
+----     alg :: (MonadSupply Name m) => Algebra RepF (m SimpleRep)
+----     alg = \case
+----         RVar var           -> pure (RVar undefined)
+----         RCon con scheme ps -> pure (RCon undefined undefined undefined)
+---- 
+---- simplifyPatterns :: (MonadSupply Name m) => Expr t Rep -> m (Expr t SimpleRep)
+---- simplifyPatterns = cata alg where
+----     alg :: (MonadSupply Name m) => Algebra (ExprF t Rep) (m (Expr t SimpleRep))
+----     alg = \case
+----         EVar t var   -> pure (tagVar t var)
+----         ELit t lit   -> pure (tagLit t lit)
+----         EApp t exprs -> tagApp t <$> sequence exprs
+----         ELet t pat e1 e2 -> tagLet <$> pure t <*> yy pat <*> e1 <*> e2
+----         ELam t pat expr  -> tagLam <$> pure t <*> yy pat <*> expr
+---- 
+---- 
+---- --desugarPatterns :: (MonadSupply Name m) => Expr t Pattern -> m (Expr t Rep)
+---- --desugarPatterns = undefined -- translate fn
+---- --  where
+---- --    fn exprs eqs = emat <$> sequence (snd <$> exprs)
+---- --                        <*> traverse desugarEquations (fmap (fst <$>) eqs)
+---- --
+---- --simplifyPatterns :: (MonadSupply Name m) => Expr t Rep -> m (Expr t SimpleRep)
+---- --simplifyPatterns = translate fn
+---- --  where
+---- --    fn exprs eqs = match (fst <$> exprs) (fmap fst <$> eqs) eerr
+---- --
+---- --desugarEquations :: (MonadSupply Name m) => Equation t Pattern -> m (Equation t Rep)
+---- --desugarEquations (EquationF ps cs e) = do
+---- --    (ps1, cs1) <- runWriterT (traverse patternRep ps)
+---- --    e1  <- desugarPatterns e 
+---- --    cs2 <- traverse desugarPatterns cs 
+---- --    pure undefined -- (EquationF ps1 (cs2 <> cs1) e1)
+---- --
+---- --compilePatterns :: (MonadSupply Name m) => Expr t Pattern -> m (Expr t SimpleRep)
+---- --compilePatterns = desugarPatterns >=> simplifyPatterns
+--
+----data Head = ConHead | VarHead
+----    deriving (Show, Eq)
+--
+--headType :: Equation t Rep -> Head
+--headType (EquationF (Fix RVar{}:_) _ _) = VarHead
+--headType _                              = ConHead
+--
+--eif = undefined
+--eand = undefined
+--eerr = undefined
+--emat = undefined
+--
+--simplifyPatterns :: (MonadSupply Name m) => Expr t -> m (Expr t)
+--simplifyPatterns = undefined
+--
+----match
+----  :: (Eq t, MonadSupply Name m)
+----  => [Expr t]
+----  -> [Equation t Rep]
+----  -> Expr t
+----  -> m (Expr t)
+--match [] [] d                     = pure d
+--match [] (EquationF [] [] e:_) _  = pure e -- simplifyPatterns e
+----match [] (EquationF [] cs e:qs) d = eif <$> simplifyPatterns (foldr1 eand cs) <*> simplifyPatterns e <*> match [] qs d
+--match [] (EquationF [] cs e:qs) d = eif (foldr1 eand cs) e <$> match [] qs d
+----    eif <$> simplifyPatterns (foldr1 eand cs) 
+----        <*> simplifyPatterns e 
+----        <*> match [] qs d
+--match (u:us) qs d = foldrM (flip run) d (equationGroups qs)
+--  where
+--    run def = \case
+--        (ConHead, eqs) -> do
+--            eqs' <- traverse fun (conGroups eqs)
+--            case eqs' <> [EquationF [svar "$_"] [] def | eerr /= def] of
+--                [] ->
+--                    pure def
+--                clss -> do
+--                    expr <- simplifyPatterns u
+--                    pure (emat [expr] clss)
+--          where
+--            fun (name, arity, eqs') = do
+--                vars <- supplies arity
+--                expr <- match ((evar <$> vars) <> us) eqs' def
+--                pure (EquationF [scon name vars] [] expr)
+--
+--        (VarHead, eqs) -> match us (fun <$> eqs) def
+--          where
+--            fun (EquationF (Fix (RVar name):ps) c e) =
+--                substitute name u <$> EquationF ps c e
+--            fun eq = eq
+--
+--data Head = ConHead | VarHead
+--    deriving (Show, Eq)
+--
+--equationGroups :: [Equation t Rep] -> [(Head, [Equation t Rep])]
+--equationGroups = cata alg . fmap taggedEq 
+--   where
+--     alg :: Algebra (ListF (Head, Equation t Rep)) [(Head, [Equation t Rep])]
+--     alg Nil =
+--         []
+--     alg (Cons (pt, eq) []) =
+--         [(pt, [eq])]
+--     alg (Cons (pt, eq) (group@(qt, eqs):gs)) =
+--         if pt == qt
+--             then (pt, eq:eqs):gs
+--             else (pure <$> taggedEq eq):group:gs
+--
+--     taggedEq :: Equation t Rep -> (Head, Equation t Rep)
+--     taggedEq eq = (headType eq, eq)
+--
+--conGroups :: [EquationF Rep a] -> [(Name, Int, [EquationF Rep a])]
+--conGroups =
+--     concatMap conGroup
+--       . groupSortOn fst3
+--       . concatMap expanded
+--   where
+--     expanded (EquationF (Fix (RCon name qs):ps) c e) =
+--         [(name, length qs, EquationF (qs <> ps) c e)]
+--     expanded _ =
+--         []
+--     conGroup gs@((name, arity, _):_) =
+--         [(name, arity, thd3 <$> gs)]
+--     conGroup [] =
+--         []
+--
+----match
+----  :: (MonadSupply Name m)
+----  => [Expr () Rep]
+----  -> [Equation () Rep]
+----  -> Expr () SimpleRep
+----  -> m (Expr () SimpleRep)
+----match = undefined
+---- match [] [] d = 
+----     pure d
+---- match [] (EquationF [] [] e:_) _ = 
+----     simplifyPatterns e
+---- match [] (EquationF [] cs e:qs) d =
+----     eif <$> simplifyPatterns (foldr1 eand cs) 
+----         <*> simplifyPatterns e <*> match [] qs d
+---- match (u:us) qs d = 
+----     foldrM (flip run) d (equationGroups qs)
+----   where
+----     run def = \case
+----         (ConHead, eqs) -> do
+----             eqs' <- traverse fun (conGroups eqs)
+----             case eqs' <> [EquationF [svar "$_"] [] def | eerr /= def] of
+----                 [] -> 
+----                     pure def
+----                 clss -> do
+----                     expr <- simplifyPatterns u
+----                     pure (emat [expr] clss)
+----           where
+----             fun (name, arity, eqs') = do
+----                 vars <- supplies arity
+----                 expr <- match ((evar <$> vars) <> us) eqs' def
+----                 pure (EquationF [scon name vars] [] expr)
+---- 
+----         (VarHead, eqs) -> match us (fun <$> eqs) def
+----           where
+----             fun (EquationF (Fix (RVar name):ps) c e) =
+----                 substitute name u <$> EquationF ps c e
+----             fun eq = eq
+---- 
+---- emat :: [Expr t p] -> [Equation t p] -> Expr () p
+---- emat = undefined
+---- 
+---- equationGroups :: [Equation t Rep] -> [(Head, [Equation t Rep])]
+---- equationGroups = cata alg . fmap taggedEq 
+----   where
+----     alg :: Algebra (ListF (Head, Equation t Rep)) [(Head, [Equation t Rep])]
+----     alg Nil =
+----         []
+----     alg (Cons (pt, eq) []) =
+----         [(pt, [eq])]
+----     alg (Cons (pt, eq) (group@(qt, eqs):gs)) =
+----         if pt == qt
+----             then (pt, eq:eqs):gs
+----             else (pure <$> taggedEq eq):group:gs
+---- 
+----     taggedEq :: Equation t Rep -> (Head, Equation t Rep)
+----     taggedEq eq = (headType eq, eq)
+---- 
+---- conGroups :: [EquationF Rep a] -> [(Name, Int, [EquationF Rep a])]
+---- conGroups =
+----     concatMap conGroup
+----       . groupSortOn fst3
+----       . concatMap expanded
+----   where
+----     expanded (EquationF (Fix (RCon name _ qs):ps) c e) =
+----         [(name, length qs, EquationF (qs <> ps) c e)]
+----     expanded _ =
+----         []
+----     conGroup gs@((name, arity, _):_) =
+----         [(name, arity, thd3 <$> gs)]
+----     conGroup [] =
+----         []
+--
+--repVars :: Rep -> [Name]
+--repVars = cata $ \case
+--    (RVar name) -> [name]
+--    (RCon _ ps) -> concat ps
+--
+--substitute :: Name -> Expr t -> Expr t -> Expr t 
+--substitute name subst = para $ \case
+--    ELam t pat expr
+--        | name `elem` repVars pat -> subst
+--        | otherwise               -> snd expr -- tagLam t pat (substitute name subst (fst expr))
+--
+--    expr -> snd <$> expr & \case
+--        EVar t var
+--            | var == name -> subst
+--            | otherwise   -> tagVar t var
+--
+--        ELit t lit       -> tagLit t lit
+--        EApp t exprs     -> tagApp t exprs
+--        ELet t pat e1 e2 -> tagLet t pat e1 e2
