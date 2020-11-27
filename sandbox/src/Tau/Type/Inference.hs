@@ -80,8 +80,7 @@ runInfer = unInfer
     >>> flip evalSupply (fmap (\n -> "a" <> show n) [1..])
     >>> fromMaybe (throwError ImplementationError)
 
---infer :: Expr t p -> Infer (Expr Type p, [TypeAssumption], [Constraint])
-infer :: RepExpr t -> Infer (RepExpr Type, [TypeAssumption], [Constraint])
+infer :: PatternExpr t -> Infer (RepExpr Type, [TypeAssumption], [Constraint])
 infer = cata $ \case
     EVar _ var -> do
         name <- supply
