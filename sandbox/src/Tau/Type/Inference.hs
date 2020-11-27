@@ -46,7 +46,7 @@ newtype Monoset = Monoset { getMonoset :: Set Name }
     deriving (Show, Eq)
 
 instance Substitutable Monoset where
-    apply sub (Monoset set) = Monoset (free . apply sub . tvar star =<< set)
+    apply sub (Monoset set) = Monoset (free . apply sub . tVar kStar =<< set)
 
 instance Free Monoset where
     free (Monoset set) = set
@@ -80,12 +80,12 @@ runInfer = unInfer
     >>> flip evalSupply (fmap (\n -> "a" <> show n) [1..])
     >>> fromMaybe (throwError ImplementationError)
 
---infer :: Expr a Pattern -> Infer (Expr Type Pattern, [TypeAssumption], [Constraint])
-infer :: Expr a -> Infer (Expr Type, [TypeAssumption], [Constraint])
+--infer :: Expr t p -> Infer (Expr Type p, [TypeAssumption], [Constraint])
+infer :: RepExpr t -> Infer (RepExpr Type, [TypeAssumption], [Constraint])
 infer = cata $ \case
     EVar _ var -> do
         name <- supply
-        let t = tvar star name 
+        let t = tVar kStar name 
         pure (tagVar t var, [var :>: t], [])
 
     ELit _ LUnit{}   -> pure (tagLit tUnit LUnit, [], [])
@@ -101,7 +101,7 @@ infer = cata $ \case
         (t2, as2, cs2) <- expr2
         let cs3 = [Equality s t | v :>: s <- ts, w :>: t <- as1 <> as2, v == w]
         set <- ask
-        pure ( tagLet (getTag t2) pat t1 t2
+        pure ( tagLet (getTag t2) (setRepType t0 pat) t1 t2
              , removeAssumptionSet ts as1 <> removeAssumptionSet ts as2
              , cs1 <> cs2 <> cs3 <> [Implicit t0 (getTag t1) set] )
 
@@ -109,27 +109,32 @@ infer = cata $ \case
         (t0, ts) <- inferRep pat
         (t1, as1, cs1) <- local (monosetInsertSet (getVar <$> ts)) expr
         let cs2 = [Equality s t | v :>: s <- ts, w :>: t <- as1, v == w]
-        pure ( tagLam (t0 `tarr` getTag t1) pat t1
+        pure ( tagLam (t0 `tArr` getTag t1) (setRepType t0 pat) t1
              , removeAssumptionSet ts as1 
              , cs1 <> cs2 )
 
-inferRep :: (MonadSupply Name m) => Rep -> m (Type, [TypeAssumption])
+inferRep :: (MonadSupply Name m) => Rep t -> m (Type, [TypeAssumption])
 inferRep = cata $ \case
-    RVar var -> do
+    RVar _ var -> do
         name <- supply
-        let t = tvar star name 
+        let t = tVar kStar name 
         pure (t, [var :>: t])
 
+--inferApp 
+--  :: (MonadSupply Name m) 
+--  => m (Expr Type p, [TypeAssumption], [Constraint]) 
+--  -> m (Expr Type p, [TypeAssumption], [Constraint]) 
+--  -> m (Expr Type p, [TypeAssumption], [Constraint])
 inferApp 
   :: (MonadSupply Name m) 
-  => m (Expr Type, [TypeAssumption], [Constraint]) 
-  -> m (Expr Type, [TypeAssumption], [Constraint]) 
-  -> m (Expr Type, [TypeAssumption], [Constraint])
+  => m (Expr Type p q, [TypeAssumption], [Constraint]) 
+  -> m (Expr Type p q, [TypeAssumption], [Constraint]) 
+  -> m (Expr Type p q, [TypeAssumption], [Constraint])
 inferApp expr1 expr2 = do
     name <- supply
-    let t = tvar star name 
+    let t = tVar kStar name 
     (t1, as1, cs1) <- expr1
     (t2, as2, cs2) <- expr2
     pure ( tagApp t [t1, t2]
          , as1 <> as2
-         , cs1 <> cs2 <> [Equality (getTag t1) (getTag t2 `tarr` t)] )
+         , cs1 <> cs2 <> [Equality (getTag t1) (getTag t2 `tArr` t)] )

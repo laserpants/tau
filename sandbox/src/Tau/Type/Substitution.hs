@@ -4,6 +4,7 @@
 -- {-# LANGUAGE TypeSynonymInstances #-}
 module Tau.Type.Substitution where
 
+import Control.Monad (join)
 import Data.List (intersect, transpose)
 import Data.Map.Strict (Map)
 import Data.Set.Monad (Set, union)
@@ -40,7 +41,7 @@ merge s1 s2 =
         then Just (Subst (getSubst s1 `Map.union` getSubst s2))
         else Nothing
   where
-    equal v = let app = (`apply` tvar star v) in app s1 == app s2
+    equal v = let app = (`apply` tVar kStar v) in app s1 == app s2
 
 instance Semigroup Substitution where
     (<>) = compose
@@ -62,9 +63,9 @@ instance (Free t) => Free [t] where
 
 instance Substitutable Type where
     apply sub = cata $ \case
-         TVar kind var -> substWithDefault (tvar kind var) var sub
-         TArr t1 t2    -> tarr t1 t2
-         TApp t1 t2    -> tapp t1 t2
+         TVar kind var -> substWithDefault (tVar kind var) var sub
+         TArr t1 t2    -> tArr t1 t2
+         TApp t1 t2    -> tApp t1 t2
          ty            -> Fix ty
 
 instance Free Type where
@@ -98,13 +99,15 @@ instance (Substitutable t) => Substitutable (Assumption t) where
 instance (Free t) => Free (Assumption t) where
     free (_ :>: t) = free t
 
-instance Substitutable (Expr Type) where
+--instance Substitutable (Expr Type p) where
+instance Substitutable (Expr Type p q) where
     apply sub = cata $ \case
-        EVar t name            -> tagVar (apply sub t) name
-        ELit t lit             -> tagLit (apply sub t) lit
-        EApp t exprs           -> tagApp (apply sub t) exprs
-        ELet t pat expr1 expr2 -> tagLet (apply sub t) pat expr1 expr2
-        ELam t pat expr1       -> tagLam (apply sub t) pat expr1
+        EVar t name        -> tagVar (apply sub t) name
+        ELit t lit         -> tagLit (apply sub t) lit
+        EApp t exprs       -> tagApp (apply sub t) exprs
+        ELet t rep ex1 ex2 -> tagLet (apply sub t) rep ex1 ex2
+        ELam t rep ex      -> tagLam (apply sub t) rep ex
+        EMatch t exs eqs   -> tagMatch (apply sub t) exs eqs
 
 --instance Substitutable (Expr Type p) where
 --    apply sub = cata $ \case
@@ -114,18 +117,20 @@ instance Substitutable (Expr Type) where
 --        ELet t pat expr1 expr2 -> tagLet (apply sub t) pat expr1 expr2
 --        ELam t pat expr1       -> tagLam (apply sub t) pat expr1
 
-instance Free (Expr Type) where
-    free = cata $ \case
-        EVar t name            -> free t
-        ELit t lit             -> free t
-        EApp t exprs           -> free t
-        ELet t pat expr1 expr2 -> free t
-        ELam t pat expr1       -> free t
+instance Free (Expr Type p q) where
+    free = free . getTag 
 
---instance Free (Expr Type p) where
---    free = cata $ \case
---        EVar t name            -> free t
---        ELit t lit             -> free t
---        EApp t exprs           -> free t
---        ELet t pat expr1 expr2 -> free t
---        ELam t pat expr1       -> free t
+instance Free (Pattern t) where
+    free = cata $ \case
+        PVar _ name -> Set.singleton name
+        PCon _ _ ps -> unions ps
+        _           -> mempty
+
+instance Free (Rep t) where
+    free = cata $ \case
+        RVar _ name -> Set.singleton name
+        RCon _ _ rs -> unions rs
+
+instance Free (SimpleRep t) where
+    free (RVar _ name) = Set.singleton name 
+    free (RCon _ _ ns) = Set.fromList ns

@@ -65,6 +65,3 @@ simplify env = loop [] where
 
 reduce :: ClassEnv -> [TyClass] -> Either UnificationError [TyClass]
 reduce env cls = toHeadNormalForm env cls >>= simplify env 
-
--- scEntail :: ClassEnv -> [TyClass] -> TyClass -> Bool
--- scEntail env tycls = undefined

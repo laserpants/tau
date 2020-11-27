@@ -7,6 +7,7 @@ import Tau.Type
 import Tau.Type.Substitution
 import Tau.Util
 
+-- TypeError???
 data UnificationError
     = CannotUnify
     | CannotMatch
@@ -19,7 +20,7 @@ data UnificationError
 
 bind :: (MonadError UnificationError m) => Name -> Kind -> Type -> m Substitution
 bind name kind ty
-    | ty == tvar kind name   = pure mempty
+    | ty == tVar kind name   = pure mempty
     | name `elem` free ty    = throwError InfiniteType
     | Just kind /= kindOf ty = throwError KindMismatch
     | otherwise              = pure (name `mapsTo` ty)

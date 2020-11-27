@@ -14,7 +14,7 @@ import Tau.Util
 import qualified Tau.Env as Env
 
 data KindF a 
-    = Star
+    = KStar
     | KArr a a
     deriving (Show, Eq, Ord, Functor, Foldable, Traversable)
 
@@ -56,59 +56,24 @@ type ClassEnv = (Env ClassInfo, [Type])
 data Assumption a = Name :>: a
     deriving (Show, Eq, Functor, Foldable, Traversable)
 
-star :: Kind
-star = Fix Star
-
-karr :: Kind -> Kind -> Kind
-karr a1 a2 = Fix (KArr a1 a2)
-
-tvar :: Kind -> Name -> Type
-tvar a1 a2 = Fix (TVar a1 a2)
-
-tbound :: Int -> Type
-tbound a1 = Fix (TBound a1)
-
-tcon :: Kind -> Name -> Type
-tcon a1 a2 = Fix (TCon a1 a2)
-
-tarr :: Type -> Type -> Type
-tarr a1 a2 = Fix (TArr a1 a2)
-
-infixr 1 `tarr`
-
-tapp :: Type -> Type -> Type
-tapp a1 a2 = Fix (TApp a1 a2)
-
-tUnit :: Type
-tUnit = tcon star "Unit"
-
-tBool :: Type
-tBool = tcon star "Bool" 
-
-tInt :: Type
-tInt = tcon star "Int" 
-
-tListCon :: Type
-tListCon = tcon (karr star star) "List"
-
-tList :: Type -> Type
-tList = tapp tListCon 
-
 toScheme :: Type -> Scheme
 toScheme ty = Forall [] ([] :=> ty) where
     ty = flip cata ty $ \case
-        TVar k name -> tvar k name
-        TCon k name -> tcon k name
-        TArr t1 t2  -> tarr t1 t2
-        TApp t1 t2  -> tapp t1 t2
+        TVar k var -> tVar k var
+        TCon k con -> tCon k con
+        TArr t1 t2 -> tArr t1 t2
+        TApp t1 t2 -> tApp t1 t2
 
 kindOf :: Type -> Maybe Kind
 kindOf = histo $ \case
-    TApp (Just (Fix (KArr _ k)) :< _) _ -> Just k
-    TCon k _ -> Just k
-    TVar k _ -> Just k
-    TArr{}   -> Just star
-    _        -> Nothing
+    TApp (Just t :< _) _ -> appKind (unfix t) 
+    TCon k _             -> Just k
+    TVar k _             -> Just k
+    TArr{}               -> Just kStar
+    _                    -> Nothing
+  where
+    appKind (KArr _ k) = Just k
+    appKind _          = Nothing
 
 super :: ClassEnv -> Name -> [Name]
 super (info, _) name = maybe [] fst (Env.lookup name info)
@@ -121,13 +86,50 @@ getVar (name :>: _) = name
 
 findAssumption :: Name -> [Assumption a] -> Maybe a
 findAssumption _ [] = Nothing 
-findAssumption i (name :>: a:as) = 
-    if i == name 
-        then Just a 
-        else findAssumption i as
+findAssumption i (name :>: a:as)
+    | i == name = Just a
+    | otherwise = findAssumption i as
 
 removeAssumption :: Name -> [Assumption a] -> [Assumption a]
 removeAssumption name = filter (\a -> name /= getVar a)
 
 removeAssumptionSet :: [Assumption a] -> [Assumption a] -> [Assumption a]
 removeAssumptionSet ts = flip (foldr removeAssumption) (nub (getVar <$> ts))
+
+kStar :: Kind
+kStar = Fix KStar
+
+kArr :: Kind -> Kind -> Kind
+kArr t1 t2 = Fix (KArr t1 t2)
+
+tVar :: Kind -> Name -> Type
+tVar k var = Fix (TVar k var)
+
+tBound :: Int -> Type
+tBound n = Fix (TBound n)
+
+tCon :: Kind -> Name -> Type
+tCon k con = Fix (TCon k con)
+
+tArr :: Type -> Type -> Type
+tArr t1 t2 = Fix (TArr t1 t2)
+
+infixr 1 `tArr`
+
+tApp :: Type -> Type -> Type
+tApp t1 t2 = Fix (TApp t1 t2)
+
+tUnit :: Type
+tUnit = tCon kStar "Unit"
+
+tBool :: Type
+tBool = tCon kStar "Bool" 
+
+tInt :: Type
+tInt = tCon kStar "Int" 
+
+tListCon :: Type
+tListCon = tCon (kArr kStar kStar) "List"
+
+tList :: Type -> Type
+tList = tApp tListCon 
