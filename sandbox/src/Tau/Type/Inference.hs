@@ -1,5 +1,3 @@
--- {-# LANGUAGE DeriveFoldable             #-}
-{-# LANGUAGE DeriveFunctor              #-}
 {-# LANGUAGE DeriveTraversable          #-}
 {-# LANGUAGE FlexibleContexts           #-}
 {-# LANGUAGE GeneralizedNewtypeDeriving #-}
@@ -11,9 +9,12 @@ import Control.Arrow
 import Control.Monad.Except
 import Control.Monad.Reader
 import Control.Monad.Supply
+import Control.Monad.Writer
+import Data.Foldable (foldrM, foldl')
 import Data.Maybe (fromMaybe)
 import Data.Set.Monad (Set, union, intersection, (\\))
 import Tau.Expr
+import Tau.Expr.Patterns
 import Tau.Type
 import Tau.Type.Substitution
 import Tau.Type.Unification
@@ -61,7 +62,7 @@ type TypeAssumption = Assumption Type
 
 data InferError 
     = CannotSolve
-    | UnificationError UnificationError
+    | TypeError TypeError
     | ImplementationError
     deriving (Show, Eq)
 
@@ -95,40 +96,90 @@ infer = cata $ \case
         foldl1 inferApp exprs
 
     ELet _ pat expr1 expr2 -> do
-        (t0, ts) <- inferRep pat
-        (t1, as1, cs1) <- expr1
-        (t2, as2, cs2) <- expr2
-        let cs3 = [Equality s t | v :>: s <- ts, w :>: t <- as1 <> as2, v == w]
+        (tr, as0) <- inferRep pat
+        (e1, as1, cs1) <- expr1
+        (e2, as2, cs2) <- expr2
         set <- ask
-        pure ( tagLet (getTag t2) (setRepType t0 pat) t1 t2
-             , removeAssumptionSet ts as1 <> removeAssumptionSet ts as2
-             , cs1 <> cs2 <> cs3 <> [Implicit t0 (getTag t1) set] )
+        let cs3 = [Implicit t u set | v :>: t <- as2, (w, u) <- repVars tr, v == w]
+        pure ( tagLet (getTag e2) tr e1 e2
+             , as1 <> removeAssumptionSet (free tr) as2
+             , cs1 <> cs2 <> [Equality (getRepTag tr) (getTag e1) ] <> cs3 )
 
     ELam _ pat expr -> do
-        (t0, ts) <- inferRep pat
-        (t1, as1, cs1) <- local (monosetInsertSet (getVar <$> ts)) expr
-        let cs2 = [Equality s t | v :>: s <- ts, w :>: t <- as1, v == w]
-        pure ( tagLam (t0 `tArr` getTag t1) (setRepType t0 pat) t1
-             , removeAssumptionSet ts as1 
-             , cs1 <> cs2 )
+        (tr, as0) <- inferRep pat
+        (e1, as1, cs1) <- local (monosetInsertSet (getVar <$> as0)) expr
+        let cs2 = [Equality t u | v :>: t <- as1, (w, u) <- repVars tr, v == w]
+        pure ( tagLam (getRepTag tr `tArr` getTag e1) tr e1
+             , removeAssumptionSet (free tr) as1
+             , cs1 )
 
-inferRep :: (MonadSupply Name m) => Rep t -> m (Type, [TypeAssumption])
-inferRep = cata $ \case
-    RVar _ var -> do
+    EIf _ _ _ _ ->
+        undefined
+
+    EAnd _ _ ->
+        undefined
+
+    EOr _ _ ->
+        undefined
+
+    EMatch _ exs eqs -> do
         name <- supply
         let t = tVar kStar name 
-        pure (t, [var :>: t])
+        (es1, as1, cs1) <- unzip3 <$> sequence exs
+        (eqs, as2, cs2) <- unzip3 <$> traverse inferEquation eqs
+        let cs3 = do
+            Equation ps exs e <- eqs
+            e1 <- exs
+            (p, e2) <- zip ps es1
+            pure [ Equality t (getTag e)
+                 , Equality tBool (getTag e1)
+                 , Equality (getRepTag p) (getTag e2) 
+                 ]
+        pure ( tagMatch t es1 eqs
+             , concat as1 <> concat as2
+             , concat (cs1 <> cs2 <> cs3) )
 
---inferApp 
---  :: (MonadSupply Name m) 
---  => m (Expr Type p, [TypeAssumption], [Constraint]) 
---  -> m (Expr Type p, [TypeAssumption], [Constraint]) 
---  -> m (Expr Type p, [TypeAssumption], [Constraint])
+    EOp (OEq a b) -> do
+        (e1, as1, cs1) <- a
+        (e2, as2, cs2) <- b
+        pure (tagEq e1 e2, as1 <> as2, cs1 <> cs2)
+
+inferEquation 
+  :: Equation (Pattern t) (Infer (RepExpr Type, [Assumption Type], [Constraint])) 
+  -> Infer (RepEq Type, [TypeAssumption], [Constraint])
+inferEquation (Equation ps exs e) = do
+    let (qs, cs) = patternReps ps
+    (trs, as0) <- unzip <$> traverse inferRep qs
+    let insertMono = local (monosetInsertSet (getVar <$> concat as0))
+
+    (es1, as1, cs1) <- unzip3 <$> traverse (insertMono . infer) cs
+    (es2, as2, cs2) <- unzip3 <$> sequence (insertMono <$> exs)
+    (exp, as3, cs3) <- insertMono e
+
+    let asall = concat (as1 <> as2) <> as3
+    let cs4 = [Equality t u | v :>: t <- asall, (w, u) <- repVars =<< trs, v == w]
+
+    pure ( Equation trs (es1 <> es2) exp
+         , concat as0 <> removeAssumptionSet (free trs) asall
+         , concat (cs1 <> cs2) <> cs3 <> cs4 )
+
+inferRep :: Rep t -> Infer (Rep Type, [TypeAssumption])
+inferRep = cata alg where
+    alg rep = do
+        name <- supply
+        let t = tVar kStar name 
+        case rep of
+            RVar _ var -> 
+                pure (rVar t var, [var :>: t])
+
+            RCon _ con rs -> do
+                (trs, as) <- unzip <$> sequence rs
+                pure (rCon t con trs, concat as <> [con :>: t])
+
 inferApp 
-  :: (MonadSupply Name m) 
-  => m (Expr Type p q, [TypeAssumption], [Constraint]) 
-  -> m (Expr Type p q, [TypeAssumption], [Constraint]) 
-  -> m (Expr Type p q, [TypeAssumption], [Constraint])
+  :: Infer (Expr Type p q, [TypeAssumption], [Constraint]) 
+  -> Infer (Expr Type p q, [TypeAssumption], [Constraint]) 
+  -> Infer (Expr Type p q, [TypeAssumption], [Constraint])
 inferApp expr1 expr2 = do
     name <- supply
     let t = tVar kStar name 

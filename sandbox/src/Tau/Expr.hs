@@ -44,7 +44,7 @@ data Equation p a = Equation [p] [a] a
 deriveShow1 ''Equation
 deriveEq1   ''Equation
 
-data Op a
+data Op t a
     = OEq a a
     deriving (Show, Eq, Functor, Foldable, Traversable)
 
@@ -61,7 +61,7 @@ data ExprF t p q a
     | EAnd a ~a
     | EOr a ~a
     | EMatch t [a] [Equation p a]
-    | EOp (Op a)
+    | EOp (Op t a)
     deriving (Functor, Foldable, Traversable)
 
 deriveShow  ''ExprF
@@ -69,15 +69,8 @@ deriveEq    ''ExprF
 deriveShow1 ''ExprF
 deriveEq1   ''ExprF
 
---type Expr t p = Fix (ExprF t p)
 type Expr t p q = Fix (ExprF t p q)
 
---type PatternExpr t = Expr t (Pattern t)
---type RepExpr     t = Expr t (Rep t)
---type SimpleExpr  t = Expr t (SimpleRep t)
---type SimpleExpr  t = Expr t (SimpleRep t) (SimpleRep t)
---type SimpleEq    t = Equation (SimpleRep t) (SimpleExpr t)
---type SimpleExpr  t = Expr t SimpleRep SimpleRep 
 type PatternExpr t = Expr t (Pattern t) (Rep t)
 type RepExpr     t = Expr t (Rep t) (Rep t)
 type SimpleExpr  t = Expr t (SimpleRep t) (SimpleRep t)
@@ -86,7 +79,6 @@ type PatternEq   t = Equation (Pattern t) (PatternExpr t)
 type RepEq       t = Equation (Rep t) (RepExpr t)
 type SimpleEq    t = Equation (Rep t) (SimpleExpr t)
 
---getTag :: Expr t p -> t
 getTag :: Expr t p q -> t
 getTag = cata $ \case
     EVar t _     -> t
@@ -101,27 +93,11 @@ getRepTag = cata $ \case
     RVar t _   -> t
     RCon t _ _ -> t
 
-setRepType :: Type -> Rep t -> Rep Type
-setRepType t = cata $ \case
+setRepTag :: t -> Rep s -> Rep t
+setRepTag t = cata $ \case
     RVar _ var    -> rVar t var
     RCon _ con rs -> rCon t con rs
 
---
---
---expr :: PatternExpr ()
---expr = undefined
---
---zzz :: PatternEq ()
---zzz = Equation 
---    [ pVar () "x" :: Pattern () ] 
---    [ xxx :: PatternExpr () ] 
---    expr
---
---xxx :: PatternExpr () 
---xxx = Fix (EMatch () [expr] [zzz])
---
---
---
 
 pVar :: t -> Name -> Pattern t
 pVar t var = Fix (PVar t var)
@@ -177,7 +153,7 @@ eOr :: Expr t p q -> Expr t p q -> Expr t p q
 eOr a b = Fix (EOr a b)
 
 eEq :: Expr () p q -> Expr () p q -> Expr () p q 
-eEq = undefined
+eEq a b = Fix (EOp (OEq a b))
 
 tagVar :: t -> Name -> Expr t p q
 tagVar t var = Fix (EVar t var)
@@ -200,8 +176,8 @@ tagMatch t exs eqs = Fix (EMatch t exs eqs)
 tagIf :: t -> Expr t p q -> Expr t p q -> Expr t p q -> Expr t p q
 tagIf t cond tr fl = Fix (EIf t cond tr fl)
 
-tagEq :: t -> Expr t p q -> Expr t p q -> Expr t p q 
-tagEq t = undefined
+tagEq :: Expr t p q -> Expr t p q -> Expr t p q 
+tagEq a b = Fix (EOp (OEq a b))
 
 tagErr = undefined
 

@@ -8,6 +8,7 @@ import Control.Monad
 import Control.Monad.Supply
 import Control.Monad.Writer
 import Data.Foldable (foldrM)
+import Data.Maybe (fromJust)
 import Data.Function ((&))
 import Data.List.Extra (groupSortOn)
 import Data.Set.Monad (Set)
@@ -23,19 +24,19 @@ simplify = cata alg where
         EVar t var -> pure (tagVar t var)
         ELit t lit -> pure (tagLit t lit)
         EApp t exs -> tagApp t <$> sequence exs
-        {-
-            Expressions like  : let Just x = y in f x
-            get translated to : match y with | Just x => f x
-        -}
+        --
+        --  Expressions like  : let Just x = y in f x
+        --  get translated to : match y with | Just x => f x
+        --
         ELet _ rep e1 e2 -> do
             exp <- e1
             ret <- e2
             compileMatch [exp] [Equation [rep] [] ret] eErr
-        {-
-            Lambda expressions like : \Just x => f x
-            get translated to       : \z => match z with | Just x => f x in z
-            where z is a fresh variable
-        -}
+        --
+        --  Lambda expressions like : \Just x => f x
+        --  get translated to       : \z => match z with | Just x => f x in z
+        --  where z is a fresh variable
+        --
         ELam t rep ex -> do
             fresh <- supply
             ret <- ex
@@ -117,47 +118,47 @@ substitute name subst = para $ \case
             get | name `elem` unions (free <$> ps) = fst
                 | otherwise                        = snd
 
-desugar :: (MonadSupply Name m) => PatternExpr t -> m (RepExpr t)
-desugar = cata $ \case
-    EVar t var       -> pure (tagVar t var)
-    ELit t lit       -> pure (tagLit t lit)
-    EApp t exs       -> tagApp t <$> sequence exs
-    ELet t rep e1 e2 -> tagLet t rep <$> e1 <*> e2
-    ELam t rep ex    -> tagLam t rep <$> ex
-    EMatch t exs eqs -> do
-        resPair <- runWriterT (traverse desugarEquation eqs)
-        exs1 <- sequence exs
-        exs2 <- traverse desugar (snd resPair)
-        pure (tagMatch t (exs1 <> exs2) (fst resPair))
+--desugar :: (MonadSupply Name m) => PatternExpr t -> m (RepExpr t)
+--desugar = cata $ \case
+--    EVar t var       -> pure (tagVar t var)
+--    ELit t lit       -> pure (tagLit t lit)
+--    EApp t exs       -> tagApp t <$> sequence exs
+--    ELet t rep e1 e2 -> tagLet t rep <$> e1 <*> e2
+--    ELam t rep ex    -> tagLam t rep <$> ex
+--    EMatch t exs eqs -> do
+--        resPair <- runWriterT (traverse desugarEquation eqs)
+--        exs1 <- sequence exs
+--        exs2 <- traverse desugar (snd resPair)
+--        pure (tagMatch t (exs1 <> exs2) (fst resPair))
+--
+--desugarEquation :: (MonadSupply Name m) => Equation (Pattern t) (m (RepExpr t)) -> WriterT [PatternExpr t] m (RepEq t)
+--desugarEquation (Equation ps exs e) =
+--    Equation <$> traverse patternRep ps
+--             <*> lift (sequence exs) 
+--             <*> lift e 
 
-desugarEquation :: (MonadSupply Name m) => Equation (Pattern t) (m (RepExpr t)) -> WriterT [PatternExpr t] m (RepEq t)
-desugarEquation (Equation ps exs e) =
-    Equation <$> traverse patternRep ps
-             <*> lift (sequence exs) 
-             <*> lift e 
+repVars :: Rep t -> [(Name, t)]
+repVars = cata $ \case
+    RVar t var    -> [(var, t)]
+    RCon _ con rs -> concat rs
 
-patternRep :: (MonadSupply Name m) => Pattern t -> WriterT [PatternExpr t] m (Rep t)
-patternRep = unfix >>> \case
-    PVar t var    -> pure (rVar t var)
-    PCon t con ps -> rCon t con <$> traverse patternRep ps
-    PAny t        -> pure (rVar t "$_")
+patternReps :: [Pattern t] -> ([Rep t], [PatternExpr t])
+patternReps = fmap concat . unzip . fmap patternRep
 
-    PLit t prim -> do
-        name <- supply
-        --tell [eEq (eVar name) (eLit prim)]
-        tell [tagEq undefined (tagVar t name) (tagLit t prim)]
-        patternRep (pVar t name)
+patternRep :: Pattern t -> (Rep t, [PatternExpr t])
+patternRep pat = fromJust (evalSupply (runWriterT (toRep pat)) (nameSupply "$"))
 
-    --PRec fields -> do
-    --    --let name = recordCon (length fields)
-    --    --patternRep (conP name (unPair =<< fields))
-
-  --where
-  --  unPair :: (Name, Pattern t) -> [Pattern t]
-  --  unPair (_, v) = [pVar undefined "$_", v]
-
-compile :: (Eq t, MonadSupply Name m) => PatternExpr t -> m (SimpleExpr t)
-compile = desugar >=> simplify
+toRep :: Pattern t -> WriterT [PatternExpr t] (Supply Name) (Rep t)
+toRep =  cata alg where
+    alg pat = do
+        case pat of
+            PVar t var    -> pure (rVar t var)
+            PCon t con ps -> rCon t con <$> sequence ps 
+            PAny t        -> pure (rVar t "$_")
+            PLit t lit -> do
+                var <- supply
+                tell [tagEq (tagVar t var) (tagLit t lit)]
+                pure (rVar t var)
 
 data Head = ConHead | VarHead
     deriving (Show, Eq, Ord)

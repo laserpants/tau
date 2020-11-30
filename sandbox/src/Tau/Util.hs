@@ -7,8 +7,10 @@ module Tau.Util
   , Name
   , Algebra
   , unions
+  , nameSupply
   ) where
 
+import Control.Monad
 import Data.Eq.Deriving
 import Data.Functor.Foldable
 import Data.Ord.Deriving
@@ -23,3 +25,9 @@ type Algebra f a = f a -> a
 
 unions :: (Ord a) => [Set a] -> Set a
 unions = foldr Set.union mempty
+
+letters :: [String]
+letters = [1..] >>= flip replicateM ['a'..'z'] >>= (:[]) -- . pack
+
+nameSupply :: String -> [Name]
+nameSupply prefix = fmap (prefix <>) letters

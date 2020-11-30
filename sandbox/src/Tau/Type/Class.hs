@@ -3,7 +3,7 @@
 module Tau.Type.Class where
 
 import Control.Monad.Except
-import Control.Monad.Extra (allM)
+import Control.Monad.Extra (allM, (||^))
 import Data.Either (isRight)
 import Data.Either.Combinators (rightToMaybe)
 import Tau.Type
@@ -23,14 +23,12 @@ byInstance :: ClassEnv -> TyClass -> Maybe [TyClass]
 byInstance env self@(TyClass name ty) = 
     msum $ rightToMaybe <$> [tryInstance i | i <- instances env name]
   where
-    tryInstance :: Qualified TyClass -> Either UnificationError [TyClass]
+    tryInstance :: Qualified TyClass -> Either TypeError [TyClass]
     tryInstance (ps :=> h) = 
         apply <$> matchClass h self <*> pure ps
 
-entail :: ClassEnv -> [TyClass] -> TyClass -> Either UnificationError Bool
-entail env cls0 cl = do
-    i <- instc
-    pure (super || i)
+entail :: ClassEnv -> [TyClass] -> TyClass -> Either TypeError Bool
+entail env cls0 cl = pure super ||^ instc
   where
     super = any (cl `elem`) (bySuper env <$> cls0)
     instc = case byInstance env cl of
@@ -45,7 +43,7 @@ isHeadNormalForm (TyClass _ t) =
         TBound{} -> True
         _        -> False
 
-toHeadNormalForm :: ClassEnv -> [TyClass] -> Either UnificationError [TyClass]
+toHeadNormalForm :: ClassEnv -> [TyClass] -> Either TypeError [TyClass]
 toHeadNormalForm env = fmap concat . mapM (hnf env) 
   where
     hnf env tycl 
@@ -55,13 +53,13 @@ toHeadNormalForm env = fmap concat . mapM (hnf env)
             Just cls -> toHeadNormalForm env cls
 
 -- remove a class constraint if it is entailed by the other constraints in the list
-simplify :: ClassEnv -> [TyClass] -> Either UnificationError [TyClass]
+simplify :: ClassEnv -> [TyClass] -> Either TypeError [TyClass]
 simplify env = loop [] where
     loop qs [] = pure qs
     loop qs (p:ps) = do
-        b <- entail env (qs <> ps) p
-        if b then loop qs ps 
+        entailed <- entail env (qs <> ps) p
+        if entailed then loop qs ps 
              else loop (p:qs) ps
 
-reduce :: ClassEnv -> [TyClass] -> Either UnificationError [TyClass]
+reduce :: ClassEnv -> [TyClass] -> Either TypeError [TyClass]
 reduce env cls = toHeadNormalForm env cls >>= simplify env 

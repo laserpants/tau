@@ -8,6 +8,7 @@ import Control.Monad.State
 import Control.Monad.Supply
 import Data.List (nub, delete, find)
 import Data.Set.Monad (Set, union, intersection, (\\))
+import Debug.Trace
 import Tau.Type
 import Tau.Type.Inference
 import Tau.Type.Substitution
@@ -23,8 +24,8 @@ isSolvable _ _ = True
 choice :: [Constraint] -> Maybe ([Constraint], Constraint)
 choice xs = find (uncurry isSolvable) [(ys, x) | x <- xs, let ys = delete x xs]
 
-runUnify :: ExceptT UnificationError Infer a -> Infer a
-runUnify m = runExceptT (withExceptT UnificationError m) >>= liftEither
+runUnify :: ExceptT TypeError Infer a -> Infer a
+runUnify m = runExceptT (withExceptT TypeError m) >>= liftEither
 
 solve :: [Constraint] -> Infer (Substitution, [TyClass])
 solve = flip runStateT [] . solver

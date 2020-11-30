@@ -1,7 +1,6 @@
 {-# LANGUAGE FlexibleInstances    #-}
 {-# LANGUAGE LambdaCase           #-}
 {-# LANGUAGE StrictData           #-}
--- {-# LANGUAGE TypeSynonymInstances #-}
 module Tau.Type.Substitution where
 
 import Control.Monad (join)
@@ -99,7 +98,6 @@ instance (Substitutable t) => Substitutable (Assumption t) where
 instance (Free t) => Free (Assumption t) where
     free (_ :>: t) = free t
 
---instance Substitutable (Expr Type p) where
 instance Substitutable (Expr Type p q) where
     apply sub = cata $ \case
         EVar t name        -> tagVar (apply sub t) name
@@ -108,14 +106,6 @@ instance Substitutable (Expr Type p q) where
         ELet t rep ex1 ex2 -> tagLet (apply sub t) rep ex1 ex2
         ELam t rep ex      -> tagLam (apply sub t) rep ex
         EMatch t exs eqs   -> tagMatch (apply sub t) exs eqs
-
---instance Substitutable (Expr Type p) where
---    apply sub = cata $ \case
---        EVar t name            -> tagVar (apply sub t) name
---        ELit t lit             -> tagLit (apply sub t) lit
---        EApp t exprs           -> tagApp (apply sub t) exprs
---        ELet t pat expr1 expr2 -> tagLet (apply sub t) pat expr1 expr2
---        ELam t pat expr1       -> tagLam (apply sub t) pat expr1
 
 instance Free (Expr Type p q) where
     free = free . getTag 

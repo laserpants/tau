@@ -1,5 +1,3 @@
-{-# LANGUAGE DeriveFoldable    #-}
-{-# LANGUAGE DeriveFunctor     #-}
 {-# LANGUAGE DeriveTraversable #-}
 {-# LANGUAGE LambdaCase        #-}
 {-# LANGUAGE StrictData        #-}
@@ -9,8 +7,10 @@ module Tau.Type where
 import Control.Comonad.Cofree
 import Data.Functor.Foldable
 import Data.List (nub)
+import Data.Set.Monad (Set)
 import Tau.Env
 import Tau.Util
+import qualified Data.Set.Monad as Set
 import qualified Tau.Env as Env
 
 data KindF a 
@@ -56,6 +56,16 @@ type ClassEnv = (Env ClassInfo, [Type])
 data Assumption a = Name :>: a
     deriving (Show, Eq, Functor, Foldable, Traversable)
 
+data TypeError
+    = CannotUnify
+    | CannotMatch
+    | InfiniteType
+    | KindMismatch
+    | MergeFailed
+    | ClassMismatch
+    | ContextReductionFailed
+    deriving (Show, Eq)
+
 toScheme :: Type -> Scheme
 toScheme ty = Forall [] ([] :=> ty) where
     ty = flip cata ty $ \case
@@ -72,8 +82,8 @@ kindOf = histo $ \case
     TArr{}               -> Just kStar
     _                    -> Nothing
   where
-    appKind (KArr _ k) = Just k
-    appKind _          = Nothing
+    appKind (KArr _ k)    = Just k
+    appKind _             = Nothing
 
 super :: ClassEnv -> Name -> [Name]
 super (info, _) name = maybe [] fst (Env.lookup name info)
@@ -93,8 +103,8 @@ findAssumption i (name :>: a:as)
 removeAssumption :: Name -> [Assumption a] -> [Assumption a]
 removeAssumption name = filter (\a -> name /= getVar a)
 
-removeAssumptionSet :: [Assumption a] -> [Assumption a] -> [Assumption a]
-removeAssumptionSet ts = flip (foldr removeAssumption) (nub (getVar <$> ts))
+removeAssumptionSet :: Set Name -> [Assumption a] -> [Assumption a]
+removeAssumptionSet = flip (Set.foldr removeAssumption) 
 
 kStar :: Kind
 kStar = Fix KStar
