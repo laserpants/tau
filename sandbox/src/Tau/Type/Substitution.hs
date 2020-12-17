@@ -74,11 +74,11 @@ instance Free Type where
         TApp t1 t2 -> t1 `union` t2
         ty         -> mempty
 
-instance Substitutable TyClass where
-    apply sub (TyClass name t) = TyClass name (apply sub t)
+instance Substitutable TypeClass where
+    apply sub (TypeClass name t) = TypeClass name (apply sub t)
 
-instance Free TyClass where
-    free (TyClass _ ty) = free ty
+instance Free TypeClass where
+    free (TypeClass _ ty) = free ty
 
 instance (Substitutable t) => Substitutable (Qualified t) where
     apply = fmap . apply
@@ -100,12 +100,15 @@ instance (Free t) => Free (Assumption t) where
 
 instance Substitutable (Expr Type p q) where
     apply sub = cata $ \case
-        EVar t name        -> tagVar (apply sub t) name
-        ELit t lit         -> tagLit (apply sub t) lit
-        EApp t exprs       -> tagApp (apply sub t) exprs
-        ELet t rep ex1 ex2 -> tagLet (apply sub t) rep ex1 ex2
-        ELam t rep ex      -> tagLam (apply sub t) rep ex
-        EMatch t exs eqs   -> tagMatch (apply sub t) exs eqs
+        EVar t name        -> varExpr (apply sub t) name
+        ECon t con exprs   -> conExpr (apply sub t) con exprs
+        ELit t lit         -> litExpr (apply sub t) lit
+        EApp t exprs       -> appExpr (apply sub t) exprs
+        ELet t rep ex1 ex2 -> letExpr (apply sub t) rep ex1 ex2
+        ELam t rep ex      -> lamExpr (apply sub t) rep ex
+        EIf  t cond tr fl  -> ifExpr  (apply sub t) cond tr fl
+        EMat t exs eqs     -> matExpr (apply sub t) exs eqs
+        EOp  t op          -> opExpr  (apply sub t) op
 
 instance Free (Expr Type p q) where
     free = free . getTag 
@@ -116,11 +119,6 @@ instance Free (Pattern t) where
         PCon _ _ ps -> unions ps
         _           -> mempty
 
-instance Free (Rep t) where
-    free = cata $ \case
-        RVar _ name -> Set.singleton name
-        RCon _ _ rs -> unions rs
-
 instance Free (SimpleRep t) where
-    free (RVar _ name) = Set.singleton name 
-    free (RCon _ _ ns) = Set.fromList ns
+    free (PVar _ name) = Set.singleton name 
+    free (PCon _ _ ns) = Set.fromList ns

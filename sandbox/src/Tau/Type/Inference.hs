@@ -81,100 +81,130 @@ runInfer = unInfer
     >>> flip evalSupply (fmap (\n -> "a" <> show n) [1..])
     >>> fromMaybe (throwError ImplementationError)
 
-infer :: PatternExpr t -> Infer (RepExpr Type, [TypeAssumption], [Constraint])
+infer :: PatternExpr t -> Infer (PatternExpr Type, [TypeAssumption], [Constraint])
 infer = cata $ \case
     EVar _ var -> do
         name <- supply
         let t = tVar kStar name 
-        pure (tagVar t var, [var :>: t], [])
+        pure (varExpr t var, [var :>: t], [])
 
-    ELit _ LUnit{}   -> pure (tagLit tUnit LUnit, [], [])
-    ELit _ (LBool b) -> pure (tagLit tBool (LBool b), [], [])
-    ELit _ (LInt n)  -> pure (tagLit tInt (LInt n), [], [])
+    ECon _ con exprs -> do
+        name <- supply
+        let t = tVar kStar name 
+        (es1, as1, cs1) <- sequenced exprs
+        pure ( conExpr (foldl tArr t (getTag <$> es1)) con es1
+             , [con :>: t] <> as1
+             , cs1 )
 
-    EApp _ exprs -> 
+    ELit _ lit -> do
+        t <- inferLiteral lit
+        pure (litExpr t lit, [], [])
+
+    EApp _ exprs ->
         foldl1 inferApp exprs
 
     ELet _ pat expr1 expr2 -> do
-        (tr, as0) <- inferRep pat
+        (tp, as0) <- inferPattern pat
         (e1, as1, cs1) <- expr1
         (e2, as2, cs2) <- expr2
         set <- ask
-        let cs3 = [Implicit t u set | v :>: t <- as2, (w, u) <- repVars tr, v == w]
-        pure ( tagLet (getTag e2) tr e1 e2
-             , as1 <> removeAssumptionSet (free tr) as2
-             , cs1 <> cs2 <> [Equality (getRepTag tr) (getTag e1) ] <> cs3 )
+        let cs3 = [Implicit t u set | v :>: t <- as2, (w, u) <- patternVars tp, v == w]
+        pure ( letExpr (getTag e2) tp e1 e2
+             , as1 <> removeAssumptionSet (free tp) as2
+             , cs1 <> cs2 <> [Equality (getPatternTag tp) (getTag e1)] <> cs3 )
 
-    ELam _ pat expr -> do
-        (tr, as0) <- inferRep pat
-        (e1, as1, cs1) <- local (monosetInsertSet (getVar <$> as0)) expr
-        let cs2 = [Equality t u | v :>: t <- as1, (w, u) <- repVars tr, v == w]
-        pure ( tagLam (getRepTag tr `tArr` getTag e1) tr e1
-             , removeAssumptionSet (free tr) as1
-             , cs1 )
+    ELam _ pat expr1 -> do
+        (tp, as0) <- inferPattern pat
+        (e1, as1, cs1) <- local (monosetInsertSet (assumptionVar <$> as0)) expr1
+        let cs2 = [Equality t u | v :>: t <- as1, (w, u) <- patternVars tp, v == w]
+        pure ( lamExpr (getPatternTag tp `tArr` getTag e1) tp e1
+             , removeAssumptionSet (free tp) as1
+             , cs1 <> cs2 )
 
-    EIf _ _ _ _ ->
-        undefined
+    EIf _ cond tr fl -> do
+        (e1, as1, cs1) <- cond
+        (e2, as2, cs2) <- tr
+        (e3, as3, cs3) <- fl
+        pure ( ifExpr (getTag e2) e1 e2 e3
+             , as1 <> as2 <> as3
+             , cs1 <> cs2 <> cs3 <> [Equality (getTag e1) tBool, Equality (getTag e2) (getTag e3)])
 
-    EAnd _ _ ->
-        undefined
+    EOp  _ (OEq a b) -> do
+        (e1, as1, cs1) <- a
+        (e2, as2, cs2) <- b
+        pure ( eqOp tBool e1 e2
+             , as1 <> as2
+             , cs1 <> cs2 )
 
-    EOr _ _ ->
-        undefined
+    EOp  _ (OAnd a b) -> do
+        (e1, as1, cs1) <- a
+        (e2, as2, cs2) <- b
+        pure ( andOp tBool e1 e2
+             , as1 <> as2
+             , cs1 <> cs2 )
 
-    EMatch _ exs eqs -> do
+    EOp  _ (OOr a b) -> do
+        (e1, as1, cs1) <- a
+        (e2, as2, cs2) <- b
+        pure ( orOp tBool e1 e2
+             , as1 <> as2
+             , cs1 <> cs2 )
+
+    EMat _ exs eqs -> do
         name <- supply
         let t = tVar kStar name 
-        (es1, as1, cs1) <- unzip3 <$> sequence exs
-        (eqs, as2, cs2) <- unzip3 <$> traverse inferEquation eqs
-        let cs3 = do
+        (es1, as1, cs1) <- sequenced exs
+        (eqs, as2, cs2) <- sequenced (inferEquation <$> eqs)
+
+        let cs3 = concat $ do
             Equation ps exs e <- eqs
             e1 <- exs
             (p, e2) <- zip ps es1
             pure [ Equality t (getTag e)
                  , Equality tBool (getTag e1)
-                 , Equality (getRepTag p) (getTag e2) 
-                 ]
-        pure ( tagMatch t es1 eqs
-             , concat as1 <> concat as2
-             , concat (cs1 <> cs2 <> cs3) )
+                 , Equality (getPatternTag p) (getTag e2) ]
 
-    EOp (OEq a b) -> do
-        (e1, as1, cs1) <- a
-        (e2, as2, cs2) <- b
-        pure (tagEq e1 e2, as1 <> as2, cs1 <> cs2)
+        pure ( matExpr t es1 eqs
+             , as1 <> as2
+             , cs1 <> cs2 <> cs3 )
 
 inferEquation 
-  :: Equation (Pattern t) (Infer (RepExpr Type, [Assumption Type], [Constraint])) 
-  -> Infer (RepEq Type, [TypeAssumption], [Constraint])
-inferEquation (Equation ps exs e) = do
-    let (qs, cs) = patternReps ps
-    (trs, as0) <- unzip <$> traverse inferRep qs
-    let insertMono = local (monosetInsertSet (getVar <$> concat as0))
+  :: Equation (Pattern t) (Infer (Expr Type (Pattern Type) q, [Assumption Type], [Constraint])) 
+  -> Infer (Equation (Pattern Type) (Expr Type (Pattern Type) q), [TypeAssumption], [Constraint])
+inferEquation eq@(Equation ps _ _) = do
+    (tps, as0) <- fmap concat . unzip <$> traverse inferPattern ps
 
-    (es1, as1, cs1) <- unzip3 <$> traverse (insertMono . infer) cs
-    (es2, as2, cs2) <- unzip3 <$> sequence (insertMono <$> exs)
-    (exp, as3, cs3) <- insertMono e
+    let Equation _ exs e = local (monosetInsertSet (assumptionVar <$> as0)) <$> eq
+    (es1, as1, cs1) <- sequenced exs
+    (exp, as2, cs2) <- e 
+    let cs3 = [Equality t u | v :>: t <- as1 <> as2, (w, u) <- patternVars =<< tps, v == w]
 
-    let asall = concat (as1 <> as2) <> as3
-    let cs4 = [Equality t u | v :>: t <- asall, (w, u) <- repVars =<< trs, v == w]
+    pure ( Equation tps es1 exp
+         , as0 <> removeAssumptionSet (free tps) (as1 <> as2)
+         , cs1 <> cs2 <> cs3 )
 
-    pure ( Equation trs (es1 <> es2) exp
-         , concat as0 <> removeAssumptionSet (free trs) asall
-         , concat (cs1 <> cs2) <> cs3 <> cs4 )
+sequenced :: [Infer (a, [TypeAssumption], [Constraint])] -> Infer ([a], [TypeAssumption], [Constraint])
+sequenced = fmap (go . unzip3) . sequence where
+    go (a, as, cs) = (a, concat as, concat cs)
 
-inferRep :: Rep t -> Infer (Rep Type, [TypeAssumption])
-inferRep = cata alg where
-    alg rep = do
-        name <- supply
-        let t = tVar kStar name 
-        case rep of
-            RVar _ var -> 
-                pure (rVar t var, [var :>: t])
+inferPattern :: Pattern t -> Infer (Pattern Type, [TypeAssumption])
+inferPattern = cata $ \pat -> do
+    name <- supply
+    let t = tVar kStar name 
+    case pat of
+        PVar _ var -> 
+            pure (varPat t var, [var :>: t])
 
-            RCon _ con rs -> do
-                (trs, as) <- unzip <$> sequence rs
-                pure (rCon t con trs, concat as <> [con :>: t])
+        PCon _ con ps -> do
+            (trs, as) <- unzip <$> sequence ps
+            pure (conPat t con trs, concat as <> [con :>: t])
+
+        PLit _ lit -> do
+            t <- inferLiteral lit
+            pure (litPat t lit, [])
+
+        PAny _ -> 
+            pure (anyPat t, [])
 
 inferApp 
   :: Infer (Expr Type p q, [TypeAssumption], [Constraint]) 
@@ -185,6 +215,12 @@ inferApp expr1 expr2 = do
     let t = tVar kStar name 
     (t1, as1, cs1) <- expr1
     (t2, as2, cs2) <- expr2
-    pure ( tagApp t [t1, t2]
+    pure ( appExpr t [t1, t2]
          , as1 <> as2
          , cs1 <> cs2 <> [Equality (getTag t1) (getTag t2 `tArr` t)] )
+
+inferLiteral :: Literal -> Infer Type
+inferLiteral = pure . \case
+    LUnit{} -> tUnit
+    LBool{} -> tBool
+    LInt{}  -> tInt

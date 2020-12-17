@@ -12,22 +12,22 @@ import Tau.Type.Unification
 import Tau.Util
 import qualified Tau.Env as Env
 
-overlap :: TyClass -> TyClass -> Bool
+overlap :: TypeClass -> TypeClass -> Bool
 overlap a b = isRight (runExcept (unifyClass a b))
 
-bySuper :: ClassEnv -> TyClass -> [TyClass]
-bySuper env self@(TyClass name ty) = 
-    self:concat [bySuper env (TyClass tc ty) | tc <- super env name]
+bySuper :: ClassEnv -> TypeClass -> [TypeClass]
+bySuper env self@(TypeClass name ty) = 
+    self:concat [bySuper env (TypeClass tc ty) | tc <- super env name]
 
-byInstance :: ClassEnv -> TyClass -> Maybe [TyClass]
-byInstance env self@(TyClass name ty) = 
+byInstance :: ClassEnv -> TypeClass -> Maybe [TypeClass]
+byInstance env self@(TypeClass name ty) = 
     msum $ rightToMaybe <$> [tryInstance i | i <- instances env name]
   where
-    tryInstance :: Qualified TyClass -> Either TypeError [TyClass]
+    tryInstance :: Qualified TypeClass -> Either TypeError [TypeClass]
     tryInstance (ps :=> h) = 
         apply <$> matchClass h self <*> pure ps
 
-entail :: ClassEnv -> [TyClass] -> TyClass -> Either TypeError Bool
+entail :: ClassEnv -> [TypeClass] -> TypeClass -> Either TypeError Bool
 entail env cls0 cl = pure super ||^ instc
   where
     super = any (cl `elem`) (bySuper env <$> cls0)
@@ -35,15 +35,15 @@ entail env cls0 cl = pure super ||^ instc
         Nothing   -> pure False
         Just cls1 -> allM (entail env cls0) cls1
 
-isHeadNormalForm :: TyClass -> Bool
-isHeadNormalForm (TyClass _ t) = 
+isHeadNormalForm :: TypeClass -> Bool
+isHeadNormalForm (TypeClass _ t) = 
     flip cata t $ \case
         TApp t _ -> t
         TVar{}   -> True
         TBound{} -> True
         _        -> False
 
-toHeadNormalForm :: ClassEnv -> [TyClass] -> Either TypeError [TyClass]
+toHeadNormalForm :: ClassEnv -> [TypeClass] -> Either TypeError [TypeClass]
 toHeadNormalForm env = fmap concat . mapM (hnf env) 
   where
     hnf env tycl 
@@ -53,7 +53,7 @@ toHeadNormalForm env = fmap concat . mapM (hnf env)
             Just cls -> toHeadNormalForm env cls
 
 -- remove a class constraint if it is entailed by the other constraints in the list
-simplify :: ClassEnv -> [TyClass] -> Either TypeError [TyClass]
+simplify :: ClassEnv -> [TypeClass] -> Either TypeError [TypeClass]
 simplify env = loop [] where
     loop qs [] = pure qs
     loop qs (p:ps) = do
@@ -61,5 +61,5 @@ simplify env = loop [] where
         if entailed then loop qs ps 
              else loop (p:qs) ps
 
-reduce :: ClassEnv -> [TyClass] -> Either TypeError [TyClass]
+reduce :: ClassEnv -> [TypeClass] -> Either TypeError [TypeClass]
 reduce env cls = toHeadNormalForm env cls >>= simplify env 

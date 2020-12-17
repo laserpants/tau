@@ -15,7 +15,7 @@ bind name kind ty
     | otherwise              = pure (name `mapsTo` ty)
 
 unify :: (MonadError TypeError m) => Type -> Type -> m Substitution
-unify t u = fn (unfix t) (unfix u) where
+unify t u = fn (project t) (project u) where
     fn (TArr t1 t2) (TArr u1 u2) = unifyPairs (t1, t2) (u1, u2)
     fn (TApp t1 t2) (TApp u1 u2) = unifyPairs (t1, t2) (u1, u2)
     fn (TVar kind name) _        = bind name kind u
@@ -30,7 +30,7 @@ unifyPairs (t1, t2) (u1, u2) = do
     pure (sub2 <> sub1)
 
 match :: (MonadError TypeError m) => Type -> Type -> m Substitution
-match t u = fn (unfix t) (unfix u) where
+match t u = fn (project t) (project u) where
     fn (TArr t1 t2) (TArr u1 u2)            = matchPairs (t1, t2) (u1, u2)
     fn (TApp t1 t2) (TApp u1 u2)            = matchPairs (t1, t2) (u1, u2)
     fn (TVar k name) _ | Just k == kindOf u = pure (name `mapsTo` u)
@@ -45,11 +45,11 @@ matchPairs (t1, t2) (u1, u2) = do
         Nothing  -> throwError MergeFailed
         Just sub -> pure sub
 
-unifyClass, matchClass :: (MonadError TypeError m) => TyClass -> TyClass -> m Substitution
+unifyClass, matchClass :: (MonadError TypeError m) => TypeClass -> TypeClass -> m Substitution
 unifyClass = lift unify
 matchClass = lift match
 
-lift :: (MonadError TypeError m) => (Type -> Type -> m a) -> TyClass -> TyClass -> m a
-lift m (TyClass c1 t1) (TyClass c2 t2)
+lift :: (MonadError TypeError m) => (Type -> Type -> m a) -> TypeClass -> TypeClass -> m a
+lift m (TypeClass c1 t1) (TypeClass c2 t2)
     | c1 == c2  = m t1 t2
     | otherwise = throwError ClassMismatch

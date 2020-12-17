@@ -38,16 +38,16 @@ deriveOrd1  ''TypeF
 
 type Type = Fix TypeF
 
-data TyClass = TyClass Name Type
+data TypeClass = TypeClass Name Type
     deriving (Show, Eq, Ord)
 
-data Qualified t = [TyClass] :=> t
+data Qualified t = [TypeClass] :=> t
     deriving (Show, Eq, Functor, Foldable, Traversable)
 
 data Scheme = Forall [Kind] (Qualified Type)
     deriving (Show, Eq)
 
-type Instance = Qualified TyClass
+type Instance = Qualified TypeClass
 
 type ClassInfo = ([Name], [Instance])
 
@@ -76,14 +76,14 @@ toScheme ty = Forall [] ([] :=> ty) where
 
 kindOf :: Type -> Maybe Kind
 kindOf = histo $ \case
-    TApp (Just t :< _) _ -> appKind (unfix t) 
+    TApp (Just t :< _) _ -> appKind (project t) 
     TCon k _             -> Just k
     TVar k _             -> Just k
     TArr{}               -> Just kStar
     _                    -> Nothing
   where
-    appKind (KArr _ k)    = Just k
-    appKind _             = Nothing
+    appKind (KArr _ k) = Just k
+    appKind _          = Nothing
 
 super :: ClassEnv -> Name -> [Name]
 super (info, _) name = maybe [] fst (Env.lookup name info)
@@ -91,17 +91,17 @@ super (info, _) name = maybe [] fst (Env.lookup name info)
 instances :: ClassEnv -> Name -> [Instance]
 instances (info, _) name = maybe [] snd (Env.lookup name info)
 
-getVar :: Assumption a -> Name
-getVar (name :>: _) = name
+assumptionVar :: Assumption a -> Name
+assumptionVar (name :>: _) = name
 
-findAssumption :: Name -> [Assumption a] -> Maybe a
-findAssumption _ [] = Nothing 
-findAssumption i (name :>: a:as)
-    | i == name = Just a
-    | otherwise = findAssumption i as
+--findAssumption :: Name -> [Assumption a] -> Maybe a
+--findAssumption _ [] = Nothing 
+--findAssumption i (name :>: a:as)
+--    | i == name = Just a
+--    | otherwise = findAssumption i as
 
 removeAssumption :: Name -> [Assumption a] -> [Assumption a]
-removeAssumption name = filter (\a -> name /= getVar a)
+removeAssumption name = filter (\a -> name /= assumptionVar a)
 
 removeAssumptionSet :: Set Name -> [Assumption a] -> [Assumption a]
 removeAssumptionSet = flip (Set.foldr removeAssumption) 

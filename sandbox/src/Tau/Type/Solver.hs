@@ -27,10 +27,10 @@ choice xs = find (uncurry isSolvable) [(ys, x) | x <- xs, let ys = delete x xs]
 runUnify :: ExceptT TypeError Infer a -> Infer a
 runUnify m = runExceptT (withExceptT TypeError m) >>= liftEither
 
-solve :: [Constraint] -> Infer (Substitution, [TyClass])
+solve :: [Constraint] -> Infer (Substitution, [TypeClass])
 solve = flip runStateT [] . solver
   where
-    solver :: [Constraint] -> StateT [TyClass] Infer Substitution
+    solver :: [Constraint] -> StateT [TypeClass] Infer Substitution
     solver [] = pure mempty
     solver cs0 = do
         (cs, c) <- maybe (throwError CannotSolve) pure (choice cs0)
@@ -62,13 +62,13 @@ vars ty = nub . flip cata ty $ \case
     TApp t1 t2 -> t1 <> t2
     ty         -> mempty
 
-instantiate :: (MonadSupply Name m) => Scheme -> m (Type, [TyClass])
+instantiate :: (MonadSupply Name m) => Scheme -> m (Type, [TypeClass])
 instantiate (Forall ks s@(ps :=> t)) = do
     ts <- traverse freshVar ks
     pure (replaceBound ts t, instConstraint ts <$> ps)
   where
     freshVar k = tVar k <$> supply
-    instConstraint ts (TyClass name ty) = TyClass name (replaceBound ts ty)
+    instConstraint ts (TypeClass name ty) = TypeClass name (replaceBound ts ty)
 
 replaceBound :: [Type] -> Type -> Type 
 replaceBound ts = cata $ \case

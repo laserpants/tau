@@ -1,73 +1,175 @@
+{-# LANGUAGE DeriveFunctor              #-}
+{-# LANGUAGE TemplateHaskell   #-}
+{-# LANGUAGE FlexibleContexts           #-}
+{-# LANGUAGE GeneralizedNewtypeDeriving #-}
 module Main where
 
+import Control.Monad.Reader
+import Control.Monad.Supply
+import Control.Monad.Trans.Maybe
+import Data.Foldable
+import Data.List
 import Tau.Expr
 import Tau.Expr.Patterns
 import Tau.Type
 import Tau.Type.Solver
 import Tau.Type.Substitution
 import Tau.Type.Inference
+import Tau.Eval
+import Tau.Util
 
+--data ThingF a = Case a
+--
+--type Thing = Fix ThingF
+--
+--
+--yy1 = unfoldr fun 1
+--  where
+--    fun x = if x == 5 then Nothing else Just (x, x+1)
+
+--data Thing = Case Thing | Base deriving (Show, Eq)
+--
+--yy1 = unfoldr fun 0
+--  where
+--    fun x = 
+--        if x == 5 then Nothing
+--                  else Just (Base, x + 1)
+
+data ThingF a = Case a | Base deriving (Show, Eq, Functor)
+
+deriveShow1 ''ThingF
+deriveEq1   ''ThingF
+
+type Thing = Fix ThingF
+
+--yyy :: Int -> Thing
+--yyy = ana coalg 
+--  where
+--    coalg 0 = Base
+--    coalg n = Case (n - 1)
+
+
+
+xx1 :: Maybe [(Name, Value Eval)]
+xx1 = 
+    tryEquation 
+        [ PVar () "x", PVar () "y" ] 
+        [ Value (LInt 5), Value (LInt 3) ]
+
+xx2 :: Maybe [(Name, Value Eval)]
+xx2 = 
+    tryEquation 
+        [ PCon () "Just" [ "x" ] ] 
+        [ Data "Just" [ Value (LInt 2) ] ]
+
+xx3 :: Maybe [(Name, Value Eval)]
+xx3 = 
+    tryEquation 
+        [ PCon () "Just" [ "x" ] ] 
+        [ Data "Must" [ Value (LInt 2) ] ]
+
+newtype X a = X { unX :: SupplyT Name Maybe a } deriving
+    ( Functor
+    , Applicative
+    , Monad
+    , MonadSupply Name )
+
+instance MonadFail X where
+    fail _ = X (lift Nothing)
+
+xx5 :: X (Expr () (SimpleRep ()) Name)
+xx5 = simplify (matExpr () 
+    [varExpr () "xs"] 
+    [Equation [Fix (PCon () "Cons" [Fix (PVar () "x"), Fix (PCon () "Cons" [Fix (PVar () "y"), Fix (PVar () "ys")])])] [] (varExpr () "e1")]
+    )
+
+runX :: X b -> Maybe b
+runX x = evalSupplyT (unX x) []
+
+xx6 = runX xx5
+
+--
+
+xx7 = conGroups 
+    [ Equation [Fix (PCon () "Cons" [Fix (PVar () "x"), Fix (PLit () (LInt 5))])] [] (varExpr () "e1") 
+    , Equation [Fix (PCon () "Cons" [Fix (PVar () "x"), Fix (PVar () "xs")])] [] (varExpr () "e2") 
+    , Equation [Fix (PCon () "Nil" [])] [] (varExpr () "e3") 
+    ]
+
+
+xx8 :: PatternExpr ()
+xx8 =
+    ifExpr () 
+        (eqOp () (varExpr () "x") (varExpr () "y")) 
+        (litExpr () (LInt 5))
+        (litExpr () (LInt 3))
+
+xx9 :: Either InferError (PatternExpr Type, [TypeAssumption], [Constraint])
+xx9 =
+    runInfer (infer xx8)
+
+--
 
 -- let x = 3 in f x
 
-testExpr1 :: PatternExpr ()
-testExpr1 =
-    eLet 
-        (rVar () "x") 
-        (tagLit () (LInt 3)) 
-        (tagApp () [eVar "f", tagVar () "x"])
-
-test1 = r where Right r = runInfer (infer testExpr1)
-
--- let (Just x) = (Just 3) in x
-
-testRep2 :: Rep ()
-testRep2 = rCon () "Just" [rVar () "x"]
-
-testExpr2 :: PatternExpr ()
-testExpr2 =
-    eLet 
-        testRep2
-        (tagApp () [tagVar () "Just", tagLit () (LInt 3)]) 
-        (tagVar () "x")
-
-runTestRep2 :: (Rep Type, [TypeAssumption])
-runTestRep2 = r where Right r = runInfer (inferRep testRep2)
-
-test2 :: (RepExpr Type, [TypeAssumption], [Constraint])
-test2 = r where Right r = runInfer (infer testExpr2)
-
-test2Sub = sub
-  where
-    (tr, as, cs) = test2
-    Right (sub, tycls) = runInfer (solve cs)
-
-test22 :: Infer (RepExpr Type)
-test22 = do
-    (tr, as, cs) <- infer testExpr2
-    (sub, tycls) <- solve cs
-    pure (apply sub tr)
-
-runTest22 = runInfer test22
-
+--testExpr1 :: PatternExpr ()
+--testExpr1 =
+--    eLet 
+--        (rVar () "x") 
+--        (tagLit () (LInt 3)) 
+--        (tagApp () [eVar "f", tagVar () "x"])
 --
-
--- match x with 
---   | Just 3 :: [] => e1
---   | Just x :: [] => e2
+--test1 = r where Right r = runInfer (infer testExpr1)
 --
-testExpr3 =
-    tagMatch ()
-      [tagVar () "x"]
-      [ Equation [pCon () "Cons" [pCon () "Just" [pLit () (LInt 3)], pCon () "Nil" []]] [] (tagVar () "e1") 
-      , Equation [pCon () "Cons" [pCon () "Just" [pVar () "x"], pCon () "Nil" []]] [] (tagVar () "e2") 
-      ]
-
-test3 = do
-    (tr, as, cs) <- infer testExpr3
-    pure tr
-
-runTest3 = runInfer test3
+---- let (Just x) = (Just 3) in x
+--
+--testRep2 :: Rep ()
+--testRep2 = rCon () "Just" [rVar () "x"]
+--
+--testExpr2 :: PatternExpr ()
+--testExpr2 =
+--    eLet 
+--        testRep2
+--        (tagApp () [tagVar () "Just", tagLit () (LInt 3)]) 
+--        (tagVar () "x")
+--
+--runTestRep2 :: (Rep Type, [TypeAssumption])
+--runTestRep2 = r where Right r = runInfer (inferRep testRep2)
+--
+--test2 :: (RepExpr Type, [TypeAssumption], [Constraint])
+--test2 = r where Right r = runInfer (infer testExpr2)
+--
+--test2Sub = sub
+--  where
+--    (tr, as, cs) = test2
+--    Right (sub, tycls) = runInfer (solve cs)
+--
+--test22 :: Infer (RepExpr Type)
+--test22 = do
+--    (tr, as, cs) <- infer testExpr2
+--    (sub, tycls) <- solve cs
+--    pure (apply sub tr)
+--
+--runTest22 = runInfer test22
+--
+----
+--
+---- match x with 
+----   | Just 3 :: [] => e1
+----   | Just x :: [] => e2
+----
+--testExpr3 =
+--    tagMatch ()
+--      [tagVar () "x"]
+--      [ Equation [pCon () "Cons" [pCon () "Just" [pLit () (LInt 3)], pCon () "Nil" []]] [] (tagVar () "e1") 
+--      , Equation [pCon () "Cons" [pCon () "Just" [pVar () "x"], pCon () "Nil" []]] [] (tagVar () "e2") 
+--      ]
+--
+--test3 = do
+--    (tr, as, cs) <- infer testExpr3
+--    pure tr
+--
+--runTest3 = runInfer test3
 
 
 main :: IO ()

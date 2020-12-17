@@ -1,12 +1,12 @@
--- {-# LANGUAGE DeriveFoldable    #-}
--- {-# LANGUAGE DeriveFunctor     #-}
 {-# LANGUAGE DeriveTraversable #-}
 {-# LANGUAGE FlexibleContexts  #-}
 {-# LANGUAGE LambdaCase        #-}
 {-# LANGUAGE StrictData        #-}
 {-# LANGUAGE TemplateHaskell   #-}
+{-# LANGUAGE FlexibleInstances #-}
 module Tau.Expr where
 
+import Control.Monad.Supply
 import Tau.Type
 import Tau.Util
 
@@ -26,17 +26,9 @@ data PatternF t a
 deriveShow1 ''PatternF
 deriveEq1   ''PatternF
 
-data RepF t a
-    = RVar t Name
-    | RCon t Name [a]
-    deriving (Show, Eq, Functor, Foldable, Traversable)
+type Pattern t = Fix (PatternF t)
 
-deriveShow1 ''RepF
-deriveEq1   ''RepF
-
-type Pattern   t = Fix (PatternF t)
-type Rep       t = Fix (RepF t)
-type SimpleRep t = RepF t Name
+type SimpleRep t = PatternF t Name
 
 data Equation p a = Equation [p] [a] a
     deriving (Show, Eq, Functor, Foldable, Traversable)
@@ -44,8 +36,10 @@ data Equation p a = Equation [p] [a] a
 deriveShow1 ''Equation
 deriveEq1   ''Equation
 
-data Op t a
-    = OEq a a
+data Op a
+    = OEq  a a
+    | OAnd a ~a
+    | OOr  a ~a
     deriving (Show, Eq, Functor, Foldable, Traversable)
 
 deriveShow1 ''Op
@@ -53,15 +47,14 @@ deriveEq1   ''Op
 
 data ExprF t p q a
     = EVar t Name
+    | ECon t Name [a]
     | ELit t Literal
     | EApp t [a]
     | ELet t q a a
     | ELam t q a
-    | EIf t a ~a ~a
-    | EAnd a ~a
-    | EOr a ~a
-    | EMatch t [a] [Equation p a]
-    | EOp (Op t a)
+    | EIf  t a ~a ~a
+    | EMat t [a] [Equation p a]
+    | EOp  t (Op a)
     deriving (Functor, Foldable, Traversable)
 
 deriveShow  ''ExprF
@@ -71,263 +64,163 @@ deriveEq1   ''ExprF
 
 type Expr t p q = Fix (ExprF t p q)
 
-type PatternExpr t = Expr t (Pattern t) (Rep t)
-type RepExpr     t = Expr t (Rep t) (Rep t)
-type SimpleExpr  t = Expr t (SimpleRep t) (SimpleRep t)
-
-type PatternEq   t = Equation (Pattern t) (PatternExpr t)
-type RepEq       t = Equation (Rep t) (RepExpr t)
-type SimpleEq    t = Equation (Rep t) (SimpleExpr t)
+type PatternExpr t = Expr t (Pattern t) (Pattern t)
 
 getTag :: Expr t p q -> t
 getTag = cata $ \case
     EVar t _     -> t
+    ECon t _ _   -> t
     ELit t _     -> t
     EApp t _     -> t
     ELet t _ _ _ -> t
     ELam t _ _   -> t
-    EMatch t _ _ -> t
+    EIf  t _ _ _ -> t
+    EMat t _ _   -> t
+    EOp  t _     -> t
 
-getRepTag :: Rep t -> t
-getRepTag = cata $ \case
-    RVar t _   -> t
-    RCon t _ _ -> t
+getPatternTag :: Pattern t -> t
+getPatternTag = cata $ \case
+    PVar t _   -> t
+    PCon t _ _ -> t
+    PLit t _   -> t
+    PAny t     -> t
 
-setRepTag :: t -> Rep s -> Rep t
-setRepTag t = cata $ \case
-    RVar _ var    -> rVar t var
-    RCon _ con rs -> rCon t con rs
+getRepTag :: SimpleRep t -> t
+getRepTag = \case
+    PVar t _   -> t
+    PCon t _ _ -> t
+
+setRepTag :: t -> SimpleRep s -> SimpleRep t
+setRepTag t = \case
+    PVar _ var    -> PVar t var
+    PCon _ con rs -> PCon t con rs
+
+varPat :: t -> Name -> Pattern t
+varPat t var = embed (PVar t var)
+
+conPat :: t -> Name -> [Pattern t] -> Pattern t
+conPat t con ps = embed (PCon t con ps)
+
+litPat :: t -> Literal -> Pattern t
+litPat t lit = embed (PLit t lit)
+
+anyPat :: t -> Pattern t
+anyPat t = embed (PAny t)
+
+varExpr :: t -> Name -> Expr t p q 
+varExpr t var = embed (EVar t var)
+
+conExpr :: t -> Name -> [Expr t p q] -> Expr t p q 
+conExpr t con exs = embed (ECon t con exs)
+
+litExpr :: t -> Literal -> Expr t p q 
+litExpr t lit = embed (ELit t lit)
+
+appExpr :: t -> [Expr t p q] -> Expr t p q 
+appExpr t exs = embed (EApp t exs)
+
+letExpr :: t -> q -> Expr t p q -> Expr t p q -> Expr t p q
+letExpr t rep e1 e2 = embed (ELet t rep e1 e2)
+
+lamExpr :: t -> q -> Expr t p q -> Expr t p q
+lamExpr t rep expr = embed (ELam t rep expr)
+
+matExpr :: t -> [Expr t p q] -> [Equation p (Expr t p q)] -> Expr t p q
+matExpr t exs eqs = embed (EMat t exs eqs)
+
+ifExpr :: t -> Expr t p q -> Expr t p q -> Expr t p q -> Expr t p q
+ifExpr t cond tr fl = embed (EIf t cond tr fl)
+
+opExpr :: t -> Op (Expr t p q) -> Expr t p q 
+opExpr t op = embed (EOp t op)
+
+eqOp :: t -> Expr t p q -> Expr t p q -> Expr t p q
+eqOp t e1 e2 = embed (EOp t (OEq e1 e2))
+
+andOp :: t -> Expr t p q -> Expr t p q -> Expr t p q
+andOp t e1 e2 = embed (EOp t (OAnd e1 e2))
+
+orOp :: t -> Expr t p q -> Expr t p q -> Expr t p q
+orOp t e1 e2 = embed (EOp t (OOr e1 e2))
+
+--
+
+--
+
+type Gex t = Expr t (SimpleRep t) Name
+
+data InF a
+    = AMatch [Gex ()] [Equation (Pattern ()) (Gex ())] a
+    | AFail
+    deriving (Show, Eq, Functor, Foldable, Traversable)
+
+type In = Fix InF
+
+data OutF m a
+    -- = Case a (m [(SimpleRep (), a)])
+--    = Defer a
+    = Grok (m a)
+    | Suitcase a [(SimpleRep (), a)]
+    | If a a a -- (Gex ()) (Gex ()) a
+    | D (Gex ())
+    | Fail -- ?
+    deriving (Show, Eq, Functor, Foldable, Traversable)
+
+type Out m = Fix (OutF  m)
+
+deriveShow1 ''InF
+deriveEq1   ''InF
+
+deriveShow1 ''OutF
+deriveEq1   ''OutF
 
 
-pVar :: t -> Name -> Pattern t
-pVar t var = Fix (PVar t var)
+--
 
-pCon :: t -> Name -> [Pattern t] -> Pattern t
-pCon t con ps = Fix (PCon t con ps)
 
-pLit :: t -> Literal -> Pattern t
-pLit t lit = Fix (PLit t lit)
+data GSeedF t m a
+    = GMatch [Gex t] [Equation (Pattern t) (Gex t)] a
+    | GCase (Gex t) (m [(SimpleRep t, a)])
+    | GIf (Gex t) a (Gex t)
+    | GFail
+    deriving (Functor, Foldable, Traversable)
 
-pAny :: t -> Pattern t
-pAny t = Fix (PAny t)
+type GSeed t m = Fix (GSeedF t m)
 
-rVar :: t -> Name -> Rep t
-rVar t var = Fix (RVar t var)
+deriveShow1 ''GSeedF
+deriveEq1   ''GSeedF
 
-rCon :: t -> Name -> [Rep t] -> Rep t
-rCon t con rs = Fix (RCon t con rs)
+--type Gex m t = m (Expr t (SimpleRep t) Name)
+--data GSeedF t m a
+--    = GMatch [Gex m t] [Equation (Pattern t) (Gex m t)] a
+--    | GCase (Gex m t) (m [(SimpleRep t, a)])
+--    | GBase (Gex m t)
+--    | GIf (Gex m t) a a
+--    | GFail
+--    | H a
+--    deriving (Functor, Foldable, Traversable)
+ 
 
-sVar :: t -> Name -> SimpleRep t
-sVar = RVar 
+--
 
-sCon :: t -> Name -> [Name] -> SimpleRep t
-sCon = RCon 
+type Ex t = Expr t (SimpleRep t) Name
 
-eVar :: Name -> Expr () p q
-eVar var = Fix (EVar () var)
+data FSeedF t a
+    = FMatch [Ex t] [Equation (Pattern t) (Ex t)] a
+    | FCase (Ex t) [(SimpleRep t, a)]
+    | FBase (Ex t)
+    | FIf (Ex t) a a
+    | FFail
+    | G a
+    deriving (Functor, Foldable, Traversable)
+    --deriving (Show, Functor, Foldable, Traversable)
 
-eLit :: Literal -> Expr () p q
-eLit lit = Fix (ELit () lit)
+--deriveShow1 ''FSeedF
+--deriveEq1   ''FSeedF
 
-eApp :: [Expr () p q] -> Expr () p q
-eApp exs = Fix (EApp () exs)
+type FSeed t = Fix (FSeedF t)
 
-eLet :: q -> Expr () p q -> Expr () p q -> Expr () p q
-eLet rep e1 e2 = Fix (ELet () rep e1 e2)
+--instance Show (Supply Name a) where
+--    show _ = ""
 
-eLam :: q -> Expr () p q -> Expr () p q
-eLam rep expr = Fix (ELam () rep expr)
-
-eMatch :: [Expr () p q] -> [Equation p (Expr () p q)] -> Expr () p q
-eMatch exs eqs = Fix (EMatch () exs eqs)
-
-eIf :: Expr () p q -> Expr () p q -> Expr () p q -> Expr () p q
-eIf cond tr fl = Fix (EIf () cond tr fl)
-
-eErr = undefined
-
-eAnd :: Expr t p q -> Expr t p q -> Expr t p q 
-eAnd a b = Fix (EAnd a b)
-
-eOr :: Expr t p q -> Expr t p q -> Expr t p q 
-eOr a b = Fix (EOr a b)
-
-eEq :: Expr () p q -> Expr () p q -> Expr () p q 
-eEq a b = Fix (EOp (OEq a b))
-
-tagVar :: t -> Name -> Expr t p q
-tagVar t var = Fix (EVar t var)
-
-tagLit :: t -> Literal -> Expr t p q
-tagLit t lit = Fix (ELit t lit)
-
-tagApp :: t -> [Expr t p q] -> Expr t p q
-tagApp t exs = Fix (EApp t exs)
-
-tagLet :: t -> q -> Expr t p q -> Expr t p q -> Expr t p q
-tagLet t rep e1 e2 = Fix (ELet t rep e1 e2)
-
-tagLam :: t -> q -> Expr t p q -> Expr t p q
-tagLam t rep expr = Fix (ELam t rep expr)
-
-tagMatch :: t -> [Expr t p q] -> [Equation p (Expr t p q)] -> Expr t p q
-tagMatch t exs eqs = Fix (EMatch t exs eqs)
-
-tagIf :: t -> Expr t p q -> Expr t p q -> Expr t p q -> Expr t p q
-tagIf t cond tr fl = Fix (EIf t cond tr fl)
-
-tagEq :: Expr t p q -> Expr t p q -> Expr t p q 
-tagEq a b = Fix (EOp (OEq a b))
-
-tagErr = undefined
-
---tagEq = undefined
-
--- -- data Literal
--- --     = LUnit
--- --     | LBool Bool
--- --     | LInt Int
--- --     deriving (Show, Eq)
--- -- 
--- -- data PatternF t a
--- --     = PVar t Name
--- --     | PCon t Name [a]
--- --     | PLit t Literal
--- --     | PAny t
--- --     deriving (Show, Eq, Functor, Foldable, Traversable)
--- -- 
--- -- deriveShow1 ''PatternF
--- -- deriveEq1   ''PatternF
--- -- 
--- -- type Pattern t = Fix (PatternF t)
--- -- 
--- -- data RepF t a
--- --     = RVar t Name
--- --     | RCon t Name [a]
--- --     deriving (Show, Eq, Functor, Foldable, Traversable)
--- -- 
--- -- deriveShow1 ''RepF
--- -- deriveEq1   ''RepF
--- -- 
--- -- type Rep t = Fix (RepF t)
--- -- 
--- -- type SimpleRep t = RepF t Name
--- -- 
--- -- data EquationF p a = EquationF [p] [a] a
--- --     deriving (Show, Eq, Functor, Foldable, Traversable)
--- -- 
--- -- deriveShow1 ''EquationF
--- -- deriveEq1   ''EquationF
--- -- 
--- -- --type Equation t p = EquationF p (Expr t p)
--- -- 
--- -- type Equation t p = Fix (EquationF (Expr t p))
--- -- 
--- -- ----data ExprF t p a
--- -- data ExprF t p a
--- --     = EVar t Name
--- --     | ELit t Literal
--- --     | EApp t [a]
--- --     | ELet t (Rep t) a a
--- --     | ELam t (Rep t) a
--- --     -- | EMatch t [a] [EquationF t p]
--- --     | EMatch t [a] [p]
--- --     deriving (Functor, Foldable, Traversable)
--- -- 
--- -- --type Expr t p = Fix (ExprF t p)
--- -- type Expr t p = Fix (ExprF t p)
--- -- 
--- -- deriveShow  ''ExprF
--- -- deriveShow1 ''ExprF
--- -- deriveEq    ''ExprF
--- -- deriveEq1   ''ExprF
--- -- 
--- -- getTag :: Expr t p -> t
--- -- getTag = cata $ \case
--- --     EVar t _     -> t
--- --     ELit t _     -> t
--- --     EApp t _     -> t
--- --     ELet t _ _ _ -> t
--- --     ELam t _ _   -> t
--- --     EMatch t _ _ -> t
--- -- 
--- -- bbb :: Expr t p
--- -- bbb = undefined
--- -- ----
--- -- --myEqs :: [EquationF t p]
--- -- --myEqs = [ EquationF [] [] bbb ]
--- -- --myEqs = [ EquationF [] [] bbb ]
--- -- ----
--- -- 
--- -- --pvar :: Name -> Pattern t
--- -- --pvar a1 = Fix (PVar a1)
--- -- --
--- -- --pcon :: Name -> [Pattern] -> Pattern
--- -- --pcon a1 a2 = Fix (PCon a1 a2)
--- -- --
--- -- --plit :: Literal -> Pattern
--- -- --plit a1 = Fix (PLit a1)
--- -- --
--- -- --pany :: Pattern
--- -- --pany = Fix PAny
--- -- --
--- -- ----rvar :: Name -> Rep t
--- -- ----rvar a1 = Fix (RVar a1)
--- -- ----
--- -- ----rcon :: Name -> [Rep t] -> Rep t
--- -- ----rcon a1 a2 = Fix (RCon a1 a2)
--- -- --
--- -- ----svar :: Name -> SimpleRep t
--- -- ----svar a1 = RVar a1
--- -- ----
--- -- ----scon :: Name -> [Name] -> SimpleRep t
--- -- ----scon a1 a2 = RCon a1 a2
--- -- --
--- -- ----evar :: Name -> Expr () p
--- -- --evar a1 = Fix (EVar () a1)
--- -- --
--- -- ----tagVar :: t -> Name -> Expr t p
--- -- tagVar t a1 = Fix (EVar t a1)
--- -- ----
--- -- ----elit :: Literal -> Expr () p
--- -- --elit a1 = Fix (ELit () a1)
--- -- ----
--- -- ----tagLit :: t -> Literal -> Expr t p
--- -- tagLit t a1 = Fix (ELit t a1)
--- -- ----
--- -- ---- eapp :: [Expr () p] -> Expr () p
--- -- --eapp a1 = Fix (EApp () a1)
--- -- ----
--- -- ---- tagApp :: t -> [Expr t p] -> Expr t p
--- -- tagApp t a1 = Fix (EApp t a1)
--- -- ----
--- -- ---- elet :: p -> Expr () p -> Expr () p -> Expr () p
--- -- --elet a1 a2 a3 = Fix (ELet () a1 a2 a3)
--- -- ----
--- -- ---- tagLet :: t -> p -> Expr t p -> Expr t p -> Expr t p
--- -- tagLet t a1 a2 a3 = Fix (ELet t a1 a2 a3)
--- -- ----
--- -- ---- elam :: p -> Expr () p -> Expr () p
--- -- --elam a1 a2 = Fix (ELam () a1 a2)
--- -- ----
--- -- ---- tagLam :: t -> p -> Expr t p -> Expr t p
--- -- tagLam t a1 a2 = Fix (ELam t a1 a2)
--- -- ----
--- -- ---- eif = undefined
--- -- ----
--- -- ---- tagIf = undefined
--- -- ----
--- -- ---- eand = undefined
--- -- ----
--- -- ---- tagAnd = undefined
--- -- ----
--- -- ---- eerr = undefined
--- -- ----
--- -- ---- eunit :: Expr () p
--- -- ---- eunit = elit LUnit
--- -- ----
--- -- ---- ebool :: Bool -> Expr () p
--- -- ---- ebool a1 = elit (LBool a1)
--- -- ----
--- -- ---- eint :: Int -> Expr () p
--- -- ---- eint a1 = elit (LInt a1)
+--deriveShow1 ''Supply Name a
