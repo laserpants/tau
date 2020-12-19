@@ -66,7 +66,8 @@ data InferError
     | ImplementationError
     deriving (Show, Eq)
 
-newtype Infer a = Infer { unInfer :: ExceptT InferError (ReaderT Monoset (Supply Name)) a } deriving
+newtype Infer a = Infer { unInfer :: ExceptT InferError (ReaderT Monoset (Supply Name)) a } 
+  deriving
     ( Functor
     , Applicative
     , Monad
@@ -75,11 +76,12 @@ newtype Infer a = Infer { unInfer :: ExceptT InferError (ReaderT Monoset (Supply
     , MonadError InferError )
 
 runInfer :: Infer a -> Either InferError a
-runInfer = unInfer
-    >>> runExceptT
-    >>> flip runReaderT (Monoset mempty) 
-    >>> flip evalSupply (fmap (\n -> "a" <> show n) [1..])
-    >>> fromMaybe (throwError ImplementationError)
+runInfer = 
+    unInfer
+      >>> runExceptT
+      >>> flip runReaderT (Monoset mempty) 
+      >>> flip evalSupply (fmap (\n -> "a" <> show n) [1..])
+      >>> fromMaybe (throwError ImplementationError)
 
 infer :: PatternExpr t -> Infer (PatternExpr Type, [TypeAssumption], [Constraint])
 infer = cata $ \case
