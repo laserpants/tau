@@ -40,7 +40,7 @@ isHeadNormalForm (TypeClass _ t) =
     flip cata t $ \case
         TApp t _ -> t
         TVar{}   -> True
-        TBound{} -> True
+        TGen{}   -> True
         _        -> False
 
 toHeadNormalForm :: ClassEnv -> [TypeClass] -> Either TypeError [TypeClass]

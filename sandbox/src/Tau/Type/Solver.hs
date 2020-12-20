@@ -53,7 +53,7 @@ generalize :: Set Name -> Type -> Scheme
 generalize set ty = Forall ks (apply s qt) where
     qt = [] :=> ty
     (vs, ks) = unzip [(v, k) | (v, k) <- vars ty, v `Set.notMember` set]
-    s = fromList (zip vs (tBound <$> [0..]))
+    s = fromList (zip vs (tGeneric <$> [0..]))
 
 vars :: Type -> [(Name, Kind)]
 vars ty = nub . flip cata ty $ \case
@@ -72,7 +72,7 @@ instantiate (Forall ks s@(ps :=> t)) = do
 
 replaceBound :: [Type] -> Type -> Type 
 replaceBound ts = cata $ \case
-    TBound n   -> ts !! n
+    TGen n     -> ts !! n
     TArr t1 t2 -> tArr t1 t2
     TApp t1 t2 -> tApp t1 t2
     TVar k n   -> tVar k n 

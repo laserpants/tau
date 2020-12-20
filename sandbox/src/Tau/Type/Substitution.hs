@@ -3,6 +3,7 @@
 {-# LANGUAGE StrictData           #-}
 module Tau.Type.Substitution where
 
+import Control.Arrow
 import Control.Monad (join)
 import Data.List (intersect, transpose)
 import Data.Map.Strict (Map)

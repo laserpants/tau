@@ -25,7 +25,7 @@ deriveOrd1  ''KindF
 type Kind = Fix KindF
 
 data TypeF a
-    = TBound Int
+    = TGen Int
     | TVar Kind Name 
     | TCon Kind Name 
     | TArr a a
@@ -115,8 +115,8 @@ kArr t1 t2 = Fix (KArr t1 t2)
 tVar :: Kind -> Name -> Type
 tVar k var = Fix (TVar k var)
 
-tBound :: Int -> Type
-tBound n = Fix (TBound n)
+tGeneric :: Int -> Type
+tGeneric n = Fix (TGen n)
 
 tCon :: Kind -> Name -> Type
 tCon k con = Fix (TCon k con)

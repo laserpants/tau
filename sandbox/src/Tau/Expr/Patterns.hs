@@ -406,7 +406,7 @@ type Matrix t = Fix (MatrixF t)
 data BorkF m a 
     = Result Bool
     | Next (m a)
---    | Or [Int]
+    | Or [a]
     deriving (Show, Eq, Functor, Foldable, Traversable)
 
 type Bork m = Fix (BorkF m)
@@ -434,13 +434,11 @@ franslate = futu $ project >>> \case
                             xs <- cs & traverse (\(con, rs) ->
                                 let special = specialized con (getPatternTag <$> rs)
                                  in pure (Fix (Matrix (special px) (head (special [qs])))))
-                            pure (Pure (Fix (Bozz xs))) -- Fix undefined) -- Any1
+                            pure (Pure (Fix (Bozz xs)))
                         else 
-                            pure (Pure (Fix (Matrix (defaultMatrix px) qs1)))
-    Bozz xs ->
-        let a:as = xs -- xs :: [Matrix t]
-        in
-        Next $ pure (Pure a)
+                            pure undefined -- (Pure (Free undefined) -- Pure (Fix (Matrix (defaultMatrix px) qs1)))
+    Bozz (x:xs) -> do
+        Next (pure (Pure x))
   where
     complete [] = 
         pure False

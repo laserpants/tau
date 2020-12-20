@@ -31,7 +31,6 @@ newtype Eval a = Eval { unEval :: ReaderT (ValueEnv Eval) Maybe a } deriving
     ( Functor
     , Applicative
     , Monad
-    , MonadFix
     , MonadFail
     , MonadReader (ValueEnv Eval) )
 
@@ -42,7 +41,7 @@ evalExpr :: Expr t (SimpleRep t) Name -> ValueEnv Eval -> Maybe (Value Eval)
 evalExpr = runEval . eval
 
 eval 
-  :: (MonadFix m, MonadFail m, MonadReader (ValueEnv m) m) 
+  :: (MonadFail m, MonadReader (ValueEnv m) m) 
   => Expr t (SimpleRep t) Name 
   -> m (Value m)
 eval = cata $ \case
