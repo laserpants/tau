@@ -20,7 +20,7 @@ import Control.Monad.Writer
 import Data.Foldable (foldrM)
 import Data.Function ((&))
 import Data.List.Extra (groupSortOn, groupBy)
-import Data.Maybe (fromJust, maybeToList)
+import Data.Maybe (fromJust, fromMaybe, maybeToList)
 import Data.Set.Monad (Set)
 import Data.Tuple.Extra (fst3, thd3)
 import Debug.Trace
@@ -40,11 +40,12 @@ newtype Simplify a = Simplify { unSimplify :: ExceptT String (Supply Name) a } d
     , MonadSupply Name
     , MonadError String )
 
-runSimplify :: Simplify a -> Maybe (Either String a)
+runSimplify :: Simplify a -> Either String a
 runSimplify = 
     unSimplify 
       >>> runExceptT
       >>> flip evalSupply (nameSupply "$")
+      >>> fromMaybe (throwError "Error") -- (throwError ImplementationError)
 
 data MatchExprF t a
     = Match [Expr t (SimpleRep t) Name] [Equation (Pattern t) (Expr t (SimpleRep t) Name)] a
@@ -148,9 +149,15 @@ compile
   => [Expr t (SimpleRep t) Name]
   -> [Equation (Pattern t) (Expr t (SimpleRep t) Name)]
   -> Simplify (Expr t (SimpleRep t) Name)
-compile es qs = collapse (translate (Fix (Match es qs (embed Fail))))
+compile es qs = 
+    Match es qs (embed Fail)
+      & embed
+      & translate  
+      & collapse 
   where
-    collapse :: Translated Simplify t -> Simplify (Expr t (SimpleRep t) Name)
+    collapse 
+      :: Translated Simplify t 
+      -> Simplify (Expr t (SimpleRep t) Name)
     collapse = cata $ \case
         Wrap a -> join a
         Expr a -> pure a
@@ -315,7 +322,7 @@ defaultMatrix = concatMap $ \(p:ps) ->
 
 type ConstructorEnv = Env (Set Name)
 
-headCons :: (Monad m) => [[Pattern t]] -> m [(Name, [Pattern t])]
+headCons :: (MonadReader ConstructorEnv m) => [[Pattern t]] -> m [(Name, [Pattern t])]
 headCons = fmap concat . traverse fun where
     fun [] = error "Implementation error (headCons)"
     fun ps = pure $ case unfix (head ps) of
@@ -375,3 +382,79 @@ useful px@(ps:_) qs =
 exhaustive :: (MonadReader ConstructorEnv m) => [[Pattern t]] -> m Bool
 exhaustive []        = pure False
 exhaustive px@(ps:_) = not <$> useful px (anyPat . getPatternTag <$> ps)
+
+--
+--
+--
+--
+--
+--
+--
+--
+--
+--
+--
+
+
+data MatrixF t a 
+    = Matrix [[Pattern t]] [Pattern t]
+    | Bozz [a]
+    deriving (Show, Eq, Functor, Foldable, Traversable)
+
+type Matrix t = Fix (MatrixF t)
+
+data BorkF m a 
+    = Result Bool
+    | Next (m a)
+--    | Or [Int]
+    deriving (Show, Eq, Functor, Foldable, Traversable)
+
+type Bork m = Fix (BorkF m)
+
+franslate :: (MonadReader ConstructorEnv m) => Matrix t -> Bork m
+franslate = futu $ project >>> \case
+    Matrix [] _ ->
+        Result True
+
+    Matrix px@(ps:_) qs 
+        | null ps -> Result False
+        | null qs -> error "Implementation error (franslate)"
+        | otherwise ->
+            Next $ case qs of
+                Fix (PCon _ con rs):_ -> 
+                    let special = specialized con (getPatternTag <$> rs)
+                    in -- useful (special px) (head (special [qs]))
+                    pure (Pure (Fix (Matrix (special px) (head (special [qs])))))
+
+                _:qs1 -> do
+                    cs <- headCons px
+                    isComplete <- complete (fst <$> cs)
+                    if isComplete
+                        then do
+                            xs <- cs & traverse (\(con, rs) ->
+                                let special = specialized con (getPatternTag <$> rs)
+                                 in pure (Fix (Matrix (special px) (head (special [qs])))))
+                            pure (Pure (Fix (Bozz xs))) -- Fix undefined) -- Any1
+                        else 
+                            pure (Pure (Fix (Matrix (defaultMatrix px) qs1)))
+    Bozz xs ->
+        let a:as = xs -- xs :: [Matrix t]
+        in
+        Next $ pure (Pure a)
+  where
+    complete [] = 
+        pure False
+    complete names@(name:_) = do
+        defined <- ask
+        let constructors = defined `Env.union` builtIn
+        pure (Env.findWithDefaultEmpty name constructors == Set.fromList names)
+
+    builtIn = constructorEnv
+        [ ("$True",     ["$True", "$False"])
+        , ("$False",    ["$True", "$False"])
+        , ("$()",       ["$()"])
+        , ("$Int",      [])
+        , ("$Integer",  [])
+        , ("$Float",    [])
+        , ("$Char",     [])
+        , ("$String",   []) ]

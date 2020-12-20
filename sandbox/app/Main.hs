@@ -15,14 +15,45 @@ import Tau.Type
 import Tau.Type.Solver
 import Tau.Type.Substitution
 import Tau.Type.Inference
+import Data.Function ((&))
 import Tau.Eval
 import Tau.Util
+import qualified Tau.Env as Env
+import Tau.Env
+import qualified Data.Map.Strict as Map
+import qualified Data.Set.Monad as Set
 
 testEnv :: ConstructorEnv
 testEnv = constructorEnv 
     [ ("Cons" , ["Cons", "Nil"]) 
     , ("Nil"  , ["Cons", "Nil"]) 
     ]
+
+abcdef1 =
+    letExpr () 
+        (conPat () "Just" [varPat () "x"]) 
+        (conExpr () "Just" [litExpr () (LInt 5)])
+        (varExpr () "x")
+
+abcdef2 = infer abcdef1
+
+abcdef3 = r
+  where
+    Right (r, _, _) = runInfer abcdef2
+
+abcdef4 = simplify abcdef3
+
+abcdef5 = r
+  where
+    Right r = runSimplify abcdef4
+
+abcdef6 = evalExpr abcdef5 $ Env.fromList 
+    [ ("Just", constructor "Just" 1)
+    ]
+
+
+
+
 
 --ccc1 :: [[Pattern t]]
 ccc1 =

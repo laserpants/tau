@@ -5,6 +5,7 @@
 module Tau.Eval where
 
 import Control.Monad.Reader
+import Data.Function ((&))
 import Tau.Env
 import Tau.Expr
 import Tau.Util
@@ -148,3 +149,15 @@ tryEquation xs ys = cata alg (zip xs ys)
 
         Nil -> 
             Just []
+
+constructor :: (MonadReader (ValueEnv m) m) => Name -> Int -> Value m
+constructor name 0 = Data name []
+constructor name n = Closure frst val mempty
+  where
+    val = (ini & foldr (\fun -> asks . Closure fun)) rest
+    ini = do
+        Env env <- ask
+        let args = fmap (env Map.!) vars
+        pure (Data name args)
+
+    vars@(frst:rest) = take n (nameSupply "%")
