@@ -115,8 +115,8 @@ kArr t1 t2 = Fix (KArr t1 t2)
 tVar :: Kind -> Name -> Type
 tVar k var = Fix (TVar k var)
 
-tGeneric :: Int -> Type
-tGeneric n = Fix (TGen n)
+tGen :: Int -> Type
+tGen n = Fix (TGen n)
 
 tCon :: Kind -> Name -> Type
 tCon k con = Fix (TCon k con)

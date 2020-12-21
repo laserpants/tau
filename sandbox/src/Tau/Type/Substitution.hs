@@ -99,17 +99,34 @@ instance (Substitutable t) => Substitutable (Assumption t) where
 instance (Free t) => Free (Assumption t) where
     free (_ :>: t) = free t
 
-instance Substitutable (Expr Type p q) where
+instance (Substitutable p, Substitutable q) => Substitutable (Equation p (Expr Type p q)) where
+    apply sub (Equation ps exs e) =
+        Equation (apply sub ps) (apply sub exs) (apply sub e)
+
+instance (Substitutable p, Substitutable q) => Substitutable (Expr Type p q) where
     apply sub = cata $ \case
         EVar t name        -> varExpr (apply sub t) name
         ECon t con exprs   -> conExpr (apply sub t) con exprs
         ELit t lit         -> litExpr (apply sub t) lit
         EApp t exprs       -> appExpr (apply sub t) exprs
-        ELet t rep ex1 ex2 -> letExpr (apply sub t) rep ex1 ex2
-        ELam t rep ex      -> lamExpr (apply sub t) rep ex
+        ELet t rep ex1 ex2 -> letExpr (apply sub t) (apply sub rep) ex1 ex2
+        ELam t rep ex      -> lamExpr (apply sub t) (apply sub rep) ex
         EIf  t cond tr fl  -> ifExpr  (apply sub t) cond tr fl
-        EMat t exs eqs     -> matExpr (apply sub t) exs eqs
+        EMat t exs eqs     -> matExpr (apply sub t) exs (apply sub eqs)
         EOp  t op          -> opExpr  (apply sub t) op
+
+instance Substitutable (Pattern Type) where
+    apply sub = cata $ \case
+        PVar t name    -> varPat (apply sub t) name
+        PCon t name ps -> conPat (apply sub t) name ps
+        PLit t lit     -> litPat (apply sub t) lit
+        PAny t         -> anyPat (apply sub t)
+
+instance Substitutable (SimpleRep Type) where
+    apply sub (PVar t name)   = PVar (apply sub t) name
+    apply sub (PCon t con ps) = PCon (apply sub t) con ps
+    apply sub (PLit t lit)    = PLit (apply sub t) lit
+    apply sub (PAny t)        = PAny (apply sub t)
 
 instance Free (Expr Type p q) where
     free = free . getTag 

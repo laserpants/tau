@@ -23,6 +23,41 @@ import Tau.Env
 import qualified Data.Map.Strict as Map
 import qualified Data.Set.Monad as Set
 
+
+testExpr1 =
+    letExpr () 
+        (varPat () "f")
+        (varExpr () "show")
+        (appExpr () [varExpr () "f", litExpr () (LInt 5)])
+
+
+baz = runInfer $ do
+    xx@(te, as, cs) <- infer testExpr1
+    let cs' = cs <> [Explicit (tVar kStar "a2") (Forall [kStar] ([TypeClass "Show" (tGen 0)] :=> (tGen 0 `tArr` tCon kStar "String")))]
+    (sub, tcs) <- solve cs'
+    --pure (xx, apply sub te, tcs)
+    --pure (apply sub te, tcs)
+    pure (apply sub te)
+
+
+--testAgain2 =
+--    infer testAgain
+--
+--testAgain3 =
+--    runInfer testAgain2
+--
+--testAgain4 = apply sub e
+--  where
+--    cs' = cs <> [Explicit (tVar kStar "a2") (Forall [kStar] ([TypeClass "Show" (tGen 0)] :=> (tGen 0 `tArr` tCon kStar "String")))]
+--    Right (e, as, cs) = testAgain3
+----testAgain5 = s
+----  where
+--    Right (sub, tcs) = runInfer (solve cs')
+
+
+--
+--
+
 testEnv :: ConstructorEnv
 testEnv = constructorEnv 
     [ ("Cons" , ["Cons", "Nil"]) 
