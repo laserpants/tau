@@ -4,6 +4,7 @@ module Tau.Type.Class where
 
 import Control.Monad.Except
 import Control.Monad.Extra (allM, (||^))
+import Data.List (partition, (\\))
 import Data.Either (isRight)
 import Data.Either.Combinators (rightToMaybe)
 import Tau.Type
@@ -63,3 +64,18 @@ simplify env = loop [] where
 
 reduce :: ClassEnv -> [TypeClass] -> Either TypeError [TypeClass]
 reduce env cls = toHeadNormalForm env cls >>= simplify env 
+
+-- The first, fs, specifies the set of ‘fixed’ variables, which are just the 
+-- variables appearing free in the assumptions. The second, gs, specifies the 
+-- set of variables over which we would like to quantify; 
+
+split :: ClassEnv -> [Name] -> [Name] -> [TypeClass] -> Either TypeError ([TypeClass], [TypeClass])
+split env fs gs ps = do 
+    qs <- reduce env ps
+    let (ds, rs) = partition (all (`elem` fs) . free) qs
+    pure (ds, rs)
+    -- TODO
+--    rs1 <- defaultedPreds env (fs <> gs) rs
+--    pure (ds, rs \\ rs1)
+
+defaultedPreds = undefined

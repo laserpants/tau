@@ -28,13 +28,16 @@ deriveEq1   ''PatternF
 
 type Pattern t = Fix (PatternF t)
 
-type SimpleRep t = PatternF t Name
+data Prep t
+    = RVar t Name
+    | RCon t Name [Name]
+    deriving (Show, Eq)
 
-data Equation p a = Equation [p] [a] a
+data Clause p a = Clause [p] [a] a
     deriving (Show, Eq, Functor, Foldable, Traversable)
 
-deriveShow1 ''Equation
-deriveEq1   ''Equation
+deriveShow1 ''Clause
+deriveEq1   ''Clause
 
 data Op a
     = OEq  a a
@@ -53,7 +56,7 @@ data ExprF t p q a
     | ELet t q a a
     | ELam t q a
     | EIf  t a ~a ~a
-    | EMat t [a] [Equation p a]
+    | EMat t [a] [Clause p a]
     | EOp  t (Op a)
     deriving (Functor, Foldable, Traversable)
 
@@ -63,8 +66,6 @@ deriveShow1 ''ExprF
 deriveEq1   ''ExprF
 
 type Expr t p q = Fix (ExprF t p q)
-
-type PatternExpr t = Expr t (Pattern t) (Pattern t)
 
 getTag :: Expr t p q -> t
 getTag = cata $ \case
@@ -80,20 +81,33 @@ getTag = cata $ \case
 
 getPatternTag :: Pattern t -> t
 getPatternTag = cata $ \case
-    PVar t _   -> t
-    PCon t _ _ -> t
-    PLit t _   -> t
-    PAny t     -> t
+    PVar t _     -> t
+    PCon t _ _   -> t
+    PLit t _     -> t
+    PAny t       -> t
 
-getRepTag :: SimpleRep t -> t
+getRepTag :: Prep t -> t
 getRepTag = \case
-    PVar t _   -> t
-    PCon t _ _ -> t
+    RVar t _     -> t
+    RCon t _ _   -> t
 
-setRepTag :: t -> SimpleRep s -> SimpleRep t
+setRepTag :: t -> Prep s -> Prep t
 setRepTag t = \case
-    PVar _ var    -> PVar t var
-    PCon _ con rs -> PCon t con rs
+    RVar _ var    -> RVar t var
+    RCon _ con rs -> RCon t con rs
+
+
+--
+--
+--getRepTag :: SimpleRep t -> t
+--getRepTag = \case
+--    PVar t _   -> t
+--    PCon t _ _ -> t
+
+--setRepTag :: t -> SimpleRep s -> SimpleRep t
+--setRepTag t = \case
+--    PVar _ var    -> PVar t var
+--    PCon _ con rs -> PCon t con rs
 
 varPat :: t -> Name -> Pattern t
 varPat t var = embed (PVar t var)
@@ -125,7 +139,7 @@ letExpr t rep e1 e2 = embed (ELet t rep e1 e2)
 lamExpr :: t -> q -> Expr t p q -> Expr t p q
 lamExpr t rep expr = embed (ELam t rep expr)
 
-matExpr :: t -> [Expr t p q] -> [Equation p (Expr t p q)] -> Expr t p q
+matExpr :: t -> [Expr t p q] -> [Clause p (Expr t p q)] -> Expr t p q
 matExpr t exs eqs = embed (EMat t exs eqs)
 
 ifExpr :: t -> Expr t p q -> Expr t p q -> Expr t p q -> Expr t p q

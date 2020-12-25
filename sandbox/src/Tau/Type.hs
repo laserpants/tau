@@ -67,8 +67,8 @@ data TypeError
     deriving (Show, Eq)
 
 toScheme :: Type -> Scheme
-toScheme ty = Forall [] ([] :=> ty) where
-    ty = flip cata ty $ \case
+toScheme ty = Forall [] ([] :=> ty1) where
+    ty1 = flip cata ty $ \case
         TVar k var -> tVar k var
         TCon k con -> tCon k con
         TArr t1 t2 -> tArr t1 t2

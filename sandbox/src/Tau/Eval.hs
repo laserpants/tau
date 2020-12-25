@@ -37,12 +37,20 @@ newtype Eval a = Eval { unEval :: ReaderT (ValueEnv Eval) Maybe a } deriving
 runEval :: Eval a -> ValueEnv Eval -> Maybe a
 runEval = runReaderT . unEval 
 
-evalExpr :: Expr t (SimpleRep t) Name -> ValueEnv Eval -> Maybe (Value Eval)
+--evalExpr :: Expr t (SimpleRep t) Name -> ValueEnv Eval -> Maybe (Value Eval)
+--evalExpr = runEval . eval
+
+evalExpr :: Expr t (Prep t) Name -> ValueEnv Eval -> Maybe (Value Eval)
 evalExpr = runEval . eval
+
+--eval 
+--  :: (MonadFail m, MonadReader (ValueEnv m) m) 
+--  => Expr t (SimpleRep t) Name 
+--  -> m (Value m)
 
 eval 
   :: (MonadFail m, MonadReader (ValueEnv m) m) 
-  => Expr t (SimpleRep t) Name 
+  => Expr t (Prep t) Name 
   -> m (Value m)
 eval = cata $ \case
     EVar _ var -> 
@@ -107,14 +115,20 @@ evalOp = \case
         Value (LBool e2) <- b
         pure (Value (LBool (e1 || e2)))
 
+--evalMatch
+--  :: (MonadFail m, MonadReader (ValueEnv m) m)
+--  => [Clause (SimpleRep t) (m (Value m))]
+--  -> [Value m]
+--  -> m (Value m)
+
 evalMatch
   :: (MonadFail m, MonadReader (ValueEnv m) m)
-  => [Equation (SimpleRep t) (m (Value m))]
+  => [Clause (Prep t) (m (Value m))]
   -> [Value m]
   -> m (Value m)
 evalMatch [] _ = fail "Runtime error (evalMatch)"
-evalMatch (Equation ps exs e:eqs) vals = 
-    case tryEquation ps vals of
+evalMatch (Clause ps exs e:eqs) vals = 
+    case tryClause ps vals of
         Just pairs -> do
             conds <- traverse (local (Env.insertMany pairs)) exs
             if and (toBool <$> conds) 
@@ -127,19 +141,26 @@ evalMatch (Equation ps exs e:eqs) vals =
     toBool (Value (LBool b)) = b
     toBool _ = error "Runtime error (toBool)"
 
-tryEquation 
+--tryClause 
+--  :: (MonadFail m, MonadReader (ValueEnv m) m) 
+--  => [SimpleRep t] 
+--  -> [Value m] 
+--  -> Maybe [(Name, Value m)]
+
+tryClause 
   :: (MonadFail m, MonadReader (ValueEnv m) m) 
-  => [SimpleRep t] 
+  => [Prep t] 
   -> [Value m] 
   -> Maybe [(Name, Value m)]
-tryEquation xs ys = cata alg (zip xs ys)
+tryClause xs ys = cata alg (zip xs ys)
   where
-    alg :: Algebra (ListF (SimpleRep t, Value m)) (Maybe [(Name, Value m)])
+    -- alg :: Algebra (ListF (SimpleRep t, Value m)) (Maybe [(Name, Value m)])
+    alg :: Algebra (ListF (Prep t, Value m)) (Maybe [(Name, Value m)])
     alg = \case 
-        Cons (PVar _ var, val) xs -> 
+        Cons (RVar _ var, val) xs -> 
             Just [(var, val)] <> xs
 
-        Cons (PCon _ con1 ps, Data con2 args) xs 
+        Cons (RCon _ con1 ps, Data con2 args) xs 
             | con1 == con2 -> (<>) <$> Just (zip ps args) <*> xs
             | otherwise    -> Nothing
 

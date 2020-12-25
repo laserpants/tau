@@ -83,7 +83,9 @@ runInfer =
       >>> flip evalSupply (fmap (\n -> "a" <> show n) [1..])
       >>> fromMaybe (throwError ImplementationError)
 
-infer :: PatternExpr t -> Infer (PatternExpr Type, [TypeAssumption], [Constraint])
+infer 
+  :: Expr t (Pattern t) (Pattern t) 
+  -> Infer (Expr Type (Pattern Type) (Pattern Type), [TypeAssumption], [Constraint])
 infer = cata $ \case
     EVar _ var -> do
         name <- supply
@@ -94,8 +96,8 @@ infer = cata $ \case
         name <- supply
         let t = tVar kStar name 
         (es1, as1, cs1) <- sequenced exprs
-        pure ( conExpr (foldl tArr t (getTag <$> es1)) con es1
-             , [con :>: t] <> as1
+        pure ( conExpr t con es1
+             , as1 <> [con :>: foldr tArr t (getTag <$> es1)]
              , cs1 )
 
     ELit _ lit -> do
@@ -156,10 +158,10 @@ infer = cata $ \case
         name <- supply
         let t = tVar kStar name 
         (es1, as1, cs1) <- sequenced exs
-        (eqs, as2, cs2) <- sequenced (inferEquation <$> eqs)
+        (eqs, as2, cs2) <- sequenced (inferClause <$> eqs)
 
         let cs3 = concat $ do
-            Equation ps exs e <- eqs
+            Clause ps exs e <- eqs
             e1 <- exs
             (p, e2) <- zip ps es1
             pure [ Equality t (getTag e)
@@ -170,18 +172,18 @@ infer = cata $ \case
              , as1 <> as2
              , cs1 <> cs2 <> cs3 )
 
-inferEquation 
-  :: Equation (Pattern t) (Infer (Expr Type (Pattern Type) q, [Assumption Type], [Constraint])) 
-  -> Infer (Equation (Pattern Type) (Expr Type (Pattern Type) q), [TypeAssumption], [Constraint])
-inferEquation eq@(Equation ps _ _) = do
+inferClause 
+  :: Clause (Pattern t) (Infer (Expr Type (Pattern Type) q, [Assumption Type], [Constraint])) 
+  -> Infer (Clause (Pattern Type) (Expr Type (Pattern Type) q), [TypeAssumption], [Constraint])
+inferClause eq@(Clause ps _ _) = do
     (tps, as0) <- fmap concat . unzip <$> traverse inferPattern ps
 
-    let Equation _ exs e = local (monosetInsertSet (assumptionVar <$> as0)) <$> eq
+    let Clause _ exs e = local (monosetInsertSet (assumptionVar <$> as0)) <$> eq
     (es1, as1, cs1) <- sequenced exs
     (exp, as2, cs2) <- e 
     let cs3 = [Equality t u | v :>: t <- as1 <> as2, (w, u) <- patternVars =<< tps, v == w]
 
-    pure ( Equation tps es1 exp
+    pure ( Clause tps es1 exp
          , as0 <> removeAssumptionSet (free tps) (as1 <> as2)
          , cs1 <> cs2 <> cs3 )
 

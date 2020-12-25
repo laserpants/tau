@@ -70,10 +70,10 @@ instance Substitutable Type where
 
 instance Free Type where
     free = cata $ \case
-        TVar _ var -> Set.singleton var
-        TArr t1 t2 -> t1 `union` t2
-        TApp t1 t2 -> t1 `union` t2
-        ty         -> mempty
+        TVar _ var     -> Set.singleton var
+        TArr t1 t2     -> t1 `union` t2
+        TApp t1 t2     -> t1 `union` t2
+        ty             -> mempty
 
 instance Substitutable TypeClass where
     apply sub (TypeClass name t) = TypeClass name (apply sub t)
@@ -99,9 +99,9 @@ instance (Substitutable t) => Substitutable (Assumption t) where
 instance (Free t) => Free (Assumption t) where
     free (_ :>: t) = free t
 
-instance (Substitutable p, Substitutable q) => Substitutable (Equation p (Expr Type p q)) where
-    apply sub (Equation ps exs e) =
-        Equation (apply sub ps) (apply sub exs) (apply sub e)
+instance (Substitutable p, Substitutable q) => Substitutable (Clause p (Expr Type p q)) where
+    apply sub (Clause ps exs e) =
+        Clause (apply sub ps) (apply sub exs) (apply sub e)
 
 instance (Substitutable p, Substitutable q) => Substitutable (Expr Type p q) where
     apply sub = cata $ \case
@@ -117,16 +117,20 @@ instance (Substitutable p, Substitutable q) => Substitutable (Expr Type p q) whe
 
 instance Substitutable (Pattern Type) where
     apply sub = cata $ \case
-        PVar t name    -> varPat (apply sub t) name
-        PCon t name ps -> conPat (apply sub t) name ps
-        PLit t lit     -> litPat (apply sub t) lit
-        PAny t         -> anyPat (apply sub t)
+        PVar t name        -> varPat (apply sub t) name
+        PCon t name ps     -> conPat (apply sub t) name ps
+        PLit t lit         -> litPat (apply sub t) lit
+        PAny t             -> anyPat (apply sub t)
 
-instance Substitutable (SimpleRep Type) where
-    apply sub (PVar t name)   = PVar (apply sub t) name
-    apply sub (PCon t con ps) = PCon (apply sub t) con ps
-    apply sub (PLit t lit)    = PLit (apply sub t) lit
-    apply sub (PAny t)        = PAny (apply sub t)
+instance (Substitutable t) => Substitutable (Prep t) where
+    apply sub (RVar t name)   = RVar (apply sub t) name
+    apply sub (RCon t con ps) = RCon (apply sub t) con ps
+
+--instance Substitutable (SimpleRep Type) where
+--    apply sub (PVar t name)   = PVar (apply sub t) name
+--    apply sub (PCon t con ps) = PCon (apply sub t) con ps
+--    apply sub (PLit t lit)    = PLit (apply sub t) lit
+--    apply sub (PAny t)        = PAny (apply sub t)
 
 instance Free (Expr Type p q) where
     free = free . getTag 
@@ -137,6 +141,10 @@ instance Free (Pattern t) where
         PCon _ _ ps -> unions ps
         _           -> mempty
 
-instance Free (SimpleRep t) where
-    free (PVar _ name) = Set.singleton name 
-    free (PCon _ _ ns) = Set.fromList ns
+instance Free (Prep t) where
+    free (RVar _ name) = Set.singleton name 
+    free (RCon _ _ ns) = Set.fromList ns
+
+--instance Free (SimpleRep t) where
+--    free (PVar _ name) = Set.singleton name 
+--    free (PCon _ _ ns) = Set.fromList ns

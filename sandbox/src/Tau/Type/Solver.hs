@@ -33,6 +33,7 @@ solve = flip runStateT [] . solver
     solver :: [Constraint] -> StateT [TypeClass] Infer Substitution
     solver [] = pure mempty
     solver cs0 = do
+        traceShowM cs0
         (cs, c) <- maybe (throwError CannotSolve) pure (choice cs0)
         case c of
             Equality t1 t2 -> do
@@ -75,5 +76,5 @@ replaceBound ts = cata $ \case
     TGen n     -> ts !! n
     TArr t1 t2 -> tArr t1 t2
     TApp t1 t2 -> tApp t1 t2
-    TVar k n   -> tVar k n 
-    TCon k n   -> tCon k n 
+    TVar k var -> tVar k var
+    TCon k con -> tCon k con

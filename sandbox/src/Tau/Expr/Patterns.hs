@@ -2,6 +2,7 @@
 {-# LANGUAGE GeneralizedNewtypeDeriving #-}
 {-# LANGUAGE DeriveTraversable  #-}
 {-# LANGUAGE LambdaCase       #-}
+{-# LANGUAGE FlexibleInstances #-}
 {-# LANGUAGE TypeFamilies     #-}
 {-# LANGUAGE StrictData       #-}
 {-# LANGUAGE TemplateHaskell   #-}
@@ -48,7 +49,8 @@ runSimplify =
       >>> fromMaybe (throwError "Error") -- (throwError ImplementationError)
 
 data MatchExprF t a
-    = Match [Expr t (SimpleRep t) Name] [Equation (Pattern t) (Expr t (SimpleRep t) Name)] a
+    -- = Match [Expr t (SimpleRep t) Name] [Clause (Pattern t) (Expr t (SimpleRep t) Name)] a
+    = Match [Expr t (Prep t) Name] [Clause (Pattern t) (Expr t (Prep t) Name)] a
     | Fail
     deriving (Show, Eq, Functor, Foldable, Traversable)
 
@@ -56,9 +58,11 @@ type MatchExpr t = Fix (MatchExprF t)
 
 data TranslatedF m t a
     = Wrap (m a)
-    | SimpleMatch a [(SimpleRep t, a)]
+    -- | SimpleMatch a [(SimpleRep t, a)]
+    | SimpleMatch a [(Prep t, a)]
     | If a a a
-    | Expr (Expr t (SimpleRep t) Name)
+--    | Expr (Expr t (SimpleRep t) Name)
+    | Expr (Expr t (Prep t) Name)
     deriving (Show, Eq, Functor, Foldable, Traversable)
 
 type Translated m t = Fix (TranslatedF m t)
@@ -70,74 +74,158 @@ deriveShow1 ''TranslatedF
 deriveEq1   ''TranslatedF
 
 simplify 
-  :: (Show t) 
+  :: (Boolean t, Show t) 
   => Expr t (Pattern t) (Pattern t) 
-  -> Simplify (Expr t (SimpleRep t) Name)
-simplify = cata alg where
-    alg = \case 
-        EVar t var     -> pure (varExpr t var)
-        ECon t con exs -> conExpr t con <$> sequence exs
-        ELit t lit     -> pure (litExpr t lit)
-        EApp t exs     -> appExpr t <$> sequence exs
+  -> Simplify (Expr t (Prep t) Name)
+simplify = cata $ \case
+    EVar t var     -> pure (varExpr t var)
+    ECon t con exs -> conExpr t con <$> sequence exs
+    ELit t lit     -> pure (litExpr t lit)
+    EApp t exs     -> appExpr t <$> sequence exs
 
-        --
-        --  let-expressions can only bind to simple variables (formal parameters)
-        --
-        ELet t (Fix (PVar _ var)) e1 e2 -> 
-            letExpr t var <$> e1 <*> e2
+    --
+    --  let-expressions can only bind to simple variables (formal parameters)
+    --
+    ELet t (Fix (PVar _ var)) e1 e2 -> 
+        letExpr t var <$> e1 <*> e2
 
-        --
-        --  The same restriction applies to lambdas
-        --
-        ELam t (Fix (PVar _ var)) e1 -> 
-            lamExpr t var <$> e1 
+    --
+    --  The same restriction applies to lambdas
+    --
+    ELam t (Fix (PVar _ var)) e1 -> 
+        lamExpr t var <$> e1 
 
-        --
-        --  Expressions like \5 => ..., let 5 = ..., or let _ = ... are not allowed
-        --
-        ELam _ (Fix PLit{}) _   -> throwError "Pattern not allowed"
-        ELet _ (Fix PLit{}) _ _ -> throwError "Pattern not allowed"
-        ELam _ (Fix PAny{}) _   -> throwError "Pattern not allowed"
-        ELet _ (Fix PAny{}) _ _ -> throwError "Pattern not allowed"
+    --
+    --  Expressions like \5 => ..., let 5 = ..., or let _ = ... are not allowed
+    --
+    ELam _ (Fix PLit{}) _   -> throwError "Pattern not allowed"
+    ELet _ (Fix PLit{}) _ _ -> throwError "Pattern not allowed"
+    ELam _ (Fix PAny{}) _   -> throwError "Pattern not allowed"
+    ELet _ (Fix PAny{}) _ _ -> throwError "Pattern not allowed"
 
-        --
-        --  Expressions like let C x = y in f x
-        --  get translated to: match y with | C x => f x
-        --
-        ELet _ rep e1 e2 -> do
-            expr <- e1
-            body <- e2
-            compile [expr] [Equation [rep] [] body]
-            --maybe (error "Refutable pattern in let-binding") pure mexp
+    --
+    --  Expressions like let C x = y in f x
+    --  get translated to: match y with | C x => f x
+    --
+    ELet _ rep e1 e2 -> do
+        expr <- e1
+        body <- e2
+        compile [expr] [Clause [rep] [] body]
 
-        --
-        --  Lambda expressions like \C x => f x
-        --  get translated to \$z => match $z with | C x => f x in $z
-        --  where $z is a fresh variable
-        --
-        ELam t rep e1 -> do
-            fresh <- supply
-            body <- e1
-            expr <- compile [varExpr t fresh] [Equation [rep] [] body]
-            pure (lamExpr t fresh expr)
-            --mexp <- compile [varExpr t fresh] [Equation [rep] [] body]
-            --case mexp of
-            --    Nothing -> error "Refutable pattern in lambda function"
-            --    Just expr -> pure (lamExpr t fresh expr)
+    --
+    --  Lambda expressions like \(C x) => f x
+    --  get translated to \$z => match $z with | C x => f x in $z
+    --  where $z is a fresh variable
+    --
+    ELam t rep e1 -> do
+        fresh <- supply
+        body <- e1
+        expr <- compile [varExpr t fresh] [Clause [rep] [] body]
+        pure (lamExpr t fresh expr)
 
-        EIf t cond e1 e2 ->
-            ifExpr t <$> cond <*> e1 <*> e2
+    EIf t cond e1 e2 ->
+        ifExpr t <$> cond <*> e1 <*> e2
 
-        --
-        --
-        --
-        EMat t exs eqs -> do
-            join (compile <$> sequence exs <*> traverse sequence eqs)
-            --mexp <- join (compile <$> sequence exs <*> traverse sequence eqs)
-            --maybe (error "Non-exhaustive patterns") pure mexp
+    EMat t exs eqs -> do
+        join (compile <$> sequence exs <*> traverse sequence eqs)
 
-        EOp t op ->
-            simplifyOp t op
+    EOp t op ->
+        simplifyOp t op
+
+--simplify 
+--  :: (Show t) 
+--  => Expr t (Pattern t) (Pattern t) 
+--  -> Simplify (Expr t (SimpleRep t) Name)
+--simplify = cata alg where
+--    alg = \case 
+--        EVar t var     -> pure (varExpr t var)
+--        ECon t con exs -> conExpr t con <$> sequence exs
+--        ELit t lit     -> pure (litExpr t lit)
+--        EApp t exs     -> appExpr t <$> sequence exs
+--
+--        --
+--        --  let-expressions can only bind to simple variables (formal parameters)
+--        --
+--        ELet t (Fix (PVar _ var)) e1 e2 -> 
+--            letExpr t var <$> e1 <*> e2
+--
+--        --
+--        --  The same restriction applies to lambdas
+--        --
+--        ELam t (Fix (PVar _ var)) e1 -> 
+--            lamExpr t var <$> e1 
+--
+--        --
+--        --  Expressions like \5 => ..., let 5 = ..., or let _ = ... are not allowed
+--        --
+--        ELam _ (Fix PLit{}) _   -> throwError "Pattern not allowed"
+--        ELet _ (Fix PLit{}) _ _ -> throwError "Pattern not allowed"
+--        ELam _ (Fix PAny{}) _   -> throwError "Pattern not allowed"
+--        ELet _ (Fix PAny{}) _ _ -> throwError "Pattern not allowed"
+--
+--        --
+--        --  Expressions like let C x = y in f x
+--        --  get translated to: match y with | C x => f x
+--        --
+--        ELet _ rep e1 e2 -> do
+--            expr <- e1
+--            body <- e2
+--            compile [expr] [Clause [rep] [] body]
+--            --maybe (error "Refutable pattern in let-binding") pure mexp
+--
+--        --
+--        --  Lambda expressions like \C x => f x
+--        --  get translated to \$z => match $z with | C x => f x in $z
+--        --  where $z is a fresh variable
+--        --
+--        ELam t rep e1 -> do
+--            fresh <- supply
+--            body <- e1
+--            expr <- compile [varExpr t fresh] [Clause [rep] [] body]
+--            pure (lamExpr t fresh expr)
+--            --mexp <- compile [varExpr t fresh] [Clause [rep] [] body]
+--            --case mexp of
+--            --    Nothing -> error "Refutable pattern in lambda function"
+--            --    Just expr -> pure (lamExpr t fresh expr)
+--
+--        EIf t cond e1 e2 ->
+--            ifExpr t <$> cond <*> e1 <*> e2
+--
+--        EMat t exs eqs -> do
+--            join (compile <$> sequence exs <*> traverse sequence eqs)
+--            --mexp <- join (compile <$> sequence exs <*> traverse sequence eqs)
+--            --maybe (error "Non-exhaustive patterns") pure mexp
+--
+--        EOp t op ->
+--            simplifyOp t op
+
+flatten 
+  :: (Boolean t) 
+  => Clause (Pattern t) (Expr t p q) 
+  -> Clause (Pattern t) (Expr t p q)
+flatten (Clause ps exs e) = Clause qs (exs <> exs1) e where
+    (qs, exs1) = fmap concat (unzip (fmap fn ps))
+    fn pat = fromJust (evalSupply (runWriterT (cata alg pat)) (nameSupply "$"))
+    alg = \case
+        PCon t con ps -> conPat t con <$> sequence ps 
+        PVar t var    -> pure (varPat t var)
+        PAny t        -> pure (varPat t "$_")
+        PLit t lit -> do
+            var <- supply
+            tell [eqOp boolean (varExpr t var) (litExpr t lit)]
+            pure (varPat t var)
+
+class Boolean t where
+    boolean :: t
+
+instance Boolean () where
+    boolean = ()
+
+instance Boolean Type where
+    boolean = tBool
+
+-- match x with
+--    5 => e1
 
 simplifyOp :: t -> Op (Simplify (Expr t p q)) -> Simplify (Expr t p q)
 simplifyOp t (OEq  a b) = eqOp  t <$> a <*> b
@@ -145,19 +233,24 @@ simplifyOp t (OAnd a b) = andOp t <$> a <*> b
 simplifyOp t (OOr  a b) = orOp  t <$> a <*> b
 
 compile 
-  :: (Show t) 
-  => [Expr t (SimpleRep t) Name]
-  -> [Equation (Pattern t) (Expr t (SimpleRep t) Name)]
-  -> Simplify (Expr t (SimpleRep t) Name)
+  :: (Boolean t, Show t) 
+  => [Expr t (Prep t) Name]
+  -> [Clause (Pattern t) (Expr t (Prep t) Name)]
+  -> Simplify (Expr t (Prep t) Name)
+--compile 
+--  :: (Show t) 
+--  => [Expr t (SimpleRep t) Name]
+--  -> [Clause (Pattern t) (Expr t (SimpleRep t) Name)]
+--  -> Simplify (Expr t (SimpleRep t) Name)
 compile es qs = 
-    Match es qs (embed Fail)
+    Match es (flatten <$> qs) (embed Fail)
       & embed
       & translate  
       & collapse 
   where
     collapse 
       :: Translated Simplify t 
-      -> Simplify (Expr t (SimpleRep t) Name)
+      -> Simplify (Expr t (Prep t) Name)
     collapse = cata $ \case
         Wrap a -> join a
         Expr a -> pure a
@@ -173,8 +266,30 @@ compile es qs =
           where
             fn (rep, ex1) = do
                 expr <- ex1
-                pure ( Equation [rep] [] expr
+                pure ( Clause [rep] [] expr
                      , getTag expr )
+
+--  where
+--    collapse 
+--      :: Translated Simplify t 
+--      -> Simplify (Expr t (SimpleRep t) Name)
+--    collapse = cata $ \case
+--        Wrap a -> join a
+--        Expr a -> pure a
+--        If cond tr fl -> 
+--            ifExpr <$> (getTag <$> tr) 
+--                   <*> cond 
+--                   <*> tr 
+--                   <*> fl
+--        SimpleMatch ex css -> do
+--            expr <- ex
+--            (eqs, ts) <- unzip <$> traverse fn css
+--            pure (matExpr (head ts) [expr] eqs)
+--          where
+--            fn (rep, ex1) = do
+--                expr <- ex1
+--                pure ( Clause [rep] [] expr
+--                     , getTag expr )
 
 translate :: (Show t) => MatchExpr t -> Translated Simplify t
 translate = futu $ project >>> \case
@@ -184,10 +299,10 @@ translate = futu $ project >>> \case
     Match [] [] c ->
         Wrap (pure (Pure c))
 
-    Match [] (Equation [] [] e:_) _ ->
+    Match [] (Clause [] [] e:_) _ ->
         Expr e
 
-    Match [] (Equation [] exs e:qs) c ->
+    Match [] (Clause [] exs e:qs) c ->
         If (Free (Expr (foldr1 (\a -> andOp (getTag a) a) exs))) 
            (Free (Expr e)) 
            (Pure (Fix (Match [] qs c)))
@@ -197,15 +312,15 @@ translate = futu $ project >>> \case
             [VarTag eqs] -> 
                 pure (Pure (Fix (Match us (runSubst <$> eqs) c)))
                   where
-                    runSubst (Equation (Fix (PVar _ name):ps) exs e) = 
-                        substitute name u <$> Equation ps exs e
+                    runSubst (Clause (Fix (PVar _ name):ps) exs e) = 
+                        substitute name u <$> Clause ps exs e
 
             [ConTag eqs] -> do
                 Free . SimpleMatch (Free (Expr u)) <$> traverse toSimpleMatch (conGroups eqs)
                   where
                     toSimpleMatch (ConGroup t con ps eqs) = do
                         vars <- supplies (length ps)
-                        pure ( PCon t con vars
+                        pure ( RCon t con vars
                              , Pure (Fix (Match (combine ps vars <> us) eqs c)) )
 
                     combine ps vs = 
@@ -224,9 +339,9 @@ translate = futu $ project >>> \case
 
 substitute 
   :: Name 
-  -> Expr t (SimpleRep t) Name 
-  -> Expr t (SimpleRep t) Name 
-  -> Expr t (SimpleRep t) Name
+  -> Expr t (Prep t) Name 
+  -> Expr t (Prep t) Name 
+  -> Expr t (Prep t) Name
 substitute name subst = para $ \case
     ELet t pat (_, e1) e2 -> letExpr t pat e1 e2'
       where 
@@ -240,7 +355,7 @@ substitute name subst = para $ \case
 
     EMat t exs eqs -> matExpr t (snd <$> exs) (substEq <$> eqs)
       where
-        substEq eq@(Equation ps _ _) 
+        substEq eq@(Clause ps _ _) 
             | name `elem` free ps = fst <$> eq
             | otherwise           = snd <$> eq
 
@@ -260,16 +375,54 @@ substitute name subst = para $ \case
         OAnd a b -> andOp t a b
         OOr  a b -> orOp  t a b
 
+--substitute 
+--  :: Name 
+--  -> Expr t (SimpleRep t) Name 
+--  -> Expr t (SimpleRep t) Name 
+--  -> Expr t (SimpleRep t) Name
+--substitute name subst = para $ \case
+--    ELet t pat (_, e1) e2 -> letExpr t pat e1 e2'
+--      where 
+--        e2' | name == pat = fst e2
+--            | otherwise   = snd e2
+--
+--    ELam t pat e1 -> lamExpr t pat e1'
+--      where
+--        e1' | name == pat = fst e1
+--            | otherwise   = snd e1
+--
+--    EMat t exs eqs -> matExpr t (snd <$> exs) (substEq <$> eqs)
+--      where
+--        substEq eq@(Clause ps _ _) 
+--            | name `elem` free ps = fst <$> eq
+--            | otherwise           = snd <$> eq
+--
+--    expr -> snd <$> expr & \case
+--        EVar t var 
+--            | name == var -> subst
+--            | otherwise   -> varExpr t var
+--
+--        ECon t con exs -> conExpr t con exs
+--        ELit t lit     -> litExpr t lit
+--        EApp t exs     -> appExpr t exs
+--        EIf t c e1 e2  -> ifExpr  t c e1 e2
+--        EOp t op       -> substOp t op
+--  where
+--    substOp t = \case
+--        OEq  a b -> eqOp  t a b
+--        OAnd a b -> andOp t a b
+--        OOr  a b -> orOp  t a b
+
 data Tagged a = ConTag a | VarTag a
     deriving (Show, Eq, Ord)
 
-taggedEq :: Equation (Pattern t) a -> Tagged (Equation (Pattern t) a)
-taggedEq eq@(Equation ps _ _) = 
+taggedEq :: Clause (Pattern t) a -> Tagged (Clause (Pattern t) a)
+taggedEq eq@(Clause ps _ _) = 
     case project <$> ps of
         PCon{}:_ -> ConTag eq
         _        -> VarTag eq
 
-equationGroups :: [Equation (Pattern t) a] -> [Tagged [Equation (Pattern t) a]]
+equationGroups :: [Clause (Pattern t) a] -> [Tagged [Clause (Pattern t) a]]
 equationGroups = cata alg . fmap taggedEq where
     alg Nil = []
     alg (Cons (ConTag e) (ConTag es:ts)) = ConTag (e:es):ts
@@ -277,10 +430,10 @@ equationGroups = cata alg . fmap taggedEq where
     alg (Cons (ConTag e) ts) = ConTag [e]:ts
     alg (Cons (VarTag e) ts) = VarTag [e]:ts
 
-data ConGroup t a = ConGroup t Name [Pattern t] [Equation (Pattern t) a]
+data ConGroup t a = ConGroup t Name [Pattern t] [Clause (Pattern t) a]
     deriving (Show, Eq)
 
-conGroups :: [Equation (Pattern t) a] -> [ConGroup t a]
+conGroups :: [Clause (Pattern t) a] -> [ConGroup t a]
 conGroups =
     concatMap conGroup
       . groupSortOn (fst3 . snd)
@@ -290,8 +443,8 @@ conGroups =
         [ConGroup t con ps (thd3 . snd <$> all)]
     conGroup [] = 
         []
-    expanded (Equation (Fix (PCon t con ps):qs) exs e) =
-        [(t, (con, ps, Equation (ps <> qs) exs e))]
+    expanded (Clause (Fix (PCon t con ps):qs) exs e) =
+        [(t, (con, ps, Clause (ps <> qs) exs e))]
 
 patternVars :: Pattern t -> [(Name, t)]
 patternVars = cata $ \case
@@ -300,6 +453,9 @@ patternVars = cata $ \case
     PLit _ lit    -> []
     PAny _        -> []
 
+-- ****************************************************************************
+-- ****************************************************************************
+-- ****************************************************************************
 -- ****************************************************************************
 
 specialized :: Name -> [t] -> [[Pattern t]] -> [[Pattern t]]
@@ -396,63 +552,63 @@ exhaustive px@(ps:_) = not <$> useful px (anyPat . getPatternTag <$> ps)
 --
 
 
-data MatrixF t a 
-    = Matrix [[Pattern t]] [Pattern t]
-    | Bozz [a]
-    deriving (Show, Eq, Functor, Foldable, Traversable)
-
-type Matrix t = Fix (MatrixF t)
-
-data BorkF m a 
-    = Result Bool
-    | Next (m a)
-    | Or [a]
-    deriving (Show, Eq, Functor, Foldable, Traversable)
-
-type Bork m = Fix (BorkF m)
-
-franslate :: (MonadReader ConstructorEnv m) => Matrix t -> Bork m
-franslate = futu $ project >>> \case
-    Matrix [] _ ->
-        Result True
-
-    Matrix px@(ps:_) qs 
-        | null ps -> Result False
-        | null qs -> error "Implementation error (franslate)"
-        | otherwise ->
-            Next $ case qs of
-                Fix (PCon _ con rs):_ -> 
-                    let special = specialized con (getPatternTag <$> rs)
-                    in -- useful (special px) (head (special [qs]))
-                    pure (Pure (Fix (Matrix (special px) (head (special [qs])))))
-
-                _:qs1 -> do
-                    cs <- headCons px
-                    isComplete <- complete (fst <$> cs)
-                    if isComplete
-                        then do
-                            xs <- cs & traverse (\(con, rs) ->
-                                let special = specialized con (getPatternTag <$> rs)
-                                 in pure (Fix (Matrix (special px) (head (special [qs])))))
-                            pure (Pure (Fix (Bozz xs)))
-                        else 
-                            pure undefined -- (Pure (Free undefined) -- Pure (Fix (Matrix (defaultMatrix px) qs1)))
-    Bozz (x:xs) -> do
-        Next (pure (Pure x))
-  where
-    complete [] = 
-        pure False
-    complete names@(name:_) = do
-        defined <- ask
-        let constructors = defined `Env.union` builtIn
-        pure (Env.findWithDefaultEmpty name constructors == Set.fromList names)
-
-    builtIn = constructorEnv
-        [ ("$True",     ["$True", "$False"])
-        , ("$False",    ["$True", "$False"])
-        , ("$()",       ["$()"])
-        , ("$Int",      [])
-        , ("$Integer",  [])
-        , ("$Float",    [])
-        , ("$Char",     [])
-        , ("$String",   []) ]
+--data MatrixF t a 
+--    = Matrix [[Pattern t]] [Pattern t]
+--    | Bozz [a]
+--    deriving (Show, Eq, Functor, Foldable, Traversable)
+--
+--type Matrix t = Fix (MatrixF t)
+--
+--data BorkF m a 
+--    = Result Bool
+--    | Next (m a)
+--    | Or [a]
+--    deriving (Show, Eq, Functor, Foldable, Traversable)
+--
+--type Bork m = Fix (BorkF m)
+--
+--franslate :: (MonadReader ConstructorEnv m) => Matrix t -> Bork m
+--franslate = futu $ project >>> \case
+--    Matrix [] _ ->
+--        Result True
+--
+--    Matrix px@(ps:_) qs 
+--        | null ps -> Result False
+--        | null qs -> error "Implementation error (franslate)"
+--        | otherwise ->
+--            Next $ case qs of
+--                Fix (PCon _ con rs):_ -> 
+--                    let special = specialized con (getPatternTag <$> rs)
+--                    in -- useful (special px) (head (special [qs]))
+--                    pure (Pure (Fix (Matrix (special px) (head (special [qs])))))
+--
+--                _:qs1 -> do
+--                    cs <- headCons px
+--                    isComplete <- complete (fst <$> cs)
+--                    if isComplete
+--                        then do
+--                            xs <- cs & traverse (\(con, rs) ->
+--                                let special = specialized con (getPatternTag <$> rs)
+--                                 in pure (Fix (Matrix (special px) (head (special [qs])))))
+--                            pure (Pure (Fix (Bozz xs)))
+--                        else 
+--                            pure undefined -- (Pure (Free undefined) -- Pure (Fix (Matrix (defaultMatrix px) qs1)))
+--    Bozz (x:xs) -> do
+--        Next (pure (Pure x))
+--  where
+--    complete [] = 
+--        pure False
+--    complete names@(name:_) = do
+--        defined <- ask
+--        let constructors = defined `Env.union` builtIn
+--        pure (Env.findWithDefaultEmpty name constructors == Set.fromList names)
+--
+--    builtIn = constructorEnv
+--        [ ("$True",     ["$True", "$False"])
+--        , ("$False",    ["$True", "$False"])
+--        , ("$()",       ["$()"])
+--        , ("$Int",      [])
+--        , ("$Integer",  [])
+--        , ("$Float",    [])
+--        , ("$Char",     [])
+--        , ("$String",   []) ]
