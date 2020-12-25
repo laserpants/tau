@@ -86,26 +86,26 @@ getPatternTag = cata $ \case
     PLit t _     -> t
     PAny t       -> t
 
-getRepTag :: Prep t -> t
-getRepTag = \case
+getPrepTag :: Prep t -> t
+getPrepTag = \case
     RVar t _     -> t
     RCon t _ _   -> t
 
-setRepTag :: t -> Prep s -> Prep t
-setRepTag t = \case
+setPrepTag :: t -> Prep s -> Prep t
+setPrepTag t = \case
     RVar _ var    -> RVar t var
     RCon _ con rs -> RCon t con rs
 
 
 --
 --
---getRepTag :: SimpleRep t -> t
---getRepTag = \case
+--getPrepTag :: SimpleRep t -> t
+--getPrepTag = \case
 --    PVar t _   -> t
 --    PCon t _ _ -> t
 
---setRepTag :: t -> SimpleRep s -> SimpleRep t
---setRepTag t = \case
+--setPrepTag :: t -> SimpleRep s -> SimpleRep t
+--setPrepTag t = \case
 --    PVar _ var    -> PVar t var
 --    PCon _ con rs -> PCon t con rs
 
