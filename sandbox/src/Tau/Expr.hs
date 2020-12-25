@@ -28,6 +28,7 @@ deriveEq1   ''PatternF
 
 type Pattern t = Fix (PatternF t)
 
+-- | a portmanteau derived from pattern representation
 data Prep t
     = RVar t Name
     | RCon t Name [Name]
