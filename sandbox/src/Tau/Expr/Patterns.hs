@@ -42,14 +42,12 @@ newtype Simplify a = Simplify { unSimplify :: ExceptT String (Supply Name) a } d
     , MonadError String )
 
 runSimplify :: Simplify a -> Either String a
-runSimplify = 
-    unSimplify 
-      >>> runExceptT
-      >>> flip evalSupply (nameSupply "$")
-      >>> fromMaybe (throwError "Error") -- (throwError ImplementationError)
+runSimplify = unSimplify 
+    >>> runExceptT
+    >>> flip evalSupply (nameSupply "$")
+    >>> fromMaybe (throwError "Error") -- (throwError ImplementationError)
 
 data MatchExprF t a
-    -- = Match [Expr t (SimpleRep t) Name] [Clause (Pattern t) (Expr t (SimpleRep t) Name)] a
     = Match [Expr t (Prep t) Name] [Clause (Pattern t) (Expr t (Prep t) Name)] a
     | Fail
     deriving (Show, Eq, Functor, Foldable, Traversable)
@@ -58,10 +56,8 @@ type MatchExpr t = Fix (MatchExprF t)
 
 data TranslatedF m t a
     = Wrap (m a)
-    -- | SimpleMatch a [(SimpleRep t, a)]
     | SimpleMatch a [(Prep t, a)]
     | If a a a
---    | Expr (Expr t (SimpleRep t) Name)
     | Expr (Expr t (Prep t) Name)
     deriving (Show, Eq, Functor, Foldable, Traversable)
 
@@ -72,6 +68,21 @@ deriveEq1   ''MatchExprF
 
 deriveShow1 ''TranslatedF
 deriveEq1   ''TranslatedF
+
+class Boolean t where
+    boolean :: t
+
+instance Boolean () where
+    boolean = ()
+
+instance Boolean Type where
+    boolean = tBool
+
+simplified 
+  :: (Boolean t, Show t) 
+  => Expr t (Pattern t) (Pattern t) 
+  -> Either String (Expr t (Prep t) Name)
+simplified = runSimplify . simplify
 
 simplify 
   :: (Boolean t, Show t) 
@@ -132,72 +143,10 @@ simplify = cata $ \case
     EOp t op ->
         simplifyOp t op
 
---simplify 
---  :: (Show t) 
---  => Expr t (Pattern t) (Pattern t) 
---  -> Simplify (Expr t (SimpleRep t) Name)
---simplify = cata alg where
---    alg = \case 
---        EVar t var     -> pure (varExpr t var)
---        ECon t con exs -> conExpr t con <$> sequence exs
---        ELit t lit     -> pure (litExpr t lit)
---        EApp t exs     -> appExpr t <$> sequence exs
---
---        --
---        --  let-expressions can only bind to simple variables (formal parameters)
---        --
---        ELet t (Fix (PVar _ var)) e1 e2 -> 
---            letExpr t var <$> e1 <*> e2
---
---        --
---        --  The same restriction applies to lambdas
---        --
---        ELam t (Fix (PVar _ var)) e1 -> 
---            lamExpr t var <$> e1 
---
---        --
---        --  Expressions like \5 => ..., let 5 = ..., or let _ = ... are not allowed
---        --
---        ELam _ (Fix PLit{}) _   -> throwError "Pattern not allowed"
---        ELet _ (Fix PLit{}) _ _ -> throwError "Pattern not allowed"
---        ELam _ (Fix PAny{}) _   -> throwError "Pattern not allowed"
---        ELet _ (Fix PAny{}) _ _ -> throwError "Pattern not allowed"
---
---        --
---        --  Expressions like let C x = y in f x
---        --  get translated to: match y with | C x => f x
---        --
---        ELet _ rep e1 e2 -> do
---            expr <- e1
---            body <- e2
---            compile [expr] [Clause [rep] [] body]
---            --maybe (error "Refutable pattern in let-binding") pure mexp
---
---        --
---        --  Lambda expressions like \C x => f x
---        --  get translated to \$z => match $z with | C x => f x in $z
---        --  where $z is a fresh variable
---        --
---        ELam t rep e1 -> do
---            fresh <- supply
---            body <- e1
---            expr <- compile [varExpr t fresh] [Clause [rep] [] body]
---            pure (lamExpr t fresh expr)
---            --mexp <- compile [varExpr t fresh] [Clause [rep] [] body]
---            --case mexp of
---            --    Nothing -> error "Refutable pattern in lambda function"
---            --    Just expr -> pure (lamExpr t fresh expr)
---
---        EIf t cond e1 e2 ->
---            ifExpr t <$> cond <*> e1 <*> e2
---
---        EMat t exs eqs -> do
---            join (compile <$> sequence exs <*> traverse sequence eqs)
---            --mexp <- join (compile <$> sequence exs <*> traverse sequence eqs)
---            --maybe (error "Non-exhaustive patterns") pure mexp
---
---        EOp t op ->
---            simplifyOp t op
+simplifyOp :: t -> Op (Simplify (Expr t p q)) -> Simplify (Expr t p q)
+simplifyOp t (OEq  a b) = eqOp  t <$> a <*> b
+simplifyOp t (OAnd a b) = andOp t <$> a <*> b
+simplifyOp t (OOr  a b) = orOp  t <$> a <*> b
 
 flatten 
   :: (Boolean t) 
@@ -215,33 +164,11 @@ flatten (Clause ps exs e) = Clause qs (exs <> exs1) e where
             tell [eqOp boolean (varExpr t var) (litExpr t lit)]
             pure (varPat t var)
 
-class Boolean t where
-    boolean :: t
-
-instance Boolean () where
-    boolean = ()
-
-instance Boolean Type where
-    boolean = tBool
-
--- match x with
---    5 => e1
-
-simplifyOp :: t -> Op (Simplify (Expr t p q)) -> Simplify (Expr t p q)
-simplifyOp t (OEq  a b) = eqOp  t <$> a <*> b
-simplifyOp t (OAnd a b) = andOp t <$> a <*> b
-simplifyOp t (OOr  a b) = orOp  t <$> a <*> b
-
 compile 
   :: (Boolean t, Show t) 
   => [Expr t (Prep t) Name]
   -> [Clause (Pattern t) (Expr t (Prep t) Name)]
   -> Simplify (Expr t (Prep t) Name)
---compile 
---  :: (Show t) 
---  => [Expr t (SimpleRep t) Name]
---  -> [Clause (Pattern t) (Expr t (SimpleRep t) Name)]
---  -> Simplify (Expr t (SimpleRep t) Name)
 compile es qs = 
     Match es (flatten <$> qs) (embed Fail)
       & embed
@@ -268,28 +195,6 @@ compile es qs =
                 expr <- ex1
                 pure ( Clause [rep] [] expr
                      , getTag expr )
-
---  where
---    collapse 
---      :: Translated Simplify t 
---      -> Simplify (Expr t (SimpleRep t) Name)
---    collapse = cata $ \case
---        Wrap a -> join a
---        Expr a -> pure a
---        If cond tr fl -> 
---            ifExpr <$> (getTag <$> tr) 
---                   <*> cond 
---                   <*> tr 
---                   <*> fl
---        SimpleMatch ex css -> do
---            expr <- ex
---            (eqs, ts) <- unzip <$> traverse fn css
---            pure (matExpr (head ts) [expr] eqs)
---          where
---            fn (rep, ex1) = do
---                expr <- ex1
---                pure ( Clause [rep] [] expr
---                     , getTag expr )
 
 translate :: (Show t) => MatchExpr t -> Translated Simplify t
 translate = futu $ project >>> \case
@@ -374,44 +279,6 @@ substitute name subst = para $ \case
         OEq  a b -> eqOp  t a b
         OAnd a b -> andOp t a b
         OOr  a b -> orOp  t a b
-
---substitute 
---  :: Name 
---  -> Expr t (SimpleRep t) Name 
---  -> Expr t (SimpleRep t) Name 
---  -> Expr t (SimpleRep t) Name
---substitute name subst = para $ \case
---    ELet t pat (_, e1) e2 -> letExpr t pat e1 e2'
---      where 
---        e2' | name == pat = fst e2
---            | otherwise   = snd e2
---
---    ELam t pat e1 -> lamExpr t pat e1'
---      where
---        e1' | name == pat = fst e1
---            | otherwise   = snd e1
---
---    EMat t exs eqs -> matExpr t (snd <$> exs) (substEq <$> eqs)
---      where
---        substEq eq@(Clause ps _ _) 
---            | name `elem` free ps = fst <$> eq
---            | otherwise           = snd <$> eq
---
---    expr -> snd <$> expr & \case
---        EVar t var 
---            | name == var -> subst
---            | otherwise   -> varExpr t var
---
---        ECon t con exs -> conExpr t con exs
---        ELit t lit     -> litExpr t lit
---        EApp t exs     -> appExpr t exs
---        EIf t c e1 e2  -> ifExpr  t c e1 e2
---        EOp t op       -> substOp t op
---  where
---    substOp t = \case
---        OEq  a b -> eqOp  t a b
---        OAnd a b -> andOp t a b
---        OOr  a b -> orOp  t a b
 
 data Tagged a = ConTag a | VarTag a
     deriving (Show, Eq, Ord)

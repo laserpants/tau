@@ -75,23 +75,27 @@ instance Free Type where
         TApp t1 t2     -> t1 `union` t2
         ty             -> mempty
 
-instance Substitutable TypeClass where
-    apply sub (TypeClass name t) = TypeClass name (apply sub t)
+--instance Substitutable TypeClass where
+--    apply sub (TypeClass name t) = TypeClass name (apply sub t)
+--
+--instance Free TypeClass where
+--    free (TypeClass _ ty) = free ty
 
-instance Free TypeClass where
-    free (TypeClass _ ty) = free ty
-
-instance (Substitutable t) => Substitutable (Qualified t) where
-    apply = fmap . apply
-
-instance (Free t) => Free (Qualified t) where
-    free (ps :=> t) = free ps `union` free t
+--instance (Substitutable t) => Substitutable (Qualified t) where
+--    apply = fmap . apply
+--
+--instance (Free t) => Free (Qualified t) where
+--    free (ps :=> t) = free ps `union` free t
 
 instance Substitutable Scheme where
-    apply sub (Forall kinds qt) = Forall kinds (apply sub qt)
+    apply sub = cata $ \case
+        Forall k os s -> sForall k (fmap (apply sub <$>) os) s
+        Mono t        -> sMono (apply sub t)
 
 instance Free Scheme where
-    free (Forall _ qt) = free qt
+    free = cata $ \case
+        Forall _ os s -> unions (free . snd <$> os) `union` s
+        Mono t        -> free t
 
 instance (Substitutable t) => Substitutable (Assumption t) where
     apply = fmap . apply 

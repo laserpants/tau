@@ -38,20 +38,40 @@ deriveOrd1  ''TypeF
 
 type Type = Fix TypeF
 
-data TypeClass = TypeClass Name Type
-    deriving (Show, Eq, Ord)
+--data TypeClass = TypeClass Name Type
+--    deriving (Show, Eq, Ord)
+--
+--data Qualified t = [TypeClass] :=> t
+--    deriving (Show, Eq, Functor, Foldable, Traversable)
+--
+--data Scheme = Forall [Kind] (Qualified Type)
+--    deriving (Show, Eq)
 
-data Qualified t = [TypeClass] :=> t
-    deriving (Show, Eq, Functor, Foldable, Traversable)
+--
 
-data Scheme = Forall [Kind] (Qualified Type)
-    deriving (Show, Eq)
+data Gamma = Gamma Name Type
 
-type Instance = Qualified TypeClass
+data SchemeF a
+    = Forall Kind [(Name, Type)] a
+    | Mono Type
+    deriving (Functor, Foldable, Traversable)
 
-type ClassInfo = ([Name], [Instance])
+type Scheme = Fix SchemeF
 
-type ClassEnv = (Env ClassInfo, [Type])
+deriveShow  ''SchemeF
+deriveEq    ''SchemeF
+deriveShow1 ''SchemeF
+deriveEq1   ''SchemeF
+
+
+--
+
+
+--type Instance = Qualified TypeClass
+--
+--type ClassInfo = ([Name], [Instance])
+--
+--type ClassEnv = (Env ClassInfo, [Type])
 
 data Assumption a = Name :>: a
     deriving (Show, Eq, Functor, Foldable, Traversable)
@@ -66,13 +86,13 @@ data TypeError
     | ContextReductionFailed
     deriving (Show, Eq)
 
-toScheme :: Type -> Scheme
-toScheme ty = Forall [] ([] :=> ty1) where
-    ty1 = flip cata ty $ \case
-        TVar k var -> tVar k var
-        TCon k con -> tCon k con
-        TArr t1 t2 -> tArr t1 t2
-        TApp t1 t2 -> tApp t1 t2
+--toScheme :: Type -> Scheme
+--toScheme ty = Forall [] ([] :=> ty1) where
+--    ty1 = flip cata ty $ \case
+--        TVar k var -> tVar k var
+--        TCon k con -> tCon k con
+--        TArr t1 t2 -> tArr t1 t2
+--        TApp t1 t2 -> tApp t1 t2
 
 kindOf :: Type -> Maybe Kind
 kindOf = histo $ \case
@@ -85,12 +105,12 @@ kindOf = histo $ \case
     appKind (KArr _ k) = Just k
     appKind _          = Nothing
 
-super :: ClassEnv -> Name -> [Name]
-super (info, _) name = maybe [] fst (Env.lookup name info)
-
-instances :: ClassEnv -> Name -> [Instance]
-instances (info, _) name = maybe [] snd (Env.lookup name info)
-
+--super :: ClassEnv -> Name -> [Name]
+--super (info, _) name = maybe [] fst (Env.lookup name info)
+--
+--instances :: ClassEnv -> Name -> [Instance]
+--instances (info, _) name = maybe [] snd (Env.lookup name info)
+--
 assumptionVar :: Assumption a -> Name
 assumptionVar (name :>: _) = name
 
@@ -105,6 +125,8 @@ removeAssumption name = filter (\a -> name /= assumptionVar a)
 
 removeAssumptionSet :: Set Name -> [Assumption a] -> [Assumption a]
 removeAssumptionSet = flip (Set.foldr removeAssumption) 
+
+--
 
 kStar :: Kind
 kStar = Fix KStar
@@ -143,3 +165,7 @@ tListCon = tCon (kArr kStar kStar) "List"
 
 tList :: Type -> Type
 tList = tApp tListCon 
+
+sForall k os s = Fix (Forall k os s)
+
+sMono t = Fix (Mono t)

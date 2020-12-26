@@ -45,11 +45,11 @@ matchPairs (t1, t2) (u1, u2) = do
         Nothing  -> throwError MergeFailed
         Just sub -> pure sub
 
-unifyClass, matchClass :: (MonadError TypeError m) => TypeClass -> TypeClass -> m Substitution
-unifyClass = lift unify
-matchClass = lift match
+--unifyClass, matchClass :: (MonadError TypeError m) => TypeClass -> TypeClass -> m Substitution
+--unifyClass = lift unify
+--matchClass = lift match
 
-lift :: (MonadError TypeError m) => (Type -> Type -> m a) -> TypeClass -> TypeClass -> m a
-lift m (TypeClass c1 t1) (TypeClass c2 t2)
-    | c1 == c2  = m t1 t2
-    | otherwise = throwError ClassMismatch
+--lift :: (MonadError TypeError m) => (Type -> Type -> m a) -> TypeClass -> TypeClass -> m a
+--lift m (TypeClass c1 t1) (TypeClass c2 t2)
+--    | c1 == c2  = m t1 t2
+--    | otherwise = throwError ClassMismatch

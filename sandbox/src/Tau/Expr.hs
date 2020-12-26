@@ -28,7 +28,7 @@ deriveEq1   ''PatternF
 
 type Pattern t = Fix (PatternF t)
 
--- | a portmanteau derived from pattern representation
+-- | a portmanteau of the words pattern and representation
 data Prep t
     = RVar t Name
     | RCon t Name [Name]
@@ -98,17 +98,6 @@ setPrepTag t = \case
     RCon _ con rs -> RCon t con rs
 
 
---
---
---getPrepTag :: SimpleRep t -> t
---getPrepTag = \case
---    PVar t _   -> t
---    PCon t _ _ -> t
-
---setPrepTag :: t -> SimpleRep s -> SimpleRep t
---setPrepTag t = \case
---    PVar _ var    -> PVar t var
---    PCon _ con rs -> PCon t con rs
 
 varPat :: t -> Name -> Pattern t
 varPat t var = embed (PVar t var)

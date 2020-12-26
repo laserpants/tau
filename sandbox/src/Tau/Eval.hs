@@ -37,16 +37,8 @@ newtype Eval a = Eval { unEval :: ReaderT (ValueEnv Eval) Maybe a } deriving
 runEval :: Eval a -> ValueEnv Eval -> Maybe a
 runEval = runReaderT . unEval 
 
---evalExpr :: Expr t (SimpleRep t) Name -> ValueEnv Eval -> Maybe (Value Eval)
---evalExpr = runEval . eval
-
 evalExpr :: Expr t (Prep t) Name -> ValueEnv Eval -> Maybe (Value Eval)
 evalExpr = runEval . eval
-
---eval 
---  :: (MonadFail m, MonadReader (ValueEnv m) m) 
---  => Expr t (SimpleRep t) Name 
---  -> m (Value m)
 
 eval 
   :: (MonadFail m, MonadReader (ValueEnv m) m) 

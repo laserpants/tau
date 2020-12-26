@@ -27,54 +27,78 @@ choice xs = find (uncurry isSolvable) [(ys, x) | x <- xs, let ys = delete x xs]
 runUnify :: ExceptT TypeError Infer a -> Infer a
 runUnify m = runExceptT (withExceptT TypeError m) >>= liftEither
 
-solve :: [Constraint] -> Infer (Substitution, [TypeClass])
-solve = flip runStateT [] . solver
-  where
-    solver :: [Constraint] -> StateT [TypeClass] Infer Substitution
-    solver [] = pure mempty
-    solver cs0 = do
-        traceShowM cs0
-        (cs, c) <- maybe (throwError CannotSolve) pure (choice cs0)
-        case c of
-            Equality t1 t2 -> do
-                sub1 <- mapStateT runUnify (unify t1 t2)
-                modify (apply sub1)
-                sub2 <- solver (apply sub1 cs)
-                pure (sub2 <> sub1)
+solve :: [Constraint] -> Infer Substitution
+solve = undefined
 
-            Implicit t1 t2 (Monoset vars) ->
-                solver (Explicit t1 (generalize vars t2):cs)
+solver :: [Constraint] -> Infer Substitution
+solver [] = pure mempty
+solver cs0 = do
+    (cs, c) <- maybe (throwError CannotSolve) pure (choice cs0)
+    case c of
+        Equality t1 t2 -> do
+            sub1 <- runUnify (unify t1 t2)
+            sub2 <- solver (apply sub1 cs)
+            pure (sub2 <> sub1)
 
-            Explicit t1 scheme -> do
-                (t2, ps1) <- instantiate scheme
-                modify (<> ps1)
-                solver (Equality t1 t2:cs)
+        Implicit t1 t2 (Monoset vars) ->
+            solver (Explicit t1 (generalize vars t2):cs)
 
-generalize :: Set Name -> Type -> Scheme
-generalize set ty = Forall ks (apply s qt) where
-    qt = [] :=> ty
-    (vs, ks) = unzip [(v, k) | (v, k) <- vars ty, v `Set.notMember` set]
-    s = fromList (zip vs (tGen <$> [0..]))
+        Explicit t1 scheme -> do
+            t2 <- instantiate scheme
+            solver (Equality t1 t2:cs)
 
-vars :: Type -> [(Name, Kind)]
-vars ty = nub . flip cata ty $ \case
-    TVar k var -> [(var, k)]
-    TArr t1 t2 -> t1 <> t2
-    TApp t1 t2 -> t1 <> t2
-    ty         -> mempty
+--solve :: [Constraint] -> Infer (Substitution, [TypeClass])
+--solve = flip runStateT [] . solver
+--  where
+--    solver :: [Constraint] -> StateT [TypeClass] Infer Substitution
+--    solver [] = pure mempty
+--    solver cs0 = do
+--        traceShowM cs0
+--        (cs, c) <- maybe (throwError CannotSolve) pure (choice cs0)
+--        case c of
+--            Equality t1 t2 -> do
+--                sub1 <- mapStateT runUnify (unify t1 t2)
+--                modify (apply sub1)
+--                sub2 <- solver (apply sub1 cs)
+--                pure (sub2 <> sub1)
+--
+--            Implicit t1 t2 (Monoset vars) ->
+--                solver (Explicit t1 (generalize vars t2):cs)
+--
+--            Explicit t1 scheme -> do
+--                (t2, ps1) <- instantiate scheme
+--                modify (<> ps1)
+--                solver (Equality t1 t2:cs)
 
-instantiate :: (MonadSupply Name m) => Scheme -> m (Type, [TypeClass])
-instantiate (Forall ks s@(ps :=> t)) = do
-    ts <- traverse freshVar ks
-    pure (replaceBound ts t, instConstraint ts <$> ps)
-  where
-    freshVar k = tVar k <$> supply
-    instConstraint ts (TypeClass name ty) = TypeClass name (replaceBound ts ty)
+generalize = undefined
 
-replaceBound :: [Type] -> Type -> Type 
-replaceBound ts = cata $ \case
-    TGen n     -> ts !! n
-    TArr t1 t2 -> tArr t1 t2
-    TApp t1 t2 -> tApp t1 t2
-    TVar k var -> tVar k var
-    TCon k con -> tCon k con
+instantiate = undefined
+
+--generalize :: Set Name -> Type -> Scheme
+--generalize set ty = Forall ks (apply s qt) where
+--    qt = [] :=> ty
+--    (vs, ks) = unzip [(v, k) | (v, k) <- vars ty, v `Set.notMember` set]
+--    s = fromList (zip vs (tGen <$> [0..]))
+--
+--vars :: Type -> [(Name, Kind)]
+--vars ty = nub . flip cata ty $ \case
+--    TVar k var -> [(var, k)]
+--    TArr t1 t2 -> t1 <> t2
+--    TApp t1 t2 -> t1 <> t2
+--    ty         -> mempty
+--
+--instantiate :: (MonadSupply Name m) => Scheme -> m (Type, [TypeClass])
+--instantiate (Forall ks s@(ps :=> t)) = do
+--    ts <- traverse freshVar ks
+--    pure (replaceBound ts t, instConstraint ts <$> ps)
+--  where
+--    freshVar k = tVar k <$> supply
+--    instConstraint ts (TypeClass name ty) = TypeClass name (replaceBound ts ty)
+--
+--replaceBound :: [Type] -> Type -> Type 
+--replaceBound ts = cata $ \case
+--    TGen n     -> ts !! n
+--    TArr t1 t2 -> tArr t1 t2
+--    TApp t1 t2 -> tApp t1 t2
+--    TVar k var -> tVar k var
+--    TCon k con -> tCon k con
