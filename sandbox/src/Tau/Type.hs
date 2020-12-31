@@ -89,8 +89,8 @@ kindOf = histo $ \case
     TArr{}               -> Just kStar
     _                    -> Nothing
   where
-    appKind (KArr _ k) = Just k
-    appKind _          = Nothing
+    appKind (KArr _ k)    = Just k
+    appKind _             = Nothing
 
 --super :: ClassEnv -> Name -> [Name]
 --super (info, _) name = maybe [] fst (Env.lookup name info)
