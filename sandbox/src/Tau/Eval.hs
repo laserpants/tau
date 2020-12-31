@@ -108,12 +108,6 @@ evalOp = \case
         Value (LBool e2) <- b
         pure (Value (LBool (e1 || e2)))
 
---evalMatch
---  :: (MonadFail m, MonadReader (ValueEnv m) m)
---  => [Clause (SimpleRep t) (m (Value m))]
---  -> [Value m]
---  -> m (Value m)
-
 evalMatch
   :: (MonadFail m, MonadReader (ValueEnv m) m)
   => [Clause (Prep t) (m (Value m))]
@@ -134,12 +128,6 @@ evalMatch (Clause ps exs e:eqs) vals =
     toBool (Value (LBool b)) = b
     toBool _ = error "Runtime error (toBool)"
 
---tryClause 
---  :: (MonadFail m, MonadReader (ValueEnv m) m) 
---  => [SimpleRep t] 
---  -> [Value m] 
---  -> Maybe [(Name, Value m)]
-
 tryClause 
   :: (MonadFail m, MonadReader (ValueEnv m) m) 
   => [Prep t] 
@@ -147,7 +135,6 @@ tryClause
   -> Maybe [(Name, Value m)]
 tryClause xs ys = cata alg (zip xs ys)
   where
-    -- alg :: Algebra (ListF (SimpleRep t, Value m)) (Maybe [(Name, Value m)])
     alg :: Algebra (ListF (Prep t, Value m)) (Maybe [(Name, Value m)])
     alg = \case 
         Cons (RVar _ var, val) xs -> 
@@ -167,10 +154,10 @@ constructor :: (MonadReader (ValueEnv m) m) => Name -> Int -> Value m
 constructor name 0 = Data name []
 constructor name n = Closure frst val mempty
   where
+    vars@(frst:rest) = 
+        take n (nameSupply "%")
     val = (ini & foldr (\fun -> asks . Closure fun)) rest
     ini = do
         Env env <- ask
         let args = fmap (env Map.!) vars
         pure (Data name args)
-
-    vars@(frst:rest) = take n (nameSupply "%")
