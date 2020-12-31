@@ -28,6 +28,7 @@ dependencies:
 - free
 - monad-supply
 - mtl
+- text
 - recursion-schemes
 - set-monad
 - transformers

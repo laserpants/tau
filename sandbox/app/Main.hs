@@ -1,7 +1,10 @@
+{-# LANGUAGE FlexibleInstances    #-}
+{-# LANGUAGE LambdaCase           #-}
 {-# LANGUAGE DeriveFunctor              #-}
 {-# LANGUAGE TemplateHaskell   #-}
 {-# LANGUAGE FlexibleContexts           #-}
 {-# LANGUAGE GeneralizedNewtypeDeriving #-}
+{-# LANGUAGE OverloadedStrings #-}
 module Main where
 
 import Control.Monad.Reader
@@ -21,10 +24,14 @@ import Tau.Type.Inference
 import Tau.Type.Solver
 import Tau.Type.Substitution
 import Tau.Util
+import Data.Map.Strict (Map)
 import qualified Data.Map.Strict as Map
 import qualified Data.Set.Monad as Set
 import qualified Tau.Env as Env
 import qualified Tau.Type.Class as Class
+import qualified Data.Map.Strict as Map
+
+
 
 
 -- baz6 =
@@ -196,6 +203,84 @@ abcdef24 = simplify abcdef21
 abcdef25 = r
   where
     Right r = simplified abcdef21
+
+
+
+-- first : forall a. (first : a -> Int) => a -> Int
+-- isZero : Int -> Bool
+--
+-- \t -> isZero (first t)
+--   : forall a. (first : a -> Int) => a -> Bool
+--
+--
+--
+-- first : forall a. (first : a -> b) => a -> b
+--
+-- \t -> isZero (first t)
+--   : forall a. (first : a -> b) => a -> Bool
+testExpr3 =
+    lamExpr () 
+        (varPat () "t")
+        (appExpr () 
+            [ varExpr () "isZero"
+            , appExpr () [ varExpr () "first", varExpr () "t" ] 
+            ])
+
+tIsZero = sMono (tInt `tArr` tBool)
+tFirst = sForall kStar ["first" :>: tInt] (sMono (tGen 0 `tArr` tInt))
+
+tFirst1 = sForall kStar [] (sForall kStar ["first" :>: (tGen 1)] (sMono (tGen 0 `tArr` tGen 1)))
+
+baz = runInfer fun where
+    fun = do
+        (te, as, cs) <- infer testExpr3
+        let cs' = cs <> 
+                  -- isZero
+                  [ Explicit (tVar kStar "a3") tIsZero
+                  -- first
+                  , Explicit (tVar kStar "a5") tFirst
+                  ]
+        (sub, xx) <- solve cs'
+        traceShowM xx
+        pure (apply sub te)
+
+baz2 = runInfer fun where
+    fun = do
+        (te, as, cs) <- infer testExpr3
+        let cs' = cs <> 
+                  -- isZero
+                  [ Explicit (tVar kStar "a3") tIsZero
+                  -- first
+                  , Explicit (tVar kStar "a5") tFirst1
+                  ]
+        (sub, xx) <- solve cs'
+        traceShowM xx
+        pure (apply sub te)
+
+
+    --let cs' = cs <> [Explicit (tVar kStar "a2") (Forall [kStar] ([TypeClass "Show" (tGen 0)] :=> (tGen 0 `tArr` tCon kStar "String")))]
+    --(sub, tcs) <- solve cs'
+    --pure (xx, apply sub te, tcs)
+    --pure (apply sub te, tcs)
+    -- pure (apply sub te)
+
+testExpr5 =
+    appExpr () 
+        [ varExpr () "first"
+        , litExpr () (LInt 5)
+        ]
+
+
+baz5 = runInfer fun where
+    fun = do
+        (te, as, cs) <- infer testExpr5
+        let cs' = cs <> [ Explicit (tVar kStar "a2") tFirst ]
+        (sub, xx) <- solve cs'
+        traceShowM cs
+        --pure (apply sub te)
+        pure sub
+
+
 
 
 

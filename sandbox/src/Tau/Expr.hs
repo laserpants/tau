@@ -28,7 +28,6 @@ deriveEq1   ''PatternF
 
 type Pattern t = Fix (PatternF t)
 
--- | a portmanteau of the words pattern and representation
 data Prep t
     = RVar t Name
     | RCon t Name [Name]

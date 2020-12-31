@@ -87,14 +87,20 @@ instance Free Type where
 --instance (Free t) => Free (Qualified t) where
 --    free (ps :=> t) = free ps `union` free t
 
+--instance Substitutable Binding where
+--    apply sub (Binding name ty) = Binding name (apply sub ty)
+--
+--instance Free Binding where
+--    free (Binding _ ty) = free ty
+
 instance Substitutable Scheme where
     apply sub = cata $ \case
-        Forall k os s -> sForall k (fmap (apply sub <$>) os) s
+        Forall k os s -> sForall k (apply sub <$> os) s
         Mono t        -> sMono (apply sub t)
 
 instance Free Scheme where
     free = cata $ \case
-        Forall _ os s -> unions (free . snd <$> os) `union` s
+        Forall _ os s -> unions (free <$> os) `union` s
         Mono t        -> free t
 
 instance (Substitutable t) => Substitutable (Assumption t) where

@@ -2,6 +2,7 @@
 {-# LANGUAGE LambdaCase        #-}
 {-# LANGUAGE StrictData        #-}
 {-# LANGUAGE TemplateHaskell   #-}
+{-# LANGUAGE OverloadedStrings #-}
 module Tau.Type where
 
 import Control.Comonad.Cofree
@@ -38,21 +39,18 @@ deriveOrd1  ''TypeF
 
 type Type = Fix TypeF
 
---data TypeClass = TypeClass Name Type
---    deriving (Show, Eq, Ord)
+data Assumption a = Name :>: a
+    deriving (Show, Eq, Functor, Foldable, Traversable)
+
+-- example : (toString : a -> String) => a -> SomeType
 --
---data Qualified t = [TypeClass] :=> t
---    deriving (Show, Eq, Functor, Foldable, Traversable)
+-- "toString" :>: tString
 --
---data Scheme = Forall [Kind] (Qualified Type)
+--data Binding = Binding Name Type
 --    deriving (Show, Eq)
 
---
-
-data Gamma = Gamma Name Type
-
 data SchemeF a
-    = Forall Kind [(Name, Type)] a
+    = Forall Kind [Assumption Type] a
     | Mono Type
     deriving (Functor, Foldable, Traversable)
 
@@ -63,18 +61,7 @@ deriveEq    ''SchemeF
 deriveShow1 ''SchemeF
 deriveEq1   ''SchemeF
 
-
 --
-
-
---type Instance = Qualified TypeClass
---
---type ClassInfo = ([Name], [Instance])
---
---type ClassEnv = (Env ClassInfo, [Type])
-
-data Assumption a = Name :>: a
-    deriving (Show, Eq, Functor, Foldable, Traversable)
 
 data TypeError
     = CannotUnify

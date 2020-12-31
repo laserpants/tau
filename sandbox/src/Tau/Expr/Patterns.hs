@@ -6,6 +6,7 @@
 {-# LANGUAGE TypeFamilies     #-}
 {-# LANGUAGE StrictData       #-}
 {-# LANGUAGE TemplateHaskell   #-}
+{-# LANGUAGE OverloadedStrings #-}
 module Tau.Expr.Patterns where
 
 import Control.Applicative ((<|>))
@@ -95,7 +96,7 @@ simplify = cata $ \case
     EApp t exs     -> appExpr t <$> sequence exs
 
     --
-    --  let-expressions can only bind to simple variables (formal parameters)
+    --  Let-expressions can only bind to simple variables (formal parameters)
     --
     ELet t (Fix (PVar _ var)) e1 e2 -> 
         letExpr t var <$> e1 <*> e2

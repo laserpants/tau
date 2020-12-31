@@ -3,6 +3,7 @@
 {-# LANGUAGE GeneralizedNewtypeDeriving #-}
 {-# LANGUAGE LambdaCase                 #-}
 {-# LANGUAGE StrictData                 #-}
+{-# LANGUAGE OverloadedStrings #-}
 module Tau.Type.Inference where
 
 import Control.Arrow
@@ -12,6 +13,7 @@ import Control.Monad.Supply
 import Control.Monad.Writer
 import Data.Foldable (foldrM, foldl')
 import Data.Maybe (fromMaybe)
+import Data.Text (pack)
 import Data.Set.Monad (Set, union, intersection, (\\))
 import Tau.Expr
 import Tau.Expr.Patterns
@@ -80,7 +82,7 @@ runInfer =
     unInfer
       >>> runExceptT
       >>> flip runReaderT (Monoset mempty) 
-      >>> flip evalSupply (fmap (\n -> "a" <> show n) [1..])
+      >>> flip evalSupply (numSupply "a")
       >>> fromMaybe (throwError ImplementationError)
 
 infer 
