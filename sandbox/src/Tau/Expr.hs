@@ -110,16 +110,16 @@ litPat t lit = embed (PLit t lit)
 anyPat :: t -> Pattern t
 anyPat t = embed (PAny t)
 
-varExpr :: t -> Name -> Expr t p q 
+varExpr :: t -> Name -> Expr t p q
 varExpr t var = embed (EVar t var)
 
-conExpr :: t -> Name -> [Expr t p q] -> Expr t p q 
+conExpr :: t -> Name -> [Expr t p q] -> Expr t p q
 conExpr t con exs = embed (ECon t con exs)
 
-litExpr :: t -> Literal -> Expr t p q 
+litExpr :: t -> Literal -> Expr t p q
 litExpr t lit = embed (ELit t lit)
 
-appExpr :: t -> [Expr t p q] -> Expr t p q 
+appExpr :: t -> [Expr t p q] -> Expr t p q
 appExpr t exs = embed (EApp t exs)
 
 letExpr :: t -> q -> Expr t p q -> Expr t p q -> Expr t p q
@@ -134,7 +134,7 @@ matExpr t exs eqs = embed (EMat t exs eqs)
 ifExpr :: t -> Expr t p q -> Expr t p q -> Expr t p q -> Expr t p q
 ifExpr t cond tr fl = embed (EIf t cond tr fl)
 
-opExpr :: t -> Op (Expr t p q) -> Expr t p q 
+opExpr :: t -> Op (Expr t p q) -> Expr t p q
 opExpr t op = embed (EOp t op)
 
 eqOp :: t -> Expr t p q -> Expr t p q -> Expr t p q
