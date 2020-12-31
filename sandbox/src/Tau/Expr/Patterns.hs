@@ -270,11 +270,11 @@ substitute name subst = para $ \case
             | name == var -> subst
             | otherwise   -> varExpr t var
 
-        ECon t con exs -> conExpr t con exs
-        ELit t lit     -> litExpr t lit
-        EApp t exs     -> appExpr t exs
-        EIf t c e1 e2  -> ifExpr  t c e1 e2
-        EOp t op       -> substOp t op
+        ECon t con exs  -> conExpr t con exs
+        ELit t lit      -> litExpr t lit
+        EApp t exs      -> appExpr t exs
+        EIf  t c e1 e2  -> ifExpr  t c e1 e2
+        EOp  t op       -> substOp t op
   where
     substOp t = \case
         OEq  a b -> eqOp  t a b
