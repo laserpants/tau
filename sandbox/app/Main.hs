@@ -278,7 +278,7 @@ baz5 = runInfer fun where
         (sub, xx) <- solve cs'
         traceShowM cs
         --pure (apply sub te)
-        pure sub
+        pure (apply sub te, sub)
 
 
 
