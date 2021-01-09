@@ -60,6 +60,31 @@ monosetInsert var (Monoset set) = Monoset (Set.insert var set)
 monosetInsertSet :: [Name] -> Monoset -> Monoset
 monosetInsertSet = flip (foldr monosetInsert)
 
+data Assumption a = Name :>: a
+    deriving (Show, Eq, Functor, Foldable, Traversable)
+
+instance (Substitutable t) => Substitutable (Assumption t) where
+    apply = fmap . apply 
+
+instance (Free t) => Free (Assumption t) where
+    free (_ :>: t) = free t
+
+assumptionVar :: Assumption a -> Name
+assumptionVar (name :>: _) = name
+
+--findAssumption :: Name -> [Assumption a] -> Maybe a
+--findAssumption _ [] = Nothing 
+--findAssumption i (name :>: a:as)
+--    | i == name = Just a
+--    | otherwise = findAssumption i as
+
+removeAssumption :: Name -> [Assumption a] -> [Assumption a]
+removeAssumption name = filter (\a -> name /= assumptionVar a)
+
+removeAssumptionSet :: Set Name -> [Assumption a] -> [Assumption a]
+removeAssumptionSet = flip (Set.foldr removeAssumption) 
+
+
 type TypeAssumption = Assumption Type
 
 data InferError 
@@ -84,6 +109,211 @@ runInfer =
       >>> flip runReaderT (Monoset mempty) 
       >>> flip evalSupply (numSupply "a")
       >>> fromMaybe (throwError ImplementationError)
+
+
+newtype Infer_ a = Infer_ { unInfer_ :: WriterT [Constraint] (ExceptT InferError (ReaderT Monoset (Supply Name))) a } 
+  deriving
+    ( Functor
+    , Applicative
+    , Monad
+    , MonadSupply Name
+    , MonadReader Monoset 
+    , MonadWriter [Constraint]
+    , MonadError InferError )
+
+
+--runInfer_ :: Infer_ a -> Either InferError (a, [Constraint])
+--runInfer_ = 
+--    unInfer_
+--      >>> runWriterT
+--      >>> runExceptT
+--      >>> flip runReaderT (Monoset mempty) 
+--      >>> flip evalSupply (numSupply "a")
+--      >>> fromMaybe (throwError ImplementationError)
+
+
+infer__ 
+  :: Expr t (Pattern t) (Pattern t) 
+  -> Infer ((Expr Name (Pattern Name) (Pattern Name), [Assumption Name]), [Constraint])
+infer__ =
+    runWriterT . infer_ 
+
+
+infer_
+  :: Expr t (Pattern t) (Pattern t) 
+  -> WriterT [Constraint] Infer (Expr Name (Pattern Name) (Pattern Name), [Assumption Name])
+infer_ = cata $ \case
+
+    EVar _ var -> do
+        tvar <- supply
+        pure (varExpr tvar var, [var :>: tvar])
+
+    ECon _ con exprs -> do
+        tvar1 <- supply
+        tvar2 <- supply
+        (es1, as1) <- sequenced_ exprs
+        tell [ Equality (tVar kStar tvar1) 
+                        (foldr tArr (tVar kStar tvar2) (fromTag <$> es1)) ]
+        pure (conExpr tvar2 con es1, as1 <> [con :>: tvar1])
+
+    ELit _ lit -> do
+        tvar <- supply
+        t <- inferLiteral_ lit
+        tell [ Equality (tVar kStar tvar) t ] 
+        pure (litExpr tvar lit, [])
+
+    EApp _ exprs ->
+        foldl1 inferApp_ exprs
+
+    ELet _ pat expr1 expr2 -> do
+        tvar <- supply
+        (tp, as0) <- inferPattern_ pat
+        (e1, as1) <- expr1
+        (e2, as2) <- expr2
+        set <- ask
+        tell [ Equality (tVar kStar tvar) (fromTag e2) 
+             , Equality (fromPatternTag tp) (fromTag e1) ]  
+
+        tell $ do
+            v :>: t <- as2
+            (w, u) <- patternVars tp
+            guard (v == w)
+            pure (Implicit (tVar kStar t) (tVar kStar u) set)
+
+        pure (letExpr tvar tp e1 e2, as1 <> removeAssumptionSet (free tp) as2)
+
+    ELam _ pat expr1 -> do
+        tvar <- supply
+        (tp, as0) <- inferPattern_ pat
+        (e1, as1) <- local (monosetInsertSet (assumptionVar <$> as0)) expr1
+        tell [ Equality (tVar kStar tvar) (fromPatternTag tp `tArr` fromTag e1) ]
+
+        tell $ do
+            v :>: t <- as1
+            (w, u) <- patternVars tp
+            guard (v == w)
+            pure (Equality (tVar kStar t) (tVar kStar u))
+
+        pure (lamExpr tvar tp e1, removeAssumptionSet (free tp) as1)
+
+    EIf _ cond tr fl -> do
+        tvar <- supply
+        (e1, as1) <- cond
+        (e2, as2) <- tr
+        (e3, as3) <- fl
+
+        tell [ Equality (tVar kStar tvar) (fromTag e2)
+             , Equality (fromTag e1) tBool
+             , Equality (fromTag e2) (fromTag e3) ]
+
+        pure (ifExpr tvar e1 e2 e3, as1 <> as2 <> as3)
+
+    EOp  _ (OAnd a b) ->
+        inferLogicOp_ a b
+
+    EOp  _ (OOr a b) -> 
+        inferLogicOp_ a b
+
+    EMat _ exs eqs -> do
+        tvar <- supply
+        (es1, as1) <- sequenced_ exs
+        (eqs, as2) <- sequenced_ (inferClause_ <$> eqs)
+
+        let cs3 = concat $ do
+            Clause ps exs e <- eqs
+            e1 <- exs
+            (p, e2) <- zip ps es1
+            pure [ Equality (tVar kStar tvar) (fromTag e)
+                 , Equality tBool (fromTag e1)
+                 , Equality (fromPatternTag p) (fromTag e2) ]
+
+        pure (matExpr tvar es1 eqs, as1 <> as2)
+
+fromTag :: Expr Name p q -> Type
+fromTag = tVar kStar . getTag
+
+fromPatternTag :: Pattern Name -> Type
+fromPatternTag = tVar kStar . getPatternTag
+
+sequenced_ :: [WriterT [Constraint] Infer (a, [Assumption Name])] -> WriterT [Constraint] Infer ([a], [Assumption Name])
+sequenced_ = fmap (fmap concat . unzip) . sequence 
+
+inferLogicOp_ 
+  :: WriterT [Constraint] Infer (Expr Name p q, [Assumption Name]) 
+  -> WriterT [Constraint] Infer (Expr Name p q, [Assumption Name]) 
+  -> WriterT [Constraint] Infer (Expr Name p q, [Assumption Name])
+inferLogicOp_ a b = do
+    tvar <- supply
+    (e1, as1) <- a
+    (e2, as2) <- b
+
+    tell [ Equality (tVar kStar tvar) tBool 
+         , Equality (fromTag e1) tBool
+         , Equality (fromTag e2) tBool ]
+
+    pure (andOp tvar e1 e2, as1 <> as2)
+
+inferClause_
+  :: Clause (Pattern t) (WriterT [Constraint] Infer (Expr Name (Pattern Name) q, [Assumption Name])) 
+  -> WriterT [Constraint] Infer (Clause (Pattern Name) (Expr Name (Pattern Name) q), [Assumption Name])
+inferClause_ eq@(Clause ps _ _) = do
+    (tps, as0) <- fmap concat . unzip <$> traverse inferPattern_ ps
+    let Clause _ exs e = local (monosetInsertSet (assumptionVar <$> as0)) <$> eq
+    (es1, as1) <- sequenced_ exs
+    (exp, as2) <- e 
+
+    tell $ do
+        v :>: t <- as1 <> as2
+        (w, u) <- patternVars =<< tps
+        guard (v == w)
+        pure (Equality (tVar kStar t) (tVar kStar u))
+
+    pure (Clause tps es1 exp, as0 <> removeAssumptionSet (free tps) (as1 <> as2))
+
+inferPattern_ :: Pattern t -> WriterT [Constraint] Infer (Pattern Name, [Assumption Name])
+inferPattern_ = cata $ \pat -> do
+    tvar <- supply
+    case pat of
+        PVar _ var -> 
+            pure (varPat tvar var, [var :>: tvar])
+
+        PCon _ con ps -> do
+            (trs, as) <- unzip <$> sequence ps
+            pure (conPat tvar con trs, concat as <> [con :>: tvar])
+
+        PLit _ lit -> do
+            t <- inferLiteral_ lit
+            pure (litPat tvar lit, [])
+
+        PAny _ -> 
+            pure (anyPat tvar, [])
+
+inferApp_
+  :: WriterT [Constraint] Infer (Expr Name p q, [Assumption Name]) 
+  -> WriterT [Constraint] Infer (Expr Name p q, [Assumption Name]) 
+  -> WriterT [Constraint] Infer (Expr Name p q, [Assumption Name])
+inferApp_ expr1 expr2 = do
+    tvar <- supply
+    (e1, as1) <- expr1
+    (e2, as2) <- expr2
+
+    tell [ Equality (fromTag e1) (fromTag e2 `tArr` tVar kStar tvar) ]
+
+    pure (appExpr tvar [e1, e2], as1 <> as2)
+
+inferLiteral_ :: Literal -> WriterT [Constraint] Infer Type
+inferLiteral_ = pure . \case
+    LUnit{} -> tUnit
+    LBool{} -> tBool
+    LInt{}  -> tInt
+
+
+-- ***********
+-- ***********
+-- ***********
+-- ***********
+-- ***********
+
 
 infer 
   :: Expr t (Pattern t) (Pattern t) 

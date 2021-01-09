@@ -23,14 +23,15 @@ dependencies:
 - base >= 4.7 && < 5
 - containers
 - deriving-compat
+- data-partition
 - either
 - extra
 - free
 - monad-supply
 - mtl
-- text
 - recursion-schemes
 - set-monad
+- text
 - transformers
 
 library:

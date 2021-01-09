@@ -4,6 +4,8 @@
 {-# LANGUAGE OverloadedStrings #-}
 module Tau.Type.Solver where
 
+import Control.Arrow
+import Control.Monad.Reader
 import Control.Monad.Except
 import Control.Monad.State
 import Control.Monad.Supply
@@ -11,6 +13,7 @@ import Data.Foldable (foldlM, foldrM, traverse_)
 import Data.Map.Strict (Map)
 import Data.Maybe (fromMaybe)
 import Data.List (nub, delete, find)
+import Data.Text (Text, pack)
 import Tau.Env (Env(..))
 import Data.Set.Monad (Set, union, intersection, (\\))
 import Debug.Trace
@@ -35,13 +38,13 @@ choice xs = find (uncurry isSolvable) [(ys, x) | x <- xs, let ys = delete x xs]
 runUnify :: ExceptT TypeError Infer a -> Infer a
 runUnify m = runExceptT (withExceptT TypeError m) >>= liftEither
 
---type BindingMap = Env [Binding]
-type BindingMap = Env [Assumption Type]
+type PredicateMap = Env [Predicate]
+--type PredicateMap = Env [Assumption Type]
 
-solve :: [Constraint] -> Infer (Substitution, BindingMap)
+solve :: [Constraint] -> Infer (Substitution, PredicateMap)
 solve = flip runStateT mempty . solver
 
-solver :: [Constraint] -> StateT BindingMap Infer Substitution
+solver :: [Constraint] -> StateT PredicateMap Infer Substitution
 solver [] = pure mempty
 solver conss = do
     (cs, c) <- maybe (throwError CannotSolve) pure (choice conss)
@@ -53,37 +56,43 @@ solver conss = do
             pure (sub2 <> sub1)
 
         Implicit t1 t2 (Monoset vars) -> do
+            --traceShowM t1
+            --traceShowM t2
             t3 <- generalize vars t2
+            --traceShowM t3
             solver (Explicit t1 t3:cs)
 
         Explicit t1 scheme -> do
+            --traceShowM t1
+            --traceShowM scheme
             t2 <- instantiate scheme
-            traceShowM t1
-            traceShowM t2
+            --traceShowM t2
             solver (Equality t1 t2:cs)
 
-blapp :: Substitution -> StateT BindingMap Infer ()
+blapp :: Substitution -> StateT PredicateMap Infer ()
 blapp sub = do 
-    modify (Env . Map.map (apply sub) . Map.mapKeys fn . getEnv)
+    modify (Env . Map.mapKeysWith (<>) fn . getEnv)
+    --modify (Env . Map.map (apply sub) . Map.mapKeys fn . getEnv)
   where
     fn k = case Map.lookup k (getSubst sub) of
         Just (Fix (TVar _ v)) -> v
-        _                     -> k
+        Just (Fix t) -> trace ("xxxx :" <> show t) k
+        _ -> k
 
 
 
 bazoo t = runStateT (generalize mempty t)
 bazoo2 = bazoo (tInt `tArr` tVar kStar "a" `tArr` tVar kStar "b"  `tArr` tVar (kArr kStar kStar) "c")
     (Env.fromList [ 
-      ("a", [ "toString" :>: (tVar kStar "a" `tArr` tCon kStar "String") ]) 
-    , ("c", [ "isZero"   :>: (tVar kStar "c" `tArr` tCon kStar "Bool")   ])
+      ("a", [ Predicate "toString" (tVar kStar "a" `tArr` tCon kStar "String") ]) 
+    , ("c", [ Predicate "isZero"   (tVar kStar "c" `tArr` tCon kStar "Bool")   ])
     ])
 bazoo3 = s where Right (s, _) = runInfer bazoo2
 
 bazoo8 = runStateT (instantiate bazoo3) mempty
 bazoo9 = runInfer bazoo8
 
-generalize :: Set Name -> Type -> StateT BindingMap Infer Scheme
+generalize :: Set Name -> Type -> StateT PredicateMap Infer Scheme
 generalize set ty = do
     (t, sub, _) <- foldrM go (sMono ty, nullSubst, 0) [p | p <- vars ty, fst p `Set.notMember` set]
     pure (apply sub t)
@@ -100,15 +109,263 @@ generalize set ty = do
         TApp t1 t2 -> t1 <> t2
         ty         -> []
 
+
+bazoo99 = runInfer $ runStateT (generalize mempty (tVar kStar "a5")) mempty
+
+bazoo100 = runInfer $ solve cs
+  where
+    cs =
+      [ Equality (tVar kStar "a1") (tVar kStar "a2" `tArr` tVar kStar "a3")
+      , Equality (tVar kStar "a2") (tVar kStar "a8") 
+      , Equality (tVar kStar "a3") (tVar kStar "a6") 
+      , Equality (tVar kStar "a4") (tVar kStar "a5") 
+      , Equality (tVar kStar "a7") (tVar kStar "a8" `tArr` tVar kStar "a6")
+      , Implicit (tVar kStar "a7") (tVar kStar "a4") (Monoset $ Set.fromList ["x"])
+      , Explicit (tVar kStar "a5") (sForall kStar [] (sMono (tGen 0 `tArr` tCon kStar "String")))
+      ]
+    runInfer = 
+        unInfer
+          >>> runExceptT
+          >>> flip runReaderT (Monoset mempty) 
+          >>> flip evalSupply numSupply
+          >>> fromMaybe (throwError ImplementationError)
+    numSupply = 
+        fmap ("a" <>) (pack . show <$> [9..])
+        
+
+
+tString = tCon kStar "String"
+
+bazoo101 = runInfer $ solve cs
+  where
+    cs =
+      [ Equality (tVar kStar "a2") (tVar kStar "a3" `tArr` tVar kStar "a1")
+      , Equality (tVar kStar "a3") tInt
+      , Explicit (tVar kStar "a2") (sForall kStar [Predicate "show" tString] (sMono (tGen 0 `tArr` tInt)))
+      , Equality (tVar kStar "a4") (tVar kStar "a5" `tArr` tVar kStar "a3" `tArr` tVar kStar "a1")
+      , Explicit (tVar kStar "a4") (sForall kStar [] (sMono ((tGen 0 `tArr` tString) `tArr` tGen 0 `tArr` tInt)))
+
+      --, Implicit (tVar kStar "a7") (tVar kStar "a4") (Monoset $ Set.fromList ["x"])
+      --, Equality (tVar kStar "a3") (tVar kStar "a6") 
+      --, Equality (tVar kStar "a4") (tVar kStar "a5") 
+      --, Equality (tVar kStar "a7") (tVar kStar "a8" `tArr` tVar kStar "a6")
+      --, Implicit (tVar kStar "a7") (tVar kStar "a4") (Monoset $ Set.fromList ["x"])
+      --, Explicit (tVar kStar "a5") (sForall kStar [] (sMono (tGen 0 `tArr` tCon kStar "String")))
+      ]
+    runInfer = 
+        unInfer
+          >>> runExceptT
+          >>> flip runReaderT (Monoset mempty) 
+          >>> flip evalSupply numSupply
+          >>> fromMaybe (throwError ImplementationError)
+    numSupply = 
+        fmap ("a" <>) (pack . show <$> [6..])
+        
+
+bazoo102 = runInfer $ solve cs
+  where
+    cs =
+      [ Equality (tVar kStar "a1") (tVar kStar "a4")
+      , Implicit (tVar kStar "a4") (tVar kStar "a2") (Monoset mempty)
+      , Equality (tVar kStar "a2") (tVar kStar "a3")
+      , Explicit (tVar kStar "a3") (sForall kStar [Predicate "show" tString] (sMono (tGen 0 `tArr` tInt)))
+      , Equality (tVar kStar "a5") (tVar kStar "a6" `tArr` tVar kStar "a3")
+      , Explicit (tVar kStar "a5") (sForall kStar [] (sMono ((tGen 0 `tArr` tString) `tArr` tGen 0 `tArr` tInt)))
+      ]
+    runInfer = 
+        unInfer
+          >>> runExceptT
+          >>> flip runReaderT (Monoset mempty) 
+          >>> flip evalSupply numSupply
+          >>> fromMaybe (throwError ImplementationError)
+    numSupply = 
+        fmap ("a" <>) (pack . show <$> [7..])
+        
+
+
+
+bazoo103 = runInfer $ solve cs
+  where
+    cs =
+      [ Equality (tVar kStar "a1") (tVar kStar "a4")
+      , Implicit (tVar kStar "a5") (tVar kStar "a2") (Monoset mempty)
+      , Equality (tVar kStar "a2") (tVar kStar "a3")
+      , Equality (tVar kStar "a5") (tVar kStar "a6" `tArr` tVar kStar "a4")
+      , Equality (tVar kStar "a6") tInt
+      , Explicit (tVar kStar "a3") (sForall kStar [Predicate "show" tString] (sMono (tGen 0 `tArr` tInt)))
+--      , Equality (tVar kStar "a7") (tVar kStar "a8" `tArr` tVar kStar "a3")
+--      , Explicit (tVar kStar "a7") (sForall kStar [] (sMono ((tGen 0 `tArr` tString) `tArr` tGen 0 `tArr` tInt)))
+      ]
+    runInfer = 
+        unInfer
+          >>> runExceptT
+          >>> flip runReaderT (Monoset mempty) 
+          >>> flip evalSupply numSupply
+          >>> fromMaybe (throwError ImplementationError)
+    numSupply = 
+        fmap ("a" <>) (pack . show <$> [7..])
+        
+
+
+bazoo104 = runInfer $ solve cs
+  where
+    cs =
+      [ Equality (tVar kStar "a1") (tVar kStar "a2" `tArr` tVar kStar "a3")
+      , Equality (tVar kStar "a2") (tVar kStar "a5")
+      , Equality (tVar kStar "a4") (tVar kStar "a5" `tArr` tVar kStar "a3")
+      , Explicit (tVar kStar "a4") (sForall kStar [Predicate "show" tString] (sMono (tGen 0 `tArr` tInt)))
+      , Equality (tVar kStar "a6") (tVar kStar "a7" `tArr` tVar kStar "a4")
+      , Explicit (tVar kStar "a6") (sForall kStar [] (sMono ((tGen 0 `tArr` tString) `tArr` tGen 0 `tArr` tInt)))
+      ]
+    runInfer = 
+        unInfer
+          >>> runExceptT
+          >>> flip runReaderT (Monoset mempty) 
+          >>> flip evalSupply numSupply
+          >>> fromMaybe (throwError ImplementationError)
+    numSupply = 
+        fmap ("a" <>) (pack . show <$> [8..])
+        
+
+
+
+bazoo105 = runInfer $ solve cs
+  where
+    cs =
+      [ Equality (tVar kStar "a1") (tVar kStar "a4")
+      , Equality (tVar kStar "a2") (tVar kStar "a3")
+      , Equality (tVar kStar "a9") (tVar kStar "a10" `tArr` tVar kStar "a3")
+      , Equality (tVar kStar "a4") (tVar kStar "a5" `tArr` tVar kStar "a6")
+      , Equality (tVar kStar "a5") (tVar kStar "a8")
+      , Equality (tVar kStar "a7") (tVar kStar "a8" `tArr` tVar kStar "a6")
+      , Implicit (tVar kStar "a7") (tVar kStar "a2") (Monoset $ Set.fromList ["x"])
+      , Explicit (tVar kStar "a3") (sForall kStar [Predicate "show" tString] (sMono (tGen 0 `tArr` tInt)))
+      , Explicit (tVar kStar "a9") (sForall kStar [] (sMono ((tGen 0 `tArr` tString) `tArr` tGen 0 `tArr` tInt)))
+      ]
+    runInfer = 
+        unInfer
+          >>> runExceptT
+          >>> flip runReaderT (Monoset mempty) 
+          >>> flip evalSupply numSupply
+          >>> fromMaybe (throwError ImplementationError)
+    numSupply = 
+        fmap ("a" <>) (pack . show <$> [11..])
+        
+
+
+
+
+bazoo106 = runInfer $ solve cs
+  where
+    cs =
+      [ Equality (tVar kStar "a1") (tVar kStar "a2" `tArr` tVar kStar "a3")
+      , Equality (tVar kStar "a2") (tVar kStar "a8")
+      , Equality (tVar kStar "a3") (tVar kStar "a6")
+      , Equality (tVar kStar "a4") (tVar kStar "a5")
+      , Implicit (tVar kStar "a7") (tVar kStar "a4") (Monoset $ Set.fromList ["x"])
+      , Equality (tVar kStar "a9") (tVar kStar "a10" `tArr` tVar kStar "a5")
+      , Equality (tVar kStar "a7") (tVar kStar "a8" `tArr` tVar kStar "a6")
+      , Explicit (tVar kStar "a5") (sForall kStar [Predicate "show" tString] (sMono (tGen 0 `tArr` tInt)))
+      , Explicit (tVar kStar "a9") (sForall kStar [] (sMono ((tGen 0 `tArr` tString) `tArr` tGen 0 `tArr` tInt)))
+      ]
+    runInfer = 
+        unInfer
+          >>> runExceptT
+          >>> flip runReaderT (Monoset mempty) 
+          >>> flip evalSupply numSupply
+          >>> fromMaybe (throwError ImplementationError)
+    numSupply = 
+        fmap ("a" <>) (pack . show <$> [11..])
+        
+
+
+
+bazoo107 = runInfer $ solve cs
+  where
+    cs =
+      [ Equality (tVar kStar "a1") (tVar kStar "a4")
+      , Equality (tVar kStar "a2") (tVar kStar "a3")
+      , Implicit (tVar kStar "a4") (tVar kStar "a2") (Monoset $ Set.fromList [])
+--      , Equality (tVar kStar "a5") (tVar kStar "a6" `tArr` tVar kStar "a3")
+      , Explicit (tVar kStar "a3") (sForall kStar [Predicate "show" tString] (sMono (tGen 0 `tArr` tInt)))
+--      , Explicit (tVar kStar "a5") (sForall kStar [] (sMono ((tGen 0 `tArr` tString) `tArr` tGen 0 `tArr` tInt)))
+      , Equality (tVar kStar "a3") (tVar kStar "x1" `tArr` tInt)
+      , Equality (tVar kStar "a2") (tVar kStar "x2" `tArr` tInt)
+      ]
+    runInfer = 
+        unInfer
+          >>> runExceptT
+          >>> flip runReaderT (Monoset mempty) 
+          >>> flip evalSupply numSupply
+          >>> fromMaybe (throwError ImplementationError)
+    numSupply = 
+        fmap ("a" <>) (pack . show <$> [5..])
+        
+
+
+
+
+
+
+bazoo108 = runInfer $ solve cs
+  where
+    cs =
+      [ Equality (tVar kStar "a1") (tVar kStar "a4")
+      , Equality (tVar kStar "a2") (tVar kStar "a3")
+      , Equality (tVar kStar "a7") (tVar kStar "a8" `tArr` tVar kStar "a3")
+      , Equality (tVar kStar "a6") tInt
+      , Implicit (tVar kStar "a5") (tVar kStar "a2") (Monoset $ Set.fromList [])
+      , Explicit (tVar kStar "a3") (sForall kStar [Predicate "show" tString] (sMono (tGen 0 `tArr` tInt)))
+      , Explicit (tVar kStar "a7") (sForall kStar [] (sMono ((tGen 0 `tArr` tString) `tArr` tGen 0 `tArr` tInt)))
+      , Equality (tVar kStar "a5") (tVar kStar "a6" `tArr` tVar kStar "a4")
+      ]
+    runInfer = 
+        unInfer
+          >>> runExceptT
+          >>> flip runReaderT (Monoset mempty) 
+          >>> flip evalSupply numSupply
+          >>> fromMaybe (throwError ImplementationError)
+    numSupply = 
+        fmap ("a" <>) (pack . show <$> [9..])
+        
+
+
+bazoo109 = runInfer $ solve cs
+  where
+    cs =
+      [ Equality (tVar kStar "a2") (tVar kStar "a3" `tArr` tVar kStar "a1")
+      , Equality (tVar kStar "a3") tInt
+      , Explicit (tVar kStar "a2") (sForall kStar [Predicate "show" tString] (sMono (tGen 0 `tArr` tInt)))
+--      , Equality (tVar kStar "a2") (tVar kStar "a3")
+--      , Implicit (tVar kStar "a4") (tVar kStar "a2") (Monoset $ Set.fromList [])
+----      , Equality (tVar kStar "a5") (tVar kStar "a6" `tArr` tVar kStar "a3")
+----      , Explicit (tVar kStar "a5") (sForall kStar [] (sMono ((tGen 0 `tArr` tString) `tArr` tGen 0 `tArr` tInt)))
+--      , Equality (tVar kStar "a2") (tVar kStar "x2" `tArr` tInt)
+      ]
+    runInfer = 
+        unInfer
+          >>> runExceptT
+          >>> flip runReaderT (Monoset mempty) 
+          >>> flip evalSupply numSupply
+          >>> fromMaybe (throwError ImplementationError)
+    numSupply = 
+        fmap ("a" <>) (pack . show <$> [4..])
+        
+
+
+
+
+
+
 --fazoo  = runStateT (instantiate foo) mempty
 --fazoo2 = runInfer fazoo 
 --foo = sForall (kArr kStar kStar) [] (sForall kStar [] (sMono (tGen 0 `tArr` tGen 1)))
 
-instantiate :: Scheme -> StateT BindingMap Infer Type
+instantiate :: Scheme -> StateT PredicateMap Infer Type
 instantiate scheme = do
     ns <- supplies (length ks)
     let ts = reverse (zipWith tVar ks ns)
-    traverse_ ins (zip ns (fmap (replaceBinding ts <$>) (bindings ts)))
+    traverse_ ins (zip ns (fmap (replaceImplicit ts <$>) (bindings ts)))
     pure (replaceBound ts ty)
   where
     ks = kinds scheme
@@ -134,11 +391,11 @@ instantiate scheme = do
         TVar k var -> tVar k var
         TCon k con -> tCon k con
 
-    --replaceBinding :: [Type] -> Binding -> Binding
-    --replaceBinding ts (Binding name ty) = Binding name (replaceBound ts ty) 
+    --replaceImplicit :: [Type] -> Implicit -> Implicit
+    --replaceImplicit ts (Implicit name ty) = Implicit name (replaceBound ts ty) 
 
-    replaceBinding :: [Type] -> Assumption Type -> Assumption Type
-    replaceBinding ts (name :>: ty) = name :>: replaceBound ts ty
+    -- replaceImplicit :: [Type] -> Assumption Type -> Assumption Type
+    replaceImplicit ts (Predicate name ty) = Predicate name (replaceBound ts ty)
 
 --solver :: [Constraint] -> Infer Substitution
 --solver [] = pure mempty

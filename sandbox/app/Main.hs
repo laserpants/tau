@@ -7,12 +7,18 @@
 {-# LANGUAGE OverloadedStrings #-}
 module Main where
 
+import Control.Monad.Writer
+import Control.Arrow
+import Data.Maybe (fromMaybe)
+import Control.Monad.Except
 import Control.Monad.Reader
 import Control.Monad.Supply
 import Control.Monad.Trans.Maybe
 import Data.Foldable
 import Data.Function ((&))
+import Data.Tuple.Extra (thd3)
 import Data.List
+import Data.Partition
 import Data.Maybe (fromJust)
 import Tau.Env
 import Tau.Eval
@@ -30,7 +36,204 @@ import qualified Data.Set.Monad as Set
 import qualified Tau.Env as Env
 import qualified Tau.Type.Class as Class
 import qualified Data.Map.Strict as Map
+import qualified Data.Set as PlainSet
 
+
+--instance Free Constraint where
+--    free (Equality t1 t2)      = free t1 `Set.union` free t2
+--    free (Implicit t1 t2 mono) = free t1 `Set.union` free t2
+--    free (Explicit ty scheme)  = free ty `Set.union` free scheme
+
+
+--join_ :: Constraint -> Partition Name -> Partition Name
+--join_ (Equality (Fix (TVar _ a)) (Fix (TVar _ b)))   p = joinElems a b p
+--join_ (Implicit (Fix (TVar _ a)) (Fix (TVar _ b)) _) p = joinElems a b p
+--join_ _ p = p
+
+
+constraintPartition :: Constraint -> Partition Type -> Partition Type
+constraintPartition (Equality t1 t2)   p = joinElems t1 t2 p
+constraintPartition (Implicit t1 t2 _) p = joinElems t1 t2 p
+constraintPartition _                  p = p
+
+
+--testScheme1 = 
+--    sForall kStar [Predicate "o1" tInt] 
+--        (sForall kStar [Predicate "o2" tBool] 
+--            (sMono (tGen 1 `tArr` tGen 0 `tArr` tUnit)))
+
+
+instantiate_ :: Scheme -> Infer (Type, [(Name, Type)])
+instantiate_ scheme = do
+    ns <- supplies (length kinds)
+    let ts = reverse (zipWith tVar kinds ns)
+    pure (substBound ts ty, fmap (substBound ts) <$> preds1)
+
+  where
+    (kinds, preds) = unzip $ flip cata scheme $ \case
+        Mono _         -> []
+        Forall k ps rs -> (k, toPair <$> ps):rs
+
+    preds1 = fmap fn (zip (reverse $ concat preds) [0..]) where
+        fn ((n, t), i) = (n, tGen i `tArr` t)
+
+    ty = flip cata scheme $ \case
+        Mono t       -> t
+        Forall _ _ t -> t
+
+    toPair (Predicate n t) = (n, t)
+
+    substBound :: [Type] -> Type -> Type 
+    substBound ts = cata $ \case
+        TGen n     -> ts !! n
+        TArr t1 t2 -> tArr t1 t2
+        TApp t1 t2 -> tApp t1 t2
+        TVar k var -> tVar k var
+        TCon k con -> tCon k con
+
+
+bazz :: Assumption Name -> (Name, Type)
+bazz (name :>: v) = (name, tVar kStar v)
+
+hello2 expr =
+    runInfer go
+  where
+    envConstraints as = do
+        (x, s) <- bazz <$> as
+        (y, t) <- Env.toList env1
+        guard (x == y)
+        pure (Explicit s t)
+
+    go = do
+        ((te, as), cs) <- infer__ expr
+        let cs' = cs <> envConstraints as
+        (sub, _) <- solve cs' 
+        pure (sub, apply sub (modifyTags (tVar kStar) te))
+
+    env1 =
+        Env.fromList [
+            ("lenShow", sForall kStar [Predicate "show" tString] (sMono (tGen 0 `tArr` tInt)))
+        ]
+
+    runInfer_ = 
+        runExceptT
+          >>> flip runReaderT (Monoset mempty) 
+          >>> flip evalSupply (numSupply "a")
+          >>> fromMaybe (throwError ImplementationError)
+
+
+--yello = do
+--    zs <- hello
+--    undefined
+
+--hello :: Either InferError [(Type, [(Name, Type)], Constraint)]
+hello expr = 
+    runInfer go
+  where
+    envConstraints as = do
+        (x, s) <- bazz <$> as
+        (y, t) <- Env.toList env1
+        guard (x == y)
+        pure (Explicit s t)
+
+    --zoo = do
+    --    zs <- go
+    --    undefined
+
+    go = do
+        ((te, as), cs) <- infer__ expr
+
+        let cs' = cs <> envConstraints as
+
+        traceShowM cs
+
+        let partition :: Partition Type
+            partition = foldr constraintPartition discrete cs'
+
+        traceShowM partition
+        yyy2 <- traverse (xyz partition) cs'
+
+        let zs = Map.fromList (concat yyy2)
+        let rrr = (snd . snd) <$> (concat yyy2)
+
+        (sub, gooo) <- solve (cs' <> rrr)
+
+--        traceShowM gooo
+
+        let -- foo :: (Name, Type) -> 
+            foo (a, t) = (a, apply sub t)
+
+        let g t = 
+              case Map.lookup (tVar kStar t) zs of
+                  Nothing      -> (apply sub (tVar kStar t), [])
+                  Just (xs, _) -> (apply sub (tVar kStar t), foo <$> xs)
+
+        --let rs = snd <$> zs
+
+
+        -- let te' = modifyTags g te
+
+        pure (modifyTags g te) -- , cs')
+
+    xyz p (Explicit t scheme) = do
+
+        let fn :: Type -> Infer (Type, ([(Name, Type)], Constraint))
+            fn s = do
+                (t, ps) <- instantiate_ scheme
+                pure (s, (ps, Equality s t))
+
+        let a = Data.Partition.find p t
+        traverse fn (PlainSet.toList a)
+
+--        let zz :: PlainSet.Set Type
+--            zz = p `Data.Partition.find` t 
+--            yy = PlainSet.toList zz
+--            xx = traverse fn yy
+--
+--            fn :: Type -> Infer ([(Name, Type)], Constraint)
+--            fn s = do
+--                (t, ps) <- instantiate_ scheme
+--                pure (ps, Equality s t)
+--
+--         in xx
+
+    xyz _ _ = 
+        pure []
+
+
+    env1 =
+        Env.fromList [
+            ("lenShow", sForall kStar [Predicate "show" tString] (sMono (tGen 0 `tArr` tInt)))
+        ]
+
+    runInfer_ = 
+        runExceptT
+          >>> flip runReaderT (Monoset mempty) 
+          >>> flip evalSupply (numSupply "a")
+          >>> fromMaybe (throwError ImplementationError)
+
+
+
+expr1 = letExpr () (varPat () "f") (varExpr () "lenShow") (varExpr () "f")
+
+
+expr2 = 
+    letExpr () 
+        (varPat () "f") 
+        (varExpr () "lenShow") 
+        (appExpr () [varExpr () "f", litExpr () (LInt 5)])
+
+
+expr3 = lamExpr () (varPat () "x") (appExpr () [varExpr () "lenShow", varExpr () "x"])
+
+
+expr4 = lamExpr () (varPat () "x") (letExpr () (varPat () "f") (varExpr () "lenShow") (appExpr () [varExpr () "f", varExpr () "x"]))
+
+
+expr5 = letExpr () (varPat () "f") (varExpr () "lenShow") (lamExpr () (varPat () "x") (appExpr () [varExpr () "f", varExpr () "x"]))
+
+
+expr6 = appExpr () [varExpr () "lenShow", litExpr () (LInt 5)]
 
 
 
@@ -227,9 +430,9 @@ testExpr3 =
             ])
 
 tIsZero = sMono (tInt `tArr` tBool)
-tFirst = sForall kStar ["first" :>: tInt] (sMono (tGen 0 `tArr` tInt))
+tFirst = sForall kStar [Predicate "first" tInt] (sMono (tGen 0 `tArr` tInt))
 
-tFirst1 = sForall kStar [] (sForall kStar ["first" :>: (tGen 1)] (sMono (tGen 0 `tArr` tGen 1)))
+tFirst1 = sForall kStar [] (sForall kStar [Predicate "first" (tGen 1)] (sMono (tGen 0 `tArr` tGen 1)))
 
 baz = runInfer fun where
     fun = do

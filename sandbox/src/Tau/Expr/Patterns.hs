@@ -211,12 +211,12 @@ translate = futu $ project >>> \case
     Match [] (Clause [] exs e:qs) c ->
         If (Free (Expr (foldr1 (\a -> andOp (getTag a) a) exs))) 
            (Free (Expr e)) 
-           (Pure (Fix (Match [] qs c)))
+           (Pure (embed (Match [] qs c)))
 
     Match (u:us) qs c ->
         Wrap $ case equationGroups qs of
             [VarTag eqs] -> 
-                pure (Pure (Fix (Match us (runSubst <$> eqs) c)))
+                pure (Pure (embed (Match us (runSubst <$> eqs) c)))
                   where
                     runSubst (Clause (Fix (PVar _ name):ps) exs e) = 
                         substitute name u <$> Clause ps exs e
@@ -227,18 +227,18 @@ translate = futu $ project >>> \case
                     toSimpleMatch (ConGroup t con ps eqs) = do
                         vars <- supplies (length ps)
                         pure ( RCon t con vars
-                             , Pure (Fix (Match (combine ps vars <> us) eqs c)) )
+                             , Pure (embed (Match (combine ps vars <> us) eqs c)) )
 
                     combine ps vs = 
                         uncurry (varExpr . getPatternTag) <$> zip ps vs
 
             mixed -> 
-                pure (Pure (Fix (foldr fn (project c) (getEqs <$> mixed))))
+                pure (Pure (embed (foldr fn (project c) (getEqs <$> mixed))))
               where
                 getEqs (ConTag a) = a
                 getEqs (VarTag a) = a
 
-                fn eqs a = Match (u:us) eqs (Fix a)
+                fn eqs a = Match (u:us) eqs (embed a)
 
 --- 
 --- 

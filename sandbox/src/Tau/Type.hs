@@ -39,18 +39,11 @@ deriveOrd1  ''TypeF
 
 type Type = Fix TypeF
 
-data Assumption a = Name :>: a
-    deriving (Show, Eq, Functor, Foldable, Traversable)
-
--- example : (toString : a -> String) => a -> SomeType
---
--- "toString" :>: tString
---
---data Binding = Binding Name Type
---    deriving (Show, Eq)
+data Predicate = Predicate Name Type
+    deriving (Show, Eq)
 
 data SchemeF a
-    = Forall Kind [Assumption Type] a
+    = Forall Kind [Predicate] a
     | Mono Type
     deriving (Functor, Foldable, Traversable)
 
@@ -89,29 +82,8 @@ kindOf = histo $ \case
     TArr{}               -> Just kStar
     _                    -> Nothing
   where
-    appKind (KArr _ k)    = Just k
-    appKind _             = Nothing
-
---super :: ClassEnv -> Name -> [Name]
---super (info, _) name = maybe [] fst (Env.lookup name info)
---
---instances :: ClassEnv -> Name -> [Instance]
---instances (info, _) name = maybe [] snd (Env.lookup name info)
---
-assumptionVar :: Assumption a -> Name
-assumptionVar (name :>: _) = name
-
---findAssumption :: Name -> [Assumption a] -> Maybe a
---findAssumption _ [] = Nothing 
---findAssumption i (name :>: a:as)
---    | i == name = Just a
---    | otherwise = findAssumption i as
-
-removeAssumption :: Name -> [Assumption a] -> [Assumption a]
-removeAssumption name = filter (\a -> name /= assumptionVar a)
-
-removeAssumptionSet :: Set Name -> [Assumption a] -> [Assumption a]
-removeAssumptionSet = flip (Set.foldr removeAssumption) 
+    appKind (KArr _ k) = Just k
+    appKind _          = Nothing
 
 --
 
@@ -153,6 +125,8 @@ tListCon = tCon (kArr kStar kStar) "List"
 tList :: Type -> Type
 tList = tApp tListCon 
 
+sForall :: Kind -> [Predicate] -> Scheme -> Scheme
 sForall k os s = Fix (Forall k os s)
 
+sMono :: Type -> Scheme
 sMono t = Fix (Mono t)

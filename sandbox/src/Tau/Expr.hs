@@ -4,6 +4,7 @@
 {-# LANGUAGE StrictData        #-}
 {-# LANGUAGE TemplateHaskell   #-}
 {-# LANGUAGE FlexibleInstances #-}
+{-# LANGUAGE TypeFamilies      #-}
 module Tau.Expr where
 
 import Control.Monad.Supply
@@ -58,6 +59,7 @@ data ExprF t p q a
     | EIf  t a ~a ~a
     | EMat t [a] [Clause p a]
     | EOp  t (Op a)
+--    | EAnn t t a
     deriving (Functor, Foldable, Traversable)
 
 deriveShow  ''ExprF
@@ -96,7 +98,29 @@ setPrepTag t = \case
     RVar _ var    -> RVar t var
     RCon _ con rs -> RCon t con rs
 
+modifyTags :: (s -> t) -> Expr s (Pattern s) (Pattern s) -> Expr t (Pattern t) (Pattern t)
+modifyTags f = cata $ \case
+    EVar t var      -> varExpr (f t) var
+    ECon t con exs  -> conExpr (f t) con exs
+    ELit t lit      -> litExpr (f t) lit
+    EApp t exs      -> appExpr (f t) exs
+    ELet t p e1 e2  -> letExpr (f t) (pat p) e1 e2
+    ELam t p e1     -> lamExpr (f t) (pat p) e1
+    EIf  t c e1 e2  -> ifExpr  (f t) c e1 e2
+    EMat t exs eqs  -> matExpr (f t) exs (clause <$> eqs)
+    EOp  t op       -> opExpr  (f t) op
+  where
+    clause (Clause ps exs e) = 
+        Clause (pat <$> ps) exs e
 
+    pat = cata $ \case
+        PVar t var    -> varPat (f t) var
+        PCon t con ps -> conPat (f t) con ps
+        PLit t lit    -> litPat (f t) lit
+        PAny t        -> anyPat (f t)
+
+
+--
 
 varPat :: t -> Name -> Pattern t
 varPat t var = embed (PVar t var)
