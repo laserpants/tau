@@ -7,6 +7,7 @@
 {-# LANGUAGE OverloadedStrings #-}
 module Main where
 
+import Lib3
 import Control.Monad.Writer
 import Control.Arrow
 import Data.Maybe (fromMaybe)
@@ -38,6 +39,24 @@ import qualified Tau.Type.Class as Class
 import qualified Data.Map.Strict as Map
 import qualified Data.Set as PlainSet
 
+
+
+
+
+
+
+
+
+
+
+
+
+
+----------------------------------
+----------------------------------
+----------------------------------
+----------------------------------
+----------------------------------
 
 --instance Free Constraint where
 --    free (Equality t1 t2)      = free t1 `Set.union` free t2
@@ -107,8 +126,8 @@ hello2 expr =
     go = do
         ((te, as), cs) <- infer__ expr
         let cs' = cs <> envConstraints as
-        (sub, _) <- solve cs' 
-        pure (sub, apply sub (modifyTags (tVar kStar) te))
+        (sub, x) <- solve cs' 
+        pure (apply sub (modifyTags (tVar kStar) te), x, sub)
 
     env1 =
         Env.fromList [
