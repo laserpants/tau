@@ -33,11 +33,25 @@ data TypeF a
     | TApp a a
     deriving (Show, Eq, Ord, Functor, Foldable, Traversable)
 
+data TypePlusF c a
+    = TGenP c Int
+    | TVarP c Kind Name 
+    | TConP c Kind Name 
+    | TArrP a a
+    | TAppP a a
+    deriving (Show, Eq, Ord, Functor, Foldable, Traversable)
+
 deriveShow1 ''TypeF
 deriveEq1   ''TypeF
 deriveOrd1  ''TypeF
 
+deriveShow1 ''TypePlusF
+deriveEq1   ''TypePlusF
+deriveOrd1  ''TypePlusF
+
 type Type = Fix TypeF
+
+type TypePlus c = Fix (TypePlusF c)
 
 data Predicate = Predicate Name Type
     deriving (Show, Eq)
@@ -95,6 +109,9 @@ kArr t1 t2 = Fix (KArr t1 t2)
 
 tVar :: Kind -> Name -> Type
 tVar k var = Fix (TVar k var)
+
+--tVarP :: Kind -> Name -> TypePlus c
+tVarP x k var = Fix (TVarP x k var)
 
 tGen :: Int -> Type
 tGen n = Fix (TGen n)

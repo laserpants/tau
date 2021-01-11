@@ -17,11 +17,20 @@ import qualified Data.Set.Monad as Set
 newtype Substitution = Subst { getSubst :: Map Name Type }
     deriving (Show, Eq)
 
+newtype SubstitutionP c = SubstP { getSubstP :: Map Name (TypePlus c) }
+    deriving (Show, Eq)
+
 domain :: Substitution -> [Name]
 domain (Subst sub) = Map.keys sub
 
+domainP :: SubstitutionP c -> [Name]
+domainP (SubstP sub) = Map.keys sub
+
 nullSubst :: Substitution
 nullSubst = Subst mempty
+
+nullSubstP :: SubstitutionP c
+nullSubstP = SubstP mempty
 
 fromList :: [(Name, Type)] -> Substitution
 fromList = Subst . Map.fromList
