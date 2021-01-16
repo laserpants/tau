@@ -1,8 +1,8 @@
 {-# LANGUAGE FlexibleContexts           #-}
 {-# LANGUAGE GeneralizedNewtypeDeriving #-}
 {-# LANGUAGE LambdaCase                 #-}
+{-# LANGUAGE OverloadedStrings          #-}
 {-# LANGUAGE StrictData                 #-}
-{-# LANGUAGE OverloadedStrings #-}
 module Tau.Eval where
 
 import Control.Monad.Reader

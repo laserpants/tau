@@ -76,8 +76,8 @@ class Boolean t where
 instance Boolean () where
     boolean = ()
 
-instance Boolean Type where
-    boolean = tBool
+--instance Boolean Type where
+--    boolean = tBool
 
 simplified 
   :: (Boolean t, Show t) 
@@ -230,7 +230,7 @@ translate = futu $ project >>> \case
                              , Pure (embed (Match (combine ps vars <> us) eqs c)) )
 
                     combine ps vs = 
-                        uncurry (varExpr . getPatternTag) <$> zip ps vs
+                        uncurry (varExpr . getTag) <$> zip ps vs
 
             mixed -> 
                 pure (Pure (embed (foldr fn (project c) (getEqs <$> mixed))))
@@ -270,11 +270,13 @@ substitute name subst = para $ \case
             | name == var -> subst
             | otherwise   -> varExpr t var
 
-        ECon t con exs  -> conExpr t con exs
-        ELit t lit      -> litExpr t lit
-        EApp t exs      -> appExpr t exs
-        EIf  t c e1 e2  -> ifExpr  t c e1 e2
-        EOp  t op       -> substOp t op
+        e -> embed e
+
+        --ECon t con exs  -> conExpr t con exs
+        --ELit t lit      -> litExpr t lit
+        --EApp t exs      -> appExpr t exs
+        --EIf  t c e1 e2  -> ifExpr  t c e1 e2
+        --EOp  t op       -> substOp t op
   where
     substOp t = \case
         OEq  a b -> eqOp  t a b
@@ -374,7 +376,7 @@ useful px@(ps:_) qs =
         ([], _) -> error "Implementation error (useful)"
 
         (Fix (PCon _ con rs):_, _) ->
-            let special = specialized con (getPatternTag <$> rs)
+            let special = specialized con (getTag <$> rs)
              in useful (special px) (head (special [qs]))
 
         (_:qs1, _) -> do
@@ -382,7 +384,7 @@ useful px@(ps:_) qs =
             isComplete <- complete (fst <$> cs)
             if isComplete
                 then cs & anyM (\(con, rs) ->
-                    let special = specialized con (getPatternTag <$> rs)
+                    let special = specialized con (getTag <$> rs)
                      in useful (special px) (head (special [qs]))) 
                 else useful (defaultMatrix px) qs1
   where
@@ -405,7 +407,7 @@ useful px@(ps:_) qs =
 
 exhaustive :: (MonadReader ConstructorEnv m) => [[Pattern t]] -> m Bool
 exhaustive []        = pure False
-exhaustive px@(ps:_) = not <$> useful px (anyPat . getPatternTag <$> ps)
+exhaustive px@(ps:_) = not <$> useful px (anyPat . getTag <$> ps)
 
 --
 --
@@ -446,7 +448,7 @@ exhaustive px@(ps:_) = not <$> useful px (anyPat . getPatternTag <$> ps)
 --        | otherwise ->
 --            Next $ case qs of
 --                Fix (PCon _ con rs):_ -> 
---                    let special = specialized con (getPatternTag <$> rs)
+--                    let special = specialized con (getTag <$> rs)
 --                    in -- useful (special px) (head (special [qs]))
 --                    pure (Pure (Fix (Matrix (special px) (head (special [qs])))))
 --
@@ -456,7 +458,7 @@ exhaustive px@(ps:_) = not <$> useful px (anyPat . getPatternTag <$> ps)
 --                    if isComplete
 --                        then do
 --                            xs <- cs & traverse (\(con, rs) ->
---                                let special = specialized con (getPatternTag <$> rs)
+--                                let special = specialized con (getTag <$> rs)
 --                                 in pure (Fix (Matrix (special px) (head (special [qs])))))
 --                            pure (Pure (Fix (Bozz xs)))
 --                        else 

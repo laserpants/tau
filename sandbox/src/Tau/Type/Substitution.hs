@@ -17,40 +17,56 @@ import qualified Data.Set.Monad as Set
 newtype Substitution = Subst { getSubst :: Map Name Type }
     deriving (Show, Eq)
 
-newtype SubstitutionP c = SubstP { getSubstP :: Map Name (TypePlus c) }
-    deriving (Show, Eq)
-
-domain :: Substitution -> [Name]
-domain (Subst sub) = Map.keys sub
-
-domainP :: SubstitutionP c -> [Name]
-domainP (SubstP sub) = Map.keys sub
-
-nullSubst :: Substitution
-nullSubst = Subst mempty
-
-nullSubstP :: SubstitutionP c
-nullSubstP = SubstP mempty
-
-fromList :: [(Name, Type)] -> Substitution
-fromList = Subst . Map.fromList
-
 mapsTo :: Name -> Type -> Substitution
 mapsTo name val = Subst (Map.singleton name val)
-
-substWithDefault :: Type -> Name -> Substitution -> Type
-substWithDefault def name = Map.findWithDefault def name . getSubst
 
 compose :: Substitution -> Substitution -> Substitution
 compose s1 s2 = Subst (fmap (apply s1) (getSubst s2) `Map.union` getSubst s1)
 
-merge :: Substitution -> Substitution -> Maybe Substitution
-merge s1 s2 = 
-    if all equal (domain s1 `intersect` domain s2)
-        then Just (Subst (getSubst s1 `Map.union` getSubst s2))
-        else Nothing
-  where
-    equal v = let app = (`apply` tVar kStar v) in app s1 == app s2
+class Substitutable t where
+    apply :: Substitution -> t -> t
+
+
+--newtype Substitution = Subst { getSubst :: Map Name Type }
+--    deriving (Show, Eq)
+--
+--newtype SubstitutionP c = SubstP { getSubstP :: Map Name (TypePlus c) }
+--    deriving (Show, Eq)
+--
+--domain :: Substitution -> [Name]
+--domain (Subst sub) = Map.keys sub
+--
+--domainP :: SubstitutionP c -> [Name]
+--domainP (SubstP sub) = Map.keys sub
+
+nullSubst :: Substitution
+nullSubst = Subst mempty
+
+--nullSubstP :: SubstitutionP c
+--nullSubstP = SubstP mempty
+
+fromList :: [(Name, Type)] -> Substitution
+fromList = Subst . Map.fromList
+
+--mapsTo :: Name -> Type -> Substitution
+--mapsTo name val = Subst (Map.singleton name val)
+
+substWithDefault :: Type -> Name -> Substitution -> Type
+substWithDefault def name = Map.findWithDefault def name . getSubst
+
+toFunction :: Substitution -> Name -> Type
+toFunction sub name = substWithDefault (tVar kStar name) name sub
+
+--compose :: Substitution -> Substitution -> Substitution
+--compose s1 s2 = Subst (fmap (apply s1) (getSubst s2) `Map.union` getSubst s1)
+--
+--merge :: Substitution -> Substitution -> Maybe Substitution
+--merge s1 s2 = 
+--    if all equal (domain s1 `intersect` domain s2)
+--        then Just (Subst (getSubst s1 `Map.union` getSubst s2))
+--        else Nothing
+--  where
+--    equal v = let app = (`apply` tVar kStar v) in app s1 == app s2
 
 instance Semigroup Substitution where
     (<>) = compose
@@ -58,8 +74,8 @@ instance Semigroup Substitution where
 instance Monoid Substitution where
     mempty = nullSubst
 
-class Substitutable t where
-    apply :: Substitution -> t -> t
+--class Substitutable t where
+--    apply :: Substitution -> t -> t
 
 class Free t where
     free :: t -> Set Name
@@ -84,69 +100,69 @@ instance Free Type where
         TApp t1 t2     -> t1 `union` t2
         ty             -> mempty
 
---instance Substitutable TypeClass where
---    apply sub (TypeClass name t) = TypeClass name (apply sub t)
+----instance Substitutable TypeClass where
+----    apply sub (TypeClass name t) = TypeClass name (apply sub t)
+----
+----instance Free TypeClass where
+----    free (TypeClass _ ty) = free ty
 --
---instance Free TypeClass where
---    free (TypeClass _ ty) = free ty
-
---instance (Substitutable t) => Substitutable (Qualified t) where
---    apply = fmap . apply
+----instance (Substitutable t) => Substitutable (Qualified t) where
+----    apply = fmap . apply
+----
+----instance (Free t) => Free (Qualified t) where
+----    free (ps :=> t) = free ps `union` free t
 --
---instance (Free t) => Free (Qualified t) where
---    free (ps :=> t) = free ps `union` free t
-
-instance Substitutable Predicate where
-    apply sub (Predicate name ty) = Predicate name (apply sub ty)
-
-instance Free Predicate where
-    free (Predicate _ ty) = free ty
-
-instance Substitutable Scheme where
-    apply sub = cata $ \case
-        Forall k os s -> sForall k (apply sub <$> os) s
-        Mono t        -> sMono (apply sub t)
+--instance Substitutable Predicate where
+--    apply sub (Predicate name ty) = Predicate name (apply sub ty)
+--
+--instance Free Predicate where
+--    free (Predicate _ ty) = free ty
+--
+--instance Substitutable Scheme where
+--    apply sub = cata $ \case
+--        Forall k os s -> sForall k (apply sub <$> os) s
+--        Mono t        -> sMono (apply sub t)
 
 instance Free Scheme where
     free = cata $ \case
-        Forall _ os s -> unions (free <$> os) `union` s
+        Forall _ os s -> unions (free . snd <$> os) `union` s
         Mono t        -> free t
 
-instance (Substitutable p, Substitutable q) => Substitutable (Clause p (Expr Type p q)) where
-    apply sub (Clause ps exs e) =
-        Clause (apply sub ps) (apply sub exs) (apply sub e)
-
-instance (Substitutable p, Substitutable q) => Substitutable (Expr Type p q) where
-    apply sub = cata $ \case
-        EVar t name        -> varExpr (apply sub t) name
-        ECon t con exprs   -> conExpr (apply sub t) con exprs
-        ELit t lit         -> litExpr (apply sub t) lit
-        EApp t exprs       -> appExpr (apply sub t) exprs
-        ELet t rep ex1 ex2 -> letExpr (apply sub t) (apply sub rep) ex1 ex2
-        ELam t rep ex      -> lamExpr (apply sub t) (apply sub rep) ex
-        EIf  t cond tr fl  -> ifExpr  (apply sub t) cond tr fl
-        EMat t exs eqs     -> matExpr (apply sub t) exs (apply sub eqs)
-        EOp  t op          -> opExpr  (apply sub t) op
-
-instance Substitutable (Pattern Type) where
-    apply sub = cata $ \case
-        PVar t name        -> varPat (apply sub t) name
-        PCon t name ps     -> conPat (apply sub t) name ps
-        PLit t lit         -> litPat (apply sub t) lit
-        PAny t             -> anyPat (apply sub t)
-
-instance (Substitutable t) => Substitutable (Prep t) where
-    apply sub (RVar t name)   = RVar (apply sub t) name
-    apply sub (RCon t con ps) = RCon (apply sub t) con ps
-
---instance Substitutable (SimpleRep Type) where
---    apply sub (PVar t name)   = PVar (apply sub t) name
---    apply sub (PCon t con ps) = PCon (apply sub t) con ps
---    apply sub (PLit t lit)    = PLit (apply sub t) lit
---    apply sub (PAny t)        = PAny (apply sub t)
-
-instance Free (Expr Type p q) where
-    free = free . getTag 
+--instance (Substitutable p, Substitutable q) => Substitutable (Clause p (Expr Type p q)) where
+--    apply sub (Clause ps exs e) =
+--        Clause (apply sub ps) (apply sub exs) (apply sub e)
+--
+--instance (Substitutable p, Substitutable q) => Substitutable (Expr Type p q) where
+--    apply sub = cata $ \case
+--        EVar t name        -> varExpr (apply sub t) name
+--        ECon t con exprs   -> conExpr (apply sub t) con exprs
+--        ELit t lit         -> litExpr (apply sub t) lit
+--        EApp t exprs       -> appExpr (apply sub t) exprs
+--        ELet t rep ex1 ex2 -> letExpr (apply sub t) (apply sub rep) ex1 ex2
+--        ELam t rep ex      -> lamExpr (apply sub t) (apply sub rep) ex
+--        EIf  t cond tr fl  -> ifExpr  (apply sub t) cond tr fl
+--        EMat t exs eqs     -> matExpr (apply sub t) exs (apply sub eqs)
+--        EOp  t op          -> opExpr  (apply sub t) op
+--
+--instance Substitutable (Pattern Type) where
+--    apply sub = cata $ \case
+--        PVar t name        -> varPat (apply sub t) name
+--        PCon t name ps     -> conPat (apply sub t) name ps
+--        PLit t lit         -> litPat (apply sub t) lit
+--        PAny t             -> anyPat (apply sub t)
+--
+--instance (Substitutable t) => Substitutable (Prep t) where
+--    apply sub (RVar t name)   = RVar (apply sub t) name
+--    apply sub (RCon t con ps) = RCon (apply sub t) con ps
+--
+----instance Substitutable (SimpleRep Type) where
+----    apply sub (PVar t name)   = PVar (apply sub t) name
+----    apply sub (PCon t con ps) = PCon (apply sub t) con ps
+----    apply sub (PLit t lit)    = PLit (apply sub t) lit
+----    apply sub (PAny t)        = PAny (apply sub t)
+--
+--instance Free (Expr Type p q) where
+--    free = free . getTag 
 
 instance Free (Pattern t) where
     free = cata $ \case

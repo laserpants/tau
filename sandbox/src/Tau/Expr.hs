@@ -1,14 +1,14 @@
-{-# LANGUAGE DeriveTraversable #-}
-{-# LANGUAGE FlexibleContexts  #-}
-{-# LANGUAGE LambdaCase        #-}
-{-# LANGUAGE StrictData        #-}
-{-# LANGUAGE TemplateHaskell   #-}
-{-# LANGUAGE FlexibleInstances #-}
-{-# LANGUAGE TypeFamilies      #-}
+{-# LANGUAGE DeriveTraversable     #-}
+{-# LANGUAGE FlexibleContexts      #-}
+{-# LANGUAGE FlexibleInstances     #-}
+{-# LANGUAGE LambdaCase            #-}
+{-# LANGUAGE StrictData            #-}
+{-# LANGUAGE MultiParamTypeClasses #-}
+{-# LANGUAGE TemplateHaskell       #-}
+{-# LANGUAGE TypeFamilies          #-}
 module Tau.Expr where
 
 import Control.Monad.Supply
-import Tau.Type
 import Tau.Util
 
 data Literal
@@ -69,56 +69,136 @@ deriveEq1   ''ExprF
 
 type Expr t p q = Fix (ExprF t p q)
 
-getTag :: Expr t p q -> t
-getTag = cata $ \case
-    EVar t _     -> t
-    ECon t _ _   -> t
-    ELit t _     -> t
-    EApp t _     -> t
-    ELet t _ _ _ -> t
-    ELam t _ _   -> t
-    EIf  t _ _ _ -> t
-    EMat t _ _   -> t
-    EOp  t _     -> t
+class TaggedA a t where
+    getTag :: a -> t
+    setTag :: t -> a -> a
 
-getPatternTag :: Pattern t -> t
-getPatternTag = cata $ \case
-    PVar t _     -> t
-    PCon t _ _   -> t
-    PLit t _     -> t
-    PAny t       -> t
+updateTag :: (TaggedA a t) => (t -> t) -> a -> a
+updateTag f a = let tag = getTag a in setTag (f tag) a
 
-getPrepTag :: Prep t -> t
-getPrepTag = \case
-    RVar t _     -> t
-    RCon t _ _   -> t
+instance (TaggedA (Expr t p q) t) where
+    getTag = cata $ \case
+        EVar t _       -> t
+        ECon t _ _     -> t
+        ELit t _       -> t
+        EApp t _       -> t
+        ELet t _ _ _   -> t
+        ELam t _ _     -> t
+        EIf  t _ _ _   -> t
+        EMat t _ _     -> t
+        EOp  t _       -> t
+    setTag t = cata $ \case
+        EVar _ var     -> varExpr t var
+        ECon _ con exs -> conExpr t con exs
+        ELit _ lit     -> litExpr t lit
+        EApp _ exs     -> appExpr t exs
+        ELet _ p e1 e2 -> letExpr t p e1 e2
+        ELam _ p e1    -> lamExpr t p e1
+        EIf  _ c e1 e2 -> ifExpr  t c e1 e2
+        EMat _ exs eqs -> matExpr t exs eqs
+        EOp  _ op      -> opExpr  t op
 
-setPrepTag :: t -> Prep s -> Prep t
-setPrepTag t = \case
-    RVar _ var    -> RVar t var
-    RCon _ con rs -> RCon t con rs
+instance (TaggedA (Pattern t) t) where
+    getTag = cata $ \case
+        PVar t _      -> t
+        PCon t _ _    -> t
+        PLit t _      -> t
+        PAny t        -> t
+    setTag t = cata $ \case
+        PVar _ var    -> varPat t var
+        PCon _ con ps -> conPat t con ps
+        PLit _ lit    -> litPat t lit
+        PAny _        -> anyPat t
 
-modifyTags :: (s -> t) -> Expr s (Pattern s) (Pattern s) -> Expr t (Pattern t) (Pattern t)
-modifyTags f = cata $ \case
+instance (TaggedA (Prep t) t) where
+    getTag = \case
+        RVar t _      -> t
+        RCon t _ _    -> t
+    setTag t = \case
+        RVar _ var    -> RVar t var
+        RCon _ con rs -> RCon t con rs
+
+mapTags :: (s -> t) -> Expr s (Pattern s) (Pattern s) -> Expr t (Pattern t) (Pattern t)
+mapTags f = cata $ \case
     EVar t var      -> varExpr (f t) var
     ECon t con exs  -> conExpr (f t) con exs
     ELit t lit      -> litExpr (f t) lit
     EApp t exs      -> appExpr (f t) exs
-    ELet t p e1 e2  -> letExpr (f t) (pat p) e1 e2
-    ELam t p e1     -> lamExpr (f t) (pat p) e1
+    ELet t p e1 e2  -> letExpr (f t) (mapPatternTags f p) e1 e2
+    ELam t p e1     -> lamExpr (f t) (mapPatternTags f p) e1
     EIf  t c e1 e2  -> ifExpr  (f t) c e1 e2
     EMat t exs eqs  -> matExpr (f t) exs (clause <$> eqs)
     EOp  t op       -> opExpr  (f t) op
   where
-    clause (Clause ps exs e) = 
-        Clause (pat <$> ps) exs e
+    clause (Clause ps exs e) =
+        Clause (mapPatternTags f <$> ps) exs e
 
-    pat = cata $ \case
-        PVar t var    -> varPat (f t) var
-        PCon t con ps -> conPat (f t) con ps
-        PLit t lit    -> litPat (f t) lit
-        PAny t        -> anyPat (f t)
+mapPatternTags :: (s -> t) -> Pattern s -> Pattern t
+mapPatternTags f = cata $ \case
+    PVar t var    -> varPat (f t) var
+    PCon t con ps -> conPat (f t) con ps
+    PLit t lit    -> litPat (f t) lit
+    PAny t        -> anyPat (f t)
 
+
+--
+
+--getTag :: Expr t p q -> t
+--getTag = cata $ \case
+--    EVar t _     -> t
+--    ECon t _ _   -> t
+--    ELit t _     -> t
+--    EApp t _     -> t
+--    ELet t _ _ _ -> t
+--    ELam t _ _   -> t
+--    EIf  t _ _ _ -> t
+--    EMat t _ _   -> t
+--    EOp  t _     -> t
+--
+--setTag :: t -> Expr t p q -> Expr t p q
+--setTag t = cata $ \case
+--    EVar _ var     -> varExpr t var
+--    ECon _ con exs -> conExpr t con exs
+--    ELit _ lit     -> litExpr t lit
+--    EApp _ exs     -> appExpr t exs
+--    ELet _ p e1 e2 -> letExpr t p e1 e2
+--    ELam _ p e1    -> lamExpr t p e1
+--    EIf  _ c e1 e2 -> ifExpr  t c e1 e2
+--    EMat _ exs eqs -> matExpr t exs eqs
+--    EOp  _ op      -> opExpr  t op
+--
+--modifyTag :: (t -> t) -> Expr t p q -> Expr t p q
+--modifyTag f p = setTag (f (getTag p)) p
+
+--getPatternTag :: Pattern t -> t
+--getPatternTag = cata $ \case
+--    PVar t _   -> t
+--    PCon t _ _ -> t
+--    PLit t _   -> t
+--    PAny t     -> t
+--
+--setPatternTag :: t -> Pattern t -> Pattern t
+--setPatternTag t = cata $ \case
+--    PVar _ var    -> varPat t var
+--    PCon _ con ps -> conPat t con ps
+--    PLit _ lit    -> litPat t lit
+--    PAny _        -> anyPat t
+--
+--modifyPatternTag :: (t -> t) -> Pattern t -> Pattern t
+--modifyPatternTag f p = setPatternTag (f (getPatternTag p)) p
+--
+--getPrepTag :: Prep t -> t
+--getPrepTag = \case
+--    RVar t _   -> t
+--    RCon t _ _ -> t
+--
+--setPrepTag :: t -> Prep s -> Prep t
+--setPrepTag t = \case
+--    RVar _ var    -> RVar t var
+--    RCon _ con rs -> RCon t con rs
+--
+--modifyPrepTag :: (t -> t) -> Prep t -> Prep t
+--modifyPrepTag f p = setPrepTag (f (getPrepTag p)) p
 
 --
 

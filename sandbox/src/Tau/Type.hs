@@ -1,8 +1,8 @@
 {-# LANGUAGE DeriveTraversable #-}
 {-# LANGUAGE LambdaCase        #-}
+{-# LANGUAGE OverloadedStrings #-}
 {-# LANGUAGE StrictData        #-}
 {-# LANGUAGE TemplateHaskell   #-}
-{-# LANGUAGE OverloadedStrings #-}
 module Tau.Type where
 
 import Control.Comonad.Cofree
@@ -33,60 +33,43 @@ data TypeF a
     | TApp a a
     deriving (Show, Eq, Ord, Functor, Foldable, Traversable)
 
-data TypePlusF c a
-    = TGenP c Int
-    | TVarP c Kind Name 
-    | TConP c Kind Name 
-    | TArrP a a
-    | TAppP a a
-    deriving (Show, Eq, Ord, Functor, Foldable, Traversable)
-
 deriveShow1 ''TypeF
 deriveEq1   ''TypeF
 deriveOrd1  ''TypeF
 
-deriveShow1 ''TypePlusF
-deriveEq1   ''TypePlusF
-deriveOrd1  ''TypePlusF
-
 type Type = Fix TypeF
 
-type TypePlus c = Fix (TypePlusF c)
-
-data Predicate = Predicate Name Type
-    deriving (Show, Eq)
-
 data SchemeF a
-    = Forall Kind [Predicate] a
+    = Forall Kind [(Name, Type)] a
     | Mono Type
     deriving (Functor, Foldable, Traversable)
-
-type Scheme = Fix SchemeF
 
 deriveShow  ''SchemeF
 deriveEq    ''SchemeF
 deriveShow1 ''SchemeF
 deriveEq1   ''SchemeF
 
+type Scheme = Fix SchemeF
+
+----
 --
-
-data TypeError
-    = CannotUnify
-    | CannotMatch
-    | InfiniteType
-    | KindMismatch
-    | MergeFailed
-    | ClassMismatch
-    | ContextReductionFailed
-    deriving (Show, Eq)
-
---toScheme :: Type -> Scheme
---toScheme ty = Forall [] ([] :=> ty1) where
---    ty1 = flip cata ty $ \case
---        TVar k var -> tVar k var
---        TCon k con -> tCon k con
---        TArr t1 t2 -> tArr t1 t2
---        TApp t1 t2 -> tApp t1 t2
+--data TypeError
+--    = CannotUnify
+--    | CannotMatch
+--    | InfiniteType
+--    | KindMismatch
+--    | MergeFailed
+--    | ClassMismatch
+--    | ContextReductionFailed
+--    deriving (Show, Eq)
+--
+----toScheme :: Type -> Scheme
+----toScheme ty = Forall [] ([] :=> ty1) where
+----    ty1 = flip cata ty $ \case
+----        TVar k var -> tVar k var
+----        TCon k con -> tCon k con
+----        TArr t1 t2 -> tArr t1 t2
+----        TApp t1 t2 -> tApp t1 t2
 
 kindOf :: Type -> Maybe Kind
 kindOf = histo $ \case
@@ -99,8 +82,6 @@ kindOf = histo $ \case
     appKind (KArr _ k) = Just k
     appKind _          = Nothing
 
---
-
 kStar :: Kind
 kStar = Fix KStar
 
@@ -109,9 +90,6 @@ kArr t1 t2 = Fix (KArr t1 t2)
 
 tVar :: Kind -> Name -> Type
 tVar k var = Fix (TVar k var)
-
---tVarP :: Kind -> Name -> TypePlus c
-tVarP x k var = Fix (TVarP x k var)
 
 tGen :: Int -> Type
 tGen n = Fix (TGen n)
@@ -142,8 +120,8 @@ tListCon = tCon (kArr kStar kStar) "List"
 tList :: Type -> Type
 tList = tApp tListCon 
 
-sForall :: Kind -> [Predicate] -> Scheme -> Scheme
-sForall k os s = Fix (Forall k os s)
+sForall :: Kind -> [(Name, Type)] -> Scheme -> Scheme
+sForall k cs s = Fix (Forall k cs s)
 
 sMono :: Type -> Scheme
 sMono t = Fix (Mono t)
