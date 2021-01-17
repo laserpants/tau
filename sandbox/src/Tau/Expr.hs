@@ -9,18 +9,27 @@
 module Tau.Expr where
 
 import Control.Monad.Supply
+import Data.Text (Text)
 import Tau.Util
 
 data Literal
     = LUnit
     | LBool Bool
     | LInt Int
+    | LString Text
     deriving (Show, Eq)
+
+data Field t a = Field t Name a
+    deriving (Show, Eq, Functor, Foldable, Traversable)
+
+deriveShow1 ''Field
+deriveEq1   ''Field
 
 data PatternF t a
     = PVar t Name
     | PCon t Name [a]
     | PLit t Literal
+    | PRec t [Field t Name]
     | PAny t
     deriving (Show, Eq, Functor, Foldable, Traversable)
 
@@ -59,6 +68,7 @@ data ExprF t p q a
     | EIf  t a ~a ~a
     | EMat t [a] [Clause p a]
     | EOp  t (Op a)
+    | ERec t [Field t a]
 --    | EAnn t t a
     deriving (Functor, Foldable, Traversable)
 
@@ -87,6 +97,7 @@ instance (TaggedA (Expr t p q) t) where
         EIf  t _ _ _   -> t
         EMat t _ _     -> t
         EOp  t _       -> t
+        ERec t _       -> t
     setTag t = cata $ \case
         EVar _ var     -> varExpr t var
         ECon _ con exs -> conExpr t con exs
@@ -97,17 +108,20 @@ instance (TaggedA (Expr t p q) t) where
         EIf  _ c e1 e2 -> ifExpr  t c e1 e2
         EMat _ exs eqs -> matExpr t exs eqs
         EOp  _ op      -> opExpr  t op
+        ERec _ fields  -> recExpr t fields
 
 instance (TaggedA (Pattern t) t) where
     getTag = cata $ \case
         PVar t _      -> t
         PCon t _ _    -> t
         PLit t _      -> t
+        PRec t _      -> t
         PAny t        -> t
     setTag t = cata $ \case
         PVar _ var    -> varPat t var
         PCon _ con ps -> conPat t con ps
         PLit _ lit    -> litPat t lit
+        PRec _ fields -> recPat t fields
         PAny _        -> anyPat t
 
 instance (TaggedA (Prep t) t) where
@@ -117,6 +131,10 @@ instance (TaggedA (Prep t) t) where
     setTag t = \case
         RVar _ var    -> RVar t var
         RCon _ con rs -> RCon t con rs
+
+instance (TaggedA (Field t a) t) where
+    getTag   (Field t _ _) = t
+    setTag t (Field _ n v) = Field t n v
 
 mapTags :: (s -> t) -> Expr s (Pattern s) (Pattern s) -> Expr t (Pattern t) (Pattern t)
 mapTags f = cata $ \case
@@ -129,6 +147,7 @@ mapTags f = cata $ \case
     EIf  t c e1 e2  -> ifExpr  (f t) c e1 e2
     EMat t exs eqs  -> matExpr (f t) exs (clause <$> eqs)
     EOp  t op       -> opExpr  (f t) op
+    ERec t fields   -> recExpr (f t) (mapField f <$> fields)
   where
     clause (Clause ps exs e) =
         Clause (mapPatternTags f <$> ps) exs e
@@ -138,8 +157,14 @@ mapPatternTags f = cata $ \case
     PVar t var    -> varPat (f t) var
     PCon t con ps -> conPat (f t) con ps
     PLit t lit    -> litPat (f t) lit
+    PRec t fields -> recPat (f t) (mapField f <$> fields)
     PAny t        -> anyPat (f t)
 
+mapField :: (s -> t) -> Field s a -> Field t a
+mapField f (Field t n v) = Field (f t) n v
+
+fieldInfo :: Field t a -> (t, Name, a)
+fieldInfo (Field t n v) = (t, n, v)
 
 --
 
@@ -211,6 +236,9 @@ conPat t con ps = embed (PCon t con ps)
 litPat :: t -> Literal -> Pattern t
 litPat t lit = embed (PLit t lit)
 
+recPat :: t -> [Field t Name] -> Pattern t
+recPat t fields = embed (PRec t fields)
+
 anyPat :: t -> Pattern t
 anyPat t = embed (PAny t)
 
@@ -240,6 +268,9 @@ ifExpr t cond tr fl = embed (EIf t cond tr fl)
 
 opExpr :: t -> Op (Expr t p q) -> Expr t p q
 opExpr t op = embed (EOp t op)
+
+recExpr :: t -> [Field t (Expr t p q)] -> Expr t p q
+recExpr t fs = embed (ERec t fs)
 
 eqOp :: t -> Expr t p q -> Expr t p q -> Expr t p q
 eqOp t e1 e2 = embed (EOp t (OEq e1 e2))

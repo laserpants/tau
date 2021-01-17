@@ -11,13 +11,15 @@ import Control.Arrow
 import Control.Monad.Reader
 import Control.Monad.Supply
 import Control.Monad.Writer
-import Data.List (nub, delete, find)
+import Data.List (nub, delete, find, sortOn)
 import Data.Set.Monad (Set)
+import Data.Tuple.Extra (snd3)
 import Tau.Expr
 import Tau.Type
 import Tau.Type.Substitution
 import Tau.Util
 import qualified Data.Set.Monad as Set
+import qualified Data.Text as Text
 
 newtype Monoset = Monoset { getMonoset :: Set Name }
     deriving (Show, Eq)
@@ -61,13 +63,13 @@ runInfer :: Infer a -> Maybe a
 runInfer a = evalSupply (runReaderT (unInfer a) (Monoset mempty)) (numSupply "a")
 
 infer_
-  :: (MonadReader Monoset m, MonadSupply Name m) 
+  :: (Show t, MonadReader Monoset m, MonadSupply Name m) 
   => Expr t (Pattern t) (Pattern t) 
   -> m ((Expr Name (Pattern Name) (Pattern Name), [Assumption]), [Constraint])
 infer_ = runWriterT . infer
 
 infer
-  :: (MonadReader Monoset m, MonadSupply Name m) 
+  :: (Show t, MonadReader Monoset m, MonadSupply Name m) 
   => Expr t (Pattern t) (Pattern t) 
   -> WriterT [Constraint] m (Expr Name (Pattern Name) (Pattern Name), [Assumption])
 infer = cata $ \case
@@ -83,9 +85,9 @@ infer = cata $ \case
         tv2 <- supply
         set <- ask
         (es1, as1) <- sequenced exprs
-        tell [Equality (tVar kStar tv1) (foldr tArr (tVar kStar tv2) (typeOf <$> es1))]
+        tell [Equality (tVar kStar tv2) (foldr tArr (tVar kStar tv1) (typeOf <$> es1))]
         pure ( conExpr tv1 con es1
-             , as1 <> [con :>: (tVar kStar tv1, set)] )
+             , as1 <> [con :>: (tVar kStar tv2, set)] )
 
     ELit _ lit -> do
         tv <- supply
@@ -151,8 +153,29 @@ infer = cata $ \case
         pure ( matExpr tv es1 es2
              , as1 <> as2 )
 
+    ERec _ fields -> do
+        tv <- supply
+        let info = sortOn snd3 (fieldInfo <$> fields)
+        (fs, as1) <- sequenced (inferField <$> info)
+        tell (recordConstraints tv info fs)
+        pure ( recExpr tv fs
+             , as1 )
+
+inferField
+  :: (MonadReader Monoset m, MonadSupply Name m) 
+  => (t, Name, WriterT [Constraint] m (Expr Name (Pattern Name) (Pattern Name), [Assumption])) 
+  -> WriterT [Constraint] m (Field Name (Expr Name (Pattern Name) (Pattern Name)), [Assumption])
+inferField (_, n, v) = first (\a -> Field (getTag a) n a) <$> v
+
+recordConstraints :: Name -> [(t, Name, v)] -> [Field Name a] -> [Constraint] 
+recordConstraints tv info fs = 
+    [Equality (tVar kStar tv) (foldl tApp (tCon kind constr) (typeOf <$> fs))]
+  where 
+    kind = foldr kArr kStar (replicate (length info) kStar)
+    constr = "{" <> Text.intercalate "," (snd3 <$> info) <> "}"
+
 inferClause 
-  :: (MonadReader Monoset m, MonadSupply Name m)  
+  :: (Show t, MonadReader Monoset m, MonadSupply Name m)  
   => Clause (Pattern t) (WriterT [Constraint] m (Expr Name (Pattern Name) (Pattern Name), [Assumption])) 
   -> WriterT [Constraint] m (Clause (Pattern Name) (Expr Name (Pattern Name) (Pattern Name)), [Assumption])
 inferClause clause@(Clause ps _ _) = do
@@ -185,9 +208,9 @@ inferLogicOp op a b = do
          , as1 <> as2 )
 
 inferPattern
-  :: (MonadReader Monoset m, MonadSupply Name m) 
+  :: (Show t, MonadReader Monoset m, MonadSupply Name m) 
   => Pattern t 
-  -> m (Pattern Name, [Assumption])
+  -> WriterT [Constraint] m (Pattern Name, [Assumption])
 inferPattern = cata $ \pat -> do
     tv <- supply
     set <- ask
@@ -197,13 +220,22 @@ inferPattern = cata $ \pat -> do
                  , [var :>: (tVar kStar tv, set)] )
 
         PCon _ con ps -> do
+            tv1 <- supply
             (trs, as) <- sequenced ps
+            tell [Equality (tVar kStar tv1) (foldr tArr (tVar kStar tv) (typeOf <$> trs))]
             pure ( conPat tv con trs
-                 , as <> [con :>: (tVar kStar con, set)] )
+                 , as <> [con :>: (tVar kStar tv1, set)] )
 
         PLit _ lit -> do
             t <- inferLiteral lit
+            tell [Equality (tVar kStar tv) t]
             pure ( litPat tv lit, [] )
+
+        PRec _ fields -> do
+            let info = sortOn snd3 (fieldInfo <$> fields)
+            fs <- traverse (\(_, n, v) -> supply >>= \t -> pure $ Field t n v) info
+            tell (recordConstraints tv info fs)
+            pure ( recPat tv fs, [] )
 
         PAny _ -> 
             pure ( anyPat tv, [] )
@@ -222,9 +254,10 @@ inferApp expr1 expr2 = do
 
 inferLiteral :: (Monad m) => Literal -> m Type
 inferLiteral = pure . \case
-    LUnit{} -> tUnit
-    LBool{} -> tBool
-    LInt{}  -> tInt
+    LUnit{}   -> tUnit
+    LBool{}   -> tBool
+    LInt{}    -> tInt
+    LString{} -> tString
 
 sequenced :: (Monad m) => [m (a, [b])] -> m ([a], [b])
 sequenced = (second concat . unzip <$>) . sequence

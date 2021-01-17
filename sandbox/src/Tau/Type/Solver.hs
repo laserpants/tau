@@ -6,7 +6,6 @@ module Tau.Type.Solver where
 
 import Control.Arrow (first, second, (>>>), (<<<))
 import Control.Monad.State
-import Control.Monad.State
 import Control.Monad.Supply
 import Data.Foldable (foldlM, foldrM, traverse_)
 import Data.List (find, delete, nub)
@@ -99,11 +98,10 @@ split (Subst sub) = do
     modifyFst (fun sub <$>)
     pure sub
   where
-    fun (Subst sub) (v, t) = (v1, t) 
-      where
-        v1 = case unfix <$> Map.lookup v sub of 
-                 Just (TVar _ w) -> w
-                 _               -> v
+    fun (Subst sub) = first $ \v ->
+        case unfix <$> Map.lookup v sub of 
+            Just (TVar _ w) -> w
+            _               -> v
 
     xxx1 :: Type -> StateT X Infer Type
     xxx1 = cata $ \case
@@ -146,8 +144,8 @@ instantiate scheme = do
 
     dicts :: [Type] -> [(Name, Type)]
     dicts ts = concat $ flip cata scheme $ \case
-        Forall _ cs css -> cs:css
         Mono{}          -> []
+        Forall _ cs css -> cs:css
 
     replaceBound :: [Type] -> Type -> Type 
     replaceBound ts = cata $ \case

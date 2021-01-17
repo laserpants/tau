@@ -7,10 +7,13 @@ module Tau.Eval where
 
 import Control.Monad.Reader
 import Data.Function ((&))
+import Data.List (sortOn, zip)
+import Data.Maybe (fromMaybe)
 import Tau.Env
 import Tau.Expr
 import Tau.Util
 import qualified Data.Map.Strict as Map
+import qualified Data.Text as Text
 import qualified Tau.Env as Env
 
 type ValueEnv m = Env (Value m)
@@ -18,6 +21,7 @@ type ValueEnv m = Env (Value m)
 data Value m
     = Value Literal
     | Data Name [Value m]
+    | Record [(Name, Value m)]
     | Closure Name (m (Value m)) ~(ValueEnv m)
 
 instance Show (Value m) where
@@ -25,7 +29,9 @@ instance Show (Value m) where
         "Value " <> show lit
     show (Data name lit) = 
         "Data " <> show name <> " " <> show lit
-    show Closure{} = 
+    show (Record fields) =
+        "Record " <> show fields
+    show Closure{} =
         "<<function>>"
 
 newtype Eval a = Eval { unEval :: ReaderT (ValueEnv Eval) Maybe a } deriving
@@ -65,15 +71,19 @@ eval = cata $ \case
     ELam _ var expr ->
         asks (Closure var expr)
 
-    EIf t cond true false -> do
+    EIf _ cond true false -> do
         Value (LBool isTrue) <- cond
         if isTrue then true else false
 
-    EMat t exs eqs -> 
+    EMat _ exs eqs -> 
         sequence exs >>= evalMatch eqs 
 
-    EOp t op ->
+    EOp _ op ->
         evalOp op
+
+    ERec _ fields -> do
+        let (_, keys, vals) = unzip3 (fieldInfo <$> fields)
+        Record . zip keys <$> sequence vals
 
 evalVar :: (MonadFail m, MonadReader (ValueEnv m) m) => Name -> m (Value m)
 evalVar var = do
@@ -144,11 +154,20 @@ tryClause xs ys = cata alg (zip xs ys)
             | con1 == con2 -> (<>) <$> Just (zip ps args) <*> xs
             | otherwise    -> Nothing
 
+        Cons (RCon _ con ps, Record fields) xs -> do
+            let ys = [(v, w) | (n, v) <- zip (labels con) ps, (p, w) <- fields, n == p]
+            (<>) <$> Just ys <*> xs
+
         Cons _ xs -> 
             error "Incompatible patterns"
 
         Nil -> 
             Just []
+
+labels :: Name -> [Name]
+labels tag = maybe [] (Text.split (==',')) items
+  where
+    items = Text.stripPrefix "{" =<< Text.stripSuffix "}" tag
 
 constructor :: (MonadReader (ValueEnv m) m) => Name -> Int -> Value m
 constructor name 0 = Data name []

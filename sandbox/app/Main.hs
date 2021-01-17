@@ -42,8 +42,6 @@ import qualified Data.Map.Strict as Map
 import qualified Data.Set as PlainSet
 
 
-
-
 expr1 = letExpr () (varPat () "f") (varExpr () "lenShow") (varExpr () "f")
 expr2 = letExpr () (varPat () "f") (varExpr () "lenShow") (appExpr () [varExpr () "f", litExpr () (LInt 5)])
 expr3 = lamExpr () (varPat () "x") (appExpr () [varExpr () "lenShow", varExpr () "x"])
@@ -51,9 +49,74 @@ expr4 = lamExpr () (varPat () "x") (letExpr () (varPat () "f") (varExpr () "lenS
 expr5 = letExpr () (varPat () "f") (varExpr () "lenShow") (lamExpr () (varPat () "x") (appExpr () [varExpr () "f", varExpr () "x"]))
 expr6 = appExpr () [varExpr () "lenShow", litExpr () (LInt 5)]
 expr7 = lamExpr () (varPat () "x") (appExpr () [varExpr () "f", varExpr () "x"])
-
 expr8 = lamExpr () (varPat () "x") (lamExpr () (varPat () "y") (appExpr () [varExpr () "f", lamExpr () (varPat () "x") (lamExpr () (varPat () "y") (varExpr () "z"))]))
 expr9 = lamExpr () (varPat () "x") (appExpr () [varExpr () "lenShow2", varExpr () "x"])
+
+expr10 = appExpr () 
+    [ varExpr () "lenShow"
+    , recExpr () [Field () "show" showInt]
+    , litExpr () (LInt 5) ]
+  where
+    showInt = lamExpr () (varPat () "x") (litExpr () (LString "five"))
+
+lenShow :: Value Eval
+lenShow = fromJust $ runEval (eval foo1) mempty -- Closure "d" foo1 mempty
+  where
+    foo1 = lamExpr () "d" (matExpr () [varExpr () "d"] [Clause [RCon () "{1}" ["show"]] [] (lamExpr () "x" (appExpr () [varExpr () "show", varExpr () "x"]))])
+--        lamExpr () "x" (appExpr () [undefined, varExpr () "x"])
+
+--bb10 = fromJust $ evalExpr expr $ Env.fromList 
+bb10 = evalExpr expr $ Env.fromList [ ("lenShow", lenShow) ]
+  where
+    Right expr = simplified expr10
+
+expr11 = letExpr () (recPat () [Field () "name" "x"]) (recExpr () [Field () "name" (litExpr () (LInt 5))]) (varExpr () "x")
+
+bb11 = 
+    traceShow expr1 $ fromJust $ runEval (eval expr1) mempty
+  where
+    Right expr1 = simplified expr11
+
+expr12 = letExpr () (recPat () [Field () "name" "x", Field () "id" "id", Field () "size" "s"])
+                    (recExpr () [ Field () "name" (litExpr () (LString "Bob"))
+                                , Field () "id" (litExpr () (LInt 5))
+                                , Field () "size" (litExpr () (LInt 11)) ])
+                    (varExpr () "s")
+
+bb12 = 
+    traceShow expr1 $ fromJust $ runEval (eval expr1) mempty
+  where
+    Right expr1 = simplified expr12
+
+--bb11 = 
+--    traceShow expr1 $ fromJust $ runEval (eval expr1) mempty
+--  where
+--    Right expr1 = simplified expr11
+
+
+expr13 = letExpr () (conPat () "Just" [varPat () "x"]) (conExpr () "Just" [litExpr () (LInt 5)]) (varExpr () "x")
+
+expr14 = conExpr () "Just" [litExpr () (LInt 5)]
+
+expr15 = conExpr () "(,)" [litExpr () (LInt 5), litExpr () LUnit]
+
+expr16 = letExpr () (conPat () "Just" [varPat () "x"]) (varExpr () "y") (varExpr () "x")
+
+expr17 = recExpr () [Field () "name" (litExpr () (LString "Bob")), Field () "id" (litExpr () (LInt 5))]
+
+
+expr18 = letExpr () (recPat () [Field () "name" "n", Field () "age" "a"])  
+                    (recExpr () [Field () "age" (litExpr () (LInt 40)), Field () "name" (litExpr () (LString "Barnaby"))]) (varExpr () "n")
+
+
+bb18 = 
+    traceShow expr1 $ fromJust $ runEval (eval expr1) mempty
+  where
+    Right expr1 = simplified expr18
+
+
+----
+
 
 addConstrs :: [(Name, Type)] -> Type -> (Type, [(Name, Type)])
 addConstrs css ty = 
@@ -84,8 +147,6 @@ dicts = cata $ \case
     ELam (_, cs) _ e1 -> cs <> e1
     _                 -> []
 
--- [f x y]
-
 rebuildTree :: Expr T (Pattern T) (Pattern T) -> StateT Bool Infer (Expr T (Pattern T) (Pattern T))
 rebuildTree = cata $ \case
     EApp t exs  -> do
@@ -101,7 +162,7 @@ rebuildTree = cata $ \case
                     ts = fmap (uncurry dictType) css
                     ds = fmap gggoo css
                     ttt2 = foldr tArr ttt ts
-                pure (appExpr t ((setTag ((ttt2, []) :: T) e):ds <> es))
+                pure (appExpr t (setTag ((ttt2, []) :: T) e:ds <> es))
 
     ELam t p e1 -> do
         insideLam <- get
@@ -115,7 +176,6 @@ rebuildTree = cata $ \case
                 --let xxx = dicts next
                 --traceShowM xxx
                 pure (foldr fffoo next ds)
-                --pure (lamExpr t (varPat t "DICT") next)
 
     e -> do
         put False
@@ -127,8 +187,12 @@ dictType name = tApp (tCon (kArr kStar kStar) name)
 gggoo :: (Name, Type) -> Expr T (Pattern T) (Pattern T)
 gggoo (n, t) = varExpr (tApp (tCon (kArr kStar kStar) n) t, []) "DICT"
 
+--gggoo (n, t) = recExpr (tApp (tCon (kArr kStar kStar) n) t, []) [Field "show" tmp]
+--tmp = lamExpr undefined (anyPat undefined) undefined
+
 fffoo :: (Name, Type) -> Expr T (Pattern T) (Pattern T) -> Expr T (Pattern T) (Pattern T)
 fffoo (n, t) y = let t1 = dictType n t in lamExpr (t1 `tArr` tx, []) (varPat (t1, []) "DICT") y
+--fffoo (n, t) y = let t1 = dictType n t in lamExpr (t1 `tArr` tx, []) (undefined) y -- (varPat (t1, []) "DICT") y
   where
     xx :: T
     xx@(tx, _) = getTag y
@@ -145,7 +209,15 @@ aa = c
   where
     c = runInfer b
     b = do
-        ((te, as), cs) <- infer_ expr3
+        --((te, as), cs) <- infer_ expr11
+        ((te, as), cs) <- infer_ expr18
+        traceShowM "xxxxxxxxxxxxxyxxxxzxxxxxxxxxxxxxxxxxxxxxx"
+        traceShowM te
+        traceShowM "xxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxx"
+        traceShowM cs
+        traceShowM "xxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxx"
+        traceShowM as
+        traceShowM "xxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxx"
         --let xx = [(t, s) | (u, s) <- Env.toList env1, (v :>: t) <- as, u == v]
         let cs' = cs <> [Explicit t s | u :>: (t, _) <- as, (v, s) <- Env.toList env1, u == v]
         (sub, (xx1, xx2)) <- runStateT (solve cs') ([], [])
@@ -155,7 +227,7 @@ aa = c
         let te2 = mapTags (addConstrs xx2) te1
         let te3 = mapTags (applyFinal xx1) te2
         (zzz, _) <- runStateT (rebuildTree te3) False
-        traceShowM "*********2"
+        traceShowM "*********4"
         traceShowM zzz -- (mapTags (const ()) zzz)
         traceShowM "----------"
         pure (te3, cs', sub) -- (te, sub)
@@ -165,6 +237,8 @@ aa = c
             -- ("lenShow", sForall kStar [("show", tGen 0 `tArr` tString)] (sMono (tGen 0 `tArr` tInt)))
             ("lenShow", sForall kStar [("Show", tGen 0)] (sMono (tGen 0 `tArr` tInt)))
           , ("lenShow2", sForall kStar [("Show", tGen 0), ("Eq", tGen 0)] (sMono (tGen 0 `tArr` tInt)))
+          , ("Just", sForall kStar [] (sMono (tGen 0 `tArr` (tApp (tCon (kArr kStar kStar) "Maybe") (tGen 0)))))
+          , ("(,)", sForall kStar [] (sForall kStar [] (sMono (tGen 0 `tArr` tGen 1 `tArr` (tApp (tApp (tCon (kArr kStar (kArr kStar kStar)) "(,)") (tGen 0)) (tGen 1))))))
         ]
  
     --inject

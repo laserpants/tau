@@ -114,6 +114,9 @@ tBool = tCon kStar "Bool"
 tInt :: Type
 tInt = tCon kStar "Int" 
 
+tString :: Type
+tString = tCon kStar "String" 
+
 tListCon :: Type
 tListCon = tCon (kArr kStar kStar) "List"
 

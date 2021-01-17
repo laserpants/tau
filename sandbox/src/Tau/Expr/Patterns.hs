@@ -21,7 +21,8 @@ import Control.Monad.Except
 import Control.Monad.Writer
 import Data.Foldable (foldrM)
 import Data.Function ((&))
-import Data.List.Extra (groupSortOn, groupBy)
+import Data.Tuple.Extra (fst3, snd3, thd3)
+import Data.List.Extra (groupSortOn, groupBy, sortOn)
 import Data.Maybe (fromJust, fromMaybe, maybeToList)
 import Data.Set.Monad (Set)
 import Data.Tuple.Extra (fst3, thd3)
@@ -33,6 +34,7 @@ import Tau.Type.Substitution
 import Tau.Util
 import qualified Control.Monad.Free as Monad
 import qualified Data.Set.Monad as Set
+import qualified Data.Text as Text
 import qualified Tau.Env as Env
 
 newtype Simplify a = Simplify { unSimplify :: ExceptT String (Supply Name) a } deriving
@@ -144,26 +146,37 @@ simplify = cata $ \case
     EOp t op ->
         simplifyOp t op
 
+    ERec t fields -> do
+        recExpr t <$> traverse sequence fields
+
 simplifyOp :: t -> Op (Simplify (Expr t p q)) -> Simplify (Expr t p q)
 simplifyOp t (OEq  a b) = eqOp  t <$> a <*> b
 simplifyOp t (OAnd a b) = andOp t <$> a <*> b
 simplifyOp t (OOr  a b) = orOp  t <$> a <*> b
 
 flatten 
-  :: (Boolean t) 
+  :: (Boolean t, Show t) 
   => Clause (Pattern t) (Expr t p q) 
   -> Clause (Pattern t) (Expr t p q)
 flatten (Clause ps exs e) = Clause qs (exs <> exs1) e where
     (qs, exs1) = fmap concat (unzip (fmap fn ps))
     fn pat = fromJust (evalSupply (runWriterT (cata alg pat)) (nameSupply "$"))
     alg = \case
-        PCon t con ps -> conPat t con <$> sequence ps 
-        PVar t var    -> pure (varPat t var)
-        PAny t        -> pure (varPat t "$_")
+        PAny t -> 
+            pure (varPat t "$_")
+
         PLit t lit -> do
             var <- supply
             tell [eqOp boolean (varExpr t var) (litExpr t lit)]
             pure (varPat t var)
+
+        PRec t fields -> do
+            let info = sortOn snd3 (fieldInfo <$> fields)
+                toPat (t, _, v) = varPat t v
+            pure (conPat t ("{" <> Text.intercalate "," (snd3 <$> info) <> "}") (toPat <$> info))
+
+        pat ->
+            embed <$> sequence pat
 
 compile 
   :: (Boolean t, Show t) 
