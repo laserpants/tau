@@ -91,6 +91,11 @@ evalVar var = do
     unless (Env.isMember var env) (traceShowM ("Unbound identifier " <> var))
     maybe (fail "Unbound identifier") pure (Env.lookup var env)
 
+--    if "@showInt" == var
+--        then 
+--            error "@showInt"
+--        else do
+
 evalApp
   :: (MonadFail m, MonadReader (ValueEnv m) m)
   => m (Value m)

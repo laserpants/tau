@@ -120,6 +120,11 @@ bb18 =
     Right expr1 = simplified expr18
 
 
+expr19 = appExpr () [varExpr () "@showInt", litExpr () (LInt 5)]
+
+bb19 = evalExpr expr $ Env.fromList [] 
+  where
+    Right expr = simplified expr19
 
 
 ----
