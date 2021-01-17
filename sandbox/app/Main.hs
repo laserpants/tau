@@ -60,9 +60,12 @@ expr10 = appExpr ()
     showInt = lamExpr () (varPat () "x") (litExpr () (LString "five"))
 
 lenShow :: Value Eval
-lenShow = fromJust $ runEval (eval foo1) mempty -- Closure "d" foo1 mempty
+lenShow = fromJust $ runEval (eval foo3) mempty -- Closure "d" foo1 mempty
   where
-    foo1 = lamExpr () "d" (matExpr () [varExpr () "d"] [Clause [RCon () "{1}" ["show"]] [] (lamExpr () "x" (appExpr () [varExpr () "show", varExpr () "x"]))])
+    -- foo1 = lamExpr () "d" (matExpr () [varExpr () "d"] [Clause [RCon () "{show}" ["show"]] [] (lamExpr () "x" (appExpr () [varExpr () "show", varExpr () "x"]))])
+    foo2 = lamExpr () (varPat () "d") (matExpr () [varExpr () "d"] [Clause [recPat () [Field () "show" "show"]] [] (lamExpr () (varPat () "x") (appExpr () [varExpr () "show", varExpr () "x"]))])
+    Right foo3 = simplified foo2
+
 --        lamExpr () "x" (appExpr () [undefined, varExpr () "x"])
 
 --bb10 = fromJust $ evalExpr expr $ Env.fromList 
