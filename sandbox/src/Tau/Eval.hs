@@ -155,7 +155,7 @@ tryClause xs ys = cata alg (zip xs ys)
             | otherwise    -> Nothing
 
         Cons (RCon _ con ps, Record fields) xs -> do
-            let ys = [(v, w) | (n, v) <- zip (labels con) ps, (p, w) <- fields, n == p]
+            let ys = [(v, w) | (n, v) <- zip (recLabels con) ps, (p, w) <- fields, n == p]
             (<>) <$> Just ys <*> xs
 
         Cons _ xs -> 
@@ -164,8 +164,8 @@ tryClause xs ys = cata alg (zip xs ys)
         Nil -> 
             Just []
 
-labels :: Name -> [Name]
-labels tag = maybe [] (Text.split (==',')) items
+recLabels :: Name -> [Name]
+recLabels tag = maybe [] (Text.split (==',')) items
   where
     items = Text.stripPrefix "{" =<< Text.stripSuffix "}" tag
 

@@ -3,7 +3,6 @@
 {-# LANGUAGE OverloadedStrings          #-}
 {-# LANGUAGE GeneralizedNewtypeDeriving #-}
 {-# LANGUAGE FlexibleInstances          #-}
-{-# LANGUAGE TypeSynonymInstances       #-}
 {-# LANGUAGE StrictData                 #-}
 module Tau.Type.Inference where
 
@@ -156,16 +155,11 @@ infer = cata $ \case
     ERec _ fields -> do
         tv <- supply
         let info = sortOn snd3 (fieldInfo <$> fields)
-        (fs, as1) <- sequenced (inferField <$> info)
+            tagField (_, n, v) = first (\a -> Field (getTag a) n a) <$> v
+        (fs, as1) <- sequenced (tagField <$> info)
         tell (recordConstraints tv info fs)
         pure ( recExpr tv fs
              , as1 )
-
-inferField
-  :: (MonadReader Monoset m, MonadSupply Name m) 
-  => (t, Name, WriterT [Constraint] m (Expr Name (Pattern Name) (Pattern Name), [Assumption])) 
-  -> WriterT [Constraint] m (Field Name (Expr Name (Pattern Name) (Pattern Name)), [Assumption])
-inferField (_, n, v) = first (\a -> Field (getTag a) n a) <$> v
 
 recordConstraints :: Name -> [(t, Name, v)] -> [Field Name a] -> [Constraint] 
 recordConstraints tv info fs = 

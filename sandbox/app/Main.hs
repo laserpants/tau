@@ -52,6 +52,7 @@ expr7 = lamExpr () (varPat () "x") (appExpr () [varExpr () "f", varExpr () "x"])
 expr8 = lamExpr () (varPat () "x") (lamExpr () (varPat () "y") (appExpr () [varExpr () "f", lamExpr () (varPat () "x") (lamExpr () (varPat () "y") (varExpr () "z"))]))
 expr9 = lamExpr () (varPat () "x") (appExpr () [varExpr () "lenShow2", varExpr () "x"])
 
+-- lenShow { show = \x => "five" } 5
 expr10 = appExpr () 
     [ varExpr () "lenShow"
     , recExpr () [Field () "show" showInt]
@@ -62,10 +63,11 @@ expr10 = appExpr ()
 lenShow :: Value Eval
 lenShow = fromJust $ runEval (eval foo3) mempty -- Closure "d" foo1 mempty
   where
-    -- foo1 = lamExpr () "d" (matExpr () [varExpr () "d"] [Clause [RCon () "{show}" ["show"]] [] (lamExpr () "x" (appExpr () [varExpr () "show", varExpr () "x"]))])
+    -- \d => match d with | { show = show } => \x => show x
     foo2 = lamExpr () (varPat () "d") (matExpr () [varExpr () "d"] [Clause [recPat () [Field () "show" "show"]] [] (lamExpr () (varPat () "x") (appExpr () [varExpr () "show", varExpr () "x"]))])
     Right foo3 = simplified foo2
 
+    -- foo1 = lamExpr () "d" (matExpr () [varExpr () "d"] [Clause [RCon () "{show}" ["show"]] [] (lamExpr () "x" (appExpr () [varExpr () "show", varExpr () "x"]))])
 --        lamExpr () "x" (appExpr () [undefined, varExpr () "x"])
 
 --bb10 = fromJust $ evalExpr expr $ Env.fromList 
@@ -116,6 +118,8 @@ bb18 =
     traceShow expr1 $ fromJust $ runEval (eval expr1) mempty
   where
     Right expr1 = simplified expr18
+
+
 
 
 ----
@@ -259,8 +263,6 @@ aa = c
     --        embed e
 
 
-
-tString = tCon kStar "String"
 
 
 
