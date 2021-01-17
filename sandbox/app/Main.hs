@@ -41,6 +41,13 @@ import qualified Tau.Type.Class as Class
 import qualified Data.Map.Strict as Map
 import qualified Data.Set as PlainSet
 
+--data Fun = Fun
+--
+--class Baz a where
+--    toX :: a -> Fun
+--
+--instance Baz (a -> b) where
+--    toX = undefined
 
 expr1 = letExpr () (varPat () "f") (varExpr () "lenShow") (varExpr () "f")
 expr2 = letExpr () (varPat () "f") (varExpr () "lenShow") (appExpr () [varExpr () "f", litExpr () (LInt 5)])
@@ -120,7 +127,7 @@ bb18 =
     Right expr1 = simplified expr18
 
 
-expr19 = appExpr () [varExpr () "@showInt", litExpr () (LInt 5)]
+expr19 = appExpr () [varExpr () "@showInt", litExpr () (LInt 8)]
 
 bb19 = evalExpr expr $ Env.fromList [] 
   where
@@ -145,14 +152,7 @@ applyFinal kvs (t, css) =
 
 type T = (Type, [(Name, Type)])
 
---bazof :: Expr T (Pattern T) (Pattern T) -> (Expr T (Pattern T) (Pattern T), Expr T (Pattern T) (Pattern T))
---bazof = cata $ \case
---    ELam t p e1 -> do
---        (lamExpr t p undefined, undefined)
---
---    EVar t var ->
---        (undefined, undefined)
---        -- undefined -- embed e
+
 
 dicts :: Expr T (Pattern T) (Pattern T) -> [(Name, Type)]
 dicts = cata $ \case
@@ -163,28 +163,28 @@ rebuildTree :: Expr T (Pattern T) (Pattern T) -> StateT Bool Infer (Expr T (Patt
 rebuildTree = cata $ \case
     EApp t exs  -> do
         put False
-        eee <- sequence exs
-        case eee of
-            [] -> 
-                pure (appExpr t eee)
+        sequence exs >>= \case
+            [] -> pure (appExpr t [])
             e:es -> do
-                let (ttt, css) = getTag e :: T
-                    next = appExpr t eee
-                    ts :: [Type]
-                    ts = fmap (uncurry dictType) css
-                    ds = fmap gggoo css
-                    ttt2 = foldr tArr ttt ts
-                pure (appExpr t (setTag ((ttt2, []) :: T) e:ds <> es))
+                let (_, css) = getTag e :: T
+                pure (appExpr t (e:(gggoo <$> css) <> es))
+
+                --let (ttt, css) = getTag e :: T
+                --    next = appExpr t eee
+                --    ts :: [Type]
+                --    ts = fmap (uncurry dictType) css
+                --    ds = fmap gggoo css
+                --    ttt2 = foldr tArr ttt ts
+                --pure (appExpr t (setTag ((ttt2, []) :: T) e:ds <> es))
 
     ELam t p e1 -> do
-        insideLam <- get
-        if insideLam
+        nested <- get
+        if nested
             then lamExpr t p <$> e1
             else do
                 put True
-                ee <- e1
-                let next = lamExpr t p ee
-                    ds = sortOn fst (dicts next)
+                next <- lamExpr t p <$> e1 
+                let ds = sortOn fst (dicts next)
                 --let xxx = dicts next
                 --traceShowM xxx
                 pure (foldr fffoo next ds)
@@ -222,7 +222,7 @@ aa = c
     c = runInfer b
     b = do
         --((te, as), cs) <- infer_ expr11
-        ((te, as), cs) <- infer_ expr18
+        ((te, as), cs) <- infer_ expr3
         traceShowM "xxxxxxxxxxxxxyxxxxzxxxxxxxxxxxxxxxxxxxxxx"
         traceShowM te
         traceShowM "xxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxx"
@@ -239,7 +239,7 @@ aa = c
         let te2 = mapTags (addConstrs xx2) te1
         let te3 = mapTags (applyFinal xx1) te2
         (zzz, _) <- runStateT (rebuildTree te3) False
-        traceShowM "*********4"
+        traceShowM "*********5"
         traceShowM zzz -- (mapTags (const ()) zzz)
         traceShowM "----------"
         pure (te3, cs', sub) -- (te, sub)
@@ -247,10 +247,10 @@ aa = c
     env1 =
         Env.fromList [
             -- ("lenShow", sForall kStar [("show", tGen 0 `tArr` tString)] (sMono (tGen 0 `tArr` tInt)))
-            ("lenShow", sForall kStar [("Show", tGen 0)] (sMono (tGen 0 `tArr` tInt)))
-          , ("lenShow2", sForall kStar [("Show", tGen 0), ("Eq", tGen 0)] (sMono (tGen 0 `tArr` tInt)))
-          , ("Just", sForall kStar [] (sMono (tGen 0 `tArr` (tApp (tCon (kArr kStar kStar) "Maybe") (tGen 0)))))
-          , ("(,)", sForall kStar [] (sForall kStar [] (sMono (tGen 0 `tArr` tGen 1 `tArr` (tApp (tApp (tCon (kArr kStar (kArr kStar kStar)) "(,)") (tGen 0)) (tGen 1))))))
+            ( "lenShow", sForall kStar [("Show", tGen 0)] (sMono (tGen 0 `tArr` tInt)) )
+          , ( "lenShow2", sForall kStar [("Show", tGen 0), ("Eq", tGen 0)] (sMono (tGen 0 `tArr` tInt)) )
+          , ( "Just", sForall kStar [] (sMono (tGen 0 `tArr` (tApp (tCon (kArr kStar kStar) "Maybe") (tGen 0)))) )
+          , ( "(,)", sForall kStar [] (sForall kStar [] (sMono (tGen 0 `tArr` tGen 1 `tArr` (tApp (tApp (tCon (kArr kStar (kArr kStar kStar)) "(,)") (tGen 0)) (tGen 1))))) )
         ]
  
     --inject

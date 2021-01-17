@@ -9,8 +9,9 @@ import Control.Monad.Reader
 import Data.Function ((&))
 import Data.List (sortOn, zip)
 import Data.Maybe (fromMaybe)
-import Tau.Env
+import Tau.Env (Env(..))
 import Tau.Expr
+import Tau.Prim
 import Tau.Util
 import qualified Data.Map.Strict as Map
 import qualified Data.Text as Text
@@ -22,6 +23,7 @@ data Value m
     = Value Literal
     | Data Name [Value m]
     | Record [(Name, Value m)]
+    | PrimFun Name Fun [Value m]
     | Closure Name (m (Value m)) ~(ValueEnv m)
 
 instance Show (Value m) where
@@ -31,6 +33,8 @@ instance Show (Value m) where
         "Data " <> show name <> " " <> show lit
     show (Record fields) =
         "Record " <> show fields
+    show (PrimFun name _ args) =
+        "PrimFun " <> show name <> " " <> show args
     show Closure{} =
         "<<function>>"
 
@@ -87,24 +91,40 @@ eval = cata $ \case
 
 evalVar :: (MonadFail m, MonadReader (ValueEnv m) m) => Name -> m (Value m)
 evalVar var = do
-    env <- ask
-    unless (Env.isMember var env) (traceShowM ("Unbound identifier " <> var))
-    maybe (fail "Unbound identifier") pure (Env.lookup var env)
+    case Text.stripPrefix "@" var of
+        Just prim ->
+            case Env.lookup prim primEnv of
+                Just fun -> pure (evalPrim prim fun [])
+                Nothing  -> fail ("No primitive function " <> Text.unpack prim)
 
---    if "@showInt" == var
---        then 
---            error "@showInt"
---        else do
+        Nothing -> do
+            env <- ask
+            unless (Env.isMember var env) (traceShowM ("Unbound identifier " <> var))
+            maybe (fail "Unbound identifier") pure (Env.lookup var env)
 
 evalApp
   :: (MonadFail m, MonadReader (ValueEnv m) m)
   => m (Value m)
   -> m (Value m)
   -> m (Value m)
-evalApp fun arg = do
-    Closure var body (Env closure) <- fun
-    val <- arg
-    local (const (Env (Map.insert var val closure))) body
+evalApp fun arg = fun >>= \case
+    Closure var body (Env closure) -> do
+        val <- arg
+        local (const (Env (Map.insert var val closure))) body
+
+    PrimFun name fun args -> do
+        val <- arg
+        pure (evalPrim name fun (val:args))
+
+evalPrim 
+  :: (MonadFail m, MonadReader (ValueEnv m) m)
+  => Name -> Fun -> [Value m] -> Value m
+evalPrim name fun args
+    | arity fun == length args = Value (applyFun fun (literal <$> args))
+    | otherwise                = PrimFun name fun args
+  where
+    literal (Value lit) = lit
+    literal _ = error "Implementation error (evalPrim)"
 
 evalOp :: (MonadFail m, MonadReader (ValueEnv m) m) => Op (m (Value m)) -> m (Value m)
 evalOp = \case 
@@ -160,7 +180,7 @@ tryClause xs ys = cata alg (zip xs ys)
             | otherwise    -> Nothing
 
         Cons (RCon _ con ps, Record fields) xs -> do
-            let ys = [(v, w) | (n, v) <- zip (recLabels con) ps, (p, w) <- fields, n == p]
+            let ys = [(v, w) | (n, v) <- zip (labels con) ps, (p, w) <- fields, n == p]
             (<>) <$> Just ys <*> xs
 
         Cons _ xs -> 
@@ -169,8 +189,8 @@ tryClause xs ys = cata alg (zip xs ys)
         Nil -> 
             Just []
 
-recLabels :: Name -> [Name]
-recLabels tag = maybe [] (Text.split (==',')) items
+labels :: Name -> [Name]
+labels tag = maybe [] (Text.split (==',')) items
   where
     items = Text.stripPrefix "{" =<< Text.stripSuffix "}" tag
 
