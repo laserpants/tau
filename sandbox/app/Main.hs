@@ -143,16 +143,21 @@ bb20 = evalExpr expr $ Env.fromList []
 
 expr21 = lamExpr () (varPat () "xs") (appExpr () [varExpr () "map", lamExpr () (varPat () "x") (appExpr () [varExpr () "@(+)Int", varExpr () "x", litExpr () (LInt 1)]), varExpr () "xs"])
 
+expr22 = (appExpr () [varExpr () "f", varExpr () "x"])
+
 
 ----
 
 
 addConstrs :: [(Name, Type)] -> Type -> (Type, [(Name, Type)])
-addConstrs css ty = 
-    (ty, [(n, t) | v <- vars, (n, t) <- css, tVar kStar v == t])
+addConstrs css ty = (ty, [(n, t) | s <- vars, (n, t) <- css, s == t])
   where
-    vars :: [Name]
-    vars = Set.toList (free ty)
+    vars :: [Type]
+    vars = flip cata ty $ \case
+        TVar k var -> [tVar k var]
+        TArr t1 t2 -> t1 <> t2
+        TApp t1 t2 -> t1 <> t2
+        _          -> []
 
 applyFinal :: [(Name, Type)] -> (Type, [(Name, Type)]) -> (Type, [(Name, Type)])
 applyFinal kvs (t, css) = 
@@ -272,16 +277,25 @@ aa = c
     b = do
         --((te, as), cs) <- infer_ expr11
         ((te, as), cs) <- infer_ expr21
-        traceShowM "xxxxxxxxxxxxxyxxxxzxxxxxxxxxxxxxxxxxxxxxx"
+        traceShowM "99999999999999999999999999999999999999999"
         traceShowM te
-        traceShowM "xxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxx"
+        traceShowM "2xxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxx"
         traceShowM cs
-        traceShowM "xxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxx"
+        traceShowM "3xxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxx"
         traceShowM as
-        traceShowM "xxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxx"
+        traceShowM "4xxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxx"
+        traceShowM "4xxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxx"
+        traceShowM "4xxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxx"
+        traceShowM "4xxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxx"
+        traceShowM "4xxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxx"
         --let xx = [(t, s) | (u, s) <- Env.toList env1, (v :>: t) <- as, u == v]
         let cs' = cs <> [Explicit t s | u :>: (t, _) <- as, (v, s) <- Env.toList env1, u == v]
         (sub, (xx1, xx2)) <- runStateT (solve cs') ([], [])
+        traceShowM "-----------------------------------------"
+        traceShowM "-----------------------------------------"
+        traceShowM (sub, (xx1, xx2))
+        traceShowM "-----------------------------------------"
+        traceShowM "-----------------------------------------"
         let te1 = mapTags (toFunction sub) te
 --        traceShowM xx1
 --        traceShowM xx2
@@ -295,15 +309,18 @@ aa = c
 
     env1 =
         Env.fromList [
-            -- ("lenShow", sForall kStar [("show", tGen 0 `tArr` tString)] (sMono (tGen 0 `tArr` tInt)))
-            ( "lenShow", sForall kStar [("Show", tGen 0)] (sMono (tGen 0 `tArr` tInt)) )
-          , ( "lenShow2", sForall kStar [("Show", tGen 0), ("Eq", tGen 0)] (sMono (tGen 0 `tArr` tInt)) )
-          , ( "Just", sForall kStar [] (sMono (tGen 0 `tArr` (tApp (tCon (kArr kStar kStar) "Maybe") (tGen 0)))) )
-          , ( "(,)", sForall kStar [] (sForall kStar [] (sMono (tGen 0 `tArr` tGen 1 `tArr` (tApp (tApp (tCon (kArr kStar (kArr kStar kStar)) "(,)") (tGen 0)) (tGen 1))))) )
-          , ( "map", sForall (kArr kStar kStar) [("Functor", tGen 0)] (sForall kStar [] (sForall kStar [] (sMono ((tGen 1 `tArr` tGen 0) `tArr` (tApp (tGen 2) (tGen 1)) `tArr` (tApp (tGen 2) (tGen 0)))))) )
+            -- ("lenShow", sForall kStar [("show", tGen 0 `tArr` tString)] (sScheme (tGen 0 `tArr` tInt)))
+            ( "lenShow", sForall kStar ["Show"] (sScheme (tGen 0 `tArr` tInt)) )
+          , ( "lenShow2", sForall kStar ["Show", "Eq"] (sScheme (tGen 0 `tArr` tInt)) )
+          , ( "Just", sForall kStar [] (sScheme (tGen 0 `tArr` (tApp (tCon (kArr kStar kStar) "Maybe") (tGen 0)))) )
+          , ( "(,)", sForall kStar [] (sForall kStar [] (sScheme (tGen 0 `tArr` tGen 1 `tArr` (tApp (tApp (tCon (kArr kStar (kArr kStar kStar)) "(,)") (tGen 0)) (tGen 1))))) )
+          , ( "map", sForall (kArr kStar kStar) ["Functor"] (sForall kStar [] (sForall kStar [] (sScheme ((tGen 1 `tArr` tGen 0) `tArr` (tApp (tGen 2) (tGen 1)) `tArr` (tApp (tGen 2) (tGen 0)))))) )
+          , ( "@(+)Int", sScheme (tInt `tArr` tInt `tArr` tInt) )
         ]
  
-scheme1 = sForall (kArr kStar kStar) [("Functor", tGen 0)] (sForall kStar [] (sForall kStar [] (sMono ((tGen 1 `tArr` tGen 0) `tArr` (tApp (tGen 2) (tGen 1)) `tArr` (tApp (tGen 2) (tGen 0))))))
+--scheme1 = sForall (kArr kStar kStar) [("Functor", tGen 0)] (sForall kStar [] (sForall kStar [] (sScheme ((tGen 1 `tArr` tGen 0) `tArr` (tApp (tGen 2) (tGen 1)) `tArr` (tApp (tGen 2) (tGen 0))))))
+scheme1 = sForall (kArr kStar kStar) ["Functor"] (sForall kStar [] (sForall kStar [] (sScheme ((tGen 1 `tArr` tGen 0) `tArr` (tApp (tGen 2) (tGen 1)) `tArr` (tApp (tGen 2) (tGen 0))))))
+
 
     --inject
     --  :: [(Type, Scheme)] 
@@ -328,7 +345,7 @@ scheme1 = sForall (kArr kStar kStar) [("Functor", tGen 0)] (sForall kStar [] (sF
 
 --     env1 =
 --         Env.fromList [
---             ("lenShow", sForall kStar [Predicate "show" tString] (sMono (tGen 0 `tArr` tInt)))
+--             ("lenShow", sForall kStar [Predicate "show" tString] (sScheme (tGen 0 `tArr` tInt)))
 --         ]
 --        embed <$> sequence e
 
@@ -364,7 +381,7 @@ scheme1 = sForall (kArr kStar kStar) [("Functor", tGen 0)] (sForall kStar [] (sF
 -- --testScheme1 = 
 -- --    sForall kStar [Predicate "o1" tInt] 
 -- --        (sForall kStar [Predicate "o2" tBool] 
--- --            (sMono (tGen 1 `tArr` tGen 0 `tArr` tUnit)))
+-- --            (sScheme (tGen 1 `tArr` tGen 0 `tArr` tUnit)))
 -- 
 -- 
 -- instantiate_ :: Scheme -> Infer (Type, [(Name, Type)])
@@ -416,7 +433,7 @@ scheme1 = sForall (kArr kStar kStar) [("Functor", tGen 0)] (sForall kStar [] (sF
 -- 
 --     env1 =
 --         Env.fromList [
---             ("lenShow", sForall kStar [Predicate "show" tString] (sMono (tGen 0 `tArr` tInt)))
+--             ("lenShow", sForall kStar [Predicate "show" tString] (sScheme (tGen 0 `tArr` tInt)))
 --         ]
 -- 
 --     runInfer_ = 
@@ -507,7 +524,7 @@ scheme1 = sForall (kArr kStar kStar) [("Functor", tGen 0)] (sForall kStar [] (sF
 -- 
 --     env1 =
 --         Env.fromList [
---             ("lenShow", sForall kStar [Predicate "show" tString] (sMono (tGen 0 `tArr` tInt)))
+--             ("lenShow", sForall kStar [Predicate "show" tString] (sScheme (tGen 0 `tArr` tInt)))
 --         ]
 -- 
 --     runInfer_ = 
@@ -733,10 +750,10 @@ scheme1 = sForall (kArr kStar kStar) [("Functor", tGen 0)] (sForall kStar [] (sF
 --             , appExpr () [ varExpr () "first", varExpr () "t" ] 
 --             ])
 -- 
--- tIsZero = sMono (tInt `tArr` tBool)
--- tFirst = sForall kStar [Predicate "first" tInt] (sMono (tGen 0 `tArr` tInt))
+-- tIsZero = sScheme (tInt `tArr` tBool)
+-- tFirst = sForall kStar [Predicate "first" tInt] (sScheme (tGen 0 `tArr` tInt))
 -- 
--- tFirst1 = sForall kStar [] (sForall kStar [Predicate "first" (tGen 1)] (sMono (tGen 0 `tArr` tGen 1)))
+-- tFirst1 = sForall kStar [] (sForall kStar [Predicate "first" (tGen 1)] (sScheme (tGen 0 `tArr` tGen 1)))
 -- 
 -- baz = runInfer fun where
 --     fun = do

@@ -94,8 +94,13 @@ infer = cata $ \case
         tell [Equality (tVar kStar tv) lt]
         pure ( litExpr tv lit, [] )
 
-    EApp _ exprs ->
-        foldl1 inferApp exprs
+    EApp _ exprs -> do
+        tv <- supply
+        (es1, as1) <- sequenced exprs
+        tell $ case es1 of
+            []   -> []
+            e:es -> [ Equality (typeOf e) (foldr tArr (tVar kStar tv) (typeOf <$> es)) ]
+        pure ( appExpr tv es1, as1 )
 
     ELet _ pat expr1 expr2 -> do
         tv <- supply
@@ -234,18 +239,6 @@ inferPattern = cata $ \pat -> do
         PAny _ -> 
             pure ( anyPat tv, [] )
 
-inferApp
-  :: (MonadReader Monoset m, MonadSupply Name m) 
-  => WriterT [Constraint] m (Expr Name (Pattern Name) (Pattern Name), [Assumption])
-  -> WriterT [Constraint] m (Expr Name (Pattern Name) (Pattern Name), [Assumption])
-  -> WriterT [Constraint] m (Expr Name (Pattern Name) (Pattern Name), [Assumption])
-inferApp expr1 expr2 = do
-    tv <- supply
-    (e1, as1) <- expr1
-    (e2, as2) <- expr2
-    tell [ Equality (typeOf e1) (typeOf e2 `tArr` tVar kStar tv) ]
-    pure ( appExpr tv [e1, e2], as1 <> as2 )
-
 inferLiteral :: (Monad m) => Literal -> m Type
 inferLiteral = pure . \case
     LUnit{}   -> tUnit
@@ -271,8 +264,8 @@ instance Substitutable Monoset where
 
 instance Substitutable Scheme where
     apply sub = cata $ \case
-        Forall k os s -> sForall k (fmap (apply sub <$>) os) s
-        Mono t        -> sMono (apply sub t)
+        Forall k cs s -> sForall k cs s
+        Scheme t      -> sScheme (apply sub t)
 
 --patternVars :: Pattern t -> [(Name, t)]
 --patternVars = cata $ \case

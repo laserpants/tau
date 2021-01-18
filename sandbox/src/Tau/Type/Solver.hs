@@ -116,43 +116,35 @@ split (Subst sub) = do
 
 generalize :: Set Name -> Type -> StateT X Infer Scheme
 generalize set ty = do
-    (t, sub, _) <- foldrM go (sMono ty, nullSubst, 0) [p | p <- vars, fst p `Set.notMember` set]
+    (t, sub, _) <- foldrM go (sScheme ty, nullSubst, 0) vs
     pure (apply sub t)
   where
+    vs = [v | v <- vars, fst v `Set.notMember` set]
     go (v, k) (t, sub, n) = do
         env <- getSnd
         let cs = filter (snd >>> (tVar k v ==)) env
-        pure (sForall k cs t, v `mapsTo` tGen n <> sub, succ n)
+        pure (sForall k (fst <$> cs) t, v `mapsTo` tGen n <> sub, succ n)
 
     vars :: [(Name, Kind)]
     vars = nub . flip cata ty $ \case
         TVar k var -> [(var, k)]
         TArr t1 t2 -> t1 <> t2
         TApp t1 t2 -> t1 <> t2
-        ty         -> []
+        _          -> []
 
 instantiate :: Scheme -> StateT X Infer Type
 instantiate scheme = do
-    names <- supplies (length kinds)
-    let ts = reverse (zipWith tVar kinds names)
-    modifySnd ((second (replaceBound ts) <$> dicts ts) <>)
-    traceShowM "*****"
-    traceShowM (dicts2 ts)
-    traceShowM "*****"
-    pure (replaceBound ts ty)
+    ts <- zipWith tVar kinds <$> supplies (length kinds)
+    modifySnd ([(c, t) | (t, cs) <- zip ts (dicts ts), c <- cs] <>)
+    pure (replaceBound (reverse ts) ty)
   where
     (ty, kinds) = flip cata scheme $ \case
-        Mono t             -> (t, [])
+        Scheme t             -> (t, [])
         Forall k _ (t, ks) -> (t, k:ks)
 
-    dicts2 :: [Type] -> [[(Name, Type)]]
-    dicts2 ts = flip cata scheme $ \case
-        Mono{}          -> []
-        Forall _ cs css -> cs:css
-
-    dicts :: [Type] -> [(Name, Type)]
-    dicts ts = concat $ flip cata scheme $ \case
-        Mono{}          -> []
+    dicts :: [Type] -> [[Name]]
+    dicts ts = flip cata scheme $ \case
+        Scheme{}        -> []
         Forall _ cs css -> cs:css
 
     replaceBound :: [Type] -> Type -> Type 
@@ -346,7 +338,7 @@ instantiate scheme = do
 ----
 ----generalize :: Set Name -> Type -> StateT PredicateMap Infer Scheme
 ----generalize set ty = do
-----    (t, sub, _) <- foldrM go (sMono ty, nullSubst, 0) [p | p <- vars ty, fst p `Set.notMember` set]
+----    (t, sub, _) <- foldrM go (sScheme ty, nullSubst, 0) [p | p <- vars ty, fst p `Set.notMember` set]
 ----    pure (apply sub t)
 ----  where
 ----    go (v, k) (t, sub, n) = do
@@ -373,7 +365,7 @@ instantiate scheme = do
 ----      , Equality (tVar kStar "a4") (tVar kStar "a5") 
 ----      , Equality (tVar kStar "a7") (tVar kStar "a8" `tArr` tVar kStar "a6")
 ----      , Implicit (tVar kStar "a7") (tVar kStar "a4") (Monoset $ Set.fromList ["x"])
-----      , Explicit (tVar kStar "a5") (sForall kStar [] (sMono (tGen 0 `tArr` tCon kStar "String")))
+----      , Explicit (tVar kStar "a5") (sForall kStar [] (sScheme (tGen 0 `tArr` tCon kStar "String")))
 ----      ]
 ----    runInfer = 
 ----        unInfer
@@ -393,16 +385,16 @@ instantiate scheme = do
 ----    cs =
 ----      [ Equality (tVar kStar "a2") (tVar kStar "a3" `tArr` tVar kStar "a1")
 ----      , Equality (tVar kStar "a3") tInt
-----      , Explicit (tVar kStar "a2") (sForall kStar [Predicate "show" tString] (sMono (tGen 0 `tArr` tInt)))
+----      , Explicit (tVar kStar "a2") (sForall kStar [Predicate "show" tString] (sScheme (tGen 0 `tArr` tInt)))
 ----      , Equality (tVar kStar "a4") (tVar kStar "a5" `tArr` tVar kStar "a3" `tArr` tVar kStar "a1")
-----      , Explicit (tVar kStar "a4") (sForall kStar [] (sMono ((tGen 0 `tArr` tString) `tArr` tGen 0 `tArr` tInt)))
+----      , Explicit (tVar kStar "a4") (sForall kStar [] (sScheme ((tGen 0 `tArr` tString) `tArr` tGen 0 `tArr` tInt)))
 ----
 ----      --, Implicit (tVar kStar "a7") (tVar kStar "a4") (Monoset $ Set.fromList ["x"])
 ----      --, Equality (tVar kStar "a3") (tVar kStar "a6") 
 ----      --, Equality (tVar kStar "a4") (tVar kStar "a5") 
 ----      --, Equality (tVar kStar "a7") (tVar kStar "a8" `tArr` tVar kStar "a6")
 ----      --, Implicit (tVar kStar "a7") (tVar kStar "a4") (Monoset $ Set.fromList ["x"])
-----      --, Explicit (tVar kStar "a5") (sForall kStar [] (sMono (tGen 0 `tArr` tCon kStar "String")))
+----      --, Explicit (tVar kStar "a5") (sForall kStar [] (sScheme (tGen 0 `tArr` tCon kStar "String")))
 ----      ]
 ----    runInfer = 
 ----        unInfer
@@ -420,9 +412,9 @@ instantiate scheme = do
 ----      [ Equality (tVar kStar "a1") (tVar kStar "a4")
 ----      , Implicit (tVar kStar "a4") (tVar kStar "a2") (Monoset mempty)
 ----      , Equality (tVar kStar "a2") (tVar kStar "a3")
-----      , Explicit (tVar kStar "a3") (sForall kStar [Predicate "show" tString] (sMono (tGen 0 `tArr` tInt)))
+----      , Explicit (tVar kStar "a3") (sForall kStar [Predicate "show" tString] (sScheme (tGen 0 `tArr` tInt)))
 ----      , Equality (tVar kStar "a5") (tVar kStar "a6" `tArr` tVar kStar "a3")
-----      , Explicit (tVar kStar "a5") (sForall kStar [] (sMono ((tGen 0 `tArr` tString) `tArr` tGen 0 `tArr` tInt)))
+----      , Explicit (tVar kStar "a5") (sForall kStar [] (sScheme ((tGen 0 `tArr` tString) `tArr` tGen 0 `tArr` tInt)))
 ----      ]
 ----    runInfer = 
 ----        unInfer
@@ -444,9 +436,9 @@ instantiate scheme = do
 ----      , Equality (tVar kStar "a2") (tVar kStar "a3")
 ----      , Equality (tVar kStar "a5") (tVar kStar "a6" `tArr` tVar kStar "a4")
 ----      , Equality (tVar kStar "a6") tInt
-----      , Explicit (tVar kStar "a3") (sForall kStar [Predicate "show" tString] (sMono (tGen 0 `tArr` tInt)))
+----      , Explicit (tVar kStar "a3") (sForall kStar [Predicate "show" tString] (sScheme (tGen 0 `tArr` tInt)))
 ------      , Equality (tVar kStar "a7") (tVar kStar "a8" `tArr` tVar kStar "a3")
-------      , Explicit (tVar kStar "a7") (sForall kStar [] (sMono ((tGen 0 `tArr` tString) `tArr` tGen 0 `tArr` tInt)))
+------      , Explicit (tVar kStar "a7") (sForall kStar [] (sScheme ((tGen 0 `tArr` tString) `tArr` tGen 0 `tArr` tInt)))
 ----      ]
 ----    runInfer = 
 ----        unInfer
@@ -465,9 +457,9 @@ instantiate scheme = do
 ----      [ Equality (tVar kStar "a1") (tVar kStar "a2" `tArr` tVar kStar "a3")
 ----      , Equality (tVar kStar "a2") (tVar kStar "a5")
 ----      , Equality (tVar kStar "a4") (tVar kStar "a5" `tArr` tVar kStar "a3")
-----      , Explicit (tVar kStar "a4") (sForall kStar [Predicate "show" tString] (sMono (tGen 0 `tArr` tInt)))
+----      , Explicit (tVar kStar "a4") (sForall kStar [Predicate "show" tString] (sScheme (tGen 0 `tArr` tInt)))
 ----      , Equality (tVar kStar "a6") (tVar kStar "a7" `tArr` tVar kStar "a4")
-----      , Explicit (tVar kStar "a6") (sForall kStar [] (sMono ((tGen 0 `tArr` tString) `tArr` tGen 0 `tArr` tInt)))
+----      , Explicit (tVar kStar "a6") (sForall kStar [] (sScheme ((tGen 0 `tArr` tString) `tArr` tGen 0 `tArr` tInt)))
 ----      ]
 ----    runInfer = 
 ----        unInfer
@@ -491,8 +483,8 @@ instantiate scheme = do
 ----      , Equality (tVar kStar "a5") (tVar kStar "a8")
 ----      , Equality (tVar kStar "a7") (tVar kStar "a8" `tArr` tVar kStar "a6")
 ----      , Implicit (tVar kStar "a7") (tVar kStar "a2") (Monoset $ Set.fromList ["x"])
-----      , Explicit (tVar kStar "a3") (sForall kStar [Predicate "show" tString] (sMono (tGen 0 `tArr` tInt)))
-----      , Explicit (tVar kStar "a9") (sForall kStar [] (sMono ((tGen 0 `tArr` tString) `tArr` tGen 0 `tArr` tInt)))
+----      , Explicit (tVar kStar "a3") (sForall kStar [Predicate "show" tString] (sScheme (tGen 0 `tArr` tInt)))
+----      , Explicit (tVar kStar "a9") (sForall kStar [] (sScheme ((tGen 0 `tArr` tString) `tArr` tGen 0 `tArr` tInt)))
 ----      ]
 ----    runInfer = 
 ----        unInfer
@@ -517,8 +509,8 @@ instantiate scheme = do
 ----      , Implicit (tVar kStar "a7") (tVar kStar "a4") (Monoset $ Set.fromList ["x"])
 ----      , Equality (tVar kStar "a9") (tVar kStar "a10" `tArr` tVar kStar "a5")
 ----      , Equality (tVar kStar "a7") (tVar kStar "a8" `tArr` tVar kStar "a6")
-----      , Explicit (tVar kStar "a5") (sForall kStar [Predicate "show" tString] (sMono (tGen 0 `tArr` tInt)))
-----      , Explicit (tVar kStar "a9") (sForall kStar [] (sMono ((tGen 0 `tArr` tString) `tArr` tGen 0 `tArr` tInt)))
+----      , Explicit (tVar kStar "a5") (sForall kStar [Predicate "show" tString] (sScheme (tGen 0 `tArr` tInt)))
+----      , Explicit (tVar kStar "a9") (sForall kStar [] (sScheme ((tGen 0 `tArr` tString) `tArr` tGen 0 `tArr` tInt)))
 ----      ]
 ----    runInfer = 
 ----        unInfer
@@ -539,8 +531,8 @@ instantiate scheme = do
 ----      , Equality (tVar kStar "a2") (tVar kStar "a3")
 ----      , Implicit (tVar kStar "a4") (tVar kStar "a2") (Monoset $ Set.fromList [])
 ------      , Equality (tVar kStar "a5") (tVar kStar "a6" `tArr` tVar kStar "a3")
-----      , Explicit (tVar kStar "a3") (sForall kStar [Predicate "show" tString] (sMono (tGen 0 `tArr` tInt)))
-------      , Explicit (tVar kStar "a5") (sForall kStar [] (sMono ((tGen 0 `tArr` tString) `tArr` tGen 0 `tArr` tInt)))
+----      , Explicit (tVar kStar "a3") (sForall kStar [Predicate "show" tString] (sScheme (tGen 0 `tArr` tInt)))
+------      , Explicit (tVar kStar "a5") (sForall kStar [] (sScheme ((tGen 0 `tArr` tString) `tArr` tGen 0 `tArr` tInt)))
 ----      , Equality (tVar kStar "a3") (tVar kStar "x1" `tArr` tInt)
 ----      , Equality (tVar kStar "a2") (tVar kStar "x2" `tArr` tInt)
 ----      ]
@@ -567,8 +559,8 @@ instantiate scheme = do
 ----      , Equality (tVar kStar "a7") (tVar kStar "a8" `tArr` tVar kStar "a3")
 ----      , Equality (tVar kStar "a6") tInt
 ----      , Implicit (tVar kStar "a5") (tVar kStar "a2") (Monoset $ Set.fromList [])
-----      , Explicit (tVar kStar "a3") (sForall kStar [Predicate "show" tString] (sMono (tGen 0 `tArr` tInt)))
-----      , Explicit (tVar kStar "a7") (sForall kStar [] (sMono ((tGen 0 `tArr` tString) `tArr` tGen 0 `tArr` tInt)))
+----      , Explicit (tVar kStar "a3") (sForall kStar [Predicate "show" tString] (sScheme (tGen 0 `tArr` tInt)))
+----      , Explicit (tVar kStar "a7") (sForall kStar [] (sScheme ((tGen 0 `tArr` tString) `tArr` tGen 0 `tArr` tInt)))
 ----      , Equality (tVar kStar "a5") (tVar kStar "a6" `tArr` tVar kStar "a4")
 ----      ]
 ----    runInfer = 
@@ -587,11 +579,11 @@ instantiate scheme = do
 ----    cs =
 ----      [ Equality (tVar kStar "a2") (tVar kStar "a3" `tArr` tVar kStar "a1")
 ----      , Equality (tVar kStar "a3") tInt
-----      , Explicit (tVar kStar "a2") (sForall kStar [Predicate "show" tString] (sMono (tGen 0 `tArr` tInt)))
+----      , Explicit (tVar kStar "a2") (sForall kStar [Predicate "show" tString] (sScheme (tGen 0 `tArr` tInt)))
 ------      , Equality (tVar kStar "a2") (tVar kStar "a3")
 ------      , Implicit (tVar kStar "a4") (tVar kStar "a2") (Monoset $ Set.fromList [])
 --------      , Equality (tVar kStar "a5") (tVar kStar "a6" `tArr` tVar kStar "a3")
---------      , Explicit (tVar kStar "a5") (sForall kStar [] (sMono ((tGen 0 `tArr` tString) `tArr` tGen 0 `tArr` tInt)))
+--------      , Explicit (tVar kStar "a5") (sForall kStar [] (sScheme ((tGen 0 `tArr` tString) `tArr` tGen 0 `tArr` tInt)))
 ------      , Equality (tVar kStar "a2") (tVar kStar "x2" `tArr` tInt)
 ----      ]
 ----    runInfer = 
@@ -611,7 +603,7 @@ instantiate scheme = do
 ----
 ------fazoo  = runStateT (instantiate foo) mempty
 ------fazoo2 = runInfer fazoo 
-------foo = sForall (kArr kStar kStar) [] (sForall kStar [] (sMono (tGen 0 `tArr` tGen 1)))
+------foo = sForall (kArr kStar kStar) [] (sForall kStar [] (sScheme (tGen 0 `tArr` tGen 1)))
 ----
 ----instantiate :: Scheme -> StateT PredicateMap Infer Type
 ----instantiate scheme = do

@@ -40,10 +40,8 @@ deriveOrd1  ''TypeF
 type Type = Fix TypeF
 
 data SchemeF a
-    = Forall Kind [(Name, Type)] a
---   TODO: Change to:
---    = Forall Kind [Name] a
-    | Mono Type
+    = Forall Kind [Name] a
+    | Scheme Type
     deriving (Functor, Foldable, Traversable)
 
 deriveShow  ''SchemeF
@@ -125,8 +123,8 @@ tListCon = tCon (kArr kStar kStar) "List"
 tList :: Type -> Type
 tList = tApp tListCon 
 
-sForall :: Kind -> [(Name, Type)] -> Scheme -> Scheme
+sForall :: Kind -> [Name] -> Scheme -> Scheme
 sForall k cs s = Fix (Forall k cs s)
 
-sMono :: Type -> Scheme
-sMono t = Fix (Mono t)
+sScheme :: Type -> Scheme
+sScheme t = Fix (Scheme t)
