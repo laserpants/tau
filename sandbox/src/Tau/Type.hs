@@ -41,6 +41,8 @@ type Type = Fix TypeF
 
 data SchemeF a
     = Forall Kind [(Name, Type)] a
+--   TODO: Change to:
+--    = Forall Kind [Name] a
     | Mono Type
     deriving (Functor, Foldable, Traversable)
 

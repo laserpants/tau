@@ -136,11 +136,19 @@ instantiate scheme = do
     names <- supplies (length kinds)
     let ts = reverse (zipWith tVar kinds names)
     modifySnd ((second (replaceBound ts) <$> dicts ts) <>)
+    traceShowM "*****"
+    traceShowM (dicts2 ts)
+    traceShowM "*****"
     pure (replaceBound ts ty)
   where
     (ty, kinds) = flip cata scheme $ \case
         Mono t             -> (t, [])
         Forall k _ (t, ks) -> (t, k:ks)
+
+    dicts2 :: [Type] -> [[(Name, Type)]]
+    dicts2 ts = flip cata scheme $ \case
+        Mono{}          -> []
+        Forall _ cs css -> cs:css
 
     dicts :: [Type] -> [(Name, Type)]
     dicts ts = concat $ flip cata scheme $ \case

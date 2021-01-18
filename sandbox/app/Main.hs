@@ -134,6 +134,16 @@ bb19 = evalExpr expr $ Env.fromList []
     Right expr = simplified expr19
 
 
+expr20 = appExpr () [varExpr () "@(+)Int", litExpr () (LInt 8), litExpr () (LInt 5)]
+
+bb20 = evalExpr expr $ Env.fromList [] 
+  where
+    Right expr = simplified expr20
+
+
+expr21 = lamExpr () (varPat () "xs") (appExpr () [varExpr () "map", lamExpr () (varPat () "x") (appExpr () [varExpr () "@(+)Int", varExpr () "x", litExpr () (LInt 1)]), varExpr () "xs"])
+
+
 ----
 
 
@@ -159,23 +169,20 @@ dicts = cata $ \case
     ELam (_, cs) _ e1 -> cs <> e1
     _                 -> []
 
+
 rebuildTree :: Expr T (Pattern T) (Pattern T) -> StateT Bool Infer (Expr T (Pattern T) (Pattern T))
 rebuildTree = cata $ \case
-    EApp t exs  -> do
+    EApp t exs -> do
         put False
         sequence exs >>= \case
             [] -> pure (appExpr t [])
             e:es -> do
-                let (_, css) = getTag e :: T
-                pure (appExpr t (e:(gggoo <$> css) <> es))
+                let ds = []
+                pure (appExpr t (e:ds <> es))
 
-                --let (ttt, css) = getTag e :: T
-                --    next = appExpr t eee
-                --    ts :: [Type]
-                --    ts = fmap (uncurry dictType) css
-                --    ds = fmap gggoo css
-                --    ttt2 = foldr tArr ttt ts
-                --pure (appExpr t (setTag ((ttt2, []) :: T) e:ds <> es))
+      where
+        toDict :: Expr T (Pattern T) (Pattern T) -> Expr T (Pattern T) (Pattern T)
+        toDict = undefined
 
     ELam t p e1 -> do
         nested <- get
@@ -185,44 +192,86 @@ rebuildTree = cata $ \case
                 put True
                 next <- lamExpr t p <$> e1 
                 let ds = sortOn fst (dicts next)
-                --let xxx = dicts next
-                --traceShowM xxx
-                pure (foldr fffoo next ds)
+                traceShowM "//////////////////"
+                traceShowM ds
+                --et (_, css) = getTag e1 :: T
+                pure undefined
+                --pure (lamExpr (second (const []) t) undefined next)
+
+                --next <- lamExpr t p <$> e1 
+                --let ds = sortOn fst (dicts next)
+                ----let xxx = dicts next
+                ----traceShowM xxx
+                --pure (foldr fffoo next ds)
 
     e -> do
         put False
         embed <$> sequence e
 
-dictType :: Name -> Type -> Type
-dictType name = tApp (tCon (kArr kStar kStar) name) 
-
-gggoo :: (Name, Type) -> Expr T (Pattern T) (Pattern T)
-gggoo (n, t) = varExpr (tApp (tCon (kArr kStar kStar) n) t, []) "DICT"
-
---gggoo (n, t) = recExpr (tApp (tCon (kArr kStar kStar) n) t, []) [Field "show" tmp]
---tmp = lamExpr undefined (anyPat undefined) undefined
-
-fffoo :: (Name, Type) -> Expr T (Pattern T) (Pattern T) -> Expr T (Pattern T) (Pattern T)
-fffoo (n, t) y = let t1 = dictType n t in lamExpr (t1 `tArr` tx, []) (varPat (t1, []) "DICT") y
---fffoo (n, t) y = let t1 = dictType n t in lamExpr (t1 `tArr` tx, []) (undefined) y -- (varPat (t1, []) "DICT") y
-  where
-    xx :: T
-    xx@(tx, _) = getTag y
-
---    EVar t var     -> varExpr t var
---    ECon t con exs -> conExpr t con exs
---    ELit t lit     -> litExpr t lit
---    ELet t p e1 e2 -> letExpr t p e1 e2
---    EIf  t c e1 e2 -> ifExpr  t c e1 e2
---    EMat t exs eqs -> matExpr t exs eqs
---    EOp  t op      -> opExpr  t op
+--rebuildTree :: Expr T (Pattern T) (Pattern T) -> StateT Bool Infer (Expr T (Pattern T) (Pattern T))
+--rebuildTree = cata $ \case
+--    EApp t exs  -> do
+--        put False
+--        sequence exs >>= \case
+--            [] -> pure (appExpr t [])
+--            e:es -> do
+--                let (_, css) = getTag e :: T
+--                pure (appExpr t (e:(gggoo <$> css) <> es))
+--
+--                --let (ttt, css) = getTag e :: T
+--                --    next = appExpr t eee
+--                --    ts :: [Type]
+--                --    ts = fmap (uncurry dictType) css
+--                --    ds = fmap gggoo css
+--                --    ttt2 = foldr tArr ttt ts
+--                --pure (appExpr t (setTag ((ttt2, []) :: T) e:ds <> es))
+--
+--    ELam t p e1 -> do
+--        nested <- get
+--        if nested
+--            then lamExpr t p <$> e1
+--            else do
+--                put True
+--                next <- lamExpr t p <$> e1 
+--                let ds = sortOn fst (dicts next)
+--                --let xxx = dicts next
+--                --traceShowM xxx
+--                pure (foldr fffoo next ds)
+--
+--    e -> do
+--        put False
+--        embed <$> sequence e
+--
+--dictType :: Name -> Type -> Type
+--dictType name = tApp (tCon (kArr kStar kStar) name) 
+--
+--gggoo :: (Name, Type) -> Expr T (Pattern T) (Pattern T)
+--gggoo (n, t) = varExpr (tApp (tCon (kArr kStar kStar) n) t, []) "DICT"
+--
+----gggoo (n, t) = recExpr (tApp (tCon (kArr kStar kStar) n) t, []) [Field "show" tmp]
+----tmp = lamExpr undefined (anyPat undefined) undefined
+--
+--fffoo :: (Name, Type) -> Expr T (Pattern T) (Pattern T) -> Expr T (Pattern T) (Pattern T)
+--fffoo (n, t) y = let t1 = dictType n t in lamExpr (t1 `tArr` tx, []) (varPat (t1, []) "DICT") y
+----fffoo (n, t) y = let t1 = dictType n t in lamExpr (t1 `tArr` tx, []) (undefined) y -- (varPat (t1, []) "DICT") y
+--  where
+--    xx :: T
+--    xx@(tx, _) = getTag y
+--
+----    EVar t var     -> varExpr t var
+----    ECon t con exs -> conExpr t con exs
+----    ELit t lit     -> litExpr t lit
+----    ELet t p e1 e2 -> letExpr t p e1 e2
+----    EIf  t c e1 e2 -> ifExpr  t c e1 e2
+----    EMat t exs eqs -> matExpr t exs eqs
+----    EOp  t op      -> opExpr  t op
 
 aa = c
   where
     c = runInfer b
     b = do
         --((te, as), cs) <- infer_ expr11
-        ((te, as), cs) <- infer_ expr3
+        ((te, as), cs) <- infer_ expr21
         traceShowM "xxxxxxxxxxxxxyxxxxzxxxxxxxxxxxxxxxxxxxxxx"
         traceShowM te
         traceShowM "xxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxx"
@@ -238,10 +287,10 @@ aa = c
 --        traceShowM xx2
         let te2 = mapTags (addConstrs xx2) te1
         let te3 = mapTags (applyFinal xx1) te2
-        (zzz, _) <- runStateT (rebuildTree te3) False
-        traceShowM "*********5"
-        traceShowM zzz -- (mapTags (const ()) zzz)
-        traceShowM "----------"
+        --(zzz, _) <- runStateT (rebuildTree te3) False
+        --traceShowM "*********5"
+        --traceShowM zzz -- (mapTags (const ()) zzz)
+        --traceShowM "----------"
         pure (te3, cs', sub) -- (te, sub)
 
     env1 =
@@ -251,8 +300,11 @@ aa = c
           , ( "lenShow2", sForall kStar [("Show", tGen 0), ("Eq", tGen 0)] (sMono (tGen 0 `tArr` tInt)) )
           , ( "Just", sForall kStar [] (sMono (tGen 0 `tArr` (tApp (tCon (kArr kStar kStar) "Maybe") (tGen 0)))) )
           , ( "(,)", sForall kStar [] (sForall kStar [] (sMono (tGen 0 `tArr` tGen 1 `tArr` (tApp (tApp (tCon (kArr kStar (kArr kStar kStar)) "(,)") (tGen 0)) (tGen 1))))) )
+          , ( "map", sForall (kArr kStar kStar) [("Functor", tGen 0)] (sForall kStar [] (sForall kStar [] (sMono ((tGen 1 `tArr` tGen 0) `tArr` (tApp (tGen 2) (tGen 1)) `tArr` (tApp (tGen 2) (tGen 0)))))) )
         ]
  
+scheme1 = sForall (kArr kStar kStar) [("Functor", tGen 0)] (sForall kStar [] (sForall kStar [] (sMono ((tGen 1 `tArr` tGen 0) `tArr` (tApp (tGen 2) (tGen 1)) `tArr` (tApp (tGen 2) (tGen 0))))))
+
     --inject
     --  :: [(Type, Scheme)] 
     --  -> Expr Node p q 
@@ -982,6 +1034,13 @@ aa = c
 -- -- ----    pure tr
 -- -- ----
 -- -- ----runTest3 = runInfer test3
+
+type List = []
+
+mmmap :: (a -> b) -> List a -> List b
+mmmap f = cata $ \case
+    Nil       -> []
+    Cons x xs -> f x:xs
 
 
 main :: IO ()
