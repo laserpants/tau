@@ -27,29 +27,14 @@ class Substitutable t where
     apply :: Substitution -> t -> t
 
 
---newtype Substitution = Subst { getSubst :: Map Name Type }
---    deriving (Show, Eq)
---
---newtype SubstitutionP c = SubstP { getSubstP :: Map Name (TypePlus c) }
---    deriving (Show, Eq)
---
---domain :: Substitution -> [Name]
---domain (Subst sub) = Map.keys sub
---
---domainP :: SubstitutionP c -> [Name]
---domainP (SubstP sub) = Map.keys sub
+domain :: Substitution -> [Name]
+domain (Subst sub) = Map.keys sub
 
 nullSubst :: Substitution
 nullSubst = Subst mempty
 
---nullSubstP :: SubstitutionP c
---nullSubstP = SubstP mempty
-
 fromList :: [(Name, Type)] -> Substitution
 fromList = Subst . Map.fromList
-
---mapsTo :: Name -> Type -> Substitution
---mapsTo name val = Subst (Map.singleton name val)
 
 substWithDefault :: Type -> Name -> Substitution -> Type
 substWithDefault def name = Map.findWithDefault def name . getSubst
@@ -57,16 +42,13 @@ substWithDefault def name = Map.findWithDefault def name . getSubst
 toFunction :: Substitution -> Name -> Type
 toFunction sub name = substWithDefault (tVar kStar name) name sub
 
---compose :: Substitution -> Substitution -> Substitution
---compose s1 s2 = Subst (fmap (apply s1) (getSubst s2) `Map.union` getSubst s1)
---
---merge :: Substitution -> Substitution -> Maybe Substitution
---merge s1 s2 = 
---    if all equal (domain s1 `intersect` domain s2)
---        then Just (Subst (getSubst s1 `Map.union` getSubst s2))
---        else Nothing
---  where
---    equal v = let app = (`apply` tVar kStar v) in app s1 == app s2
+merge :: Substitution -> Substitution -> Maybe Substitution
+merge s1 s2 = 
+    if all equal (domain s1 `intersect` domain s2)
+        then Just (Subst (getSubst s1 `Map.union` getSubst s2))
+        else Nothing
+  where
+    equal v = let app = (`apply` tVar kStar v) in app s1 == app s2
 
 instance Semigroup Substitution where
     (<>) = compose
@@ -74,11 +56,11 @@ instance Semigroup Substitution where
 instance Monoid Substitution where
     mempty = nullSubst
 
---class Substitutable t where
---    apply :: Substitution -> t -> t
-
 class Free t where
     free :: t -> Set Name
+
+instance (Substitutable a, Substitutable b) => Substitutable (a, b) where
+    apply sub (a, b) = (apply sub a, apply sub b)
 
 instance (Substitutable t) => Substitutable [t] where
     apply = fmap . apply
@@ -100,6 +82,9 @@ instance Free Type where
         TApp t1 t2     -> t1 `union` t2
         ty             -> mempty
 
+--instance Substitutable InClass where
+--    apply sub (InClass name ty) = InClass name (apply sub ty)
+--
 ----instance Substitutable TypeClass where
 ----    apply sub (TypeClass name t) = TypeClass name (apply sub t)
 ----

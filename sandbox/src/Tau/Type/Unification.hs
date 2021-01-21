@@ -54,28 +54,28 @@ unifyPairs (t1, t2) (u1, u2) = do
 ----    sub2 <- unify (apply sub1 t2) (apply sub1 u2)
 ----    pure (sub2 <> sub1)
 --
---
---match :: (MonadError TypeError m) => Type -> Type -> m Substitution
---match t u = fn (project t) (project u) where
---    fn (TArr t1 t2) (TArr u1 u2)            = matchPairs (t1, t2) (u1, u2)
---    fn (TApp t1 t2) (TApp u1 u2)            = matchPairs (t1, t2) (u1, u2)
---    fn (TVar k name) _ | Just k == kindOf u = pure (name `mapsTo` u)
---    fn _ _ | t == u                         = pure mempty
---    fn _ _                                  = throwError CannotMatch
---
---matchPairs :: (MonadError TypeError m) => (Type, Type) -> (Type, Type) -> m Substitution
---matchPairs (t1, t2) (u1, u2) = do
---    sub1 <- match t1 u1
---    sub2 <- match t2 u2
---    case merge sub1 sub2 of
---        Nothing  -> throwError MergeFailed
---        Just sub -> pure sub
---
-----unifyClass, matchClass :: (MonadError TypeError m) => TypeClass -> TypeClass -> m Substitution
-----unifyClass = lift unify
-----matchClass = lift match
---
-----lift :: (MonadError TypeError m) => (Type -> Type -> m a) -> TypeClass -> TypeClass -> m a
-----lift m (TypeClass c1 t1) (TypeClass c2 t2)
-----    | c1 == c2  = m t1 t2
-----    | otherwise = throwError ClassMismatch
+
+match :: (Monad m) => Type -> Type -> m Substitution
+match t u = fn (project t) (project u) where
+    fn (TArr t1 t2) (TArr u1 u2)            = matchPairs (t1, t2) (u1, u2)
+    fn (TApp t1 t2) (TApp u1 u2)            = matchPairs (t1, t2) (u1, u2)
+    fn (TVar k name) _ | Just k == kindOf u = pure (name `mapsTo` u)
+    fn _ _ | t == u                         = pure mempty
+    fn _ _                                  = error "CannotMatch" -- throwError CannotMatch
+
+matchPairs :: (Monad m) => (Type, Type) -> (Type, Type) -> m Substitution
+matchPairs (t1, t2) (u1, u2) = do
+    sub1 <- match t1 u1
+    sub2 <- match t2 u2
+    case merge sub1 sub2 of
+        Nothing  -> error "MergeFailed" -- throwError MergeFailed
+        Just sub -> pure sub
+
+unifyClass, matchClass :: (Monad m) => InClass -> InClass -> m Substitution
+unifyClass = lift unify
+matchClass = lift match
+
+lift :: (Monad m) => (Type -> Type -> m a) -> InClass -> InClass -> m a
+lift m (InClass c1 t1) (InClass c2 t2)
+    | c1 == c2  = m t1 t2
+    | otherwise = error "ClassMismatch" -- throwError ClassMismatch

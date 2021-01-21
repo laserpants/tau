@@ -40,3 +40,6 @@ findWithDefaultEmpty key (Env env) = Map.findWithDefault mempty key env
 
 isMember :: Name -> Env a -> Bool
 isMember name (Env env) = Map.member name env
+
+update :: (a -> Maybe a) -> Name -> Env a -> Env a
+update f k (Env env) = Env (Map.update f k env)

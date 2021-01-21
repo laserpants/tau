@@ -15,6 +15,7 @@ import Data.Set.Monad (Set, union, intersection, (\\))
 import Tau.Expr
 import Tau.Type
 import Tau.Type.Inference
+import Tau.Type.Class
 import Tau.Type.Substitution
 import Tau.Type.Unification
 import Tau.Util
@@ -32,7 +33,8 @@ instance Active Constraint where
     active (Implicit t1 t2 mono) = free t1 `union` (free mono `Set.intersection` free t2)
     active (Explicit ty scheme)  = free ty `union` free scheme
 
-type X = ([(Name, Type)], [(Name, Type)])
+--type X = ([(Name, Type)], [(Name, Type)])
+type X = ([(Name, Type)], [InClass])
 
 modifyFst :: (MonadState (a, b) m) => (a -> a) -> m () 
 modifyFst = modify . first
@@ -76,7 +78,7 @@ solve css = do
         Equality t1 t2 -> do
             sub1 <- split =<< unify t1 t2
             sub2 <- solve (apply sub1 cs)
-            modifySnd (second (apply sub1) <$>)
+            modifySnd (apply sub1 <$>)
             pure (sub2 <> sub1)
 
         Implicit t1 t2 (Monoset set) -> do
@@ -114,16 +116,23 @@ split (Subst sub) = do
         ty -> 
             embed <$> sequence ty
 
+--go :: (Name, Kind) -> (Scheme, Substitution, Int) -> StateT X Infer (Scheme, Substitution, Int)
+--go = undefined
+
 generalize :: Set Name -> Type -> StateT X Infer Scheme
 generalize set ty = do
     (t, sub, _) <- foldrM go (sScheme ty, nullSubst, 0) vs
     pure (apply sub t)
   where
     vs = [v | v <- vars, fst v `Set.notMember` set]
+
     go (v, k) (t, sub, n) = do
         env <- getSnd
-        let cs = filter (snd >>> (tVar k v ==)) env
-        pure (sForall k (fst <$> cs) t, v `mapsTo` tGen n <> sub, succ n)
+        let cs = filter (inClassType >>> (tVar k v ==)) env
+        pure (sForall k (inClassName <$> cs) t, v `mapsTo` tGen n <> sub, succ n)
+
+    inClassName (InClass name _) = name
+    inClassType (InClass _ ty) = ty
 
     vars :: [(Name, Kind)]
     vars = nub . flip cata ty $ \case
@@ -135,7 +144,7 @@ generalize set ty = do
 instantiate :: Scheme -> StateT X Infer Type
 instantiate scheme = do
     ts <- zipWith tVar kinds <$> supplies (length kinds)
-    modifySnd ([(c, t) | (t, cs) <- zip ts (dicts ts), c <- cs] <>)
+    modifySnd ([InClass c t | (t, cs) <- zip ts (dicts ts), c <- cs] <>)
     pure (replaceBound (reverse ts) ty)
   where
     (ty, kinds) = flip cata scheme $ \case

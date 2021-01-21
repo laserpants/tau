@@ -35,32 +35,19 @@ instance Prim Bool where
         LBool lit -> lit
         _         -> False
 
---class IsFun f where
---    toFun :: f -> Fun
---
---instance (Prim a, Prim b) => IsFun (a -> b) where
---    toFun f = Fun1 (\a -> let b = f (toPrim a) in toLiteral b)
---
---instance (Prim a, Prim b, Prim c) => IsFun (a -> b -> c) where
---    toFun f = Fun2 (\a b -> let c = f (toPrim a) (toPrim b) in toLiteral c)
---
---instance (Prim a, Prim b, Prim c, Prim d) => IsFun (a -> b -> c -> d) where
---    toFun f = Fun3 (\a b c -> let d = f (toPrim a) (toPrim b) (toPrim c) in toLiteral d)
---
---instance (Prim a, Prim b, Prim c, Prim d, Prim e) => IsFun (a -> b -> c -> d -> e) where
---    toFun f = Fun4 (\a b c d -> let e = f (toPrim a) (toPrim b) (toPrim c) (toPrim d) in toLiteral e)
---
---instance (Prim a, Prim b, Prim c, Prim d, Prim e, Prim f) => IsFun (a -> b -> c -> d -> e -> f) where
---    toFun f = Fun5 (\a b c d e -> let g = f (toPrim a) (toPrim b) (toPrim c) (toPrim d) (toPrim e) in toLiteral g)
-
 fun1 :: (Prim a, Prim b) => (a -> b) -> Fun 
 fun1 f = Fun1 (\a -> let b = f (toPrim a) in toLiteral b)
 
 fun2 :: (Prim a, Prim b, Prim c) => (a -> b -> c) -> Fun 
 fun2 f = Fun2 (\a b -> let c = f (toPrim a) (toPrim b) in toLiteral c)
 
+fun3 :: (Prim a, Prim b, Prim c, Prim d) => (a -> b -> c -> d) -> Fun 
 fun3 f = Fun3 (\a b c -> let d = f (toPrim a) (toPrim b) (toPrim c) in toLiteral d)
+
+fun4 :: (Prim a, Prim b, Prim c, Prim d, Prim e) => (a -> b -> c -> d -> e) -> Fun 
 fun4 f = Fun4 (\a b c d -> let e = f (toPrim a) (toPrim b) (toPrim c) (toPrim d) in toLiteral e)
+
+fun5 :: (Prim a, Prim b, Prim c, Prim d, Prim e, Prim f) => (a -> b -> c -> d -> e -> f) -> Fun 
 fun5 f = Fun5 (\a b c d e -> let g = f (toPrim a) (toPrim b) (toPrim c) (toPrim d) (toPrim e) in toLiteral g)
 
 data Fun 
@@ -91,7 +78,7 @@ primEnv :: Env Fun
 primEnv = Env.fromList
     [ ( "showInt"    , fun1 (show :: Int -> String) )
     , ( "showBool"   , fun1 (show :: Bool -> String) )
-    , ( "(+)Int"     , fun2 ((+) :: Int -> Int -> Int) )
+    , ( "(+)Int"     , fun2 ((+)  :: Int -> Int -> Int) )
     , ( "(==)Int"    , fun2 ((==) :: Int -> Int -> Bool) )
     , ( "(==)Bool"   , fun2 ((==) :: Bool -> Bool -> Bool) )
     , ( "(==)Unit"   , fun2 ((==) :: () -> () -> Bool) )
