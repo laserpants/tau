@@ -14,9 +14,8 @@ empty = Env mempty
 insert :: Name -> a -> Env a -> Env a
 insert var val (Env env) = Env (Map.insert var val env)
 
--- inserts?
-insertMany :: [(Name, a)] -> Env a -> Env a
-insertMany = flip (foldr (uncurry insert))
+inserts :: [(Name, a)] -> Env a -> Env a
+inserts = flip (foldr (uncurry insert))
 
 fromList :: [(Name, a)] -> Env a
 fromList = Env . Map.fromList

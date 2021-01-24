@@ -175,7 +175,7 @@ flatten (Clause ps exs e) = Clause qs (exs <> exs1) e where
             pure (varPat t var)
 
         PRec t fields -> do
-            let info = sortOn snd3 (fieldInfo <$> fields)
+            let info = sortedFields fields
                 toPat (t, _, v) = varPat t v
             pure (conPat t ("{" <> Text.intercalate "," (snd3 <$> info) <> "}") (toPat <$> info))
 

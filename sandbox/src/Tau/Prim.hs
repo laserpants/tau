@@ -19,11 +19,23 @@ instance Prim Int where
         LInt lit -> lit
         _        -> 0
 
+instance Prim Double where
+    toLiteral = LFloat
+    primitive = \case
+        LFloat lit -> lit
+        _          -> 0
+
 instance Prim String where
     toLiteral = LString . Text.pack
     primitive = \case
         LString lit -> Text.unpack lit
         _           -> ""
+
+instance Prim Char where
+    toLiteral = LChar
+    primitive = \case
+        LChar lit -> lit
+        _         -> ' '
 
 instance Prim () where
     toLiteral = const LUnit

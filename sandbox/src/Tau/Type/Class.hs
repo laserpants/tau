@@ -1,11 +1,15 @@
 {-# LANGUAGE FlexibleContexts #-}
+{-# LANGUAGE MultiParamTypeClasses #-}
+{-# LANGUAGE FlexibleInstances #-}
 {-# LANGUAGE LambdaCase        #-}
 {-# LANGUAGE StrictData        #-}
 {-# LANGUAGE OverloadedStrings #-}
 module Tau.Type.Class where
 --module Tau.Type.Classes where
 
+import Data.Types.Injective
 import Control.Monad.Except
+import Data.Text.Prettyprint.Doc
 import Control.Monad.Extra (allM, (||^))
 import Data.List (partition, (\\))
 import Control.Arrow (first, second)
@@ -28,11 +32,16 @@ type Class a = ([Name], [Instance a])
 data Predicate = InClass Name Type
     deriving (Show, Eq, Ord)
 
+instance Injective Predicate (Name, Type) where
+    to (InClass name ty) = (name, ty)
+
 predicateName :: Predicate -> Name
 predicateName (InClass name _) = name
 
 predicateType :: Predicate -> Type
 predicateType (InClass _ ty) = ty
+
+type QualifiedType = (Type, [Predicate])
 
 data Instance a = Instance [Predicate] Type a
     deriving (Show, Eq)
@@ -123,6 +132,15 @@ simplify env = loop [] where
 
 reduce :: ClassEnv a -> [Predicate] -> Either a [Predicate]
 reduce env cls = toHeadNormalForm env cls >>= simplify env 
+
+
+-- ============================================================================
+-- == Pretty Printing
+-- ============================================================================
+
+instance Pretty Predicate where
+    pretty (InClass name ty) = pretty name <+> pretty ty
+
 
 
 

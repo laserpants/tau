@@ -9,7 +9,10 @@
 module Tau.Expr where
 
 import Control.Monad.Supply
+import Data.List
 import Data.Text (Text)
+import Data.Tuple.Extra (snd3)
+import Data.Types.Injective
 import Tau.Util
 
 -- | Language primitives
@@ -59,22 +62,27 @@ deriveEq1   ''Clause
 
 -- | Operators
 data Op a
-    = OEq  a a                -- ^ Equality operator (==)
-    | ONEq a a                -- ^ (/=)
-    | OAnd a ~a               -- ^ (&&)
-    | OOr  a ~a               -- ^ (||)
+    = OEq  a a                -- ^ Equal-to operator (==)
+    | ONEq a a                -- ^ Not-equal-to operator (/=)
+    | OAnd a ~a               -- ^ Logical And (&&)
+    | OOr  a ~a               -- ^ Logical Or (||)
     | OAdd a a                -- ^ Addition operator (+)
     | OSub a a                -- ^ Subtraction operator (-)
     | OMul a a                -- ^ Multiplication operator (*)
     | ODiv a a                -- ^ Division operator (/)
     | OLt  a a                -- ^ Less-than operator (<)
     | OGt  a a                -- ^ Greater-than operator (>)
-    | OLtE a a                -- ^ Less-than-or-equal operator (<=)
-    | OGtE a a                -- ^ Greater-than-or-equal operator (>=)
-    | ONeg a                  -- ^ negate
-    | ONot a                  -- ^ not
+    | OLtE a a                -- ^ Less-than-or-equal-to operator (<=)
+    | OGtE a a                -- ^ Greater-than-or-equal-to operator (>=)
+    | ONeg a                  -- ^ Unary negation
+    | ONot a                  -- ^ Logical Not
+    | OIso a                  -- ^ Isomorphism operator (~)
     | OLArr a a               -- ^ Function composition operator (<<)
-    | OIso a                  -- ^ isomorphism operator (~)
+    | ORArr a a               -- ^ Reverse function composition (>>)               
+    | OFPipe a a              -- ^ Forward pipe operator (|>)
+    | OBPipe a a              -- ^ Backwards pipe operator (<|)
+    | ODot Name a             -- ^ Dot operator
+    | OField Name a           -- ^ Record field access operator .{field}
     deriving (Show, Eq, Functor, Foldable, Traversable)
 
 deriveShow1 ''Op
@@ -89,10 +97,9 @@ data ExprF t p q a
     | ELet t q a a            -- ^ Let-binding
     | ELam t q a              -- ^ Lambda abstraction
     | EIf  t a ~a ~a          -- ^ If-clause
-    | EMat t [a] [Clause p a]
+    | EMat t [a] [Clause p a] -- ^ Match expression
     | EOp  t (Op a)           -- ^ Operator
     | ERec t [Field t a]      -- ^ Record
---    | EDot t Name a
 --    | EAnn u a
     deriving (Functor, Foldable, Traversable)
 
@@ -103,6 +110,8 @@ deriveEq1   ''ExprF
 
 -- | Core language expression 
 type Expr t p q = Fix (ExprF t p q)
+
+type PatternExpr t = Expr t (Pattern t) (Pattern t)
 
 -- ////////////////////////////////////////////////////////////////////////////
 
@@ -115,55 +124,55 @@ updateTag f a = let tag = getTag a in setTag (f tag) a
 
 instance TaggedA (Expr t p q) t where
     getTag = cata $ 
-      \case
-        EVar t _       -> t
-        ECon t _ _     -> t
-        ELit t _       -> t
-        EApp t _       -> t
-        ELet t _ _ _   -> t
-        ELam t _ _     -> t
-        EIf  t _ _ _   -> t
-        EMat t _ _     -> t
-        EOp  t _       -> t
-        ERec t _       -> t
+        \case
+          EVar t _       -> t
+          ECon t _ _     -> t
+          ELit t _       -> t
+          EApp t _       -> t
+          ELet t _ _ _   -> t
+          ELam t _ _     -> t
+          EIf  t _ _ _   -> t
+          EMat t _ _     -> t
+          EOp  t _       -> t
+          ERec t _       -> t
     setTag t = cata $ 
-      \case
-        EVar _ var     -> varExpr t var
-        ECon _ con exs -> conExpr t con exs
-        ELit _ lit     -> litExpr t lit
-        EApp _ exs     -> appExpr t exs
-        ELet _ p e1 e2 -> letExpr t p e1 e2
-        ELam _ p e1    -> lamExpr t p e1
-        EIf  _ c e1 e2 -> ifExpr  t c e1 e2
-        EMat _ exs eqs -> matExpr t exs eqs
-        EOp  _ op      -> opExpr  t op
-        ERec _ fields  -> recExpr t fields
+        \case
+          EVar _ var     -> varExpr t var
+          ECon _ con exs -> conExpr t con exs
+          ELit _ lit     -> litExpr t lit
+          EApp _ exs     -> appExpr t exs
+          ELet _ p e1 e2 -> letExpr t p e1 e2
+          ELam _ p e1    -> lamExpr t p e1
+          EIf  _ c e1 e2 -> ifExpr  t c e1 e2
+          EMat _ exs eqs -> matExpr t exs eqs
+          EOp  _ op      -> opExpr  t op
+          ERec _ fields  -> recExpr t fields
 
 instance TaggedA (Pattern t) t where
     getTag = cata $ 
-      \case
-        PVar t _      -> t
-        PCon t _ _    -> t
-        PLit t _      -> t
-        PRec t _      -> t
-        PAny t        -> t
+        \case
+          PVar t _       -> t
+          PCon t _ _     -> t
+          PLit t _       -> t
+          PRec t _       -> t
+          PAny t         -> t
     setTag t = cata $ 
-      \case
-        PVar _ var    -> varPat t var
-        PCon _ con ps -> conPat t con ps
-        PLit _ lit    -> litPat t lit
-        PRec _ fields -> recPat t fields
-        PAny _        -> anyPat t
+        \case
+          PVar _ var     -> varPat t var
+          PCon _ con ps  -> conPat t con ps
+          PLit _ lit     -> litPat t lit
+          PRec _ fields  -> recPat t fields
+          PAny _         -> anyPat t
 
 instance TaggedA (Prep t) t where
     getTag = 
-      \case
-        RVar t _      -> t
-        RCon t _ _    -> t
+        \case
+          RVar t _       -> t
+          RCon t _ _     -> t
     setTag t = 
-      \case
-        RVar _ var    -> RVar t var
-        RCon _ con rs -> RCon t con rs
+        \case
+          RVar _ var     -> RVar t var
+          RCon _ con rs  -> RCon t con rs
 
 instance TaggedA (Field t a) t where
     getTag   (Field t _ _) = t
@@ -171,35 +180,38 @@ instance TaggedA (Field t a) t where
 
 mapTags :: (s -> t) -> Expr s (Pattern s) (Pattern s) -> Expr t (Pattern t) (Pattern t)
 mapTags f = cata $ 
-  \case
-    EVar t var      -> varExpr (f t) var
-    ECon t con exs  -> conExpr (f t) con exs
-    ELit t lit      -> litExpr (f t) lit
-    EApp t exs      -> appExpr (f t) exs
-    ELet t p e1 e2  -> letExpr (f t) (mapPatternTags f p) e1 e2
-    ELam t p e1     -> lamExpr (f t) (mapPatternTags f p) e1
-    EIf  t c e1 e2  -> ifExpr  (f t) c e1 e2
-    EMat t exs eqs  -> matExpr (f t) exs (clause <$> eqs)
-    EOp  t op       -> opExpr  (f t) op
-    ERec t fields   -> recExpr (f t) (mapField f <$> fields)
+    \case
+      EVar t var      -> varExpr (f t) var
+      ECon t con exs  -> conExpr (f t) con exs
+      ELit t lit      -> litExpr (f t) lit
+      EApp t exs      -> appExpr (f t) exs
+      ELet t p e1 e2  -> letExpr (f t) (mapPatternTags f p) e1 e2
+      ELam t p e1     -> lamExpr (f t) (mapPatternTags f p) e1
+      EIf  t c e1 e2  -> ifExpr  (f t) c e1 e2
+      EMat t exs eqs  -> matExpr (f t) exs (clause <$> eqs)
+      EOp  t op       -> opExpr  (f t) op
+      ERec t fields   -> recExpr (f t) (mapField f <$> fields)
   where
     clause (Clause ps exs e) =
         Clause (mapPatternTags f <$> ps) exs e
 
 mapPatternTags :: (s -> t) -> Pattern s -> Pattern t
 mapPatternTags f = cata $ 
-  \case
-    PVar t var    -> varPat (f t) var
-    PCon t con ps -> conPat (f t) con ps
-    PLit t lit    -> litPat (f t) lit
-    PRec t fields -> recPat (f t) (mapField f <$> fields)
-    PAny t        -> anyPat (f t)
+    \case
+      PVar t var    -> varPat (f t) var
+      PCon t con ps -> conPat (f t) con ps
+      PLit t lit    -> litPat (f t) lit
+      PRec t fields -> recPat (f t) (mapField f <$> fields)
+      PAny t        -> anyPat (f t)
 
 mapField :: (s -> t) -> Field s a -> Field t a
 mapField f (Field t n v) = Field (f t) n v
 
-fieldInfo :: Field t a -> (t, Name, a)
+fieldInfo :: Field t a -> (t, Name, a) 
 fieldInfo (Field t n v) = (t, n, v)
+
+sortedFields :: [Field a c] -> [(a, Name, c)]
+sortedFields = sortOn snd3 . (fieldInfo <$>)
 
 --
 

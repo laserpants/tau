@@ -1,4 +1,5 @@
 {-# LANGUAGE DeriveTraversable #-}
+{-# LANGUAGE FlexibleInstances #-}
 {-# LANGUAGE LambdaCase        #-}
 {-# LANGUAGE OverloadedStrings #-}
 {-# LANGUAGE StrictData        #-}
@@ -11,9 +12,11 @@ import Data.Functor.Foldable
 import Data.List (nub)
 import Data.Maybe (fromMaybe)
 import Data.Set.Monad (Set)
+import Data.Text.Prettyprint.Doc
 import Tau.Env
 import Tau.Util
 import qualified Data.Set.Monad as Set
+import qualified Data.Text as Text
 import qualified Tau.Env as Env
 
 -- | Type kinds (base functor)
@@ -59,28 +62,6 @@ deriveEq1   ''SchemeF
 
 type Scheme = Fix SchemeF
 
-
-
-----
---
---data TypeError
---    = CannotUnify
---    | CannotMatch
---    | InfiniteType
---    | KindMismatch
---    | MergeFailed
---    | ClassMismatch
---    | ContextReductionFailed
---    deriving (Show, Eq)
---
-----toScheme :: Type -> Scheme
-----toScheme ty = Forall [] ([] :=> ty1) where
-----    ty1 = flip cata ty $ \case
-----        TVar k var -> tVar k var
-----        TCon k con -> tCon k con
-----        TArr t1 t2 -> tArr t1 t2
-----        TApp t1 t2 -> tApp t1 t2
-
 kindOf :: Type -> Maybe Kind
 kindOf = histo $ \case
     TApp (Just t :< _) _ -> appKind (project t) 
@@ -124,8 +105,17 @@ tBool = tCon kStar "Bool"
 tInt :: Type
 tInt = tCon kStar "Int" 
 
+tInteger :: Type
+tInteger = tCon kStar "Integer" 
+
+tFloat :: Type
+tFloat = tCon kStar "Float" 
+
 tString :: Type
 tString = tCon kStar "String" 
+
+tChar :: Type
+tChar = tCon kStar "Char" 
 
 tListCon :: Type
 tListCon = tCon (kArr kStar kStar) "List"
@@ -138,3 +128,33 @@ sForall k cs s = Fix (Forall k cs s)
 
 sScheme :: Type -> Scheme
 sScheme t = Fix (Scheme t)
+
+-- ============================================================================
+-- == Pretty Printing
+-- ============================================================================
+
+instance Pretty Type where
+    pretty = para $ \case
+        TApp a b -> snd a <+> rhs 
+          where
+            rhs = case project (fst b) of
+                TApp{} -> parens (snd b)
+                TArr{} -> parens (snd b)
+                _      -> snd b
+        TArr a b -> lhs <+> "->" <+> snd b 
+          where
+            lhs = case project (fst a) of
+                TArr{} -> parens (snd a)
+                _      -> snd a
+        TCon _ name -> pretty name
+        TVar _ name -> pretty name
+
+instance Pretty Kind where
+    pretty = para $ \case
+        KStar -> "*"
+        KArr a b  -> lhs <+> "->" <+> snd b where
+            lhs = case unfix (fst a) of
+                KArr{} -> parens (snd a)
+                _      -> snd a
+
+

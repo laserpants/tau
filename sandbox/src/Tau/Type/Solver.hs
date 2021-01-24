@@ -69,9 +69,10 @@ isSolvable _ _ = True
 choice :: [Constraint] -> Maybe ([Constraint], Constraint)
 choice xs = find (uncurry isSolvable) [(ys, x) | x <- xs, let ys = delete x xs]
 
---solve__ :: [Constraint] -> Infer (Substitution, [(Name, Type)], [InClass])
---solve__ :: (MonadError String m, MonadSupply Name m) => [Constraint] -> m (Substitution, [(Name, Type)], [InClass])
-
+solve__ 
+  :: (MonadError String m, MonadSupply Name m) 
+  => [Constraint] 
+  -> m (Substitution, [(Name, Type)], [Predicate])
 solve__ constraints = to <$> runStateT (solve constraints) ([], [])
 
 solve :: (MonadError String m, MonadSupply Name m) => [Constraint] -> StateT ([(Name, Type)], [Predicate]) m Substitution

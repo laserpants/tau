@@ -5,6 +5,7 @@ module Tau.Util
   , module Data.Functor.Foldable
   , module Data.Ord.Deriving
   , module Debug.Trace
+  , module Data.Types.Injective
   , module Text.Show.Deriving
   , Name
   , Algebra

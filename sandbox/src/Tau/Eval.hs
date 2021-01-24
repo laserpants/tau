@@ -152,9 +152,9 @@ evalMatch [] _ = fail "Runtime error (evalMatch)"
 evalMatch (Clause ps exs eq:eqs) vals = 
     case tryClause ps vals of
         Just pairs -> do
-            conds <- traverse (local (Env.insertMany pairs)) exs
+            conds <- traverse (local (Env.inserts pairs)) exs
             if and (toBool <$> conds) 
-                then local (Env.insertMany pairs) eq
+                then local (Env.inserts pairs) eq
                 else next
         Nothing ->
             next

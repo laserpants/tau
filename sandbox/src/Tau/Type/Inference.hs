@@ -173,20 +173,12 @@ infer = cata $ \case
 
     ERec _ fields -> do
         tv <- supply
-        let info = sortOn snd3 (fieldInfo <$> fields)
+        let info = sortedFields fields
             tagField (_, n, v) = first (\a -> Field (getTag a) n a) <$> v
         (fs, as1) <- sequenced (tagField <$> info)
         tell (recordConstraints tv info fs)
         pure ( recExpr tv fs
              , as1 )
-
---instance Iso ((a, b), c) (a, b, c) where
---    from ((a, b), c) = (a, b, c)
---    to (a, b, c) = ((a, b), c) 
---
---instance Iso (a, (b, c)) (a, b, c) where
---    from (a, (b, c)) = (a, b, c)
---    to (a, b, c) = (a, (b, c))
 
 recordConstraints :: Name -> [(t, Name, v)] -> [Field Name a] -> [Constraint] 
 recordConstraints tv info fs = 
@@ -253,7 +245,7 @@ inferPattern = cata $ \pat -> do
             pure ( litPat tv lit, [] )
 
         PRec _ fields -> do
-            let info = sortOn snd3 (fieldInfo <$> fields)
+            let info = sortedFields fields
             fs <- traverse (\(_, n, v) -> supply >>= \t -> pure $ Field t n v) info
             tell (recordConstraints tv info fs)
             pure ( recPat tv fs, [] )
