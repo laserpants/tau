@@ -9,34 +9,28 @@ import Control.Arrow (second)
 import Control.Comonad.Cofree
 import Data.Functor.Foldable
 import Data.List (nub)
+import Data.Maybe (fromMaybe)
 import Data.Set.Monad (Set)
 import Tau.Env
 import Tau.Util
 import qualified Data.Set.Monad as Set
 import qualified Tau.Env as Env
 
+-- | Type kinds (base functor)
 data KindF a 
-    = KStar
+    = KStar  -- KType?
     | KArr a a
+--    | KClass
     deriving (Show, Eq, Ord, Functor, Foldable, Traversable)
 
 deriveShow1 ''KindF
 deriveEq1   ''KindF
 deriveOrd1  ''KindF
 
+-- | Type kinds
 type Kind = Fix KindF
 
---data TVar = TV Kind Name
---data TCon = TC Kind Name
---
---data TypeF a
---    = TGen Int
---    | TVar TVar
---    | TCon TCon
---    | TArr a a
---    | TApp a a
---    deriving (Show, Eq, Ord, Functor, Foldable, Traversable)
-
+-- | Types (base functor)
 data TypeF a
     = TGen Int
     | TVar Kind Name 
@@ -49,8 +43,10 @@ deriveShow1 ''TypeF
 deriveEq1   ''TypeF
 deriveOrd1  ''TypeF
 
+-- | Types
 type Type = Fix TypeF
 
+-- | Polymorphic type schemes
 data SchemeF a
     = Forall Kind [Name] a
     | Scheme Type
@@ -62,40 +58,6 @@ deriveShow1 ''SchemeF
 deriveEq1   ''SchemeF
 
 type Scheme = Fix SchemeF
-
--- type Class a = (Name, [Name], [Instance a])
-type Class a = ([Name], [Instance a])
-
-data InClass = InClass Name Type
-    deriving (Show, Eq, Ord)
-
-data Instance a = Instance [InClass] Type a
-    deriving (Show, Eq)
-
-type ClassEnv a = Env (Class a)
-
--- TODO : return Maybe ([Name], [Instance a])
-classInfo :: ClassEnv a -> Name -> ([Name], [Instance a])
-classInfo env name = (scs, insts) where
-    Just (scs, insts) = Env.lookup name env 
-
-super :: ClassEnv a -> Name -> [Name]
-super a b = fst (classInfo a b)
-
-instances :: ClassEnv a -> Name -> [Instance a]
-instances a b = snd (classInfo a b)
-
-addClassInstance :: Name -> Type -> a -> ClassEnv a -> ClassEnv a
-addClassInstance name ty ex =
-    Env.update (Just . second (Instance [] ty ex :)) name
-
-lookupClassInstance :: Name -> Type -> ClassEnv a -> Maybe a
-lookupClassInstance name ty env = 
-    case filter fff (instances env name) of
-        [Instance _ _ t] -> Just t
-        _                -> Nothing
-  where
-    fff (Instance _ t _) = t == ty
 
 
 

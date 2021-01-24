@@ -10,45 +10,45 @@ import qualified Data.Text as Text
 import qualified Tau.Env as Env
 
 class Prim a where
-    toLiteral  :: a -> Literal
-    toPrim :: Literal -> a
+    toLiteral :: a -> Literal
+    primitive :: Literal -> a
 
 instance Prim Int where
     toLiteral = LInt
-    toPrim = \case
+    primitive = \case
         LInt lit -> lit
         _        -> 0
 
 instance Prim String where
     toLiteral = LString . Text.pack
-    toPrim = \case
+    primitive = \case
         LString lit -> Text.unpack lit
         _           -> ""
 
 instance Prim () where
     toLiteral = const LUnit
-    toPrim = const ()
+    primitive = const ()
 
 instance Prim Bool where
     toLiteral = LBool
-    toPrim = \case
+    primitive = \case
         LBool lit -> lit
         _         -> False
 
 fun1 :: (Prim a, Prim b) => (a -> b) -> Fun 
-fun1 f = Fun1 (\a -> let b = f (toPrim a) in toLiteral b)
+fun1 f = Fun1 (\a -> let b = f (primitive a) in toLiteral b)
 
 fun2 :: (Prim a, Prim b, Prim c) => (a -> b -> c) -> Fun 
-fun2 f = Fun2 (\a b -> let c = f (toPrim a) (toPrim b) in toLiteral c)
+fun2 f = Fun2 (\a b -> let c = f (primitive a) (primitive b) in toLiteral c)
 
 fun3 :: (Prim a, Prim b, Prim c, Prim d) => (a -> b -> c -> d) -> Fun 
-fun3 f = Fun3 (\a b c -> let d = f (toPrim a) (toPrim b) (toPrim c) in toLiteral d)
+fun3 f = Fun3 (\a b c -> let d = f (primitive a) (primitive b) (primitive c) in toLiteral d)
 
 fun4 :: (Prim a, Prim b, Prim c, Prim d, Prim e) => (a -> b -> c -> d -> e) -> Fun 
-fun4 f = Fun4 (\a b c d -> let e = f (toPrim a) (toPrim b) (toPrim c) (toPrim d) in toLiteral e)
+fun4 f = Fun4 (\a b c d -> let e = f (primitive a) (primitive b) (primitive c) (primitive d) in toLiteral e)
 
 fun5 :: (Prim a, Prim b, Prim c, Prim d, Prim e, Prim f) => (a -> b -> c -> d -> e -> f) -> Fun 
-fun5 f = Fun5 (\a b c d e -> let g = f (toPrim a) (toPrim b) (toPrim c) (toPrim d) (toPrim e) in toLiteral g)
+fun5 f = Fun5 (\a b c d e -> let g = f (primitive a) (primitive b) (primitive c) (primitive d) (primitive e) in toLiteral g)
 
 data Fun 
     = Fun1 (Literal -> Literal)
@@ -78,9 +78,11 @@ primEnv :: Env Fun
 primEnv = Env.fromList
     [ ( "showInt"    , fun1 (show :: Int -> String) )
     , ( "showBool"   , fun1 (show :: Bool -> String) )
+    , ( "showUnit"   , fun1 (show :: () -> String) )
     , ( "(+)Int"     , fun2 ((+)  :: Int -> Int -> Int) )
     , ( "(==)Int"    , fun2 ((==) :: Int -> Int -> Bool) )
     , ( "(==)Bool"   , fun2 ((==) :: Bool -> Bool -> Bool) )
     , ( "(==)Unit"   , fun2 ((==) :: () -> () -> Bool) )
     , ( "(==)String" , fun2 ((==) :: String -> String -> Bool) )
+    , ( "strlen"     , fun1 (length :: String -> Int) )
     ]

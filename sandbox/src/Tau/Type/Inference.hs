@@ -11,8 +11,10 @@ import Control.Monad.Reader
 import Control.Monad.Supply
 import Control.Monad.Writer
 import Data.List (nub, delete, find, sortOn)
+--import Data.Types.Isomorphic
 import Data.Set.Monad (Set)
 import Data.Tuple.Extra (snd3)
+import Data.Types.Injective
 import Tau.Expr
 import Tau.Type
 import Tau.Type.Substitution
@@ -62,13 +64,25 @@ runInfer :: Infer a -> Maybe a
 runInfer a = evalSupply (runReaderT (unInfer a) (Monoset mempty)) (numSupply "a")
 
 infer_
-  :: (Show t, MonadReader Monoset m, MonadSupply Name m) 
+  :: (MonadReader Monoset m, MonadSupply Name m) 
   => Expr t (Pattern t) (Pattern t) 
   -> m ((Expr Name (Pattern Name) (Pattern Name), [Assumption]), [Constraint])
 infer_ = runWriterT . infer
 
+infer___
+  :: (MonadSupply Name m) 
+  => Expr t (Pattern t) (Pattern t) 
+  -> m (Expr Name (Pattern Name) (Pattern Name), [Assumption], [Constraint])
+infer___ = flip runReaderT (Monoset mempty) . (to <$>) . infer_ 
+
+infer__
+  :: (MonadReader Monoset m, MonadSupply Name m) 
+  => Expr t (Pattern t) (Pattern t) 
+  -> m (Expr Name (Pattern Name) (Pattern Name), [Assumption], [Constraint])
+infer__ = (to <$>) . infer_ 
+
 infer
-  :: (Show t, MonadReader Monoset m, MonadSupply Name m) 
+  :: (MonadReader Monoset m, MonadSupply Name m) 
   => Expr t (Pattern t) (Pattern t) 
   -> WriterT [Constraint] m (Expr Name (Pattern Name) (Pattern Name), [Assumption])
 infer = cata $ \case
@@ -166,6 +180,14 @@ infer = cata $ \case
         pure ( recExpr tv fs
              , as1 )
 
+--instance Iso ((a, b), c) (a, b, c) where
+--    from ((a, b), c) = (a, b, c)
+--    to (a, b, c) = ((a, b), c) 
+--
+--instance Iso (a, (b, c)) (a, b, c) where
+--    from (a, (b, c)) = (a, b, c)
+--    to (a, b, c) = (a, (b, c))
+
 recordConstraints :: Name -> [(t, Name, v)] -> [Field Name a] -> [Constraint] 
 recordConstraints tv info fs = 
     [Equality (tVar kStar tv) (foldl tApp (tCon kind constr) (typeOf <$> fs))]
@@ -174,7 +196,7 @@ recordConstraints tv info fs =
     constr = "{" <> Text.intercalate "," (snd3 <$> info) <> "}"
 
 inferClause 
-  :: (Show t, MonadReader Monoset m, MonadSupply Name m)  
+  :: (MonadReader Monoset m, MonadSupply Name m)  
   => Clause (Pattern t) (WriterT [Constraint] m (Expr Name (Pattern Name) (Pattern Name), [Assumption])) 
   -> WriterT [Constraint] m (Clause (Pattern Name) (Expr Name (Pattern Name) (Pattern Name)), [Assumption])
 inferClause clause@(Clause ps _ _) = do
@@ -207,7 +229,7 @@ inferLogicOp op a b = do
          , as1 <> as2 )
 
 inferPattern
-  :: (Show t, MonadReader Monoset m, MonadSupply Name m) 
+  :: (MonadReader Monoset m, MonadSupply Name m) 
   => Pattern t 
   -> WriterT [Constraint] m (Pattern Name, [Assumption])
 inferPattern = cata $ \pat -> do

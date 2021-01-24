@@ -149,12 +149,12 @@ evalMatch
   -> [Value m]
   -> m (Value m)
 evalMatch [] _ = fail "Runtime error (evalMatch)"
-evalMatch (Clause ps exs e:eqs) vals = 
+evalMatch (Clause ps exs eq:eqs) vals = 
     case tryClause ps vals of
         Just pairs -> do
             conds <- traverse (local (Env.insertMany pairs)) exs
             if and (toBool <$> conds) 
-                then local (Env.insertMany pairs) e
+                then local (Env.insertMany pairs) eq
                 else next
         Nothing ->
             next
@@ -183,24 +183,26 @@ tryClause xs ys = cata alg (zip xs ys)
             let ys = [(v, w) | (n, v) <- zip (labels con) ps, (p, w) <- fields, n == p]
             (<>) <$> Just ys <*> xs
 
-        Cons _ xs -> 
+        Cons _ xs -> do 
+            traceShowM "1;:"
+            traceShowM xs
             error "Incompatible patterns"
 
         Nil -> 
             Just []
 
 labels :: Name -> [Name]
-labels tag = maybe [] (Text.split (==',')) items
+labels tag = maybe [] (Text.split (== ',')) items
   where
     items = Text.stripPrefix "{" =<< Text.stripSuffix "}" tag
 
 constructor :: (MonadReader (ValueEnv m) m) => Name -> Int -> Value m
 constructor name 0 = Data name []
-constructor name n = Closure frst val mempty
+constructor name n = Closure v val mempty
   where
-    vars@(frst:rest) = 
+    vars@(v:vs) = 
         take n (nameSupply "%")
-    val = (ini & foldr (\fun -> asks . Closure fun)) rest
+    val = (ini & foldr (\fun -> asks . Closure fun)) vs
     ini = do
         Env env <- ask
         let args = fmap (env Map.!) vars

@@ -2,8 +2,8 @@
 {-# LANGUAGE FlexibleContexts      #-}
 {-# LANGUAGE FlexibleInstances     #-}
 {-# LANGUAGE LambdaCase            #-}
-{-# LANGUAGE StrictData            #-}
 {-# LANGUAGE MultiParamTypeClasses #-}
+{-# LANGUAGE StrictData            #-}
 {-# LANGUAGE TemplateHaskell       #-}
 {-# LANGUAGE TypeFamilies          #-}
 module Tau.Expr where
@@ -12,35 +12,43 @@ import Control.Monad.Supply
 import Data.Text (Text)
 import Tau.Util
 
+-- | Language primitives
 data Literal
-    = LUnit
-    | LBool Bool
-    | LInt Int
-    | LString Text
+    = LUnit                   -- ^ Unit value
+    | LBool Bool              -- ^ Booleans
+    | LInt Int                -- ^ Bounded machine integers (32 or 64 bit)
+    | LInteger Integer        -- ^ Arbitrary precision integers (bigint)
+    | LFloat Double           -- ^ Floating point numbers
+    | LChar Char              -- ^ Chars
+    | LString Text            -- ^ Strings
     deriving (Show, Eq)
 
+-- | Record fields
 data Field t a = Field t Name a
     deriving (Show, Eq, Functor, Foldable, Traversable)
 
 deriveShow1 ''Field
 deriveEq1   ''Field
 
+-- | Patterns (base functor)
 data PatternF t a
-    = PVar t Name
-    | PCon t Name [a]
-    | PLit t Literal
-    | PRec t [Field t Name]
-    | PAny t
+    = PVar t Name             -- ^ Variable pattern
+    | PCon t Name [a]         -- ^ Constuctor pattern
+    | PLit t Literal          -- ^ Literal pattern
+    | PRec t [Field t Name]   -- ^ Record pattern
+    | PAny t                  -- ^ Wildcard pattern
     deriving (Show, Eq, Functor, Foldable, Traversable)
 
 deriveShow1 ''PatternF
 deriveEq1   ''PatternF
 
+-- | Patterns
 type Pattern t = Fix (PatternF t)
 
+-- | Simplified pattern
 data Prep t
-    = RVar t Name
-    | RCon t Name [Name]
+    = RVar t Name             -- ^ Simple variable pattern
+    | RCon t Name [Name]      -- ^ Simple constuctor pattern
     deriving (Show, Eq)
 
 data Clause p a = Clause [p] [a] a
@@ -49,27 +57,43 @@ data Clause p a = Clause [p] [a] a
 deriveShow1 ''Clause
 deriveEq1   ''Clause
 
+-- | Operators
 data Op a
-    = OEq  a a
-    | OAnd a ~a
-    | OOr  a ~a
+    = OEq  a a                -- ^ Equality operator (==)
+    | ONEq a a                -- ^ (/=)
+    | OAnd a ~a               -- ^ (&&)
+    | OOr  a ~a               -- ^ (||)
+    | OAdd a a                -- ^ Addition operator (+)
+    | OSub a a                -- ^ Subtraction operator (-)
+    | OMul a a                -- ^ Multiplication operator (*)
+    | ODiv a a                -- ^ Division operator (/)
+    | OLt  a a                -- ^ Less-than operator (<)
+    | OGt  a a                -- ^ Greater-than operator (>)
+    | OLtE a a                -- ^ Less-than-or-equal operator (<=)
+    | OGtE a a                -- ^ Greater-than-or-equal operator (>=)
+    | ONeg a                  -- ^ negate
+    | ONot a                  -- ^ not
+    | OLArr a a               -- ^ Function composition operator (<<)
+    | OIso a                  -- ^ isomorphism operator (~)
     deriving (Show, Eq, Functor, Foldable, Traversable)
 
 deriveShow1 ''Op
 deriveEq1   ''Op
 
+-- | Core language expression (base functor)
 data ExprF t p q a
-    = EVar t Name
-    | ECon t Name [a]
-    | ELit t Literal
-    | EApp t [a]
-    | ELet t q a a
-    | ELam t q a
-    | EIf  t a ~a ~a
+    = EVar t Name             -- ^ Variable
+    | ECon t Name [a]         -- ^ Constructor
+    | ELit t Literal          -- ^ Literal value
+    | EApp t [a]              -- ^ Function application
+    | ELet t q a a            -- ^ Let-binding
+    | ELam t q a              -- ^ Lambda abstraction
+    | EIf  t a ~a ~a          -- ^ If-clause
     | EMat t [a] [Clause p a]
-    | EOp  t (Op a)
-    | ERec t [Field t a]
---    | EAnn t t a
+    | EOp  t (Op a)           -- ^ Operator
+    | ERec t [Field t a]      -- ^ Record
+--    | EDot t Name a
+--    | EAnn u a
     deriving (Functor, Foldable, Traversable)
 
 deriveShow  ''ExprF
@@ -77,7 +101,10 @@ deriveEq    ''ExprF
 deriveShow1 ''ExprF
 deriveEq1   ''ExprF
 
+-- | Core language expression 
 type Expr t p q = Fix (ExprF t p q)
+
+-- ////////////////////////////////////////////////////////////////////////////
 
 class TaggedA a t where
     getTag :: a -> t
@@ -86,8 +113,9 @@ class TaggedA a t where
 updateTag :: (TaggedA a t) => (t -> t) -> a -> a
 updateTag f a = let tag = getTag a in setTag (f tag) a
 
-instance (TaggedA (Expr t p q) t) where
-    getTag = cata $ \case
+instance TaggedA (Expr t p q) t where
+    getTag = cata $ 
+      \case
         EVar t _       -> t
         ECon t _ _     -> t
         ELit t _       -> t
@@ -98,7 +126,8 @@ instance (TaggedA (Expr t p q) t) where
         EMat t _ _     -> t
         EOp  t _       -> t
         ERec t _       -> t
-    setTag t = cata $ \case
+    setTag t = cata $ 
+      \case
         EVar _ var     -> varExpr t var
         ECon _ con exs -> conExpr t con exs
         ELit _ lit     -> litExpr t lit
@@ -110,34 +139,39 @@ instance (TaggedA (Expr t p q) t) where
         EOp  _ op      -> opExpr  t op
         ERec _ fields  -> recExpr t fields
 
-instance (TaggedA (Pattern t) t) where
-    getTag = cata $ \case
+instance TaggedA (Pattern t) t where
+    getTag = cata $ 
+      \case
         PVar t _      -> t
         PCon t _ _    -> t
         PLit t _      -> t
         PRec t _      -> t
         PAny t        -> t
-    setTag t = cata $ \case
+    setTag t = cata $ 
+      \case
         PVar _ var    -> varPat t var
         PCon _ con ps -> conPat t con ps
         PLit _ lit    -> litPat t lit
         PRec _ fields -> recPat t fields
         PAny _        -> anyPat t
 
-instance (TaggedA (Prep t) t) where
-    getTag = \case
+instance TaggedA (Prep t) t where
+    getTag = 
+      \case
         RVar t _      -> t
         RCon t _ _    -> t
-    setTag t = \case
+    setTag t = 
+      \case
         RVar _ var    -> RVar t var
         RCon _ con rs -> RCon t con rs
 
-instance (TaggedA (Field t a) t) where
+instance TaggedA (Field t a) t where
     getTag   (Field t _ _) = t
     setTag t (Field _ n v) = Field t n v
 
 mapTags :: (s -> t) -> Expr s (Pattern s) (Pattern s) -> Expr t (Pattern t) (Pattern t)
-mapTags f = cata $ \case
+mapTags f = cata $ 
+  \case
     EVar t var      -> varExpr (f t) var
     ECon t con exs  -> conExpr (f t) con exs
     ELit t lit      -> litExpr (f t) lit
@@ -153,7 +187,8 @@ mapTags f = cata $ \case
         Clause (mapPatternTags f <$> ps) exs e
 
 mapPatternTags :: (s -> t) -> Pattern s -> Pattern t
-mapPatternTags f = cata $ \case
+mapPatternTags f = cata $ 
+  \case
     PVar t var    -> varPat (f t) var
     PCon t con ps -> conPat (f t) con ps
     PLit t lit    -> litPat (f t) lit

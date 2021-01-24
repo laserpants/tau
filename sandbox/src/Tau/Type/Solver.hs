@@ -5,6 +5,7 @@
 module Tau.Type.Solver where
 
 import Control.Arrow (first, second, (>>>), (<<<))
+import Control.Monad.Except (MonadError, throwError)
 import Control.Monad.State
 import Control.Monad.Supply
 import Data.Foldable (foldlM, foldrM, traverse_)
@@ -12,10 +13,11 @@ import Data.List (find, delete, nub)
 import Data.Map.Strict (Map)
 import Data.Maybe (fromMaybe)
 import Data.Set.Monad (Set, union, intersection, (\\))
+import Data.Types.Injective
 import Tau.Expr
 import Tau.Type
-import Tau.Type.Inference
 import Tau.Type.Class
+import Tau.Type.Inference
 import Tau.Type.Substitution
 import Tau.Type.Unification
 import Tau.Util
@@ -26,15 +28,12 @@ class Active a where
     active :: a -> Set Name
 
 instance (Active a) => Active [a] where
-    active = join . Set.fromList . fmap active
+    active = join . Set.fromList . (active <$>)
 
 instance Active Constraint where
     active (Equality t1 t2)      = free t1 `union` free t2
     active (Implicit t1 t2 mono) = free t1 `union` (free mono `Set.intersection` free t2)
     active (Explicit ty scheme)  = free ty `union` free scheme
-
---type X = ([(Name, Type)], [(Name, Type)])
-type X = ([(Name, Type)], [InClass])
 
 modifyFst :: (MonadState (a, b) m) => (a -> a) -> m () 
 modifyFst = modify . first
@@ -70,7 +69,12 @@ isSolvable _ _ = True
 choice :: [Constraint] -> Maybe ([Constraint], Constraint)
 choice xs = find (uncurry isSolvable) [(ys, x) | x <- xs, let ys = delete x xs]
 
-solve :: [Constraint] -> StateT X Infer Substitution
+--solve__ :: [Constraint] -> Infer (Substitution, [(Name, Type)], [InClass])
+--solve__ :: (MonadError String m, MonadSupply Name m) => [Constraint] -> m (Substitution, [(Name, Type)], [InClass])
+
+solve__ constraints = to <$> runStateT (solve constraints) ([], [])
+
+solve :: (MonadError String m, MonadSupply Name m) => [Constraint] -> StateT ([(Name, Type)], [Predicate]) m Substitution
 solve [] = pure mempty
 solve css = do
     (cs, c) <- maybe (error "solve") pure (choice css)
@@ -82,19 +86,20 @@ solve css = do
             pure (sub2 <> sub1)
 
         Implicit t1 t2 (Monoset set) -> do
-            t3 <- grok t2 >>= generalize set 
+            env <- getSnd
+            t3 <- generalize env set <$> grok t2
             solve (Explicit t1 t3:cs)
 
         Explicit t1 scheme -> do
             t2 <- instantiate scheme
             solve (Equality t1 t2:cs)
 
-grok :: Type -> StateT X Infer Type
+--grok :: Type -> StateT X Infer Type
 grok t = do
     sub <- getsFst (Subst . Map.fromList)
     pure (apply sub t)
 
-split :: Substitution -> StateT X Infer Substitution
+--split :: Substitution -> StateT X Infer Substitution
 split (Subst sub) = do
     sub <- Subst <$> Map.traverseWithKey (const xxx1) sub
     modifyFst (fun sub <$>)
@@ -105,7 +110,7 @@ split (Subst sub) = do
             Just (TVar _ w) -> w
             _               -> v
 
-    xxx1 :: Type -> StateT X Infer Type
+--    xxx1 :: Type -> StateT X Infer Type
     xxx1 = cata $ \case
         tCon@(TCon kind _) -> do
             tv <- supply
@@ -116,23 +121,16 @@ split (Subst sub) = do
         ty -> 
             embed <$> sequence ty
 
---go :: (Name, Kind) -> (Scheme, Substitution, Int) -> StateT X Infer (Scheme, Substitution, Int)
---go = undefined
-
-generalize :: Set Name -> Type -> StateT X Infer Scheme
-generalize set ty = do
-    (t, sub, _) <- foldrM go (sScheme ty, nullSubst, 0) vs
-    pure (apply sub t)
+generalize :: [Predicate] -> Set Name -> Type -> Scheme
+generalize env set ty = apply sub t
   where
-    vs = [v | v <- vars, fst v `Set.notMember` set]
+    (t, sub, _) = foldr go (sScheme ty, nullSubst, 0) vs
+
+    vs = filter (flip Set.notMember set . fst) vars
 
     go (v, k) (t, sub, n) = do
-        env <- getSnd
-        let cs = filter (inClassType >>> (tVar k v ==)) env
-        pure (sForall k (inClassName <$> cs) t, v `mapsTo` tGen n <> sub, succ n)
-
-    inClassName (InClass name _) = name
-    inClassType (InClass _ ty) = ty
+        let cs = filter (predicateType >>> (tVar k v ==)) env
+         in (sForall k (predicateName <$> cs) t, v `mapsTo` tGen n <> sub, succ n)
 
     vars :: [(Name, Kind)]
     vars = nub . flip cata ty $ \case
@@ -141,20 +139,20 @@ generalize set ty = do
         TApp t1 t2 -> t1 <> t2
         _          -> []
 
-instantiate :: Scheme -> StateT X Infer Type
+instantiate :: (MonadSupply Name m) => Scheme -> StateT ([(Name, Type)], [Predicate]) m Type
 instantiate scheme = do
     ts <- zipWith tVar kinds <$> supplies (length kinds)
-    modifySnd ([InClass c t | (t, cs) <- zip ts (dicts ts), c <- cs] <>)
+    modifySnd ([InClass c t | (t, cs) <- zip ts (predicates ts), c <- cs] <>)
     pure (replaceBound (reverse ts) ty)
   where
     (ty, kinds) = flip cata scheme $ \case
-        Scheme t             -> (t, [])
+        Scheme t           -> (t, [])
         Forall k _ (t, ks) -> (t, k:ks)
 
-    dicts :: [Type] -> [[Name]]
-    dicts ts = flip cata scheme $ \case
+    predicates :: [Type] -> [[Name]]
+    predicates ts = flip cata scheme $ \case
         Scheme{}        -> []
-        Forall _ cs css -> cs:css
+        Forall _ ps pss -> ps:pss
 
     replaceBound :: [Type] -> Type -> Type 
     replaceBound ts = cata $ \case

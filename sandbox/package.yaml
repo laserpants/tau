@@ -33,6 +33,9 @@ dependencies:
 - set-monad
 - text
 - transformers
+- tree-view
+- prettyprinter
+- type-iso
 
 library:
   source-dirs: src

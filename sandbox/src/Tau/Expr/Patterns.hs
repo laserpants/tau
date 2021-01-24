@@ -72,23 +72,27 @@ deriveEq1   ''MatchExprF
 deriveShow1 ''TranslatedF
 deriveEq1   ''TranslatedF
 
---class Boolean t where
---    boolean :: t
---
---instance Boolean () where
---    boolean = ()
+class Boolean t where
+    boolean :: t
 
---instance Boolean Type where
---    boolean = tBool
+instance Boolean () where
+    boolean = ()
+
+instance Boolean Type where
+    boolean = tBool
+
+-- ??? TODO
+instance Boolean (Type, [a]) where
+    boolean = (tBool, [])
 
 simplified 
-  :: (Monoid t, Show t) 
+  :: (Boolean t, Show t) 
   => Expr t (Pattern t) (Pattern t) 
   -> Either String (Expr t (Prep t) Name)
 simplified = runSimplify . simplify
 
 simplify 
-  :: (Monoid t, Show t) 
+  :: (Boolean t, Show t) 
   => Expr t (Pattern t) (Pattern t) 
   -> Simplify (Expr t (Prep t) Name)
 simplify = cata $ \case
@@ -155,7 +159,7 @@ simplifyOp t (OAnd a b) = andOp t <$> a <*> b
 simplifyOp t (OOr  a b) = orOp  t <$> a <*> b
 
 flatten 
-  :: (Monoid t, Show t) 
+  :: (Boolean t, Show t) 
   => Clause (Pattern t) (Expr t p q) 
   -> Clause (Pattern t) (Expr t p q)
 flatten (Clause ps exs e) = Clause qs (exs <> exs1) e where
@@ -167,7 +171,7 @@ flatten (Clause ps exs e) = Clause qs (exs <> exs1) e where
 
         PLit t lit -> do
             var <- supply
-            tell [eqOp mempty (varExpr t var) (litExpr t lit)]
+            tell [eqOp boolean (varExpr t var) (litExpr t lit)]
             pure (varPat t var)
 
         PRec t fields -> do
@@ -179,7 +183,7 @@ flatten (Clause ps exs e) = Clause qs (exs <> exs1) e where
             embed <$> sequence pat
 
 compile 
-  :: (Monoid t, Show t) 
+  :: (Boolean t, Show t) 
   => [Expr t (Prep t) Name]
   -> [Clause (Pattern t) (Expr t (Prep t) Name)]
   -> Simplify (Expr t (Prep t) Name)

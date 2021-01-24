@@ -1,3 +1,4 @@
+{-# LANGUAGE FlexibleContexts #-}
 {-# LANGUAGE LambdaCase        #-}
 {-# LANGUAGE StrictData        #-}
 {-# LANGUAGE OverloadedStrings #-}
@@ -7,9 +8,11 @@ module Tau.Type.Class where
 import Control.Monad.Except
 import Control.Monad.Extra (allM, (||^))
 import Data.List (partition, (\\))
+import Control.Arrow (first, second)
 import Data.Either (isRight)
 import Data.Either.Combinators (rightToMaybe)
 import Tau.Type
+import Tau.Env (Env(..))
 import Tau.Expr
 import Tau.Type.Substitution
 import Tau.Type.Unification
@@ -18,22 +21,73 @@ import qualified Tau.Env as Env
 
 
 
-bySuper :: ClassEnv a -> InClass -> [InClass]
+--
+
+type Class a = ([Name], [Instance a])
+
+data Predicate = InClass Name Type
+    deriving (Show, Eq, Ord)
+
+predicateName :: Predicate -> Name
+predicateName (InClass name _) = name
+
+predicateType :: Predicate -> Type
+predicateType (InClass _ ty) = ty
+
+data Instance a = Instance [Predicate] Type a
+    deriving (Show, Eq)
+
+type ClassEnv a = Env (Class a)
+
+super :: ClassEnv a -> Name -> [Name]
+super env name = maybe [] fst (Env.lookup name env)
+
+instances :: ClassEnv a -> Name -> [Instance a]
+instances env name = maybe [] snd (Env.lookup name env)
+
+addClassInstance :: Name -> Type -> a -> ClassEnv a -> ClassEnv a
+addClassInstance name ty ex =
+    Env.update (Just . second (Instance [] ty ex :)) name
+
+lookupClassInstance :: Name -> Type -> ClassEnv a -> Maybe a
+lookupClassInstance name ty env = 
+    case filter fff (instances env name) of
+        [Instance _ _ t] -> Just t
+        _                -> Nothing
+  where
+    fff (Instance _ t _) = t == ty
+
+
+
+unifyClass, matchClass :: (MonadError String m) => Predicate -> Predicate -> m Substitution
+unifyClass = liftX unify
+matchClass = liftX match
+
+liftX :: (MonadError String m) => (Type -> Type -> m a) -> Predicate -> Predicate -> m a
+liftX m (InClass c1 t1) (InClass c2 t2)
+    | c1 == c2  = m t1 t2
+    | otherwise = throwError "ClassMismatch" -- throwError ClassMismatch
+
+
+--
+
+
+bySuper :: ClassEnv a -> Predicate -> [Predicate]
 bySuper env self@(InClass name ty) = 
     self:concat [bySuper env (InClass tc ty) | tc <- super env name]
 
-byInstance :: ClassEnv a -> InClass -> Maybe [InClass]
+byInstance :: ClassEnv a -> Predicate -> Maybe [Predicate]
 byInstance env self@(InClass name ty) = 
     msum $ rightToMaybe <$> [tryInstance i | i <- instances env name]
   where
-    tryInstance :: Instance a -> Either a [InClass]
+    tryInstance :: Instance a -> Either String [Predicate]
     tryInstance (Instance ps h _) = 
         apply <$> matchClass (InClass name h) self <*> pure ps
 
-instance Substitutable InClass where
+instance Substitutable Predicate where
     apply sub (InClass name ty) = InClass name (apply sub ty)
 
-entail :: ClassEnv a -> [InClass] -> InClass -> Either a Bool
+entail :: ClassEnv a -> [Predicate] -> Predicate -> Either a Bool
 entail env cls0 cl = pure super ||^ instances
   where
     super = any (cl `elem`) (bySuper env <$> cls0)
@@ -41,15 +95,15 @@ entail env cls0 cl = pure super ||^ instances
         Nothing   -> pure False
         Just cls1 -> allM (entail env cls0) cls1
 
-isHeadNormalForm :: InClass -> Bool
+isHeadNormalForm :: Predicate -> Bool
 isHeadNormalForm (InClass _ t) = 
     flip cata t $ \case
-        TApp t _ -> t
-        TVar{}   -> True
-        TGen{}   -> True
-        _        -> False
+        TApp t1 _ -> t1
+        TVar{}    -> True
+        TGen{}    -> True
+        _         -> False
 
-toHeadNormalForm :: ClassEnv a -> [InClass] -> Either a [InClass]
+toHeadNormalForm :: ClassEnv a -> [Predicate] -> Either a [Predicate]
 toHeadNormalForm env = fmap concat . mapM (hnf env) 
   where
     hnf env tycl 
@@ -59,7 +113,7 @@ toHeadNormalForm env = fmap concat . mapM (hnf env)
 
 
 -- remove a class constraint if it is entailed by the other constraints in the list
-simplify :: ClassEnv a -> [InClass] -> Either a [InClass]
+simplify :: ClassEnv a -> [Predicate] -> Either a [Predicate]
 simplify env = loop [] where
     loop qs [] = pure qs
     loop qs (p:ps) = do
@@ -67,7 +121,7 @@ simplify env = loop [] where
         if entailed then loop qs ps 
              else loop (p:qs) ps
 
-reduce :: ClassEnv a -> [InClass] -> Either a [InClass]
+reduce :: ClassEnv a -> [Predicate] -> Either a [Predicate]
 reduce env cls = toHeadNormalForm env cls >>= simplify env 
 
 
