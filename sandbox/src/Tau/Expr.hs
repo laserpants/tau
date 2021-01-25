@@ -33,12 +33,13 @@ data Field t a = Field t Name a
 deriveShow1 ''Field
 deriveEq1   ''Field
 
--- | Patterns (base functor)
+-- | Base functor for patterns
 data PatternF t a
     = PVar t Name             -- ^ Variable pattern
     | PCon t Name [a]         -- ^ Constuctor pattern
     | PLit t Literal          -- ^ Literal pattern
     | PRec t [Field t Name]   -- ^ Record pattern
+--    | PAs  t Name a
     | PAny t                  -- ^ Wildcard pattern
     deriving (Show, Eq, Functor, Foldable, Traversable)
 
@@ -48,7 +49,7 @@ deriveEq1   ''PatternF
 -- | Patterns
 type Pattern t = Fix (PatternF t)
 
--- | Simplified pattern
+-- | Simplified patterns
 data Prep t
     = RVar t Name             -- ^ Simple variable pattern
     | RCon t Name [Name]      -- ^ Simple constuctor pattern
@@ -88,7 +89,7 @@ data Op a
 deriveShow1 ''Op
 deriveEq1   ''Op
 
--- | Core language expression (base functor)
+-- | Base functor for core language expression tree
 data ExprF t p q a
     = EVar t Name             -- ^ Variable
     | ECon t Name [a]         -- ^ Constructor
@@ -108,7 +109,7 @@ deriveEq    ''ExprF
 deriveShow1 ''ExprF
 deriveEq1   ''ExprF
 
--- | Core language expression 
+-- | Core language expression tree
 type Expr t p q = Fix (ExprF t p q)
 
 type PatternExpr t = Expr t (Pattern t) (Pattern t)

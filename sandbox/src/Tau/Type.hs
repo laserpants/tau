@@ -19,7 +19,7 @@ import qualified Data.Set.Monad as Set
 import qualified Data.Text as Text
 import qualified Tau.Env as Env
 
--- | Kinds (base functor)
+-- | Base functor for kinds
 data KindF a 
     = KStar  -- KType?
     | KArr a a
@@ -33,7 +33,7 @@ deriveOrd1  ''KindF
 -- | Kinds
 type Kind = Fix KindF
 
--- | Types (base functor)
+-- | Base functor for types 
 data TypeF a
     = TGen Int
     | TVar Kind Name 
@@ -49,7 +49,7 @@ deriveOrd1  ''TypeF
 -- | Types
 type Type = Fix TypeF
 
--- | Polymorphic type schemes
+-- | Base functor for polymorphic type schemes
 data SchemeF a
     = Forall Kind [Name] a
     | Scheme Type
@@ -60,6 +60,7 @@ deriveEq    ''SchemeF
 deriveShow1 ''SchemeF
 deriveEq1   ''SchemeF
 
+-- | Polymorphic type schemes
 type Scheme = Fix SchemeF
 
 kindOf :: Type -> Maybe Kind

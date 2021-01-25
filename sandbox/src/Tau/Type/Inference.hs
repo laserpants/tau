@@ -46,6 +46,15 @@ removeAssumption name = filter (\a -> name /= assumptionVar a)
 removeAssumptionSet :: Set Name -> [Assumption] -> [Assumption]
 removeAssumptionSet = flip (Set.foldr removeAssumption) 
 
+--findAssumption :: Name -> [Assumption] -> Maybe a
+--findAssumption = undefined
+
+--findAssumption :: Name -> [Assumption] -> Maybe a
+--findAssumption _ [] = Nothing 
+--findAssumption i (name :>: a:as)
+--    | i == name = Just a
+--    | otherwise = findAssumption i as
+
 data Constraint
     = Equality Type Type
     | Implicit Type Type Monoset

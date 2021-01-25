@@ -7,6 +7,7 @@ module Main where
 
 --import Lib3
 import Control.Monad.Extra (allM, (||^))
+import Lib4
 import Data.Either.Combinators (rightToMaybe)
 import Data.Tree
 import Data.Text.Prettyprint.Doc
