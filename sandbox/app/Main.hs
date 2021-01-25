@@ -1,27 +1,29 @@
 {-# LANGUAGE FlexibleInstances    #-}
 {-# LANGUAGE LambdaCase           #-}
-{-# LANGUAGE DeriveFunctor              #-}
-{-# LANGUAGE TemplateHaskell   #-}
 {-# LANGUAGE FlexibleContexts           #-}
-{-# LANGUAGE GeneralizedNewtypeDeriving #-}
+{-# LANGUAGE TupleSections #-}
 {-# LANGUAGE OverloadedStrings #-}
 module Main where
 
-import Lib3
+--import Lib3
 import Control.Monad.Extra (allM, (||^))
 import Data.Either.Combinators (rightToMaybe)
-import Control.Arrow
+import Data.Tree
+import Data.Text.Prettyprint.Doc
+import Data.Tree.View
+import Control.Arrow (first, second)
 import Control.Monad.Except
 import Control.Monad.Reader
 import Control.Monad.State
+import System.IO.Unsafe
+import Control.Monad.Trans
 import Control.Monad.Supply
 import Control.Monad.Trans.Maybe
 import Control.Monad.Writer
 import Data.Foldable
 import Data.Function ((&))
 import Data.List
-import Data.Maybe (fromJust)
-import Data.Maybe (fromMaybe)
+import Data.Maybe (fromJust, fromMaybe)
 import Data.Partition
 import Data.Set (Set)
 import Data.Tuple.Extra (thd3)
@@ -44,6 +46,474 @@ import qualified Tau.Env as Env
 import qualified Tau.Type.Class as Class
 import qualified Data.Map.Strict as Map
 import qualified Data.Set as PlainSet
+
+-- putStrLn (let Right r= runPipeline (inferTree myTypeEnv (fromJust (Data.List.lookup "lenShow" myProgram))) in showTree (fmap Text.unpack (toTree r)))
+
+
+testExpr2 =
+    ifExpr () (litExpr () (LBool True)) (litExpr () (LInt 5)) (litExpr () (LBool True))
+
+
+--litExpr () (LInt 5)) (liteExpr () (LBool True)
+
+testExpr =
+    --letExpr () (varPat () "show")
+    --      (lamExpr () (varPat () "x") (matExpr () [varExpr () "x"] [Clause [recPat () [Field () "show" "show"]] [] (varExpr () "show")]))
+              letExpr () (varPat () "lenShow") 
+                  (lamExpr () (varPat () "s") (appExpr () [varExpr () "@strlen", appExpr () [varExpr () "show", varExpr () "s"]]))
+                      (appExpr () [varExpr () "lenShow", litExpr () (LInt 12345678)])
+
+
+testTestExpr
+  :: (MonadState Environments m, MonadError String m, MonadSupply Name m) 
+  => m ()
+testTestExpr = do
+    t3 <- inferTree testExpr2
+    debug (Data.Tree.View.showTree (Text.unpack <$> toTree t3))
+
+    t4 <- runReaderT (expandTree t3) False 
+--    traceShowM t4
+    let Right xx = simplified t4
+
+    debug (Data.Tree.View.showTree (Text.unpack <$> toTree2 xx))
+
+    let Just runn = evalExpr xx (Env.fromList [("show", show1)])
+
+    debug (show runn)
+
+    pure ()
+    --t3 <- inferTree expr
+    --t4 <- runReaderT (expandTree t3) False 
+
+    --let Right xx = simplified t4
+
+    --modify (withProgEnv (Env.insert name xx))
+
+    --debug "vvv***vvv"
+    --debug (show name)
+    --debug (Data.Tree.View.showTree (Text.unpack <$> toTree2 xx))
+
+  where
+    show1 :: Value Eval
+    show1 = fromJust $ runEval (eval foo3) mempty -- Closure "d" foo1 mempty
+      where
+        foo1 = lamExpr () (varPat () "x") (matExpr () [varExpr () "x"] [Clause [recPat () [Field () "show" "show"]] [] (varExpr () "show")])
+        Right foo3 = simplified foo1
+        -- \d => match d with | { show = show } => \x => show x
+        --foo2 = lamExpr () (varPat () "d") (matExpr () [varExpr () "d"] [Clause [recPat () [Field () "show" "show"]] [] (lamExpr () (varPat () "x") (appExpr () [varExpr () "show", varExpr () "x"]))])
+
+
+
+
+
+--
+
+type Program t = [(Name, PatternExpr t)]
+
+myProgram :: Program ()
+myProgram = 
+    [ ( "show"    , lamExpr () (varPat () "x") (matExpr () [varExpr () "x"] [Clause [recPat () [Field () "show" "show"]] [] (varExpr () "show")]) )
+    , ( "lenShow" , lamExpr () (varPat () "s") (appExpr () [varExpr () "@strlen", appExpr () [varExpr () "show", varExpr () "s"]]) )
+    , ( "myFunc"  , appExpr () [varExpr () "lenShow", litExpr () (LInt 123)] )
+    , ( "abc"    , 
+          letExpr () (varPat () "show") 
+              (lamExpr () (varPat () "x") (matExpr () [varExpr () "x"] [Clause [recPat () [Field () "show" "show"]] [] (varExpr () "show")])) 
+                  (letExpr () (varPat () "lenShow") 
+                      (lamExpr () (varPat () "s") (appExpr () [varExpr () "@strlen", appExpr () [varExpr () "show", varExpr () "s"]]))
+                          (appExpr () [varExpr () "lenShow", litExpr () (LInt 123)])))
+    ]
+
+myTypeEnv :: Env Scheme
+myTypeEnv = Env.fromList 
+    [ ( "@strlen" , sScheme (tCon kStar "String" `tArr` tCon kStar "Int") )
+    , ( "show"    , sForall kStar ["Show"] (sScheme (tGen 0 `tArr` tCon kStar "String")) )
+    ]
+
+--myValEnv :: ValueEnv Eval
+--myValEnv = undefined
+
+--myClassEnv :: ClassEnv (Expr () (Pattern ()) (Pattern ()))
+--myClassEnv =
+--    Env.fromList
+--        [ ( "Show" 
+--          , ( []
+--            , [ Instance [] tInt (recExpr () [Field () "show" (varExpr () "@showInt")])
+--              , Instance [] tBool (recExpr () [Field () "show" (varExpr () "@showBool")])
+--              , Instance [] tUnit (recExpr () [Field () "show" (varExpr () "@showUnit")])
+--              ]
+--            ) 
+--          )
+--        ]
+
+myClassEnv :: ClassEnv (PatternExpr Type)
+myClassEnv =
+    Env.fromList
+        [ ( "Show" 
+          , ( []
+            , [ Instance [] tInt  (recExpr (tApp (tCon (kArr kStar kStar) "Show") tInt)  [Field (tInt `tArr` tString) "show" (varExpr (tInt `tArr` tString) "@showInt")])
+              , Instance [] tBool (recExpr (tApp (tCon (kArr kStar kStar) "Show") tBool) [Field (tBool `tArr` tString) "show" (varExpr (tBool `tArr` tString) "@showBool")])
+              , Instance [] tUnit (recExpr (tApp (tCon (kArr kStar kStar) "Show") tUnit) [Field (tUnit `tArr` tString) "show" (varExpr (tUnit `tArr` tString) "@showUnit")])
+              ]
+            ) 
+          )
+        ]
+
+data Environments = Environments
+    { classEnv :: ClassEnv (PatternExpr Type)
+    , typeEnv  :: Env Scheme
+    , progEnv  :: Env (Expr QualifiedType (Prep QualifiedType) Name)
+    } deriving (Show, Eq)
+
+myEnvironments = Environments
+    { classEnv = myClassEnv
+    , typeEnv  = myTypeEnv
+    , progEnv  = mempty
+    }
+
+withClassEnv :: (ClassEnv (PatternExpr Type) -> ClassEnv (PatternExpr Type)) -> Environments -> Environments
+withClassEnv f env = env{ classEnv = f (classEnv env) }
+
+withTypeEnv :: (Env Scheme -> Env Scheme) -> Environments -> Environments
+withTypeEnv f env = env{ typeEnv = f (typeEnv env) }
+
+withProgEnv :: (Env (Expr QualifiedType (Prep QualifiedType) Name) -> Env (Expr QualifiedType (Prep QualifiedType) Name)) -> Environments -> Environments
+withProgEnv f env = env{ progEnv = f (progEnv env) }
+
+modifyClassEnv :: (MonadState Environments m) => (ClassEnv (PatternExpr Type) -> ClassEnv (PatternExpr Type)) -> m ()
+modifyClassEnv = modify . withClassEnv
+
+modifyTypeEnv :: (MonadState Environments m) => (Env Scheme -> Env Scheme) -> m ()
+modifyTypeEnv = modify . withTypeEnv
+
+modifyProgEnv :: (MonadState Environments m) => (Env (Expr QualifiedType (Prep QualifiedType) Name) -> Env (Expr QualifiedType (Prep QualifiedType) Name)) -> m ()
+modifyProgEnv = modify . withProgEnv
+
+
+inferTree
+  :: (MonadState Environments m, MonadError String m, MonadSupply Name m) 
+  => Expr t (Pattern t) (Pattern t) 
+  -> m (Expr QualifiedType (Pattern QualifiedType) (Pattern QualifiedType))
+inferTree expr = do
+    (tree, as, cs) <- infer___ expr
+    env <- gets typeEnv
+    let cs' = cs <> [Explicit t s | (u, s) <- Env.toList env, v :>: (t, _) <- as, u == v]
+    (sub, xx1, css) <- solve__ cs'
+    debug (show (sub, xx1))
+    foo <- liftEither (reduce mempty css)
+
+    --let t1 = mapTags (toFunction sub) tree
+    --let t2 = mapTags (insertConstraints classes) t1
+    --let t3 = mapTags (applyFioo xx1) t2
+
+    let t3 = mapTags (apply (Tau.Type.Substitution.fromList xx1) . insertConstraints foo . toFunction sub) tree
+
+    pure t3
+
+
+expandTree 
+  :: (MonadState Environments m, MonadError String m, MonadSupply Name m) 
+  => Expr QualifiedType (Pattern QualifiedType) (Pattern QualifiedType)
+  -> ReaderT Bool m (Expr QualifiedType (Pattern QualifiedType) (Pattern QualifiedType))
+expandTree = cata $ \case
+    EApp t exs ->
+        sequence exs >>= \case
+            [] -> pure (appExpr t [])
+            (e:es) -> do
+                let (_, css) = getTag e :: QualifiedType
+                ds <- traverse fun (sort css)
+                pure (appExpr t (e:ds <> es))
+              where
+                fun (InClass name ty) = do
+                    gets (lookupClassInstance name ty . classEnv) >>= \case
+                        Nothing -> throwError ("missing class instance (" <> Text.unpack name <> " " <> show ty <> ")")
+                        Just a  -> pure (mapTags (, []) a)
+
+    ELam t@(_, css) p e1 -> do
+        nested <- ask
+        if nested 
+            then 
+                lamExpr t p <$> local (const True) e1
+            else do
+                vs <- supplies (length css)
+                let yss = zip (sort css) vs
+                traceShowM yss
+                traceShowM "^^"
+                let zyx = flip (foldr (\i@(InClass name ty, x) -> addClassInstance name ty (fooo i))) yss
+                oldClassEnv <- gets classEnv
+                modifyClassEnv zyx
+                eeeeee <- lamExpr t p <$> local (const True) e1
+                modifyClassEnv (const oldClassEnv)
+                pure (foldr fun eeeeee yss)
+            where
+              fun i = lamExpr t (fooo2 i) 
+
+    e -> 
+        embed <$> local (const False) (sequence e)
+
+
+
+zooo c (InClass name ty, var) = 
+    c (tApp (tCon (kArr kStar (fromJust (kindOf ty))) name) ty) var
+
+
+fooo :: (Predicate, Name) -> Expr Type p q
+fooo (InClass name ty, var) = 
+    varExpr (tApp (tCon (kArr kStar (fromJust (kindOf ty))) name) ty) var
+
+fooo2 :: (Predicate, Name) -> Pattern QualifiedType
+fooo2 (InClass name ty, var) = 
+    varPat (tApp (tCon (kArr kStar (fromJust (kindOf ty))) name) ty, []) var
+
+insertTypeScheme 
+  :: (MonadState Environments m, MonadError String m, MonadSupply Name m) 
+  => (Name, Expr t (Pattern t) (Pattern t)) 
+  -> m ()
+insertTypeScheme (name, expr) = do
+    t3 <- inferTree expr
+    t4 <- runReaderT (expandTree t3) False 
+
+    let Right xx = simplified t4
+
+    modifyProgEnv (Env.insert name xx)
+
+    debug "vvv***vvv"
+    debug (show name)
+    debug (Data.Tree.View.showTree (Text.unpack <$> toTree2 xx))
+
+--
+
+    let (t, css) = getTag t3 :: QualifiedType
+--    debug (show (name, pretty t))
+--    debug (show css)
+
+    let scheme = generalize css mempty t
+    modifyTypeEnv (Env.insert name scheme)
+
+    debug (show (name, show scheme))
+
+--    debug (Data.Tree.View.showTree (Text.unpack <$> toTree t3))
+--    debug (Data.Tree.View.showTree (Text.unpack <$> toTree t4))
+
+    pure () -- env -- TODO
+
+
+insertConstraints :: [Predicate] -> Type -> QualifiedType
+insertConstraints css ty = (ty, [i | s <- vars, i@(InClass _ t) <- css, s == t])
+  where
+    vars :: [Type]
+    vars = flip cata ty $ \case
+        TVar k var -> [tVar k var]
+        TArr t1 t2 -> t1 <> t2
+        TApp t1 t2 -> t1 <> t2
+        _          -> []
+
+
+pipeline 
+  :: (MonadState Environments m, MonadError String m, MonadSupply Name m) 
+  => Program t 
+  -> m ()
+pipeline defs = do
+    traverse_ insertTypeScheme defs
+
+    pure ()
+
+
+--zoo 
+--  :: (MonadFail m, MonadReader (ValueEnv m) m) 
+--  => (Name, Expr QualifiedType (Prep QualifiedType) Name) 
+--  -> m (Value m) 
+--  -> m (Value m)
+--zoo 
+--  :: (Name, Expr QualifiedType (Prep QualifiedType) Name) 
+--  -> Eval (Value Eval) 
+--  -> Eval (Value Eval)
+--zoo (n, a) b = do
+--    foo <- eval a
+--    local (Env.insert n foo) b
+----    let xyz = eval a in undefined)
+--
+----testPipeline 
+----  :: (MonadState Environments m, MonadError String m, MonadSupply Name m) => Program t -> m ()
+--testPipeline prog = do
+--    _ <- traverse_ insertTypeScheme prog
+--
+--    envs <- get
+--
+--    let pe = progEnv envs
+--    let Just zz = Env.lookup "abc" pe
+--
+--    let runn = evalExpr zz mempty
+--
+--    debug "............"
+--    debug (show runn)
+--
+----    let zzz = runEval zz mempty -- myValEnv -- (Env.fromList [ ("show", undefined :: Value Eval) ])
+--
+--
+----    let xxx = Map.toList (getEnv pe)
+----
+----    let yyy = foldr zoo (eval (varExpr (tUnit) "myFunc")) xxx
+----    let zzz = runEval yyy mempty -- myValEnv -- (Env.fromList [ ("show", undefined :: Value Eval) ])
+----    
+----    debug ("vvvvvvvvvvvv")
+----    debug (show zzz)
+----    debug ("^^^^^^^^^^^^")
+--
+--    pure ()
+--
+----    pure zzz
+--
+----    debug (show envs)
+--
+----    let Just p = Env.lookup "myFunc" (progEnv envs)
+----    let Right q = simplified p
+----    let qq = q :: Expr QualifiedType (Prep QualifiedType) Name
+----    let Just r = evalExpr q mempty
+----    debug (show r)
+--
+--    pure envs
+
+
+
+
+type Error = String
+
+
+type Pipeline a = ExceptT Error (StateT Environments (Supply Name)) a
+
+
+runPipeline :: Environments -> Pipeline a -> Either Error a
+runPipeline s p = fromMaybe (Left "error") (evalSupply (evalStateT (runExceptT p) s) (numSupply "a"))
+
+
+
+
+
+
+
+
+
+
+--        TApp a b
+--            | nodeType (fst a) == Tuple  -> tupled (pretty <$> flattened)
+----            | nodeType (fst a) == Struct -> "{" <+> prettyFieldsType (pairs flattened) <+> "}"
+--            | otherwise                  -> snd a <+> rhs
+--          where
+--            rhs = case unfix (fst b) of
+--                TApp{} | nodeType (fst b) == Generic -> parens (snd b)
+--                _                                    -> snd b
+--            flattened = flat (fst a) <> [fst b]
+--            pairs (v:x:xs) = (v, x):pairs xs
+--            pairs _        = []
+
+--flat :: Type -> [Type]
+--flat = fun . unfix where
+--    fun (TApp a b) = flat a <> [b]
+--    fun _          = []
+
+--data NodeType = Struct | Tuple | Generic
+--    deriving (Show, Eq)
+
+--nodeType :: Type -> NodeType
+--nodeType = fun . unfix where
+--    fun (TCon _ name)
+--        | "#Tuple"  `Text.isPrefixOf` name = Tuple
+----        | "#Struct" `isPrefixOf` name = Struct
+--    fun (TApp a _)                    = nodeType a
+--    fun _                             = Generic
+
+
+rrrr2 :: Clause (Prep QualifiedType) (Tree Name) -> Tree Text.Text
+rrrr2 (Clause ps exs e) = Node (Text.pack (show ps)) []
+
+toTree2 :: Expr QualifiedType (Prep QualifiedType) Name -> Tree Text.Text
+toTree2 = cata $ \case
+    EVar t var        -> Node (zoo t ("Var " <> var)) []
+    ECon t con exs    -> Node (zoo t ("Con " <> con)) exs
+    ELit t lit        -> Node (zoo t (Text.pack (show lit))) []
+    EApp t exs        -> Node (zoo t "App") exs
+    ELet t pat e1 e2  -> Node (zoo t "Let") [pattern_ pat, e1, e2]
+    ELam t pat e1     -> Node (zoo t "Lam") [pattern_ pat, e1]
+    EIf  t cond tr fl -> Node (zoo t "If") [cond, tr, fl]
+    ERec t fields     -> Node (zoo t "Rec") (field <$> fields)
+    EMat t exs eqs    -> Node (zoo t "Mat " <> (Text.pack . show) exs) (fmap rrrr2 eqs)
+
+  where
+    -- TODO
+    zoo (t, cs) lbl = 
+        case cs of
+            [] -> lbl <> " : " <> Text.pack (show (pretty t))
+            _  -> lbl <> " : " <> Text.pack (show (pretty t) <> " " <> show (pretty cs))
+
+    field (Field _ k v) = Node k [v]
+
+    pattern_ :: Name -> Tree Text.Text
+    pattern_ n = Node n []
+
+
+qqqq2 :: Clause (Pattern T) (Tree Name) -> Tree Text.Text
+qqqq2 (Clause ps exs e) = Node (Text.pack (show ps)) []
+
+toTree :: Expr T (Pattern T) (Pattern T) -> Tree Text.Text
+toTree = cata $ \case
+    EVar t var        -> Node (zoo t ("Var " <> var)) []
+    ECon t con exs    -> Node (zoo t ("Con " <> con)) exs
+    ELit t lit        -> Node (zoo t (Text.pack (show lit))) []
+    EApp t exs        -> Node (zoo t "App") exs
+    ELet t pat e1 e2  -> Node (zoo t "Let") [pattern_ pat, e1, e2]
+    ELam t pat e1     -> Node (zoo t "Lam") [pattern_ pat, e1]
+    EIf  t cond tr fl -> Node (zoo t "If") [cond, tr, fl]
+    EMat t exs eqs    -> Node (zoo t "Mat " <> (Text.pack . show) exs) (fmap qqqq2 eqs) -- (Text.pack "xx")
+
+    --    | EMat t [a] [Clause p a]
+    --    | EOp  t (Op a)
+    ERec t fields     -> Node (zoo t "Rec") (field <$> fields)
+
+  where
+    -- TODO
+    zoo (t, cs) lbl = 
+        case cs of
+            [] -> lbl <> " : " <> (Text.pack (show (pretty t)))
+            _  -> lbl <> " : " <> (Text.pack $ (show (pretty t)) <> " " <> (show (pretty cs)))
+
+    field (Field _ k v) = Node k [v]
+
+    pattern_ :: Pattern T -> Tree Text.Text
+    pattern_ = cata $ \case
+        PVar t var    -> Node (zoo t ("Var " <> var)) []
+        PCon t con ps -> Node (zoo t ("Con " <> con)) ps
+        PLit t lit    -> Node (Text.pack (show lit)) []
+        PRec t fields -> Node "Rec" [] -- ?? (fields)
+        PAny t        -> Node "_" []
+
+
+
+--toTreeView :: Expr t (Pattern t) (Pattern t) -> Tree NodeInfo
+--toTreeView = cata $ \case
+--    EVar _ var       -> Node (NodeInfo Fixed (Text.unpack var) "") []  -- Node ("Var " <> var) []
+--    ECon _ con exs   -> Node (NodeInfo Fixed (Text.unpack con) "") exs  -- Node ("Con " <> con) exs
+--    ELit _ lit       -> Node (NodeInfo Fixed (show lit) "") []  -- Node (Text.pack (show lit)) []
+--    EApp _ exs       -> Node (NodeInfo Fixed "" "") []  -- Node "App" exs
+--    ELet _ pat e1 e2 -> Node (NodeInfo Fixed "" "") []  -- Node "Let" [pattern_ pat, e1, e2]
+--    ELam _ pat e1    -> Node (NodeInfo Fixed "" "") []  -- Node "Lam" [pattern_ pat, e1]
+--    EIf _ cond tr fl -> Node (NodeInfo Fixed "" "") []  -- Node "If" [tr, fl]
+--
+----    | EMat t [a] [Clause p a]
+----    | EOp  t (Op a)
+--    ERec _ fields -> Node (NodeInfo Fixed "" "") [] -- Node "Rec" (field <$> fields)
+--
+--  where
+--    field (Field _ k v) = Node (NodeInfo Fixed "" "") [] -- Node k [v]
+--
+--    pattern_ :: Pattern t -> Tree NodeInfo
+--    pattern_ = cata $ \case
+--        PVar _ var    -> Node (NodeInfo Fixed "" "") [] -- Node ("Var " <> var) []
+--        PCon _ con ps -> Node (NodeInfo Fixed "" "") [] -- Node ("Con " <> con) ps
+--        PLit _ lit    -> Node (NodeInfo Fixed "" "") [] -- Node (Text.pack (show lit)) []
+--        PRec _ fields -> Node (NodeInfo Fixed "" "") [] -- Node "Rec" [] -- ?? (fields)
+--        PAny _        -> Node (NodeInfo Fixed "_" "") [] -- Node "_" []
+
+
 
 --data Fun = Fun
 --
@@ -161,32 +631,62 @@ expr25 = appExpr ()
     , litExpr () (LInt 55) ]
 
 
-bb25 = runInfer b
-  where
-    b = do
-        --((te, as), cs) <- infer_ expr11
-        --((te, as), cs) <- infer_ expr23
-        ((te, as), cs) <- infer_ expr6
-        let cs' = cs <> [Explicit t s | u :>: (t, _) <- as, (v, s) <- Env.toList env1, u == v]
-        (sub, (xx1, xx2)) <- runStateT (solve cs') ([], [])
-        let te1 = mapTags (toFunction sub) te
-        let te2 = mapTags (addConstrs xx2) te1
-        let te3 = mapTags (applyFinal xx1) te2
-        zzz <- runReaderT (rebuildTree2 te3) (False, testClassEnv)
-        pure zzz
-    env1 =
-        Env.fromList [
-            -- ("lenShow", sForall kStar [("show", tGen 0 `tArr` tString)] (sScheme (tGen 0 `tArr` tInt)))
-            ( "lenShow", sForall kStar ["Show"] (sScheme (tGen 0 `tArr` tInt)) )
-          --, ( "lenShow2", sForall kStar ["Show", "Eq"] (sScheme (tGen 0 `tArr` tInt)) )
-          --, ( "Just", sForall kStar [] (sScheme (tGen 0 `tArr` (tApp (tCon (kArr kStar kStar) "Maybe") (tGen 0)))) )
-          --, ( "(,)", sForall kStar [] (sForall kStar [] (sScheme (tGen 0 `tArr` tGen 1 `tArr` (tApp (tApp (tCon (kArr kStar (kArr kStar kStar)) "(,)") (tGen 0)) (tGen 1))))) )
-          --, ( "map", sForall (kArr kStar kStar) ["Functor"] (sForall kStar [] (sForall kStar [] (sScheme ((tGen 1 `tArr` tGen 0) `tArr` (tApp (tGen 2) (tGen 1)) `tArr` (tApp (tGen 2) (tGen 0)))))) )
-          --, ( "@(+)Int", sScheme (tInt `tArr` tInt `tArr` tInt) )
-          --, ( "fun", sForall kStar ["Show"] (sForall kStar ["Show"] (sScheme (tGen 1 `tArr` tGen 0 `tArr` tBool))) )
-          --, ( "succ", sScheme (tInt `tArr` tInt) )
-        ]
- 
+----bb25 :: IO (Maybe String)
+--bb25 = runInfer b
+--  where
+--    b = do
+--        --((te, as), cs) <- infer_ expr11
+--        --((te, as), cs) <- infer_ expr23
+--        ((te, as), cs) <- infer_ expr6
+--        let cs' = cs <> [Explicit t s | u :>: (t, _) <- as, (v, s) <- Env.toList env1, u == v]
+--        (sub, (xx1, xx2)) <- undefined -- runStateT (solve cs') ([], [])
+--        let te1 = mapTags (toFunction sub) te
+--        let te2 = mapTags (addConstrs xx2) te1
+--        let te3 = mapTags (applyFinal xx1) te2
+--        zzz <- runReaderT (rebuildTree2 te3) (False, testClassEnv)
+--
+--        let Right y = simplified zzz
+--        let zz = evalExpr y env2
+--        traceShowM ">>>>"
+--        traceShowM zz
+--
+--        let ddd = toTree zzz
+----        putStrLn (Data.Tree.View.showTree (fmap Text.unpack ddd))
+--        pure (Data.Tree.View.showTree (fmap Text.unpack ddd))
+--        --traceShowM "-----------"
+--        --pure zzz
+--        --pure (drawTree (fmap Text.unpack ddd))
+--    env2 =
+--        Env.fromList [ ("lenShow", lenShow) ]
+--
+--    lenShow :: Value Eval
+--    lenShow = fromJust $ runEval (eval foo3) mempty -- Closure "d" foo1 mempty
+--      where
+--        -- \d => match d with | { show = show } => \x => show x
+--        foo2 = lamExpr () (varPat () "d") (matExpr () [varExpr () "d"] [Clause [recPat () [Field () "show" "show"]] [] (lamExpr () (varPat () "x") (appExpr () [varExpr () "show", varExpr () "x"]))])
+--        Right foo3 = simplified foo2
+--
+--    env1 =
+--        Env.fromList [
+--            -- ("lenShow", sForall kStar [("show", tGen 0 `tArr` tString)] (sScheme (tGen 0 `tArr` tInt)))
+--            ( "lenShow", sForall kStar ["Show"] (sScheme (tGen 0 `tArr` tInt)) )
+--          --, ( "lenShow2", sForall kStar ["Show", "Eq"] (sScheme (tGen 0 `tArr` tInt)) )
+--          --, ( "Just", sForall kStar [] (sScheme (tGen 0 `tArr` (tApp (tCon (kArr kStar kStar) "Maybe") (tGen 0)))) )
+--          --, ( "(,)", sForall kStar [] (sForall kStar [] (sScheme (tGen 0 `tArr` tGen 1 `tArr` (tApp (tApp (tCon (kArr kStar (kArr kStar kStar)) "(,)") (tGen 0)) (tGen 1))))) )
+--          --, ( "map", sForall (kArr kStar kStar) ["Functor"] (sForall kStar [] (sForall kStar [] (sScheme ((tGen 1 `tArr` tGen 0) `tArr` (tApp (tGen 2) (tGen 1)) `tArr` (tApp (tGen 2) (tGen 0)))))) )
+--          --, ( "@(+)Int", sScheme (tInt `tArr` tInt `tArr` tInt) )
+--          --, ( "fun", sForall kStar ["Show"] (sForall kStar ["Show"] (sScheme (tGen 1 `tArr` tGen 0 `tArr` tBool))) )
+--          --, ( "succ", sScheme (tInt `tArr` tInt) )
+--        ]
+-- 
+--    -- foo1 = lamExpr () "d" (matExpr () [varExpr () "d"] [Clause [RCon () "{show}" ["show"]] [] (lamExpr () "x" (appExpr () [varExpr () "show", varExpr () "x"]))])
+----        lamExpr () "x" (appExpr () [undefined, varExpr () "x"])
+
+--bb10 = fromJust $ evalExpr expr $ Env.fromList 
+--bb10 = evalExpr expr $ 
+--  where
+--    Right expr = simplified expr10
+
  
 
 
@@ -195,7 +695,7 @@ bb25 = runInfer b
 ----
 
 
-addConstrs :: [InClass] -> Type -> (Type, [InClass])
+addConstrs :: [Predicate] -> Type -> (Type, [Predicate])
 addConstrs css ty = (ty, [inClass | s <- vars, inClass@(InClass n t) <- css, s == t])
   where
     vars :: [Type]
@@ -205,7 +705,7 @@ addConstrs css ty = (ty, [inClass | s <- vars, inClass@(InClass n t) <- css, s =
         TApp t1 t2 -> t1 <> t2
         _          -> []
 
-applyFinal :: [(Name, Type)] -> (Type, [InClass]) -> (Type, [InClass])
+applyFinal :: [(Name, Type)] -> (Type, [Predicate]) -> (Type, [Predicate])
 applyFinal = apply . Tau.Type.Substitution.fromList 
 
 --applyFinal :: [(Name, Type)] -> (Type, [(Name, Type)]) -> (Type, [(Name, Type)])
@@ -214,11 +714,11 @@ applyFinal = apply . Tau.Type.Substitution.fromList
 --  where
 --    sub = Tau.Type.Substitution.fromList kvs
 
-type T = (Type, [InClass])
+type T = (Type, [Predicate])
 
 
 
-dicts :: Expr T (Pattern T) (Pattern T) -> [InClass]
+dicts :: Expr T (Pattern T) (Pattern T) -> [Predicate]
 dicts = cata $ \case
     ELam (_, cs) _ e1 -> cs <> e1
     _                 -> []
@@ -282,83 +782,84 @@ splitLam = cata $ \case
 
 --type Z p q = ClassEnv (Field () (Expr () p q))
 --type Z p q = ClassEnv (Expr () p q)
-type Foo = ClassEnv (Expr () (Pattern ()) (Pattern ()))
-
---rebuildTree2 :: Expr T (Pattern T) (Pattern T) -> ReaderT (Bool, Z p q) Infer (Expr T (Pattern T) (Pattern T))
-rebuildTree2 :: Expr T (Pattern T) (Pattern T) -> ReaderT (Bool, Foo) Infer (Expr T (Pattern T) (Pattern T))
-rebuildTree2 = cata $ \case
-    EApp t exs -> do
-        fs <- sequence exs 
-        case fs of
-            [] -> pure (appExpr t [])
-            e:es -> do
-                let (_, css) = getTag e :: T
-                ds <- traverse gggoo (sort css)
-                pure (appExpr t (e:ds <> es))
-          where
---            gggoo :: InClass -> ReaderT (Bool, Z p q) Infer (Expr T (Pattern T) (Pattern T))
-            gggoo (InClass name ty) = do
-                env <- asks snd
-                traceShowM "///////////////////r"
-                traceShowM name
-                traceShowM ty
-                traceShowM env
-                let Just xx = lookupClassInstance name ty env
-                pure (mapTags orgg xx)
-
-            orgg :: () -> T
-            orgg _ = (tUnit, [])  -- TODO
-
--- type T = (Type, [InClass])
-
-    ELam t p b -> do
-        --next <- lamExpr t p <$> local (first (const True)) b
-        --next <- lamExpr t p <$> local (undefined) b
-        (nested, _) <- ask
-        let (a, css) = t
-        if nested
-            then lamExpr t p <$> local (first (const True)) b -- pure next
-            else do
-                let dss = sort css -- (nub css)
-                    --ess = delete [] (reverse (tails dss))
-                traceShowM dss
-                traceShowM "^^^^^^^^^^^^"
-                traceShowM "^^^^^^^^^^^^"
-                ps <- supplies (length dss)
-                let yss = zip dss ps
-                let zyx = \e -> foldr (\(InClass name ty, v) -> addClassInstance name ty (varExpr () v)) e yss
-                --foldrM fun (local env') dss
-                --eeeeee <- local (second zyx) (pure next)
-                eeeeee <- local (second zyx) (lamExpr t p <$> local (first (const True)) b)
-                pure (foldr fun eeeeee yss)
-            where
---              gun :: InClass -> () -> ReaderT (Bool, Foo) Infer ()
---              gun (InClass name ty) () =
+--type Foo = ClassEnv (Expr () (Pattern ()) (Pattern ()))
 --
---                  pure ()
---              fun :: InClass -> Expr T (Pattern T) (Pattern T) -> ReaderT (Bool, Z p q) Infer (Expr T (Pattern T) (Pattern T))
-              fun (InClass name ty, v) e = 
-                  let k = kArr kStar (fromJust (kindOf ty))
-                      p = varPat (tApp (tCon k name) ty, []) v
-                   in lamExpr t p e
-                  -- what if ty is a type constructor????
-                  --vv <- supply
-                  --let k = kArr kStar (fromJust (kindOf ty))
-                  --let p = varPat (tApp (tCon k name) ty, []) vv
-                  --local (second (addClassInstance name ty (varExpr () vv))) (pure (lamExpr t p e))
+----rebuildTree2 :: Expr T (Pattern T) (Pattern T) -> ReaderT (Bool, Z p q) Infer (Expr T (Pattern T) (Pattern T))
+----rebuildTree2 :: Expr T (Pattern T) (Pattern T) -> ReaderT (Bool, Foo) Infer (Expr T (Pattern T) (Pattern T))
+--rebuildTree2 = cata $ \case
+--    EApp t exs -> do
+--        fs <- sequence exs 
+--        case fs of
+--            [] -> pure (appExpr t [])
+--            e:es -> do
+--                let (_, css) = getTag e :: T
+--                ds <- traverse gggoo (sort css)
+--                pure (appExpr t (e:ds <> es))
 --          where
---            fun :: [InClass] -> Expr T (Pattern T) (Pattern T) -> Expr T (Pattern T) (Pattern T)
---            fun [] _ = error "..."
---            fun (InClass name ty:xs) e = 
---                let (x, _) = getTag e :: T
---                    zzz = (tApp (tCon (kArr kStar kStar) name) ty, [])
---                 in lamExpr (x, xs) (recPat zzz [Field zzz "show" "show:xxx"]) e
-
-                 --in lamExpr (x, xs) (varPat (tApp (tCon (kArr kStar (kindOf ty)) name) ty, []) "XXXXXXXXX") e
-
-    e -> 
-        embed <$> local (first (const True)) (sequence e)
---        embed <$> local (\_ -> first False) (sequence e)
+----            gggoo :: InClass -> ReaderT (Bool, Z p q) Infer (Expr T (Pattern T) (Pattern T))
+--            gggoo (InClass name ty) = do
+--                env <- asks snd
+--                traceShowM "///////////////////r"
+--                traceShowM name
+--                traceShowM ty
+--                traceShowM env
+--                let Just xx = lookupClassInstance name ty env
+--                v <- supply
+--                pure (mapTags (orgg v) xx)
+--
+--            --orgg :: () -> T
+--            orgg v u = (tVar kStar v, [])  -- TODO
+--
+---- type T = (Type, [InClass])
+--
+--    ELam t p b -> do
+--        --next <- lamExpr t p <$> local (first (const True)) b
+--        --next <- lamExpr t p <$> local (undefined) b
+--        (nested, _) <- ask
+--        let (a, css) = t
+--        if nested
+--            then lamExpr t p <$> local (first (const True)) b -- pure next
+--            else do
+--                let dss = sort css -- (nub css)
+--                    --ess = delete [] (reverse (tails dss))
+--                traceShowM dss
+--                traceShowM "^^^^^^^^^^^^"
+--                traceShowM "^^^^^^^^^^^^"
+--                ps <- supplies (length dss)
+--                let yss = zip dss ps
+--                let zyx = \e -> foldr (\(InClass name ty, v) -> traceShow (name, ty, v) $ addClassInstance name ty (varExpr () v)) e yss
+--                --foldrM fun (local env') dss
+--                --eeeeee <- local (second zyx) (pure next)
+--                eeeeee <- local (second zyx) (lamExpr t p <$> local (first (const True)) b)
+--                pure (foldr fun eeeeee yss)
+--            where
+----              gun :: InClass -> () -> ReaderT (Bool, Foo) Infer ()
+----              gun (InClass name ty) () =
+----
+----                  pure ()
+----              fun :: InClass -> Expr T (Pattern T) (Pattern T) -> ReaderT (Bool, Z p q) Infer (Expr T (Pattern T) (Pattern T))
+--              fun (InClass name ty, v) e = 
+--                  let k = kArr kStar (fromJust (kindOf ty))
+--                      p = varPat (tApp (tCon k name) ty, []) v
+--                   in lamExpr t p e
+--                  -- what if ty is a type constructor????
+--                  --vv <- supply
+--                  --let k = kArr kStar (fromJust (kindOf ty))
+--                  --let p = varPat (tApp (tCon k name) ty, []) vv
+--                  --local (second (addClassInstance name ty (varExpr () vv))) (pure (lamExpr t p e))
+----          where
+----            fun :: [InClass] -> Expr T (Pattern T) (Pattern T) -> Expr T (Pattern T) (Pattern T)
+----            fun [] _ = error "..."
+----            fun (InClass name ty:xs) e = 
+----                let (x, _) = getTag e :: T
+----                    zzz = (tApp (tCon (kArr kStar kStar) name) ty, [])
+----                 in lamExpr (x, xs) (recPat zzz [Field zzz "show" "show:xxx"]) e
+--
+--                 --in lamExpr (x, xs) (varPat (tApp (tCon (kArr kStar (kindOf ty)) name) ty, []) "XXXXXXXXX") e
+--
+--    e -> 
+--        embed <$> local (first (const True)) (sequence e)
+----        embed <$> local (\_ -> first False) (sequence e)
 
 
 --    e -> embed <$> sequence (snd <$> e)
@@ -474,58 +975,58 @@ rebuildTree2 = cata $ \case
 ----    EMat t exs eqs -> matExpr t exs eqs
 ----    EOp  t op      -> opExpr  t op
 
-aa = c
-  where
-    c = runInfer b
-    b = do
-        --((te, as), cs) <- infer_ expr11
-        --((te, as), cs) <- infer_ expr23
-        ((te, as), cs) <- infer_ expr6
-        --((te, as), cs) <- infer_ expr21
-        traceShowM "99999999999999999999999999999999999999999"
-        traceShowM te
-        traceShowM "2xxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxx"
-        traceShowM cs
-        traceShowM "3xxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxx"
-        traceShowM as
-        traceShowM "4xxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxx"
-        traceShowM "4xxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxx"
-        traceShowM "4xxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxx"
-        traceShowM "4xxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxx"
-        traceShowM "4xxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxx"
-        --let xx = [(t, s) | (u, s) <- Env.toList env1, (v :>: t) <- as, u == v]
-        let cs' = cs <> [Explicit t s | u :>: (t, _) <- as, (v, s) <- Env.toList env1, u == v]
-        (sub, (xx1, xx2)) <- runStateT (solve cs') ([], [])
-        traceShowM "-----------------------------------------"
-        traceShowM "-----------------------------------------"
-        traceShowM (sub, (xx1, xx2))
-        traceShowM "-----------------------------------------"
-        traceShowM "-----------------------------------------"
-        let te1 = mapTags (toFunction sub) te
---        traceShowM xx1
---        traceShowM xx2
-        let te2 = mapTags (addConstrs xx2) te1
-        let te3 = mapTags (applyFinal xx1) te2
-        zzz <- runReaderT (rebuildTree2 te3) (False, testClassEnv)
-        --traceShowM "*********5"
-        --traceShowM zzz -- (mapTags (const ()) zzz)
-        traceShowM "wwwwwwwwwwwwwwwwwwwwwwwwwwwwwwww4"
-        traceShowM (mapTags (const ()) zzz)
-        --traceShowM "----------"
-        pure (te3, cs', sub) -- (te, sub)
-
-    env1 =
-        Env.fromList [
-            -- ("lenShow", sForall kStar [("show", tGen 0 `tArr` tString)] (sScheme (tGen 0 `tArr` tInt)))
-            ( "lenShow", sForall kStar ["Show"] (sScheme (tGen 0 `tArr` tInt)) )
-          , ( "lenShow2", sForall kStar ["Show", "Eq"] (sScheme (tGen 0 `tArr` tInt)) )
-          , ( "Just", sForall kStar [] (sScheme (tGen 0 `tArr` (tApp (tCon (kArr kStar kStar) "Maybe") (tGen 0)))) )
-          , ( "(,)", sForall kStar [] (sForall kStar [] (sScheme (tGen 0 `tArr` tGen 1 `tArr` (tApp (tApp (tCon (kArr kStar (kArr kStar kStar)) "(,)") (tGen 0)) (tGen 1))))) )
-          , ( "map", sForall (kArr kStar kStar) ["Functor"] (sForall kStar [] (sForall kStar [] (sScheme ((tGen 1 `tArr` tGen 0) `tArr` (tApp (tGen 2) (tGen 1)) `tArr` (tApp (tGen 2) (tGen 0)))))) )
-          , ( "@(+)Int", sScheme (tInt `tArr` tInt `tArr` tInt) )
-          , ( "fun", sForall kStar ["Show"] (sForall kStar ["Show"] (sScheme (tGen 1 `tArr` tGen 0 `tArr` tBool))) )
-          , ( "succ", sScheme (tInt `tArr` tInt) )
-        ]
+--aa = c
+--  where
+--    c = runInfer b
+--    b = do
+--        --((te, as), cs) <- infer_ expr11
+--        --((te, as), cs) <- infer_ expr23
+--        ((te, as), cs) <- infer_ expr6
+--        --((te, as), cs) <- infer_ expr21
+--        traceShowM "99999999999999999999999999999999999999999"
+--        traceShowM te
+--        traceShowM "2xxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxx"
+--        traceShowM cs
+--        traceShowM "3xxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxx"
+--        traceShowM as
+--        traceShowM "4xxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxx"
+--        traceShowM "4xxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxx"
+--        traceShowM "4xxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxx"
+--        traceShowM "4xxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxx"
+--        traceShowM "4xxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxx"
+--        --let xx = [(t, s) | (u, s) <- Env.toList env1, (v :>: t) <- as, u == v]
+--        let cs' = cs <> [Explicit t s | u :>: (t, _) <- as, (v, s) <- Env.toList env1, u == v]
+--        (sub, (xx1, xx2)) <- undefined -- runStateT (solve cs') ([], [])
+--        traceShowM "-----------------------------------------"
+--        traceShowM "-----------------------------------------"
+--        traceShowM (sub, (xx1, xx2))
+--        traceShowM "-----------------------------------------"
+--        traceShowM "-----------------------------------------"
+--        let te1 = mapTags (toFunction sub) te
+----        traceShowM xx1
+----        traceShowM xx2
+--        let te2 = mapTags (addConstrs xx2) te1
+--        let te3 = mapTags (applyFinal xx1) te2
+--        zzz <- runReaderT (rebuildTree2 te3) (False, testClassEnv)
+--        --traceShowM "*********5"
+--        --traceShowM zzz -- (mapTags (const ()) zzz)
+--        traceShowM "wwwwwwwwwwwwwwwwwwwwwwwwwwwwwwww4"
+--        traceShowM (mapTags (const ()) zzz)
+--        --traceShowM "----------"
+--        pure (te3, cs', sub) -- (te, sub)
+--
+--    env1 =
+--        Env.fromList [
+--            -- ("lenShow", sForall kStar [("show", tGen 0 `tArr` tString)] (sScheme (tGen 0 `tArr` tInt)))
+--            ( "lenShow", sForall kStar ["Show"] (sScheme (tGen 0 `tArr` tInt)) )
+--          , ( "lenShow2", sForall kStar ["Show", "Eq"] (sScheme (tGen 0 `tArr` tInt)) )
+--          , ( "Just", sForall kStar [] (sScheme (tGen 0 `tArr` (tApp (tCon (kArr kStar kStar) "Maybe") (tGen 0)))) )
+--          , ( "(,)", sForall kStar [] (sForall kStar [] (sScheme (tGen 0 `tArr` tGen 1 `tArr` (tApp (tApp (tCon (kArr kStar (kArr kStar kStar)) "(,)") (tGen 0)) (tGen 1))))) )
+--          , ( "map", sForall (kArr kStar kStar) ["Functor"] (sForall kStar [] (sForall kStar [] (sScheme ((tGen 1 `tArr` tGen 0) `tArr` (tApp (tGen 2) (tGen 1)) `tArr` (tApp (tGen 2) (tGen 0)))))) )
+--          , ( "@(+)Int", sScheme (tInt `tArr` tInt `tArr` tInt) )
+--          , ( "fun", sForall kStar ["Show"] (sForall kStar ["Show"] (sScheme (tGen 1 `tArr` tGen 0 `tArr` tBool))) )
+--          , ( "succ", sScheme (tInt `tArr` tInt) )
+--        ]
  
 --scheme1 = sForall (kArr kStar kStar) [("Functor", tGen 0)] (sForall kStar [] (sForall kStar [] (sScheme ((tGen 1 `tArr` tGen 0) `tArr` (tApp (tGen 2) (tGen 1)) `tArr` (tApp (tGen 2) (tGen 0))))))
 scheme1 = sForall (kArr kStar kStar) ["Functor"] (sForall kStar [] (sForall kStar [] (sScheme ((tGen 1 `tArr` tGen 0) `tArr` (tApp (tGen 2) (tGen 1)) `tArr` (tApp (tGen 2) (tGen 0))))))

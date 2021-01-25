@@ -101,15 +101,29 @@ grok t = do
     pure (apply sub t)
 
 --split :: Substitution -> StateT X Infer Substitution
+split :: (MonadError String m, MonadSupply Name m) => Substitution -> StateT ([(Name, Type)], [Predicate]) m Substitution
 split (Subst sub) = do
     sub <- Subst <$> Map.traverseWithKey (const xxx1) sub
-    modifyFst (fun sub <$>)
+    aaa1 <- getFst
+    bbb1 <- traverse (
+              \(n, t) -> do
+                  case Map.lookup n (getSubst sub) of 
+                      Just (Fix (TVar _ m)) -> 
+                          case lookup m aaa1 of
+                              Just t1 | t /= t1 -> throwError "Unif. error"
+                              _ -> pure (m, t)
+                      _  -> pure (n, t)
+            ) aaa1
+    putFst bbb1
+    --gork <- traverse (fun sub) aaa1
+    --putFst gork
+    --modifyFst gork -- (\x -> fun sub <$> x)
     pure sub
   where
-    fun (Subst sub) = first $ \v ->
-        case unfix <$> Map.lookup v sub of 
-            Just (TVar _ w) -> w
-            _               -> v
+--    fun (Subst sub) = first $ \v ->
+--        case unfix <$> Map.lookup v sub of 
+--            Just (TVar _ w) -> pure w
+--            _ -> pure v
 
 --    xxx1 :: Type -> StateT X Infer Type
     xxx1 = cata $ \case
