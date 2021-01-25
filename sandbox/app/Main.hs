@@ -53,6 +53,12 @@ import qualified Data.Set as PlainSet
 testExpr2 =
     ifExpr () (litExpr () (LBool True)) (litExpr () (LInt 5)) (litExpr () (LBool True))
 
+testExpr3 =
+    ifExpr () (litExpr () (LInt 5)) (litExpr () (LInt 5)) (litExpr () (LInt 5))
+
+testExpr4 =
+    ifExpr () (litExpr () (LBool True)) (litExpr () (LInt 5)) (litExpr () (LInt 5))
+
 
 --litExpr () (LInt 5)) (liteExpr () (LBool True)
 
@@ -68,7 +74,7 @@ testTestExpr
   :: (MonadState Environments m, MonadError String m, MonadSupply Name m) 
   => m ()
 testTestExpr = do
-    t3 <- inferTree testExpr2
+    t3 <- inferTree testExpr4
     debug (Data.Tree.View.showTree (Text.unpack <$> toTree t3))
 
     t4 <- runReaderT (expandTree t3) False 

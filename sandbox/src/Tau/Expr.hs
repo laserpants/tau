@@ -70,8 +70,8 @@ data Op a
     | OSub a a                -- ^ Subtraction operator (-)
     | OMul a a                -- ^ Multiplication operator (*)
     | ODiv a a                -- ^ Division operator (/)
-    | OLt  a a                -- ^ Less-than operator (<)
-    | OGt  a a                -- ^ Greater-than operator (>)
+    | OLt  a a                -- ^ Strictly less-than operator (<)
+    | OGt  a a                -- ^ Strictly greater-than operator (>)
     | OLtE a a                -- ^ Less-than-or-equal-to operator (<=)
     | OGtE a a                -- ^ Greater-than-or-equal-to operator (>=)
     | ONeg a                  -- ^ Unary negation
@@ -82,7 +82,7 @@ data Op a
     | OFPipe a a              -- ^ Forward pipe operator (|>)
     | OBPipe a a              -- ^ Backwards pipe operator (<|)
     | ODot Name a             -- ^ Dot operator
-    | OField Name a           -- ^ Record field access operator .{field}
+    | OField Name a           -- ^ Record field access operator
     deriving (Show, Eq, Functor, Foldable, Traversable)
 
 deriveShow1 ''Op

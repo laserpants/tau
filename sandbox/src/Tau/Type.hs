@@ -19,7 +19,7 @@ import qualified Data.Set.Monad as Set
 import qualified Data.Text as Text
 import qualified Tau.Env as Env
 
--- | Type kinds (base functor)
+-- | Kinds (base functor)
 data KindF a 
     = KStar  -- KType?
     | KArr a a
@@ -30,7 +30,7 @@ deriveShow1 ''KindF
 deriveEq1   ''KindF
 deriveOrd1  ''KindF
 
--- | Type kinds
+-- | Kinds
 type Kind = Fix KindF
 
 -- | Types (base functor)

@@ -150,8 +150,8 @@ infer = cata $ \case
         (e2, as2) <- tr
         (e3, as3) <- fl
         tell [ Equality (tVar kStar tv) (typeOf e2) 
-             , Equality (typeOf e1) tBool
-             , Equality (typeOf e2) (typeOf e3) ]
+             , Equality (tVar kStar tv) (typeOf e3)
+             , Equality (typeOf e1) tBool ]
         pure ( ifExpr tv e1 e2 e3, as1 <> as2 <> as3 )
 
     EOp  _ (OAnd a b) -> inferLogicOp OAnd a b
