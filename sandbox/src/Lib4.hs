@@ -49,18 +49,25 @@ toTree3 = cata $ \case
     ELet t pat e1 e2  -> node t "Let" [pattern_ pat, e1, e2]
     ELam t pat e1     -> node t "Lam" [pattern_ pat, e1]
     EIf  t cond tr fl -> node t "If" [cond, tr, fl]
+    ERec t fields     -> node t "Rec" (field <$> fields)
     _ -> error "not implemented"
   where
     pattern_ = cata $ \case
         PVar t var    -> node t ("Var " <> var) []
         PCon t con ps -> node t ("Con " <> con) ps
         PLit t lit    -> node t (fromLit lit) []
-        PRec t fields -> node t "Rec" [] -- ?? (fields)
+        PRec t fields -> node t "Rec" (field2 <$> fields)
         PAny t        -> node t "_" []
 
+    field2 (Field _ k v) = Node (k <> " = " <> v) []
+    field (Field _ k v) = Node (k <> " = " <> rootLabel v) []
+
     fromLit = pack . show 
-    prettyText = renderStrict . layoutPretty defaultLayoutOptions . pretty
     node t ex = Node (ex <> " : " <> prettyText t)
+
+    prettyText = 
+        renderStrict . layoutPretty defaultLayoutOptions . pretty
+
 
 test1 = lamExpr () (varPat () "x") (varExpr () "x")
 runTest1 = 
@@ -128,6 +135,40 @@ runTest9 =
   where
     as = [As2 "id" (sForall kStar [] (sScheme (tGen 0 `tArr` tGen 0))), As2 "(,)" (sForall kStar [] (sForall kStar [] (sScheme (tGen 1 `tArr` tGen 0 `tArr` tApp (tApp (tCon (kArr kStar (kArr kStar kStar)) "(,)") (tGen 1)) (tGen 0)))))]
 
+test10 = recExpr () [Field () "name" (litExpr () (LString "Bob")), Field () "id" (litExpr () (LInt 10)), Field () "admin" (litExpr () (LBool True))]
+runTest10 = 
+    case runInfer2 as (infer2 mempty test10) of
+        Right (tree, sub) -> mapTags (apply sub) tree
+        Left e -> error e
+  where
+    as = [As2 "id" (sForall kStar [] (sScheme (tGen 0 `tArr` tGen 0))), As2 "(,)" (sForall kStar [] (sForall kStar [] (sScheme (tGen 1 `tArr` tGen 0 `tArr` tApp (tApp (tCon (kArr kStar (kArr kStar kStar)) "(,)") (tGen 1)) (tGen 0)))))]
+
+test11 = 
+    letExpr () (recPat () [Field () "name" "name", Field () "id" "id"]) 
+               (recExpr () [Field () "name" (litExpr () (LString "Bob")), Field () "id" (litExpr () (LInt 111))]) 
+               (varExpr () "id")
+runTest11 = 
+    case runInfer2 as (infer2 mempty test11) of
+        Right (tree, sub) -> mapTags (apply sub) tree
+        Left e -> error e
+  where
+    as = [] -- As2 "id" (sForall kStar [] (sScheme (tGen 0 `tArr` tGen 0))), As2 "(,)" (sForall kStar [] (sForall kStar [] (sScheme (tGen 1 `tArr` tGen 0 `tArr` tApp (tApp (tCon (kArr kStar (kArr kStar kStar)) "(,)") (tGen 1)) (tGen 0)))))]
+
+
+test12 = 
+    letExpr () (conPat () "(,)" [varPat () "x", varPat () "y"]) 
+               (conExpr () "(,)" [litExpr () (LInt 41), litExpr () (LBool True)]) 
+               (varExpr () "x")
+runTest12 = 
+    case runInfer2 as (infer2 mempty test12) of
+        Right (tree, sub) -> mapTags (apply sub) tree
+        Left e -> error e
+  where
+    as = [As2 "(,)" (sForall kStar [] (sForall kStar [] (sScheme (tGen 1 `tArr` tGen 0 `tArr` tApp (tApp (tCon (kArr kStar (kArr kStar kStar)) "(,)") (tGen 1)) (tGen 0)))))]
+
+
+
+
 
 
 
@@ -158,11 +199,6 @@ unify t1 t2 = do
     sub1 <- get
     sub2 <- Uni.unify (apply sub1 t1) (apply sub1 t2)
     modify (sub2 <>)
-
-    --modify (sub2 @@)
---    sub <- Uni.unify t1 t2
-----    modify (sub <>)
---    modify (@@ sub)
 
 --
 -- Inference
@@ -196,7 +232,7 @@ newTVar kind = tVar kind <$> supply
 lookupScheme :: (MonadError String m) => Name -> [Assumption2] -> m Scheme
 lookupScheme name as =
     case findAssumption name as of
-        Nothing     -> throwError "Unbound identifier"
+        Nothing     -> throwError ("Unbound identifier: " <> Text.unpack name)
         Just scheme -> pure scheme
 
 --newtype Infer2 a = Infer2 { unInfer2 :: StateT Substitution (ReaderT [Assumption2] (SupplyT Name (ExceptT String Maybe))) a }
@@ -234,12 +270,16 @@ infer2 env = cata alg
         case expr of
             EVar _ var -> do
                 as <- ask
+                traceShowM "2>"
+                traceShowM as
                 (ty, ps) <- lookupScheme var as >>= instantiate2
                 unify ty newTy
                 pure (varExpr newTy var)
 
             ECon _ con exprs -> do
                 as <- ask
+                traceShowM "3>"
+                traceShowM as
                 (ty, ps) <- lookupScheme con as >>= instantiate2
                 es <- sequence exprs
                 unify ty (foldr tArr newTy (typeOf2 <$> es))
@@ -286,13 +326,38 @@ infer2 env = cata alg
 
             EMat _ exs eqs -> do
                 es1 <- sequence exs
+                es2 <- sequence (inferClause2 <$> eqs)
                 undefined
-                pure (matExpr newTy es1 undefined)
+                pure (matExpr newTy es1 es2)
 
             ERec _ fields -> do
-                let sfields = sortedFields fields
-                undefined
-                pure (recExpr newTy undefined)
+
+                let tagField (_, n, v) = (\a -> Field (getTag a) n a) <$> v
+                fs <- sequence (tagField <$> sortedFields fields)
+
+                let (a,ns,c) = unzip3 (sortedFields fields)
+                d <- sequence c
+                let ts = getTag <$> d
+
+                --let (_, ns, _) = unzip3 info 
+
+                unify newTy (foldl tApp (recordType ns) ts)
+
+                pure (recExpr newTy fs) -- (Field <$> ts <*> ns <*> vs))
+
+                --(ns, vs) <- unzip <$> traverse (\(_, n, v) -> (,) n <$> v) (sortedFields fields)
+                --traceShowM ns
+                --traceShowM vs
+                --traceShowM "^^^^^^^^^^^^^^^^^^^^^^^^^^^"
+                --let ts = getTag <$> vs
+                --debug (show (pretty (foldl tApp (recordType ns) ts)))
+                --unify newTy (foldl tApp (recordType ns) ts)
+                --pure (recExpr newTy vs) -- (Field <$> ts <*> ns <*> vs))
+
+inferClause2 
+  :: Clause (Pattern t) (StateT Substitution m (Expr Type (Pattern Type) (Pattern Type))) 
+  -> StateT Substitution m (Clause (Pattern Type) (Expr Type (Pattern Type) (Pattern Type)))
+inferClause2 (Clause ps exs e) = undefined
 
 inferLiteral2 :: (MonadSupply Name m) => Literal -> StateT Substitution m Type
 inferLiteral2 = pure . \case
@@ -317,7 +382,9 @@ inferPattern2 = cata alg
                 pure (varPat newTy var, [As2 var (sScheme newTy)])
 
             PCon _ con ps -> do
-                (trs, as) <- sequenced ps
+                as1 <- ask
+                (trs, as2) <- sequenced ps
+                let as = as1 <> as2
                 (ty, ps) <- lookupScheme con as >>= instantiate2
                 unify ty (foldr tArr newTy (typeOf3 <$> trs))
                 pure (conPat newTy con trs, as)

@@ -14,6 +14,8 @@ module Tau.Util
   , numSupply
   , debug
   , first3M
+  , second3M
+  , third3M
   ) where
 
 import Control.Monad
@@ -61,3 +63,13 @@ first3M :: (Monad m) => (a -> m a1) -> (a, b, c) -> m (a1, b, c)
 first3M f (a, b, c) = do
     a1 <- f a
     pure (a1, b, c)
+
+second3M :: (Monad m) => (b -> m b1) -> (a, b, c) -> m (a, b1, c)
+second3M f (a, b, c) = do
+    b1 <- f b
+    pure (a, b1, c)
+
+third3M :: (Monad m) => (c -> m c1) -> (a, b, c) -> m (a, b, c1)
+third3M f (a, b, c) = do
+    c1 <- f c
+    pure (a, b, c1)
