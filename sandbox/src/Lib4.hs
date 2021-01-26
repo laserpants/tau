@@ -1,7 +1,7 @@
 {-# LANGUAGE FlexibleContexts           #-}
 {-# LANGUAGE LambdaCase                 #-}
 {-# LANGUAGE OverloadedStrings          #-}
-{-# LANGUAGE GeneralizedNewtypeDeriving #-}
+-- {-# LANGUAGE GeneralizedNewtypeDeriving #-}
 {-# LANGUAGE FlexibleInstances          #-}
 {-# LANGUAGE StrictData                 #-}
 module Lib4 where
@@ -304,7 +304,10 @@ inferLiteral2 = pure . \case
     LChar{}    -> tChar
     LString{}  -> tString
 
-inferPattern2 :: (MonadSupply Name m, MonadReader [Assumption2] m, MonadError String m) => Pattern t -> StateT Substitution m (Pattern Type, [Assumption2])
+inferPattern2 
+  :: (MonadSupply Name m, MonadReader [Assumption2] m, MonadError String m) 
+  => Pattern t 
+  -> StateT Substitution m (Pattern Type, [Assumption2])
 inferPattern2 = cata alg
   where
     alg pat = do
