@@ -40,7 +40,7 @@ data PatternF t a
     | PLit t Literal          -- ^ Literal pattern
     | PRec t [Field t a]      -- ^ Record pattern
 --    | PAs  t Name a
---    | POr t a a
+--    | POr  t a a
     | PAny t                  -- ^ Wildcard pattern
     deriving (Show, Eq, Functor, Foldable, Traversable)
 
@@ -56,6 +56,7 @@ data Prep t
     | RCon t Name [Name]      -- ^ Simple constuctor pattern
     deriving (Show, Eq)
 
+-- | Match expression clause
 data Clause p a = Clause [p] [a] a
     deriving (Show, Eq, Functor, Foldable, Traversable)
 

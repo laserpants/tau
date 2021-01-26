@@ -15,6 +15,7 @@ import Data.List (partition, (\\))
 import Control.Arrow (first, second)
 import Data.Either (isRight)
 import Data.Either.Combinators (rightToMaybe)
+import Tau.Pretty
 import Tau.Type
 import Tau.Env (Env(..))
 import Tau.Expr
