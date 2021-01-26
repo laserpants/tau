@@ -36,6 +36,9 @@ nullSubst = Subst mempty
 fromList :: [(Name, Type)] -> Substitution
 fromList = Subst . Map.fromList
 
+toList :: Substitution -> [(Name, Type)]
+toList = Map.toList . getSubst
+
 substWithDefault :: Type -> Name -> Substitution -> Type
 substWithDefault def name = Map.findWithDefault def name . getSubst
 

@@ -40,6 +40,7 @@ data PatternF t a
     | PLit t Literal          -- ^ Literal pattern
     | PRec t [Field t Name]   -- ^ Record pattern
 --    | PAs  t Name a
+--    | POr
     | PAny t                  -- ^ Wildcard pattern
     deriving (Show, Eq, Functor, Foldable, Traversable)
 

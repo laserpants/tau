@@ -13,6 +13,7 @@ module Tau.Util
   , nameSupply
   , numSupply
   , debug
+  , first3M
   ) where
 
 import Control.Monad
@@ -55,3 +56,8 @@ instance Injective ((a, b), c) (a, b, c) where
 
 instance Injective (a, (b, c)) (a, b, c) where
     to (a, (b, c)) = (a, b, c)
+
+first3M :: (Monad m) => (a -> m a1) -> (a, b, c) -> m (a1, b, c)
+first3M f (a, b, c) = do
+    a1 <- f a
+    pure (a1, b, c)
