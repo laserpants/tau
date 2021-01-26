@@ -254,10 +254,11 @@ inferPattern = cata $ \pat -> do
             pure ( litPat tv lit, [] )
 
         PRec _ fields -> do
-            let info = sortedFields fields
-            fs <- traverse (\(_, n, v) -> supply >>= \t -> pure $ Field t n v) info
-            tell (recordConstraints tv info fs)
-            pure ( recPat tv fs, [] )
+            undefined
+--            let info = sortedFields fields
+--            fs <- traverse (\(_, n, v) -> supply >>= \t -> pure $ Field t n v) info
+--            tell (recordConstraints tv info fs)
+--            pure ( recPat tv fs, [] )
 
         PAny _ -> 
             pure ( anyPat tv, [] )

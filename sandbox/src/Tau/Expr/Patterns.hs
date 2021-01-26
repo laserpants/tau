@@ -176,8 +176,8 @@ flatten (Clause ps exs e) = Clause qs (exs <> exs1) e where
 
         PRec t fields -> do
             let info = sortedFields fields
-                toPat (t, _, v) = varPat t v
-            pure (conPat t ("{" <> Text.intercalate "," (snd3 <$> info) <> "}") (toPat <$> info))
+            ps <- traverse thd3 info
+            pure (conPat t ("{" <> Text.intercalate "," (snd3 <$> info) <> "}") ps)
 
         pat ->
             embed <$> sequence pat
@@ -294,11 +294,11 @@ substitute name subst = para $ \case
         --EApp t exs      -> appExpr t exs
         --EIf  t c e1 e2  -> ifExpr  t c e1 e2
         --EOp  t op       -> substOp t op
-  where
-    substOp t = \case
-        OEq  a b -> eqOp  t a b
-        OAnd a b -> andOp t a b
-        OOr  a b -> orOp  t a b
+--  where
+--    substOp t = \case
+--        OEq  a b -> eqOp  t a b
+--        OAnd a b -> andOp t a b
+--        OOr  a b -> orOp  t a b
 
 data Tagged a = ConTag a | VarTag a
     deriving (Show, Eq, Ord)

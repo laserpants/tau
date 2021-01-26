@@ -38,9 +38,9 @@ data PatternF t a
     = PVar t Name             -- ^ Variable pattern
     | PCon t Name [a]         -- ^ Constuctor pattern
     | PLit t Literal          -- ^ Literal pattern
-    | PRec t [Field t Name]   -- ^ Record pattern
+    | PRec t [Field t a]      -- ^ Record pattern
 --    | PAs  t Name a
---    | POr
+--    | POr t a a
     | PAny t                  -- ^ Wildcard pattern
     deriving (Show, Eq, Functor, Foldable, Traversable)
 
@@ -84,7 +84,6 @@ data Op a
     | OFPipe a a              -- ^ Forward pipe operator (|>)
     | OBPipe a a              -- ^ Backwards pipe operator (<|)
     | ODot Name a             -- ^ Dot operator
-    | OField Name a           -- ^ Record field access operator
     deriving (Show, Eq, Functor, Foldable, Traversable)
 
 deriveShow1 ''Op
@@ -285,7 +284,7 @@ conPat t con ps = embed (PCon t con ps)
 litPat :: t -> Literal -> Pattern t
 litPat t lit = embed (PLit t lit)
 
-recPat :: t -> [Field t Name] -> Pattern t
+recPat :: t -> [Field t (Pattern t)] -> Pattern t
 recPat t fields = embed (PRec t fields)
 
 anyPat :: t -> Pattern t

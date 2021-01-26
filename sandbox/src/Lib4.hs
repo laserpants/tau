@@ -11,6 +11,7 @@ import Data.Tree.View
 import Control.Monad.Except
 import Data.Tree
 import Data.Text (Text, pack, unpack)
+import Data.Foldable (traverse_)
 import Control.Monad.Reader
 import Control.Monad.State
 import Control.Monad.Supply
@@ -50,16 +51,18 @@ toTree3 = cata $ \case
     ELam t pat e1     -> node t "Lam" [pattern_ pat, e1]
     EIf  t cond tr fl -> node t "If" [cond, tr, fl]
     ERec t fields     -> node t "Rec" (field <$> fields)
+    EMat t exs eqs    -> node t "Mat" (exs <> (clause <$> eqs))
     _ -> error "not implemented"
   where
+    clause (Clause ps exs e) = Node "*" ((pattern_ <$> ps) <> exs <> [e])
+
     pattern_ = cata $ \case
         PVar t var    -> node t ("Var " <> var) []
         PCon t con ps -> node t ("Con " <> con) ps
         PLit t lit    -> node t (fromLit lit) []
-        PRec t fields -> node t "Rec" (field2 <$> fields)
+        PRec t fields -> node t "Rec" (field <$> fields)
         PAny t        -> node t "_" []
 
-    field2 (Field _ k v) = Node (k <> " = " <> v) []
     field (Field _ k v) = Node (k <> " = " <> rootLabel v) []
 
     fromLit = pack . show 
@@ -144,9 +147,9 @@ runTest10 =
     as = [As2 "id" (sForall kStar [] (sScheme (tGen 0 `tArr` tGen 0))), As2 "(,)" (sForall kStar [] (sForall kStar [] (sScheme (tGen 1 `tArr` tGen 0 `tArr` tApp (tApp (tCon (kArr kStar (kArr kStar kStar)) "(,)") (tGen 1)) (tGen 0)))))]
 
 test11 = 
-    letExpr () (recPat () [Field () "name" "name", Field () "id" "id"]) 
+    letExpr () (recPat () [Field () "name" (varPat () "x"), Field () "id" (varPat () "id")]) 
                (recExpr () [Field () "name" (litExpr () (LString "Bob")), Field () "id" (litExpr () (LInt 111))]) 
-               (varExpr () "id")
+               (varExpr () "x")
 runTest11 = 
     case runInfer2 as (infer2 mempty test11) of
         Right (tree, sub) -> mapTags (apply sub) tree
@@ -167,8 +170,26 @@ runTest12 =
     as = [As2 "(,)" (sForall kStar [] (sForall kStar [] (sScheme (tGen 1 `tArr` tGen 0 `tArr` tApp (tApp (tCon (kArr kStar (kArr kStar kStar)) "(,)") (tGen 1)) (tGen 0)))))]
 
 
+test13 = 
+    letExpr () (varPat () "x") (conExpr () "Some" [litExpr () (LInt 444)]) 
+        (matExpr () [varExpr () "x"] [Clause [conPat () "Some" [varPat () "y"]] [] (varExpr () "y")])
+runTest13 = 
+    case runInfer2 as (infer2 mempty test13) of
+        Right (tree, sub) -> mapTags (apply sub) tree
+        Left e -> error e
+  where
+    as = [As2 "Some" (sForall kStar [] (sScheme (tGen 0 `tArr` tApp (tCon (kArr kStar kStar) "Option") (tGen 0)))), As2 "(,)" (sForall kStar [] (sForall kStar [] (sScheme (tGen 1 `tArr` tGen 0 `tArr` tApp (tApp (tCon (kArr kStar (kArr kStar kStar)) "(,)") (tGen 1)) (tGen 0)))))]
 
 
+test14 = 
+    letExpr () (varPat () "x") (conExpr () "Some" [litExpr () (LInt 444)]) 
+        (matExpr () [varExpr () "x"] [Clause [conPat () "Some" [litPat () (LBool True)]] [] (litExpr () (LInt 1))])
+runTest14 = 
+    case runInfer2 as (infer2 mempty test14) of
+        Right (tree, sub) -> mapTags (apply sub) tree
+        Left e -> error e
+  where
+    as = [As2 "Some" (sForall kStar [] (sScheme (tGen 0 `tArr` tApp (tCon (kArr kStar kStar) "Option") (tGen 0)))), As2 "(,)" (sForall kStar [] (sForall kStar [] (sScheme (tGen 1 `tArr` tGen 0 `tArr` tApp (tApp (tCon (kArr kStar (kArr kStar kStar)) "(,)") (tGen 1)) (tGen 0)))))]
 
 
 
@@ -270,16 +291,12 @@ infer2 env = cata alg
         case expr of
             EVar _ var -> do
                 as <- ask
-                traceShowM "2>"
-                traceShowM as
                 (ty, ps) <- lookupScheme var as >>= instantiate2
                 unify ty newTy
                 pure (varExpr newTy var)
 
             ECon _ con exprs -> do
                 as <- ask
-                traceShowM "3>"
-                traceShowM as
                 (ty, ps) <- lookupScheme con as >>= instantiate2
                 es <- sequence exprs
                 unify ty (foldr tArr newTy (typeOf2 <$> es))
@@ -326,38 +343,31 @@ infer2 env = cata alg
 
             EMat _ exs eqs -> do
                 es1 <- sequence exs
-                es2 <- sequence (inferClause2 <$> eqs)
-                undefined
+                es2 <- sequence (inferClause2 newTy es1 <$> eqs)
                 pure (matExpr newTy es1 es2)
 
             ERec _ fields -> do
-
-                let tagField (_, n, v) = (\a -> Field (getTag a) n a) <$> v
-                fs <- sequence (tagField <$> sortedFields fields)
-
-                let (a,ns,c) = unzip3 (sortedFields fields)
-                d <- sequence c
-                let ts = getTag <$> d
-
-                --let (_, ns, _) = unzip3 info 
-
-                unify newTy (foldl tApp (recordType ns) ts)
-
-                pure (recExpr newTy fs) -- (Field <$> ts <*> ns <*> vs))
-
-                --(ns, vs) <- unzip <$> traverse (\(_, n, v) -> (,) n <$> v) (sortedFields fields)
-                --traceShowM ns
-                --traceShowM vs
-                --traceShowM "^^^^^^^^^^^^^^^^^^^^^^^^^^^"
-                --let ts = getTag <$> vs
-                --debug (show (pretty (foldl tApp (recordType ns) ts)))
-                --unify newTy (foldl tApp (recordType ns) ts)
-                --pure (recExpr newTy vs) -- (Field <$> ts <*> ns <*> vs))
+                let (_, ns, fs) = unzip3 (sortedFields fields)
+                es <- sequence fs
+                let tfs = zipWith (\n e -> Field (typeOf2 e) n e) ns es
+                unify newTy (foldl tApp (recordType ns) (typeOf2 <$> es))
+                pure (recExpr newTy tfs)
 
 inferClause2 
-  :: Clause (Pattern t) (StateT Substitution m (Expr Type (Pattern Type) (Pattern Type))) 
+  :: (MonadSupply Name m, MonadReader [Assumption2] m, MonadError String m) 
+  => Type
+  -> [Expr Type (Pattern Type) (Pattern Type)]
+  -> Clause (Pattern t) (StateT Substitution m (Expr Type (Pattern Type) (Pattern Type))) 
   -> StateT Substitution m (Clause (Pattern Type) (Expr Type (Pattern Type) (Pattern Type)))
-inferClause2 (Clause ps exs e) = undefined
+inferClause2 ty es1 clause@(Clause ps _ _) = do
+    (tps, as) <- sequenced (inferPattern2 <$> ps)
+    let (Clause _ exs e) = local (foldr (:) as) <$> clause
+    forM_ exs (>>= unify tBool . typeOf2)
+    forM_ (zip tps es1) (\(p, e2) -> unify (typeOf3 p) (typeOf2 e2)) 
+    es <- sequence exs
+    e1 <- e
+    unify ty (typeOf2 e1)
+    pure (Clause tps es e1)
 
 inferLiteral2 :: (MonadSupply Name m) => Literal -> StateT Substitution m Type
 inferLiteral2 = pure . \case
@@ -394,10 +404,11 @@ inferPattern2 = cata alg
                 pure (litPat lt lit, [])
 
             PRec _ fields -> do
-                let fn = first3M (const $ newTVar kStar)
-                (ts, ns, vs) <- unzip3 <$> traverse fn (sortedFields fields)
-                unify newTy (foldl tApp (recordType ns) ts)
-                pure (recPat newTy (Field <$> ts <*> ns <*> vs), [])
+                let (_, ns, fs) = unzip3 (sortedFields fields)
+                (ps, as) <- second concat . unzip <$> sequence fs
+                let tfs = zipWith (\n p -> Field (getTag p) n p) ns ps
+                unify newTy (foldl tApp (recordType ns) (getTag <$> ps))
+                pure (recPat newTy tfs, as)
 
             PAny _ -> 
                 pure (anyPat newTy, [])
