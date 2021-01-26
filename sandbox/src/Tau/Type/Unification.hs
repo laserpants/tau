@@ -15,13 +15,13 @@ bind name kind ty
     | otherwise              = pure (name `mapsTo` ty)
 
 unify :: (MonadError String m) => Type -> Type -> m Substitution
-unify t u = fn (project t) (project u) where
-    fn (TArr t1 t2) (TArr u1 u2) = unifyPairs (t1, t2) (u1, u2)
-    fn (TApp t1 t2) (TApp u1 u2) = unifyPairs (t1, t2) (u1, u2)
-    fn (TVar kind name) _        = bind name kind u
-    fn _ (TVar kind name)        = bind name kind t
-    fn _ _ | t == u              = pure mempty
-    fn _ _                       = throwError "CannotUnify" -- throwError CannotUnify
+unify t u = match (project t) (project u) where
+    match (TArr t1 t2) (TArr u1 u2) = unifyPairs (t1, t2) (u1, u2)
+    match (TApp t1 t2) (TApp u1 u2) = unifyPairs (t1, t2) (u1, u2)
+    match (TVar kind name) _        = bind name kind u
+    match _ (TVar kind name)        = bind name kind t
+    match _ _ | t == u              = pure mempty
+    match _ _                       = throwError "CannotUnify" -- throwError CannotUnify
 
 unifyPairs :: (MonadError String m) => (Type, Type) -> (Type, Type) -> m Substitution
 unifyPairs (t1, t2) (u1, u2) = do
@@ -30,12 +30,12 @@ unifyPairs (t1, t2) (u1, u2) = do
     pure (sub2 <> sub1)
 
 match :: (MonadError String m) => Type -> Type -> m Substitution
-match t u = fn (project t) (project u) where
-    fn (TArr t1 t2) (TArr u1 u2)            = matchPairs (t1, t2) (u1, u2)
-    fn (TApp t1 t2) (TApp u1 u2)            = matchPairs (t1, t2) (u1, u2)
-    fn (TVar k name) _ | Just k == kindOf u = pure (name `mapsTo` u)
-    fn _ _ | t == u                         = pure mempty
-    fn _ _                                  = throwError "CannotMatch" -- throwError CannotMatch
+match t u = match (project t) (project u) where
+    match (TArr t1 t2) (TArr u1 u2)            = matchPairs (t1, t2) (u1, u2)
+    match (TApp t1 t2) (TApp u1 u2)            = matchPairs (t1, t2) (u1, u2)
+    match (TVar k name) _ | Just k == kindOf u = pure (name `mapsTo` u)
+    match _ _ | t == u                         = pure mempty
+    match _ _                                  = throwError "CannotMatch" -- throwError CannotMatch
 
 matchPairs :: (MonadError String m) => (Type, Type) -> (Type, Type) -> m Substitution
 matchPairs (t1, t2) (u1, u2) = do

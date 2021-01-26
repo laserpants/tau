@@ -112,6 +112,24 @@ runTest7 =
   where
     as = [As2 "id" (sForall kStar [] (sScheme (tGen 0 `tArr` tGen 0))), As2 "(,)" (sForall kStar [] (sForall kStar [] (sScheme (tGen 1 `tArr` tGen 0 `tArr` tApp (tApp (tCon (kArr kStar (kArr kStar kStar)) "(,)") (tGen 1)) (tGen 0)))))]
 
+test8 = ifExpr () (litExpr () (LInt 5)) (litExpr () (LInt 1)) (litExpr () (LInt 2))
+runTest8 = 
+    case runInfer2 as (infer2 mempty test8) of
+        Right (tree, sub) -> mapTags (apply sub) tree
+        Left e -> error e
+  where
+    as = [As2 "id" (sForall kStar [] (sScheme (tGen 0 `tArr` tGen 0))), As2 "(,)" (sForall kStar [] (sForall kStar [] (sScheme (tGen 1 `tArr` tGen 0 `tArr` tApp (tApp (tCon (kArr kStar (kArr kStar kStar)) "(,)") (tGen 1)) (tGen 0)))))]
+
+test9 = ifExpr () (litExpr () (LBool True)) (litExpr () (LInt 1)) (litExpr () (LInt 2))
+runTest9 = 
+    case runInfer2 as (infer2 mempty test9) of
+        Right (tree, sub) -> mapTags (apply sub) tree
+        Left e -> error e
+  where
+    as = [As2 "id" (sForall kStar [] (sScheme (tGen 0 `tArr` tGen 0))), As2 "(,)" (sForall kStar [] (sForall kStar [] (sScheme (tGen 1 `tArr` tGen 0 `tArr` tApp (tApp (tCon (kArr kStar (kArr kStar kStar)) "(,)") (tGen 1)) (tGen 0)))))]
+
+
+
 
 
 --
