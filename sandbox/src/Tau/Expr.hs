@@ -212,8 +212,12 @@ mapField f (Field t n v) = Field (f t) n v
 fieldInfo :: Field t a -> (t, Name, a) 
 fieldInfo (Field t n v) = (t, n, v)
 
+sortFields :: [Field a c] -> [Field a c]
+sortFields = sortOn (\(Field _ n _) -> n)
+
+-- rename to fieldInfos??
 sortedFields :: [Field a c] -> [(a, Name, c)]
-sortedFields = sortOn snd3 . (fieldInfo <$>)
+sortedFields = (fieldInfo <$>) . sortFields
 
 --
 

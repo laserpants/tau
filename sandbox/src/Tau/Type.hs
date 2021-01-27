@@ -79,6 +79,8 @@ kStar = Fix KStar
 kArr :: Kind -> Kind -> Kind
 kArr t1 t2 = Fix (KArr t1 t2)
 
+infixr 1 `kArr`
+
 tVar :: Kind -> Name -> Type
 tVar k var = Fix (TVar k var)
 

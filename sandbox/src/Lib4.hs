@@ -198,6 +198,26 @@ runTest14 =
 
 test15 = sForall kStar "a" ["Show", "Eq"] (sForall kStar "b" ["Ord"] (sScheme (tGen 1 `tArr` tGen 0 `tArr` tApp (tApp (tCon (kArr kStar (kArr kStar kStar)) "(,)") (tGen 1)) (tGen 0))))
 
+test16 = sForall kStar "a" [] (sForall kStar "b" [] (sScheme (tGen 1 `tArr` tGen 0 `tArr` tApp (tApp (tCon (kArr kStar (kArr kStar kStar)) "(,)") (tGen 1)) (tGen 0))))
+
+test16b = sForall kStar "a" [] (sForall kStar "b" [] (sScheme (tGen 1 `tArr` tGen 0 `tArr` tApp (tApp (tCon (kArr kStar (kArr kStar kStar)) "(,)") (tGen 1)) (tApp (tApp (tCon (kArr kStar (kArr kStar kStar)) "(,)") (tGen 1)) (tGen 0)))))
+
+
+
+-- let { x = (a, b) } = { x = (4, 8) } in a
+
+test17 = 
+    letExpr () (recPat () [Field () "x" (conPat () "(,)" [varPat () "a", varPat () "b"])]) (recExpr () [Field () "x" (conExpr () "(,)" [litExpr () (LInt 4), litExpr () (LInt 8)])]) (varExpr () "a")
+
+runTest17 = 
+    case runInfer2 as (infer2 mempty test17) of
+        Right (tree, sub) -> mapTags (apply sub) tree
+        Left e -> error e
+  where
+    as = [As2 "Some" (sForall kStar "a" [] (sScheme (tGen 0 `tArr` tApp (tCon (kArr kStar kStar) "Option") (tGen 0)))), As2 "(,)" (sForall kStar "a" [] (sForall kStar "b" [] (sScheme (tGen 1 `tArr` tGen 0 `tArr` tApp (tApp (tCon (kArr kStar (kArr kStar kStar)) "(,)") (tGen 1)) (tGen 0)))))]
+
+
+
 
 --
 -- Type assumption
