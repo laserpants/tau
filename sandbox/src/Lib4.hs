@@ -196,7 +196,7 @@ runTest14 =
     as = [As2 "Some" (sForall kStar "a" [] (sScheme (tGen 0 `tArr` tApp (tCon (kArr kStar kStar) "Option") (tGen 0)))), As2 "(,)" (sForall kStar "a" [] (sForall kStar "b" [] (sScheme (tGen 1 `tArr` tGen 0 `tArr` tApp (tApp (tCon (kArr kStar (kArr kStar kStar)) "(,)") (tGen 1)) (tGen 0)))))]
 
 
-test15 = sForall kStar "a" [] (sForall kStar "b" [] (sScheme (tGen 1 `tArr` tGen 0 `tArr` tApp (tApp (tCon (kArr kStar (kArr kStar kStar)) "(,)") (tGen 1)) (tGen 0))))
+test15 = sForall kStar "a" ["Show", "Eq"] (sForall kStar "b" ["Ord"] (sScheme (tGen 1 `tArr` tGen 0 `tArr` tApp (tApp (tCon (kArr kStar (kArr kStar kStar)) "(,)") (tGen 1)) (tGen 0))))
 
 
 --

@@ -36,10 +36,25 @@ instance Pretty Predicate where
     pretty (InClass name ty) = pretty name <+> pretty ty
 
 instance Pretty Scheme where
-    pretty scheme = pretty (show baz)
-      where baz = flip cata scheme $ \case
-              Scheme _        -> []
-              Forall _ _ cs t -> cs:t
+    pretty scheme = xxx <> yyy <> pretty ty
+      where 
+        xxx 
+            | null bound = ""
+            | otherwise  = "forall " <> sep (pretty <$> bound) <> ". "
+
+        yyy =
+            tupled [pretty c <+> pretty n | (n, cs) <- info, c <- cs]
+              <+> "=>"
+
+        bound = fst <$> info
+
+        info = flip cata scheme $ \case
+                  Scheme _         -> []
+                  Forall _ n cs xs -> (n, cs):xs
+
+        ty = flip cata scheme $ \case
+                  Scheme t       -> t
+                  Forall _ _ _ s -> s
 
 --    pretty scheme = pretty (show ns)
 --      where
