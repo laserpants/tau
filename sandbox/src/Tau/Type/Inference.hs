@@ -288,8 +288,8 @@ instance Substitutable Monoset where
 
 instance Substitutable Scheme where
     apply sub = cata $ \case
-        Forall k cs s -> sForall k cs s
-        Scheme t      -> sScheme (apply sub t)
+        Forall k n cs s -> sForall k n cs s
+        Scheme t        -> sScheme (apply sub t)
 
 --patternVars :: Pattern t -> [(Name, t)]
 --patternVars = cata $ \case

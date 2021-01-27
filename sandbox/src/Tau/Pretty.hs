@@ -38,8 +38,8 @@ instance Pretty Predicate where
 instance Pretty Scheme where
     pretty scheme = pretty (show baz)
       where baz = flip cata scheme $ \case
-              Scheme _      -> []
-              Forall _ cs t -> (cs):t
+              Scheme _        -> []
+              Forall _ _ cs t -> cs:t
 
 --    pretty scheme = pretty (show ns)
 --      where

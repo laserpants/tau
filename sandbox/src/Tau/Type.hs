@@ -50,7 +50,7 @@ type Type = Fix TypeF
 
 -- | Base functor for polymorphic type schemes
 data SchemeF a
-    = Forall Kind [Name] a
+    = Forall Kind Name [Name] a
     | Scheme Type
     deriving (Functor, Foldable, Traversable)
 
@@ -123,8 +123,8 @@ tListCon = tCon (kArr kStar kStar) "List"
 tList :: Type -> Type
 tList = tApp tListCon 
 
-sForall :: Kind -> [Name] -> Scheme -> Scheme
-sForall k cs s = Fix (Forall k cs s)
+sForall :: Kind -> Name -> [Name] -> Scheme -> Scheme
+sForall k n cs s = Fix (Forall k n cs s)
 
 sScheme :: Type -> Scheme
 sScheme t = Fix (Scheme t)

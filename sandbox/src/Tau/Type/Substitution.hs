@@ -114,8 +114,8 @@ instance Free Type where
 instance Free Scheme where
     free = cata $ \case
         --Forall _ os s -> unions (free . snd <$> os) `union` s
-        Forall _ _ s -> s
-        Scheme t     -> free t
+        Forall _ _ _ s -> s
+        Scheme t       -> free t
 
 --instance (Substitutable p, Substitutable q) => Substitutable (Clause p (Expr Type p q)) where
 --    apply sub (Clause ps exs e) =

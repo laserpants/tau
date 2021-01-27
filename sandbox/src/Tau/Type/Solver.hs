@@ -145,7 +145,11 @@ generalize env set ty = apply sub t
 
     go (v, k) (t, sub, n) = do
         let cs = filter (predicateType >>> (tVar k v ==)) env
-         in (sForall k (predicateName <$> cs) t, v `mapsTo` tGen n <> sub, succ n)
+         in ( sForall k (nameSupply "" !! (m - n - 1)) (predicateName <$> cs) t
+            , v `mapsTo` tGen n <> sub
+            , succ n )
+
+    m = length vars
 
     vars :: [(Name, Kind)]
     vars = nub . flip cata ty $ \case
@@ -161,13 +165,13 @@ instantiate scheme = do
     pure (replaceBound (reverse ts) ty)
   where
     (ty, kinds) = flip cata scheme $ \case
-        Scheme t           -> (t, [])
-        Forall k _ (t, ks) -> (t, k:ks)
+        Scheme t             -> (t, [])
+        Forall k _ _ (t, ks) -> (t, k:ks)
 
     predicates :: [Type] -> [[Name]]
     predicates ts = flip cata scheme $ \case
-        Scheme{}        -> []
-        Forall _ ps pss -> ps:pss
+        Scheme{}          -> []
+        Forall _ _ ps pss -> ps:pss
 
     replaceBound :: [Type] -> Type -> Type 
     replaceBound ts = cata $ \case

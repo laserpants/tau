@@ -100,7 +100,7 @@ runTest4 =
         Right (tree, sub) -> mapTags (apply sub) tree
         Left e -> error e
   where
-    as = [As2 "id" (sForall kStar [] (sScheme (tGen 0 `tArr` tGen 0))), As2 "(,)" (sForall kStar [] (sForall kStar [] (sScheme (tGen 1 `tArr` tGen 0 `tArr` tApp (tApp (tCon (kArr kStar (kArr kStar kStar)) "(,)") (tGen 1)) (tGen 0)))))]
+    as = [As2 "id" (sForall kStar "a" [] (sScheme (tGen 0 `tArr` tGen 0))), As2 "(,)" (sForall kStar "a" [] (sForall kStar "b" [] (sScheme (tGen 1 `tArr` tGen 0 `tArr` tApp (tApp (tCon (kArr kStar (kArr kStar kStar)) "(,)") (tGen 1)) (tGen 0)))))]
 
 test5 = appExpr () [varExpr () "(,)", appExpr () [varExpr () "id", litExpr () (LInt 5)], appExpr () [varExpr () "id", litExpr () LUnit]]
 runTest5 = 
@@ -108,7 +108,7 @@ runTest5 =
         Right (tree, sub) -> mapTags (apply sub) tree
         Left e -> error e
   where
-    as = [As2 "id" (sForall kStar [] (sScheme (tGen 0 `tArr` tGen 0))), As2 "(,)" (sForall kStar [] (sForall kStar [] (sScheme (tGen 1 `tArr` tGen 0 `tArr` tApp (tApp (tCon (kArr kStar (kArr kStar kStar)) "(,)") (tGen 1)) (tGen 0)))))]
+    as = [As2 "id" (sForall kStar "a" [] (sScheme (tGen 0 `tArr` tGen 0))), As2 "(,)" (sForall kStar "a" [] (sForall kStar "b" [] (sScheme (tGen 1 `tArr` tGen 0 `tArr` tApp (tApp (tCon (kArr kStar (kArr kStar kStar)) "(,)") (tGen 1)) (tGen 0)))))]
 
 test6 = appExpr () [varExpr () "(,)", litExpr () (LInt 5), litExpr () LUnit]
 runTest6 = 
@@ -116,7 +116,7 @@ runTest6 =
         Right (tree, sub) -> mapTags (apply sub) tree
         Left e -> error e
   where
-    as = [As2 "(,)" (sForall kStar [] (sForall kStar [] (sScheme (tGen 1 `tArr` tGen 0 `tArr` tApp (tApp (tCon (kArr kStar (kArr kStar kStar)) "(,)") (tGen 1)) (tGen 0)))))]
+    as = [As2 "(,)" (sForall kStar "a" [] (sForall kStar "b" [] (sScheme (tGen 1 `tArr` tGen 0 `tArr` tApp (tApp (tCon (kArr kStar (kArr kStar kStar)) "(,)") (tGen 1)) (tGen 0)))))]
 
 test7 = letExpr () (varPat () "id") (lamExpr () (varPat () "x") (varExpr () "x")) (conExpr () "(,)" [appExpr () [varExpr () "id", litExpr () (LInt 5)], appExpr () [varExpr () "id", litExpr () LUnit]])
 runTest7 = 
@@ -124,7 +124,7 @@ runTest7 =
         Right (tree, sub) -> mapTags (apply sub) tree
         Left e -> error e
   where
-    as = [As2 "id" (sForall kStar [] (sScheme (tGen 0 `tArr` tGen 0))), As2 "(,)" (sForall kStar [] (sForall kStar [] (sScheme (tGen 1 `tArr` tGen 0 `tArr` tApp (tApp (tCon (kArr kStar (kArr kStar kStar)) "(,)") (tGen 1)) (tGen 0)))))]
+    as = [As2 "id" (sForall kStar "a" [] (sScheme (tGen 0 `tArr` tGen 0))), As2 "(,)" (sForall kStar "a" [] (sForall kStar "b" [] (sScheme (tGen 1 `tArr` tGen 0 `tArr` tApp (tApp (tCon (kArr kStar (kArr kStar kStar)) "(,)") (tGen 1)) (tGen 0)))))]
 
 test8 = ifExpr () (litExpr () (LInt 5)) (litExpr () (LInt 1)) (litExpr () (LInt 2))
 runTest8 = 
@@ -132,7 +132,7 @@ runTest8 =
         Right (tree, sub) -> mapTags (apply sub) tree
         Left e -> error e
   where
-    as = [As2 "id" (sForall kStar [] (sScheme (tGen 0 `tArr` tGen 0))), As2 "(,)" (sForall kStar [] (sForall kStar [] (sScheme (tGen 1 `tArr` tGen 0 `tArr` tApp (tApp (tCon (kArr kStar (kArr kStar kStar)) "(,)") (tGen 1)) (tGen 0)))))]
+    as = [As2 "id" (sForall kStar "a" [] (sScheme (tGen 0 `tArr` tGen 0))), As2 "(,)" (sForall kStar "a" [] (sForall kStar "b" [] (sScheme (tGen 1 `tArr` tGen 0 `tArr` tApp (tApp (tCon (kArr kStar (kArr kStar kStar)) "(,)") (tGen 1)) (tGen 0)))))]
 
 test9 = ifExpr () (litExpr () (LBool True)) (litExpr () (LInt 1)) (litExpr () (LInt 2))
 runTest9 = 
@@ -140,7 +140,7 @@ runTest9 =
         Right (tree, sub) -> mapTags (apply sub) tree
         Left e -> error e
   where
-    as = [As2 "id" (sForall kStar [] (sScheme (tGen 0 `tArr` tGen 0))), As2 "(,)" (sForall kStar [] (sForall kStar [] (sScheme (tGen 1 `tArr` tGen 0 `tArr` tApp (tApp (tCon (kArr kStar (kArr kStar kStar)) "(,)") (tGen 1)) (tGen 0)))))]
+    as = [As2 "id" (sForall kStar "a" [] (sScheme (tGen 0 `tArr` tGen 0))), As2 "(,)" (sForall kStar "a" [] (sForall kStar "b" [] (sScheme (tGen 1 `tArr` tGen 0 `tArr` tApp (tApp (tCon (kArr kStar (kArr kStar kStar)) "(,)") (tGen 1)) (tGen 0)))))]
 
 test10 = recExpr () [Field () "name" (litExpr () (LString "Bob")), Field () "id" (litExpr () (LInt 10)), Field () "admin" (litExpr () (LBool True))]
 runTest10 = 
@@ -148,7 +148,7 @@ runTest10 =
         Right (tree, sub) -> mapTags (apply sub) tree
         Left e -> error e
   where
-    as = [As2 "id" (sForall kStar [] (sScheme (tGen 0 `tArr` tGen 0))), As2 "(,)" (sForall kStar [] (sForall kStar [] (sScheme (tGen 1 `tArr` tGen 0 `tArr` tApp (tApp (tCon (kArr kStar (kArr kStar kStar)) "(,)") (tGen 1)) (tGen 0)))))]
+    as = [As2 "id" (sForall kStar "a" [] (sScheme (tGen 0 `tArr` tGen 0))), As2 "(,)" (sForall kStar "a" [] (sForall kStar "b" [] (sScheme (tGen 1 `tArr` tGen 0 `tArr` tApp (tApp (tCon (kArr kStar (kArr kStar kStar)) "(,)") (tGen 1)) (tGen 0)))))]
 
 test11 = 
     letExpr () (recPat () [Field () "name" (varPat () "x"), Field () "id" (varPat () "id")]) 
@@ -159,7 +159,7 @@ runTest11 =
         Right (tree, sub) -> mapTags (apply sub) tree
         Left e -> error e
   where
-    as = [] -- As2 "id" (sForall kStar [] (sScheme (tGen 0 `tArr` tGen 0))), As2 "(,)" (sForall kStar [] (sForall kStar [] (sScheme (tGen 1 `tArr` tGen 0 `tArr` tApp (tApp (tCon (kArr kStar (kArr kStar kStar)) "(,)") (tGen 1)) (tGen 0)))))]
+    as = [] 
 
 
 test12 = 
@@ -171,7 +171,7 @@ runTest12 =
         Right (tree, sub) -> mapTags (apply sub) tree
         Left e -> error e
   where
-    as = [As2 "(,)" (sForall kStar [] (sForall kStar [] (sScheme (tGen 1 `tArr` tGen 0 `tArr` tApp (tApp (tCon (kArr kStar (kArr kStar kStar)) "(,)") (tGen 1)) (tGen 0)))))]
+    as = [As2 "(,)" (sForall kStar "a" [] (sForall kStar "b" [] (sScheme (tGen 1 `tArr` tGen 0 `tArr` tApp (tApp (tCon (kArr kStar (kArr kStar kStar)) "(,)") (tGen 1)) (tGen 0)))))]
 
 
 test13 = 
@@ -182,7 +182,7 @@ runTest13 =
         Right (tree, sub) -> mapTags (apply sub) tree
         Left e -> error e
   where
-    as = [As2 "Some" (sForall kStar [] (sScheme (tGen 0 `tArr` tApp (tCon (kArr kStar kStar) "Option") (tGen 0)))), As2 "(,)" (sForall kStar [] (sForall kStar [] (sScheme (tGen 1 `tArr` tGen 0 `tArr` tApp (tApp (tCon (kArr kStar (kArr kStar kStar)) "(,)") (tGen 1)) (tGen 0)))))]
+    as = [As2 "Some" (sForall kStar "a" [] (sScheme (tGen 0 `tArr` tApp (tCon (kArr kStar kStar) "Option") (tGen 0)))), As2 "(,)" (sForall kStar "a" [] (sForall kStar "b" [] (sScheme (tGen 1 `tArr` tGen 0 `tArr` tApp (tApp (tCon (kArr kStar (kArr kStar kStar)) "(,)") (tGen 1)) (tGen 0)))))]
 
 
 test14 = 
@@ -193,10 +193,10 @@ runTest14 =
         Right (tree, sub) -> mapTags (apply sub) tree
         Left e -> error e
   where
-    as = [As2 "Some" (sForall kStar [] (sScheme (tGen 0 `tArr` tApp (tCon (kArr kStar kStar) "Option") (tGen 0)))), As2 "(,)" (sForall kStar [] (sForall kStar [] (sScheme (tGen 1 `tArr` tGen 0 `tArr` tApp (tApp (tCon (kArr kStar (kArr kStar kStar)) "(,)") (tGen 1)) (tGen 0)))))]
+    as = [As2 "Some" (sForall kStar "a" [] (sScheme (tGen 0 `tArr` tApp (tCon (kArr kStar kStar) "Option") (tGen 0)))), As2 "(,)" (sForall kStar "a" [] (sForall kStar "b" [] (sScheme (tGen 1 `tArr` tGen 0 `tArr` tApp (tApp (tCon (kArr kStar (kArr kStar kStar)) "(,)") (tGen 1)) (tGen 0)))))]
 
 
-test15 = (sForall kStar [] (sForall kStar [] (sScheme (tGen 1 `tArr` tGen 0 `tArr` tApp (tApp (tCon (kArr kStar (kArr kStar kStar)) "(,)") (tGen 1)) (tGen 0)))))
+test15 = sForall kStar "a" [] (sForall kStar "b" [] (sScheme (tGen 1 `tArr` tGen 0 `tArr` tApp (tApp (tCon (kArr kStar (kArr kStar kStar)) "(,)") (tGen 1)) (tGen 0))))
 
 
 --
@@ -235,8 +235,8 @@ instantiate2 scheme = do
     pure (replaceBound (reverse ts) ty, [])
   where
     (ty, kinds) = flip cata scheme $ \case
-        Scheme t           -> (t, [])
-        Forall k _ (t, ks) -> (t, k:ks)
+        Scheme t             -> (t, [])
+        Forall k _ _ (t, ks) -> (t, k:ks)
 
     replaceBound :: [Type] -> Type -> Type 
     replaceBound ts = cata $ \case
