@@ -9,13 +9,11 @@ module Tau.Type.Class where
 
 import Data.Types.Injective
 import Control.Monad.Except
-import Data.Text.Prettyprint.Doc
 import Control.Monad.Extra (allM, (||^))
 import Data.List (partition, (\\))
 import Control.Arrow (first, second)
 import Data.Either (isRight)
 import Data.Either.Combinators (rightToMaybe)
-import Tau.Pretty
 import Tau.Type
 import Tau.Env (Env(..))
 import Tau.Expr
@@ -135,12 +133,7 @@ reduce :: ClassEnv a -> [Predicate] -> Either a [Predicate]
 reduce env cls = toHeadNormalForm env cls >>= simplify env 
 
 
--- ============================================================================
--- == Pretty Printing
--- ============================================================================
 
-instance Pretty Predicate where
-    pretty (InClass name ty) = pretty name <+> pretty ty
 
 
 

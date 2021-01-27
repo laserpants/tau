@@ -19,6 +19,12 @@ instance Prim Int where
         LInt lit -> lit
         _        -> 0
 
+instance Prim Integer where
+    toLiteral = LInteger
+    primitive = \case
+        LInteger lit -> lit
+        _            -> 0
+
 instance Prim Double where
     toLiteral = LFloat
     primitive = \case

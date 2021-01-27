@@ -27,6 +27,7 @@ import Tau.Type.Class
 import Tau.Type.Substitution
 import Tau.Type.Inference
 import Tau.Util
+import Tau.Pretty
 import qualified Data.Map.Strict as Map
 import qualified Data.Text as Text
 import qualified Tau.Type.Unification as Uni
@@ -66,10 +67,13 @@ toTree3 = cata $ \case
     field (Field _ k v) = Node (k <> " = " <> rootLabel v) []
 
     fromLit = pack . show 
-    node t ex = Node (ex <> " : " <> prettyText t)
+    node t ex = Node (ex <> " : " <> pp t)
 
-    prettyText = 
-        renderStrict . layoutPretty defaultLayoutOptions . pretty
+pp :: (Pretty p) => p -> Text
+pp = prettyPrint 
+
+--    prettyText = 
+--        renderStrict . layoutPretty defaultLayoutOptions . pretty
 
 
 test1 = lamExpr () (varPat () "x") (varExpr () "x")
@@ -192,6 +196,7 @@ runTest14 =
     as = [As2 "Some" (sForall kStar [] (sScheme (tGen 0 `tArr` tApp (tCon (kArr kStar kStar) "Option") (tGen 0)))), As2 "(,)" (sForall kStar [] (sForall kStar [] (sScheme (tGen 1 `tArr` tGen 0 `tArr` tApp (tApp (tCon (kArr kStar (kArr kStar kStar)) "(,)") (tGen 1)) (tGen 0)))))]
 
 
+test15 = (sForall kStar [] (sForall kStar [] (sScheme (tGen 1 `tArr` tGen 0 `tArr` tApp (tApp (tCon (kArr kStar (kArr kStar kStar)) "(,)") (tGen 1)) (tGen 0)))))
 
 
 --

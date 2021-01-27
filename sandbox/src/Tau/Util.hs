@@ -16,6 +16,9 @@ module Tau.Util
   , first3M
   , second3M
   , third3M
+  , integerToText
+  , intToText
+  , prettyPrint
   ) where
 
 import Control.Monad
@@ -24,11 +27,16 @@ import Data.Functor.Foldable
 import Data.Ord.Deriving
 import Data.Set.Monad (Set)
 import Data.Text (Text, pack)
+import Data.Text.Lazy.Builder (toLazyText)
+import Data.Text.Lazy.Builder.Int (decimal)
+import Data.Text.Prettyprint.Doc
+import Data.Text.Prettyprint.Doc.Render.Text
 import Data.Types.Injective
 import Debug.Trace
 import System.IO.Unsafe
 import Text.Show.Deriving
 import qualified Data.Set.Monad as Set
+import qualified Data.Text.Lazy as Text (toStrict)
 
 type Name = Text
 
@@ -73,3 +81,12 @@ third3M :: (Monad m) => (c -> m c1) -> (a, b, c) -> m (a, b, c1)
 third3M f (a, b, c) = do
     c1 <- f c
     pure (a, b, c1)
+
+integerToText :: Integer -> Text
+integerToText = Text.toStrict . toLazyText . decimal
+
+intToText :: Int -> Text
+intToText = integerToText . fromIntegral
+
+prettyPrint :: (Pretty p) => p -> Text
+prettyPrint = renderStrict . layoutPretty defaultLayoutOptions . pretty

@@ -12,7 +12,6 @@ import Data.Functor.Foldable
 import Data.List (nub)
 import Data.Maybe (fromMaybe)
 import Data.Set.Monad (Set)
-import Data.Text.Prettyprint.Doc
 import Tau.Env
 import Tau.Util
 import qualified Data.Set.Monad as Set
