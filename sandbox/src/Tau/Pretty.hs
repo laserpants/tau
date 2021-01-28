@@ -95,7 +95,7 @@ prettyRecord fields =
     field (Field _ key val) = 
         pretty key <+> "=" <+> val
 
-instance Pretty (Op (Expr t p q)) where
+instance Pretty (Op (PatternExpr t)) where
     pretty op = case op of
         OEq    a b -> binOp a b "=="
         ONEq   a b -> binOp a b "/="
@@ -121,7 +121,7 @@ instance Pretty (Op (Expr t p q)) where
                      <+> symb 
                      <+> subOp AssocR b
 
-        subOp :: Assoc -> Expr t p q -> Doc a
+        subOp :: Assoc -> PatternExpr t -> Doc a
         subOp assoc a = 
             let par ops = 
                   case compare (opPrecedence op) (opPrecedence ops) of
@@ -137,7 +137,7 @@ instance Pretty (Op (Expr t p q)) where
                  EOp _ ops | par ops -> parens (pretty a)
                  _                   -> pretty a
 
-instance Pretty (Expr t p q) where
+instance Pretty (PatternExpr t) where
     pretty = para $ \case
         EVar _ var     -> pretty var
         ECon _ con []  -> pretty con
@@ -151,7 +151,7 @@ instance Pretty (Expr t p q) where
         EOp  _ op      -> pretty (fst <$> op)
         ERec _ fields  -> prettyRecord fields
       where
-        app :: (Expr t p q, Doc a) -> [Doc a] -> [Doc a]
+        app :: (PatternExpr t, Doc a) -> [Doc a] -> [Doc a]
         app a = (rhs :)
           where
             rhs = flip cata (fst a) $ \case 
@@ -159,18 +159,68 @@ instance Pretty (Expr t p q) where
                 ECon{} -> parens (snd a)
                 _      -> snd a
 
-prettyMatch :: [(Expr t p q, Doc a)] -> [Clause p (Expr t p q, Doc a)] -> Doc a
+prettyMatch 
+  :: [(PatternExpr t, Doc a)] 
+  -> [Clause (Pattern t) (PatternExpr t, Doc a)] 
+  -> Doc a
 prettyMatch exs eqs = 
-    "match" <+> hsep (punctuate comma (snd <$> exs)) <+> "with"
+    group (nest 2 (vsep 
+        [ "match" <+> hsep (punctuate comma (snd <$> exs)) <+> "with"
+        , case clause <$> zip lhss rhss of
+              []   -> ""
+              c:cs -> flatAlt (vsep ((pipe <+>) <$> c:cs)) 
+                              (hsep (c:((pipe <+>) <$> cs)))
+        ]))
+  where
+    (lhss, rhss) = unzip (split <$> eqs)
+    colWidth     = maximum (length . show <$> lhss)
 
-prettyClause :: Clause p x -> Doc a
-prettyClause (Clause ps exs e) = ""
+    clause (lhs, expr) =
+        flatAlt (fillBreak colWidth lhs) lhs <+> "=>" <+> expr
 
-prettyLet :: q -> (Expr t p q, Doc a) -> (Expr t p q, Doc a) -> Doc a
-prettyLet p e1 e = undefined
+    split (Clause ps exs e) = (commaSep ps <> when, pretty (fst e))
+      where
+        when | null exs  = ""
+             | otherwise = space <> "when" <+> commaSep (fst <$> exs)
 
-prettyLam :: q -> (Expr t p q, Doc a) -> Doc a
-prettyLam p e1 = undefined
+commaSep :: (Pretty p) => [p] -> Doc a
+commaSep docs = hsep (punctuate comma (pretty <$> docs))
 
-prettyIf :: (Expr t p q, Doc a) -> (Expr t p q, Doc a) -> (Expr t p q, Doc a) -> Doc a
-prettyIf c e1 e2 = undefined
+prettyLet 
+  :: Pattern t 
+  -> (PatternExpr t, Doc a) 
+  -> (PatternExpr t, Doc a) 
+  -> Doc a
+prettyLet p e1 e = 
+    group (vsep 
+      [ nest 2 (vsep 
+        [ "let"
+        , pretty p <+> equals <+> expr
+        , nest 2 (vsep ["in", body])
+        ])
+      ])
+  where
+    expr = pretty (fst e1)
+    body = pretty (fst e)
+
+prettyLam :: Pattern t -> (PatternExpr t, Doc a) -> Doc a
+prettyLam p e1 = 
+    group (nest 2 (vsep [backslash <> pattern_ p <+> "=>", pretty (fst e1)]))
+  where
+    pattern_ :: Pattern t -> Doc a
+    pattern_ p = flip cata p $ \case
+        PCon _ _ [] -> pretty p
+        PCon{}      -> parens (pretty p)
+        _           -> pretty p
+
+prettyIf 
+  :: (PatternExpr t, Doc a) 
+  -> (PatternExpr t, Doc a) 
+  -> (PatternExpr t, Doc a) 
+  -> Doc a
+prettyIf c e1 e2 = 
+    group (nest 2 (vsep [if_, then_, else_]))
+  where
+    if_   = "if"   <+> pretty (fst c)
+    then_ = "then" <+> pretty (fst e1)
+    else_ = "else" <+> pretty (fst e2)

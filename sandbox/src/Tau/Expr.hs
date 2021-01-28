@@ -103,6 +103,8 @@ data ExprF t p q a
     | EMat t [a] [Clause p a] -- ^ Match expression
     | EOp  t (Op a)           -- ^ Operator
     | ERec t [Field t a]      -- ^ Record
+--    | EFun t [Clause p a]   -- ^ Lambda-match
+--    | ELFn t Name [q] a     -- ^ Let f x = expr 
 --    | EAnn u a
     deriving (Functor, Foldable, Traversable)
 
@@ -114,8 +116,10 @@ deriveEq1   ''ExprF
 -- | Core language expression AST
 type Expr t p q = Fix (ExprF t p q)
 
+-- | Expression tree with unabridged patterns
 type PatternExpr t = Expr t (Pattern t) (Pattern t)
 
+-- | Return the precedence for a binary operator
 opPrecedence :: Op a -> Int
 opPrecedence = \case
     OEq    _ _ -> 4
@@ -136,10 +140,16 @@ opPrecedence = \case
     OFPipe _ _ -> 1 
     OBPipe _ _ -> 1
     ODot   _ _ -> 0
+    _          -> error "Not a binary operator"
 
-data Assoc = AssocL | AssocR | AssocN
+-- | Operator associativity
+data Assoc 
+    = AssocL    -- ^ Operator is left-associative 
+    | AssocR    -- ^ Operator is right-associative 
+    | AssocN    -- ^ Operator is non-associative 
     deriving (Eq)
 
+-- | Return the associativity for a binary operator
 opAssoc :: Op a -> Assoc
 opAssoc = \case
     OEq    _ _ -> AssocN
@@ -160,6 +170,7 @@ opAssoc = \case
     OFPipe _ _ -> AssocL 
     OBPipe _ _ -> AssocR
     ODot   _ _ -> AssocL
+    _          -> error "Not a binary operator"
 
 
 

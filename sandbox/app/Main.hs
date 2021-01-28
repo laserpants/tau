@@ -1792,30 +1792,48 @@ import qualified Data.Set as PlainSet
 --   --      Cons x xs -> f x:xs
 
 
--- a ^ (b * c) => a ^ (b * c)
-testOp1 = "a ^ (b * c)" == show (pretty $ opExpr () (OPow (varExpr () "a") (opExpr () (OMul (varExpr () "b") (varExpr () "c")))))
--- a - (b - c) => a - (b - c)
-testOp2 = "a - (b - c)" == show (pretty $ opExpr () (OSub (varExpr () "a") (opExpr () (OSub (varExpr () "b") (varExpr () "c")))))
--- (a - b) - c => a - b - c
-testOp3 = "a - b - c" == show (pretty $ opExpr () (OSub (opExpr () (OSub (varExpr () "a") (varExpr () "b"))) (varExpr () "c")))
--- (a * b) - c => a * b - c
-testOp4 = "a * b - c" == show (pretty $ opExpr () (OSub (opExpr () (OMul (varExpr () "a") (varExpr () "b"))) (varExpr () "c")))
--- (a > b) == c => (a > b) == c
-testOp5 = "(a > b) == c" == show (pretty $ opExpr () (OEq (opExpr () (OGt (varExpr () "a") (varExpr () "b"))) (varExpr () "c")))
--- a == (b == c) => a == (b == c)
-testOp6 = "a == (b == c)" == show (pretty $ opExpr () (OEq (varExpr () "a") (opExpr () (OEq (varExpr () "b") (varExpr () "c")))))
--- a - b + c => a - b + c
-testOp7 = "a - b + c" == show (pretty $ opExpr () (OAdd (opExpr () (OSub (varExpr () "a") (varExpr () "b"))) (varExpr () "c")))
--- a - (b + c) => a - (b + c)
-testOp8 = "a - (b + c)" == show (pretty $ opExpr () (OSub (varExpr () "a") (opExpr () (OAdd (varExpr () "b") (varExpr () "c")))))
--- a ^ (b ^ c) => a ^ b ^ c
-testOp9 = "a ^ b ^ c" == show (pretty $ opExpr () (OPow (varExpr () "a") (opExpr () (OPow (varExpr () "b") (varExpr () "c")))))
+---- a ^ (b * c) => a ^ (b * c)
+--testOp1 = "a ^ (b * c)" == show (pretty $ opExpr () (OPow (varExpr () "a") (opExpr () (OMul (varExpr () "b") (varExpr () "c")))))
+---- a - (b - c) => a - (b - c)
+--testOp2 = "a - (b - c)" == show (pretty $ opExpr () (OSub (varExpr () "a") (opExpr () (OSub (varExpr () "b") (varExpr () "c")))))
+---- (a - b) - c => a - b - c
+--testOp3 = "a - b - c" == show (pretty $ opExpr () (OSub (opExpr () (OSub (varExpr () "a") (varExpr () "b"))) (varExpr () "c")))
+---- (a * b) - c => a * b - c
+--testOp4 = "a * b - c" == show (pretty $ opExpr () (OSub (opExpr () (OMul (varExpr () "a") (varExpr () "b"))) (varExpr () "c")))
+---- (a > b) == c => (a > b) == c
+--testOp5 = "(a > b) == c" == show (pretty $ opExpr () (OEq (opExpr () (OGt (varExpr () "a") (varExpr () "b"))) (varExpr () "c")))
+---- a == (b == c) => a == (b == c)
+--testOp6 = "a == (b == c)" == show (pretty $ opExpr () (OEq (varExpr () "a") (opExpr () (OEq (varExpr () "b") (varExpr () "c")))))
+---- a - b + c => a - b + c
+--testOp7 = "a - b + c" == show (pretty $ opExpr () (OAdd (opExpr () (OSub (varExpr () "a") (varExpr () "b"))) (varExpr () "c")))
+---- a - (b + c) => a - (b + c)
+--testOp8 = "a - (b + c)" == show (pretty $ opExpr () (OSub (varExpr () "a") (opExpr () (OAdd (varExpr () "b") (varExpr () "c")))))
+---- a ^ (b ^ c) => a ^ b ^ c
+--testOp9 = "a ^ b ^ c" == show (pretty $ opExpr () (OPow (varExpr () "a") (opExpr () (OPow (varExpr () "b") (varExpr () "c")))))
 -- (a ^ b) ^ c => (a ^ b) ^ c
-testOp10 = "(a ^ b) ^ c" == show (pretty $ opExpr () (OPow (opExpr () (OPow (varExpr () "a") (varExpr () "b"))) (varExpr () "c")))
+expr10 :: Expr () (Pattern ()) (Pattern ())
+expr10 = opExpr () (OPow (opExpr () (OPow (varExpr () "a") (varExpr () "b"))) (varExpr () "c"))
+testOp10 = "(a ^ b) ^ c" == show (pretty expr10)
 -- (a == b) == c => (a == b) == c
-testOp11 = "(a == b) == c" == show (pretty $ opExpr () (OEq (opExpr () (OEq (varExpr () "a") (varExpr () "b"))) (varExpr () "c")))
+expr11 :: Expr () (Pattern ()) (Pattern ())
+expr11 = opExpr () (OEq (opExpr () (OEq (varExpr () "a") (varExpr () "b"))) (varExpr () "c"))
+testOp11 = "(a == b) == c" == show (pretty expr11)
 
-opTests = and [testOp1, testOp2, testOp3, testOp4, testOp5, testOp6, testOp7, testOp8, testOp9, testOp10, testOp11]
+--opTests = and [testOp1, testOp2, testOp3, testOp4, testOp5, testOp6, testOp7, testOp8, testOp9, testOp10, testOp11]
+
+expr12 = letExpr () (varPat () "x") (ifExpr () (varExpr () "a") (varExpr () "b") (varExpr () "c")) (varExpr () "zz")
+
+expr13 :: Expr () (Pattern ()) (Pattern ())
+expr13 = matExpr () [varExpr () "x", varExpr () "y"] [Clause [varPat () "x", varPat () "y"] [eqOp () (varExpr () "x") (litExpr () (LInt 5))] (varExpr () "e1"), Clause [conPat () "Just" [varPat () "stuff"]] [] (varExpr () "e2"), Clause [varPat () "zzz"] [] (varExpr () "e2")]
+
+
+expr14 :: PatternExpr ()
+--expr14 = lamExpr () (conPat () "Just" [varPat () "x"]) (varExpr () "x")
+expr14 = lamExpr () (varPat () "x") (varExpr () "x")
+
+
+expr15 :: PatternExpr ()
+expr15 = letExpr () (varPat () "fun") (varExpr () "zz") (lamExpr () (varPat () "y") (lamExpr () (varPat () "x") (matExpr () [varExpr () "x", varExpr () "y"] [Clause [varPat () "x", varPat () "y"] [eqOp () (varExpr () "x") (litExpr () (LInt 5))] (varExpr () "e1"), Clause [conPat () "Just" [varPat () "stuff"]] [] (varExpr () "e2"), Clause [varPat () "zzz"] [] (varExpr () "e3"), Clause [varPat () "zzz"] [] (varExpr () "e3")])))
 
 
 main :: IO ()
