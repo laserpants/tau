@@ -124,7 +124,10 @@ instance Pretty (Op (Expr t p q)) where
         subOp :: Assoc -> Expr t p q -> Doc a
         subOp assoc a = 
             let par ops = 
-                  opPrecedence op >= opPrecedence ops && assoc /= opAssoc op
+                  case compare (opPrecedence op) (opPrecedence ops) of
+                      LT -> False
+                      GT -> True
+                      EQ -> assoc /= opAssoc op
              in flip cata a $ 
                \case
                  EApp{}              -> parens (pretty a)
@@ -141,9 +144,9 @@ instance Pretty (Expr t p q) where
         ECon _ con exs -> pretty con <+> hsep (foldr app [] exs)
         ELit _ lit     -> pretty lit
         EApp _ exs     -> hsep (foldr app [] exs)
-        ELet _ p e1 e2 -> ""
-        ELam _ p e1    -> ""
-        EIf  _ c e1 e2 -> ""
+        ELet _ p e1 e2 -> prettyLet p e1 e2
+        ELam _ p e1    -> prettyLam p e1 
+        EIf  _ c e1 e2 -> prettyIf c e1 e2
         EMat _ exs eqs -> prettyMatch exs eqs
         EOp  _ op      -> pretty (fst <$> op)
         ERec _ fields  -> prettyRecord fields
@@ -162,3 +165,12 @@ prettyMatch exs eqs =
 
 prettyClause :: Clause p x -> Doc a
 prettyClause (Clause ps exs e) = ""
+
+prettyLet :: q -> (Expr t p q, Doc a) -> (Expr t p q, Doc a) -> Doc a
+prettyLet p e1 e = undefined
+
+prettyLam :: q -> (Expr t p q, Doc a) -> Doc a
+prettyLam p e1 = undefined
+
+prettyIf :: (Expr t p q, Doc a) -> (Expr t p q, Doc a) -> (Expr t p q, Doc a) -> Doc a
+prettyIf c e1 e2 = undefined

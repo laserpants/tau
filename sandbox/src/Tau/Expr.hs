@@ -91,7 +91,7 @@ data Op a
 deriveShow1 ''Op
 deriveEq1   ''Op
 
--- | Base functor for core language expression tree
+-- | Base functor for core language expression AST
 data ExprF t p q a
     = EVar t Name             -- ^ Variable
     | ECon t Name [a]         -- ^ Constructor
@@ -111,7 +111,7 @@ deriveEq    ''ExprF
 deriveShow1 ''ExprF
 deriveEq1   ''ExprF
 
--- | Core language expression tree
+-- | Core language expression AST
 type Expr t p q = Fix (ExprF t p q)
 
 type PatternExpr t = Expr t (Pattern t) (Pattern t)

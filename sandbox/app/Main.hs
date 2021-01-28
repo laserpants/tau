@@ -1792,5 +1792,31 @@ import qualified Data.Set as PlainSet
 --   --      Cons x xs -> f x:xs
 
 
+-- a ^ (b * c) => a ^ (b * c)
+testOp1 = "a ^ (b * c)" == show (pretty $ opExpr () (OPow (varExpr () "a") (opExpr () (OMul (varExpr () "b") (varExpr () "c")))))
+-- a - (b - c) => a - (b - c)
+testOp2 = "a - (b - c)" == show (pretty $ opExpr () (OSub (varExpr () "a") (opExpr () (OSub (varExpr () "b") (varExpr () "c")))))
+-- (a - b) - c => a - b - c
+testOp3 = "a - b - c" == show (pretty $ opExpr () (OSub (opExpr () (OSub (varExpr () "a") (varExpr () "b"))) (varExpr () "c")))
+-- (a * b) - c => a * b - c
+testOp4 = "a * b - c" == show (pretty $ opExpr () (OSub (opExpr () (OMul (varExpr () "a") (varExpr () "b"))) (varExpr () "c")))
+-- (a > b) == c => (a > b) == c
+testOp5 = "(a > b) == c" == show (pretty $ opExpr () (OEq (opExpr () (OGt (varExpr () "a") (varExpr () "b"))) (varExpr () "c")))
+-- a == (b == c) => a == (b == c)
+testOp6 = "a == (b == c)" == show (pretty $ opExpr () (OEq (varExpr () "a") (opExpr () (OEq (varExpr () "b") (varExpr () "c")))))
+-- a - b + c => a - b + c
+testOp7 = "a - b + c" == show (pretty $ opExpr () (OAdd (opExpr () (OSub (varExpr () "a") (varExpr () "b"))) (varExpr () "c")))
+-- a - (b + c) => a - (b + c)
+testOp8 = "a - (b + c)" == show (pretty $ opExpr () (OSub (varExpr () "a") (opExpr () (OAdd (varExpr () "b") (varExpr () "c")))))
+-- a ^ (b ^ c) => a ^ b ^ c
+testOp9 = "a ^ b ^ c" == show (pretty $ opExpr () (OPow (varExpr () "a") (opExpr () (OPow (varExpr () "b") (varExpr () "c")))))
+-- (a ^ b) ^ c => (a ^ b) ^ c
+testOp10 = "(a ^ b) ^ c" == show (pretty $ opExpr () (OPow (opExpr () (OPow (varExpr () "a") (varExpr () "b"))) (varExpr () "c")))
+-- (a == b) == c => (a == b) == c
+testOp11 = "(a == b) == c" == show (pretty $ opExpr () (OEq (opExpr () (OEq (varExpr () "a") (varExpr () "b"))) (varExpr () "c")))
+
+opTests = and [testOp1, testOp2, testOp3, testOp4, testOp5, testOp6, testOp7, testOp8, testOp9, testOp10, testOp11]
+
+
 main :: IO ()
 main = pure ()
