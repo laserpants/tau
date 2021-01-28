@@ -73,6 +73,7 @@ data Op a
     | OSub a a                -- ^ Subtraction operator (-)
     | OMul a a                -- ^ Multiplication operator (*)
     | ODiv a a                -- ^ Division operator (/)
+    | OPow a a                -- ^ Exponentiation operator (^)
     | OLt  a a                -- ^ Strictly less-than operator (<)
     | OGt  a a                -- ^ Strictly greater-than operator (>)
     | OLtE a a                -- ^ Less-than-or-equal-to operator (<=)
@@ -114,6 +115,53 @@ deriveEq1   ''ExprF
 type Expr t p q = Fix (ExprF t p q)
 
 type PatternExpr t = Expr t (Pattern t) (Pattern t)
+
+opPrecedence :: Op a -> Int
+opPrecedence = \case
+    OEq    _ _ -> 4
+    ONEq   _ _ -> 4    
+    OAnd   _ _ -> 3   
+    OOr    _ _ -> 2   
+    OAdd   _ _ -> 6    
+    OSub   _ _ -> 6
+    OMul   _ _ -> 7
+    ODiv   _ _ -> 7
+    OPow   _ _ -> 8
+    OLt    _ _ -> 4
+    OGt    _ _ -> 4
+    OLtE   _ _ -> 4    
+    OGtE   _ _ -> 4
+    OLArr  _ _ -> 1   
+    ORArr  _ _ -> 1   
+    OFPipe _ _ -> 1 
+    OBPipe _ _ -> 1
+    ODot   _ _ -> 0
+
+data Assoc = AssocL | AssocR | AssocN
+    deriving (Eq)
+
+opAssoc :: Op a -> Assoc
+opAssoc = \case
+    OEq    _ _ -> AssocN
+    ONEq   _ _ -> AssocN    
+    OAnd   _ _ -> AssocR
+    OOr    _ _ -> AssocR   
+    OAdd   _ _ -> AssocL    
+    OSub   _ _ -> AssocL
+    OMul   _ _ -> AssocL
+    ODiv   _ _ -> AssocL
+    OPow   _ _ -> AssocR
+    OLt    _ _ -> AssocN
+    OGt    _ _ -> AssocN
+    OLtE   _ _ -> AssocN    
+    OGtE   _ _ -> AssocN
+    OLArr  _ _ -> AssocR   
+    ORArr  _ _ -> AssocR   
+    OFPipe _ _ -> AssocL 
+    OBPipe _ _ -> AssocR
+    ODot   _ _ -> AssocL
+
+
 
 -- ////////////////////////////////////////////////////////////////////////////
 
