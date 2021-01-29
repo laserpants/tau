@@ -172,7 +172,18 @@ opAssoc = \case
     ODot   _ _ -> AssocL
     _          -> error "Not a binary operator"
 
-
+exprTag :: Expr t (Pattern t) (Pattern t) -> t
+exprTag = cata $ \case
+    EVar t _       -> t
+    ECon t _ _     -> t
+    ELit t _       -> t
+    EApp t _       -> t
+    ELet t _ _ _   -> t
+    ELam t _ _     -> t
+    EIf  t _ _ _   -> t
+    EMat t _ _     -> t
+    EOp  t _       -> t
+    ERec t _       -> t
 
 -- ////////////////////////////////////////////////////////////////////////////
 

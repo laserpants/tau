@@ -1836,6 +1836,18 @@ expr15 :: PatternExpr ()
 expr15 = letExpr () (varPat () "fun") (varExpr () "zz") (lamExpr () (varPat () "y") (lamExpr () (varPat () "x") (matExpr () [varExpr () "x", varExpr () "y"] [Clause [varPat () "x", varPat () "y"] [eqOp () (varExpr () "x") (litExpr () (LInt 5))] (varExpr () "e1"), Clause [conPat () "Just" [varPat () "stuff"]] [] (varExpr () "e2"), Clause [varPat () "zzz"] [] (varExpr () "e3"), Clause [varPat () "zzz"] [] (varExpr () "e3")])))
 
 
+expr16 :: PatternExpr ()
+expr16 = conExpr () "(,)" [litExpr () (LInt 5), litExpr () (LBool True)]
+
+expr17 :: PatternExpr ()
+expr17 = conExpr () "{id,name}" [litExpr () (LInt 5), litExpr () (LString "Bob")]
+
+expr18 :: PatternExpr ()
+expr18 = letExpr () (conPat () "(,)" [varPat () "x", varPat () "y"]) (varExpr () "y") (conExpr () "(,)" [varExpr () "x", varExpr () "y"])
+
+expr19 :: PatternExpr ()
+expr19 = letExpr () (recPat () [Field () "id" (varPat () "id"), Field () "name" (varPat () "x")]) (varExpr () "y") (recExpr () [Field () "id" (litExpr () (LInt 5)), Field () "name" (litExpr () (LString "Bob"))])
+
 testtype1 = tApp (tApp (tCon (kArr kStar (kArr kStar kStar)) "{id,name}") tInt) tString
 
 testtype2 = tApp (tApp (tCon (kArr kStar (kArr kStar kStar)) "(,)") tInt) tString
@@ -1843,6 +1855,8 @@ testtype2 = tApp (tApp (tCon (kArr kStar (kArr kStar kStar)) "(,)") tInt) tStrin
 testtype3 = tApp (tApp (tCon (kArr kStar (kArr kStar kStar)) "{first,second}") tInt) (tApp (tApp (tCon (kArr kStar (kArr kStar kStar)) "(,)") tInt) tString)
 
 testtype4 = tApp (tApp (tCon (kArr kStar (kArr kStar kStar)) "(,)") tInt) tString
+
+testtype5 = tArr tInt (tApp (tApp (tCon (kArr kStar (kArr kStar kStar)) "(,)") tInt) tString)
 
 
 main :: IO ()

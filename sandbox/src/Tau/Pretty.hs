@@ -5,7 +5,7 @@ module Tau.Pretty where
 
 import Control.Arrow ((>>>), (<<<))
 import Data.List (sortOn)
-import Data.Maybe (fromJust)
+import Data.Maybe (fromJust, maybeToList)
 import Data.Text.Prettyprint.Doc
 import Tau.Expr
 import Tau.Type
@@ -16,30 +16,53 @@ import qualified Data.Text as Text
 commaSep :: [Doc a] -> Doc a
 commaSep = hsep . punctuate comma 
 
-sugared :: Type -> Maybe (Doc a)
-sugared ty =
-   case args ty of
-      (a:as) | boundedBy '(' ')' a -> Just (prettyTupleType as)
-      (a:as) | boundedBy '{' '}' a -> Just (prettyRecordType (project a) as)
-      _                            -> Nothing
+prettyTuple :: [Doc a] -> Doc a
+prettyTuple elems = "(" <> commaSep elems <> ")"
+
+prettyRecord :: Doc a -> [Field t (Doc a)] -> Doc a
+prettyRecord _ []       = "{}"
+prettyRecord sep fields = "{" <+> prettyFields (sortFields fields) <+> "}"
   where
-    boundedBy :: Char -> Char -> Type -> Bool
-    boundedBy f l = cata $ \case 
-        TCon _ n -> Text.head n == f && Text.last n == l
-        _        -> False
+    prettyFields fields = commaSep (field <$> fields)
+    field (Field _ key val) = pretty key <+> sep <+> val
 
-    prettyRecordType (TCon _ c) args = 
-        let kvPair key val = pretty key <+> ":" <+> pretty val
-            pairs = sortOn fst (zip (Text.split (== ',') names) args)
-            names = fromJust (Text.stripSuffix "}" =<< Text.stripPrefix "{" c)
-        in "{" <+> commaSep (uncurry kvPair <$> pairs) <+> "}"
-    prettyRecordType _ _ = ""
+asRecordFields :: Name -> [Doc a] -> [Field () (Doc a)]
+asRecordFields name = 
+    zipWith (Field ()) (concat (maybeToList (Text.split (== ',') <$> stripped)))
+  where
+    stripped = Text.stripSuffix "}" =<< Text.stripPrefix "{" name
 
-    prettyTupleType args = 
-        "(" <> commaSep (pretty <$> args) <> ")"
+data ConType 
+    = TupleCon
+    | RecordCon
+    | PlainCon
+    deriving (Show, Eq)
+
+conType :: Name -> ConType
+conType con
+    | Text.null con = PlainCon
+    | otherwise = 
+        case (Text.head con, Text.last con) of
+            ('(', ')') -> TupleCon
+            ('{', '}') -> RecordCon
+            _          -> PlainCon
+
+prettyStructType :: Type -> Maybe (Doc a)
+prettyStructType ty =
+   case args ty of
+      (a:as) -> headCon (project a) >>= fun (pretty <$> as)
+      []     -> Nothing
+  where
+    fun as con = case conType con of
+        TupleCon  -> Just (prettyTuple as)
+        RecordCon -> Just (prettyRecord colon (asRecordFields con as))
+        _         -> Nothing
+
+    headCon (TCon _ c) = Just c
+    headCon _          = Nothing
 
 args :: Type -> [Type]
-args ty = flip para ty $ \case
+args = para $ \case
     TApp a b -> snd a <> [fst b]
     TArr a b -> [tArr (fst a) (fst b)]
     TCon k a -> [tCon k a]
@@ -47,10 +70,11 @@ args ty = flip para ty $ \case
     _        -> []
 
 prettyType :: [Name] -> Type -> Doc a
-prettyType bound ty = flip para ty $ \case
-    TApp a b -> case sugared ty of
-        Just doc -> doc
-        Nothing  -> snd a <+> cata rhs (fst b)
+prettyType bound = para $ \case
+    TApp a b -> 
+        case prettyStructType (tApp (fst a) (fst b)) of
+            Just doc -> doc
+            Nothing  -> snd a <+> cata rhs (fst b)
       where
         rhs = \case
             TApp{} -> parens (snd b)
@@ -88,13 +112,11 @@ instance Pretty Scheme where
         forall
             | null bound = ""
             | otherwise  = "forall " <> sep (pretty <$> bound) <> ". "
-
         classes
             | null prds = ""
             | otherwise = tupled prds <+> "=> "
 
         prds = [pretty c <+> pretty n | (n, cs) <- info, c <- cs]
-
         bound = fst <$> info
 
         (ty, info) = flip cata scheme $ \case
@@ -114,10 +136,9 @@ instance Pretty Literal where
 instance Pretty (Pattern t) where
     pretty = para $ \case
         PVar _ var     -> pretty var
-        PCon _ con []  -> pretty con
-        PCon _ con ps  -> pretty con <+> hsep (foldr args [] ps)
+        PCon _ con ps  -> prettyCon con ps args
         PLit _ lit     -> pretty lit
-        PRec _ fields  -> prettyRecord fields
+        PRec _ fields  -> prettyRecord equals (fmap snd <$> fields)
         PAny _         -> "_"
       where
         args :: (Pattern t, Doc a) -> [Doc a] -> [Doc a]
@@ -126,14 +147,6 @@ instance Pretty (Pattern t) where
             rhs = flip cata (fst a) $ \case 
                 PCon{}  -> parens (snd a)
                 _       -> snd a
-
-prettyRecord :: [Field t (f, Doc a)] -> Doc a
-prettyRecord fields = 
-    "{" <+> prettyFields (fmap snd <$> sortFields fields) <+> "}"
-  where
-    prettyFields fields = commaSep (field <$> fields)
-    field (Field _ key val) = 
-        pretty key <+> "=" <+> val
 
 instance Pretty (Op (PatternExpr t)) where
     pretty op = case op of
@@ -155,7 +168,6 @@ instance Pretty (Op (PatternExpr t)) where
         OFPipe a b -> binOp a b "|>"
         OBPipe a b -> binOp a b "<|"
         ODot   a b -> pretty a <> "." <> subOp AssocR b
-        _          -> undefined
       where
         binOp a b symb = subOp AssocL a 
                      <+> symb 
@@ -168,8 +180,7 @@ instance Pretty (Op (PatternExpr t)) where
                       LT -> False
                       GT -> True
                       EQ -> assoc /= opAssoc op
-             in flip cata a $ 
-               \case
+             in flip cata a $ \case
                  EApp{}              -> parens (pretty a)
                  ELet{}              -> parens (pretty a)
                  ELam{}              -> parens (pretty a)
@@ -180,8 +191,7 @@ instance Pretty (Op (PatternExpr t)) where
 instance Pretty (PatternExpr t) where
     pretty = para $ \case
         EVar _ var     -> pretty var
-        ECon _ con []  -> pretty con
-        ECon _ con exs -> pretty con <+> hsep (foldr app [] exs)
+        ECon _ con exs -> prettyCon con exs app
         ELit _ lit     -> pretty lit
         EApp _ exs     -> hsep (foldr app [] exs)
         ELet _ p e1 e2 -> prettyLet p e1 e2
@@ -189,7 +199,7 @@ instance Pretty (PatternExpr t) where
         EIf  _ c e1 e2 -> prettyIf c e1 e2
         EMat _ exs eqs -> prettyMatch exs eqs
         EOp  _ op      -> pretty (fst <$> op)
-        ERec _ fields  -> prettyRecord fields
+        ERec _ fields  -> prettyRecord equals (fmap snd <$> fields)
       where
         app :: (PatternExpr t, Doc a) -> [Doc a] -> [Doc a]
         app a = (rhs :)
@@ -198,6 +208,15 @@ instance Pretty (PatternExpr t) where
                 EApp{} -> parens (snd a)
                 ECon{} -> parens (snd a)
                 _      -> snd a
+
+prettyCon :: (Pretty p) => Name -> [(p, q)] -> ((p, q) -> [Doc a] -> [Doc a]) -> Doc a
+prettyCon con exs fun
+    | null exs        = pretty con
+    | RecordCon == ct = prettyRecord equals (asRecordFields con (pretty . fst <$> exs))
+    | TupleCon  == ct = prettyTuple (pretty . fst <$> exs)
+    | otherwise       = pretty con <+> hsep (foldr fun [] exs)
+  where
+    ct = conType con
 
 prettyMatch 
   :: [(PatternExpr t, Doc a)] 

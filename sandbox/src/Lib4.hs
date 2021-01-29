@@ -42,34 +42,89 @@ import qualified Tau.Type.Substitution as Sub
 debugTree :: (Pretty t) => Expr t (Pattern t) (Pattern t) -> IO ()
 debugTree expr = putStrLn (showTree (Text.unpack <$> toTree3 expr))
 
-toTree3 :: (Pretty t) => Expr t (Pattern t) (Pattern t) -> Tree Text
-toTree3 expr = flip cata expr $ \case
-    --EVar t var        -> node t ("Var " <> var) []
+prettyExprTree :: (Pretty t) => Expr t (Pattern t) (Pattern t) -> Tree Text
+prettyExprTree = para $ \case
     EVar t var        -> node t var []
-    ECon t con exs    -> node t ("Con " <> con) exs
-    ELit t lit        -> node t (fromLit lit) []
-    EApp t exs        -> node t "App" exs
-    ELet t pat e1 e2  -> node t "Let" [pattern_ pat, e1, e2]
-    ELam t pat e1     -> node t "Lam" [pattern_ pat, e1]
-    EIf  t cond tr fl -> node t "If" [cond, tr, fl]
-    ERec t fields     -> node t "Rec" (field <$> fields)
-    EMat t exs eqs    -> node t "Mat" (exs <> (clause <$> eqs))
-    _ -> error "not implemented"
+    ECon t con exs    -> node t (prettyPrint (conExpr t con (fst <$> exs))) []
+    ELit t lit        -> node t (prettyPrint lit) []
+    EApp t exs        -> node t "(@)" (snd <$> exs)
+    ELet t pat e1 e2  -> node t "let" [ node (exprTag (fst e1)) (prettyPrint pat <> " = " <> prettyPrint (fst e1)) []
+                                      , snd e2 ]
+    ELam t pat e1     -> node t ("λ" <> prettyPrint pat) [snd e1]
+    EIf  t cond tr fl -> node t "if" [snd cond, snd tr, snd fl]
+    ERec t fields     -> node t "Rec" []
+    EMat t exs eqs    -> node t "Mat" []
+    _                 -> Node "nope" []
   where
-    clause (Clause ps exs e) = Node "*" ((pattern_ <$> ps) <> exs <> [e])
+    node t ex = Node (ex <> " : " <> pp t)
 
-    pattern_ = cata $ \case
-        --PVar t var    -> node t ("Var " <> var) []
+    fromPattern :: (Pretty t) => Pattern t -> Tree Text
+    fromPattern pat = flip cata pat $ \case
         PVar t var    -> node t var []
-        PCon t con ps -> node t ("Con " <> con) ps
-        PLit t lit    -> node t (fromLit lit) []
-        PRec t fields -> node t "Rec" (field <$> fields)
+        PCon t con ps -> node t con ps
+        PLit t lit    -> node t (prettyPrint lit) []
+        PRec t _      -> node t (prettyPrint pat) [] -- "Rec" (field <$> fields)
         PAny t        -> node t "_" []
 
-    field (Field _ k v) = Node (k <> " = " <> rootLabel v) []
+toTree3 :: (Pretty t) => Expr t (Pattern t) (Pattern t) -> Tree Text
+toTree3 = prettyExprTree
 
-    fromLit = pack . show 
-    node t ex = Node (ex <> " : " <> pp t)
+--toTree3 :: (Pretty t) => Expr t (Pattern t) (Pattern t) -> Tree Text
+--toTree3 expr = flip cata expr $ \case
+--    --EVar t var        -> node t ("Var " <> var) []
+--    EVar t var        -> node t var []
+--    ECon t con exs    -> node t con exs
+--    ELit t lit        -> node t (pp lit) []
+--    EApp t exs        -> node t "App" exs
+--    ELet t pat e1 e2  -> node t "Let" [pattern_ pat, e1, e2]
+--    ELam t pat e1     -> node t "Lam" [pattern_ pat, e1]
+--    EIf  t cond tr fl -> node t "If" [cond, tr, fl]
+--    ERec t fields     -> node t "Rec" (field <$> fields)
+--    EMat t exs eqs    -> node t "Mat" (exs <> (clause <$> eqs))
+--    _                 -> error "not implemented"
+--  where
+--    clause (Clause ps exs e) = Node "*" ((pattern_ <$> ps) <> exs <> [e])
+--
+--    pattern_ = cata $ \case
+--        --PVar t var    -> node t ("Var " <> var) []
+--        PVar t var    -> node t var []
+--        PCon t con ps -> node t con ps
+--        PLit t lit    -> node t (pp lit) []
+--        PRec t fields -> node t "Rec" (field <$> fields)
+--        PAny t        -> node t "_" []
+--
+--    field (Field _ k v) = Node (k <> " = " <> rootLabel v) []
+--
+----    fromLit = pack . show 
+--    no
+--toTree3 :: (Pretty t) => Expr t (Pattern t) (Pattern t) -> Tree Text
+--toTree3 expr = flip cata expr $ \case
+--    --EVar t var        -> node t ("Var " <> var) []
+--    EVar t var        -> node t var []
+--    ECon t con exs    -> node t con exs
+--    ELit t lit        -> node t (pp lit) []
+--    EApp t exs        -> node t "App" exs
+--    ELet t pat e1 e2  -> node t "Let" [pattern_ pat, e1, e2]
+--    ELam t pat e1     -> node t "Lam" [pattern_ pat, e1]
+--    EIf  t cond tr fl -> node t "If" [cond, tr, fl]
+--    ERec t fields     -> node t "Rec" (field <$> fields)
+--    EMat t exs eqs    -> node t "Mat" (exs <> (clause <$> eqs))
+--    _                 -> error "not implemented"
+--  where
+--    clause (Clause ps exs e) = Node "*" ((pattern_ <$> ps) <> exs <> [e])
+--
+--    pattern_ = cata $ \case
+--        --PVar t var    -> node t ("Var " <> var) []
+--        PVar t var    -> node t var []
+--        PCon t con ps -> node t con ps
+--        PLit t lit    -> node t (pp lit) []
+--        PRec t fields -> node t "Rec" (field <$> fields)
+--        PAny t        -> node t "_" []
+--
+--    field (Field _ k v) = Node (k <> " = " <> rootLabel v) []
+--
+----    fromLit = pack . show 
+--    node t ex = Node (ex <> " : " <> pp t)
 
 pp :: (Pretty p) => p -> Text
 pp = prettyPrint 
