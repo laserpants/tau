@@ -377,10 +377,10 @@ headCons = fmap concat . traverse fun where
     prim (LBool False) = "$False"
     prim LUnit         = "$()"
     prim LInt{}        = "$Int"
---    prim LInteger{}    = "$Integer"
---    prim LFloat{}      = "$Float"
---    prim LChar{}       = "$Char"
---    prim LString{}     = "$String"
+    prim LInteger{}    = "$Integer"
+    prim LFloat{}      = "$Float"
+    prim LChar{}       = "$Char"
+    prim LString{}     = "$String"
 
 constructorEnv :: [(Name, [Name])] -> ConstructorEnv
 constructorEnv = Env.fromList . fmap (Set.fromList <$>)
@@ -420,7 +420,8 @@ useful px@(ps:_) qs =
         , ("$Integer",  [])
         , ("$Float",    [])
         , ("$Char",     [])
-        , ("$String",   []) ]
+        , ("$String",   []) 
+        ]
 
 exhaustive :: (MonadReader ConstructorEnv m) => [[Pattern t]] -> m Bool
 exhaustive []        = pure False

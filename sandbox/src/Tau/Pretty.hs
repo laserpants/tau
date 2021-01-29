@@ -13,29 +13,30 @@ import Tau.Type.Class
 import Tau.Util
 import qualified Data.Text as Text
 
+commaSep :: [Doc a] -> Doc a
+commaSep = hsep . punctuate comma 
+
 sugared :: Type -> Maybe (Doc a)
 sugared ty =
    case args ty of
-      (a:as) | isTuple  a -> Just (prettyTupleType as)
-      (a:as) | isRecord a -> Just (prettyRecordType (project a) as)
+      (a:as) | boundedBy '(' ')' a -> Just (prettyTupleType as)
+      (a:as) | boundedBy '{' '}' a -> Just (prettyRecordType (project a) as)
       _                   -> Nothing
   where
-    isTuple = cata $ \case 
-        TCon _ n -> Text.head n == '(' && Text.last n == ')'
-        _        -> False
-
-    isRecord = cata $ \case
-        TCon _ n -> Text.head n == '{' && Text.last n == '}'
+    boundedBy :: Char -> Char -> Type -> Bool
+    boundedBy f l = cata $ \case 
+        TCon _ n -> Text.head n == f && Text.last n == l
         _        -> False
 
     prettyRecordType (TCon _ c) args = 
         let kvPair key val = pretty key <+> ":" <+> pretty val
             pairs = sortOn fst (zip (Text.split (== ',') names) args)
             names = fromJust (Text.stripSuffix "}" =<< Text.stripPrefix "{" c)
-        in "{" <+> hsep (punctuate comma (uncurry kvPair <$> pairs)) <+> "}"
+        in "{" <+> commaSep (uncurry kvPair <$> pairs) <+> "}"
+    prettyRecordType _ _ = ""
 
     prettyTupleType args = 
-        "(" <> hsep (punctuate comma (pretty <$> args)) <> ")"
+        "(" <> commaSep (pretty <$> args) <> ")"
 
 args :: Type -> [Type]
 args ty = flip para ty $ \case
@@ -47,10 +48,9 @@ args ty = flip para ty $ \case
 
 prettyType :: [Name] -> Type -> Doc a
 prettyType bound ty = flip para ty $ \case
-    TApp a b -> 
-        case sugared ty of
-            Just doc -> doc
-            Nothing  -> snd a <+> cata rhs (fst b)
+    TApp a b -> case sugared ty of
+        Just doc -> doc
+        Nothing  -> snd a <+> cata rhs (fst b)
       where
         rhs = \case
             TApp{} -> parens (snd b)
@@ -62,6 +62,7 @@ prettyType bound ty = flip para ty $ \case
         lhs = \case
             TArr{} -> parens (snd a)
             _      -> snd a
+
     TCon _ name -> pretty name
     TVar _ name -> pretty name
     TGen n      -> pretty (bound !! n)
@@ -130,8 +131,7 @@ prettyRecord :: [Field t (f, Doc a)] -> Doc a
 prettyRecord fields = 
     "{" <+> prettyFields (fmap snd <$> sortFields fields) <+> "}"
   where
-    prettyFields fields = 
-        hsep (punctuate comma (field <$> fields))
+    prettyFields fields = commaSep (field <$> fields)
     field (Field _ key val) = 
         pretty key <+> "=" <+> val
 
@@ -205,7 +205,7 @@ prettyMatch
   -> Doc a
 prettyMatch exs eqs = 
     group (nest 2 (vsep 
-        [ "match" <+> hsep (punctuate comma (snd <$> exs)) <+> "with"
+        [ "match" <+> commaSep (snd <$> exs) <+> "with"
         , case clause <$> zip lhss rhss of
               []   -> ""
               c:cs -> flatAlt (vsep ((pipe <+>) <$> c:cs)) 
@@ -218,13 +218,10 @@ prettyMatch exs eqs =
     clause (lhs, expr) =
         flatAlt (fillBreak colWidth lhs) lhs <+> "=>" <+> expr
 
-    split (Clause ps exs e) = (commaSep ps <> when, pretty (fst e))
+    split (Clause ps exs e) = (commaSep (pretty <$> ps) <> when, pretty (fst e))
       where
         when | null exs  = ""
-             | otherwise = space <> "when" <+> commaSep (fst <$> exs)
-
-commaSep :: (Pretty p) => [p] -> Doc a
-commaSep docs = hsep (punctuate comma (pretty <$> docs))
+             | otherwise = space <> "when" <+> commaSep (pretty . fst <$> exs)
 
 prettyLet 
   :: Pattern t 
