@@ -80,7 +80,7 @@ data Op a
     | OGtE a a                -- ^ Greater-than-or-equal-to operator (>=)
     | ONeg a                  -- ^ Unary negation
     | ONot a                  -- ^ Logical Not
-    | OIso a                  -- ^ Isomorphism operator (~)
+--    | OIso a                  -- ^ Isomorphism operator (~)
     | OLArr a a               -- ^ Function composition operator (<<)
     | ORArr a a               -- ^ Reverse function composition (>>)               
     | OFPipe a a              -- ^ Forward pipe operator (|>)
@@ -103,8 +103,8 @@ data ExprF t p q a
     | EMat t [a] [Clause p a] -- ^ Match expression
     | EOp  t (Op a)           -- ^ Operator
     | ERec t [Field t a]      -- ^ Record
---    | EFun t [Clause p a]   -- ^ Lambda-match
---    | ELFn t Name [q] a     -- ^ Let f x = expr 
+--    | EFun t [Clause p a]   -- ^ Lambda-like match
+--    | ELFn t Name [q] a     -- ^ Let-function expression (let f x = e) 
 --    | EAnn u a
     deriving (Functor, Foldable, Traversable)
 
@@ -119,7 +119,7 @@ type Expr t p q = Fix (ExprF t p q)
 -- | Expression tree with unabridged patterns
 type PatternExpr t = Expr t (Pattern t) (Pattern t)
 
--- | Return the precedence for a binary operator
+-- | Return the precedence of a binary operator
 opPrecedence :: Op a -> Int
 opPrecedence = \case
     OEq    _ _ -> 4
@@ -144,12 +144,12 @@ opPrecedence = \case
 
 -- | Operator associativity
 data Assoc 
-    = AssocL    -- ^ Operator is left-associative 
-    | AssocR    -- ^ Operator is right-associative 
-    | AssocN    -- ^ Operator is non-associative 
-    deriving (Eq)
+    = AssocL                  -- ^ Operator is left-associative 
+    | AssocR                  -- ^ Operator is right-associative 
+    | AssocN                  -- ^ Operator is non-associative 
+    deriving (Show, Eq)
 
--- | Return the associativity for a binary operator
+-- | Return the associativity of a binary operator
 opAssoc :: Op a -> Assoc
 opAssoc = \case
     OEq    _ _ -> AssocN
