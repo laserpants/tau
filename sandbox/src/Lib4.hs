@@ -43,8 +43,9 @@ debugTree :: (Pretty t) => Expr t (Pattern t) (Pattern t) -> IO ()
 debugTree expr = putStrLn (showTree (Text.unpack <$> toTree3 expr))
 
 toTree3 :: (Pretty t) => Expr t (Pattern t) (Pattern t) -> Tree Text
-toTree3 = cata $ \case
-    EVar t var        -> node t ("Var " <> var) []
+toTree3 expr = flip cata expr $ \case
+    --EVar t var        -> node t ("Var " <> var) []
+    EVar t var        -> node t var []
     ECon t con exs    -> node t ("Con " <> con) exs
     ELit t lit        -> node t (fromLit lit) []
     EApp t exs        -> node t "App" exs
@@ -58,7 +59,8 @@ toTree3 = cata $ \case
     clause (Clause ps exs e) = Node "*" ((pattern_ <$> ps) <> exs <> [e])
 
     pattern_ = cata $ \case
-        PVar t var    -> node t ("Var " <> var) []
+        --PVar t var    -> node t ("Var " <> var) []
+        PVar t var    -> node t var []
         PCon t con ps -> node t ("Con " <> con) ps
         PLit t lit    -> node t (fromLit lit) []
         PRec t fields -> node t "Rec" (field <$> fields)

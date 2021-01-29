@@ -3,20 +3,60 @@
 {-# LANGUAGE FlexibleInstances #-}
 module Tau.Pretty where
 
+import Control.Arrow ((>>>), (<<<))
+import Data.List (sortOn)
+import Data.Maybe (fromJust)
 import Data.Text.Prettyprint.Doc
 import Tau.Expr
 import Tau.Type
 import Tau.Type.Class
 import Tau.Util
+import qualified Data.Text as Text
+
+sugared :: Type -> Maybe (Doc a)
+sugared ty =
+   case args ty of
+      (a:as) | isTuple  a -> Just (prettyTupleType as)
+      (a:as) | isRecord a -> Just (prettyRecordType (project a) as)
+      _                   -> Nothing
+  where
+    isTuple = cata $ \case 
+        TCon _ n -> Text.head n == '(' && Text.last n == ')'
+        _        -> False
+
+    isRecord = cata $ \case
+        TCon _ n -> Text.head n == '{' && Text.last n == '}'
+        _        -> False
+
+    prettyRecordType (TCon _ c) args = 
+        let kvPair key val = pretty key <+> ":" <+> pretty val
+            pairs = sortOn fst (zip (Text.split (== ',') names) args)
+            names = fromJust (Text.stripSuffix "}" =<< Text.stripPrefix "{" c)
+        in "{" <+> hsep (punctuate comma (uncurry kvPair <$> pairs)) <+> "}"
+
+    prettyTupleType args = 
+        "(" <> hsep (punctuate comma (pretty <$> args)) <> ")"
+
+args :: Type -> [Type]
+args ty = flip para ty $ \case
+    TApp a b -> snd a <> snd b
+    TArr a b -> [tArr (fst a) (fst b)]
+    TCon k a -> [tCon k a]
+    TVar k a -> [tVar k a]
+    _        -> []
 
 prettyType :: [Name] -> Type -> Doc a
-prettyType bound = para $ \case
-    TApp a b -> snd a <+> cata rhs (fst b)
+prettyType bound ty = flip para ty $ \case
+    TApp a b -> 
+        case sugared ty of
+            Just doc -> doc
+            Nothing  -> snd a <+> cata rhs (fst b)
       where
         rhs = \case
             TApp{} -> parens (snd b)
             TArr{} -> parens (snd b)
             _      -> snd b
+
     TArr a b -> cata lhs (fst a) <+> "->" <+> snd b 
       where
         lhs = \case

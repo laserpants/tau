@@ -1836,5 +1836,10 @@ expr15 :: PatternExpr ()
 expr15 = letExpr () (varPat () "fun") (varExpr () "zz") (lamExpr () (varPat () "y") (lamExpr () (varPat () "x") (matExpr () [varExpr () "x", varExpr () "y"] [Clause [varPat () "x", varPat () "y"] [eqOp () (varExpr () "x") (litExpr () (LInt 5))] (varExpr () "e1"), Clause [conPat () "Just" [varPat () "stuff"]] [] (varExpr () "e2"), Clause [varPat () "zzz"] [] (varExpr () "e3"), Clause [varPat () "zzz"] [] (varExpr () "e3")])))
 
 
+testtype1 = tApp (tApp (tCon (kArr kStar (kArr kStar kStar)) "{id,name}") tInt) tString
+
+testtype2 = tApp (tApp (tCon (kArr kStar (kArr kStar kStar)) "(,)") tInt) tString
+
+
 main :: IO ()
 main = pure ()
