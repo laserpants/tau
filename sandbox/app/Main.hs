@@ -1840,6 +1840,10 @@ testtype1 = tApp (tApp (tCon (kArr kStar (kArr kStar kStar)) "{id,name}") tInt) 
 
 testtype2 = tApp (tApp (tCon (kArr kStar (kArr kStar kStar)) "(,)") tInt) tString
 
+testtype3 = tApp (tApp (tCon (kArr kStar (kArr kStar kStar)) "{first,second}") tInt) (tApp (tApp (tCon (kArr kStar (kArr kStar kStar)) "(,)") tInt) tString)
+
+testtype4 = tApp (tApp (tCon (kArr kStar (kArr kStar kStar)) "(,)") tInt) tString
+
 
 main :: IO ()
 main = pure ()

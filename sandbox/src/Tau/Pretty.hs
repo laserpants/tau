@@ -21,7 +21,7 @@ sugared ty =
    case args ty of
       (a:as) | boundedBy '(' ')' a -> Just (prettyTupleType as)
       (a:as) | boundedBy '{' '}' a -> Just (prettyRecordType (project a) as)
-      _                   -> Nothing
+      _                            -> Nothing
   where
     boundedBy :: Char -> Char -> Type -> Bool
     boundedBy f l = cata $ \case 
@@ -32,7 +32,7 @@ sugared ty =
         let kvPair key val = pretty key <+> ":" <+> pretty val
             pairs = sortOn fst (zip (Text.split (== ',') names) args)
             names = fromJust (Text.stripSuffix "}" =<< Text.stripPrefix "{" c)
-        in "{" <+> commaSep (uncurry kvPair <$> pairs) <+> "}"
+        in traceShow args $ "{" <+> commaSep (uncurry kvPair <$> pairs) <+> "}"
     prettyRecordType _ _ = ""
 
     prettyTupleType args = 
@@ -45,6 +45,15 @@ args ty = flip para ty $ \case
     TCon k a -> [tCon k a]
     TVar k a -> [tVar k a]
     _        -> []
+
+----args2 :: Type -> [[Type]]
+--args2 ty = flip para ty $ \case
+--    TApp a b -> [snd a] : (snd b) -- concat (snd a) : snd b -- <> snd b
+--    TArr a b -> undefined -- [tArr (fst a) (fst b)]
+--    TCon k a -> undefined -- [tCon k a]
+--    TVar k a -> undefined -- [tVar k a]
+--    _        -> undefined -- []
+
 
 prettyType :: [Name] -> Type -> Doc a
 prettyType bound ty = flip para ty $ \case
