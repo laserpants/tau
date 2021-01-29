@@ -40,20 +40,11 @@ sugared ty =
 
 args :: Type -> [Type]
 args ty = flip para ty $ \case
-    TApp a b -> snd a <> snd b
+    TApp a b -> snd a <> [fst b]
     TArr a b -> [tArr (fst a) (fst b)]
     TCon k a -> [tCon k a]
     TVar k a -> [tVar k a]
     _        -> []
-
-----args2 :: Type -> [[Type]]
---args2 ty = flip para ty $ \case
---    TApp a b -> [snd a] : (snd b) -- concat (snd a) : snd b -- <> snd b
---    TArr a b -> undefined -- [tArr (fst a) (fst b)]
---    TCon k a -> undefined -- [tCon k a]
---    TVar k a -> undefined -- [tVar k a]
---    _        -> undefined -- []
-
 
 prettyType :: [Name] -> Type -> Doc a
 prettyType bound ty = flip para ty $ \case
