@@ -32,7 +32,7 @@ sugared ty =
         let kvPair key val = pretty key <+> ":" <+> pretty val
             pairs = sortOn fst (zip (Text.split (== ',') names) args)
             names = fromJust (Text.stripSuffix "}" =<< Text.stripPrefix "{" c)
-        in traceShow args $ "{" <+> commaSep (uncurry kvPair <$> pairs) <+> "}"
+        in "{" <+> commaSep (uncurry kvPair <$> pairs) <+> "}"
     prettyRecordType _ _ = ""
 
     prettyTupleType args = 
