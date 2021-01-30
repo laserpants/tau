@@ -26,8 +26,8 @@ prettyRecord sep fields = "{" <+> prettyFields (sortFields fields) <+> "}"
     prettyFields fields = commaSep (field <$> fields)
     field (Field _ key val) = pretty key <+> sep <+> val
 
-asRecordFields :: Name -> [Doc a] -> [Field () (Doc a)]
-asRecordFields name = 
+namesToFields :: Name -> [Doc a] -> [Field () (Doc a)]
+namesToFields name = 
     zipWith (Field ()) (concat (maybeToList (Text.split (== ',') <$> stripped)))
   where
     stripped = Text.stripSuffix "}" =<< Text.stripPrefix "{" name
@@ -55,7 +55,7 @@ prettyStructType ty =
   where
     fun as con = case conType con of
         TupleCon  -> Just (prettyTuple as)
-        RecordCon -> Just (prettyRecord colon (asRecordFields con as))
+        RecordCon -> Just (prettyRecord colon (namesToFields con as))
         _         -> Nothing
 
     headCon (TCon _ c) = Just c
@@ -212,7 +212,7 @@ instance Pretty (PatternExpr t) where
 prettyCon :: (Pretty p) => Name -> [(p, q)] -> ((p, q) -> [Doc a] -> [Doc a]) -> Doc a
 prettyCon con exs fun
     | null exs        = pretty con
-    | RecordCon == ct = prettyRecord equals (asRecordFields con (pretty . fst <$> exs))
+    | RecordCon == ct = prettyRecord equals (namesToFields con (pretty . fst <$> exs))
     | TupleCon  == ct = prettyTuple (pretty . fst <$> exs)
     | otherwise       = pretty con <+> hsep (foldr fun [] exs)
   where
@@ -231,16 +231,19 @@ prettyMatch exs eqs =
                               (hsep (c:((pipe <+>) <$> cs)))
         ]))
   where
-    (lhss, rhss) = unzip (split <$> eqs)
+    (lhss, rhss) = unzip (splitClause <$> eqs)
     colWidth     = maximum (length . show <$> lhss)
 
     clause (lhs, expr) =
         flatAlt (fillBreak colWidth lhs) lhs <+> "=>" <+> expr
 
-    split (Clause ps exs e) = (commaSep (pretty <$> ps) <> when, pretty (fst e))
-      where
-        when | null exs  = ""
-             | otherwise = space <> "when" <+> commaSep (pretty . fst <$> exs)
+splitClause :: (Pretty p, Pretty q) => Clause p (q, r) -> (Doc a, Doc a)
+splitClause (Clause ps exs e) = 
+    ( commaSep (pretty <$> ps) <> when
+    , pretty (fst e) )
+  where
+    when | null exs  = ""
+         | otherwise = space <> "when" <+> commaSep (pretty . fst <$> exs)
 
 prettyLet 
   :: Pattern t 

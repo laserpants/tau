@@ -6,7 +6,7 @@
 {-# LANGUAGE StrictData                 #-}
 module Lib4 where
 
-import Control.Arrow
+import Control.Arrow ((>>>), second)
 import Data.Tree.View
 import Control.Monad.Except
 import Data.Tree
@@ -39,10 +39,10 @@ import qualified Tau.Type.Substitution as Sub
 
 --debugTree runTest1
 
-debugTree :: (Pretty t) => Expr t (Pattern t) (Pattern t) -> IO ()
+debugTree :: (Pretty t) => PatternExpr t -> IO ()
 debugTree expr = putStrLn (showTree (Text.unpack <$> toTree3 expr))
 
-prettyExprTree :: (Pretty t) => Expr t (Pattern t) (Pattern t) -> Tree Text
+prettyExprTree :: (Pretty t) => PatternExpr t -> Tree Text
 prettyExprTree = para $ \case
     EVar t var        -> node t var []
     ECon t con exs    -> node t (prettyPrint (conExpr t con (fst <$> exs))) []
@@ -52,18 +52,26 @@ prettyExprTree = para $ \case
                                       , snd e2 ]
     ELam t pat e1     -> node t ("λ" <> prettyPrint pat) [snd e1]
     EIf  t cond tr fl -> node t "if" [snd cond, snd tr, snd fl]
-    ERec t fields     -> node t "Rec" []
-    EMat t exs eqs    -> node t "Mat" []
-    _                 -> Node "nope" []
+    ERec t fields     -> node t (prettyPrint (recExpr t (fmap fst <$> fields))) []
+    EMat t exs eqs    -> node t ("match " <> matchExprs (fst <$> exs) <> " with") (fromClause <$> eqs)
+    _                 -> Node "Not implemented" []
   where
-    node t ex = Node (ex <> " : " <> pp t)
+    node t ex = Node (ex <> " : " <> prettyPrint t)
+
+    matchExprs :: (Pretty t) => [PatternExpr t] -> Text
+    matchExprs = printDoc . commaSep . (expr <$>) where
+        expr ex = "(" <> pretty ex <> " : " <> pretty (exprTag ex) <> ")"
+
+    fromClause :: Clause (Pattern t) (PatternExpr t, Tree Text) -> Tree Text
+    fromClause cl = Node (printDoc (lhs <+> "=>" <+> rhs)) [] where
+        (lhs, rhs) = splitClause cl
 
     fromPattern :: (Pretty t) => Pattern t -> Tree Text
     fromPattern pat = flip cata pat $ \case
         PVar t var    -> node t var []
         PCon t con ps -> node t con ps
         PLit t lit    -> node t (prettyPrint lit) []
-        PRec t _      -> node t (prettyPrint pat) [] -- "Rec" (field <$> fields)
+        PRec t _      -> node t (prettyPrint pat) []
         PAny t        -> node t "_" []
 
 toTree3 :: (Pretty t) => Expr t (Pattern t) (Pattern t) -> Tree Text
@@ -126,8 +134,8 @@ toTree3 = prettyExprTree
 ----    fromLit = pack . show 
 --    node t ex = Node (ex <> " : " <> pp t)
 
-pp :: (Pretty p) => p -> Text
-pp = prettyPrint 
+--pp :: (Pretty p) => p -> Text
+--pp = prettyPrint 
 
 --    prettyText = 
 --        renderStrict . layoutPretty defaultLayoutOptions . pretty

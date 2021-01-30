@@ -19,6 +19,7 @@ module Tau.Util
   , integerToText
   , intToText
   , prettyPrint
+  , printDoc
   ) where
 
 import Control.Monad
@@ -88,5 +89,8 @@ integerToText = Text.toStrict . toLazyText . decimal
 intToText :: Int -> Text
 intToText = integerToText . fromIntegral
 
+printDoc :: Doc a -> Text
+printDoc = renderStrict . layoutPretty defaultLayoutOptions
+
 prettyPrint :: (Pretty p) => p -> Text
-prettyPrint = renderStrict . layoutPretty defaultLayoutOptions . pretty
+prettyPrint = printDoc . pretty
