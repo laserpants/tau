@@ -283,6 +283,18 @@ runTest17 =
 
 
 
+test18 = 
+    letExpr () (varPat () "f") (varExpr () "lenShow") (lamExpr () (varPat () "x") (appExpr () [varExpr () "f", varExpr () "x"]))
+runTest18 = 
+    case runInfer2 as (infer2 mempty test18) of
+        Right (tree, sub) -> mapTags (apply sub) tree
+        Left e -> error e
+  where
+    as = [As2 "lenShow" (sForall kStar "a" ["Show"] (sScheme (tGen 0 `tArr` tInt)))]
+
+
+
+
 
 --
 -- Type assumption
