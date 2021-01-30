@@ -185,6 +185,14 @@ exprTag = cata $ \case
     EOp  t _       -> t
     ERec t _       -> t
 
+patternTag :: Pattern t -> t
+patternTag = cata $ \case
+    PVar t _       -> t
+    PCon t _ _     -> t
+    PLit t _       -> t
+    PRec t _       -> t
+    PAny t         -> t
+
 -- ////////////////////////////////////////////////////////////////////////////
 
 class TaggedA a t where

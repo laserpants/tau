@@ -41,6 +41,16 @@ data TypeF a
     | TApp a a
     deriving (Show, Eq, Ord, Functor, Foldable, Traversable)
 
+-- data TypeF g a
+--     = TGen g
+--     | TVar Kind Name 
+--     | TCon Kind Name 
+--     | TArr a a
+--     | TApp a a
+--
+--  type Type1 = Fix (TypeF Void)
+--  type Type2 = Fix (TypeF Int)
+
 deriveShow1 ''TypeF
 deriveEq1   ''TypeF
 deriveOrd1  ''TypeF
@@ -72,6 +82,11 @@ kindOf = histo $ \case
   where
     appKind (KArr _ k) = Just k
     appKind _          = Nothing
+
+recordConstructor :: [Name] -> Type
+recordConstructor names = tCon kind ("{" <> Text.intercalate "," names <> "}")
+  where 
+    kind = foldr kArr kStar (replicate (length names) kStar)
 
 kStar :: Kind
 kStar = Fix KStar
@@ -130,5 +145,3 @@ sForall k n cs s = Fix (Forall k n cs s)
 
 sScheme :: Type -> Scheme
 sScheme t = Fix (Scheme t)
-
-
