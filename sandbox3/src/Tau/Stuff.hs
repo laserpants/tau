@@ -52,14 +52,14 @@ instance Free (Type a) where
 -- Unification
 --
 
-bind :: (MonadError String m) => Name -> Kind -> Type Void -> m (Sub Void)
+bind :: (MonadError String m) => Name -> Kind -> Type Void -> m (Substitution Void)
 bind name kind ty
     | ty == tVar kind name   = pure mempty
     | name `elem` free ty    = throwError "InfiniteType" -- throwError InfiniteType
     | Just kind /= kindOf ty = throwError "KindMismatch" -- throwError KindMismatch
     | otherwise              = pure (name `mapsTo` ty)
 
-unify :: (MonadError String m) => Type Void -> Type Void -> m (Sub Void)
+unify :: (MonadError String m) => Type Void -> Type Void -> m (Substitution Void)
 unify t u = when (project t) (project u) where
     when (TArr t1 t2) (TArr u1 u2) = unifyPairs (t1, t2) (u1, u2)
     when (TApp t1 t2) (TApp u1 u2) = unifyPairs (t1, t2) (u1, u2)
@@ -68,13 +68,13 @@ unify t u = when (project t) (project u) where
     when _ _ | t == u              = pure mempty
     when _ _                       = throwError "CannotUnify" -- throwError CannotUnify
 
-unifyPairs :: (MonadError String m) => (Type Void, Type Void) -> (Type Void, Type Void) -> m (Sub Void)
+unifyPairs :: (MonadError String m) => (Type Void, Type Void) -> (Type Void, Type Void) -> m (Substitution Void)
 unifyPairs (t1, t2) (u1, u2) = do
     sub1 <- unify t1 u1
     sub2 <- unify (apply sub1 t2) (apply sub1 u2)
     pure (sub2 <> sub1)
 
-match :: (MonadError String m) => Type Void -> Type Void -> m (Sub Void)
+match :: (MonadError String m) => Type Void -> Type Void -> m (Substitution Void)
 match t u = when (project t) (project u) where
     when (TArr t1 t2) (TArr u1 u2)            = matchPairs (t1, t2) (u1, u2)
     when (TApp t1 t2) (TApp u1 u2)            = matchPairs (t1, t2) (u1, u2)
@@ -82,7 +82,7 @@ match t u = when (project t) (project u) where
     when _ _ | t == u                         = pure mempty
     when _ _                                  = throwError "CannotMatch" -- throwError CannotMatch
 
-matchPairs :: (MonadError String m) => (Type Void, Type Void) -> (Type Void, Type Void) -> m (Sub Void)
+matchPairs :: (MonadError String m) => (Type Void, Type Void) -> (Type Void, Type Void) -> m (Substitution Void)
 matchPairs (t1, t2) (u1, u2) = do
     sub1 <- match t1 u1
     sub2 <- match t2 u2
@@ -95,7 +95,7 @@ matchPairs (t1, t2) (u1, u2) = do
 --
 
 class Substitutable t a where
-    apply :: Sub a -> t -> t
+    apply :: Substitution a -> t -> t
 
 instance Substitutable (Type a) a where
     apply sub = cata $ \case
@@ -112,37 +112,37 @@ instance Substitutable Scheme Int where
 instance Substitutable NodeInfo Void where
     apply sub (NodeInfo ty a) = NodeInfo (apply sub ty) a
 
-newtype Sub a = Sub { getSub :: Map Name (Type a) }
+newtype Substitution a = Sub { getSub :: Map Name (Type a) }
     deriving (Show, Eq)
 
-instance Semigroup (Sub a) where
+instance Semigroup (Substitution a) where
     (<>) = compose
 
-instance Monoid (Sub a) where
+instance Monoid (Substitution a) where
     mempty = nullSub
 
-nullSub :: Sub a
+nullSub :: Substitution a
 nullSub = Sub mempty
 
-mapsTo :: Name -> Type a -> Sub a
+mapsTo :: Name -> Type a -> Substitution a
 mapsTo name val = Sub (Map.singleton name val)
 
-fromList :: [(Name, Type a)] -> Sub a
+fromList :: [(Name, Type a)] -> Substitution a
 fromList = Sub . Map.fromList
 
-toList :: Sub a -> [(Name, Type a)]
+toList :: Substitution a -> [(Name, Type a)]
 toList = Map.toList . getSub
 
-subWithDefault :: Type a -> Name -> Sub a -> Type a
+subWithDefault :: Type a -> Name -> Substitution a -> Type a
 subWithDefault d name = Map.findWithDefault d name . getSub
 
-domain :: Sub a -> [Name]
+domain :: Substitution a -> [Name]
 domain (Sub sub) = Map.keys sub
 
-compose :: Sub a -> Sub a -> Sub a
+compose :: Substitution a -> Substitution a -> Substitution a
 compose s1 s2 = Sub (fmap (apply s1) (getSub s2) `Map.union` getSub s1)
 
-merge :: (Eq a) => Sub a -> Sub a -> Maybe (Sub a)
+merge :: (Eq a) => Substitution a -> Substitution a -> Maybe (Substitution a)
 merge s1 s2 
     | allEqual  = Just (Sub (getSub s1 `Map.union` getSub s2))
     | otherwise = Nothing
@@ -150,18 +150,22 @@ merge s1 s2
     allEqual = all equal (domain s1 `intersect` domain s2)
 
     equal :: Name -> Bool
-    equal v = let app = (`apply` tVar kTyp v) :: (Eq a) => Sub a -> Type a
+    equal v = let app = (`apply` tVar kTyp v) :: (Eq a) => Substitution a -> Type a
                in app s1 == app s2
 
 unifyTypes 
-  :: (MonadSupply Name m, MonadReader (ClassEnv a, TypeEnv) m, MonadError String m, TypeOf s, TypeOf t) 
+  :: ( MonadSupply Name m
+     , MonadReader (ClassEnv a, TypeEnv) m
+     , MonadError String m
+     , TypeOf s
+     , TypeOf t ) 
   => s
   -> t
-  -> StateT (Sub Void) m ()
+  -> StateT (Substitution Void, Env [Predicate]) m ()
 unifyTypes v1 v2 = do 
-    sub1 <- get
+    sub1 <- gets fst
     sub2 <- unify (apply sub1 t1) (apply sub1 t2)
-    modify (sub2 <>)
+    modify (first (sub2 <>))
   where
     t1 = typeOf v1
     t2 = typeOf v2
@@ -179,19 +183,22 @@ insertAssumptions = flip (foldr (uncurry insertAssumption))
 data Predicate = InClass Name (Type Void)
     deriving (Show, Eq, Ord)
 
+-- TODO: Move to Tau.Pretty
+instance Pretty Predicate where
+    pretty (InClass name ty) = pretty name <+> pretty ty
+
 type ClassEnv a = [a] -- TODO!!
 
---type NodeInfo = NodeInfo Type [Predicate]    -- TODO!!
 data NodeInfo = NodeInfo 
     { nodeType       :: Type Void
-    , nodePredicates :: [Int]
+    , nodePredicates :: [Predicate]
     } deriving (Show, Eq)
 
 instance Pretty NodeInfo where
-    pretty (NodeInfo{..}) = 
+    pretty NodeInfo{..} = 
         case nodePredicates of
             []   -> pretty nodeType
-            info -> pretty info
+            info -> pretty nodeType <+> pretty info
 
 type TypeEnv = Env Scheme
 
@@ -204,7 +211,6 @@ lookupScheme
   -> m Scheme
 lookupScheme name = do
     env <- asks snd 
-    traceShowM env
     case Env.lookup name env of
         Nothing     -> throwError ("Unbound identifier: " <> Text.unpack name)
         Just scheme -> pure scheme
@@ -212,7 +218,7 @@ lookupScheme name = do
 instantiate
   :: (MonadSupply Name m) 
   => Scheme 
-  -> StateT (Sub a) m (Type Void)
+  -> StateT (Substitution a, Env [Predicate]) m (Type Void)
 instantiate scheme = do
     ps <- reverse <$> traverse (\kind -> (kind, ) <$> supply) kinds
     let ts = uncurry tVar <$> ps
@@ -233,7 +239,7 @@ instantiate scheme = do
 generalize
   :: (MonadSupply Name m, MonadReader (ClassEnv a, TypeEnv) m, MonadError String m) 
   => Type Void
-  -> StateT (Sub Void) m Scheme
+  -> StateT (Substitution Void, Env [Predicate]) m Scheme
 generalize ty = do
     set <- asks (Env.domain . snd)
     let qs = filter ((`notElem` set) . fst) vars
@@ -257,9 +263,9 @@ generalize ty = do
 applySubAndGeneralize
   :: (MonadSupply Name m, MonadReader (ClassEnv a, TypeEnv) m, MonadError String m) 
   => Type Void
-  -> StateT (Sub Void) m Scheme
+  -> StateT (Substitution Void, Env [Predicate]) m Scheme
 applySubAndGeneralize ty = do
-    sub <- get
+    sub <- gets fst
     generalize (apply sub ty)
 
 class TypeOf a where
@@ -277,7 +283,7 @@ instance TypeOf (Pattern NodeInfo) where
 infer
   :: (MonadSupply Name m, MonadReader (ClassEnv a, TypeEnv) m, MonadError String m) 
   => PatternExpr t 
-  -> StateT (Sub Void) m (PatternExpr NodeInfo)
+  -> StateT (Substitution Void, Env [Predicate]) m (PatternExpr NodeInfo)
 infer = cata alg
   where
     alg expr = do
@@ -344,12 +350,12 @@ inferClause
   :: (MonadSupply Name m, MonadReader (ClassEnv a, TypeEnv) m, MonadError String m) 
   => Type Void
   -> [PatternExpr NodeInfo]
-  -> Clause (Pattern t) (StateT (Sub Void) m (PatternExpr NodeInfo)) 
-  -> StateT (Sub Void) m (Clause (Pattern (Type Void)) (PatternExpr (Type Void)))
+  -> Clause (Pattern t) (StateT (Substitution Void, Env [Predicate]) m (PatternExpr NodeInfo)) 
+  -> StateT (Substitution Void, Env [Predicate]) m (Clause (Pattern (Type Void)) (PatternExpr (Type Void)))
 inferClause =
     undefined
 
-inferLiteral :: (MonadSupply Name m) => Literal -> StateT (Sub Void) m (Type Void)
+inferLiteral :: (MonadSupply Name m) => Literal -> StateT (Substitution Void, Env [Predicate]) m (Type Void)
 inferLiteral = pure . \case
     LUnit{}    -> tUnit
     LBool{}    -> tBool
@@ -362,7 +368,7 @@ inferLiteral = pure . \case
 inferPattern
   :: (MonadSupply Name m, MonadReader (ClassEnv a, TypeEnv) m, MonadError String m) 
   => Pattern t 
-  -> WriterT [(Name, Type Void)] (StateT (Sub Void) m) (Pattern NodeInfo)
+  -> WriterT [(Name, Type Void)] (StateT (Substitution Void, Env [Predicate]) m) (Pattern NodeInfo)
 inferPattern = cata alg
   where
     alg pat = do
@@ -395,9 +401,9 @@ inferPattern = cata alg
 inferLogicOp
   :: (MonadSupply Name m, MonadReader (ClassEnv a, TypeEnv) m, MonadError String m) 
   => (PatternExpr NodeInfo -> PatternExpr NodeInfo -> Op (PatternExpr NodeInfo))
-  -> StateT (Sub Void) m (PatternExpr NodeInfo)
-  -> StateT (Sub Void) m (PatternExpr NodeInfo)
-  -> StateT (Sub Void) m (PatternExpr NodeInfo)
+  -> StateT (Substitution Void, Env [Predicate]) m (PatternExpr NodeInfo)
+  -> StateT (Substitution Void, Env [Predicate]) m (PatternExpr NodeInfo)
+  -> StateT (Substitution Void, Env [Predicate]) m (PatternExpr NodeInfo)
 inferLogicOp op a b = do
     newTy <- newTVar kTyp
     e1 <- a
@@ -407,9 +413,9 @@ inferLogicOp op a b = do
     unifyTypes e2 tBool
     pure (opExpr (NodeInfo newTy []) (op e1 e2))
 
-type Infer s a = StateT (Sub s) (ReaderT (ClassEnv a, TypeEnv) (SupplyT Name (ExceptT String Maybe))) a 
+type Infer s a = StateT (Substitution s, Env [Predicate]) (ReaderT (ClassEnv a, TypeEnv) (SupplyT Name (ExceptT String Maybe))) a 
 
-runInfer :: ClassEnv a -> TypeEnv -> Infer s a -> Either String (a, Sub s)
+runInfer :: ClassEnv a -> TypeEnv -> Infer s a -> Either String (a, (Substitution s, Env [Predicate]))
 runInfer e1 e2 = 
     flip runStateT mempty
         >>> flip runReaderT (e1, e2)

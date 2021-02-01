@@ -13,6 +13,12 @@ import Tau.Type.Main
 import qualified Tau.Env as Env
 
 
+--bork :: Int -> [a]
+--bork = cata alg where
+--    alg :: Algebra NatF [a]
+--    alg = undefined
+
+
 --
 --
 
@@ -36,7 +42,7 @@ expr20 = letExpr () (varPat () "id") (lamExpr () (varPat () "x") (varExpr () "x"
 
 
 runTest1_ = do
-    let Right (tree, sub) = runTest1 
+    let Right (tree, (sub, _)) = runTest1 
     debugTree tree
     debugTree (mapTags (apply sub) tree)
 
