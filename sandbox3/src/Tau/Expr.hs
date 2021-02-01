@@ -113,10 +113,10 @@ deriveEq    ''ExprF
 deriveShow1 ''ExprF
 deriveEq1   ''ExprF
 
--- | Core language expression AST
+-- | Expression language tagged term tree
 type Expr t p q = Fix (ExprF t p q)
 
--- | Expression tree with unabridged patterns
+-- | Term tree with unabridged patterns
 type PatternExpr t = Expr t (Pattern t) (Pattern t)
 
 -- | Return the precedence of a binary operator
