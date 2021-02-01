@@ -3,6 +3,7 @@
 {-# LANGUAGE LambdaCase            #-}
 {-# LANGUAGE MultiParamTypeClasses #-}
 {-# LANGUAGE FlexibleContexts      #-}
+{-# LANGUAGE RecordWildCards       #-}
 {-# LANGUAGE FlexibleInstances     #-}
 module Tau.Stuff where
 
@@ -18,6 +19,7 @@ import Data.Map.Strict (Map)
 import Data.Maybe (fromMaybe)
 import Data.Set.Monad (Set)
 import Data.Text (Text)
+import Data.Text.Prettyprint.Doc
 import Data.Tree
 import Data.Tree.View (showTree)
 import Data.Tuple.Extra (snd3, third3)
@@ -25,6 +27,7 @@ import Data.Void
 import Tau.Env (Env(..))
 import Tau.Expr
 import Tau.Expr.Main
+import Tau.Pretty
 import Tau.Type
 import Tau.Type.Main
 import Tau.Util
@@ -107,7 +110,7 @@ instance Substitutable Scheme Int where
         Scheme t        -> scheme (apply sub t)
 
 instance Substitutable NodeInfo Void where
-    apply sub (ty, a) = (apply sub ty, a)
+    apply sub (NodeInfo ty a) = NodeInfo (apply sub ty) a
 
 newtype Sub a = Sub { getSub :: Map Name (Type a) }
     deriving (Show, Eq)
@@ -178,8 +181,17 @@ data Predicate = InClass Name (Type Void)
 
 type ClassEnv a = [a] -- TODO!!
 
---type NodeInfo = (Type, [Predicate])    -- TODO!!
-type NodeInfo = (Type Void, [Int])
+--type NodeInfo = NodeInfo Type [Predicate]    -- TODO!!
+data NodeInfo = NodeInfo 
+    { nodeType       :: Type Void
+    , nodePredicates :: [Int]
+    } deriving (Show, Eq)
+
+instance Pretty NodeInfo where
+    pretty (NodeInfo{..}) = 
+        case nodePredicates of
+            []   -> pretty nodeType
+            info -> pretty info
 
 type TypeEnv = Env Scheme
 
@@ -257,10 +269,10 @@ instance TypeOf (Type Void) where
     typeOf = id
 
 instance TypeOf (PatternExpr NodeInfo) where
-    typeOf = fst . exprTag
+    typeOf = nodeType . exprTag
 
 instance TypeOf (Pattern NodeInfo) where
-    typeOf = fst . patternTag
+    typeOf = nodeType . patternTag
 
 infer
   :: (MonadSupply Name m, MonadReader (ClassEnv a, TypeEnv) m, MonadError String m) 
@@ -274,25 +286,25 @@ infer = cata alg
             EVar _ var -> do
                 ty <- lookupScheme var >>= instantiate
                 unifyTypes ty newTy
-                pure (varExpr (newTy, []) var)
+                pure (varExpr (NodeInfo newTy []) var)
 
             ECon _ con exprs -> do
                 ty <- lookupScheme con >>= instantiate
                 es <- sequence exprs
                 unifyTypes ty (foldr tArr newTy (typeOf <$> es))
-                pure (conExpr (newTy, []) con es)
+                pure (conExpr (NodeInfo newTy []) con es)
 
             ELit _ lit -> do
                 ty <- inferLiteral lit
                 unifyTypes newTy ty
-                pure (litExpr (newTy, []) lit)
+                pure (litExpr (NodeInfo newTy []) lit)
 
             EApp _ exprs -> do
                 es <- sequence exprs
                 case es of
                     []     -> pure ()
                     f:args -> unifyTypes f (foldr tArr newTy (typeOf <$> args))
-                pure (appExpr (newTy, []) es)
+                pure (appExpr (NodeInfo newTy []) es)
 
             ELet _ pat expr1 expr2 -> do
                 (tp, vs) <- runWriterT (inferPattern pat)
@@ -301,22 +313,22 @@ infer = cata alg
                 ws <- traverse (secondM applySubAndGeneralize) vs 
                 e2 <- local (second (insertAssumptions ws)) expr2
                 unifyTypes newTy (typeOf e2)
-                pure (letExpr (newTy, []) tp e1 e2)
+                pure (letExpr (NodeInfo newTy []) tp e1 e2)
 
             ELam _ pat expr1 -> do
                 (tp, vs) <- runWriterT (inferPattern pat)
                 e1 <- local (second (insertAssumptions (fmap scheme_ <$> vs))) expr1
                 unifyTypes newTy (typeOf tp `tArr` typeOf e1)
-                pure (lamExpr (newTy, []) tp e1)
+                pure (lamExpr (NodeInfo newTy []) tp e1)
 
             EIf _ cond tr fl -> do
                 e1 <- cond
                 e2 <- tr
                 e3 <- fl
-                unifyTypes e1 (tBool :: Type Void)
+                unifyTypes e1 tBool 
                 unifyTypes e2 e3
                 unifyTypes newTy e2
-                pure (ifExpr (newTy, []) e1 e2 e3)
+                pure (ifExpr (NodeInfo newTy []) e1 e2 e3)
 
             EOp  _ (OAnd a b) -> inferLogicOp OAnd a b
             EOp  _ (OOr  a b) -> inferLogicOp OOr a b
@@ -358,27 +370,27 @@ inferPattern = cata alg
         case pat of
             PVar _ var -> do
                 tell [(var, newTy)]
-                pure (varPat (newTy, []) var)
+                pure (varPat (NodeInfo newTy []) var)
 
             PCon _ con ps -> do
                 ty <- lift (lookupScheme con >>= instantiate)
                 trs <- sequence ps
-                lift (unifyTypes (ty :: Type Void) (foldr tArr newTy (typeOf <$> trs)))
-                pure (conPat (newTy, []) con trs)
+                lift (unifyTypes ty (foldr tArr newTy (typeOf <$> trs)))
+                pure (conPat (NodeInfo newTy []) con trs)
 
             PLit _ lit -> do
                 ty <- lift (inferLiteral lit)
-                pure (litPat (ty, []) lit)
+                pure (litPat (NodeInfo ty []) lit)
 
             PRec _ fields -> do
                 let (_, ns, fs) = unzip3 (fieldsInfo fields)
                 ps <- sequence fs
                 let tfs = zipWith (\n p -> Field (patternTag p) n p) ns ps
-                lift (unifyTypes (newTy :: Type Void) (foldl tApp (recordConstructor ns) (typeOf <$> ps)))
-                pure (recPat (newTy, []) tfs)
+                lift (unifyTypes newTy (foldl tApp (recordConstructor ns) (typeOf <$> ps)))
+                pure (recPat (NodeInfo newTy []) tfs)
 
             PAny _ -> 
-                pure (anyPat (newTy, []))
+                pure (anyPat (NodeInfo newTy []))
 
 inferLogicOp
   :: (MonadSupply Name m, MonadReader (ClassEnv a, TypeEnv) m, MonadError String m) 
@@ -390,10 +402,10 @@ inferLogicOp op a b = do
     newTy <- newTVar kTyp
     e1 <- a
     e2 <- b
-    unifyTypes newTy (tBool :: Type Void)
-    unifyTypes e1 (tBool :: Type Void)
-    unifyTypes e2 (tBool :: Type Void)
-    pure (opExpr (newTy, []) (op e1 e2))
+    unifyTypes newTy tBool
+    unifyTypes e1 tBool
+    unifyTypes e2 tBool
+    pure (opExpr (NodeInfo newTy []) (op e1 e2))
 
 type Infer s a = StateT (Sub s) (ReaderT (ClassEnv a, TypeEnv) (SupplyT Name (ExceptT String Maybe))) a 
 
