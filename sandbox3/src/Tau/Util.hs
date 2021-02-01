@@ -65,7 +65,7 @@ numSupply :: Text -> [Name]
 numSupply = prefixSupply (pack . show <$> [1..])
 
 debug :: (Monad m) => String -> m ()
-debug info = case unsafePerformIO (putStrLn info) of () -> pure ()
+debug str = case unsafePerformIO (putStrLn str) of () -> pure ()
 
 instance Injective ((a, b), c) (a, b, c) where
     to ((a, b), c) = (a, b, c) 
