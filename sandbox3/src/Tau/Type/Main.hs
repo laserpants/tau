@@ -66,11 +66,11 @@ tList = tApp tListCon
 forall :: Kind -> Name -> [Name] -> Scheme -> Scheme
 forall = embed4 Forall 
 
-scheme :: Type Void -> Scheme
-scheme = embed1 Scheme . upgrade
+scheme :: Type Int -> Scheme
+scheme = embed1 Scheme 
 
-scheme_ :: Type Int -> Scheme
-scheme_ = embed1 Scheme 
+scheme_ :: Type Void -> Scheme
+scheme_ = embed1 Scheme . upgrade
 
 upgrade :: Type Void -> Type Int
 upgrade = cata $ \case

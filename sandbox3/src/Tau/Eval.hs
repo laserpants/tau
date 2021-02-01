@@ -87,7 +87,7 @@ eval = cata $ \case
         evalOp op
 
     ERec _ fields -> do
-        let (_, keys, vals) = unzip3 (fieldInfos fields)
+        let (_, keys, vals) = unzip3 (fieldsInfo fields)
         Record . zip keys <$> sequence vals
 
 evalVar :: (MonadFail m, MonadReader (ValueEnv m) m) => Name -> m (Value m)

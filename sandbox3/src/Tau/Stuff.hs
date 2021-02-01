@@ -6,7 +6,7 @@
 {-# LANGUAGE FlexibleInstances     #-}
 module Tau.Stuff where
 
-import Control.Arrow ((>>>), first, second)
+import Control.Arrow ((>>>), (<<<), first, second)
 import Control.Monad.Except
 import Control.Monad.Reader
 import Control.Monad.State
@@ -17,7 +17,7 @@ import Data.List
 import Data.Map.Strict (Map)
 import Data.Maybe (fromMaybe)
 import Data.Set.Monad (Set)
-import Data.Tuple.Extra
+import Data.Tuple.Extra (snd3, third3)
 import Data.Void
 import Tau.Env (Env(..))
 import Tau.Expr
@@ -30,6 +30,10 @@ import qualified Data.Set.Monad as Set
 import qualified Data.Set.Monad as Set
 import qualified Data.Text as Text
 import qualified Tau.Env as Env
+
+
+runTest1 = runInfer mempty typeEnv (infer expr1) where
+  typeEnv = Env.fromList [ ("lenShow", forall kTyp "a" ["Show"] (scheme (tGen 0 `tArr` tInt))) ]
 
 --
 --
@@ -110,7 +114,7 @@ instance Substitutable (Type a) a where
 instance Substitutable Scheme Int where
     apply sub = cata $ \case
         Forall k n cs s -> forall k n cs s
-        Scheme t        -> scheme_ (apply sub t)
+        Scheme t        -> scheme (apply sub t)
 
 newtype Sub a = Sub { getSub :: Map Name (Type a) }
     deriving (Show, Eq)
@@ -166,6 +170,12 @@ unifyTypes v1 v2 = do
     t1 = typeOf v1
     t2 = typeOf v2
 
+insertAssumption :: Name -> Scheme -> Env Scheme -> Env Scheme
+insertAssumption = Env.insert
+
+insertAssumptions :: [(Name, Scheme)] -> Env Scheme -> Env Scheme
+insertAssumptions = flip (foldr (uncurry insertAssumption))
+
 --
 -- Type checker
 --
@@ -180,12 +190,16 @@ type TypeEnv = Env Scheme
 newTVar :: (MonadSupply Name m) => Kind -> m (Type a)
 newTVar kind = tVar kind <$> supply 
 
+--sequenced :: (Monad m) => [m (a, [b])] -> m ([a], [b])
+--sequenced = (second concat . unzip <$>) . sequence
+
 lookupScheme 
   :: (MonadSupply Name m, MonadReader (ClassEnv a, TypeEnv) m, MonadError String m) 
   => Name 
   -> m Scheme
 lookupScheme name = do
     env <- asks snd 
+    traceShowM env
     case Env.lookup name env of
         Nothing     -> throwError ("Unbound identifier: " <> Text.unpack name)
         Just scheme -> pure scheme
@@ -214,11 +228,11 @@ instantiate scheme = do
 generalize
   :: (MonadSupply Name m, MonadReader (ClassEnv a, TypeEnv) m, MonadError String m) 
   => Type Void
-  -> StateT (Sub a) m Scheme
+  -> StateT (Sub Void) m Scheme
 generalize ty = do
     set <- asks (Env.domain . snd)
     let qs = filter ((`notElem` set) . fst) vars
-        (ty1, sub, _) = foldr go (scheme ty, mempty, 0) qs
+        (ty1, sub, _) = foldr go (scheme_ ty, mempty, 0) qs
     pure (apply sub ty1)
   where
     names = reverse (take (length vars) (nameSupply ""))
@@ -234,6 +248,14 @@ generalize ty = do
         TArr t1 t2 -> t1 <> t2
         TApp t1 t2 -> t1 <> t2
         ty         -> []
+
+applySubAndGeneralize
+  :: (MonadSupply Name m, MonadReader (ClassEnv a, TypeEnv) m, MonadError String m) 
+  => Type Void
+  -> StateT (Sub Void) m Scheme
+applySubAndGeneralize ty = do
+    sub <- get
+    generalize (apply sub ty)
 
 class TypeOf a where
     typeOf :: a -> Type Void
@@ -280,12 +302,19 @@ infer = cata alg
                 pure (appExpr (newTy, []) es)
 
             ELet _ pat expr1 expr2 -> do
-                tp <- inferPattern pat
-                undefined
+                (tp, vs) <- runWriterT (inferPattern pat)
+                e1 <- expr1
+                unifyTypes (typeOf tp) (typeOf e1)
+                ws <- traverse (secondM applySubAndGeneralize) vs 
+                e2 <- local (second (insertAssumptions ws)) expr2
+                unifyTypes newTy (typeOf e2)
+                pure (letExpr (newTy, []) tp e1 e2)
 
             ELam _ pat expr1 -> do
-                tp <- inferPattern pat
-                undefined
+                (tp, vs) <- runWriterT (inferPattern pat)
+                e1 <- local (second (insertAssumptions (fmap scheme_ <$> vs))) expr1
+                unifyTypes newTy (typeOf tp `tArr` typeOf e1)
+                pure (lamExpr (newTy, []) tp e1)
 
             EIf _ cond tr fl -> do
                 e1 <- cond
@@ -328,26 +357,35 @@ inferLiteral = pure . \case
 inferPattern
   :: (MonadSupply Name m, MonadReader (ClassEnv a, TypeEnv) m, MonadError String m) 
   => Pattern t 
-  -> StateT (Sub Void) m (Pattern NodeInfo)
+  -> WriterT [(Name, Type Void)] (StateT (Sub Void) m) (Pattern NodeInfo)
 inferPattern = cata alg
   where
     alg pat = do
         newTy <- newTVar kTyp
         case pat of
-            PVar _ var -> 
-                undefined
+            PVar _ var -> do
+                tell [(var, newTy)]
+                pure (varPat (newTy, []) var)
 
             PCon _ con ps -> do
-                undefined
+                ty <- lift (lookupScheme con >>= instantiate)
+                trs <- sequence ps
+                lift (unifyTypes (ty :: Type Void) (foldr tArr newTy (typeOf <$> trs)))
+                pure (conPat (newTy, []) con trs)
 
             PLit _ lit -> do
-                undefined
+                ty <- lift (inferLiteral lit)
+                pure (litPat (ty, []) lit)
 
             PRec _ fields -> do
-                undefined
+                let (_, ns, fs) = unzip3 (fieldsInfo fields)
+                ps <- sequence fs
+                let tfs = zipWith (\n p -> Field (patternTag p) n p) ns ps
+                lift (unifyTypes (newTy :: Type Void) (foldl tApp (recordConstructor ns) (typeOf <$> ps)))
+                pure (recPat (newTy, []) tfs)
 
             PAny _ -> 
-                undefined
+                pure (anyPat (newTy, []))
 
 inferLogicOp
   :: (MonadSupply Name m, MonadReader (ClassEnv a, TypeEnv) m, MonadError String m) 

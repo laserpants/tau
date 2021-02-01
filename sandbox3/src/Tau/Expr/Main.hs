@@ -62,5 +62,5 @@ andOp = binOpExpr OAnd
 orOp :: t -> Expr t p q -> Expr t p q -> Expr t p q
 orOp = binOpExpr OOr
 
-fieldInfos :: [Field a c] -> [(a, Name, c)]
-fieldInfos = sortOn snd3 . (to <$>)
+fieldsInfo :: [Field a c] -> [(a, Name, c)]
+fieldsInfo = sortOn snd3 . (to <$>)

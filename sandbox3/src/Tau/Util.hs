@@ -14,6 +14,8 @@ module Tau.Util
   , nameSupply
   , numSupply
   , debug
+  , firstM
+  , secondM
   , first3M
   , second3M
   , third3M
@@ -72,6 +74,16 @@ instance Injective ((a, b), c) (a, b, c) where
 
 instance Injective (a, (b, c)) (a, b, c) where
     to (a, (b, c)) = (a, b, c)
+
+firstM :: (Monad m) => (a -> m a1) -> (a, b) -> m (a1, b)
+firstM f (a, b) = do
+    a1 <- f a
+    pure (a1, b)
+
+secondM :: (Monad m) => (b -> m b1) -> (a, b) -> m (a, b1)
+secondM f (a, b) = do
+    b1 <- f b
+    pure (a, b1)
 
 first3M :: (Monad m) => (a -> m a1) -> (a, b, c) -> m (a1, b, c)
 first3M f (a, b, c) = do
