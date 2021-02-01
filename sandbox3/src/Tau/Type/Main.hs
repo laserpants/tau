@@ -99,7 +99,7 @@ kindOf = histo $ \case
     appKind (KArr _ k) = Just k
     appKind _          = Nothing
 
-recordConstructor :: [Name] -> Type Void
+recordConstructor :: [Name] -> Type a
 recordConstructor names = tCon kind ("{" <> Text.intercalate "," names <> "}")
   where 
     kind = foldr kArr kTyp (replicate (length names) kTyp)
