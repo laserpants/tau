@@ -22,18 +22,17 @@ toTree_ = prettyExprTree
 prettyExprTree :: (Pretty t) => PatternExpr t -> Tree Text
 prettyExprTree = para $ \case
     EVar t var        -> node t var []
-    ECon t con exs    -> node t (prettyPrint (conExpr t con (fst <$> exs))) []
-    ELit t lit        -> node t (prettyPrint lit) []
-    EApp t exs        -> node t "(@)" (snd <$> exs)
-    ELet t pat e1 e2  -> node t "let" [ node (exprTag (fst e1)) (prettyPrint pat <> " = " <> prettyPrint (fst e1)) []
-                                      , snd e2 ]
+    ECon t con exs    -> node t (conExpr t con (fst <$> exs)) []
+    ELit t lit        -> node t lit []
+    EApp t exs        -> node t ("(@)" :: String) (snd <$> exs)
+    ELet t pat e1 e2  -> node t ("let" :: String) [ node (exprTag (fst e1)) (prettyPrint pat <> " = " <> prettyPrint (fst e1)) [], snd e2 ]
     ELam t pat e1     -> node t ("λ(" <> prettyPrint pat <> " : " <> prettyPrint (patternTag pat) <> ")") [snd e1]
-    EIf  t cond tr fl -> node t "if" [snd cond, snd tr, snd fl]
-    ERec t fields     -> node t (prettyPrint (recExpr t (fmap fst <$> fields))) []
+    EIf  t cond tr fl -> node t ("if" :: String) [snd cond, snd tr, snd fl]
+    ERec t fields     -> node t (recExpr t (fmap fst <$> fields)) []
     EMat t exs eqs    -> node t ("match " <> matchExprs (fst <$> exs) <> " with") (fromClause <$> eqs)
     _                 -> Node "Not implemented" []
   where
-    node t ex = Node (ex <> " : " <> prettyPrint t)
+    node t ex = Node (prettyPrint ex <> " : " <> prettyPrint t)
 
     matchExprs :: (Pretty t) => [PatternExpr t] -> Text
     matchExprs = renderDoc . commaSep . (expr <$>) where
@@ -49,4 +48,4 @@ prettyExprTree = para $ \case
         PCon t con ps -> node t con ps
         PLit t lit    -> node t (prettyPrint lit) []
         PRec t _      -> node t (prettyPrint pat) []
-        PAny t        -> node t "_" []
+        PAny t        -> node t ("_" :: String) []
