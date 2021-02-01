@@ -39,8 +39,8 @@ data PatternF t a
     | PCon t Name [a]         -- ^ Constuctor pattern
     | PLit t Literal          -- ^ Literal pattern
     | PRec t [Field t a]      -- ^ Record pattern
---    | PAs  t Name a
---    | POr  t a a
+--  | PAs  t Name a
+--  | POr  t a a
     | PAny t                  -- ^ Wildcard pattern
     deriving (Show, Eq, Functor, Foldable, Traversable)
 
@@ -80,7 +80,7 @@ data Op a
     | OGtE a a                -- ^ Greater-than-or-equal-to operator (>=)
     | ONeg a                  -- ^ Unary negation
     | ONot a                  -- ^ Logical Not
---    | OIso a                  -- ^ Isomorphism operator (~)
+--  | OIso a                  -- ^ Isomorphism operator (~)
     | OLArr a a               -- ^ Function composition operator (<<)
     | ORArr a a               -- ^ Reverse function composition (>>)               
     | OFPipe a a              -- ^ Forward pipe operator (|>)
@@ -103,9 +103,9 @@ data ExprF t p q a
     | EMat t [a] [Clause p a] -- ^ Match expression
     | EOp  t (Op a)           -- ^ Operator
     | ERec t [Field t a]      -- ^ Record
---    | EFun t [Clause p a]   -- ^ Lambda-like match
---    | ELFn t Name [q] a     -- ^ Let-function expression (let f x = e) 
---    | EAnn u a
+--  | EFun t [Clause p a]     -- ^ Lambda-like match
+--  | ELFn t Name [q] a       -- ^ Let-function expression (let f x = e) 
+--  | EAnn u a
     deriving (Functor, Foldable, Traversable)
 
 deriveShow  ''ExprF

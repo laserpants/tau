@@ -66,8 +66,26 @@ tList = tApp tListCon
 forall :: Kind -> Name -> [Name] -> Scheme -> Scheme
 forall = embed4 Forall 
 
-scheme :: Type Int -> Scheme
-scheme = embed1 Scheme 
+scheme :: Type Void -> Scheme
+scheme = embed1 Scheme . upgrade
+
+scheme_ :: Type Int -> Scheme
+scheme_ = embed1 Scheme 
+
+upgrade :: Type Void -> Type Int
+upgrade = cata $ \case
+    TVar k var -> tVar k var
+    TCon k con -> tCon k con
+    TArr t1 t2 -> tArr t1 t2
+    TApp t1 t2 -> tApp t1 t2
+
+downgrade :: Type Int -> Type Void
+downgrade = cata $ \case
+    TVar k var -> tVar k var
+    TCon k con -> tCon k con
+    TArr t1 t2 -> tArr t1 t2
+    TApp t1 t2 -> tApp t1 t2
+    _          -> error "Implementation error"
 
 kindOf :: Type Void -> Maybe Kind
 kindOf = histo $ \case

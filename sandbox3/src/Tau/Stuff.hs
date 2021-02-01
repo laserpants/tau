@@ -1,212 +1,170 @@
 {-# LANGUAGE OverloadedStrings     #-}
+{-# LANGUAGE TupleSections         #-}
 {-# LANGUAGE LambdaCase            #-}
 {-# LANGUAGE MultiParamTypeClasses #-}
 {-# LANGUAGE FlexibleContexts      #-}
 {-# LANGUAGE FlexibleInstances     #-}
 module Tau.Stuff where
 
+import Control.Arrow ((>>>), first, second)
 import Control.Monad.Except
 import Control.Monad.Reader
 import Control.Monad.State
 import Control.Monad.Supply
 import Control.Monad.Writer
-import Data.Map.Strict (Map)
-import Data.Void
+import Data.Foldable (foldrM)
 import Data.List
+import Data.Map.Strict (Map)
+import Data.Maybe (fromMaybe)
+import Data.Set.Monad (Set)
 import Data.Tuple.Extra
+import Data.Void
 import Tau.Env (Env(..))
 import Tau.Expr
 import Tau.Expr.Main
 import Tau.Type
 import Tau.Type.Main
 import Tau.Util
-import qualified Tau.Env as Env
 import qualified Data.Map.Strict as Map
 import qualified Data.Set.Monad as Set
-
---class TaggedA a t where
---    getTag :: a -> t
---    setTag :: t -> a -> a
---
---updateTag :: (TaggedA a t) => (t -> t) -> a -> a
---updateTag f a = let tag = getTag a in setTag (f tag) a
---
---instance TaggedA (Expr t p q) t where
---    getTag = cata $ 
---        \case
---          EVar t _       -> t
---          ECon t _ _     -> t
---          ELit t _       -> t
---          EApp t _       -> t
---          ELet t _ _ _   -> t
---          ELam t _ _     -> t
---          EIf  t _ _ _   -> t
---          EMat t _ _     -> t
---          EOp  t _       -> t
---          ERec t _       -> t
---    setTag t = cata $ 
---        \case
---          EVar _ var     -> varExpr t var
---          ECon _ con exs -> conExpr t con exs
---          ELit _ lit     -> litExpr t lit
---          EApp _ exs     -> appExpr t exs
---          ELet _ p e1 e2 -> letExpr t p e1 e2
---          ELam _ p e1    -> lamExpr t p e1
---          EIf  _ c e1 e2 -> ifExpr  t c e1 e2
---          EMat _ exs eqs -> matExpr t exs eqs
---          EOp  _ op      -> opExpr  t op
---          ERec _ fields  -> recExpr t fields
---
---instance TaggedA (Pattern t) t where
---    getTag = cata $ 
---        \case
---          PVar t _       -> t
---          PCon t _ _     -> t
---          PLit t _       -> t
---          PRec t _       -> t
---          PAny t         -> t
---    setTag t = cata $ 
---        \case
---          PVar _ var     -> varPat t var
---          PCon _ con ps  -> conPat t con ps
---          PLit _ lit     -> litPat t lit
---          PRec _ fields  -> recPat t fields
---          PAny _         -> anyPat t
---
---instance TaggedA (Prep t) t where
---    getTag = 
---        \case
---          RVar t _       -> t
---          RCon t _ _     -> t
---    setTag t = 
---        \case
---          RVar _ var     -> RVar t var
---          RCon _ con rs  -> RCon t con rs
---
---instance TaggedA (Field t a) t where
---    getTag   (Field t _ _) = t
---    setTag t (Field _ n v) = Field t n v
---
---mapTags :: (s -> t) -> Expr s (Pattern s) (Pattern s) -> Expr t (Pattern t) (Pattern t)
---mapTags f = cata $ 
---    \case
---      EVar t var      -> varExpr (f t) var
---      ECon t con exs  -> conExpr (f t) con exs
---      ELit t lit      -> litExpr (f t) lit
---      EApp t exs      -> appExpr (f t) exs
---      ELet t p e1 e2  -> letExpr (f t) (mapPatternTags f p) e1 e2
---      ELam t p e1     -> lamExpr (f t) (mapPatternTags f p) e1
---      EIf  t c e1 e2  -> ifExpr  (f t) c e1 e2
---      EMat t exs eqs  -> matExpr (f t) exs (clause <$> eqs)
---      EOp  t op       -> opExpr  (f t) op
---      ERec t fields   -> recExpr (f t) (mapField f <$> fields)
---  where
---    clause (Clause ps exs e) =
---        Clause (mapPatternTags f <$> ps) exs e
---
---mapPatternTags :: (s -> t) -> Pattern s -> Pattern t
---mapPatternTags f = cata $ 
---    \case
---      PVar t var    -> varPat (f t) var
---      PCon t con ps -> conPat (f t) con ps
---      PLit t lit    -> litPat (f t) lit
---      PRec t fields -> recPat (f t) (mapField f <$> fields)
---      PAny t        -> anyPat (f t)
---
---mapField :: (s -> t) -> Field s a -> Field t a
---mapField f (Field t n v) = Field (f t) n v
-
---sortFields :: [Field a c] -> [Field a c]
---sortFields = sortOn (\(Field _ n _) -> n)
-
---fieldInfos = (to <$>) . sortFields
-
---
-
---getTag :: Expr t p q -> t
---getTag = cata $ \case
---    EVar t _     -> t
---    ECon t _ _   -> t
---    ELit t _     -> t
---    EApp t _     -> t
---    ELet t _ _ _ -> t
---    ELam t _ _   -> t
---    EIf  t _ _ _ -> t
---    EMat t _ _   -> t
---    EOp  t _     -> t
---
---setTag :: t -> Expr t p q -> Expr t p q
---setTag t = cata $ \case
---    EVar _ var     -> varExpr t var
---    ECon _ con exs -> conExpr t con exs
---    ELit _ lit     -> litExpr t lit
---    EApp _ exs     -> appExpr t exs
---    ELet _ p e1 e2 -> letExpr t p e1 e2
---    ELam _ p e1    -> lamExpr t p e1
---    EIf  _ c e1 e2 -> ifExpr  t c e1 e2
---    EMat _ exs eqs -> matExpr t exs eqs
---    EOp  _ op      -> opExpr  t op
---
---modifyTag :: (t -> t) -> Expr t p q -> Expr t p q
---modifyTag f p = setTag (f (getTag p)) p
-
---getPatternTag :: Pattern t -> t
---getPatternTag = cata $ \case
---    PVar t _   -> t
---    PCon t _ _ -> t
---    PLit t _   -> t
---    PAny t     -> t
---
---setPatternTag :: t -> Pattern t -> Pattern t
---setPatternTag t = cata $ \case
---    PVar _ var    -> varPat t var
---    PCon _ con ps -> conPat t con ps
---    PLit _ lit    -> litPat t lit
---    PAny _        -> anyPat t
---
---modifyPatternTag :: (t -> t) -> Pattern t -> Pattern t
---modifyPatternTag f p = setPatternTag (f (getPatternTag p)) p
---
---getPrepTag :: Prep t -> t
---getPrepTag = \case
---    RVar t _   -> t
---    RCon t _ _ -> t
---
---setPrepTag :: t -> Prep s -> Prep t
---setPrepTag t = \case
---    RVar _ var    -> RVar t var
---    RCon _ con rs -> RCon t con rs
---
---modifyPrepTag :: (t -> t) -> Prep t -> Prep t
---modifyPrepTag f p = setPrepTag (f (getPrepTag p)) p
-
---
-
---
+import qualified Data.Set.Monad as Set
+import qualified Data.Text as Text
+import qualified Tau.Env as Env
 
 --
 --
-
-
 
 expr1 :: PatternExpr ()
 expr1 = letExpr () (varPat () "f") (varExpr () "lenShow") (varExpr () "f")
+
+type1 :: Type a
+type1 = tVar kTyp "a" `tArr` tVar kTyp "b"
+
+class Free t where
+    free :: t -> Set Name
+
+instance Free (Type a) where
+    free = cata $ \case
+        TVar _ var     -> Set.singleton var
+        TArr t1 t2     -> t1 `Set.union` t2
+        TApp t1 t2     -> t1 `Set.union` t2
+        ty             -> mempty
+
+
+--
+-- Unification
+--
+
+bind :: (MonadError String m) => Name -> Kind -> Type Void -> m (Sub Void)
+bind name kind ty
+    | ty == tVar kind name   = pure mempty
+    | name `elem` free ty    = throwError "InfiniteType" -- throwError InfiniteType
+    | Just kind /= kindOf ty = throwError "KindMismatch" -- throwError KindMismatch
+    | otherwise              = pure (name `mapsTo` ty)
+
+unify :: (MonadError String m) => Type Void -> Type Void -> m (Sub Void)
+unify t u = when (project t) (project u) where
+    when (TArr t1 t2) (TArr u1 u2) = unifyPairs (t1, t2) (u1, u2)
+    when (TApp t1 t2) (TApp u1 u2) = unifyPairs (t1, t2) (u1, u2)
+    when (TVar kind name) _        = bind name kind u
+    when _ (TVar kind name)        = bind name kind t
+    when _ _ | t == u              = pure mempty
+    when _ _                       = throwError "CannotUnify" -- throwError CannotUnify
+
+unifyPairs :: (MonadError String m) => (Type Void, Type Void) -> (Type Void, Type Void) -> m (Sub Void)
+unifyPairs (t1, t2) (u1, u2) = do
+    sub1 <- unify t1 u1
+    sub2 <- unify (apply sub1 t2) (apply sub1 u2)
+    pure (sub2 <> sub1)
+
+match :: (MonadError String m) => Type Void -> Type Void -> m (Sub Void)
+match t u = when (project t) (project u) where
+    when (TArr t1 t2) (TArr u1 u2)            = matchPairs (t1, t2) (u1, u2)
+    when (TApp t1 t2) (TApp u1 u2)            = matchPairs (t1, t2) (u1, u2)
+    when (TVar k name) _ | Just k == kindOf u = pure (name `mapsTo` u)
+    when _ _ | t == u                         = pure mempty
+    when _ _                                  = throwError "CannotMatch" -- throwError CannotMatch
+
+matchPairs :: (MonadError String m) => (Type Void, Type Void) -> (Type Void, Type Void) -> m (Sub Void)
+matchPairs (t1, t2) (u1, u2) = do
+    sub1 <- match t1 u1
+    sub2 <- match t2 u2
+    case merge sub1 sub2 of
+        Nothing  -> throwError "MergeFailed" -- throwError MergeFailed
+        Just sub -> pure sub
 
 --
 -- Substitution
 --
 
-apply = undefined
+class Substitutable t a where
+    apply :: Sub a -> t -> t
 
-newtype Sub = Sub { getSub :: Map Name (Type Void) }
+instance Substitutable (Type a) a where
+    apply sub = cata $ \case
+        TVar kind var -> subWithDefault (tVar kind var) var sub
+        TArr t1 t2    -> tArr t1 t2
+        TApp t1 t2    -> tApp t1 t2
+        ty            -> embed ty
+
+instance Substitutable Scheme Int where
+    apply sub = cata $ \case
+        Forall k n cs s -> forall k n cs s
+        Scheme t        -> scheme_ (apply sub t)
+
+newtype Sub a = Sub { getSub :: Map Name (Type a) }
     deriving (Show, Eq)
 
-mapsTo :: Name -> Type Void -> Sub
+instance Semigroup (Sub a) where
+    (<>) = compose
+
+instance Monoid (Sub a) where
+    mempty = nullSub
+
+nullSub :: Sub a
+nullSub = Sub mempty
+
+mapsTo :: Name -> Type a -> Sub a
 mapsTo name val = Sub (Map.singleton name val)
 
-compose :: Sub -> Sub -> Sub
+fromList :: [(Name, Type a)] -> Sub a
+fromList = Sub . Map.fromList
+
+toList :: Sub a -> [(Name, Type a)]
+toList = Map.toList . getSub
+
+subWithDefault :: Type a -> Name -> Sub a -> Type a
+subWithDefault d name = Map.findWithDefault d name . getSub
+
+domain :: Sub a -> [Name]
+domain (Sub sub) = Map.keys sub
+
+compose :: Sub a -> Sub a -> Sub a
 compose s1 s2 = Sub (fmap (apply s1) (getSub s2) `Map.union` getSub s1)
 
+merge :: (Eq a) => Sub a -> Sub a -> Maybe (Sub a)
+merge s1 s2 
+    | allEqual  = Just (Sub (getSub s1 `Map.union` getSub s2))
+    | otherwise = Nothing
+  where
+    allEqual = all equal (domain s1 `intersect` domain s2)
+
+    equal :: Name -> Bool
+    equal v = let app = (`apply` tVar kTyp v) :: (Eq a) => Sub a -> Type a
+               in app s1 == app s2
+
+unifyTypes 
+  :: (MonadSupply Name m, MonadReader (ClassEnv a, TypeEnv) m, MonadError String m, TypeOf s, TypeOf t) 
+  => s
+  -> t
+  -> StateT (Sub Void) m ()
+unifyTypes v1 v2 = do 
+    sub1 <- get
+    sub2 <- unify (apply sub1 t1) (apply sub1 t2)
+    modify (sub2 <>)
+  where
+    t1 = typeOf v1
+    t2 = typeOf v2
 
 --
 -- Type checker
@@ -222,35 +180,121 @@ type TypeEnv = Env Scheme
 newTVar :: (MonadSupply Name m) => Kind -> m (Type a)
 newTVar kind = tVar kind <$> supply 
 
+lookupScheme 
+  :: (MonadSupply Name m, MonadReader (ClassEnv a, TypeEnv) m, MonadError String m) 
+  => Name 
+  -> m Scheme
+lookupScheme name = do
+    env <- asks snd 
+    case Env.lookup name env of
+        Nothing     -> throwError ("Unbound identifier: " <> Text.unpack name)
+        Just scheme -> pure scheme
+
+instantiate
+  :: (MonadSupply Name m) 
+  => Scheme 
+  -> StateT (Sub a) m (Type Void)
+instantiate scheme = do
+    ps <- reverse <$> traverse (\kind -> (kind, ) <$> supply) kinds
+    let ts = uncurry tVar <$> ps
+    pure (replaceBound ts ty)
+  where
+    (ty, kinds) = flip cata scheme $ \case
+        Scheme t             -> (t, [])
+        Forall k _ _ (t, ks) -> (t, k:ks)
+
+    replaceBound :: [Type Void] -> Type Int -> Type Void
+    replaceBound ts = cata $ \case
+        TGen n     -> ts !! n
+        TArr t1 t2 -> tArr t1 t2
+        TApp t1 t2 -> tApp t1 t2
+        TVar k var -> tVar k var
+        TCon k con -> tCon k con
+
+generalize
+  :: (MonadSupply Name m, MonadReader (ClassEnv a, TypeEnv) m, MonadError String m) 
+  => Type Void
+  -> StateT (Sub a) m Scheme
+generalize ty = do
+    set <- asks (Env.domain . snd)
+    let qs = filter ((`notElem` set) . fst) vars
+        (ty1, sub, _) = foldr go (scheme ty, mempty, 0) qs
+    pure (apply sub ty1)
+  where
+    names = reverse (take (length vars) (nameSupply ""))
+
+    go (var, kind) (t, sub, n) = 
+        ( forall kind (names !! n) [] t
+        , var `mapsTo` tGen n <> sub
+        , succ n )
+
+    vars :: [(Name, Kind)]
+    vars = nub . flip cata ty $ \case
+        TVar k var -> [(var, k)]
+        TArr t1 t2 -> t1 <> t2
+        TApp t1 t2 -> t1 <> t2
+        ty         -> []
+
+class TypeOf a where
+    typeOf :: a -> Type Void
+
+instance TypeOf (Type Void) where
+    typeOf = id
+
+instance TypeOf (PatternExpr NodeInfo) where
+    typeOf = fst . exprTag
+
+instance TypeOf (Pattern NodeInfo) where
+    typeOf = fst . patternTag
+
 infer
   :: (MonadSupply Name m, MonadReader (ClassEnv a, TypeEnv) m, MonadError String m) 
   => PatternExpr t 
-  -> StateT Sub m (PatternExpr NodeInfo)
+  -> StateT (Sub Void) m (PatternExpr NodeInfo)
 infer = cata alg
   where
     alg expr = do
         newTy <- newTVar kTyp
         case expr of
             EVar _ var -> do
-                undefined
+                ty <- lookupScheme var >>= instantiate
+                unifyTypes ty newTy
+                pure (varExpr (newTy, []) var)
 
             ECon _ con exprs -> do
-                undefined
+                ty <- lookupScheme con >>= instantiate
+                es <- sequence exprs
+                unifyTypes ty (foldr tArr newTy (typeOf <$> es))
+                pure (conExpr (newTy, []) con es)
 
             ELit _ lit -> do
-                undefined
+                ty <- inferLiteral lit
+                unifyTypes newTy ty
+                pure (litExpr (newTy, []) lit)
 
             EApp _ exprs -> do
-                undefined
+                es <- sequence exprs
+                case es of
+                    []     -> pure ()
+                    f:args -> unifyTypes f (foldr tArr newTy (typeOf <$> args))
+                pure (appExpr (newTy, []) es)
 
             ELet _ pat expr1 expr2 -> do
+                tp <- inferPattern pat
                 undefined
 
             ELam _ pat expr1 -> do
+                tp <- inferPattern pat
                 undefined
 
             EIf _ cond tr fl -> do
-                undefined
+                e1 <- cond
+                e2 <- tr
+                e3 <- fl
+                unifyTypes e1 (tBool :: Type Void)
+                unifyTypes e2 e3
+                unifyTypes newTy e2
+                pure (ifExpr (newTy, []) e1 e2 e3)
 
             EOp  _ (OAnd a b) -> inferLogicOp OAnd a b
             EOp  _ (OOr  a b) -> inferLogicOp OOr a b
@@ -262,10 +306,16 @@ infer = cata alg
             ERec _ fields -> do
                 undefined
 
+inferClause
+  :: (MonadSupply Name m, MonadReader (ClassEnv a, TypeEnv) m, MonadError String m) 
+  => Type Void
+  -> [PatternExpr NodeInfo]
+  -> Clause (Pattern t) (StateT (Sub Void) m (PatternExpr NodeInfo)) 
+  -> StateT (Sub Void) m (Clause (Pattern (Type Void)) (PatternExpr (Type Void)))
 inferClause =
     undefined
 
-inferLiteral :: (MonadSupply Name m) => Literal -> StateT Sub m (Type a)
+inferLiteral :: (MonadSupply Name m) => Literal -> StateT (Sub Void) m (Type Void)
 inferLiteral = pure . \case
     LUnit{}    -> tUnit
     LBool{}    -> tBool
@@ -275,20 +325,51 @@ inferLiteral = pure . \case
     LChar{}    -> tChar
     LString{}  -> tString
 
-inferPattern =
-    undefined
+inferPattern
+  :: (MonadSupply Name m, MonadReader (ClassEnv a, TypeEnv) m, MonadError String m) 
+  => Pattern t 
+  -> StateT (Sub Void) m (Pattern NodeInfo)
+inferPattern = cata alg
+  where
+    alg pat = do
+        newTy <- newTVar kTyp
+        case pat of
+            PVar _ var -> 
+                undefined
+
+            PCon _ con ps -> do
+                undefined
+
+            PLit _ lit -> do
+                undefined
+
+            PRec _ fields -> do
+                undefined
+
+            PAny _ -> 
+                undefined
 
 inferLogicOp
-  :: (MonadSupply Name m, MonadError String m) 
+  :: (MonadSupply Name m, MonadReader (ClassEnv a, TypeEnv) m, MonadError String m) 
   => (PatternExpr NodeInfo -> PatternExpr NodeInfo -> Op (PatternExpr NodeInfo))
-  -> StateT Sub m (PatternExpr NodeInfo)
-  -> StateT Sub m (PatternExpr NodeInfo)
-  -> StateT Sub m (PatternExpr NodeInfo)
+  -> StateT (Sub Void) m (PatternExpr NodeInfo)
+  -> StateT (Sub Void) m (PatternExpr NodeInfo)
+  -> StateT (Sub Void) m (PatternExpr NodeInfo)
 inferLogicOp op a b = do
     newTy <- newTVar kTyp
     e1 <- a
     e2 <- b
-    --unify22 newTy tBool
-    --unify22 (typeOf5 e1) tBool
-    --unify22 (typeOf5 e2) tBool 
+    unifyTypes newTy (tBool :: Type Void)
+    unifyTypes e1 (tBool :: Type Void)
+    unifyTypes e2 (tBool :: Type Void)
     pure (opExpr (newTy, []) (op e1 e2))
+
+type Infer s a = StateT (Sub s) (ReaderT (ClassEnv a, TypeEnv) (SupplyT Name (ExceptT String Maybe))) a 
+
+runInfer :: ClassEnv a -> TypeEnv -> Infer s a -> Either String (a, Sub s)
+runInfer e1 e2 = 
+    flip runStateT mempty
+        >>> flip runReaderT (e1, e2)
+        >>> flip evalSupplyT (numSupply "a")
+        >>> runExceptT
+        >>> fromMaybe (Left "error")

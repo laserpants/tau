@@ -21,7 +21,7 @@ import qualified Tau.Env as Env
 data KindF a 
     = KTyp
     | KArr a a
---    | KCls
+--  | KCls
     deriving (Show, Eq, Ord, Functor, Foldable, Traversable)
 
 deriveShow1 ''KindF
