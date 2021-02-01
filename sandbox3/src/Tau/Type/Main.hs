@@ -19,7 +19,6 @@ infixr 1 `kArr`
 kFun :: Kind
 kFun = kTyp `kArr` kTyp
 
--- Type Void??
 tVar :: Kind -> Name -> Type a
 tVar = embed2 TVar 
 
@@ -36,6 +35,8 @@ infixr 1 `tArr`
 
 tApp :: Type a -> Type a -> Type a
 tApp = embed2 TApp 
+
+--
 
 tUnit :: Type Void
 tUnit = tCon kTyp "Unit"
@@ -98,7 +99,7 @@ kindOf = histo $ \case
     appKind (KArr _ k) = Just k
     appKind _          = Nothing
 
-recordConstructor :: [Name] -> Type a
+recordConstructor :: [Name] -> Type Void
 recordConstructor names = tCon kind ("{" <> Text.intercalate "," names <> "}")
   where 
     kind = foldr kArr kTyp (replicate (length names) kTyp)

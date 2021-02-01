@@ -20,8 +20,8 @@ import qualified Tau.Env as Env
 -- | Base functor for Kind
 data KindF a 
     = KTyp
-    | KArr a a
 --  | KCls
+    | KArr a a
     deriving (Show, Eq, Ord, Functor, Foldable, Traversable)
 
 deriveShow1 ''KindF
@@ -48,7 +48,7 @@ deriveOrd1  ''TypeF
 type Type a = Fix (TypeF a)
 
 --type BasicType = Type Void
---type IndexedType = Type Int
+--type IndexType = Type Int
 
 -- | Base functor for Scheme
 data SchemeF a

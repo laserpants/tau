@@ -387,7 +387,7 @@ inferLogicOp op a b = do
     newTy <- newTVar kTyp
     e1 <- a
     e2 <- b
-    unifyTypes newTy tBool 
+    unifyTypes newTy (tBool :: Type Void)
     unifyTypes e1 (tBool :: Type Void)
     unifyTypes e2 (tBool :: Type Void)
     pure (opExpr (newTy, []) (op e1 e2))
