@@ -17,6 +17,9 @@ import Data.List
 import Data.Map.Strict (Map)
 import Data.Maybe (fromMaybe)
 import Data.Set.Monad (Set)
+import Data.Text (Text)
+import Data.Tree
+import Data.Tree.View (showTree)
 import Data.Tuple.Extra (snd3, third3)
 import Data.Void
 import Tau.Env (Env(..))
@@ -32,18 +35,6 @@ import qualified Data.Text as Text
 import qualified Tau.Env as Env
 
 
-runTest1 = runInfer mempty typeEnv (infer expr1) where
-  typeEnv = Env.fromList [ ("lenShow", forall kTyp "a" ["Show"] (scheme (tGen 0 `tArr` tInt))) ]
-
---
---
-
-expr1 :: PatternExpr ()
-expr1 = letExpr () (varPat () "f") (varExpr () "lenShow") (varExpr () "f")
-
-type1 :: Type a
-type1 = tVar kTyp "a" `tArr` tVar kTyp "b"
-
 class Free t where
     free :: t -> Set Name
 
@@ -53,7 +44,6 @@ instance Free (Type a) where
         TArr t1 t2     -> t1 `Set.union` t2
         TApp t1 t2     -> t1 `Set.union` t2
         ty             -> mempty
-
 
 --
 -- Unification
@@ -192,9 +182,6 @@ type TypeEnv = Env Scheme
 
 newTVar :: (MonadSupply Name m) => Kind -> m (Type a)
 newTVar kind = tVar kind <$> supply 
-
---sequenced :: (Monad m) => [m (a, [b])] -> m ([a], [b])
---sequenced = (second concat . unzip <$>) . sequence
 
 lookupScheme 
   :: (MonadSupply Name m, MonadReader (ClassEnv a, TypeEnv) m, MonadError String m) 
@@ -400,7 +387,7 @@ inferLogicOp op a b = do
     newTy <- newTVar kTyp
     e1 <- a
     e2 <- b
-    unifyTypes newTy (tBool :: Type Void)
+    unifyTypes newTy tBool 
     unifyTypes e1 (tBool :: Type Void)
     unifyTypes e2 (tBool :: Type Void)
     pure (opExpr (newTy, []) (op e1 e2))

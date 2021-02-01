@@ -19,6 +19,7 @@ infixr 1 `kArr`
 kFun :: Kind
 kFun = kTyp `kArr` kTyp
 
+-- Type Void??
 tVar :: Kind -> Name -> Type a
 tVar = embed2 TVar 
 
@@ -36,31 +37,31 @@ infixr 1 `tArr`
 tApp :: Type a -> Type a -> Type a
 tApp = embed2 TApp 
 
-tUnit :: Type a
+tUnit :: Type Void
 tUnit = tCon kTyp "Unit"
 
-tBool :: Type a
+tBool :: Type Void
 tBool = tCon kTyp "Bool" 
 
-tInt :: Type a
+tInt :: Type Void
 tInt = tCon kTyp "Int" 
 
-tInteger :: Type a
+tInteger :: Type Void
 tInteger = tCon kTyp "Integer" 
 
-tFloat :: Type a
+tFloat :: Type Void
 tFloat = tCon kTyp "Float" 
 
-tString :: Type a
+tString :: Type Void
 tString = tCon kTyp "String" 
 
-tChar :: Type a
+tChar :: Type Void
 tChar = tCon kTyp "Char" 
 
-tListCon :: Type a
+tListCon :: Type Void
 tListCon = tCon kFun "List"
 
-tList :: Type a -> Type a
+tList :: Type Void -> Type Void
 tList = tApp tListCon 
 
 forall :: Kind -> Name -> [Name] -> Scheme -> Scheme

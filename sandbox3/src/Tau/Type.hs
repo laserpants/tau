@@ -47,6 +47,9 @@ deriveOrd1  ''TypeF
 -- | Types
 type Type a = Fix (TypeF a)
 
+--type BasicType = Type Void
+--type IndexedType = Type Int
+
 -- | Base functor for Scheme
 data SchemeF a
     = Forall Kind Name [Name] a
