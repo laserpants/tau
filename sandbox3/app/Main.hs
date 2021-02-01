@@ -16,9 +16,10 @@ import qualified Tau.Env as Env
 --
 --
 
-runTest1_ =
+runTest1_ = do
     let Right (tree, sub) = runTest1 
-     in debugTree tree
+    debugTree tree
+    debugTree (mapTags (apply sub) tree)
 
 runTest1 = runInfer mempty typeEnv (infer expr1) where
   typeEnv = Env.fromList [ ("lenShow", forall kTyp "a" ["Show"] (scheme (tGen 0 `tArr` upgrade tInt))) ]

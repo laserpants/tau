@@ -1,3 +1,4 @@
+{-# LANGUAGE LambdaCase #-}
 module Tau.Expr.Main where
 
 import Data.List (sortOn)
@@ -64,3 +65,29 @@ orOp = binOpExpr OOr
 
 fieldsInfo :: [Field a c] -> [(a, Name, c)]
 fieldsInfo = sortOn snd3 . (to <$>)
+
+mapTags :: (s -> t) -> PatternExpr s -> PatternExpr t 
+mapTags f = cata $ \case
+    EVar t var      -> varExpr (f t) var
+    ECon t con exs  -> conExpr (f t) con exs
+    ELit t lit      -> litExpr (f t) lit
+    EApp t exs      -> appExpr (f t) exs
+    ELet t p e1 e2  -> letExpr (f t) (mapPatternTags f p) e1 e2
+    ELam t p e1     -> lamExpr (f t) (mapPatternTags f p) e1
+    EIf  t c e1 e2  -> ifExpr  (f t) c e1 e2
+    EMat t exs eqs  -> matExpr (f t) exs (clause <$> eqs)
+    EOp  t op       -> opExpr  (f t) op
+    ERec t fields   -> recExpr (f t) (mapField f <$> fields)
+  where
+    clause (Clause ps exs e) = Clause (mapPatternTags f <$> ps) exs e
+
+mapPatternTags :: (s -> t) -> Pattern s -> Pattern t
+mapPatternTags f = cata $ \case
+    PVar t var    -> varPat (f t) var
+    PCon t con ps -> conPat (f t) con ps
+    PLit t lit    -> litPat (f t) lit
+    PRec t fields -> recPat (f t) (mapField f <$> fields)
+    PAny t        -> anyPat (f t)
+
+mapField :: (s -> t) -> Field s a -> Field t a
+mapField f (Field t n v) = Field (f t) n v

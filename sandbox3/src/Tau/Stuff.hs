@@ -106,6 +106,9 @@ instance Substitutable Scheme Int where
         Forall k n cs s -> forall k n cs s
         Scheme t        -> scheme (apply sub t)
 
+instance Substitutable NodeInfo Void where
+    apply sub (ty, a) = (apply sub ty, a)
+
 newtype Sub a = Sub { getSub :: Map Name (Type a) }
     deriving (Show, Eq)
 
