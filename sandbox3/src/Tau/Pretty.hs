@@ -9,6 +9,7 @@ import Data.Maybe (fromJust, maybeToList)
 import Data.Text.Prettyprint.Doc
 import Tau.Expr
 import Tau.Expr.Main
+import Tau.Stuff
 import Tau.Type
 import Tau.Type.Main
 import Tau.Util
@@ -108,8 +109,8 @@ instance Pretty Kind where
                 KArr{} -> parens (snd a)
                 _      -> snd a
 
---instance Pretty Predicate where
---    pretty (InClass name ty) = pretty name <+> pretty ty
+instance Pretty Predicate where
+    pretty (InClass name ty) = pretty name <+> pretty ty
 
 instance Pretty Scheme where
     pretty scheme = forall <> classes <> prettyTypeGen (reverse bound) ty

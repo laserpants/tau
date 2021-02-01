@@ -180,6 +180,9 @@ insertAssumptions = flip (foldr (uncurry insertAssumption))
 -- Type checker
 --
 
+data Predicate = InClass Name (Type Void)
+    deriving (Show, Eq, Ord)
+
 type ClassEnv a = [a] -- TODO!!
 
 --type NodeInfo = (Type, [Predicate])    -- TODO!!
