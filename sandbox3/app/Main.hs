@@ -27,6 +27,12 @@ expr7 = lamExpr () (varPat () "x") (appExpr () [varExpr () "f", varExpr () "x"])
 expr8 = lamExpr () (varPat () "x") (lamExpr () (varPat () "y") (appExpr () [varExpr () "f", lamExpr () (varPat () "x") (lamExpr () (varPat () "y") (varExpr () "z"))]))
 expr9 = lamExpr () (varPat () "x") (appExpr () [varExpr () "lenShow2", varExpr () "x"])
 expr99 = appExpr () [lamExpr () (varPat () "f") (appExpr () [varExpr () "f", litExpr () (LInt 5)]), varExpr () "lenShow"]
+expr20 = letExpr () (varPat () "id") (lamExpr () (varPat () "x") (varExpr () "x")) 
+              (appExpr () [
+                  varExpr () "(,)"
+                , appExpr () [varExpr () "id", litExpr () (LInt 5)]
+                , appExpr () [varExpr () "id", litExpr () (LBool True)]
+              ])
 
 
 runTest1_ = do
@@ -34,8 +40,11 @@ runTest1_ = do
     debugTree tree
     debugTree (mapTags (apply sub) tree)
 
-runTest1 = runInfer mempty typeEnv (infer expr6) where
-  typeEnv = Env.fromList [ ("lenShow", forall kTyp "a" ["Show"] (scheme (tGen 0 `tArr` upgrade tInt))) ]
+runTest1 = runInfer mempty typeEnv (infer expr20) where
+  typeEnv = Env.fromList 
+        [ ("lenShow" , forall kTyp "a" ["Show"] (scheme (tGen 0 `tArr` upgrade tInt))) 
+        , ("(,)"     , forall kTyp "a" [] (forall kTyp "b" [] (scheme (tGen 1 `tArr` tGen 0 `tArr` tApp (tApp (tCon (kArr kTyp (kArr kTyp kTyp)) "(,)") (tGen 1)) (tGen 0)))))
+        ]
 
 --
 --
