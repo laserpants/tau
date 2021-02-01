@@ -1,16 +1,28 @@
 {-# LANGUAGE OverloadedStrings     #-}
 {-# LANGUAGE LambdaCase            #-}
 {-# LANGUAGE MultiParamTypeClasses #-}
+{-# LANGUAGE FlexibleContexts      #-}
 {-# LANGUAGE FlexibleInstances     #-}
 module Tau.Stuff where
 
+import Control.Monad.Except
+import Control.Monad.Reader
+import Control.Monad.State
+import Control.Monad.Supply
+import Control.Monad.Writer
+import Data.Map.Strict (Map)
+import Data.Void
 import Data.List
 import Data.Tuple.Extra
+import Tau.Env (Env(..))
 import Tau.Expr
-import Tau.Type
 import Tau.Expr.Main
+import Tau.Type
 import Tau.Type.Main
 import Tau.Util
+import qualified Tau.Env as Env
+import qualified Data.Map.Strict as Map
+import qualified Data.Set.Monad as Set
 
 --class TaggedA a t where
 --    getTag :: a -> t
@@ -180,12 +192,103 @@ import Tau.Util
 expr1 :: PatternExpr ()
 expr1 = letExpr () (varPat () "f") (varExpr () "lenShow") (varExpr () "f")
 
-
---type NodeInfo = (Type, [Predicate])
 --
---infer
---  :: (MonadSupply Name m, MonadReader (ClassEnv a, Env Scheme) m, MonadError String m) 
---  => PatternExpr t 
---  -> StateT (Substitution, Env [Predicate]) m (PatternExpr NodeInfo)
---infer =
---    undefined
+-- Substitution
+--
+
+apply = undefined
+
+newtype Sub = Sub { getSub :: Map Name (Type Void) }
+    deriving (Show, Eq)
+
+mapsTo :: Name -> Type Void -> Sub
+mapsTo name val = Sub (Map.singleton name val)
+
+compose :: Sub -> Sub -> Sub
+compose s1 s2 = Sub (fmap (apply s1) (getSub s2) `Map.union` getSub s1)
+
+
+--
+-- Type checker
+--
+
+type ClassEnv a = [a] -- TODO!!
+
+--type NodeInfo = (Type, [Predicate])    -- TODO!!
+type NodeInfo = (Type Void, [Int])
+
+type TypeEnv = Env Scheme
+
+newTVar :: (MonadSupply Name m) => Kind -> m (Type a)
+newTVar kind = tVar kind <$> supply 
+
+infer
+  :: (MonadSupply Name m, MonadReader (ClassEnv a, TypeEnv) m, MonadError String m) 
+  => PatternExpr t 
+  -> StateT Sub m (PatternExpr NodeInfo)
+infer = cata alg
+  where
+    alg expr = do
+        newTy <- newTVar kTyp
+        case expr of
+            EVar _ var -> do
+                undefined
+
+            ECon _ con exprs -> do
+                undefined
+
+            ELit _ lit -> do
+                undefined
+
+            EApp _ exprs -> do
+                undefined
+
+            ELet _ pat expr1 expr2 -> do
+                undefined
+
+            ELam _ pat expr1 -> do
+                undefined
+
+            EIf _ cond tr fl -> do
+                undefined
+
+            EOp  _ (OAnd a b) -> inferLogicOp OAnd a b
+            EOp  _ (OOr  a b) -> inferLogicOp OOr a b
+            EOp  _ _ -> undefined
+
+            EMat _ exs eqs -> do
+                undefined
+
+            ERec _ fields -> do
+                undefined
+
+inferClause =
+    undefined
+
+inferLiteral :: (MonadSupply Name m) => Literal -> StateT Sub m (Type a)
+inferLiteral = pure . \case
+    LUnit{}    -> tUnit
+    LBool{}    -> tBool
+    LInt{}     -> tInt
+    LInteger{} -> tInteger
+    LFloat{}   -> tFloat
+    LChar{}    -> tChar
+    LString{}  -> tString
+
+inferPattern =
+    undefined
+
+inferLogicOp
+  :: (MonadSupply Name m, MonadError String m) 
+  => (PatternExpr NodeInfo -> PatternExpr NodeInfo -> Op (PatternExpr NodeInfo))
+  -> StateT Sub m (PatternExpr NodeInfo)
+  -> StateT Sub m (PatternExpr NodeInfo)
+  -> StateT Sub m (PatternExpr NodeInfo)
+inferLogicOp op a b = do
+    newTy <- newTVar kTyp
+    e1 <- a
+    e2 <- b
+    --unify22 newTy tBool
+    --unify22 (typeOf5 e1) tBool
+    --unify22 (typeOf5 e2) tBool 
+    pure (opExpr (newTy, []) (op e1 e2))

@@ -50,17 +50,17 @@ recExpr = embed2 ERec
 opExpr :: t -> Op (Expr t p q) -> Expr t p q
 opExpr = embed2 EOp 
 
-binopExpr :: (a -> b -> Op (Expr t p q)) -> t -> a -> b -> Expr t p q
-binopExpr op t a b = opExpr t (op a b)
+binOpExpr :: (a -> b -> Op (Expr t p q)) -> t -> a -> b -> Expr t p q
+binOpExpr op t a b = opExpr t (op a b)
 
 eqOp :: t -> Expr t p q -> Expr t p q -> Expr t p q
-eqOp = binopExpr OEq 
+eqOp = binOpExpr OEq 
 
 andOp :: t -> Expr t p q -> Expr t p q -> Expr t p q
-andOp = binopExpr OAnd 
+andOp = binOpExpr OAnd 
 
 orOp :: t -> Expr t p q -> Expr t p q -> Expr t p q
-orOp = binopExpr OOr
+orOp = binOpExpr OOr
 
 fieldInfos :: [Field a c] -> [(a, Name, c)]
 fieldInfos = sortOn snd3 . (to <$>)
