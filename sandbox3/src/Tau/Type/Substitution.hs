@@ -3,11 +3,11 @@
 {-# LANGUAGE MultiParamTypeClasses #-}
 module Tau.Type.Substitution where
 
+import Data.List (intersect)
 import Data.Map.Strict (Map)
-import Data.List
 import Data.Void
+import Prelude hiding (null)
 import Tau.Type
-import Tau.Type.Main
 import Tau.Util
 import qualified Data.Map.Strict as Map
 
@@ -20,7 +20,7 @@ instance Semigroup (SubstitutionT a) where
     (<>) = compose
 
 instance Monoid (SubstitutionT a) where
-    mempty = nullSub
+    mempty = null
 
 class Substitutable t a where
     apply :: SubstitutionT a -> t -> t
@@ -41,8 +41,8 @@ instance Substitutable (PredicateT a) a where
 instance Substitutable Scheme Int where
     apply sub (Forall ks ps ty) = Forall ks (apply sub ps) (apply sub ty)
 
-nullSub :: SubstitutionT a
-nullSub = Sub mempty
+null :: SubstitutionT a
+null = Sub mempty
 
 mapsTo :: Name -> TypeT a -> SubstitutionT a
 mapsTo name val = Sub (Map.singleton name val)

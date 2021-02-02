@@ -13,6 +13,7 @@ import Data.List
 import Data.Text (Text)
 import Data.Tuple.Extra (snd3)
 import Data.Types.Injective
+import Tau.Type
 import Tau.Util
 
 -- | Language primitives
@@ -195,3 +196,95 @@ patternTag = cata $ \case
 
 instance Injective (Field t a) (t, Name, a) where
     to (Field t n v) = (t, n, v)
+
+instance (Typed t) => Typed (Expr t (Pattern t) (Pattern t)) where
+    typeOf = typeOf . exprTag
+
+instance (Typed t) => Typed (Pattern t) where
+    typeOf = typeOf . patternTag
+
+fieldsInfo :: [Field a c] -> [(a, Name, c)]
+fieldsInfo = sortOn snd3 . (to <$>)
+
+mapTags :: (s -> t) -> PatternExpr s -> PatternExpr t 
+mapTags f = cata $ \case
+    EVar t var      -> varExpr (f t) var
+    ECon t con exs  -> conExpr (f t) con exs
+    ELit t lit      -> litExpr (f t) lit
+    EApp t exs      -> appExpr (f t) exs
+    ELet t p e1 e2  -> letExpr (f t) (mapPatternTags f p) e1 e2
+    ELam t p e1     -> lamExpr (f t) (mapPatternTags f p) e1
+    EIf  t c e1 e2  -> ifExpr  (f t) c e1 e2
+    EMat t exs eqs  -> matExpr (f t) exs (clause <$> eqs)
+    EOp  t op       -> opExpr  (f t) op
+    ERec t fields   -> recExpr (f t) (mapField f <$> fields)
+  where
+    clause (Clause ps exs e) = Clause (mapPatternTags f <$> ps) exs e
+
+mapPatternTags :: (s -> t) -> Pattern s -> Pattern t
+mapPatternTags f = cata $ \case
+    PVar t var    -> varPat (f t) var
+    PCon t con ps -> conPat (f t) con ps
+    PLit t lit    -> litPat (f t) lit
+    PRec t fields -> recPat (f t) (mapField f <$> fields)
+    PAny t        -> anyPat (f t)
+
+mapField :: (s -> t) -> Field s a -> Field t a
+mapField f (Field t n v) = Field (f t) n v
+
+varPat :: t -> Name -> Pattern t
+varPat = embed2 PVar
+
+conPat :: t -> Name -> [Pattern t] -> Pattern t
+conPat = embed3 PCon
+
+litPat :: t -> Literal -> Pattern t
+litPat = embed2 PLit
+
+recPat :: t -> [Field t (Pattern t)] -> Pattern t
+recPat = embed2 PRec
+
+anyPat :: t -> Pattern t
+anyPat = embed1 PAny 
+
+varExpr :: t -> Name -> Expr t p q
+varExpr = embed2 EVar
+
+conExpr :: t -> Name -> [Expr t p q] -> Expr t p q
+conExpr = embed3 ECon 
+
+litExpr :: t -> Literal -> Expr t p q
+litExpr = embed2 ELit 
+
+appExpr :: t -> [Expr t p q] -> Expr t p q
+appExpr = embed2 EApp 
+
+letExpr :: t -> q -> Expr t p q -> Expr t p q -> Expr t p q
+letExpr = embed4 ELet 
+
+lamExpr :: t -> q -> Expr t p q -> Expr t p q
+lamExpr = embed3 ELam 
+
+matExpr :: t -> [Expr t p q] -> [Clause p (Expr t p q)] -> Expr t p q
+matExpr = embed3 EMat 
+
+ifExpr :: t -> Expr t p q -> Expr t p q -> Expr t p q -> Expr t p q
+ifExpr = embed4 EIf
+
+recExpr :: t -> [Field t (Expr t p q)] -> Expr t p q
+recExpr = embed2 ERec 
+
+opExpr :: t -> Op (Expr t p q) -> Expr t p q
+opExpr = embed2 EOp 
+
+binOpExpr :: (a -> b -> Op (Expr t p q)) -> t -> a -> b -> Expr t p q
+binOpExpr op t a b = opExpr t (op a b)
+
+eqOp :: t -> Expr t p q -> Expr t p q -> Expr t p q
+eqOp = binOpExpr OEq 
+
+andOp :: t -> Expr t p q -> Expr t p q -> Expr t p q
+andOp = binOpExpr OAnd 
+
+orOp :: t -> Expr t p q -> Expr t p q -> Expr t p q
+orOp = binOpExpr OOr

@@ -57,14 +57,14 @@ unions = foldr Set.union mempty
 letters :: [Text]
 letters = pack <$> ([1..] >>= flip replicateM ['a'..'z'])
 
-prefixSupply :: [Text] -> Text -> [Name]
-prefixSupply supply prefix = fmap (prefix <>) supply
+prefixed :: [Text] -> Text -> [Name]
+prefixed supply prefix = fmap (prefix <>) supply
 
 nameSupply :: Text -> [Name]
-nameSupply = prefixSupply letters
+nameSupply = prefixed letters
 
 numSupply :: Text -> [Name]
-numSupply = prefixSupply (pack . show <$> [1..])
+numSupply = prefixed (pack . show <$> [1..])
 
 debug :: (Monad m) => String -> m ()
 debug str = case unsafePerformIO (putStrLn str) of () -> pure ()

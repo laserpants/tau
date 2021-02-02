@@ -5,7 +5,6 @@ module Tau.Type.Unification where
 import Control.Monad.Except
 import Data.Set.Monad (Set)
 import Tau.Type
-import Tau.Type.Main
 import Tau.Type.Substitution
 import Tau.Util
 import qualified Data.Set.Monad as Set

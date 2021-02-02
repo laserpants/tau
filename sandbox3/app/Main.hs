@@ -5,14 +5,12 @@ import Control.Arrow (second, first)
 import Tau.Type.Substitution
 import Tau.Eval
 import Tau.Expr
-import Tau.Expr.Main
 import Tau.Pretty
 import Tau.PrettyTree
 import Tau.Prim
 import Tau.Stuff
 import Tau.Type
 import Tau.Util
-import Tau.Type.Main
 import qualified Tau.Env as Env
 
 

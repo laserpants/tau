@@ -8,9 +8,7 @@ import Data.Maybe (fromJust, maybeToList)
 import Data.Text.Prettyprint.Doc
 import Data.Void
 import Tau.Expr
-import Tau.Expr.Main
 import Tau.Type
-import Tau.Type.Main
 import Tau.Util
 import qualified Data.Text as Text
 

@@ -10,7 +10,6 @@ import Data.Function ((&))
 import Data.List (zip)
 import Tau.Env (Env(..))
 import Tau.Expr
-import Tau.Expr.Main
 import Tau.Prim
 import Tau.Stuff
 import Tau.Util

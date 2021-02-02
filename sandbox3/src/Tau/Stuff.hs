@@ -26,11 +26,9 @@ import Data.Tuple.Extra (snd3, third3)
 import Data.Void
 import Tau.Env (Env(..))
 import Tau.Expr
-import Tau.Expr.Main
 import Tau.Pretty
 import Tau.Type
 import Tau.Type.Unification
-import Tau.Type.Main
 import Tau.Type.Substitution
 import Tau.Util
 import qualified Data.Map.Strict as Map
@@ -49,12 +47,37 @@ import qualified Tau.Env as Env
 --        TApp t1 t2     -> t1 `Set.union` t2
 --        ty             -> mempty
 
+--
+-- Type checker
+--
+
+type ClassEnv a = [a] -- TODO!!
+
+data NodeInfo = NodeInfo 
+    { nodeType       :: Type
+    , nodePredicates :: [Predicate]
+    } deriving (Show, Eq)
+
+instance Substitutable NodeInfo Void where
+    apply sub (NodeInfo ty ps) = NodeInfo (apply sub ty) (apply sub ps)
+
+instance Pretty NodeInfo where
+    pretty NodeInfo{..} = 
+        case nodePredicates of
+            []   -> pretty nodeType
+            info -> pretty nodeType <+> pretty info
+
+instance Typed NodeInfo where
+    typeOf = nodeType
+
+type TypeEnv = Env Scheme
+
 unifyTypes 
   :: ( MonadSupply Name m
      , MonadReader (ClassEnv a, TypeEnv) m
      , MonadError String m
-     , TypeOf s
-     , TypeOf t ) 
+     , Typed s
+     , Typed t ) 
   => s
   -> t
   -> StateT (Substitution, Env [Predicate]) m ()
@@ -73,37 +96,6 @@ unifyTypes v1 v2 = do
 
     copy k v e = 
         fromMaybe e (Env.copyKey k <$> getTypeVar v <*> pure e)
-
-insertAssumption :: Name -> Scheme -> Env Scheme -> Env Scheme
-insertAssumption = Env.insert
-
-insertAssumptions :: [(Name, Scheme)] -> Env Scheme -> Env Scheme
-insertAssumptions = flip (foldr (uncurry insertAssumption))
-
---
--- Type checker
---
-
-type ClassEnv a = [a] -- TODO!!
-
-data NodeInfo = NodeInfo 
-    { nodeType       :: Type
-    , nodePredicates :: [Predicate]
-    } deriving (Show, Eq)
-
-instance Substitutable NodeInfo Void where
-    apply sub (NodeInfo ty a) = NodeInfo (apply sub ty) (apply sub a)
-
-instance Pretty NodeInfo where
-    pretty NodeInfo{..} = 
-        case nodePredicates of
-            []   -> pretty nodeType
-            info -> pretty nodeType <+> pretty info
-
-type TypeEnv = Env Scheme
-
-newTVar :: (MonadSupply Name m) => Kind -> m (TypeT a)
-newTVar kind = tVar kind <$> supply 
 
 lookupScheme 
   :: (MonadSupply Name m, MonadReader (ClassEnv a, TypeEnv) m, MonadError String m) 
@@ -178,18 +170,6 @@ generalizeType ty = do
     sub <- gets fst
     generalize (apply sub ty)
 
-class TypeOf a where
-    typeOf :: a -> Type
-
-instance TypeOf Type where
-    typeOf = id
-
-instance TypeOf (PatternExpr NodeInfo) where
-    typeOf = nodeType . exprTag
-
-instance TypeOf (Pattern NodeInfo) where
-    typeOf = nodeType . patternTag
-
 infer
   :: (MonadSupply Name m, MonadReader (ClassEnv a, TypeEnv) m, MonadError String m) 
   => PatternExpr t 
@@ -227,13 +207,13 @@ infer = cata alg
                 e1 <- expr1
                 unifyTypes (typeOf tp) (typeOf e1)
                 ws <- traverse (secondM generalizeType) vs 
-                e2 <- local (second (insertAssumptions ws)) expr2
+                e2 <- local (second (Env.inserts ws)) expr2
                 unifyTypes newTy (typeOf e2)
                 pure (letExpr (NodeInfo newTy []) tp e1 e2)
 
             ELam _ pat expr1 -> do
                 (tp, vs) <- runWriterT (inferPattern pat)
-                e1 <- local (second (insertAssumptions (fmap toScheme <$> vs))) expr1
+                e1 <- local (second (Env.inserts (fmap toScheme <$> vs))) expr1
                 unifyTypes newTy (typeOf tp `tArr` typeOf e1)
                 pure (lamExpr (NodeInfo newTy []) tp e1)
 

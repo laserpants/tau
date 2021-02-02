@@ -8,7 +8,6 @@ import Data.Text.Prettyprint.Doc.Render.Text
 import Data.Tree
 import Data.Tree.View (showTree)
 import Tau.Expr
-import Tau.Expr.Main
 import Tau.Pretty
 import Tau.Util
 import qualified Data.Text as Text
