@@ -6,7 +6,7 @@ import Tau.Util
 import qualified Data.Map.Strict as Map
 
 newtype Env a = Env { getEnv :: Map Name a }
-    deriving (Show, Eq, Semigroup, Monoid)
+    deriving (Show, Eq, Semigroup, Monoid, Functor)
 
 empty :: Env a
 empty = Env mempty

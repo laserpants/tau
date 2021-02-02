@@ -1,6 +1,7 @@
 {-# LANGUAGE OverloadedStrings     #-}
 module Main where
 
+import Control.Arrow (second, first)
 import Tau.Eval
 import Tau.Expr
 import Tau.Expr.Main
@@ -9,6 +10,7 @@ import Tau.PrettyTree
 import Tau.Prim
 import Tau.Stuff
 import Tau.Type
+import Tau.Util
 import Tau.Type.Main
 import qualified Tau.Env as Env
 
@@ -42,11 +44,13 @@ expr20 = letExpr () (varPat () "id") (lamExpr () (varPat () "x") (varExpr () "x"
 
 
 runTest1_ = do
-    let Right (tree, (sub, _)) = runTest1 
+    let Right (tree, (sub, x)) = runTest1 
     debugTree tree
     debugTree (mapTags (apply sub) tree)
+    debug (show x)
+    debug (show (fmap (apply sub <$>) x))
 
-runTest1 = runInfer mempty typeEnv (infer expr20) where
+runTest1 = runInfer mempty typeEnv (infer expr2) where
   typeEnv = Env.fromList 
         [ ("lenShow" , forall kTyp "a" ["Show"] (scheme (tGen 0 `tArr` upgrade tInt))) 
         , ("(,)"     , forall kTyp "a" [] (forall kTyp "b" [] (scheme (tGen 1 `tArr` tGen 0 `tArr` tApp (tApp (tCon (kArr kTyp (kArr kTyp kTyp)) "(,)") (tGen 1)) (tGen 0)))))

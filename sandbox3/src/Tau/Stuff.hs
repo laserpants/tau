@@ -112,6 +112,9 @@ instance Substitutable Scheme Int where
 instance Substitutable NodeInfo Void where
     apply sub (NodeInfo ty a) = NodeInfo (apply sub ty) a
 
+instance Substitutable Predicate Void where
+    apply sub (InClass name ty) = InClass name (apply sub ty)
+
 newtype Substitution a = Sub { getSub :: Map Name (Type a) }
     deriving (Show, Eq)
 
@@ -218,15 +221,24 @@ lookupScheme name = do
 instantiate
   :: (MonadSupply Name m) 
   => Scheme 
-  -> StateT (Substitution a, Env [Predicate]) m (Type Void)
+  -> StateT (Substitution a, Env [Predicate]) m (Type Void, [Predicate])
 instantiate scheme = do
     ps <- reverse <$> traverse (\kind -> (kind, ) <$> supply) kinds
     let ts = uncurry tVar <$> ps
-    pure (replaceBound ts ty)
+        pm = predicateMap (snd <$> ps)
+    modify (second (Env.union (Env.fromListWith (<>) (second pure <$> pm))))
+    pure (replaceBound ts ty, snd <$> pm)
   where
     (ty, kinds) = flip cata scheme $ \case
         Scheme t             -> (t, [])
         Forall k _ _ (t, ks) -> (t, k:ks)
+
+    predicateMap :: [Name] -> [(Name, Predicate)]
+    predicateMap names = snd $ flip cata scheme $ \case
+        Scheme _              -> (0, [])
+        Forall _ _ ps (n, qs) -> 
+            let var = names !! n 
+             in (succ n, [(var, InClass p (tVar kTyp var)) | p <- ps] <> qs)
 
     replaceBound :: [Type Void] -> Type Int -> Type Void
     replaceBound ts = cata $ \case
@@ -236,14 +248,31 @@ instantiate scheme = do
         TVar k var -> tVar k var
         TCon k con -> tCon k con
 
+lookupPredicates 
+  :: (MonadSupply Name m, MonadReader (ClassEnv a, TypeEnv) m, MonadError String m) 
+  => Set Name
+  -> StateT (Substitution Void, Env [Predicate]) m [Predicate]
+lookupPredicates vars = do
+    env <- gets snd
+    pure (concat [fromMaybe [] (Env.lookup v env) | v <- Set.toList vars])
+
 generalize
   :: (MonadSupply Name m, MonadReader (ClassEnv a, TypeEnv) m, MonadError String m) 
   => Type Void
   -> StateT (Substitution Void, Env [Predicate]) m Scheme
 generalize ty = do
+    traceShowM "Generalizing..."
+    traceShowM (free ty)
+    ps <- lookupPredicates (free ty)
+
     set <- asks (Env.domain . snd)
     let qs = filter ((`notElem` set) . fst) vars
         (ty1, sub, _) = foldr go (scheme_ ty, mempty, 0) qs
+
+    traceShowM sub
+    traceShowM ps
+    --traceShowM (apply sub <$> ps)
+
     pure (apply sub ty1)
   where
     names = reverse (take (length vars) (nameSupply ""))
@@ -290,15 +319,15 @@ infer = cata alg
         newTy <- newTVar kTyp
         case expr of
             EVar _ var -> do
-                ty <- lookupScheme var >>= instantiate
+                (ty, ps) <- lookupScheme var >>= instantiate
                 unifyTypes ty newTy
-                pure (varExpr (NodeInfo newTy []) var)
+                pure (varExpr (NodeInfo newTy ps) var)
 
             ECon _ con exprs -> do
-                ty <- lookupScheme con >>= instantiate
+                (ty, ps) <- lookupScheme con >>= instantiate
                 es <- sequence exprs
                 unifyTypes ty (foldr tArr newTy (typeOf <$> es))
-                pure (conExpr (NodeInfo newTy []) con es)
+                pure (conExpr (NodeInfo newTy ps) con es)
 
             ELit _ lit -> do
                 ty <- inferLiteral lit
@@ -379,10 +408,10 @@ inferPattern = cata alg
                 pure (varPat (NodeInfo newTy []) var)
 
             PCon _ con ps -> do
-                ty <- lift (lookupScheme con >>= instantiate)
+                (ty, qs) <- lift (lookupScheme con >>= instantiate)
                 trs <- sequence ps
                 lift (unifyTypes ty (foldr tArr newTy (typeOf <$> trs)))
-                pure (conPat (NodeInfo newTy []) con trs)
+                pure (conPat (NodeInfo newTy qs) con trs)
 
             PLit _ lit -> do
                 ty <- lift (inferLiteral lit)
