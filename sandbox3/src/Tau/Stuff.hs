@@ -29,7 +29,9 @@ import Tau.Expr
 import Tau.Expr.Main
 import Tau.Pretty
 import Tau.Type
+import Tau.Type.Unification
 import Tau.Type.Main
+import Tau.Type.Substitution
 import Tau.Util
 import qualified Data.Map.Strict as Map
 import qualified Data.Set.Monad as Set
@@ -37,126 +39,15 @@ import qualified Data.Text as Text
 import qualified Tau.Env as Env
 
 
-class Free t where
-    free :: t -> Set Name
-
-instance Free (TypeT a) where
-    free = cata $ \case
-        TVar _ var     -> Set.singleton var
-        TArr t1 t2     -> t1 `Set.union` t2
-        TApp t1 t2     -> t1 `Set.union` t2
-        ty             -> mempty
-
+--class Free t where
+--    free :: t -> Set Name
 --
--- Unification
---
-
-bind :: (MonadError String m) => Name -> Kind -> Type -> m Substitution
-bind name kind ty
-    | ty == tVar kind name   = pure mempty
-    | name `elem` free ty    = throwError "InfiniteType" -- throwError InfiniteType
-    | Just kind /= kindOf ty = throwError "KindMismatch" -- throwError KindMismatch
-    | otherwise              = pure (name `mapsTo` ty)
-
-unify :: (MonadError String m) => Type -> Type -> m Substitution
-unify t u = when (project t) (project u) where
-    when (TArr t1 t2) (TArr u1 u2) = unifyPairs (t1, t2) (u1, u2)
-    when (TApp t1 t2) (TApp u1 u2) = unifyPairs (t1, t2) (u1, u2)
-    when (TVar kind name) _        = bind name kind u
-    when _ (TVar kind name)        = bind name kind t
-    when _ _ | t == u              = pure mempty
-    when _ _                       = throwError "CannotUnify" -- throwError CannotUnify
-
-unifyPairs :: (MonadError String m) => (Type, Type) -> (Type, Type) -> m Substitution
-unifyPairs (t1, t2) (u1, u2) = do
-    sub1 <- unify t1 u1
-    sub2 <- unify (apply sub1 t2) (apply sub1 u2)
-    pure (sub2 <> sub1)
-
-match :: (MonadError String m) => Type -> Type -> m Substitution
-match t u = when (project t) (project u) where
-    when (TArr t1 t2) (TArr u1 u2)            = matchPairs (t1, t2) (u1, u2)
-    when (TApp t1 t2) (TApp u1 u2)            = matchPairs (t1, t2) (u1, u2)
-    when (TVar k name) _ | Just k == kindOf u = pure (name `mapsTo` u)
-    when _ _ | t == u                         = pure mempty
-    when _ _                                  = throwError "CannotMatch" -- throwError CannotMatch
-
-matchPairs :: (MonadError String m) => (Type, Type) -> (Type, Type) -> m Substitution
-matchPairs (t1, t2) (u1, u2) = do
-    sub1 <- match t1 u1
-    sub2 <- match t2 u2
-    case merge sub1 sub2 of
-        Nothing  -> throwError "MergeFailed" -- throwError MergeFailed
-        Just sub -> pure sub
-
---
--- Substitution
---
-
-class Substitutable t a where
-    apply :: SubstitutionT a -> t -> t
-
-instance Substitutable t a => Substitutable [t] a where
-    apply = fmap . apply
-
-instance Substitutable (TypeT a) a where
-    apply sub = cata $ \case
-        TVar kind var -> subWithDefault (tVar kind var) var sub
-        TArr t1 t2    -> tArr t1 t2
-        TApp t1 t2    -> tApp t1 t2
-        ty            -> embed ty
-
-instance Substitutable NodeInfo Void where
-    apply sub (NodeInfo ty a) = NodeInfo (apply sub ty) a
-
-instance Substitutable (PredicateT a) a where
-    apply sub (InClass name ty) = InClass name (apply sub ty)
-
-instance Substitutable Scheme Int where
-    apply sub (Forall ks ps ty) = Forall ks (apply sub ps) (apply sub ty)
-
-newtype SubstitutionT a = Sub { getSub :: Map Name (TypeT a) }
-    deriving (Show, Eq)
-
-type Substitution = SubstitutionT Void
-
-instance Semigroup (SubstitutionT a) where
-    (<>) = compose
-
-instance Monoid (SubstitutionT a) where
-    mempty = nullSub
-
-nullSub :: SubstitutionT a
-nullSub = Sub mempty
-
-mapsTo :: Name -> TypeT a -> SubstitutionT a
-mapsTo name val = Sub (Map.singleton name val)
-
-fromList :: [(Name, TypeT a)] -> SubstitutionT a
-fromList = Sub . Map.fromList
-
-toList :: SubstitutionT a -> [(Name, TypeT a)]
-toList = Map.toList . getSub
-
-subWithDefault :: TypeT a -> Name -> SubstitutionT a -> TypeT a
-subWithDefault d name = Map.findWithDefault d name . getSub
-
-domain :: SubstitutionT a -> [Name]
-domain (Sub sub) = Map.keys sub
-
-compose :: SubstitutionT a -> SubstitutionT a -> SubstitutionT a
-compose s1 s2 = Sub (fmap (apply s1) (getSub s2) `Map.union` getSub s1)
-
-merge :: (Eq a) => SubstitutionT a -> SubstitutionT a -> Maybe (SubstitutionT a)
-merge s1 s2 
-    | allEqual  = Just (Sub (getSub s1 `Map.union` getSub s2))
-    | otherwise = Nothing
-  where
-    allEqual = all equal (domain s1 `intersect` domain s2)
-
-    equal :: Name -> Bool
-    equal v = let app = (`apply` tVar kTyp v) :: (Eq a) => SubstitutionT a -> TypeT a
-               in app s1 == app s2
+--instance Free (TypeT a) where
+--    free = cata $ \case
+--        TVar _ var     -> Set.singleton var
+--        TArr t1 t2     -> t1 `Set.union` t2
+--        TApp t1 t2     -> t1 `Set.union` t2
+--        ty             -> mempty
 
 unifyTypes 
   :: ( MonadSupply Name m
@@ -178,9 +69,9 @@ unifyTypes v1 v2 = do
 
     propagateClasses :: Substitution -> Env [Predicate] -> Env [Predicate]
     propagateClasses sub env = do
-        Map.foldrWithKey fun env (getSub sub)
+        Map.foldrWithKey copy env (getSub sub)
 
-    fun k v e = 
+    copy k v e = 
         fromMaybe e (Env.copyKey k <$> getTypeVar v <*> pure e)
 
 insertAssumption :: Name -> Scheme -> Env Scheme -> Env Scheme
@@ -199,6 +90,9 @@ data NodeInfo = NodeInfo
     { nodeType       :: Type
     , nodePredicates :: [Predicate]
     } deriving (Show, Eq)
+
+instance Substitutable NodeInfo Void where
+    apply sub (NodeInfo ty a) = NodeInfo (apply sub ty) (apply sub a)
 
 instance Pretty NodeInfo where
     pretty NodeInfo{..} = 
@@ -226,21 +120,28 @@ instantiate
   => Scheme 
   -> StateT (Substitution, Env [Predicate]) m (Type, [Predicate])
 instantiate (Forall kinds ps ty) = do
-    tv <- supply
+    newTy <- newTVar kTyp
     ts <- traverse (\kind -> tVar kind <$> supply) kinds
-    ns <- supplies (length ps)
-    let newTy = tVar kTyp tv
-        preds = replaceBoundInPredicate ts <$> ps
-        zz = zip ns preds
-
-    unifyTypes (replaceBound ts ty) (newTy :: Type)
-    traverse_ foo zz
+    let preds = replaceBoundInPredicate ts <$> ps
+    traceShowM ps
+    traceShowM preds
+    traceShowM "**"
+    unifyTypes (replaceBound ts ty) newTy 
+    traverse_ unifyPred preds
     sub <- gets fst
     pure (apply sub newTy, preds)
   where
-    foo (t1, p@(InClass _ t2)) = do
-        modify (second (Env.insert t1 [p]))
-        unifyTypes (tVar kTyp t1 :: Type) t2
+    unifyPred p@(InClass _ t1) = do
+        tv <- supply
+        modify (second (Env.insert tv [p]))
+        traceShowM "xx"
+        traceShowM "xx"
+        traceShowM tv
+        traceShowM [p]
+        traceShowM t1
+        traceShowM "xx"
+        traceShowM "xx"
+        unifyTypes (tVar kTyp tv :: Type) t1
 
 lookupPredicates 
   :: (MonadSupply Name m, MonadReader (ClassEnv a, TypeEnv) m, MonadError String m) 
@@ -269,11 +170,11 @@ generalize ty = do
         TApp t1 t2 -> t1 <> t2
         ty         -> []
 
-applySubAndGeneralize
+generalizeType
   :: (MonadSupply Name m, MonadReader (ClassEnv a, TypeEnv) m, MonadError String m) 
   => Type
   -> StateT (Substitution, Env [Predicate]) m Scheme
-applySubAndGeneralize ty = do
+generalizeType ty = do
     sub <- gets fst
     generalize (apply sub ty)
 
@@ -325,7 +226,7 @@ infer = cata alg
                 (tp, vs) <- runWriterT (inferPattern pat)
                 e1 <- expr1
                 unifyTypes (typeOf tp) (typeOf e1)
-                ws <- traverse (secondM applySubAndGeneralize) vs 
+                ws <- traverse (secondM generalizeType) vs 
                 e2 <- local (second (insertAssumptions ws)) expr2
                 unifyTypes newTy (typeOf e2)
                 pure (letExpr (NodeInfo newTy []) tp e1 e2)
