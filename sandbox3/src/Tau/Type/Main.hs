@@ -65,15 +65,6 @@ tListCon = tCon kFun "List"
 tList :: Type Void -> Type Void
 tList = tApp tListCon 
 
-forall :: Kind -> Name -> [Name] -> Scheme -> Scheme
-forall = embed4 Forall 
-
-scheme :: Type Int -> Scheme
-scheme = embed1 Scheme 
-
-scheme_ :: Type Void -> Scheme
-scheme_ = embed1 Scheme . upgrade
-
 upgrade :: Type Void -> Type Int
 upgrade = cata $ \case
     TVar k var -> tVar k var
@@ -89,6 +80,12 @@ downgrade = cata $ \case
     TApp t1 t2 -> tApp t1 t2
     _          -> error "Implementation error"
 
+upgradePredicate :: Predicate Void -> Predicate Int
+upgradePredicate (InClass name ty) = InClass name (upgrade ty)
+
+downgradePredicate :: Predicate Int -> Predicate Void
+downgradePredicate (InClass name ty) = InClass name (downgrade ty)
+
 kindOf :: Type Void -> Maybe Kind
 kindOf = histo $ \case
     TApp (Just t :< _) _ -> appKind (project t) 
@@ -103,3 +100,14 @@ recordConstructor :: [Name] -> Type a
 recordConstructor names = tCon kind ("{" <> Text.intercalate "," names <> "}")
   where 
     kind = foldr kArr kTyp (replicate (length names) kTyp)
+
+toScheme :: Type Void -> Scheme
+toScheme ty = Forall [] [] (upgrade ty)
+
+replaceBound :: [Type Void] -> Type Int -> Type Void
+replaceBound ts = cata $ \case
+    TGen n     -> ts !! n
+    TArr t1 t2 -> tArr t1 t2
+    TApp t1 t2 -> tApp t1 t2
+    TVar k var -> tVar k var
+    TCon k con -> tCon k con

@@ -1,15 +1,14 @@
-{-# LANGUAGE OverloadedStrings #-}
-{-# LANGUAGE LambdaCase        #-}
 {-# LANGUAGE FlexibleInstances #-}
+{-# LANGUAGE LambdaCase        #-}
+{-# LANGUAGE OverloadedStrings #-}
 module Tau.Pretty where
 
-import Control.Arrow ((>>>), (<<<))
 import Data.List (sortOn)
 import Data.Maybe (fromJust, maybeToList)
 import Data.Text.Prettyprint.Doc
+import Data.Void
 import Tau.Expr
 import Tau.Expr.Main
---import Tau.Stuff
 import Tau.Type
 import Tau.Type.Main
 import Tau.Util
@@ -71,34 +70,27 @@ args = para $ \case
     TVar k a -> [tVar k a]
     _        -> []
 
-prettyTypeGen :: [Name] -> Type Int -> Doc a
-prettyTypeGen bound = project >>> \case 
-    TGen n -> pretty (bound !! n)
-    t      -> prettyType (embed t)
+instance Pretty (Type v) where
+    pretty = para $ \case
+        TApp a b -> 
+            case prettyStructType (tApp (fst a) (fst b)) of
+                Just doc -> doc
+                Nothing  -> snd a <+> cata rhs (fst b)
+          where
+            rhs = \case
+                TApp{} -> parens (snd b)
+                TArr{} -> parens (snd b)
+                _      -> snd b
 
-prettyType :: Type v -> Doc a
-prettyType = para $ \case
-    TApp a b -> 
-        case prettyStructType (tApp (fst a) (fst b)) of
-            Just doc -> doc
-            Nothing  -> snd a <+> cata rhs (fst b)
-      where
-        rhs = \case
-            TApp{} -> parens (snd b)
-            TArr{} -> parens (snd b)
-            _      -> snd b
+        TArr a b -> cata lhs (fst a) <+> "->" <+> snd b 
+          where
+            lhs = \case
+                TArr{} -> parens (snd a)
+                _      -> snd a
 
-    TArr a b -> cata lhs (fst a) <+> "->" <+> snd b 
-      where
-        lhs = \case
-            TArr{} -> parens (snd a)
-            _      -> snd a
-
-    TCon _ name -> pretty name
-    TVar _ name -> pretty name
-
-instance Pretty (Type a) where
-    pretty = prettyType 
+        TCon _ name -> pretty name
+        TVar _ name -> pretty name
+        TGen   _    -> ""
 
 instance Pretty Kind where
     pretty = para $ \case
@@ -109,25 +101,25 @@ instance Pretty Kind where
                 KArr{} -> parens (snd a)
                 _      -> snd a
 
---instance Pretty Predicate where
---    pretty (InClass name ty) = pretty name <+> pretty ty
+instance Pretty (Predicate a) where
+    pretty (InClass name ty) = pretty name <+> pretty ty
 
 instance Pretty Scheme where
-    pretty scheme = forall <> classes <> prettyTypeGen (reverse bound) ty
-      where 
-        forall
-            | null bound = ""
-            | otherwise  = "forall " <> sep (pretty <$> bound) <> ". "
-        classes
-            | null prds = ""
-            | otherwise = tupled prds <+> "=> "
+    pretty (Forall kinds ps ty) = forall <> classes <> pretty (instt ty)
+      where
+        names = nameSupply ""
+        bound = take (length kinds) names
+        instt = replaceBound (tVar kTyp <$> names) 
 
-        prds = [pretty c <+> pretty n | (n, cs) <- info, c <- cs]
-        bound = fst <$> info
+        forall 
+            | null kinds = ""
+            | otherwise  = "forall" <+> sep (pretty <$> bound) <> ". "
 
-        (ty, info) = flip cata scheme $ \case
-            Scheme t              -> (t, [])
-            Forall _ n cs (s, xs) -> (s, (n, cs):xs)
+        classes 
+            | null ps    = ""
+            | otherwise  = tupled preds <+> "=> "
+
+        preds = [pretty c <+> pretty (instt ty) | InClass c ty <- ps]
 
 instance Pretty Literal where
     pretty = \case
@@ -251,6 +243,7 @@ splitClause (Clause ps exs e) =
     when | null exs  = ""
          | otherwise = space <> "when" <+> commaSep (pretty . fst <$> exs)
 
+-- | Pretty print Let expression
 prettyLet 
   :: Pattern t 
   -> (PatternExpr t, Doc a) 
@@ -268,6 +261,7 @@ prettyLet p e1 e =
     expr = pretty (fst e1)
     body = pretty (fst e)
 
+-- | Pretty print Lambda abstraction
 prettyLam :: Pattern t -> (PatternExpr t, Doc a) -> Doc a
 prettyLam p e1 = 
     group (nest 2 (vsep [backslash <> pattern_ p <+> "=>", pretty (fst e1)]))
@@ -278,6 +272,7 @@ prettyLam p e1 =
         PCon{}      -> parens (pretty p)
         _           -> pretty p
 
+-- | Pretty print If-clause
 prettyIf 
   :: (PatternExpr t, Doc a) 
   -> (PatternExpr t, Doc a) 

@@ -47,16 +47,21 @@ deriveOrd1  ''TypeF
 -- | Types
 type Type a = Fix (TypeF a)
 
--- | Base functor for Scheme
-data SchemeF a
-    = Forall Kind Name [Name] a
-    | Scheme (Type Int)
-    deriving (Functor, Foldable, Traversable)
 
-deriveShow  ''SchemeF
-deriveEq    ''SchemeF
-deriveShow1 ''SchemeF
-deriveEq1   ''SchemeF
+
+--    type TypeT a = Fix (TypeF a)
+--    type Type = TypeT Void
+--    type IndexedType = TypeT Int
+--    data PredicateT a = InClass Name (TypeT a)
+--    type Predicate = PredicateT Void
+--    type IndexedPredicate = PredicateT Int
+
+
+
+-- | Type class constraints
+data Predicate a = InClass Name (Type a)
+    deriving (Show, Eq, Ord)
 
 -- | Polymorphic type schemes
-type Scheme = Fix SchemeF
+data Scheme = Forall [Kind] [Predicate Int] (Type Int)
+    deriving (Show, Eq)

@@ -52,8 +52,8 @@ runTest1_ = do
 
 runTest1 = runInfer mempty typeEnv (infer expr2) where
   typeEnv = Env.fromList 
-        [ ("lenShow" , forall kTyp "a" ["Show"] (scheme (tGen 0 `tArr` upgrade tInt))) 
-        , ("(,)"     , forall kTyp "a" [] (forall kTyp "b" [] (scheme (tGen 1 `tArr` tGen 0 `tArr` tApp (tApp (tCon (kArr kTyp (kArr kTyp kTyp)) "(,)") (tGen 1)) (tGen 0)))))
+        [ ( "lenShow" , Forall [kTyp, kTyp] [InClass "Show" (tGen 0)] (tGen 0 `tArr` upgrade tInt) ) 
+        , ( "(,)"     , Forall [kTyp, kTyp] [] (tGen 0 `tArr` tGen 1 `tArr` (tApp (tApp (tCon (kArr kTyp (kArr kTyp kTyp)) "(,)") (tGen 0)) (tGen 1))))
         ]
 
 --
