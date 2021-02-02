@@ -49,8 +49,10 @@ runTest1_ = do
     debugTree (mapTags (apply sub) tree)
     debug (show x)
     debug (show (fmap (apply sub <$>) x))
+    debug (show sub)
 
 runTest1 = runInfer mempty typeEnv (infer expr2) where
+--runTest1 = runInfer mempty typeEnv (infer expr6) where
   typeEnv = Env.fromList 
         [ ( "lenShow" , Forall [kTyp, kTyp] [InClass "Show" (tGen 0)] (tGen 0 `tArr` upgrade tInt) ) 
         , ( "(,)"     , Forall [kTyp, kTyp] [] (tGen 0 `tArr` tGen 1 `tArr` (tApp (tApp (tCon (kArr kTyp (kArr kTyp kTyp)) "(,)") (tGen 0)) (tGen 1))))
@@ -60,7 +62,7 @@ runTest1 = runInfer mempty typeEnv (infer expr2) where
 --
 
 
-type1 :: Type a
+type1 :: TypeT a
 type1 = tVar kTyp "a" `tArr` tVar kTyp "b"
 
 

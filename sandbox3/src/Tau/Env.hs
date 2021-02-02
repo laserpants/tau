@@ -2,6 +2,7 @@
 module Tau.Env where
 
 import Data.Map.Strict (Map)
+import Prelude hiding (lookup, insert)
 import Tau.Util
 import qualified Data.Map.Strict as Map
 
@@ -49,3 +50,12 @@ isMember name (Env env) = Map.member name env
 
 update :: (a -> Maybe a) -> Name -> Env a -> Env a
 update f name (Env env) = Env (Map.update f name env)
+
+map :: (a -> b) -> Env a -> Env b
+map f (Env env) = Env (Map.map f env)
+
+copyKey :: Name -> Name -> Env a -> Env a
+copyKey old new env =
+    case lookup old env of
+        Nothing  -> env
+        Just val -> insert new val env

@@ -19,74 +19,87 @@ infixr 1 `kArr`
 kFun :: Kind
 kFun = kTyp `kArr` kTyp
 
-tVar :: Kind -> Name -> Type a
+tVar :: Kind -> Name -> TypeT a
 tVar = embed2 TVar 
 
-tGen :: Int -> Type Int
+tGen :: Int -> IxType
 tGen = embed1 TGen 
 
-tCon :: Kind -> Name -> Type a
+tCon :: Kind -> Name -> TypeT a
 tCon = embed2 TCon 
 
-tArr :: Type a -> Type a -> Type a
+tArr :: TypeT a -> TypeT a -> TypeT a
 tArr = embed2 TArr 
 
 infixr 1 `tArr`
 
-tApp :: Type a -> Type a -> Type a
+tApp :: TypeT a -> TypeT a -> TypeT a
 tApp = embed2 TApp 
 
 --
 
-tUnit :: Type Void
+tUnit :: Type
 tUnit = tCon kTyp "Unit"
 
-tBool :: Type Void
+tBool :: Type
 tBool = tCon kTyp "Bool" 
 
-tInt :: Type Void
+tInt :: Type
 tInt = tCon kTyp "Int" 
 
-tInteger :: Type Void
+tInteger :: Type
 tInteger = tCon kTyp "Integer" 
 
-tFloat :: Type Void
+tFloat :: Type
 tFloat = tCon kTyp "Float" 
 
-tString :: Type Void
+tString :: Type
 tString = tCon kTyp "String" 
 
-tChar :: Type Void
+tChar :: Type
 tChar = tCon kTyp "Char" 
 
-tListCon :: Type Void
+tListCon :: Type
 tListCon = tCon kFun "List"
 
-tList :: Type Void -> Type Void
+tList :: Type -> Type
 tList = tApp tListCon 
 
-upgrade :: Type Void -> Type Int
+getTypeVar :: Type -> Maybe Name
+getTypeVar = cata $ \case
+    TVar _ v -> Just v
+    _        -> Nothing
+
+getTypeCon :: Type -> Maybe Name
+getTypeCon = cata $ \case
+    TCon _ c -> Just c
+    _        -> Nothing
+
+toScheme :: Type -> Scheme
+toScheme = Forall [] [] . upgrade
+
+upgrade :: Type -> IxType
 upgrade = cata $ \case
     TVar k var -> tVar k var
     TCon k con -> tCon k con
     TArr t1 t2 -> tArr t1 t2
     TApp t1 t2 -> tApp t1 t2
 
-downgrade :: Type Int -> Type Void
-downgrade = cata $ \case
-    TVar k var -> tVar k var
-    TCon k con -> tCon k con
-    TArr t1 t2 -> tArr t1 t2
-    TApp t1 t2 -> tApp t1 t2
-    _          -> error "Implementation error"
-
-upgradePredicate :: Predicate Void -> Predicate Int
+upgradePredicate :: Predicate -> IxPredicate
 upgradePredicate (InClass name ty) = InClass name (upgrade ty)
 
-downgradePredicate :: Predicate Int -> Predicate Void
-downgradePredicate (InClass name ty) = InClass name (downgrade ty)
+replaceBound :: [Type] -> IxType -> Type
+replaceBound ts = cata $ \case
+    TGen n     -> ts !! n
+    TArr t1 t2 -> tArr t1 t2
+    TApp t1 t2 -> tApp t1 t2
+    TVar k var -> tVar k var
+    TCon k con -> tCon k con
 
-kindOf :: Type Void -> Maybe Kind
+replaceBoundInPredicate :: [Type] -> IxPredicate -> Predicate
+replaceBoundInPredicate ts (InClass name ty) = InClass name (replaceBound ts ty)
+
+kindOf :: Type -> Maybe Kind
 kindOf = histo $ \case
     TApp (Just t :< _) _ -> appKind (project t) 
     TCon k _             -> Just k
@@ -96,18 +109,7 @@ kindOf = histo $ \case
     appKind (KArr _ k) = Just k
     appKind _          = Nothing
 
-recordConstructor :: [Name] -> Type a
+recordConstructor :: [Name] -> TypeT a
 recordConstructor names = tCon kind ("{" <> Text.intercalate "," names <> "}")
   where 
     kind = foldr kArr kTyp (replicate (length names) kTyp)
-
-toScheme :: Type Void -> Scheme
-toScheme ty = Forall [] [] (upgrade ty)
-
-replaceBound :: [Type Void] -> Type Int -> Type Void
-replaceBound ts = cata $ \case
-    TGen n     -> ts !! n
-    TArr t1 t2 -> tArr t1 t2
-    TApp t1 t2 -> tApp t1 t2
-    TVar k var -> tVar k var
-    TCon k con -> tCon k con

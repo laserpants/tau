@@ -48,7 +48,7 @@ conType con
             ('{', '}') -> RecordCon
             _          -> PlainCon
 
-prettyStructType :: Type v -> Maybe (Doc a)
+prettyStructType :: TypeT v -> Maybe (Doc a)
 prettyStructType ty =
    case args ty of
       (a:as) -> headCon (project a) >>= fun (pretty <$> as)
@@ -62,7 +62,7 @@ prettyStructType ty =
     headCon (TCon _ c) = Just c
     headCon _          = Nothing
 
-args :: Type v -> [Type v]
+args :: TypeT v -> [TypeT v]
 args = para $ \case
     TApp a b -> snd a <> [fst b]
     TArr a b -> [tArr (fst a) (fst b)]
@@ -70,7 +70,7 @@ args = para $ \case
     TVar k a -> [tVar k a]
     _        -> []
 
-instance Pretty (Type v) where
+instance Pretty (TypeT v) where
     pretty = para $ \case
         TApp a b -> 
             case prettyStructType (tApp (fst a) (fst b)) of
@@ -101,7 +101,7 @@ instance Pretty Kind where
                 KArr{} -> parens (snd a)
                 _      -> snd a
 
-instance Pretty (Predicate a) where
+instance Pretty (PredicateT a) where
     pretty (InClass name ty) = pretty name <+> pretty ty
 
 instance Pretty Scheme where
@@ -243,7 +243,7 @@ splitClause (Clause ps exs e) =
     when | null exs  = ""
          | otherwise = space <> "when" <+> commaSep (pretty . fst <$> exs)
 
--- | Pretty print Let expression
+-- | Pretty print let expression
 prettyLet 
   :: Pattern t 
   -> (PatternExpr t, Doc a) 
@@ -261,7 +261,7 @@ prettyLet p e1 e =
     expr = pretty (fst e1)
     body = pretty (fst e)
 
--- | Pretty print Lambda abstraction
+-- | Pretty print lambda abstraction
 prettyLam :: Pattern t -> (PatternExpr t, Doc a) -> Doc a
 prettyLam p e1 = 
     group (nest 2 (vsep [backslash <> pattern_ p <+> "=>", pretty (fst e1)]))
@@ -272,7 +272,7 @@ prettyLam p e1 =
         PCon{}      -> parens (pretty p)
         _           -> pretty p
 
--- | Pretty print If-clause
+-- | Pretty print if-clause
 prettyIf 
   :: (PatternExpr t, Doc a) 
   -> (PatternExpr t, Doc a) 

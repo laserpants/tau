@@ -45,23 +45,18 @@ deriveEq1   ''TypeF
 deriveOrd1  ''TypeF
 
 -- | Types
-type Type a = Fix (TypeF a)
+type TypeT a = Fix (TypeF a)
 
-
-
---    type TypeT a = Fix (TypeF a)
---    type Type = TypeT Void
---    type IndexedType = TypeT Int
---    data PredicateT a = InClass Name (TypeT a)
---    type Predicate = PredicateT Void
---    type IndexedPredicate = PredicateT Int
-
-
+type Type   = TypeT Void
+type IxType = TypeT Int
 
 -- | Type class constraints
-data Predicate a = InClass Name (Type a)
+data PredicateT a = InClass Name (TypeT a)
     deriving (Show, Eq, Ord)
 
+type Predicate   = PredicateT Void
+type IxPredicate = PredicateT Int
+
 -- | Polymorphic type schemes
-data Scheme = Forall [Kind] [Predicate Int] (Type Int)
+data Scheme = Forall [Kind] [IxPredicate] IxType
     deriving (Show, Eq)
