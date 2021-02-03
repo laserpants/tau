@@ -49,6 +49,7 @@ runTest1_ = do
     debug (show x)
     debug (show (fmap (apply sub <$>) x))
     debug (show sub)
+    debug "xx"
 
 --runTest1 = runInfer mempty typeEnv (infer expr2) where
 --runTest1 = runInfer mempty typeEnv (infer expr4) where
