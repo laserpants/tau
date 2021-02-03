@@ -51,18 +51,16 @@ deriveOrd1  ''TypeF
 -- | Types
 type TypeT a = Fix (TypeF a)
 
-type Type   = TypeT Void
-type IxType = TypeT Int
+type Type = TypeT Void
 
 -- | Type class constraints
 data PredicateT a = InClass Name (TypeT a)
     deriving (Show, Eq, Ord)
 
-type Predicate   = PredicateT Void
-type IxPredicate = PredicateT Int
+type Predicate = PredicateT Void
 
 -- | Polymorphic type schemes
-data Scheme = Forall [Kind] [IxPredicate] IxType
+data Scheme = Forall [Kind] [PredicateT Int] (TypeT Int)
     deriving (Show, Eq)
 
 class Typed a where
@@ -92,17 +90,17 @@ recordConstructor names = tCon kind ("{" <> Text.intercalate "," names <> "}")
   where 
     kind = foldr kArr kTyp (replicate (length names) kTyp)
 
-upgrade :: Type -> IxType
+upgrade :: Type -> TypeT Int
 upgrade = cata $ \case
     TVar k var -> tVar k var
     TCon k con -> tCon k con
     TArr t1 t2 -> tArr t1 t2
     TApp t1 t2 -> tApp t1 t2
 
-upgradePredicate :: Predicate -> IxPredicate
+upgradePredicate :: Predicate -> PredicateT Int
 upgradePredicate (InClass name ty) = InClass name (upgrade ty)
 
-replaceBound :: [Type] -> IxType -> Type
+replaceBound :: [Type] -> TypeT Int -> Type
 replaceBound ts = cata $ \case
     TGen n     -> ts !! n
     TArr t1 t2 -> tArr t1 t2
@@ -110,7 +108,7 @@ replaceBound ts = cata $ \case
     TVar k var -> tVar k var
     TCon k con -> tCon k con
 
-replaceBoundInPredicate :: [Type] -> IxPredicate -> Predicate
+replaceBoundInPredicate :: [Type] -> PredicateT Int -> Predicate
 replaceBoundInPredicate ts (InClass name ty) = InClass name (replaceBound ts ty)
 
 kindOf :: Type -> Maybe Kind
@@ -137,7 +135,7 @@ kFun = kTyp `kArr` kTyp
 tVar :: Kind -> Name -> TypeT a
 tVar = embed2 TVar 
 
-tGen :: Int -> IxType
+tGen :: Int -> TypeT Int
 tGen = embed1 TGen 
 
 tCon :: Kind -> Name -> TypeT a
