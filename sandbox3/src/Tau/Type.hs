@@ -149,26 +149,29 @@ infixr 1 `tArr`
 tApp :: TypeT a -> TypeT a -> TypeT a
 tApp = embed2 TApp 
 
+typ :: Name -> Type
+typ = tCon kTyp
+
 tUnit :: Type
-tUnit = tCon kTyp "Unit"
+tUnit = typ "Unit"
 
 tBool :: Type
-tBool = tCon kTyp "Bool" 
+tBool = typ "Bool" 
 
 tInt :: Type
-tInt = tCon kTyp "Int" 
+tInt = typ "Int" 
 
 tInteger :: Type
-tInteger = tCon kTyp "Integer" 
+tInteger = typ "Integer"
 
 tFloat :: Type
-tFloat = tCon kTyp "Float" 
+tFloat = typ "Float" 
 
 tString :: Type
-tString = tCon kTyp "String" 
+tString = typ "String" 
 
 tChar :: Type
-tChar = tCon kTyp "Char" 
+tChar = typ "Char" 
 
 tListCon :: Type
 tListCon = tCon kFun "List"
