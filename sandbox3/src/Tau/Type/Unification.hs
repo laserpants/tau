@@ -9,7 +9,7 @@ import Tau.Type.Substitution
 import Tau.Util
 import qualified Data.Set.Monad as Set
 
-free :: Type -> Set Name
+free :: TypeT a -> Set Name
 free = cata $ \case
     TVar _ var -> Set.singleton var
     TArr t1 t2 -> t1 `Set.union` t2

@@ -1,6 +1,7 @@
 {-# LANGUAGE FlexibleInstances     #-}
 {-# LANGUAGE LambdaCase            #-}
 {-# LANGUAGE MultiParamTypeClasses #-}
+{-# LANGUAGE StrictData            #-}
 module Tau.Type.Substitution where
 
 import Data.List (intersect)
@@ -28,6 +29,9 @@ class Substitutable t a where
 instance Substitutable t a => Substitutable [t] a where
     apply = fmap . apply
 
+--instance Substitutable Type Int where
+--    apply (Sub sub) = undefined -- apply (Sub (upgrade <$> sub))
+
 instance Substitutable (TypeT a) a where
     apply sub = cata $ \case
         TVar kind var -> withDefault (tVar kind var) var sub
@@ -35,11 +39,18 @@ instance Substitutable (TypeT a) a where
         TApp t1 t2    -> tApp t1 t2
         ty            -> embed ty
 
+instance Substitutable (TypeT Int) Void where
+    apply (Sub sub) = apply (Sub (upgrade <$> sub))
+
 instance Substitutable (PredicateT (TypeT a)) a where
     apply sub (InClass name ty) = InClass name (apply sub ty)
 
-instance Substitutable Scheme Int where
-    apply sub (Forall ks ps ty) = Forall ks (apply sub ps) (apply sub ty)
+--instance Substitutable Scheme Int where
+--    apply sub (Forall ks ps ty) = Forall ks ps (apply sub ty)
+
+-- TODO : test??
+instance Substitutable Scheme Void where
+    apply sub (Forall ks ps ty) = Forall ks ps (apply sub ty)
 
 null :: SubstitutionT a
 null = Sub mempty
@@ -63,7 +74,7 @@ compose :: SubstitutionT a -> SubstitutionT a -> SubstitutionT a
 compose s1 s2 = Sub (fmap (apply s1) (getSub s2) `Map.union` getSub s1)
 
 merge :: (Eq a) => SubstitutionT a -> SubstitutionT a -> Maybe (SubstitutionT a)
-merge s1 s2 
+merge s1 s2
     | allEqual  = Just (Sub (getSub s1 `Map.union` getSub s2))
     | otherwise = Nothing
   where

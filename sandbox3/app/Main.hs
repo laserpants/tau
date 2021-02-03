@@ -40,6 +40,7 @@ expr20 = letExpr () (varPat () "id") (lamExpr () (varPat () "x") (varExpr () "x"
                 , appExpr () [varExpr () "id", litExpr () (LInt 5)]
                 , appExpr () [varExpr () "id", litExpr () (LBool True)]
               ])
+expr21 = lamExpr () (varPat () "x") (letExpr () (varPat () "f") (lamExpr () (varPat () "y") (varExpr () "x")) (litExpr () (LInt 1)))
 
 
 runTest1_ = do
@@ -52,14 +53,18 @@ runTest1_ = do
     debug "xx"
 
 --runTest1 = runInfer mempty typeEnv (infer expr2) where
---runTest1 = runInfer mempty typeEnv (infer expr4) where
+runTest1 = runInfer mempty typeEnv (infer expr4) where
 --runTest1 = runInfer mempty typeEnv (infer expr5) where
-runTest1 = runInfer mempty typeEnv (infer expr6) where
+--runTest1 = runInfer mempty typeEnv (infer expr6) where
 --runTest1 = runInfer mempty typeEnv (infer expr20) where
+--runTest1 = runInfer mempty typeEnv (infer expr21) where
   typeEnv = Env.fromList 
-        [ ( "lenShow" , Forall [kTyp, kTyp] [InClass "Show" (tGen 0)] (tGen 0 `tArr` upgrade tInt) ) 
+        [ ( "lenShow" , Forall [kTyp, kTyp] [InClass "Show" 0] (tGen 0 `tArr` upgrade tInt) ) 
         , ( "(,)"     , Forall [kTyp, kTyp] [] (tGen 0 `tArr` tGen 1 `tArr` (tApp (tApp (tCon (kArr kTyp (kArr kTyp kTyp)) "(,)") (tGen 0)) (tGen 1))))
         ]
+--        [ ( "lenShow" , Forall [kTyp, kTyp] [InClass "Show" (tGen 0)] (tGen 0 `tArr` upgrade tInt) ) 
+--        , ( "(,)"     , Forall [kTyp, kTyp] [] (tGen 0 `tArr` tGen 1 `tArr` (tApp (tApp (tCon (kArr kTyp (kArr kTyp kTyp)) "(,)") (tGen 0)) (tGen 1))))
+--        ]
 
 --
 --

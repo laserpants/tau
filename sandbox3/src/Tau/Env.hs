@@ -13,10 +13,13 @@ empty :: Env a
 empty = Env mempty
 
 insert :: Name -> a -> Env a -> Env a
-insert var val (Env env) = Env (Map.insert var val env)
+insert var val (Env emap) = Env (Map.insert var val emap)
 
 inserts :: [(Name, a)] -> Env a -> Env a
 inserts = flip (foldr (uncurry insert))
+
+insertWith :: (a -> a -> a) -> Name -> a -> Env a -> Env a
+insertWith f var val (Env emap) = Env (Map.insertWith f var val emap)
 
 fromList :: [(Name, a)] -> Env a
 fromList = Env . Map.fromList
@@ -31,31 +34,31 @@ union :: Env a -> Env a -> Env a
 union (Env a) (Env b) = Env (Map.union a b)
 
 elems :: Env a -> [a]
-elems (Env env) = Map.elems env
+elems (Env emap) = Map.elems emap
 
 domain :: Env a -> [Name]
-domain (Env env) = Map.keys env
+domain (Env emap) = Map.keys emap
 
 lookup :: Name -> Env a -> Maybe a
-lookup name (Env env) = Map.lookup name env
+lookup name (Env emap) = Map.lookup name emap
 
 findWithDefault :: a -> Name -> Env a -> a
-findWithDefault value key (Env env) = Map.findWithDefault value key env
+findWithDefault value key (Env emap) = Map.findWithDefault value key emap
 
 findWithDefaultEmpty :: (Monoid a) => Name -> Env a -> a
-findWithDefaultEmpty key (Env env) = Map.findWithDefault mempty key env
+findWithDefaultEmpty key (Env emap) = Map.findWithDefault mempty key emap
 
 isMember :: Name -> Env a -> Bool
-isMember name (Env env) = Map.member name env
+isMember name (Env emap) = Map.member name emap
 
 update :: (a -> Maybe a) -> Name -> Env a -> Env a
-update f name (Env env) = Env (Map.update f name env)
+update f name (Env emap) = Env (Map.update f name emap)
 
 map :: (a -> b) -> Env a -> Env b
-map f (Env env) = Env (Map.map f env)
+map f (Env emap) = Env (Map.map f emap)
 
 copyKey :: Name -> Name -> Env a -> Env a
-copyKey old new env =
-    case lookup old env of
-        Nothing  -> env
-        Just val -> insert new val env
+copyKey old new emap =
+    case lookup old emap of
+        Nothing  -> emap
+        Just val -> insert new val emap

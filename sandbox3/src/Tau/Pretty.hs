@@ -117,7 +117,7 @@ instance Pretty Scheme where
             | null ps    = ""
             | otherwise  = tupled preds <+> "=> "
 
-        preds = [pretty c <+> pretty (instt ty) | InClass c ty <- ps]
+        preds = [pretty c <+> pretty (instt (tGen ty)) | InClass c ty <- ps]
 
 instance Pretty Literal where
     pretty = \case

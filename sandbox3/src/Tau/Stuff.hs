@@ -1,9 +1,10 @@
-{-# LANGUAGE OverloadedStrings     #-}
+{-# LANGUAGE FlexibleContexts      #-}
+{-# LANGUAGE FlexibleInstances     #-}
 {-# LANGUAGE LambdaCase            #-}
 {-# LANGUAGE MultiParamTypeClasses #-}
-{-# LANGUAGE FlexibleContexts      #-}
+{-# LANGUAGE OverloadedStrings     #-}
 {-# LANGUAGE RecordWildCards       #-}
-{-# LANGUAGE FlexibleInstances     #-}
+{-# LANGUAGE StrictData            #-}
 module Tau.Stuff where
 
 import Control.Arrow ((>>>), (<<<), first, second)
@@ -16,7 +17,7 @@ import Data.Foldable (foldrM, traverse_)
 import Data.Function ((&))
 import Data.List
 import Data.Map.Strict (Map)
-import Data.Maybe (fromMaybe)
+import Data.Maybe (fromMaybe, maybeToList)
 import Data.Set.Monad (Set)
 import Data.Text (Text)
 import Data.Text.Prettyprint.Doc
@@ -72,6 +73,18 @@ instance Typed NodeInfo where
 
 type TypeEnv = Env Scheme
 
+instance Substitutable TypeEnv Void where
+    apply sub = Env.map (apply sub)
+
+--
+
+-- TODO: make class
+envFree :: TypeEnv -> Set Name
+envFree = unions . (freeInScheme <$>) . Env.elems where
+    freeInScheme (Forall _ _ ty) = free ty
+
+--
+
 unifyTypes 
   :: ( MonadSupply Name m
      , MonadReader (ClassEnv a, TypeEnv) m
@@ -100,40 +113,27 @@ unifyTypes v1 v2 = do
 lookupScheme 
   :: (MonadSupply Name m, MonadReader (ClassEnv a, TypeEnv) m, MonadError String m) 
   => Name 
-  -> m Scheme
+  -> StateT (Substitution, Env [Predicate]) m Scheme
 lookupScheme name = do
     env <- asks snd 
+    sub <- gets fst
     case Env.lookup name env of
         Nothing     -> throwError ("Unbound identifier: " <> Text.unpack name)
-        Just scheme -> pure scheme
+--        Just scheme -> pure scheme
+        Just scheme -> gets fst >>= \sub -> pure (apply sub scheme)
 
 instantiate 
   :: (MonadSupply Name m, MonadReader (ClassEnv a, TypeEnv) m, MonadError String m) 
   => Scheme 
   -> StateT (Substitution, Env [Predicate]) m (Type, [Predicate])
 instantiate (Forall kinds ps ty) = do
-    newTy <- newTVar kTyp
-    ts <- traverse (\kind -> tVar kind <$> supply) kinds
-    let preds = replaceBoundInPredicate ts <$> ps
-    traceShowM ps
-    traceShowM preds
-    traceShowM "**"
-    unifyTypes (replaceBound ts ty) newTy 
-    traverse_ unifyPred preds
-    sub <- gets fst
-    pure (apply sub newTy, preds)
-  where
-    unifyPred p@(InClass _ t1) = do
-        tv <- supply
-        modify (second (Env.insert tv [p]))
-        traceShowM "xx"
-        traceShowM "xx"
-        traceShowM tv
-        traceShowM [p]
-        traceShowM t1
-        traceShowM "xx"
-        traceShowM "xx"
-        unifyTypes (tVar kTyp tv :: Type) t1
+    names <- supplies (length kinds)
+    let ts = zipWith tVar kinds names 
+        fun p@(InClass name n) = ( names !! n
+                                 , replaceBoundInPredicate ts (tGen <$> p) )
+        preds = fun <$> ps
+    modify (second (flip (foldr (uncurry (\k -> Env.insertWith (<>) k . pure))) preds))
+    pure (replaceBound ts ty, snd <$> preds)
 
 lookupPredicates 
   :: (MonadSupply Name m, MonadReader (ClassEnv a, TypeEnv) m, MonadError String m) 
@@ -141,6 +141,7 @@ lookupPredicates
   -> StateT (Substitution, Env [Predicate]) m [Predicate]
 lookupPredicates vars = do
     env <- gets snd
+    --let env = Env.fromList [("a4" :: Name, [InClass "Show" (tVar kTyp "a4")])]
     pure (concat [fromMaybe [] (Env.lookup v env) | v <- vars])
 
 generalize
@@ -148,27 +149,22 @@ generalize
   => Type
   -> StateT (Substitution, Env [Predicate]) m Scheme
 generalize ty = do
-    set <- asks (Env.domain . snd)
-    ps <- lookupPredicates (fst <$> vars)
-    sub <- gets fst
-    let qs = filter ((`notElem` set) . fst) vars
-        sub = fromList [(fst v, tGen n) | (v, n) <- zip qs [0..]]
-    pure (Forall (snd <$> qs) (apply sub . upgradePredicate <$> ps) (apply sub (upgrade ty)))
+    env <- asks snd
+    sub1 <- gets fst
+    let freeVs = envFree (apply sub1 env)
+        ty1    = apply sub1 ty
+        pairs  = filter ((`notElem` freeVs) . fst) (typeVars ty1)
+        sub2   = fromList [(fst v, tGen n) | (v, n) <- zip pairs [0..]]
+        ty2    = apply sub2 (upgrade ty1)
+    ps <- lookupPredicates (fst <$> pairs)
+    pure (Forall (snd <$> pairs) (traverse (maybeToList . getTypeIndex) =<< apply sub2 (upgradePredicate <$> ps)) ty2)
   where
-    vars :: [(Name, Kind)]
-    vars = nub . flip cata ty $ \case
+    typeVars :: Type -> [(Name, Kind)]
+    typeVars ty = nub . flip cata ty $ \case
         TVar k var -> [(var, k)]
         TArr t1 t2 -> t1 <> t2
         TApp t1 t2 -> t1 <> t2
         ty         -> []
-
-generalizeType
-  :: (MonadSupply Name m, MonadReader (ClassEnv a, TypeEnv) m, MonadError String m) 
-  => Type
-  -> StateT (Substitution, Env [Predicate]) m Scheme
-generalizeType ty = do
-    sub <- gets fst
-    generalize (apply sub ty)
 
 infer
   :: (MonadSupply Name m, MonadReader (ClassEnv a, TypeEnv) m, MonadError String m) 
@@ -206,8 +202,8 @@ infer = cata alg
                 (tp, vs) <- runWriterT (inferPattern pat)
                 e1 <- expr1
                 unifyTypes (typeOf tp) (typeOf e1)
-                ws <- traverse (secondM generalizeType) vs 
-                e2 <- local (second (Env.inserts ws)) expr2
+                vs1 <- traverse (secondM generalize) vs
+                e2 <- local (second (Env.inserts vs1)) expr2
                 unifyTypes newTy (typeOf e2)
                 pure (letExpr (NodeInfo newTy []) tp e1 e2)
 

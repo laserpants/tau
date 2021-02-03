@@ -55,12 +55,12 @@ type Type = TypeT Void
 
 -- | Type class constraints
 data PredicateT a = InClass Name a
-    deriving (Show, Eq, Ord)
+    deriving (Show, Eq, Ord, Functor, Foldable, Traversable)
 
 type Predicate = PredicateT Type 
 
 -- | Polymorphic type schemes
-data Scheme = Forall [Kind] [PredicateT (TypeT Int)] (TypeT Int)
+data Scheme = Forall [Kind] [PredicateT Int] (TypeT Int)
     deriving (Show, Eq)
 
 class Typed a where
@@ -78,6 +78,11 @@ getTypeCon :: Type -> Maybe Name
 getTypeCon = cata $ \case
     TCon _ c -> Just c
     _        -> Nothing
+
+getTypeIndex :: TypeT Int -> Maybe Int
+getTypeIndex = cata $ \case
+    TGen n -> Just n
+    _      -> Nothing
 
 toScheme :: Type -> Scheme
 toScheme = Forall [] [] . upgrade
