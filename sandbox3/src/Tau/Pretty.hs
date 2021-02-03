@@ -99,7 +99,7 @@ instance Pretty Kind where
                 KArr{} -> parens (snd a)
                 _      -> snd a
 
-instance Pretty (PredicateT a) where
+instance Pretty (PredicateT (TypeT a)) where
     pretty (InClass name ty) = pretty name <+> pretty ty
 
 instance Pretty Scheme where

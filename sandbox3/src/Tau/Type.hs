@@ -54,13 +54,13 @@ type TypeT a = Fix (TypeF a)
 type Type = TypeT Void
 
 -- | Type class constraints
-data PredicateT a = InClass Name (TypeT a)
+data PredicateT a = InClass Name a
     deriving (Show, Eq, Ord)
 
-type Predicate = PredicateT Void
+type Predicate = PredicateT Type 
 
 -- | Polymorphic type schemes
-data Scheme = Forall [Kind] [PredicateT Int] (TypeT Int)
+data Scheme = Forall [Kind] [PredicateT (TypeT Int)] (TypeT Int)
     deriving (Show, Eq)
 
 class Typed a where
@@ -97,7 +97,7 @@ upgrade = cata $ \case
     TArr t1 t2 -> tArr t1 t2
     TApp t1 t2 -> tApp t1 t2
 
-upgradePredicate :: Predicate -> PredicateT Int
+upgradePredicate :: Predicate -> PredicateT (TypeT Int)
 upgradePredicate (InClass name ty) = InClass name (upgrade ty)
 
 replaceBound :: [Type] -> TypeT Int -> Type
@@ -108,7 +108,7 @@ replaceBound ts = cata $ \case
     TVar k var -> tVar k var
     TCon k con -> tCon k con
 
-replaceBoundInPredicate :: [Type] -> PredicateT Int -> Predicate
+replaceBoundInPredicate :: [Type] -> PredicateT (TypeT Int) -> Predicate
 replaceBoundInPredicate ts (InClass name ty) = InClass name (replaceBound ts ty)
 
 kindOf :: Type -> Maybe Kind

@@ -35,7 +35,7 @@ instance Substitutable (TypeT a) a where
         TApp t1 t2    -> tApp t1 t2
         ty            -> embed ty
 
-instance Substitutable (PredicateT a) a where
+instance Substitutable (PredicateT (TypeT a)) a where
     apply sub (InClass name ty) = InClass name (apply sub ty)
 
 instance Substitutable Scheme Int where
