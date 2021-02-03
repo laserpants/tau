@@ -54,7 +54,7 @@ toList :: SubstitutionT a -> [(Name, TypeT a)]
 toList = Map.toList . getSub
 
 withDefault :: TypeT a -> Name -> SubstitutionT a -> TypeT a
-withDefault d name = Map.findWithDefault d name . getSub
+withDefault def name = Map.findWithDefault def name . getSub
 
 domain :: SubstitutionT a -> [Name]
 domain (Sub sub) = Map.keys sub
