@@ -1,5 +1,4 @@
 {-# LANGUAGE FlexibleContexts #-}
-{-# LANGUAGE LambdaCase       #-}
 module Tau.Type.Unification where
 
 import Control.Monad.Except

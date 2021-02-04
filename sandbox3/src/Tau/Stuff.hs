@@ -70,7 +70,13 @@ instance Free TypeEnv where
 
 --
 
-unifyTypes 
+unified :: (MonadError String m) => Type -> Type -> StateT (Substitution, Env [Predicate]) m Substitution
+unified t1 t2 = do
+    sub1 <- gets fst
+    sub2 <- unify (apply sub1 t1) (apply sub1 t2)
+    pure (sub2 <> sub1)
+
+unifyTyped 
   :: ( MonadSupply Name m
      , MonadReader (ClassEnv a, TypeEnv) m
      , MonadError String m
@@ -79,15 +85,11 @@ unifyTypes
   => s
   -> t
   -> StateT (Substitution, Env [Predicate]) m ()
-unifyTypes v1 v2 = do 
-    sub1 <- gets fst
-    sub2 <- unify (apply sub1 t1) (apply sub1 t2)
-    modify (first (sub2 <>))
-    modify (second (Env.map (apply sub2) >>> propagateClasses sub2))
+unifyTyped v1 v2 = do 
+    sub <- unified (typeOf v1) (typeOf v2)
+    modify (first (sub <>))
+    modify (second (Env.map (apply sub) >>> propagateClasses sub))
   where
-    t1 = typeOf v1
-    t2 = typeOf v2
-
     propagateClasses :: Substitution -> Env [Predicate] -> Env [Predicate]
     propagateClasses sub env = do
         Map.foldrWithKey copy env (getSub sub)
@@ -163,49 +165,49 @@ infer = cata alg
         case expr of
             EVar _ var -> do
                 (ty, ps) <- lookupScheme var >>= instantiate
-                unifyTypes ty newTy
+                unifyTyped ty newTy
                 pure (varExpr (NodeInfo newTy ps) var)
 
             ECon _ con exprs -> do
                 (ty, ps) <- lookupScheme con >>= instantiate
                 es <- sequence exprs
-                unifyTypes ty (foldr tArr newTy (typeOf <$> es))
+                unifyTyped ty (foldr tArr newTy (typeOf <$> es))
                 pure (conExpr (NodeInfo newTy ps) con es)
 
             ELit _ lit -> do
                 ty <- inferLiteral lit
-                unifyTypes newTy ty
+                unifyTyped newTy ty
                 pure (litExpr (NodeInfo newTy []) lit)
 
             EApp _ exprs -> do
                 es <- sequence exprs
                 case es of
                     []     -> pure ()
-                    f:args -> unifyTypes f (foldr tArr newTy (typeOf <$> args))
+                    f:args -> unifyTyped f (foldr tArr newTy (typeOf <$> args))
                 pure (appExpr (NodeInfo newTy []) es)
 
             ELet _ pat expr1 expr2 -> do
                 (tp, vs) <- runWriterT (inferPattern pat)
                 e1 <- expr1
-                unifyTypes (typeOf tp) (typeOf e1)
+                unifyTyped tp e1
                 vs1 <- traverse (secondM generalize) vs
                 e2 <- local (second (Env.inserts vs1)) expr2
-                unifyTypes newTy (typeOf e2)
+                unifyTyped newTy e2
                 pure (letExpr (NodeInfo newTy []) tp e1 e2)
 
             ELam _ pat expr1 -> do
                 (tp, vs) <- runWriterT (inferPattern pat)
                 e1 <- local (second (Env.inserts (fmap toScheme <$> vs))) expr1
-                unifyTypes newTy (typeOf tp `tArr` typeOf e1)
+                unifyTyped newTy (typeOf tp `tArr` typeOf e1)
                 pure (lamExpr (NodeInfo newTy []) tp e1)
 
             EIf _ cond tr fl -> do
                 e1 <- cond
                 e2 <- tr
                 e3 <- fl
-                unifyTypes e1 tBool 
-                unifyTypes e2 e3
-                unifyTypes newTy e2
+                unifyTyped e1 tBool 
+                unifyTyped e2 e3
+                unifyTyped newTy e2
                 pure (ifExpr (NodeInfo newTy []) e1 e2 e3)
 
             EOp  _ (OAnd a b) -> inferLogicOp OAnd a b
@@ -253,7 +255,7 @@ inferPattern = cata alg
             PCon _ con ps -> do
                 (ty, qs) <- lift (lookupScheme con >>= instantiate)
                 trs <- sequence ps
-                lift (unifyTypes ty (foldr tArr newTy (typeOf <$> trs)))
+                lift (unifyTyped ty (foldr tArr newTy (typeOf <$> trs)))
                 pure (conPat (NodeInfo newTy qs) con trs)
 
             PLit _ lit -> do
@@ -264,7 +266,7 @@ inferPattern = cata alg
                 let (_, ns, fs) = unzip3 (fieldsInfo fields)
                 ps <- sequence fs
                 let tfs = zipWith (\n p -> Field (patternTag p) n p) ns ps
-                lift (unifyTypes newTy (foldl tApp (recordConstructor ns) (typeOf <$> ps)))
+                lift (unifyTyped newTy (foldl tApp (recordConstructor ns) (typeOf <$> ps)))
                 pure (recPat (NodeInfo newTy []) tfs)
 
             PAny _ -> 
@@ -280,9 +282,9 @@ inferLogicOp op a b = do
     newTy <- newTVar kTyp
     e1 <- a
     e2 <- b
-    unifyTypes newTy tBool
-    unifyTypes e1 tBool
-    unifyTypes e2 tBool
+    unifyTyped newTy tBool
+    unifyTyped e1 tBool
+    unifyTyped e2 tBool
     pure (opExpr (NodeInfo newTy []) (op e1 e2))
 
 type Infer s a = StateT (SubstitutionT s, Env [Predicate]) (ReaderT (ClassEnv a, TypeEnv) (SupplyT Name (ExceptT String Maybe))) a 

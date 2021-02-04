@@ -56,9 +56,9 @@ runTest1_ = do
 --runTest1 = runInfer mempty typeEnv (infer expr4) where
 --runTest1 = runInfer mempty typeEnv (infer expr5) where
 --runTest1 = runInfer mempty typeEnv (infer expr6) where
-runTest1 = runInfer mempty typeEnv (infer expr20) where
+--runTest1 = runInfer mempty typeEnv (infer expr20) where
 --runTest1 = runInfer mempty typeEnv (infer expr21) where
---runTest1 = runInfer mempty typeEnv (infer expr4) where
+runTest1 = runInfer mempty typeEnv (infer expr4) where
   typeEnv = Env.fromList 
         [ ( "lenShow" , Forall [kTyp, kTyp] [InClass "Show" 0] (tGen 0 `tArr` upgrade tInt) ) 
         , ( "(,)"     , Forall [kTyp, kTyp] [] (tGen 0 `tArr` tGen 1 `tArr` (tApp (tApp (tCon (kArr kTyp (kArr kTyp kTyp)) "(,)") (tGen 0)) (tGen 1))))
