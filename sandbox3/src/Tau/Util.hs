@@ -10,6 +10,7 @@ module Tau.Util
   , module Text.Show.Deriving
   , Name
   , Algebra
+  , (<$$>)
   , debug
   , embed1
   , embed2
@@ -123,3 +124,6 @@ renderDoc = renderStrict . layoutPretty defaultLayoutOptions
 
 prettyPrint :: (Pretty p) => p -> Text
 prettyPrint = renderDoc . pretty
+
+(<$$>) :: (Functor f, Functor g) => (a -> b) -> f (g a) -> f (g b)
+(<$$>) f = ((f <$>) <$>)

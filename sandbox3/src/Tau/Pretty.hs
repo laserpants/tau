@@ -134,7 +134,7 @@ instance Pretty (Pattern t) where
         PVar _ var     -> pretty var
         PCon _ con ps  -> prettyCon con ps args
         PLit _ lit     -> pretty lit
-        PRec _ fields  -> prettyRecord equals (fmap snd <$> fields)
+        PRec _ fields  -> prettyRecord equals (snd <$$> fields)
         PAny _         -> "_"
       where
         args :: (Pattern t, Doc a) -> [Doc a] -> [Doc a]
@@ -195,7 +195,7 @@ instance Pretty (PatternExpr t) where
         EIf  _ c e1 e2 -> prettyIf c e1 e2
         EMat _ exs eqs -> prettyMatch exs eqs
         EOp  _ op      -> pretty (fst <$> op)
-        ERec _ fields  -> prettyRecord equals (fmap snd <$> fields)
+        ERec _ fields  -> prettyRecord equals (snd <$$> fields)
       where
         app :: (PatternExpr t, Doc a) -> [Doc a] -> [Doc a]
         app a = (rhs :)

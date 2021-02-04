@@ -148,7 +148,7 @@ generalize ty = do
     ps <- lookupPredicates (fst <$> pairs)
     pure (Forall (snd <$> pairs) 
                  (traverse (maybeToList . getTypeIndex) =<< apply sub2 
-                 (fmap upgrade <$> ps)) ty2)
+                 (upgrade <$$> ps)) ty2)
   where
     typeVars :: Type -> [(Name, Kind)]
     typeVars ty = nub . flip cata ty $ \case
@@ -200,7 +200,7 @@ infer = cata alg
 
             ELam _ pat expr1 -> do
                 (tp, vs) <- runWriterT (inferPattern pat)
-                e1 <- local (second (Env.inserts (fmap toScheme <$> vs))) expr1
+                e1 <- local (second (Env.inserts (toScheme <$$> vs))) expr1
                 unifyTyped newTy (typeOf tp `tArr` typeOf e1)
                 pure (lamExpr (NodeInfo newTy []) tp e1)
 
