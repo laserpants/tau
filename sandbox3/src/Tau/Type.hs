@@ -52,7 +52,7 @@ deriveOrd1  ''TypeF
 type TypeT a = Fix (TypeF a)
 
 type Type = TypeT Void
-type SchemeType = SchemeType
+type SchemeType = TypeT Int
 
 -- | Type class constraints
 data PredicateT a = InClass Name a
