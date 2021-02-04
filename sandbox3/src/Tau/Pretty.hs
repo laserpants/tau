@@ -31,13 +31,13 @@ namesToFields name =
   where
     stripped = Text.stripSuffix "}" =<< Text.stripPrefix "{" name
 
-data ConType 
+data Constructor 
     = TupleCon
     | RecordCon
     | PlainCon
     deriving (Show, Eq)
 
-conType :: Name -> ConType
+conType :: Name -> Constructor
 conType con
     | Text.null con = PlainCon
     | otherwise = 
