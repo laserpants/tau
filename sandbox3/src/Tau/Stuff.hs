@@ -48,7 +48,7 @@ data NodeInfo = NodeInfo
     , nodePredicates :: [Predicate]
     } deriving (Show, Eq)
 
-instance Substitutable NodeInfo Void where
+instance Substitutable NodeInfo Type where
     apply sub (NodeInfo ty ps) = NodeInfo (apply sub ty) (apply sub ps)
 
 instance Pretty NodeInfo where
@@ -62,7 +62,10 @@ instance Typed NodeInfo where
 
 type TypeEnv = Env Scheme
 
-instance Substitutable TypeEnv Void where
+--instance Substitutable TypeEnv Void where
+--    apply sub = Env.map (apply sub)
+
+instance Substitutable TypeEnv Type where
     apply sub = Env.map (apply sub)
 
 instance Free TypeEnv where
@@ -116,9 +119,9 @@ instantiate
 instantiate (Forall kinds ps ty) = do
     names <- supplies (length kinds)
     let ts = zipWith tVar kinds names 
+        preds = fun <$> ps
         fun p@(InClass name n) = ( names !! n
                                  , replaceBound ts <$> (tGen <$> p) )
-        preds = fun <$> ps
     modify (second (flip (foldr (uncurry (\k -> Env.insertWith (<>) k . pure))) preds))
     pure (replaceBound ts ty, snd <$> preds)
 
@@ -289,7 +292,7 @@ inferLogicOp op a b = do
 
 type Infer s a = StateT (SubstitutionT s, Env [Predicate]) (ReaderT (ClassEnv a, TypeEnv) (SupplyT Name (ExceptT String Maybe))) a 
 
-runInfer :: ClassEnv a -> TypeEnv -> Infer s a -> Either String (a, (SubstitutionT s, Env [Predicate]))
+runInfer :: ClassEnv a -> TypeEnv -> Infer (TypeT s) a -> Either String (a, (SubstitutionT (TypeT s), Env [Predicate]))
 runInfer e1 e2 = 
     flip runStateT mempty
         >>> flip runReaderT (e1, e2)
