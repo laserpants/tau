@@ -10,23 +10,23 @@ module Tau.Util
   , module Text.Show.Deriving
   , Name
   , Algebra
-  , unions
-  , nameSupply
-  , numSupply
   , debug
-  , firstM
-  , secondM
-  , first3M
-  , second3M
-  , third3M
-  , integerToText
-  , intToText
-  , prettyPrint
-  , renderDoc
   , embed1
   , embed2
   , embed3
   , embed4
+  , first3M
+  , firstM
+  , intToText
+  , integerToText
+  , nameSupply
+  , numSupply
+  , prettyPrint
+  , renderDoc
+  , second3M
+  , secondM
+  , third3M
+  , unions
   ) where
 
 import Control.Monad

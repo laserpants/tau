@@ -63,6 +63,25 @@ type Predicate = PredicateT Type
 data Scheme = Forall [Kind] [PredicateT Int] (TypeT Int)
     deriving (Show, Eq)
 
+class Free t where
+    free :: t -> Set Name
+
+instance (Free t) => Free [t] where
+    free = foldr (Set.union . free) mempty
+
+instance Free (TypeT a) where
+    free = cata $ \case
+        TVar _ var     -> Set.singleton var
+        TArr t1 t2     -> t1 `Set.union` t2
+        TApp t1 t2     -> t1 `Set.union` t2
+        ty             -> mempty
+
+instance Free (PredicateT (TypeT a)) where
+    free (InClass _ ty) = free ty
+
+instance Free Scheme where
+    free (Forall _ _ ty) = free ty
+
 class Typed a where
     typeOf :: a -> Type
 
@@ -91,7 +110,8 @@ newTVar :: (MonadSupply Name m) => Kind -> m (TypeT a)
 newTVar kind = tVar kind <$> supply 
 
 recordConstructor :: [Name] -> TypeT a
-recordConstructor names = tCon kind ("{" <> Text.intercalate "," names <> "}")
+recordConstructor names = 
+    tCon kind ("{" <> Text.intercalate "," names <> "}")
   where 
     kind = foldr kArr kTyp (replicate (length names) kTyp)
 
@@ -102,8 +122,8 @@ upgrade = cata $ \case
     TArr t1 t2 -> tArr t1 t2
     TApp t1 t2 -> tApp t1 t2
 
-upgradePredicate :: Predicate -> PredicateT (TypeT Int)
-upgradePredicate (InClass name ty) = InClass name (upgrade ty)
+--upgradePredicate :: Predicate -> PredicateT (TypeT Int)
+--upgradePredicate (InClass name ty) = InClass name (upgrade ty)
 
 replaceBound :: [Type] -> TypeT Int -> Type
 replaceBound ts = cata $ \case
@@ -113,8 +133,8 @@ replaceBound ts = cata $ \case
     TVar k var -> tVar k var
     TCon k con -> tCon k con
 
-replaceBoundInPredicate :: [Type] -> PredicateT (TypeT Int) -> Predicate
-replaceBoundInPredicate ts (InClass name ty) = InClass name (replaceBound ts ty)
+---replaceBoundInPredicate :: [Type] -> PredicateT (TypeT Int) -> Predicate
+---replaceBoundInPredicate ts (InClass name ty) = InClass name (replaceBound ts ty)
 
 kindOf :: Type -> Maybe Kind
 kindOf = histo $ \case

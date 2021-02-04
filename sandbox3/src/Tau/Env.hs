@@ -58,7 +58,6 @@ map :: (a -> b) -> Env a -> Env b
 map f (Env emap) = Env (Map.map f emap)
 
 copyKey :: Name -> Name -> Env a -> Env a
-copyKey old new emap =
-    case lookup old emap of
-        Nothing  -> emap
-        Just val -> insert new val emap
+copyKey old new emap = case lookup old emap of
+    Nothing  -> emap
+    Just val -> insert new val emap

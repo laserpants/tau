@@ -9,13 +9,6 @@ import Tau.Type.Substitution
 import Tau.Util
 import qualified Data.Set.Monad as Set
 
-free :: TypeT a -> Set Name
-free = cata $ \case
-    TVar _ var -> Set.singleton var
-    TArr t1 t2 -> t1 `Set.union` t2
-    TApp t1 t2 -> t1 `Set.union` t2
-    ty         -> mempty
-
 bind :: (MonadError String m) => Name -> Kind -> Type -> m Substitution
 bind name kind ty
     | ty == tVar kind name                    = pure mempty
@@ -24,7 +17,8 @@ bind name kind ty
     | otherwise                               = pure (name `mapsTo` ty)
 
 unify :: (MonadError String m) => Type -> Type -> m Substitution
-unify t u = fn (project t) (project u) where
+unify t u = fn (project t) (project u) 
+  where
     fn (TArr t1 t2) (TArr u1 u2)              = unifyPairs (t1, t2) (u1, u2)
     fn (TApp t1 t2) (TApp u1 u2)              = unifyPairs (t1, t2) (u1, u2)
     fn (TVar kind name) _                     = bind name kind u
@@ -33,7 +27,8 @@ unify t u = fn (project t) (project u) where
     fn _ _                                    = throwError "CannotUnify" -- throwError CannotUnify
 
 match :: (MonadError String m) => Type -> Type -> m Substitution
-match t u = fn (project t) (project u) where
+match t u = fn (project t) (project u) 
+  where
     fn (TArr t1 t2) (TArr u1 u2)              = matchPairs (t1, t2) (u1, u2)
     fn (TApp t1 t2) (TApp u1 u2)              = matchPairs (t1, t2) (u1, u2)
     fn (TVar k name) _ | Just k == kindOf u   = pure (name `mapsTo` u)

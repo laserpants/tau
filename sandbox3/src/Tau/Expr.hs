@@ -223,11 +223,11 @@ mapTags f = cata $ \case
 
 mapPatternTags :: (s -> t) -> Pattern s -> Pattern t
 mapPatternTags f = cata $ \case
-    PVar t var    -> varPat (f t) var
-    PCon t con ps -> conPat (f t) con ps
-    PLit t lit    -> litPat (f t) lit
-    PRec t fields -> recPat (f t) (mapField f <$> fields)
-    PAny t        -> anyPat (f t)
+    PVar t var      -> varPat (f t) var
+    PCon t con ps   -> conPat (f t) con ps
+    PLit t lit      -> litPat (f t) lit
+    PRec t fields   -> recPat (f t) (mapField f <$> fields)
+    PAny t          -> anyPat (f t)
 
 mapField :: (s -> t) -> Field s a -> Field t a
 mapField f (Field t n v) = Field (f t) n v

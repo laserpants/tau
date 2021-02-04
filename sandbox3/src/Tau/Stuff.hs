@@ -37,17 +37,6 @@ import qualified Data.Set.Monad as Set
 import qualified Data.Text as Text
 import qualified Tau.Env as Env
 
-
---class Free t where
---    free :: t -> Set Name
---
---instance Free (TypeT a) where
---    free = cata $ \case
---        TVar _ var     -> Set.singleton var
---        TArr t1 t2     -> t1 `Set.union` t2
---        TApp t1 t2     -> t1 `Set.union` t2
---        ty             -> mempty
-
 --
 -- Type checker
 --
@@ -76,12 +65,8 @@ type TypeEnv = Env Scheme
 instance Substitutable TypeEnv Void where
     apply sub = Env.map (apply sub)
 
---
-
--- TODO: make class
-envFree :: TypeEnv -> Set Name
-envFree = unions . (freeInScheme <$>) . Env.elems where
-    freeInScheme (Forall _ _ ty) = free ty
+instance Free TypeEnv where
+    free = free . Env.elems
 
 --
 
@@ -130,7 +115,7 @@ instantiate (Forall kinds ps ty) = do
     names <- supplies (length kinds)
     let ts = zipWith tVar kinds names 
         fun p@(InClass name n) = ( names !! n
-                                 , replaceBoundInPredicate ts (tGen <$> p) )
+                                 , replaceBound ts <$> (tGen <$> p) )
         preds = fun <$> ps
     modify (second (flip (foldr (uncurry (\k -> Env.insertWith (<>) k . pure))) preds))
     pure (replaceBound ts ty, snd <$> preds)
@@ -151,13 +136,14 @@ generalize
 generalize ty = do
     env <- asks snd
     sub1 <- gets fst
-    let freeVs = envFree (apply sub1 env)
-        ty1    = apply sub1 ty
-        pairs  = filter ((`notElem` freeVs) . fst) (typeVars ty1)
-        sub2   = fromList [(fst v, tGen n) | (v, n) <- zip pairs [0..]]
-        ty2    = apply sub2 (upgrade ty1)
+    let ty1   = apply sub1 ty
+        pairs = filter ((`notElem` free (apply sub1 env)) . fst) (typeVars ty1)
+        sub2  = fromList [(fst v, tGen n) | (v, n) <- zip pairs [0..]]
+        ty2   = apply sub2 (upgrade ty1)
     ps <- lookupPredicates (fst <$> pairs)
-    pure (Forall (snd <$> pairs) (traverse (maybeToList . getTypeIndex) =<< apply sub2 (upgradePredicate <$> ps)) ty2)
+    pure (Forall (snd <$> pairs) 
+                 (traverse (maybeToList . getTypeIndex) =<< apply sub2 
+                 (fmap upgrade <$> ps)) ty2)
   where
     typeVars :: Type -> [(Name, Kind)]
     typeVars ty = nub . flip cata ty $ \case

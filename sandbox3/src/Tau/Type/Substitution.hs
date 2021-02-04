@@ -43,7 +43,7 @@ instance Substitutable (TypeT Int) Void where
     apply (Sub sub) = apply (Sub (upgrade <$> sub))
 
 instance Substitutable (PredicateT (TypeT a)) a where
-    apply sub (InClass name ty) = InClass name (apply sub ty)
+    apply = fmap . apply 
 
 --instance Substitutable Scheme Int where
 --    apply sub (Forall ks ps ty) = Forall ks ps (apply sub ty)
