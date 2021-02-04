@@ -73,7 +73,11 @@ instance Free TypeEnv where
 
 --
 
-unified :: (MonadError String m) => Type -> Type -> StateT (Substitution, Env [Predicate]) m Substitution
+unified 
+  :: (MonadError String m) 
+  => Type 
+  -> Type 
+  -> StateT (Substitution, Env [Predicate]) m Substitution
 unified t1 t2 = do
     sub1 <- gets fst
     sub2 <- unify (apply sub1 t1) (apply sub1 t2)
@@ -94,11 +98,9 @@ unifyTyped v1 v2 = do
     modify (second (Env.map (apply sub) >>> propagateClasses sub))
   where
     propagateClasses :: Substitution -> Env [Predicate] -> Env [Predicate]
-    propagateClasses sub env = do
-        Map.foldrWithKey copy env (getSub sub)
+    propagateClasses sub env = Map.foldrWithKey copy env (getSub sub)
 
-    copy k v e = 
-        fromMaybe e (Env.copyKey k <$> getTypeVar v <*> pure e)
+    copy k v e = fromMaybe e (Env.copyKey k <$> getTypeVar v <*> pure e)
 
 lookupScheme 
   :: (MonadSupply Name m, MonadReader (ClassEnv a, TypeEnv) m, MonadError String m) 
