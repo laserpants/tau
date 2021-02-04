@@ -52,15 +52,17 @@ deriveOrd1  ''TypeF
 type TypeT a = Fix (TypeF a)
 
 type Type = TypeT Void
+type SchemeType = SchemeType
 
 -- | Type class constraints
 data PredicateT a = InClass Name a
     deriving (Show, Eq, Ord, Functor, Foldable, Traversable)
 
 type Predicate = PredicateT Type 
+type SchemePredicate = PredicateT Int
 
 -- | Polymorphic type schemes
-data Scheme = Forall [Kind] [PredicateT Int] (TypeT Int)
+data Scheme = Forall [Kind] [SchemePredicate] SchemeType
     deriving (Show, Eq)
 
 class Free t where
@@ -98,7 +100,7 @@ getTypeCon = cata $ \case
     TCon _ c -> Just c
     _        -> Nothing
 
-getTypeIndex :: TypeT Int -> Maybe Int
+getTypeIndex :: SchemeType -> Maybe Int
 getTypeIndex = cata $ \case
     TGen n -> Just n
     _      -> Nothing
@@ -115,26 +117,20 @@ recordConstructor names =
   where 
     kind = foldr kArr kTyp (replicate (length names) kTyp)
 
-upgrade :: Type -> TypeT Int
+upgrade :: Type -> SchemeType
 upgrade = cata $ \case
     TVar k var -> tVar k var
     TCon k con -> tCon k con
     TArr t1 t2 -> tArr t1 t2
     TApp t1 t2 -> tApp t1 t2
 
---upgradePredicate :: Predicate -> PredicateT (TypeT Int)
---upgradePredicate (InClass name ty) = InClass name (upgrade ty)
-
-replaceBound :: [Type] -> TypeT Int -> Type
+replaceBound :: [Type] -> SchemeType -> Type
 replaceBound ts = cata $ \case
     TGen n     -> ts !! n
     TArr t1 t2 -> tArr t1 t2
     TApp t1 t2 -> tApp t1 t2
     TVar k var -> tVar k var
     TCon k con -> tCon k con
-
----replaceBoundInPredicate :: [Type] -> PredicateT (TypeT Int) -> Predicate
----replaceBoundInPredicate ts (InClass name ty) = InClass name (replaceBound ts ty)
 
 kindOf :: Type -> Maybe Kind
 kindOf = histo $ \case
@@ -160,7 +156,7 @@ kFun = kTyp `kArr` kTyp
 tVar :: Kind -> Name -> TypeT a
 tVar = embed2 TVar 
 
-tGen :: Int -> TypeT Int
+tGen :: Int -> SchemeType
 tGen = embed1 TGen 
 
 tCon :: Kind -> Name -> TypeT a

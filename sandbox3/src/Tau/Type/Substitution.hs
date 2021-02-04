@@ -7,7 +7,6 @@ module Tau.Type.Substitution where
 
 import Data.List (intersect)
 import Data.Map.Strict (Map)
-import Data.Void
 import Prelude hiding (null)
 import Tau.Type
 import Tau.Util
@@ -36,12 +35,6 @@ instance Substitutable (PredicateT (TypeT a)) (TypeT a) where
 instance Substitutable Scheme Type where
     apply sub (Forall ks ps ty) = Forall ks ps (apply sub ty)
 
-----instance Substitutable Type Int where
-----    apply (Sub sub) = undefined -- apply (Sub (upgrade <$> sub))
-
---instance Substitutable Type Type where
---    apply = undefined
-
 instance Substitutable (TypeT a) (TypeT a) where
     apply sub = cata $ \case
         TVar kind var -> withDefault (tVar kind var) var sub
@@ -49,58 +42,8 @@ instance Substitutable (TypeT a) (TypeT a) where
         TApp t1 t2    -> tApp t1 t2
         ty            -> embed ty
 
-instance Substitutable (TypeT Int) Type where
+instance Substitutable SchemeType Type where
     apply (Sub sub) = apply (Sub (upgrade <$> sub))
-
---    apply sub = cata $ \case
---        TVar kind var -> withDefault (tVar kind var) var (Sub (upgrade <$> getSub sub))
---        TArr t1 t2    -> tArr t1 t2
---        TApp t1 t2    -> tApp t1 t2
---        ty            -> embed ty
-
---instance Substitutable (PredicateT (TypeT Int)) (TypeT Int) where
---    apply = undefined
-
---instance Substitutable a a where
---    apply = undefined
-
---foo :: SubstitutionT a -> SubstitutionT (TypeT a)
---foo = undefined
-
---instance Substitutable (TypeT a) a where
---    apply sub = cata $ \case
---        TVar kind var -> undefined -- withDefault (tVar kind var) var (foo sub)
---          where
---            zoom = getSub sub -- :: Map Name a
---        TArr t1 t2    -> tArr t1 t2
---        TApp t1 t2    -> tApp t1 t2
---        ty            -> embed ty
-
-
---instance Substitutable (TypeT a) a where
---    apply sub = undefined -- cata $ \case
---        TVar kind var -> (undefined :: TypeT a)
---          where
-----            zoom :: Map Name a
---            zoom = getSub sub
---            --war = var :: Name
---            xxx = withDefault (undefined :: Int) var sub
---        TArr t1 t2    -> tArr t1 t2
---        TApp t1 t2    -> tApp t1 t2
---        ty            -> embed ty
-
---instance Substitutable Int Void where
---    apply (Sub sub) = undefined -- apply (Sub (upgrade <$> sub))
---
---instance Substitutable (PredicateT (TypeT a)) a where
---    apply = fmap . apply 
---
-----instance Substitutable Scheme Int where
-----    apply sub (Forall ks ps ty) = Forall ks ps (apply sub ty)
---
----- TODO : test??
---instance Substitutable Scheme Void where
---    apply sub (Forall ks ps ty) = undefined -- Forall ks ps (apply sub ty)
 
 null :: SubstitutionT a
 null = Sub mempty
