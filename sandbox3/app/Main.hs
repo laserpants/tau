@@ -127,6 +127,7 @@ pipeline e =  do
     let (pex, e) = y
 
     debugTree pex
+    traceShowM "^^"
 
     pure y
 

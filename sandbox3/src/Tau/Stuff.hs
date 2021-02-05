@@ -69,13 +69,6 @@ insertDicts env = mapTags $ \info@NodeInfo{..} ->
     predicates :: Type -> [Predicate]
     predicates t = concat [ concat $ maybeToList (Env.lookup v env) | v <- Set.toList (free t) ]
 
-stripNodePredicates t = t{ nodePredicates = [] }
-
-stripExprPredicates =
-    updateExprTag stripNodePredicates
-
-stripPatternPredicates =
-    updatePatternTag stripNodePredicates
 
 rebuildTree 
   :: (MonadSupply Name m, MonadState Environments m) 
@@ -88,61 +81,45 @@ rebuildTree =
                 [] -> pure (appExpr t [])
                 (e:es) -> do
                     let NodeInfo{..} = exprTag e 
-                    ds <- traverse fun (sort nodePredicates)
+                    ds <- traverse dict (sort nodePredicates)
                     pure (stripExprPredicates (appExpr t (e:ds <> (stripExprPredicates <$> es))))
---                    pure (appExpr t (e:es))
                   where
-                    fun :: (MonadState Environments m) => Predicate -> m (PatternExpr NodeInfo)
-                    fun (InClass name ty) = 
+                    dict :: (MonadState Environments m) => Predicate -> m (PatternExpr NodeInfo)
+                    dict (InClass name ty) = 
                         gets classEnv >>= \e -> 
                             case lookupClassInstance name ty e of
-                                Nothing -> error ("missing class instance: " <> Text.unpack (name <> " " <> prettyPrint ty))
+                                Nothing -> error ("Missing class instance: " <> Text.unpack (name <> " " <> prettyPrint ty))
                                 Just e  -> pure (mapTags (`NodeInfo` []) e)
+
+                    stripExprPredicates = updateExprTag stripNodePredicates
 
         ELam t@NodeInfo{..} pat e1 -> do
            nested <- ask
-           if nested 
-               then 
-                   lamExpr t pat <$> local (const True) e1
-               else do
-                   vs <- Text.replace "a" "v" <$$> supplies (length nodePredicates)
-                   let xxxs = zip (sort nodePredicates) vs
+           if nested then 
+               lamExpr t pat <$> local (const True) e1
 
-                   let zyx = flip (foldr (\i@(InClass name ty, x) -> addClassInstance name ty (fooo i))) xxxs
-                   modifyClassEnv zyx
+           else do
+               vs <- Text.replace "a" "&" <$$> supplies (length nodePredicates)
+               let pairs = zip (sort nodePredicates) vs
+               modifyClassEnv (flip (foldr insertInstance) pairs)
+               e <- lamExpr t (stripPatternPredicates pat) <$> local (const True) e1
+               fst <$> foldl extendLam (pure (e, [])) (reverse pairs)
+            where
+              stripPatternPredicates = updatePatternTag stripNodePredicates
 
-                   --(lamExpr t pat <$> local (const True) e1)
+              insertInstance (InClass name ty, var) = 
+                  let t = tApp (tCon (kArr kTyp (fromJust (kindOf ty))) name) ty
+                   in addClassInstance name ty (varExpr t var)
 
-                   --traceShowM "vvv"
-                   --traceShowM (sort nodePredicates)
-
-                   asdf <- (lamExpr t (stripPatternPredicates pat) <$> local (const True) e1)
-
-                   fst <$> foldl gork2 (pure (asdf, [])) (reverse xxxs)
-
-                   --(pure (asdf))
-
+              extendLam pex (p@(InClass name ty), var) = do 
+                  (e, ps) <- pex
+                  let t  = tApp (tCon (kArr kTyp (fromJust (kindOf ty))) name) ty
+                      e1 = varPat (NodeInfo t []) var
+                  pure (lamExpr (exprTag e) e1 (updateExprTag (setNodePredicates ps) e), p:ps) 
 
         e -> 
             embed <$> local (const False) (sequence e)
 
-gork2 
-  :: (Monad m) 
-  => ReaderT Bool m (PatternExpr NodeInfo, [Predicate]) 
-  -> (Predicate, Name) 
-  -> ReaderT Bool m (PatternExpr NodeInfo, [Predicate])
-gork2 pexpr (p@(InClass name ty), v) = do 
-    (e, ps) <- pexpr
-    let e1 = lamExpr (exprTag e) (varPat (NodeInfo fooss []) v) (setExprTag (flopp e (ps)) e)
-    pure (e1, p:ps) 
-  where
-    flopp e ps = (exprTag e){ nodePredicates = ps }
-
-    fooss = tApp (tCon (kArr kTyp (fromJust (kindOf ty))) name) ty
-
-fooo :: (Predicate, Name) -> Expr Type p q
-fooo (InClass name ty, var) = 
-    varExpr (tApp (tCon (kArr kTyp (fromJust (kindOf ty))) name) ty) var
 
 --
 
@@ -199,6 +176,16 @@ instance Pretty NodeInfo where
 
 instance Typed NodeInfo where
     typeOf = nodeType
+
+setNodeTYpe :: Type -> NodeInfo -> NodeInfo
+setNodeTYpe ty info = info{ nodeType = ty }
+
+setNodePredicates :: [Predicate] -> NodeInfo -> NodeInfo
+setNodePredicates ps info = info{ nodePredicates = ps }
+
+stripNodePredicates :: NodeInfo -> NodeInfo
+stripNodePredicates = setNodePredicates []
+
 
 type TypeEnv = Env Scheme
 
