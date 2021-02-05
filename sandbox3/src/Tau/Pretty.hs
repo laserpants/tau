@@ -22,7 +22,7 @@ prettyRecord :: Doc a -> [Field t (Doc a)] -> Doc a
 prettyRecord _ []       = braces ""
 prettyRecord sep fields = lbrace <+> prettyFields (fieldsInfo fields) <+> rbrace
   where
-    prettyFields fields = commaSep (field <$> fields)
+    prettyFields = commaSep . (field <$>)
     field (_, key, val) = pretty key <+> sep <+> val
 
 namesToFields :: Name -> [Doc a] -> [Field () (Doc a)]
