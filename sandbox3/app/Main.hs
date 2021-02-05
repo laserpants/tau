@@ -142,7 +142,8 @@ runPipeline a = do
     f = runMaybeT (evalSupplyT (runReaderT (pipeline a) (myClassEnv, myTypeEnv)) (numSupply "a"))
 
 runTest2_ :: Either String (PatternExpr NodeInfo, Environments)
-runTest2_ = runPipeline expr22
+--runTest2_ = runPipeline expr22
+runTest2_ = runPipeline expr1
 
 --
 --

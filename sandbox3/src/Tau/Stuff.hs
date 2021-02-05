@@ -232,8 +232,8 @@ instance Pretty NodeInfo where
 instance Typed NodeInfo where
     typeOf = nodeType
 
-setNodeTYpe :: Type -> NodeInfo -> NodeInfo
-setNodeTYpe ty info = info{ nodeType = ty }
+setNodeType :: Type -> NodeInfo -> NodeInfo
+setNodeType ty info = info{ nodeType = ty }
 
 setNodePredicates :: [Predicate] -> NodeInfo -> NodeInfo
 setNodePredicates ps info = info{ nodePredicates = ps }
