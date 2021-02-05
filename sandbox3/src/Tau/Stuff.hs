@@ -9,10 +9,12 @@ module Tau.Stuff where
 
 import Control.Arrow ((>>>), (<<<), first, second)
 import Control.Monad.Except
+import Control.Monad.Extra (allM, (||^))
 import Control.Monad.Reader
 import Control.Monad.State
 import Control.Monad.Supply
 import Control.Monad.Writer
+import Data.Either.Combinators (rightToMaybe)
 import Data.Foldable (foldrM, traverse_)
 import Data.Function ((&))
 import Data.List
@@ -29,8 +31,8 @@ import Tau.Env (Env(..))
 import Tau.Expr
 import Tau.Pretty
 import Tau.Type
-import Tau.Type.Unification
 import Tau.Type.Substitution
+import Tau.Type.Unification
 import Tau.Util
 import qualified Data.Map.Strict as Map
 import qualified Data.Set.Monad as Set
@@ -131,8 +133,6 @@ super env name = maybe [] fst (Env.lookup name env)
 instances :: ClassEnv a -> Name -> [Instance a]
 instances env name = maybe [] snd (Env.lookup name env)
 
---type Class a = ([Name], [Instance a])
-
 addClassInstance :: Name -> Type -> a -> ClassEnv a -> ClassEnv a
 addClassInstance name ty ex =
     Env.insertWith (const (second (inst :))) name ([], [inst]) 
@@ -144,6 +144,72 @@ lookupClassInstance name ty env =
     instanceDict <$> listToMaybe boss
   where
     boss = filter ((ty ==) . instanceType) (instances env name)
+
+--
+
+bySuper :: ClassEnv a -> Predicate -> [Predicate]
+bySuper env self@(InClass name ty) = 
+    self:concat [bySuper env (InClass tc ty) | tc <- super env name]
+
+byInstance :: ClassEnv a -> Predicate -> Maybe [Predicate]
+byInstance env self@(InClass name ty) = 
+    msum $ rightToMaybe <$> [tryInstance i | i <- instances env name]
+  where
+    tryInstance :: Instance a -> Either String [Predicate]
+    tryInstance (Instance ps h _) = 
+        apply <$> matchClass (InClass name h) self <*> pure ps
+
+--instance Substitutable Predicate where
+--    apply sub (InClass name ty) = InClass name (apply sub ty)
+
+entail :: ClassEnv a -> [Predicate] -> Predicate -> Either a Bool
+entail env cls0 cl = pure super ||^ instances
+  where
+    super = any (cl `elem`) (bySuper env <$> cls0)
+    instances = case byInstance env cl of
+        Nothing   -> pure False
+        Just cls1 -> allM (entail env cls0) cls1
+
+isHeadNormalForm :: Predicate -> Bool
+isHeadNormalForm (InClass _ t) = 
+    flip cata t $ \case
+        TApp t1 _ -> t1
+        TVar{}    -> True
+        _         -> False
+
+toHeadNormalForm :: ClassEnv a -> [Predicate] -> Either a [Predicate]
+toHeadNormalForm env = fmap concat . mapM (hnf env) 
+  where
+    hnf env tycl 
+        | isHeadNormalForm tycl = pure [tycl]
+        | otherwise = case byInstance env tycl of
+            Nothing  -> error "ContextReductionFailed" -- throwError ContextReductionFailed Just cls -> toHeadNormalForm env cls
+
+
+-- remove a class constraint if it is entailed by the other constraints in the list
+simplify :: ClassEnv a -> [Predicate] -> Either a [Predicate]
+simplify env = loop [] where
+    loop qs [] = pure qs
+    loop qs (p:ps) = do
+        entailed <- entail env (qs <> ps) p
+        if entailed then loop qs ps 
+             else loop (p:qs) ps
+
+reduce :: ClassEnv a -> [Predicate] -> Either a [Predicate]
+reduce env cls = toHeadNormalForm env cls >>= simplify env 
+
+
+
+unifyClass, matchClass :: (MonadError String m) => Predicate -> Predicate -> m Substitution
+unifyClass = liftX unify
+matchClass = liftX match
+
+liftX :: (MonadError String m) => (Type -> Type -> m a) -> Predicate -> Predicate -> m a
+liftX m (InClass c1 t1) (InClass c2 t2)
+    | c1 == c2  = m t1 t2
+    | otherwise = throwError "ClassMismatch" -- throwError ClassMismatch
+
+
 
 --
 -- Type checker

@@ -12,21 +12,22 @@ extra-source-files:
 - README.md
 
 dependencies:
-  - base >= 4.7 && < 5
-  - containers
-  - data-fix
-  - deriving-compat
-  - extra
-  - free
-  - monad-supply
-  - mtl
-  - prettyprinter
-  - recursion-schemes
-  - set-monad
-  - text
-  - transformers
-  - tree-view
-  - type-iso
+- base >= 4.7 && < 5
+- containers
+- data-fix
+- deriving-compat
+- either
+- extra
+- free
+- monad-supply
+- mtl
+- prettyprinter
+- recursion-schemes
+- set-monad
+- text
+- transformers
+- tree-view
+- type-iso
 
 library:
   source-dirs: src

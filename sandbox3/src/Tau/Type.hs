@@ -113,8 +113,8 @@ getTypeCon = cata $ \case
 
 getTypeIndex :: SchemeType -> Maybe Int
 getTypeIndex = cata $ \case
-    TGen n -> Just n
-    _      -> Nothing
+    TGen n   -> Just n
+    _        -> Nothing
 
 toScheme :: Type -> Scheme
 toScheme = Forall [] [] . upgrade
