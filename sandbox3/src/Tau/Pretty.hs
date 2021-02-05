@@ -241,7 +241,7 @@ splitClause (Clause ps exs e) =
     when | null exs  = ""
          | otherwise = space <> "when" <+> commaSep (pretty . fst <$> exs)
 
--- | Pretty print let expression
+-- | Pretty printer for let expressions
 prettyLet 
   :: Pattern t 
   -> (PatternExpr t, Doc a) 
@@ -259,7 +259,7 @@ prettyLet p e1 e =
     expr = pretty (fst e1)
     body = pretty (fst e)
 
--- | Pretty print lambda abstraction
+-- | Pretty printer for lambda abstractions
 prettyLam :: Pattern t -> (PatternExpr t, Doc a) -> Doc a
 prettyLam p e1 = 
     group (nest 2 (vsep [backslash <> pattern_ p <+> "=>", pretty (fst e1)]))
@@ -270,7 +270,7 @@ prettyLam p e1 =
         PCon{}      -> parens (pretty p)
         _           -> pretty p
 
--- | Pretty print if-clause
+-- | Pretty printer for if-clauses
 prettyIf 
   :: (PatternExpr t, Doc a) 
   -> (PatternExpr t, Doc a) 
