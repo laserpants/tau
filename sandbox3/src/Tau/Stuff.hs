@@ -123,17 +123,6 @@ rebuildTree =
 
 --
 
-type Class a = ([Name], [Instance a])
-
-data Instance a = Instance [Predicate] Type a
-    deriving (Show, Eq)
-
-instanceType :: Instance a -> Type
-instanceType (Instance _ ty _) = ty
-
-instanceX :: Instance a -> a
-instanceX (Instance _ _ a) = a
-
 type ClassEnv a = Env (Class a)
 
 super :: ClassEnv a -> Name -> [Name]
@@ -152,7 +141,7 @@ addClassInstance name ty ex =
 
 lookupClassInstance :: Name -> Type -> ClassEnv a -> Maybe a
 lookupClassInstance name ty env =
-    instanceX <$> listToMaybe boss
+    instanceDict <$> listToMaybe boss
   where
     boss = filter ((ty ==) . instanceType) (instances env name)
 

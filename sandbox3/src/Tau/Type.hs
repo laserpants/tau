@@ -66,6 +66,16 @@ type SchemePredicate = PredicateT Int
 data Scheme = Forall [Kind] [SchemePredicate] SchemeType
     deriving (Show, Eq)
 
+-- | Type class
+type Class a = ([Name], [Instance a])
+
+-- | Type class instance
+data Instance a = Instance 
+    { instancePredicates :: [Predicate] 
+    , instanceType       :: Type 
+    , instanceDict       :: a
+    } deriving (Show, Eq)
+
 class Free t where
     free :: t -> Set Name
 
@@ -140,8 +150,8 @@ kindOf = histo $ \case
     TVar k _             -> Just k
     TArr{}               -> Just kTyp
   where
-    appKind (KArr _ k) = Just k
-    appKind _          = Nothing
+    appKind (KArr _ k)    = Just k
+    appKind _             = Nothing
 
 kTyp :: Kind
 kTyp = embed KTyp
