@@ -315,8 +315,7 @@ lookupPredicates
   -> StateT (Substitution, Env [Predicate]) m [Predicate]
 lookupPredicates vars = do
     env <- gets snd
-    --let env = Env.fromList [("a4" :: Name, [InClass "Show" (tVar kTyp "a4")])]
-    pure (concat [fromMaybe [] (Env.lookup v env) | v <- vars])
+    pure (concat [Env.findWithDefault [] v env | v <- vars])
 
 generalize
   :: (MonadSupply Name m, MonadReader (ClassEnv a, TypeEnv) m, MonadError String m) 
