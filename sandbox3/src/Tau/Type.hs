@@ -6,6 +6,7 @@
 {-# LANGUAGE StrictData        #-}
 {-# LANGUAGE TemplateHaskell   #-}
 module Tau.Type where
+-- Tau.Lang.Type
 
 import Control.Arrow (second)
 import Control.Comonad.Cofree

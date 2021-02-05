@@ -1,15 +1,23 @@
-{-# LANGUAGE OverloadedStrings     #-}
+{-# LANGUAGE FlexibleContexts  #-}
+{-# LANGUAGE OverloadedStrings #-}
 module Main where
 
 import Control.Arrow (second, first)
-import Tau.Type.Substitution
+import Control.Monad.Except
+import Control.Monad.Reader
+import Control.Monad.Trans.Maybe
+import Control.Monad.State
+import Control.Monad.Supply
+import Data.Maybe (fromJust)
 import Tau.Eval
 import Tau.Expr
 import Tau.Pretty
 import Tau.PrettyTree
+import Tau.Env (Env)
 import Tau.Prim
 import Tau.Stuff
 import Tau.Type
+import Tau.Type.Substitution
 import Tau.Util
 import qualified Tau.Env as Env
 
@@ -41,21 +49,24 @@ expr20 = letExpr () (varPat () "id") (lamExpr () (varPat () "x") (varExpr () "x"
                 , appExpr () [varExpr () "id", litExpr () (LBool True)]
               ])
 expr21 = lamExpr () (varPat () "x") (letExpr () (varPat () "f") (lamExpr () (varPat () "y") (varExpr () "x")) (litExpr () (LInt 1)))
+expr22 = lamExpr () (varPat () "x") (letExpr () (varPat () "f") (varExpr () "lenShow2") (appExpr () [varExpr () "f", varExpr () "x"]))
 
 
+runTest1_ :: IO ()
 runTest1_ = do
     let Right (tree, (sub, x)) = runTest1 
     debugTree tree
     debugTree (mapTags (apply sub) tree)
     debug (show x)
     debug (show (apply sub <$$> x))
+    let pexpr = mapTags (apply sub) tree
+--    let tree = rebuildTree pexpr
     debug (show sub)
-    debug "xx"
 
 --runTest1 = runInfer mempty typeEnv (infer expr2) where
 --runTest1 = runInfer mempty typeEnv (infer expr4) where
-runTest1 = runInfer mempty typeEnv (infer expr5) where
---runTest1 = runInfer mempty typeEnv (infer expr6) where
+--runTest1 = runInfer mempty typeEnv (infer expr5) where
+runTest1 = runInfer mempty typeEnv (infer expr6) where
 --runTest1 = runInfer mempty typeEnv (infer expr20) where
 --runTest1 = runInfer mempty typeEnv (infer expr21) where
 --runTest1 = runInfer mempty typeEnv (infer expr4) where
@@ -66,6 +77,71 @@ runTest1 = runInfer mempty typeEnv (infer expr5) where
 --        [ ( "lenShow" , Forall [kTyp, kTyp] [InClass "Show" (tGen 0)] (tGen 0 `tArr` upgrade tInt) ) 
 --        , ( "(,)"     , Forall [kTyp, kTyp] [] (tGen 0 `tArr` tGen 1 `tArr` (tApp (tApp (tCon (kArr kTyp (kArr kTyp kTyp)) "(,)") (tGen 0)) (tGen 1))))
 --        ]
+
+myTypeEnv :: Env Scheme
+myTypeEnv = Env.fromList 
+    [ ( "@strlen"  , Forall [] [] (upgrade  (tString `tArr` tInt)) )
+    , ( "lenShow"  , Forall [kTyp, kTyp] [InClass "Show" 0] (tGen 0 `tArr` upgrade tInt) ) 
+    , ( "lenShow2" , Forall [kTyp, kTyp] [InClass "Show" 0, InClass "Eq" 0] (tGen 0 `tArr` upgrade tInt) ) 
+    , ( "(,)"      , Forall [kTyp, kTyp] [] (tGen 0 `tArr` tGen 1 `tArr` (tApp (tApp (tCon (kArr kTyp (kArr kTyp kTyp)) "(,)") (tGen 0)) (tGen 1))))
+
+--    [ -- ( "@strlen" , sScheme (tCon kStar "String" `tArr` tCon kStar "Int") )
+--    , -- ( "show"    , sForall kStar ["Show"] (sScheme (tGen 0 `tArr` tCon kStar "String")) )
+    ]
+
+myClassEnv = Env.fromList
+    [ ( "Show"
+      , ( []
+         , [ Instance [] tInt  (recExpr (tApp (tCon (kArr kTyp kTyp) "Show") tInt)  [Field (tInt `tArr` tString) "show" (varExpr (tInt `tArr` tString) "@showInt")])
+           , Instance [] tBool (recExpr (tApp (tCon (kArr kTyp kTyp) "Show") tBool) [Field (tBool `tArr` tString) "show" (varExpr (tBool `tArr` tString) "@showBool")])
+           , Instance [] tUnit (recExpr (tApp (tCon (kArr kTyp kTyp) "Show") tUnit) [Field (tUnit `tArr` tString) "show" (varExpr (tUnit `tArr` tString) "@showUnit")])
+           ]
+        )
+      )
+--    , ( "Eq"
+--      , ( []
+--        , [] )
+--      )
+    ]
+
+pipeline
+  :: (MonadError String m, MonadSupply Name m, MonadReader (ClassEnv a, TypeEnv) m)
+  => PatternExpr t
+--  -> m (PatternExpr NodeInfo, Environments)
+  -> m (PatternExpr NodeInfo, Environments)
+pipeline e =  do
+    (tree, (sub, xxx1)) <- runStateT (infer e) mempty
+
+    debugTree tree
+    debugTree (mapTags (apply sub) tree)
+--    debug (show x)
+--    debug (show (apply sub <$$> x))
+
+    let tree2 = (mapTags (apply sub) tree) 
+    -- >> Apply context reduction
+
+--    let t = tree :: PatternExpr NodeInfo
+    y <- runStateT (runReaderT (rebuildTree (insertDicts xxx1 tree2)) False) 
+            (Environments { classEnv = myClassEnv, typeEnv = myTypeEnv })
+
+    let (pex, e) = y
+
+    debugTree pex
+
+    pure y
+
+runPipeline :: PatternExpr t -> Either String (PatternExpr NodeInfo, Environments)
+runPipeline a = do
+    x <- runExcept f
+    case x of
+        Nothing -> Left "error rerera"
+        Just x  -> Right x
+  where
+    f :: (MonadError String m) => m (Maybe (PatternExpr NodeInfo, Environments))
+    f = runMaybeT (evalSupplyT (runReaderT (pipeline a) (myClassEnv, myTypeEnv)) (numSupply "a"))
+
+runTest2_ :: Either String (PatternExpr NodeInfo, Environments)
+runTest2_ = runPipeline expr22
 
 --
 --
@@ -78,3 +154,21 @@ type1 = tVar kTyp "a" `tArr` tVar kTyp "b"
 
 main :: IO ()
 main = putStrLn "hello world"
+
+{-
+
+Tau.Lang.Expr
+Tau.Lang.Type
+Tau.Lang.Parser
+
+
+    |
+   \ /
+    |
+
+Tau.Comp
+Tau.Comp.TypeChecker
+Tau.Comp.Code
+
+
+   -}

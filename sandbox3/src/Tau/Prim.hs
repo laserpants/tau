@@ -3,6 +3,7 @@
 {-# LANGUAGE OverloadedStrings #-}
 {-# LANGUAGE StrictData        #-}
 module Tau.Prim where
+-- Tau.Lang.Prim
 
 import Tau.Env (Env)
 import Tau.Expr

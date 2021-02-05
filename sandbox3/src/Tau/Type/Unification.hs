@@ -1,5 +1,6 @@
 {-# LANGUAGE FlexibleContexts #-}
 module Tau.Type.Unification where
+-- Tau.Lang.Type.Unification
 
 import Control.Monad.Except
 import Data.Set.Monad (Set)

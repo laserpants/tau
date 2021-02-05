@@ -4,6 +4,7 @@
 {-# LANGUAGE MultiParamTypeClasses #-}
 {-# LANGUAGE StrictData            #-}
 module Tau.Type.Substitution where
+-- Tau.Lang.Type.Substitution
 
 import Data.List (intersect)
 import Data.Map.Strict (Map)

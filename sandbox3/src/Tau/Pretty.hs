@@ -16,11 +16,11 @@ commaSep :: [Doc a] -> Doc a
 commaSep = hsep . punctuate comma 
 
 prettyTuple :: [Doc a] -> Doc a
-prettyTuple elems = "(" <> commaSep elems <> ")"
+prettyTuple = parens . commaSep 
 
 prettyRecord :: Doc a -> [Field t (Doc a)] -> Doc a
-prettyRecord _ []       = "{}"
-prettyRecord sep fields = "{" <+> prettyFields (fieldsInfo fields) <+> "}"
+prettyRecord _ []       = braces ""
+prettyRecord sep fields = lbrace <+> prettyFields (fieldsInfo fields) <+> rbrace
   where
     prettyFields fields = commaSep (field <$> fields)
     field (_, key, val) = pretty key <+> sep <+> val
@@ -121,7 +121,7 @@ instance Pretty Scheme where
 
 instance Pretty Literal where
     pretty = \case
-        LUnit      -> "()"
+        LUnit      -> parens mempty
         LBool b    -> pretty b
         LInt n     -> pretty n
         LInteger n -> pretty n
@@ -163,7 +163,7 @@ instance Pretty (Op (PatternExpr t)) where
         ORArr  a b -> binOp a b ">>" 
         OFPipe a b -> binOp a b "|>"
         OBPipe a b -> binOp a b "<|"
-        ODot   a b -> pretty a <> "." <> subOp AssocR b
+        ODot   a b -> pretty a <> dot <> subOp AssocR b
       where
         binOp a b symb = subOp AssocL a 
                      <+> symb 

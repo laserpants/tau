@@ -4,6 +4,7 @@
 {-# LANGUAGE OverloadedStrings          #-}
 {-# LANGUAGE StrictData                 #-}
 module Tau.Eval where
+-- Tau.Comp.Eval
 
 import Control.Monad.Reader
 import Data.Function ((&))

@@ -7,7 +7,9 @@
 {-# LANGUAGE TemplateHaskell       #-}
 {-# LANGUAGE TypeFamilies          #-}
 module Tau.Expr where
+-- Tau.Lang.Expr
 
+import Control.Arrow ((>>>))
 import Control.Monad.Supply
 import Data.List
 import Data.Text (Text)
@@ -173,8 +175,8 @@ opAssoc = \case
     ODot   _ _ -> AssocL
     _          -> error "Not a binary operator"
 
-exprTag :: Expr t (Pattern t) (Pattern t) -> t
-exprTag = cata $ \case
+exprTag :: PatternExpr t -> t
+exprTag = project >>> \case
     EVar t _       -> t
     ECon t _ _     -> t
     ELit t _       -> t
@@ -186,13 +188,40 @@ exprTag = cata $ \case
     EOp  t _       -> t
     ERec t _       -> t
 
+setExprTag :: t -> PatternExpr t -> PatternExpr t
+setExprTag t = project >>> \case
+    EVar _ a       -> varExpr t a
+    ECon _ a b     -> conExpr t a b
+    ELit _ a       -> litExpr t a
+    EApp _ a       -> appExpr t a
+    ELet _ p a b   -> letExpr t p a b
+    ELam _ p a     -> lamExpr t p a
+    EIf  _ a b c   -> ifExpr  t a b c
+    EMat _ a b     -> matExpr t a b
+    EOp  _ a       -> opExpr  t a
+    ERec _ s       -> recExpr t s
+
+updateExprTag :: (t -> t) -> PatternExpr t -> PatternExpr t
+updateExprTag update expr = setExprTag (update (exprTag expr)) expr
+
 patternTag :: Pattern t -> t
-patternTag = cata $ \case
+patternTag = project >>> \case
     PVar t _       -> t
     PCon t _ _     -> t
     PLit t _       -> t
     PRec t _       -> t
     PAny t         -> t
+
+setPatternTag :: t -> Pattern t -> Pattern t
+setPatternTag t = project >>> \case
+    PVar _ a       -> varPat t a
+    PCon _ a b     -> conPat t a b
+    PLit _ a       -> litPat t a
+    PRec _ s       -> recPat t s
+    PAny _         -> anyPat t
+
+updatePatternTag :: (t -> t) -> Pattern t -> Pattern t
+updatePatternTag update pat = setPatternTag (update (patternTag pat)) pat
 
 instance Injective (Field t a) (t, Name, a) where
     to (Field t n v) = (t, n, v)
@@ -208,29 +237,29 @@ fieldsInfo = sortOn snd3 . (to <$>)
 
 mapTags :: (s -> t) -> PatternExpr s -> PatternExpr t 
 mapTags f = cata $ \case
-    EVar t var      -> varExpr (f t) var
-    ECon t con exs  -> conExpr (f t) con exs
-    ELit t lit      -> litExpr (f t) lit
-    EApp t exs      -> appExpr (f t) exs
-    ELet t p e1 e2  -> letExpr (f t) (mapPatternTags f p) e1 e2
-    ELam t p e1     -> lamExpr (f t) (mapPatternTags f p) e1
-    EIf  t c e1 e2  -> ifExpr  (f t) c e1 e2
-    EMat t exs eqs  -> matExpr (f t) exs (clause <$> eqs)
-    EOp  t op       -> opExpr  (f t) op
-    ERec t fields   -> recExpr (f t) (mapField f <$> fields)
+    EVar t a       -> varExpr (f t) a
+    ECon t a b     -> conExpr (f t) a b
+    ELit t a       -> litExpr (f t) a
+    EApp t a       -> appExpr (f t) a
+    ELet t p a b   -> letExpr (f t) (mapPatternTags f p) a b
+    ELam t p a     -> lamExpr (f t) (mapPatternTags f p) a
+    EIf  t a b c   -> ifExpr  (f t) a b c
+    EMat t a e     -> matExpr (f t) a (clause <$> e)
+    EOp  t a       -> opExpr  (f t) a
+    ERec t s       -> recExpr (f t) (mapField f <$> s)
   where
-    clause (Clause ps exs e) = Clause (mapPatternTags f <$> ps) exs e
+    clause (Clause p a b) = Clause (mapPatternTags f <$> p) a b
 
 mapPatternTags :: (s -> t) -> Pattern s -> Pattern t
 mapPatternTags f = cata $ \case
-    PVar t var      -> varPat (f t) var
-    PCon t con ps   -> conPat (f t) con ps
-    PLit t lit      -> litPat (f t) lit
-    PRec t fields   -> recPat (f t) (mapField f <$> fields)
-    PAny t          -> anyPat (f t)
+    PVar t a       -> varPat (f t) a
+    PCon t a b     -> conPat (f t) a b
+    PLit t a       -> litPat (f t) a
+    PRec t s       -> recPat (f t) (mapField f <$> s)
+    PAny t         -> anyPat (f t)
 
 mapField :: (s -> t) -> Field s a -> Field t a
-mapField f (Field t n v) = Field (f t) n v
+mapField f (Field t a b) = Field (f t) a b
 
 varPat :: t -> Name -> Pattern t
 varPat = embed2 PVar

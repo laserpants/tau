@@ -17,7 +17,7 @@ import Data.Foldable (foldrM, traverse_)
 import Data.Function ((&))
 import Data.List
 import Data.Map.Strict (Map)
-import Data.Maybe (fromMaybe, maybeToList)
+import Data.Maybe (fromMaybe, maybeToList, listToMaybe, fromJust)
 import Data.Set.Monad (Set)
 import Data.Text (Text)
 import Data.Text.Prettyprint.Doc
@@ -37,11 +37,151 @@ import qualified Data.Set.Monad as Set
 import qualified Data.Text as Text
 import qualified Tau.Env as Env
 
+data Environments = Environments
+    { classEnv :: ClassEnv (PatternExpr Type)
+    , typeEnv  :: TypeEnv
+--    , progEnv  :: Env (Expr QualifiedType (Prep QualifiedType) Name)
+    } deriving (Show, Eq)
+
+modifyClassEnv :: (MonadState Environments m) => (ClassEnv (PatternExpr Type) -> ClassEnv (PatternExpr Type)) -> m ()
+modifyClassEnv f = do
+    a <- get 
+    put (a{ classEnv = f (classEnv a) })
+
+modifyTypeEnv :: (MonadState Environments m) => (TypeEnv -> TypeEnv) -> m ()
+modifyTypeEnv f = do
+    a <- get 
+    put (a{ typeEnv = f (typeEnv a) })
+
+--myEnvironments = Environments
+--    { classEnv = myClassEnv
+--    , typeEnv  = myTypeEnv
+----    , progEnv  = mempty
+--    }
+
+insertDicts 
+  :: Env [Predicate]
+  -> PatternExpr NodeInfo 
+  -> PatternExpr NodeInfo
+insertDicts env = mapTags $ \info@NodeInfo{..} -> 
+        info{ nodePredicates = nub (nodePredicates <> predicates nodeType) }
+  where
+    predicates :: Type -> [Predicate]
+    predicates t = concat [ concat $ maybeToList (Env.lookup v env) | v <- Set.toList (free t) ]
+
+stripNodePredicates t = t{ nodePredicates = [] }
+
+stripExprPredicates =
+    updateExprTag stripNodePredicates
+
+stripPatternPredicates =
+    updatePatternTag stripNodePredicates
+
+rebuildTree 
+  :: (MonadSupply Name m, MonadState Environments m) 
+  => PatternExpr NodeInfo 
+  -> ReaderT Bool m (PatternExpr NodeInfo)
+rebuildTree =
+    cata $ \case
+        EApp t exs -> do
+            sequence exs >>= \case
+                [] -> pure (appExpr t [])
+                (e:es) -> do
+                    let NodeInfo{..} = exprTag e 
+                    ds <- traverse fun (sort nodePredicates)
+                    pure (stripExprPredicates (appExpr t (e:ds <> (stripExprPredicates <$> es))))
+--                    pure (appExpr t (e:es))
+                  where
+                    fun :: (MonadState Environments m) => Predicate -> m (PatternExpr NodeInfo)
+                    fun (InClass name ty) = 
+                        gets classEnv >>= \e -> 
+                            case lookupClassInstance name ty e of
+                                Nothing -> error ("missing class instance: " <> Text.unpack (name <> " " <> prettyPrint ty))
+                                Just e  -> pure (mapTags (`NodeInfo` []) e)
+
+        ELam t@NodeInfo{..} pat e1 -> do
+           nested <- ask
+           if nested 
+               then 
+                   lamExpr t pat <$> local (const True) e1
+               else do
+                   vs <- Text.replace "a" "v" <$$> supplies (length nodePredicates)
+                   let xxxs = zip (sort nodePredicates) vs
+
+                   let zyx = flip (foldr (\i@(InClass name ty, x) -> addClassInstance name ty (fooo i))) xxxs
+                   modifyClassEnv zyx
+
+                   --(lamExpr t pat <$> local (const True) e1)
+
+                   --traceShowM "vvv"
+                   --traceShowM (sort nodePredicates)
+
+                   asdf <- (lamExpr t (stripPatternPredicates pat) <$> local (const True) e1)
+
+                   fst <$> foldl gork2 (pure (asdf, [])) (reverse xxxs)
+
+                   --(pure (asdf))
+
+
+        e -> 
+            embed <$> local (const False) (sequence e)
+
+gork2 
+  :: (Monad m) 
+  => ReaderT Bool m (PatternExpr NodeInfo, [Predicate]) 
+  -> (Predicate, Name) 
+  -> ReaderT Bool m (PatternExpr NodeInfo, [Predicate])
+gork2 pexpr (p@(InClass name ty), v) = do 
+    (e, ps) <- pexpr
+    let e1 = lamExpr (exprTag e) (varPat (NodeInfo fooss []) v) (setExprTag (flopp e (ps)) e)
+    pure (e1, p:ps) 
+  where
+    flopp e ps = (exprTag e){ nodePredicates = ps }
+
+    fooss = tApp (tCon (kArr kTyp (fromJust (kindOf ty))) name) ty
+
+fooo :: (Predicate, Name) -> Expr Type p q
+fooo (InClass name ty, var) = 
+    varExpr (tApp (tCon (kArr kTyp (fromJust (kindOf ty))) name) ty) var
+
+--
+
+type Class a = ([Name], [Instance a])
+
+data Instance a = Instance [Predicate] Type a
+    deriving (Show, Eq)
+
+instanceType :: Instance a -> Type
+instanceType (Instance _ ty _) = ty
+
+instanceX :: Instance a -> a
+instanceX (Instance _ _ a) = a
+
+type ClassEnv a = Env (Class a)
+
+super :: ClassEnv a -> Name -> [Name]
+super env name = maybe [] fst (Env.lookup name env)
+
+instances :: ClassEnv a -> Name -> [Instance a]
+instances env name = maybe [] snd (Env.lookup name env)
+
+--type Class a = ([Name], [Instance a])
+
+addClassInstance :: Name -> Type -> a -> ClassEnv a -> ClassEnv a
+addClassInstance name ty ex =
+    Env.insertWith (const (second (inst :))) name ([], [inst]) 
+  where
+    inst = Instance [] ty ex
+
+lookupClassInstance :: Name -> Type -> ClassEnv a -> Maybe a
+lookupClassInstance name ty env =
+    instanceX <$> listToMaybe boss
+  where
+    boss = filter ((ty ==) . instanceType) (instances env name)
+
 --
 -- Type checker
 --
-
-type ClassEnv a = [a] -- TODO!!
 
 data NodeInfo = NodeInfo 
     { nodeType       :: Type

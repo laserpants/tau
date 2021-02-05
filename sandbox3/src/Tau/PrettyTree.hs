@@ -12,8 +12,8 @@ import Tau.Pretty
 import Tau.Util
 import qualified Data.Text as Text
 
-debugTree :: (Pretty t) => PatternExpr t -> IO ()
-debugTree expr = putStrLn (showTree (Text.unpack <$> toTree_ expr))
+debugTree :: (Monad m, Pretty t) => PatternExpr t -> m ()
+debugTree expr = debug (showTree (Text.unpack <$> toTree_ expr) :: String)
 
 toTree_ :: (Pretty t) => Expr t (Pattern t) (Pattern t) -> Tree Text
 toTree_ = prettyExprTree
@@ -25,11 +25,11 @@ prettyExprTree = para $ \case
     ELit t lit        -> node t lit []
     EApp t exs        -> node t (text "(@)") (snd <$> exs)
     ELet t pat e1 e2  -> node t (text "let") [ node (exprTag (fst e1)) (renderDoc (pretty pat <+> equals <+> pretty (fst e1))) []
-                                      , snd e2 ]
-    ELam t pat e1     -> node t (renderDoc ("λ" <> parens (pretty pat <+> pretty (patternTag pat)))) [snd e1]
+                                             , snd e2 ]
+    ELam t pat e1     -> node t (renderDoc ("λ" <> parens (pretty pat <+> colon <+> pretty (patternTag pat)))) [snd e1]
     EIf  t cond tr fl -> node t (text "if") (snd <$> [cond, tr, fl])
     ERec t fields     -> node t (recExpr t (fst <$$> fields)) []
-    EMat t exs eqs    -> node t (renderDoc (matchExprs (fst <$> exs) <+> "with")) (fromClause <$> eqs)
+    EMat t exs eqs    -> node t (renderDoc (matchExprs (fst <$> exs) <+> "with")) (clauseTree <$> eqs)
     _                 -> Node "Not implemented" []
   where
     text :: Text -> Text
@@ -44,13 +44,13 @@ prettyExprTree = para $ \case
       where
         expr ex = parens (pretty ex <+> colon <+> pretty (exprTag ex))
 
-    fromClause :: Clause (Pattern t) (PatternExpr t, Tree Text) -> Tree Text 
-    fromClause cl = renderNode (lhs <+> "=>" <+> rhs) []
+    clauseTree :: Clause (Pattern t) (PatternExpr t, Tree Text) -> Tree Text 
+    clauseTree cl = renderNode (lhs <+> "=>" <+> rhs) []
       where
         (lhs, rhs) = splitClause cl
 
-    fromPattern :: (Pretty t) => Pattern t -> Tree Text
-    fromPattern = para $ \case
+    patternTree :: (Pretty t) => Pattern t -> Tree Text
+    patternTree = para $ \case
         PVar t var    -> node t var []
         PCon t con ps -> node t con (snd <$> ps)
         PLit t lit    -> node t lit []
