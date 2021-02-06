@@ -425,10 +425,8 @@ inferClause ty exprs1 clause@(Clause ps _ _) = do
     let Clause _ exs e = local (second (Env.inserts (toScheme <$$> vs))) <$> clause
     forM_ exs (>>= unifyTyped tBool . typeOf)
     forM_ (zip tps exprs1) (\(p, e2) -> unifyTyped (typeOf p) (typeOf e2)) 
-    es <- sequence exs
-    e1 <- e
-    unifyTyped ty (typeOf e1)
-    pure (Clause tps es e1)
+    e >>= unifyTyped ty . typeOf
+    Clause tps <$> sequence exs <*> e
 
 inferLiteral :: (MonadSupply Name m) => Literal -> StateT (Substitution, Env [Predicate]) m Type
 inferLiteral = pure . \case
