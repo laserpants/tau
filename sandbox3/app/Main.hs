@@ -57,6 +57,10 @@ expr24 = matExpr () [conExpr () "Nil" [], litExpr () (LInt 11)]
             [ Clause [ conPat () "Cons" [varPat () "x", varPat () "xs"], litPat () (LInt 5) ] [ eqOp () (varExpr () "x") (litExpr () (LInt 1)) ] (litExpr () (LInt 499))
             , Clause [ conPat () "Nil"  [], anyPat () ] [] (litExpr () (LInt 500)) ]
 
+expr25 = appExpr () [varExpr () "toString", litExpr () (LInt 5)]
+
+expr26 = lamExpr () (varPat () "x") (appExpr () [varExpr () "toString", varExpr () "x"])
+
 
 runTest1_ :: IO ()
 runTest1_ = do
@@ -93,6 +97,7 @@ myTypeEnv = Env.fromList
     , ( "Nil"      , Forall [kTyp] [] (tApp (upgrade tListCon) (tGen 0)) )
     , ( "Cons"     , Forall [kTyp] [] (tGen 0 `tArr` tApp (upgrade tListCon) (tGen 0) `tArr` tApp (upgrade tListCon) (tGen 0)) )
     , ( "(==)"     , Forall [kTyp] [InClass "Eq" 0] (tGen 0 `tArr` tGen 0 `tArr` upgrade tBool) )
+    , ( "toString" , Forall [kTyp] [InClass "ToString" 0] (tGen 0 `tArr` upgrade tString) )
 
 --    [ -- ( "@strlen" , sScheme (tCon kStar "String" `tArr` tCon kStar "Int") )
 --    , -- ( "show"    , sForall kStar ["Show"] (sScheme (tGen 0 `tArr` tCon kStar "String")) )
@@ -106,6 +111,11 @@ myClassEnv = Env.fromList
            , Instance [] tUnit (recExpr (tApp (tCon (kArr kTyp kTyp) "Show") tUnit) [Field (tUnit `tArr` tString) "show" (varExpr (tUnit `tArr` tString) "@showUnit")])
            ]
         )
+      )
+    , ( "ToString"
+      , ( ["Show"]
+        , [ Instance [] tInt (recExpr (tApp (tCon (kArr kTyp kTyp) "ToString") tInt) [Field (tInt `tArr` tString) "toString" (varExpr (tInt `tArr` tString) "show")])
+          ] )
       )
 --    , ( "Eq"
 --      , ( []
@@ -153,7 +163,9 @@ runPipeline a = do
 runTest2_ :: Either String (PatternExpr NodeInfo, Environments)
 --runTest2_ = runPipeline expr22
 --runTest2_ = runPipeline expr1
-runTest2_ = runPipeline expr24
+--runTest2_ = runPipeline expr24
+--runTest2_ = runPipeline expr25
+runTest2_ = runPipeline expr26
 
 --
 --
@@ -180,7 +192,7 @@ Tau.Lang.Parser
 
 Tau.Comp
 Tau.Comp.TypeChecker
-Tau.Comp.Code
+Tau.Comp.CodeGen
 
 
    -}
