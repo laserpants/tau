@@ -50,6 +50,12 @@ expr20 = letExpr () (varPat () "id") (lamExpr () (varPat () "x") (varExpr () "x"
               ])
 expr21 = lamExpr () (varPat () "x") (letExpr () (varPat () "f") (lamExpr () (varPat () "y") (varExpr () "x")) (litExpr () (LInt 1)))
 expr22 = lamExpr () (varPat () "x") (letExpr () (varPat () "f") (varExpr () "lenShow2") (appExpr () [varExpr () "f", varExpr () "x"]))
+expr23 = recExpr () [Field () "name" (litExpr () (LString "Bob")), Field () "id" (litExpr () (LInt 11)), Field () "admin" (litExpr () (LBool True))]
+
+expr24 :: PatternExpr ()
+expr24 = matExpr () [conExpr () "Nil" [], litExpr () (LInt 11)] 
+            [ Clause [ conPat () "Cons" [varPat () "x", varPat () "xs"], litPat () (LInt 5) ] [ eqOp () (varExpr () "x") (litExpr () (LInt 1)) ] (litExpr () (LInt 499))
+            , Clause [ conPat () "Nil"  [], anyPat () ] [] (litExpr () (LInt 500)) ]
 
 
 runTest1_ :: IO ()
@@ -84,6 +90,9 @@ myTypeEnv = Env.fromList
     , ( "lenShow"  , Forall [kTyp, kTyp] [InClass "Show" 0] (tGen 0 `tArr` upgrade tInt) ) 
     , ( "lenShow2" , Forall [kTyp, kTyp] [InClass "Show" 0, InClass "Eq" 0] (tGen 0 `tArr` upgrade tInt) ) 
     , ( "(,)"      , Forall [kTyp, kTyp] [] (tGen 0 `tArr` tGen 1 `tArr` (tApp (tApp (tCon (kArr kTyp (kArr kTyp kTyp)) "(,)") (tGen 0)) (tGen 1))))
+    , ( "Nil"      , Forall [kTyp] [] (tApp (upgrade tListCon) (tGen 0)) )
+    , ( "Cons"     , Forall [kTyp] [] (tGen 0 `tArr` tApp (upgrade tListCon) (tGen 0) `tArr` tApp (upgrade tListCon) (tGen 0)) )
+    , ( "(==)"     , Forall [kTyp] [InClass "Eq" 0] (tGen 0 `tArr` tGen 0 `tArr` upgrade tBool) )
 
 --    [ -- ( "@strlen" , sScheme (tCon kStar "String" `tArr` tCon kStar "Int") )
 --    , -- ( "show"    , sForall kStar ["Show"] (sScheme (tGen 0 `tArr` tCon kStar "String")) )
@@ -142,8 +151,9 @@ runPipeline a = do
     f = runMaybeT (evalSupplyT (runReaderT (pipeline a) (myClassEnv, myTypeEnv)) (numSupply "a"))
 
 runTest2_ :: Either String (PatternExpr NodeInfo, Environments)
-runTest2_ = runPipeline expr22
+--runTest2_ = runPipeline expr22
 --runTest2_ = runPipeline expr1
+runTest2_ = runPipeline expr24
 
 --
 --

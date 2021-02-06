@@ -204,6 +204,15 @@ setExprTag t = project >>> \case
 updateExprTag :: (t -> t) -> PatternExpr t -> PatternExpr t
 updateExprTag update expr = setExprTag (update (exprTag expr)) expr
 
+fieldTag :: Field t a -> t
+fieldTag (Field t _ _) = t
+
+setFieldTag :: t -> Field s a -> Field t a
+setFieldTag t (Field _ n v) = Field t n v
+
+updateFieldTag :: (t -> t) -> Field t a -> Field t a
+updateFieldTag update field = setFieldTag (update (fieldTag field)) field
+
 patternTag :: Pattern t -> t
 patternTag = project >>> \case
     PVar t _       -> t
@@ -231,6 +240,9 @@ instance (Typed t) => Typed (Expr t (Pattern t) (Pattern t)) where
 
 instance (Typed t) => Typed (Pattern t) where
     typeOf = typeOf . patternTag
+
+fieldValue :: Field t a -> a
+fieldValue (Field _ _ v) = v
 
 fieldsInfo :: [Field a c] -> [(a, Name, c)]
 fieldsInfo = sortOn snd3 . (to <$>)

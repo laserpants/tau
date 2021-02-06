@@ -29,7 +29,7 @@ prettyExprTree = para $ \case
     ELam t pat e1     -> node t (renderDoc ("λ" <> parens (pretty pat <+> colon <+> pretty (patternTag pat)))) [snd e1]
     EIf  t cond tr fl -> node t (text "if") (snd <$> [cond, tr, fl])
     ERec t fields     -> node t (recExpr t (fst <$$> fields)) []
-    EMat t exs eqs    -> node t (renderDoc (matchExprs (fst <$> exs) <+> "with")) (clauseTree <$> eqs)
+    EMat t exs eqs    -> node t (renderDoc ("match" <+> matchExprs (fst <$> exs) <+> "with")) (clauseTree <$> eqs)
     _                 -> Node "Not implemented" []
   where
     text :: Text -> Text

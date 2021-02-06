@@ -6,6 +6,7 @@ module Tau.Util
   , module Data.Ord.Deriving
   , module Debug.Trace
   , module Data.Fix
+  , module Data.Text.Prettyprint.Doc
   , module Data.Types.Injective
   , module Text.Show.Deriving
   , Name

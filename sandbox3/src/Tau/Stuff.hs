@@ -294,7 +294,7 @@ lookupScheme name = do
     case Env.lookup name env of
         Nothing     -> throwError ("Unbound identifier: " <> Text.unpack name)
 --        Just scheme -> pure scheme
-        Just scheme -> gets fst >>= \sub -> pure (apply sub scheme)
+        Just scheme -> gets (apply . fst) <*> pure scheme
 
 instantiate 
   :: (MonadSupply Name m, MonadReader (ClassEnv a, TypeEnv) m, MonadError String m) 
@@ -398,22 +398,37 @@ infer = cata alg
 
             EOp  _ (OAnd a b) -> inferLogicOp OAnd a b
             EOp  _ (OOr  a b) -> inferLogicOp OOr a b
+            EOp  _ (OEq  a b) -> inferBinOp "(==)" OEq a b
+
             EOp  _ _ -> undefined
 
             EMat _ exs eqs -> do
-                undefined
+                es1 <- sequence exs
+                es2 <- sequence (inferClause newTy es1 <$> eqs)
+                pure (matExpr (NodeInfo newTy []) es1 es2)
 
             ERec _ fields -> do
-                undefined
+                let (_, ns, fs) = unzip3 (fieldsInfo fields)
+                    info f = setFieldTag (NodeInfo (typeOf (fieldValue f)) []) f
+                es <- sequence fs
+                unifyTyped newTy (foldl tApp (recordConstructor ns) (typeOf <$> es))
+                pure (recExpr (NodeInfo newTy []) (zipWith (info <$$> Field ()) ns es))
 
 inferClause
   :: (MonadSupply Name m, MonadReader (ClassEnv a, TypeEnv) m, MonadError String m) 
   => Type
   -> [PatternExpr NodeInfo]
   -> Clause (Pattern t) (StateT (Substitution, Env [Predicate]) m (PatternExpr NodeInfo)) 
-  -> StateT (Substitution, Env [Predicate]) m (Clause (Pattern Type) (PatternExpr Type))
-inferClause =
-    undefined
+  -> StateT (Substitution, Env [Predicate]) m (Clause (Pattern NodeInfo) (PatternExpr NodeInfo))
+inferClause ty exprs1 clause@(Clause ps _ _) = do
+    (tps, vs) <- runWriterT (traverse inferPattern ps)
+    let Clause _ exs e = local (second (Env.inserts (toScheme <$$> vs))) <$> clause
+    forM_ exs (>>= unifyTyped tBool . typeOf)
+    forM_ (zip tps exprs1) (\(p, e2) -> unifyTyped (typeOf p) (typeOf e2)) 
+    es <- sequence exs
+    e1 <- e
+    unifyTyped ty (typeOf e1)
+    pure (Clause tps es e1)
 
 inferLiteral :: (MonadSupply Name m) => Literal -> StateT (Substitution, Env [Predicate]) m Type
 inferLiteral = pure . \case
@@ -472,6 +487,21 @@ inferLogicOp op a b = do
     unifyTyped e1 tBool
     unifyTyped e2 tBool
     pure (opExpr (NodeInfo newTy []) (op e1 e2))
+
+inferBinOp
+  :: (MonadSupply Name m, MonadReader (ClassEnv a, TypeEnv) m, MonadError String m) 
+  => Name
+  -> (PatternExpr NodeInfo -> PatternExpr NodeInfo -> Op (PatternExpr NodeInfo))
+  -> StateT (Substitution, Env [Predicate]) m (PatternExpr NodeInfo)
+  -> StateT (Substitution, Env [Predicate]) m (PatternExpr NodeInfo)
+  -> StateT (Substitution, Env [Predicate]) m (PatternExpr NodeInfo)
+inferBinOp name op a b = do
+    newTy <- newTVar kTyp
+    e1 <- a
+    e2 <- b
+    (ty, ps) <- lookupScheme name >>= instantiate
+    unifyTyped (typeOf e1 `tArr` typeOf e2 `tArr` newTy) ty 
+    pure (opExpr (NodeInfo newTy ps) (op e1 e2))
 
 type Infer s a = StateT (SubstitutionT s, Env [Predicate]) (ReaderT (ClassEnv a, TypeEnv) (SupplyT Name (ExceptT String Maybe))) a 
 
