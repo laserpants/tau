@@ -52,7 +52,10 @@ deriveOrd1  ''TypeF
 -- | Types
 type TypeT a = Fix (TypeF a)
 
+-- | Standalone type (a type that is not part of a type scheme)
 type Type = TypeT Void
+
+-- | A type that appears in a type scheme
 type SchemeType = TypeT Int
 
 -- | Type class constraints
@@ -60,6 +63,8 @@ data PredicateT a = InClass Name a
     deriving (Show, Eq, Ord, Functor, Foldable, Traversable)
 
 type Predicate = PredicateT Type 
+
+-- | A typeclass predicate that appears in a type scheme
 type SchemePredicate = PredicateT Int
 
 -- | Polymorphic type schemes

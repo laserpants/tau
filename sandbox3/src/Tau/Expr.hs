@@ -109,7 +109,7 @@ data ExprF t p q a
     | ERec t [Field t a]      -- ^ Record
 --  | EFun t [Clause p a]     -- ^ Lambda-like match
 --  | ELFn t Name [q] a       -- ^ Let-function expression (let f x = e) 
---  | EAnn u a
+--  | EAnn Scheme a
     deriving (Functor, Foldable, Traversable)
 
 deriveShow  ''ExprF

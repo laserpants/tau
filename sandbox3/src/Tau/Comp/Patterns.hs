@@ -144,13 +144,13 @@ simplify = cata $ \case
     EIf t cond e1 e2 ->
         ifExpr t <$> cond <*> e1 <*> e2
 
-    EMat t exs eqs -> do
+    EMat t exs eqs ->
         join (compile <$> sequence exs <*> traverse sequence eqs)
 
     EOp t op ->
         simplifyOp t op
 
-    ERec t fields -> do
+    ERec t fields ->
         recExpr t <$> traverse sequence fields
 
 simplifyOp :: t -> Op (Simplify (Expr t p q)) -> Simplify (Expr t p q)

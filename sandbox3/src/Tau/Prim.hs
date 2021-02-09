@@ -4,6 +4,7 @@
 {-# LANGUAGE StrictData        #-}
 module Tau.Prim where
 -- Tau.Lang.Prim
+-- Tau.Eval.Prim
 
 import Tau.Env (Env)
 import Tau.Expr

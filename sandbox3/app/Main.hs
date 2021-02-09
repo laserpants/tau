@@ -227,7 +227,7 @@ runPipeline a = do
 
 --runTest2_ :: Either String (PatternExpr NodeInfo)
 --runTest2_ = runPipeline expr22
-runTest2_ = runPipeline expr6
+runTest2_ = runPipeline expr2
 --runTest2_ = runPipeline expr35
 --runTest2_ = runPipeline expr24
 --runTest2_ = runPipeline expr25

@@ -71,6 +71,31 @@ insertDicts env = mapTags $ \info@NodeInfo{..} ->
     predicates :: Type -> [Predicate]
     predicates t = concat [ concat $ maybeToList (Env.lookup v env) | v <- Set.toList (free t) ]
 
+--
+--
+
+
+rebuildTree22 
+  :: (MonadError String m, MonadSupply Name m, MonadState Environments m) 
+  => PatternExpr NodeInfo 
+  -> m (PatternExpr NodeInfo)
+rebuildTree22 =
+    cata $ \case
+        ELam t pat expr1 -> do
+            e1 <- expr1
+            undefined
+
+        ELet t pat expr1 expr2 -> do
+            e1 <- expr1
+            e2 <- expr2
+            undefined
+
+        EVar t var -> do
+            -- 1. lambda bound var
+            -- 2. let-bound variable
+            -- 3. name
+            undefined
+
 joinDicts :: PatternExpr Type -> PatternExpr Type -> PatternExpr Type
 joinDicts d1 d2 =
     case (project d1, project d2) of

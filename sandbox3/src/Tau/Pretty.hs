@@ -3,6 +3,7 @@
 {-# LANGUAGE LambdaCase        #-}
 {-# LANGUAGE OverloadedStrings #-}
 module Tau.Pretty where
+-- Tau.Lang.Pretty
 
 import Data.List (sortOn)
 import Data.Maybe (fromJust, maybeToList)
