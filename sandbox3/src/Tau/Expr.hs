@@ -17,6 +17,7 @@ import Data.Tuple.Extra (snd3)
 import Data.Types.Injective
 import Tau.Type
 import Tau.Util
+import qualified Data.Set.Monad as Set
 
 -- | Language primitives
 data Literal
@@ -175,7 +176,7 @@ opAssoc = \case
     ODot   _ _ -> AssocL
     _          -> error "Not a binary operator"
 
-exprTag :: PatternExpr t -> t
+exprTag :: Expr t p q -> t
 exprTag = project >>> \case
     EVar t _       -> t
     ECon t _ _     -> t
@@ -188,7 +189,7 @@ exprTag = project >>> \case
     EOp  t _       -> t
     ERec t _       -> t
 
-setExprTag :: t -> PatternExpr t -> PatternExpr t
+setExprTag :: t -> Expr t p q -> Expr t p q
 setExprTag t = project >>> \case
     EVar _ a       -> varExpr t a
     ECon _ a b     -> conExpr t a b
@@ -201,7 +202,7 @@ setExprTag t = project >>> \case
     EOp  _ a       -> opExpr  t a
     ERec _ s       -> recExpr t s
 
-updateExprTag :: (t -> t) -> PatternExpr t -> PatternExpr t
+updateExprTag :: (t -> t) -> Expr t p q -> Expr t p q
 updateExprTag update expr = setExprTag (update (exprTag expr)) expr
 
 fieldTag :: Field t a -> t
@@ -272,6 +273,16 @@ mapPatternTags f = cata $ \case
 
 mapField :: (s -> t) -> Field s a -> Field t a
 mapField f (Field t a b) = Field (f t) a b
+
+instance Free (Pattern t) where
+    free = cata $ \case
+        PVar _ name -> Set.singleton name
+        PCon _ _ ps -> unions ps
+        _           -> mempty
+
+instance Free (Prep t) where
+    free (RVar _ name) = Set.singleton name 
+    free (RCon _ _ ns) = Set.fromList ns
 
 varPat :: t -> Name -> Pattern t
 varPat = embed2 PVar

@@ -71,9 +71,37 @@ insertDicts env = mapTags $ \info@NodeInfo{..} ->
     predicates :: Type -> [Predicate]
     predicates t = concat [ concat $ maybeToList (Env.lookup v env) | v <- Set.toList (free t) ]
 
+joinDicts :: PatternExpr Type -> PatternExpr Type -> PatternExpr Type
+joinDicts d1 d2 =
+    case (project d1, project d2) of
+        (ERec _ fields1, ERec t fields2) ->
+            recExpr t (fields1 <> fields2)
+        _ -> d2 -- error !!
+
+buildDict 
+  :: (MonadError String m, MonadSupply Name m, MonadState Environments m) 
+  => Name 
+  -> Type 
+  -> ClassEnv (PatternExpr Type)
+  -> m (PatternExpr Type)
+buildDict name ty env =
+    case lookupClassInstance name ty env of
+        Nothing -> throwError "bananas"
+        Just (super, i@Instance{..}) -> do
+            zzz <- traverse foo instancePredicates
+            yyy <- traverse boo super
+            pure (foldr1 joinDicts (instanceDict:zzz <> yyy))
+  where
+--    foo 
+--      :: (MonadError String m, MonadSupply Name m, MonadState Environments m) 
+--      => Predicate 
+--      -> m a
+    foo (InClass name1 ty1) = buildDict name1 ty1 env
+
+    boo name2 = buildDict name2 ty env
 
 rebuildTree 
-  :: (MonadSupply Name m, MonadState Environments m) 
+  :: (MonadError String m, MonadSupply Name m, MonadState Environments m) 
   => PatternExpr NodeInfo 
   -> ReaderT Bool m (PatternExpr NodeInfo)
 rebuildTree =
@@ -86,12 +114,23 @@ rebuildTree =
                     ds <- traverse dict (sort nodePredicates)
                     pure (stripExprPredicates (appExpr t (e:ds <> (stripExprPredicates <$> es))))
                   where
-                    dict :: (MonadState Environments m) => Predicate -> m (PatternExpr NodeInfo)
-                    dict (InClass name ty) = 
-                        gets classEnv >>= \e -> 
-                            case lookupClassInstance name ty e of
-                                Nothing -> error ("Missing class instance: " <> Text.unpack (name <> " " <> prettyPrint ty))
-                                Just e  -> pure (mapTags (`NodeInfo` []) e)
+                    dict 
+                      :: (MonadError String m, MonadSupply Name m, MonadState Environments m) 
+                      => Predicate 
+                      -> m (PatternExpr NodeInfo)
+                    dict (InClass name ty) = do
+                        env <- gets classEnv
+                        xx <- buildDict name ty env
+                        traceShowM (pretty xx)
+                        traceShowM ".^^."
+                        pure (mapTags (`NodeInfo` []) xx)
+                        --gets classEnv >>= \e -> 
+                        --    case buildDict name ty e of
+                        --        Nothing -> error ("Missing class instance: " <> Text.unpack (name <> " " <> prettyPrint ty))
+                        --        Just e  -> do
+                        --            traceShowM $ pretty e
+                        --            traceShowM "...."
+                        --            pure (mapTags (`NodeInfo` []) e)
 
                     stripExprPredicates = updateExprTag stripNodePredicates
 
@@ -139,11 +178,24 @@ addClassInstance name ty ex =
   where
     inst = Instance [] ty ex
 
-lookupClassInstance :: Name -> Type -> ClassEnv a -> Maybe a
-lookupClassInstance name ty env =
-    instanceDict <$> listToMaybe boss
-  where
-    boss = filter ((ty ==) . instanceType) (instances env name)
+--type Class a = ([Name], [Instance a])
+--gork :: Class a -> ([Name], Instance a)
+--gork (super, insts) = undefined
+--  where
+--    abc = find ((ty ==) . instanceType) (instances env name)
+
+lookupClassInstance :: Name -> Type -> ClassEnv a -> Maybe ([Name], Instance a)
+lookupClassInstance name ty env = do -- undefined -- find ((ty ==) . instanceType) (instances env name)
+    (super, instances) <- Env.lookup name env
+    instance_ <- find ((ty ==) . instanceType) instances
+    pure (super, instance_)
+
+--lookupClassInstance :: Name -> Type -> ClassEnv a -> Maybe a
+--lookupClassInstance name ty env =
+--    undefined
+----    instanceDict <$> listToMaybe boss
+----  where
+----    boss = filter ((ty ==) . instanceType) (instances env name)
 
 --
 
@@ -290,9 +342,8 @@ lookupScheme
   -> StateT (Substitution, Env [Predicate]) m Scheme
 lookupScheme name = do
     env <- asks snd 
-    sub <- gets fst
     case Env.lookup name env of
-        Nothing     -> throwError ("Unbound identifier: " <> Text.unpack name)
+        Nothing     -> throwError ("!! Unbound identifier: " <> Text.unpack name)
 --        Just scheme -> pure scheme
         Just scheme -> gets (apply . fst) <*> pure scheme
 
@@ -478,9 +529,7 @@ inferLogicOp
   -> StateT (Substitution, Env [Predicate]) m (PatternExpr NodeInfo)
   -> StateT (Substitution, Env [Predicate]) m (PatternExpr NodeInfo)
 inferLogicOp op a b = do
-    newTy <- newTVar kTyp
-    e1 <- a
-    e2 <- b
+    (newTy, e1, e2) <- operands a b 
     unifyTyped newTy tBool
     unifyTyped e1 tBool
     unifyTyped e2 tBool
@@ -494,12 +543,21 @@ inferBinOp
   -> StateT (Substitution, Env [Predicate]) m (PatternExpr NodeInfo)
   -> StateT (Substitution, Env [Predicate]) m (PatternExpr NodeInfo)
 inferBinOp name op a b = do
-    newTy <- newTVar kTyp
-    e1 <- a
-    e2 <- b
+    (newTy, e1, e2) <- operands a b 
     (ty, ps) <- lookupScheme name >>= instantiate
     unifyTyped (typeOf e1 `tArr` typeOf e2 `tArr` newTy) ty 
     pure (opExpr (NodeInfo newTy ps) (op e1 e2))
+
+operands
+  :: (MonadSupply Name m, MonadReader (ClassEnv c, TypeEnv) m, MonadError String m) 
+  => m a 
+  -> m b
+  -> m (TypeT v, a, b)
+operands a b = do
+    newTy <- newTVar kTyp
+    e1 <- a
+    e2 <- b
+    pure (newTy, e1, e2)
 
 type Infer s a = StateT (SubstitutionT s, Env [Predicate]) (ReaderT (ClassEnv a, TypeEnv) (SupplyT Name (ExceptT String Maybe))) a 
 

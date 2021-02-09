@@ -57,7 +57,7 @@ eval
   => Expr t (Prep t) Name 
   -> m (Value m)
 eval = cata $ \case
-    EVar _ var -> 
+    EVar _ var ->
         evalVar var
 
     ECon _ con exprs -> do

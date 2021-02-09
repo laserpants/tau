@@ -54,7 +54,7 @@ type Name = Text
 type Algebra f a = f a -> a
 
 unions :: (Ord a) => [Set a] -> Set a
-unions = foldr Set.union mempty
+unions = foldr1 Set.union 
 
 letters :: [Text]
 letters = pack <$> ([1..] >>= flip replicateM ['a'..'z'])
@@ -128,3 +128,5 @@ prettyPrint = renderDoc . pretty
 
 (<$$>) :: (Functor f, Functor g) => (a -> b) -> f (g a) -> f (g b)
 (<$$>) f = ((f <$>) <$>)
+
+infixl 4 <$$>

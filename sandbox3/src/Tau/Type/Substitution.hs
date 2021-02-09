@@ -67,7 +67,11 @@ domain (Sub sub) = Map.keys sub
 compose :: (Substitutable a a) => SubstitutionT a -> SubstitutionT a -> SubstitutionT a
 compose s1 s2 = Sub (fmap (apply s1) (getSub s2) `Map.union` getSub s1)
 
-merge :: (Eq a) => SubstitutionT (TypeT a) -> SubstitutionT (TypeT a) -> Maybe (SubstitutionT (TypeT a))
+merge 
+  :: (Eq a) 
+  => SubstitutionT (TypeT a) 
+  -> SubstitutionT (TypeT a) 
+  -> Maybe (SubstitutionT (TypeT a))
 merge s1 s2 
     | allEqual  = Just (Sub (getSub s1 `Map.union` getSub s2))
     | otherwise = Nothing

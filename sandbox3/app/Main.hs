@@ -9,6 +9,7 @@ import Control.Monad.Trans.Maybe
 import Control.Monad.State
 import Control.Monad.Supply
 import Data.Maybe (fromJust)
+import Tau.Comp.Patterns
 import Tau.Eval
 import Tau.Expr
 import Tau.Pretty
@@ -59,7 +60,36 @@ expr24 = matExpr () [conExpr () "Nil" [], litExpr () (LInt 11)]
 
 expr25 = appExpr () [varExpr () "toString", litExpr () (LInt 5)]
 
-expr26 = lamExpr () (varPat () "x") (appExpr () [varExpr () "toString", varExpr () "x"])
+expr26 = appExpr () [lamExpr () (varPat () "x") (appExpr () [varExpr () "toString", varExpr () "x"]), litExpr () (LInt 5)]
+
+expr27 = matExpr () [recExpr () [Field () "a" (litExpr () (LInt 5))]] [Clause [recPat () [Field () "a" (varPat () "b")]] [] (varExpr () "b")]
+
+expr28 = letExpr () 
+            (varPat () "f") 
+            (lamExpr () (varPat () "d") (matExpr () [varExpr () "d"] [Clause [recPat () [Field () "toString" (varPat () "toString")]] [] (varExpr () "toString")]))
+            (appExpr () [varExpr () "f", recExpr () [Field () "toString" (varExpr () "@showInt")], litExpr () (LInt 5)])
+
+expr29 = letExpr () 
+            (varPat () "f") (lamExpr () (varPat () "d") (matExpr () [varExpr () "d"] [Clause [recPat () [Field () "show" (varPat () "show"), Field () "toString" (varPat () "toString")]] [] (letExpr () (varPat () "show") (varExpr () "@showInt") (varExpr () "toString"))]))
+            (appExpr () [varExpr () "f", recExpr () [Field () "show" (varExpr () "@showInt"), Field () "toString" (varExpr () "show")], litExpr () (LInt 5)])
+
+
+expr30 = varExpr () "toString"
+
+expr31 = letExpr () (varPat () "f") (lamExpr () (recPat () [Field () "stuff" (varPat () "x")]) (varExpr () "x")) (appExpr () [varExpr () "f", recExpr () [Field () "stuff" (litExpr () (LInt 5))]])
+
+expr32 = appExpr () [varExpr () "toString", litExpr () (LInt 5)]
+
+expr33 = letExpr () (varPat () "toStringInt") (varExpr () "show") 
+              (appExpr () 
+                [ (lamExpr () (varPat () "d") (matExpr () [varExpr () "d"] [Clause [recPat () [Field () "toString" (varPat () "toString")]] [] (varExpr () "toString")]))
+                , (recExpr () [Field () "toString" (varExpr () "toStringInt")])
+                , (litExpr () (LInt 5))
+              ])
+
+expr34 = letExpr () (varPat () "f") (varExpr () "show") (appExpr () [varExpr () "f", litExpr () (LInt 5)])
+
+expr35 = letExpr () (varPat () "f") (varExpr () "show") (appExpr () [lamExpr () (varPat () "x") (varExpr () "f"), litExpr () LUnit, litExpr () (LInt 5)])
 
 
 runTest1_ :: IO ()
@@ -91,6 +121,7 @@ runTest1 = runInfer mempty typeEnv (infer expr6) where
 myTypeEnv :: Env Scheme
 myTypeEnv = Env.fromList 
     [ ( "@strlen"  , Forall [] [] (upgrade  (tString `tArr` tInt)) )
+    , ( "@showInt" , Forall [] [] (upgrade  (tInt `tArr` tString)) )
     , ( "lenShow"  , Forall [kTyp, kTyp] [InClass "Show" 0] (tGen 0 `tArr` upgrade tInt) ) 
     , ( "lenShow2" , Forall [kTyp, kTyp] [InClass "Show" 0, InClass "Eq" 0] (tGen 0 `tArr` upgrade tInt) ) 
     , ( "(,)"      , Forall [kTyp, kTyp] [] (tGen 0 `tArr` tGen 1 `tArr` (tApp (tApp (tCon (kArr kTyp (kArr kTyp kTyp)) "(,)") (tGen 0)) (tGen 1))))
@@ -98,6 +129,7 @@ myTypeEnv = Env.fromList
     , ( "Cons"     , Forall [kTyp] [] (tGen 0 `tArr` tApp (upgrade tListCon) (tGen 0) `tArr` tApp (upgrade tListCon) (tGen 0)) )
     , ( "(==)"     , Forall [kTyp] [InClass "Eq" 0] (tGen 0 `tArr` tGen 0 `tArr` upgrade tBool) )
     , ( "toString" , Forall [kTyp] [InClass "ToString" 0] (tGen 0 `tArr` upgrade tString) )
+    , ( "show"     , Forall [kTyp] [InClass "Show" 0] (tGen 0 `tArr` upgrade tString) )
 
 --    [ -- ( "@strlen" , sScheme (tCon kStar "String" `tArr` tCon kStar "Int") )
 --    , -- ( "show"    , sForall kStar ["Show"] (sScheme (tGen 0 `tArr` tCon kStar "String")) )
@@ -123,11 +155,11 @@ myClassEnv = Env.fromList
 --      )
     ]
 
-pipeline
-  :: (MonadError String m, MonadSupply Name m, MonadReader (ClassEnv a, TypeEnv) m)
-  => PatternExpr t
---  -> m (PatternExpr NodeInfo, Environments)
-  -> m (PatternExpr NodeInfo, Environments)
+--pipeline
+--  :: (MonadError String m, MonadSupply Name m, MonadReader (ClassEnv a, TypeEnv) m)
+--  => PatternExpr t
+----  -> m (PatternExpr NodeInfo, Environments)
+--  -> m (Expr Type (Prep Type) Name)
 pipeline e =  do
     (tree, (sub, xxx1)) <- runStateT (infer e) mempty
 
@@ -137,35 +169,71 @@ pipeline e =  do
 --    debug (show (apply sub <$$> x))
 
     let tree2 = (mapTags (apply sub) tree) 
+
+    let tree3 = (insertDicts xxx1 tree2)
+
+    debugTree tree3
+
+    pure ()
     -- >> Apply context reduction
 
---    let t = tree :: PatternExpr NodeInfo
-    y <- runStateT (runReaderT (rebuildTree (insertDicts xxx1 tree2)) False) 
-            (Environments { classEnv = myClassEnv, typeEnv = myTypeEnv })
+----    let t = tree :: PatternExpr NodeInfo
+--    y <- runStateT (runReaderT (rebuildTree (insertDicts xxx1 tree2)) False) 
+--            (Environments { classEnv = myClassEnv, typeEnv = myTypeEnv })
+--
+--    let (pex, e) = y
+--
+--    debugTree pex
+--    traceShowM "^^"
+--
+--    let Right zzz1 = simplified (mapTags nodeType pex)
+--
+--    debugTree2 zzz1
+--    traceShowM "---"
+--
+--    let Just foo = evalExpr zzz1 myEvalEnv
+--
+--    traceShowM foo
+--    traceShowM "==="
+--
+--    pure zzz1
 
-    let (pex, e) = y
+myEvalEnv = Env.fromList 
+    [ ("toString" , fromJust (runEval (eval toString) mempty))
+    , ("show"     , fromJust (runEval (eval show_) mempty))
+    ]
+  where
+    Right show_ = simplified foo2
+    foo2 = lamExpr () (varPat () "d") (matExpr () [varExpr () "d"] [ Clause [recPat () [Field () "show" (varPat () "show")]] [] (varExpr () "show") ])
 
-    debugTree pex
-    traceShowM "^^"
+    Right toString = simplified foo
+--  -- \d => match d with | { toString = toString } => toString 
+    foo = lamExpr () (varPat () "d") (matExpr () [varExpr () "d"] 
+          [ Clause [recPat () [Field () "toString" (varPat () "toString") , Field () "show" (varPat () "show")]] [] (letExpr () (varPat () "show") (varExpr () "@showInt") (varExpr () "toString"))
+          ])
 
-    pure y
-
-runPipeline :: PatternExpr t -> Either String (PatternExpr NodeInfo, Environments)
+--runPipeline :: PatternExpr t -> Either String (PatternExpr NodeInfo, Environments)
 runPipeline a = do
     x <- runExcept f
     case x of
-        Nothing -> Left "error rerera"
+        Nothing -> Left "error rererarr"
         Just x  -> Right x
+            --case simplified (mapTags nodeType x) of
+            --    Left e -> Left "..."
+            --    Right r -> Right r
   where
-    f :: (MonadError String m) => m (Maybe (PatternExpr NodeInfo, Environments))
+--    f :: (MonadError String m) => m (Maybe (PatternExpr NodeInfo, Environments))
     f = runMaybeT (evalSupplyT (runReaderT (pipeline a) (myClassEnv, myTypeEnv)) (numSupply "a"))
 
-runTest2_ :: Either String (PatternExpr NodeInfo, Environments)
+--runTest2_ :: Either String (PatternExpr NodeInfo)
 --runTest2_ = runPipeline expr22
---runTest2_ = runPipeline expr1
+runTest2_ = runPipeline expr6
+--runTest2_ = runPipeline expr35
 --runTest2_ = runPipeline expr24
 --runTest2_ = runPipeline expr25
-runTest2_ = runPipeline expr26
+--runTest2_ = runPipeline expr26
+--runTest2_ = runPipeline expr29
+--runTest2_ = runPipeline expr35
 
 --
 --

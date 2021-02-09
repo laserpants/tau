@@ -1,3 +1,4 @@
+{-# LANGUAGE FlexibleContexts  #-}
 {-# LANGUAGE FlexibleInstances #-}
 {-# LANGUAGE LambdaCase        #-}
 {-# LANGUAGE OverloadedStrings #-}
@@ -129,6 +130,18 @@ instance Pretty Literal where
         LChar c    -> squotes (pretty c)
         LString s  -> dquotes (pretty s)
 
+instance Pretty (Prep t) where
+    pretty = \case
+        RVar _ var    -> pretty var
+        RCon _ con rs -> prettyCon2 con rs (:)
+--      where
+--        args :: Name -> [Doc a] -> [Doc a]
+---        args = (:)
+--          where
+--            rhs = flip cata (fst a) $ \case 
+--                RCon{}  -> parens (snd a)
+--                _       -> snd a
+
 instance Pretty (Pattern t) where
     pretty = para $ \case
         PVar _ var     -> pretty var
@@ -141,10 +154,11 @@ instance Pretty (Pattern t) where
         args a = (rhs :)
           where
             rhs = flip cata (fst a) $ \case 
-                PCon{}  -> parens (snd a)
-                _       -> snd a
+                PCon _ _ [] -> snd a
+                PCon{}      -> parens (snd a)
+                _           -> snd a
 
-instance Pretty (Op (PatternExpr t)) where
+instance (Pretty p, Pretty q, Pretty (Expr t p q)) => Pretty (Op (Expr t p q)) where
     pretty op = case op of
         OEq    a b -> binOp a b "=="
         ONEq   a b -> binOp a b "/="
@@ -169,7 +183,7 @@ instance Pretty (Op (PatternExpr t)) where
                      <+> symb 
                      <+> subOp AssocR b
 
-        subOp :: Assoc -> PatternExpr t -> Doc a
+        subOp :: (Pretty (Expr t p q)) => Assoc -> Expr t p q -> Doc a
         subOp assoc a = 
             let par ops = 
                   case compare (opPrecedence op) (opPrecedence ops) of
@@ -184,26 +198,48 @@ instance Pretty (Op (PatternExpr t)) where
                  EOp _ ops | par ops -> parens (pretty a)
                  _                   -> pretty a
 
-instance Pretty (PatternExpr t) where
-    pretty = para $ \case
+prettyExpr :: (Pretty p, Pretty q, Pretty (Expr t p q)) => (q -> Doc a) -> Expr t p q -> Doc a
+prettyExpr f = para $ \case
         EVar _ var     -> pretty var
         ECon _ con exs -> prettyCon con exs app
         ELit _ lit     -> pretty lit
         EApp _ exs     -> hsep (foldr app [] exs)
         ELet _ p e1 e2 -> prettyLet p e1 e2
-        ELam _ p e1    -> prettyLam p e1 
+        ELam _ p e1    -> prettyLam (f p) e1 
         EIf  _ c e1 e2 -> prettyIf c e1 e2
         EMat _ exs eqs -> prettyMatch exs eqs
         EOp  _ op      -> pretty (fst <$> op)
         ERec _ fields  -> prettyRecord equals (snd <$$> fields)
       where
-        app :: (PatternExpr t, Doc a) -> [Doc a] -> [Doc a]
+        app :: (Expr t p q, Doc a) -> [Doc a] -> [Doc a]
         app a = (rhs :)
           where
             rhs = flip cata (fst a) $ \case 
-                EApp{} -> parens (snd a)
-                ECon{} -> parens (snd a)
-                _      -> snd a
+                EApp{}      -> parens (snd a)
+                ECon _ _ [] -> snd a
+                ECon{}      -> parens (snd a)
+                _           -> snd a
+
+instance Pretty (PatternExpr t) where
+    pretty = prettyExpr f
+      where
+        f :: Pattern t -> Doc a
+        f p = flip cata p $ \case
+            PCon _ _ [] -> pretty p
+            PCon{}      -> parens (pretty p)
+            _           -> pretty p
+
+instance Pretty (Expr t (Prep t) Name) where
+    pretty = prettyExpr pretty
+
+--prettyCon2 :: (Pretty p) => Name -> [(p, q)] -> ((p, q) -> [Doc a] -> [Doc a]) -> Doc a
+prettyCon2 con exs fun
+    | null exs        = pretty con
+    | RecordCon == ct = prettyRecord equals (namesToFields con (pretty <$> exs))
+    | TupleCon  == ct = prettyTuple (pretty <$> exs)
+    | otherwise       = pretty con <+> hsep (foldr fun [] (pretty <$> exs))
+  where
+    ct = conType con
 
 prettyCon :: (Pretty p) => Name -> [(p, q)] -> ((p, q) -> [Doc a] -> [Doc a]) -> Doc a
 prettyCon con exs fun
@@ -214,10 +250,7 @@ prettyCon con exs fun
   where
     ct = conType con
 
-prettyMatch 
-  :: [(PatternExpr t, Doc a)] 
-  -> [Clause (Pattern t) (PatternExpr t, Doc a)] 
-  -> Doc a
+prettyMatch :: (Pretty p, Pretty q) => [(a, Doc ann)] -> [Clause p (q, r)] -> Doc ann
 prettyMatch exs eqs = 
     group (nest 2 (vsep 
         [ "match" <+> commaSep (snd <$> exs) <+> "with"
@@ -243,9 +276,10 @@ splitClause (Clause ps exs e) =
 
 -- | Pretty printer for let expressions
 prettyLet 
-  :: Pattern t 
-  -> (PatternExpr t, Doc a) 
-  -> (PatternExpr t, Doc a) 
+  :: (Pretty p, Pretty q, Pretty (Expr t p q))
+  => q
+  -> (Expr t p q, Doc a) 
+  -> (Expr t p q, Doc a) 
   -> Doc a
 prettyLet p e1 e = 
     group (vsep 
@@ -260,21 +294,15 @@ prettyLet p e1 e =
     body = pretty (fst e)
 
 -- | Pretty printer for lambda abstractions
-prettyLam :: Pattern t -> (PatternExpr t, Doc a) -> Doc a
-prettyLam p e1 = 
-    group (nest 2 (vsep [backslash <> pattern_ p <+> "=>", pretty (fst e1)]))
-  where
-    pattern_ :: Pattern t -> Doc a
-    pattern_ p = flip cata p $ \case
-        PCon _ _ [] -> pretty p
-        PCon{}      -> parens (pretty p)
-        _           -> pretty p
+prettyLam :: (Pretty (Expr t p q)) => Doc a -> (Expr t p q, Doc a) -> Doc a
+prettyLam arg e1 = group (nest 2 (vsep [backslash <> arg <+> "=>", pretty (fst e1)]))
 
 -- | Pretty printer for if-clauses
 prettyIf 
-  :: (PatternExpr t, Doc a) 
-  -> (PatternExpr t, Doc a) 
-  -> (PatternExpr t, Doc a) 
+  :: (Pretty p, Pretty q, Pretty (Expr t p q))
+  => (Expr t p q, Doc a) 
+  -> (Expr t p q, Doc a) 
+  -> (Expr t p q, Doc a) 
   -> Doc a
 prettyIf c e1 e2 = 
     group (nest 2 (vsep [if_, then_, else_]))
