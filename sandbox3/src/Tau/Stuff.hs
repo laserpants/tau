@@ -25,7 +25,7 @@ import Data.Text (Text)
 import Data.Text.Prettyprint.Doc
 import Data.Tree
 import Data.Tree.View (showTree)
-import Data.Tuple.Extra (snd3, third3)
+import Data.Tuple.Extra (fst3, snd3, thd3, third3)
 import Data.Void
 import Tau.Env (Env(..))
 import Tau.Expr
@@ -75,26 +75,67 @@ insertDicts env = mapTags $ \info@NodeInfo{..} ->
 --
 
 
+frog e1 = foldr (\(a, b) e -> lamExpr (NodeInfo (tArr b (typeOf e1)) []) (varPat (NodeInfo b []) a) e) e1 
+
 rebuildTree22 
-  :: (MonadError String m, MonadSupply Name m, MonadState Environments m) 
+  :: (MonadSupply Name m, MonadReader (ClassEnv (PatternExpr Type), TypeEnv, [Name]) m) -- (MonadError String m, MonadSupply Name m, MonadState Environments m) 
   => PatternExpr NodeInfo 
-  -> m (PatternExpr NodeInfo)
-rebuildTree22 =
-    cata $ \case
+  -> StateT [(Name, Type)] m (PatternExpr NodeInfo)
+rebuildTree22 a = do
+    a <- xxx a
+    xxxs <- get
+    pure (frog a xxxs)
+  where
+    xxx = cata $ \case
         ELam t pat expr1 -> do
-            e1 <- expr1
-            undefined
+            let vars = free pat
+            e1 <- local (third3 (Set.toList vars <>)) expr1
+            pure (lamExpr t pat e1)
 
         ELet t pat expr1 expr2 -> do
             e1 <- expr1
+            xxxs <- get
+            put []
             e2 <- expr2
-            undefined
+            pure (letExpr t pat (frog e1 xxxs) e2)
 
         EVar t var -> do
             -- 1. lambda bound var
             -- 2. let-bound variable
             -- 3. name
-            undefined
+
+            let ds = nodePredicates t
+
+            vars <- asks thd3
+
+            if var `elem` vars
+                then pure (varExpr t var)
+                else foldrM funx (varExpr (stripNodePredicates t) var) ds
+
+            --pure (varExpr t var)
+            --pure (appExpr t [varExpr (stripNodePredicates t) var])
+
+        e -> 
+            embed <$> sequence e
+
+funx :: (MonadSupply Name m, MonadReader (ClassEnv (PatternExpr Type), TypeEnv, [Name]) m) => Predicate -> PatternExpr NodeInfo -> StateT [(Name, Type)] m (PatternExpr NodeInfo)
+funx (InClass name ty) expr = do
+    env <- asks fst3
+    if isVar ty 
+        then do
+            tv <- Text.replace "a" "&" <$> supply
+            let t = tApp (tCon (kArr kTyp (fromJust (kindOf ty))) name) ty
+                dict = varExpr (NodeInfo t []) tv
+            --tell [(tv, t)]
+            modify ((tv, t) :)
+            pure (appExpr (exprTag expr) [expr, dict])
+        else 
+            case lookupClassInstance name ty env of
+                Nothing -> 
+                    error "missing class instance" -- throwError "baaaah"
+
+                Just (a, Instance{..}) -> 
+                    pure (appExpr (exprTag expr) [expr, mapTags (`NodeInfo` []) instanceDict])
 
 joinDicts :: PatternExpr Type -> PatternExpr Type -> PatternExpr Type
 joinDicts d1 d2 =
@@ -107,15 +148,16 @@ buildDict
   :: (MonadError String m, MonadSupply Name m, MonadState Environments m) 
   => Name 
   -> Type 
-  -> ClassEnv (PatternExpr Type)
+  -> ClassEnv a
   -> m (PatternExpr Type)
 buildDict name ty env =
     case lookupClassInstance name ty env of
         Nothing -> throwError "bananas"
         Just (super, i@Instance{..}) -> do
-            zzz <- traverse foo instancePredicates
-            yyy <- traverse boo super
-            pure (foldr1 joinDicts (instanceDict:zzz <> yyy))
+            undefined
+            --zzz <- traverse foo instancePredicates
+            --yyy <- traverse boo super
+            --pure (foldr1 joinDicts (instanceDict:zzz <> yyy))
   where
 --    foo 
 --      :: (MonadError String m, MonadSupply Name m, MonadState Environments m) 

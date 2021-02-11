@@ -29,7 +29,8 @@ prettyExprTree = para $ \case
     ECon t con exs    -> node t (conExpr t con (fst <$> exs)) []
     ELit t lit        -> node t lit []
     EApp t exs        -> node t (text "(@)") (snd <$> exs)
-    ELet t pat e1 e2  -> node t (text "let") [ node (exprTag (fst e1)) (renderDoc (pretty pat <+> equals <+> pretty (fst e1))) []
+    ELet t pat e1 e2  -> node t (text "let") [ node (exprTag (fst e1)) (renderDoc (pretty pat <+> equals)) [] --  <+> pretty (fst e1))) []
+                                             , snd e1
                                              , snd e2 ]
     ELam t pat e1     -> node t (renderDoc ("λ" <> parens (pretty pat <+> colon <+> pretty (patternTag pat)))) [snd e1]
     EIf  t cond tr fl -> node t (text "if") (snd <$> [cond, tr, fl])
@@ -71,8 +72,11 @@ prettyExprTree2 = para $ \case
     ECon t con exs    -> node t (conExpr t con (fst <$> exs)) []
     ELit t lit        -> node t lit []
     EApp t exs        -> node t (text "(@)") (snd <$> exs)
-    ELet t pat e1 e2  -> node t (text "let") [ node (exprTag (fst e1)) (renderDoc (pretty pat <+> equals <+> pretty (fst e1))) []
+    ELet t pat e1 e2  -> node t (text "let") [ node (exprTag (fst e1)) (renderDoc (pretty pat <+> equals)) [] --  <+> pretty (fst e1))) []
+                                             , snd e1
                                              , snd e2 ]
+--    ELet t pat e1 e2  -> node t (text "let") [ node (exprTag (fst e1)) (renderDoc (pretty pat <+> equals <+> pretty (fst e1))) []
+--                                             , snd e2 ]
     ELam t pat e1     -> node t (renderDoc ("λ" <> parens (pretty pat))) [snd e1]
     EIf  t cond tr fl -> node t (text "if") (snd <$> [cond, tr, fl])
     ERec t fields     -> node t (recExpr t (fst <$$> fields)) []

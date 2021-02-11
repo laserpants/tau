@@ -5,10 +5,12 @@ module Main where
 import Control.Arrow (second, first)
 import Control.Monad.Except
 import Control.Monad.Reader
+import Control.Monad.Writer
 import Control.Monad.Trans.Maybe
 import Control.Monad.State
 import Control.Monad.Supply
 import Data.Maybe (fromJust)
+import Data.Void
 import Tau.Comp.Patterns
 import Tau.Eval
 import Tau.Expr
@@ -38,7 +40,7 @@ expr2 = letExpr () (varPat () "f") (varExpr () "lenShow") (appExpr () [varExpr (
 expr3 = lamExpr () (varPat () "x") (appExpr () [varExpr () "lenShow", varExpr () "x"])
 expr4 = lamExpr () (varPat () "x") (letExpr () (varPat () "f") (varExpr () "lenShow") (appExpr () [varExpr () "f", varExpr () "x"]))
 expr5 = letExpr () (varPat () "f") (varExpr () "lenShow") (lamExpr () (varPat () "x") (appExpr () [varExpr () "f", varExpr () "x"]))
-expr6 = appExpr () [varExpr () "lenShow", litExpr () (LInt 5)]
+expr6 = appExpr () [varExpr () "lenShow", litExpr () (LInt 555)]
 expr7 = lamExpr () (varPat () "x") (appExpr () [varExpr () "f", varExpr () "x"])
 expr8 = lamExpr () (varPat () "x") (lamExpr () (varPat () "y") (appExpr () [varExpr () "f", lamExpr () (varPat () "x") (lamExpr () (varPat () "y") (varExpr () "z"))]))
 expr9 = lamExpr () (varPat () "x") (appExpr () [varExpr () "lenShow2", varExpr () "x"])
@@ -135,6 +137,10 @@ myTypeEnv = Env.fromList
 --    , -- ( "show"    , sForall kStar ["Show"] (sScheme (tGen 0 `tArr` tCon kStar "String")) )
     ]
 
+--type ClassEnv a = Env (Class a)
+--type Class a = ([Name], [Instance a])
+
+myClassEnv :: ClassEnv (PatternExpr Type)
 myClassEnv = Env.fromList
     [ ( "Show"
       , ( []
@@ -173,6 +179,23 @@ pipeline e =  do
     let tree3 = (insertDicts xxx1 tree2)
 
     debugTree tree3
+    
+    --tree4 <- runReaderT (rebuildTree22 tree3) []
+    (tree4, _) <- withReaderT (\(a,b) -> (a,b,[])) (runStateT (rebuildTree22 tree3) [])
+
+    debugTree tree4
+
+    --
+
+    let Right zzz1 = simplified (mapTags nodeType tree4)
+    debugTree2 zzz1
+
+    let boo = evalExpr zzz1 myEvalEnv
+    let Just foo = boo
+
+    traceShowM boo
+    traceShowM foo
+    traceShowM "===="
 
     pure ()
     -- >> Apply context reduction
@@ -201,6 +224,7 @@ pipeline e =  do
 myEvalEnv = Env.fromList 
     [ ("toString" , fromJust (runEval (eval toString) mempty))
     , ("show"     , fromJust (runEval (eval show_) mempty))
+    , ("lenShow"  , fromJust (runEval (eval lenShow) mempty))
     ]
   where
     Right show_ = simplified foo2
@@ -212,11 +236,15 @@ myEvalEnv = Env.fromList
           [ Clause [recPat () [Field () "toString" (varPat () "toString") , Field () "show" (varPat () "show")]] [] (letExpr () (varPat () "show") (varExpr () "@showInt") (varExpr () "toString"))
           ])
 
+    Right lenShow = simplified foo3
+    --foo3 = lamExpr () (varPat () "d") (lamExpr () (varPat () "x") (litExpr () (LInt 8))) -- (appExpr () [varExpr () "@length", appExpr () [varExpr () "show", varExpr () "d", varExpr () "x"]]))
+    foo3 = lamExpr () (varPat () "d") (lamExpr () (varPat () "x") (appExpr () [varExpr () "@strlen", appExpr () [varExpr () "show", varExpr () "d", varExpr () "x"]]))
+
 --runPipeline :: PatternExpr t -> Either String (PatternExpr NodeInfo, Environments)
 runPipeline a = do
     x <- runExcept f
     case x of
-        Nothing -> Left "error rererarr"
+        Nothing -> Left "error rererarre"
         Just x  -> Right x
             --case simplified (mapTags nodeType x) of
             --    Left e -> Left "..."
@@ -227,13 +255,15 @@ runPipeline a = do
 
 --runTest2_ :: Either String (PatternExpr NodeInfo)
 --runTest2_ = runPipeline expr22
-runTest2_ = runPipeline expr2
+--runTest2_ = runPipeline expr2
 --runTest2_ = runPipeline expr35
 --runTest2_ = runPipeline expr24
 --runTest2_ = runPipeline expr25
 --runTest2_ = runPipeline expr26
 --runTest2_ = runPipeline expr29
 --runTest2_ = runPipeline expr35
+--runTest2_ = runPipeline expr3
+runTest2_ = runPipeline expr6
 
 --
 --

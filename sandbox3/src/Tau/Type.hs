@@ -8,7 +8,7 @@
 module Tau.Type where
 -- Tau.Lang.Type
 
-import Control.Arrow (second)
+import Control.Arrow (second, (>>>))
 import Control.Comonad.Cofree
 import Control.Monad.Supply
 import Data.Functor.Foldable
@@ -105,6 +105,11 @@ class Typed a where
 
 instance Typed Type where
     typeOf = id
+
+isVar :: Type -> Bool
+isVar = project >>> \case
+    TVar{} -> True
+    _      -> False
 
 getTypeVar :: Type -> Maybe Name
 getTypeVar = cata $ \case

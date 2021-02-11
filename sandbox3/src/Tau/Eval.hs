@@ -96,7 +96,9 @@ evalVar var = do
         Just prim ->
             case Env.lookup prim primEnv of
                 Just fun -> pure (evalPrim prim fun [])
-                Nothing  -> fail ("No primitive function " <> Text.unpack prim)
+                Nothing  -> do
+                    traceShowM ("No primitive function " <> Text.unpack prim)
+                    fail ("No primitive function " <> Text.unpack prim)
 
         Nothing -> do
             env <- ask
@@ -109,9 +111,9 @@ evalApp
   -> m (Value m)
   -> m (Value m)
 evalApp fun arg = fun >>= \case
-    Closure var body (Env closure) -> do
+    Closure var body closure -> do
         val <- arg
-        local (const (Env (Map.insert var val closure))) body
+        local (Env.insert var val closure <>) body
 
     PrimFun name fun args -> do
         val <- arg
