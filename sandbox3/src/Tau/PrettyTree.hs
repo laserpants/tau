@@ -35,7 +35,8 @@ prettyExprTree = para $ \case
     ERec t fields     -> node t (recExpr t (fst <$$> fields)) []
     EMat t exs eqs    -> node t (renderDoc ("match" <+> matchExprs (fst <$> exs) <+> "with")) (clauseTree <$> eqs)
     --_                 -> Node "Not implemented" []
-    e                 -> Node (Text.pack $ show e) []
+    EOp t op          -> let b = opExpr t (fst <$> op) in Node (prettyPrint b) []
+--    e                 -> Node (Text.pack $ show e) []
   where
     text :: Text -> Text
     text = id
@@ -44,12 +45,12 @@ prettyExprTree = para $ \case
 
     renderNode = Node . renderDoc 
 
-    matchExprs :: (Pretty t) => [PatternExpr t] -> Doc a
+--    matchExprs :: (Pretty t) => [PatternExpr t] -> Doc a
     matchExprs = commaSep . (expr <$>) 
       where
         expr ex = parens (pretty ex <+> colon <+> pretty (exprTag ex))
 
-    clauseTree :: Clause (Pattern t) (PatternExpr t, Tree Text) -> Tree Text 
+--    clauseTree :: Clause (Pattern t) (PatternExpr t, Tree Text) -> Tree Text 
     clauseTree cl = renderNode (lhs <+> "=>" <+> rhs) []
       where
         (lhs, rhs) = splitClause cl
@@ -79,7 +80,8 @@ prettyExprTree2 = para $ \case
     ERec t fields     -> node t (recExpr t (fst <$$> fields)) []
     EMat t exs eqs    -> node t (renderDoc ("match" <+> matchExprs (fst <$> exs) <+> "with")) (clauseTree <$> eqs)
     --_                 -> Node "Not implemented" []
-    e                 -> Node (Text.pack $ show e) []
+    EOp t op          -> let b = opExpr t (fst <$> op) in Node (prettyPrint b) []
+--    e                 -> Node (Text.pack $ show e) []
   where
     text :: Text -> Text
     text = id

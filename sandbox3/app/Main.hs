@@ -74,9 +74,9 @@ expr2412 = matExpr () [conExpr () "Cons" [litExpr () (LInt 1), conExpr () "Nil" 
             , Clause [ anyPat () ] [] (litExpr () (LInt 508)) ]
 
 expr2413 :: PatternExpr ()
-expr2413 = matExpr () [conExpr () "Cons" [litExpr () (LInt 1), conExpr () "Nil" []], litExpr () (LInt 85)] 
+expr2413 = matExpr () [litExpr () (LInt 11), litExpr () (LInt 85)] 
             --[ Clause [ conPat () "Cons" [varPat () "x", varPat () "xs"], litPat () (LInt 5) ] [ eqOp () (varExpr () "x") (litExpr () (LInt 1)) ] (litExpr () (LInt 499))
-            [ Clause [ conPat () "Cons" [litPat () (LInt 1), varPat () "xs"], litPat () (LInt 5) ] [] (litExpr () (LInt 499))
+            [ Clause [ litPat () (LInt 1), litPat () (LInt 5) ] [] (litExpr () (LInt 499))
             , Clause [ anyPat (), anyPat () ] [] (litExpr () (LInt 508)) ]
 
 
@@ -213,7 +213,7 @@ pipeline e =  do
     --
 
     let zzz3 = simplified (mapTags nodeType tree4)
-    traceShowM zzz3
+    --traceShowM zzz3
     let Right zzz1 = zzz3
 
     debugTree2 zzz1
@@ -296,7 +296,7 @@ runPipeline a = do
 --runTest2_ = runPipeline expr35
 --runTest2_ = runPipeline expr3
 --runTest2_ = runPipeline expr6
-runTest2_ = runPipeline expr2413
+runTest2_ = runPipeline expr241
 
 --
 --
@@ -327,3 +327,17 @@ Tau.Comp.CodeGen
 
 
    -}
+
+
+hello123 = 
+    compile 
+        [litExpr () (LInt 11), litExpr () (LInt 85)] 
+        [ Clause [litPat () (LInt 1), litPat () (LInt 2)] [] (varExpr () "one") 
+--        [ Clause [varPat () "zz1", varPat () "zz2"] [eqOp () (varExpr () "zz1") (litExpr () (LInt 1)), eqOp () (varExpr () "zz2") (litExpr () (LInt 2))] (varExpr () "one") 
+        , Clause [varPat () "xxx", varPat () "yyy"] [] (varExpr () "two") 
+        ]
+
+hello1234 = pretty r
+  where
+    Right r = runSimplify hello123
+

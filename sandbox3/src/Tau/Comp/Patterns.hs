@@ -28,6 +28,7 @@ import Data.Set.Monad (Set)
 import Data.Tuple.Extra (fst3, snd3, thd3)
 import Debug.Trace
 import Tau.Env
+import Tau.Pretty
 import Tau.Expr
 import Tau.Type
 import Tau.Type.Substitution
@@ -47,7 +48,7 @@ newtype Simplify a = Simplify { unSimplify :: ExceptT String (Supply Name) a } d
 runSimplify :: Simplify a -> Either String a
 runSimplify = unSimplify 
     >>> runExceptT
-    >>> flip evalSupply (nameSupply "%")
+    >>> flip evalSupply (nameSupply "$")
     >>> fromMaybe (throwError "Error") -- (throwError ImplementationError)
 
 data MatchExprF t a
@@ -162,10 +163,11 @@ flatten
   :: (Boolean t, Show t, Show p, Show q) 
   => Clause (Pattern t) (Expr t p q) 
   -> Clause (Pattern t) (Expr t p q)
-flatten (Clause ps exs e) = Clause qs (exs <> exs1) e 
+flatten (Clause ps exs e) = Clause qs (exs <> exs1) e
   where
-    (qs, exs1) = fmap concat (unzip (fmap fn ps))
-    fn pat = fromJust (evalSupply (runWriterT (cata alg pat)) (nameSupply "0"))
+    (qs, exs1) = fromJust (evalSupply fun (nameSupply "="))
+    fun = second concat . unzip <$> traverse (runWriterT . cata alg) ps
+
     alg = \case
         PAny t -> 
             pure (varPat t "$_")
@@ -216,64 +218,47 @@ compile es qs =
                      , exprTag expr )
 
 translate :: (Show t) => MatchExpr t -> Translated Simplify t
---translate = futu $ project >>> \case
+translate = futu $ project >>> \case
+    Fail ->
+        Wrap (throwError "Fail")
 
-translate x = 
-    traceShow "................" $
-      traceShow x $
-        traceShow "................" $
-          futu alg x
-  where
-    alg = project >>> \case 
-        Fail ->
-            Wrap (throwError "Fail")
+    Match [] [] c ->
+        Wrap (pure (Pure c))
 
-        Match [] [] c ->
-            Wrap (pure (Pure c))
+    Match [] (Clause [] [] e:_) _ ->
+        Expr e
 
-        Match [] (Clause [] [] e:_) _ ->
-            Expr e
+    Match [] (Clause [] exs e:qs) c ->
+        If (Free (Expr (foldr1 (\a -> andOp (exprTag a) a) exs))) 
+           (Free (Expr e)) 
+           (Pure (embed (Match [] qs c)))
 
-        Match [] (Clause [] exs e:qs) c ->
-            traceShow ">>...>>>" $ traceShow exs $
-            If (Free (Expr (foldr1 (\a -> andOp (exprTag a) a) exs))) 
-               (Free (Expr e)) 
-               (Pure (embed (Match [] qs c)))
-
-        Match (u:us) qs c ->
-            Wrap $ case equationGroups qs of
-                [VarTag eqs] -> 
-                    pure (Pure (embed (Match us (runSubst <$> eqs) c)))
-                      where
-                        runSubst (Clause (Fix (PVar _ name):ps) exs e) = 
-                            traceShow "****^^^^^^^^" $
-                            traceShow "****^^^^^^^^" $
-                            traceShow "****^^^^^^^^" $
-                              traceShow exs $
-                                traceShow name $
-                                  traceShow u $
-                                    --Clause ps exs e
-                                    substitute name u <$> Clause ps exs e
-                                    --Clause ps (substitute name u <$> exs) e
-
-                [ConTag eqs] -> do
-                    Free . SimpleMatch (Free (Expr u)) <$> traverse toSimpleMatch (conGroups eqs)
-                      where
-                        toSimpleMatch (ConGroup t con ps eqs) = do
-                            vars <- supplies (length ps)
-                            pure ( RCon t con vars
-                                 , Pure (embed (Match (combine ps vars <> us) eqs c)) )
-
-                        combine ps vs = 
-                            uncurry (varExpr . patternTag) <$> zip ps vs
-
-                mixed -> do
-                    pure (Pure (embed (foldr fn (project c) (getEqs <$> mixed))))
+    Match (u:us) qs c ->
+        Wrap $ case equationGroups qs of
+            [VarTag eqs] -> 
+                pure (Pure (embed (Match us (runSubst <$> eqs) c)))
                   where
-                    getEqs (ConTag a) = a
-                    getEqs (VarTag a) = a
+                    runSubst (Clause (Fix (PVar _ name):ps) exs e) =
+                        substitute name u <$> Clause ps exs e
 
-                    fn eqs a = Match (u:us) eqs (embed a)
+            [ConTag eqs] -> do
+                Free . SimpleMatch (Free (Expr u)) <$> traverse toSimpleMatch (conGroups eqs)
+                  where
+                    toSimpleMatch (ConGroup t con ps eqs) = do
+                        vars <- supplies (length ps)
+                        pure ( RCon t con vars
+                             , Pure (embed (Match (combine ps vars <> us) eqs c)) )
+
+                    combine ps vs = 
+                        uncurry (varExpr . patternTag) <$> zip ps vs
+
+            mixed -> do
+                pure (Pure (embed (foldr fn (project c) (getEqs <$> mixed))))
+              where
+                getEqs (ConTag a) = a
+                getEqs (VarTag a) = a
+
+                fn eqs a = Match (u:us) eqs (embed a)
 
 --- 
 --- 
