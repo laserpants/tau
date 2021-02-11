@@ -34,19 +34,19 @@ namesToFields name =
     stripped = Text.stripSuffix "}" =<< Text.stripPrefix "{" name
 
 data Constructor 
-    = TupleCon
-    | RecordCon
-    | PlainCon
+    = CTuple
+    | CRecord
+    | CPlain
     deriving (Show, Eq)
 
 conType :: Name -> Constructor
 conType con
-    | Text.null con = PlainCon
+    | Text.null con = CPlain
     | otherwise = 
         case (Text.head con, Text.last con) of
-            ('(', ')') -> TupleCon
-            ('{', '}') -> RecordCon
-            _          -> PlainCon
+            ('(', ')') -> CTuple
+            ('{', '}') -> CRecord
+            _          -> CPlain
 
 prettyStructType :: TypeT v -> Maybe (Doc a)
 prettyStructType ty =
@@ -55,8 +55,8 @@ prettyStructType ty =
       []     -> Nothing
   where
     fun as con = case conType con of
-        TupleCon  -> Just (prettyTuple as)
-        RecordCon -> Just (prettyRecord colon (namesToFields con as))
+        CTuple  -> Just (prettyTuple as)
+        CRecord -> Just (prettyRecord colon (namesToFields con as))
         _         -> Nothing
 
     headCon (TCon _ c) = Just c
@@ -236,8 +236,8 @@ instance Pretty (Expr t (Prep t) Name) where
 --prettyCon2 :: (Pretty p) => Name -> [(p, q)] -> ((p, q) -> [Doc a] -> [Doc a]) -> Doc a
 prettyCon2 con exs fun
     | null exs        = pretty con
-    | RecordCon == ct = prettyRecord equals (namesToFields con (pretty <$> exs))
-    | TupleCon  == ct = prettyTuple (pretty <$> exs)
+    | CRecord == ct = prettyRecord equals (namesToFields con (pretty <$> exs))
+    | CTuple  == ct = prettyTuple (pretty <$> exs)
     | otherwise       = pretty con <+> hsep (foldr fun [] (pretty <$> exs))
   where
     ct = conType con
@@ -245,8 +245,8 @@ prettyCon2 con exs fun
 prettyCon :: (Pretty p) => Name -> [(p, q)] -> ((p, q) -> [Doc a] -> [Doc a]) -> Doc a
 prettyCon con exs fun
     | null exs        = pretty con
-    | RecordCon == ct = prettyRecord equals (namesToFields con (pretty . fst <$> exs))
-    | TupleCon  == ct = prettyTuple (pretty . fst <$> exs)
+    | CRecord == ct = prettyRecord equals (namesToFields con (pretty . fst <$> exs))
+    | CTuple  == ct = prettyTuple (pretty . fst <$> exs)
     | otherwise       = pretty con <+> hsep (foldr fun [] exs)
   where
     ct = conType con

@@ -58,7 +58,32 @@ expr23 = recExpr () [Field () "name" (litExpr () (LString "Bob")), Field () "id"
 expr24 :: PatternExpr ()
 expr24 = matExpr () [conExpr () "Nil" [], litExpr () (LInt 11)] 
             [ Clause [ conPat () "Cons" [varPat () "x", varPat () "xs"], litPat () (LInt 5) ] [ eqOp () (varExpr () "x") (litExpr () (LInt 1)) ] (litExpr () (LInt 499))
-            , Clause [ conPat () "Nil"  [], anyPat () ] [] (litExpr () (LInt 500)) ]
+            , Clause [ conPat () "Nil"  [], anyPat () ] [] (litExpr () (LInt 500)) 
+            , Clause [ anyPat (), anyPat () ] [] (litExpr () (LInt 508)) 
+            ]
+
+expr241 :: PatternExpr ()
+expr241 = matExpr () [conExpr () "Cons" [litExpr () (LInt 1), conExpr () "Nil" []], litExpr () (LInt 5)] 
+            [ Clause [ conPat () "Cons" [varPat () "x", varPat () "xs"], litPat () (LInt 5) ] [ eqOp () (varExpr () "x") (litExpr () (LInt 1)) ] (litExpr () (LInt 499))
+            , Clause [ conPat () "Nil"  [], anyPat () ] [] (litExpr () (LInt 500)) 
+            , Clause [ anyPat (), anyPat () ] [] (litExpr () (LInt 508)) ]
+
+expr2412 :: PatternExpr ()
+expr2412 = matExpr () [conExpr () "Cons" [litExpr () (LInt 1), conExpr () "Nil" []]] 
+            [ Clause [ conPat () "Cons" [varPat () "x", varPat () "xs"] ] [ eqOp () (varExpr () "x") (litExpr () (LInt 1)) ] (litExpr () (LInt 499))
+            , Clause [ anyPat () ] [] (litExpr () (LInt 508)) ]
+
+expr2413 :: PatternExpr ()
+expr2413 = matExpr () [conExpr () "Cons" [litExpr () (LInt 1), conExpr () "Nil" []], litExpr () (LInt 85)] 
+            --[ Clause [ conPat () "Cons" [varPat () "x", varPat () "xs"], litPat () (LInt 5) ] [ eqOp () (varExpr () "x") (litExpr () (LInt 1)) ] (litExpr () (LInt 499))
+            [ Clause [ conPat () "Cons" [litPat () (LInt 1), varPat () "xs"], litPat () (LInt 5) ] [] (litExpr () (LInt 499))
+            , Clause [ anyPat (), anyPat () ] [] (litExpr () (LInt 508)) ]
+
+
+expr2411 :: PatternExpr ()
+expr2411 = matExpr () [litExpr () (LInt 1)] 
+            [ Clause [ varPat () "x" ] [ eqOp () (varExpr () "x") (litExpr () (LInt 1)) ] (litExpr () (LInt 499))
+            , Clause [ anyPat () ] [] (litExpr () (LInt 508)) ]
 
 expr25 = appExpr () [varExpr () "toString", litExpr () (LInt 5)]
 
@@ -187,7 +212,10 @@ pipeline e =  do
 
     --
 
-    let Right zzz1 = simplified (mapTags nodeType tree4)
+    let zzz3 = simplified (mapTags nodeType tree4)
+    traceShowM zzz3
+    let Right zzz1 = zzz3
+
     debugTree2 zzz1
 
     let boo = evalExpr zzz1 myEvalEnv
@@ -225,6 +253,9 @@ myEvalEnv = Env.fromList
     [ ("toString" , fromJust (runEval (eval toString) mempty))
     , ("show"     , fromJust (runEval (eval show_) mempty))
     , ("lenShow"  , fromJust (runEval (eval lenShow) mempty))
+    , ("(,)"      , constructor "(,)" 2) -- fromJust (runEval (eval pair) mempty))
+    , ("Nil"      , constructor "Nil" 0) -- fromJust (runEval (eval pair) mempty))
+    , ("Cons"     , constructor "Cons" 2) -- fromJust (runEval (eval pair) mempty))
     ]
   where
     Right show_ = simplified foo2
@@ -239,6 +270,7 @@ myEvalEnv = Env.fromList
     Right lenShow = simplified foo3
     --foo3 = lamExpr () (varPat () "d") (lamExpr () (varPat () "x") (litExpr () (LInt 8))) -- (appExpr () [varExpr () "@length", appExpr () [varExpr () "show", varExpr () "d", varExpr () "x"]]))
     foo3 = lamExpr () (varPat () "d") (lamExpr () (varPat () "x") (appExpr () [varExpr () "@strlen", appExpr () [varExpr () "show", varExpr () "d", varExpr () "x"]]))
+
 
 --runPipeline :: PatternExpr t -> Either String (PatternExpr NodeInfo, Environments)
 runPipeline a = do
@@ -263,7 +295,8 @@ runPipeline a = do
 --runTest2_ = runPipeline expr29
 --runTest2_ = runPipeline expr35
 --runTest2_ = runPipeline expr3
-runTest2_ = runPipeline expr6
+--runTest2_ = runPipeline expr6
+runTest2_ = runPipeline expr2413
 
 --
 --
