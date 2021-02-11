@@ -9,6 +9,7 @@ import Data.List (sortOn)
 import Data.Maybe (fromJust, maybeToList)
 import Data.Text.Prettyprint.Doc
 import Data.Void
+import Data.Tuple.Extra (dupe)
 import Tau.Expr
 import Tau.Type
 import Tau.Util
@@ -57,7 +58,7 @@ prettyStructType ty =
     fun as con = case conType con of
         CTuple  -> Just (prettyTuple as)
         CRecord -> Just (prettyRecord colon (namesToFields con as))
-        _         -> Nothing
+        _       -> Nothing
 
     headCon (TCon _ c) = Just c
     headCon _          = Nothing
@@ -90,7 +91,7 @@ instance Pretty (TypeT v) where
 
         TCon _ name -> pretty name
         TVar _ name -> pretty name
-        TGen   _    -> ""
+        TGen _      -> ""
 
 instance Pretty Kind where
     pretty = para $ \case
@@ -134,14 +135,10 @@ instance Pretty Literal where
 instance Pretty (Prep t) where
     pretty = \case
         RVar _ var    -> pretty var
-        RCon _ con rs -> prettyCon2 con rs (:)
---      where
---        args :: Name -> [Doc a] -> [Doc a]
----        args = (:)
---          where
---            rhs = flip cata (fst a) $ \case 
---                RCon{}  -> parens (snd a)
---                _       -> snd a
+        RCon _ con rs -> prettyCon con (dupe <$> rs) (args . fst)
+      where
+        args :: Name -> [Doc a] -> [Doc a]
+        args n = (pretty n :)
 
 instance Pretty (Pattern t) where
     pretty = para $ \case
@@ -233,21 +230,12 @@ instance Pretty (PatternExpr t) where
 instance Pretty (Expr t (Prep t) Name) where
     pretty = prettyExpr pretty
 
---prettyCon2 :: (Pretty p) => Name -> [(p, q)] -> ((p, q) -> [Doc a] -> [Doc a]) -> Doc a
-prettyCon2 con exs fun
-    | null exs        = pretty con
-    | CRecord == ct = prettyRecord equals (namesToFields con (pretty <$> exs))
-    | CTuple  == ct = prettyTuple (pretty <$> exs)
-    | otherwise       = pretty con <+> hsep (foldr fun [] (pretty <$> exs))
-  where
-    ct = conType con
-
 prettyCon :: (Pretty p) => Name -> [(p, q)] -> ((p, q) -> [Doc a] -> [Doc a]) -> Doc a
 prettyCon con exs fun
-    | null exs        = pretty con
+    | null exs      = pretty con
     | CRecord == ct = prettyRecord equals (namesToFields con (pretty . fst <$> exs))
     | CTuple  == ct = prettyTuple (pretty . fst <$> exs)
-    | otherwise       = pretty con <+> hsep (foldr fun [] exs)
+    | otherwise     = pretty con <+> hsep (foldr fun [] exs)
   where
     ct = conType con
 
