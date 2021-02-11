@@ -401,7 +401,7 @@ unifyTyped v1 v2 = do
     propagateClasses :: Substitution -> Env [Predicate] -> Env [Predicate]
     propagateClasses sub env = Map.foldrWithKey copy env (getSub sub)
 
-    copy k v e = fromMaybe e (Env.copyKey k <$> getTypeVar v <*> pure e)
+    copy k v e = fromMaybe e (Env.copy k <$> getTypeVar v <*> pure e)
 
 lookupScheme 
   :: (MonadSupply Name m, MonadReader (ClassEnv a, TypeEnv) m, MonadError String m) 
