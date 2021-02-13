@@ -4,7 +4,6 @@
 {-# LANGUAGE OverloadedStrings          #-}
 {-# LANGUAGE StrictData                 #-}
 module Tau.Eval where
--- Tau.Comp.Eval
 
 import Control.Monad.Reader
 import Data.Function ((&))
@@ -49,11 +48,11 @@ newtype Eval a = Eval { unEval :: ReaderT (ValueEnv Eval) Maybe a } deriving
 runEval :: Eval a -> ValueEnv Eval -> Maybe a
 runEval = runReaderT . unEval 
 
-evalExpr :: Expr t (Prep t) Name -> ValueEnv Eval -> Maybe (Value Eval)
+evalExpr :: (Show t) => Expr t (Prep t) Name -> ValueEnv Eval -> Maybe (Value Eval)
 evalExpr = runEval . eval
 
 eval 
-  :: (MonadFail m, MonadReader (ValueEnv m) m) 
+  :: (Show t, MonadFail m, MonadReader (ValueEnv m) m) 
   => Expr t (Prep t) Name 
   -> m (Value m)
 eval = cata $ \case
@@ -123,7 +122,7 @@ evalPrim
   :: (MonadFail m, MonadReader (ValueEnv m) m)
   => Name -> Fun -> [Value m] -> Value m
 evalPrim name fun args
-    | arity fun == length args = Value (applyFun fun (literal <$> args))
+    | arity fun == length args = Value (applyFun fun (literal <$> reverse args))
     | otherwise                = PrimFun name fun args
   where
     literal (Value lit) = lit
@@ -147,7 +146,7 @@ evalOp = \case
         pure (Value (LBool (e1 || e2)))
 
 evalMatch
-  :: (MonadFail m, MonadReader (ValueEnv m) m)
+  :: (Show t, MonadFail m, MonadReader (ValueEnv m) m)
   => [Clause (Prep t) (m (Value m))]
   -> [Value m]
   -> m (Value m)
@@ -167,7 +166,7 @@ evalMatch (Clause ps exs eq:eqs) vals =
     toBool _ = error "Runtime error (toBool)"
 
 tryClause 
-  :: (MonadFail m, MonadReader (ValueEnv m) m) 
+  :: (Show t, MonadFail m, MonadReader (ValueEnv m) m) 
   => [Prep t] 
   -> [Value m] 
   -> Maybe [(Name, Value m)]
@@ -186,7 +185,7 @@ tryClause xs ys = cata alg (zip xs ys)
             let ys = [(v, w) | (n, v) <- zip (labels con) ps, (p, w) <- fields, n == p]
             (<>) <$> Just ys <*> xs
 
-        Cons _ xs -> do 
+        Cons _ _ -> 
             error "Incompatible patterns"
 
         Nil -> 

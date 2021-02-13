@@ -102,8 +102,10 @@ instance Pretty Kind where
                 KArr{} -> parens (snd a)
                 _      -> snd a
 
-instance Pretty (PredicateT (TypeT a)) where
-    pretty (InClass name ty) = pretty name <+> pretty ty
+instance Pretty Predicate where
+    pretty (InClass name ty) = pretty (tApp con ty) 
+      where 
+        con = tCon (kArr kTyp (fromJust (kindOf ty))) name
 
 instance Pretty Scheme where
     pretty (Forall kinds ps ty) = forall <> classes <> pretty (instt ty)

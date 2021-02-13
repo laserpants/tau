@@ -8,6 +8,7 @@ module Tau.Prim where
 
 import Tau.Env (Env)
 import Tau.Expr
+import Tau.Util
 import qualified Data.Text as Text
 import qualified Tau.Env as Env
 
@@ -96,13 +97,15 @@ applyFun fun args =
 
 primEnv :: Env Fun
 primEnv = Env.fromList
-    [ ( "showInt"    , fun1 (show :: Int -> String) )
-    , ( "showBool"   , fun1 (show :: Bool -> String) )
-    , ( "showUnit"   , fun1 (show :: () -> String) )
-    , ( "(+)Int"     , fun2 ((+)  :: Int -> Int -> Int) )
-    , ( "(==)Int"    , fun2 ((==) :: Int -> Int -> Bool) )
-    , ( "(==)Bool"   , fun2 ((==) :: Bool -> Bool -> Bool) )
-    , ( "(==)Unit"   , fun2 ((==) :: () -> () -> Bool) )
-    , ( "(==)String" , fun2 ((==) :: String -> String -> Bool) )
+    [ ( "showInt"    , fun1 (show   :: Int -> String) )
+    , ( "showBool"   , fun1 (show   :: Bool -> String) )
+    , ( "showUnit"   , fun1 (show   :: () -> String) )
+    , ( "(+)Int"     , fun2 ((+)    :: Int -> Int -> Int) )
+    , ( "(==)Int"    , fun2 ((==)   :: Int -> Int -> Bool) )
+    , ( "(==)Bool"   , fun2 ((==)   :: Bool -> Bool -> Bool) )
+    , ( "(==)Unit"   , fun2 ((==)   :: () -> () -> Bool) )
+    , ( "(==)String" , fun2 ((==)   :: String -> String -> Bool) )
     , ( "strlen"     , fun1 (length :: String -> Int) )
+    , ( "strconcat"  , fun2 ((++)   :: String -> String -> String) )
+    , ( "strconcat3" , fun3 ((\s t u -> s ++ t ++ u) :: String -> String -> String -> String) )
     ]

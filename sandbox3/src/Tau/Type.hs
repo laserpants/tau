@@ -24,9 +24,9 @@ import qualified Tau.Env as Env
 
 -- | Base functor for Kind
 data KindF a 
-    = KTyp
+    = KTyp                    -- ^ A concrete type (the kind of types that have values)
+    | KArr a a                -- ^ Type constructor
 --  | KCls
-    | KArr a a
     deriving (Show, Eq, Ord, Functor, Foldable, Traversable)
 
 deriveShow1 ''KindF
@@ -56,19 +56,20 @@ type TypeT a = Fix (TypeF a)
 type Type = TypeT Void
 
 -- | A type that appears in a type scheme
-type SchemeType = TypeT Int
+type PolyType = TypeT Int
 
 -- | Type class constraints
 data PredicateT a = InClass Name a
     deriving (Show, Eq, Ord, Functor, Foldable, Traversable)
 
+-- | A standalone typeclass constraint 
 type Predicate = PredicateT Type 
 
--- | A typeclass predicate that appears in a type scheme
-type SchemePredicate = PredicateT Int
+-- | A typeclass constraint that appears in a type scheme
+type PolyPredicate = PredicateT Int
 
 -- | Polymorphic type schemes
-data Scheme = Forall [Kind] [SchemePredicate] SchemeType
+data Scheme = Forall [Kind] [PolyPredicate] PolyType
     deriving (Show, Eq)
 
 -- | Type class
@@ -121,7 +122,7 @@ getTypeCon = cata $ \case
     TCon _ c -> Just c
     _        -> Nothing
 
-getTypeIndex :: SchemeType -> Maybe Int
+getTypeIndex :: PolyType -> Maybe Int
 getTypeIndex = cata $ \case
     TGen n   -> Just n
     _        -> Nothing
@@ -138,14 +139,14 @@ recordConstructor names =
   where 
     kind = foldr kArr kTyp (replicate (length names) kTyp)
 
-upgrade :: Type -> SchemeType
+upgrade :: Type -> PolyType
 upgrade = cata $ \case
     TVar k var -> tVar k var
     TCon k con -> tCon k con
     TArr t1 t2 -> tArr t1 t2
     TApp t1 t2 -> tApp t1 t2
 
-replaceBound :: [Type] -> SchemeType -> Type
+replaceBound :: [Type] -> PolyType -> Type
 replaceBound ts = cata $ \case
     TGen n     -> ts !! n
     TArr t1 t2 -> tArr t1 t2
@@ -177,7 +178,7 @@ kFun = kTyp `kArr` kTyp
 tVar :: Kind -> Name -> TypeT a
 tVar = embed2 TVar 
 
-tGen :: Int -> SchemeType
+tGen :: Int -> PolyType
 tGen = embed1 TGen 
 
 tCon :: Kind -> Name -> TypeT a

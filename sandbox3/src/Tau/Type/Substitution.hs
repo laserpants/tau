@@ -43,7 +43,7 @@ instance Substitutable (TypeT a) (TypeT a) where
         TApp t1 t2    -> tApp t1 t2
         ty            -> embed ty
 
-instance Substitutable SchemeType Type where
+instance Substitutable PolyType Type where
     apply (Sub sub) = apply (Sub (upgrade <$> sub))
 
 null :: SubstitutionT a

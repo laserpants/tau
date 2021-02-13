@@ -29,9 +29,11 @@ module Tau.Util
   , secondM
   , third3M
   , unions
+  , reset
   ) where
 
 import Control.Monad
+import Control.Monad.State
 import Data.Eq.Deriving
 import Data.Functor.Foldable
 import Data.Ord.Deriving
@@ -66,7 +68,7 @@ nameSupply :: Text -> [Name]
 nameSupply = prefixed letters
 
 numSupply :: Text -> [Name]
-numSupply = prefixed (pack . show <$> [1..])
+numSupply = prefixed (intToText <$> [1..])
 
 debug :: (Monad m) => String -> m ()
 debug str = case unsafePerformIO (putStrLn str) of () -> pure ()
@@ -130,3 +132,9 @@ prettyPrint = renderDoc . pretty
 (<$$>) f = ((f <$>) <$>)
 
 infixl 4 <$$>
+
+reset :: (Monoid a, MonadState a m) => m a
+reset = do
+    a <- get
+    put mempty
+    pure a

@@ -242,6 +242,9 @@ instance (Typed t) => Typed (Expr t (Pattern t) (Pattern t)) where
 instance (Typed t) => Typed (Pattern t) where
     typeOf = typeOf . patternTag
 
+fieldName :: Field t a -> Name
+fieldName (Field _ n _) = n
+
 fieldValue :: Field t a -> a
 fieldValue (Field _ _ v) = v
 

@@ -25,7 +25,7 @@ import Data.Text (Text)
 import Data.Text.Prettyprint.Doc
 import Data.Tree
 import Data.Tree.View (showTree)
-import Data.Tuple.Extra (fst3, snd3, thd3, third3)
+import Data.Tuple.Extra (fst3, snd3, thd3, third3, second3)
 import Data.Void
 import Tau.Env (Env(..))
 import Tau.Expr
@@ -77,27 +77,36 @@ insertDicts env = mapTags $ \info@NodeInfo{..} ->
 
 frog e1 = foldr (\(a, b) e -> lamExpr (NodeInfo (tArr b (typeOf e1)) []) (varPat (NodeInfo b []) a) e) e1 
 
+--stuffs :: (Monad m) => Pattern t -> m [(Name, Scheme)]
+--stuffs = cata $ \case
+--    PVar t var ->
+--        pure [(var, nodeType t)]
+
 rebuildTree22 
-  :: (MonadSupply Name m, MonadReader (ClassEnv (PatternExpr Type), TypeEnv, [Name]) m) -- (MonadError String m, MonadSupply Name m, MonadState Environments m) 
+  :: (MonadError String m, MonadSupply Name m, MonadReader (ClassEnv (PatternExpr NodeInfo), TypeEnv, [Name]) m) -- (MonadError String m, MonadSupply Name m, MonadState Environments m) 
   => PatternExpr NodeInfo 
   -> StateT [(Name, Type)] m (PatternExpr NodeInfo)
 rebuildTree22 a = do
     a <- xxx a
-    xxxs <- get
-    pure (frog a xxxs)
+    xxxs <- nub <$> reset
+    traceShowM ":::::::::::"
+    traceShowM xxxs
+    pure (frog a (nub xxxs))
   where
     xxx = cata $ \case
-        ELam t pat expr1 -> do
-            let vars = free pat
-            e1 <- local (third3 (Set.toList vars <>)) expr1
-            pure (lamExpr t pat e1)
+        --ELam t pat expr1 -> 
+        --    -- TODO: I don't think we need to do this!!!??
+        --    lamExpr t pat <$> local (third3 (Set.toList (free pat) <>)) expr1
 
         ELet t pat expr1 expr2 -> do
             e1 <- expr1
-            xxxs <- get
-            put []
+            xxxs <- nub <$> reset
             e2 <- expr2
-            pure (letExpr t pat (frog e1 xxxs) e2)
+            --vs <- stuffs pat
+            ----e2 <- local (second (Env.inserts vs)) expr2
+            --e2 <- local (second3 (Env.inserts vs)) expr2
+            traceShowM xxxs
+            pure (letExpr t pat (frog e1 (nub xxxs)) e2)
 
         EVar t var -> do
             -- 1. lambda bound var
@@ -108,9 +117,11 @@ rebuildTree22 a = do
 
             vars <- asks thd3
 
-            if var `elem` vars
-                then pure (varExpr t var)
-                else foldrM funx (varExpr (stripNodePredicates t) var) ds
+            --if var `elem` vars
+            --    then pure (varExpr t var)
+            --    else foldrM funx (varExpr (stripNodePredicates t) var) ds
+
+            foldrM funx (varExpr (stripNodePredicates t) var) ds
 
             --pure (varExpr t var)
             --pure (appExpr t [varExpr (stripNodePredicates t) var])
@@ -118,7 +129,11 @@ rebuildTree22 a = do
         e -> 
             embed <$> sequence e
 
-funx :: (MonadSupply Name m, MonadReader (ClassEnv (PatternExpr Type), TypeEnv, [Name]) m) => Predicate -> PatternExpr NodeInfo -> StateT [(Name, Type)] m (PatternExpr NodeInfo)
+funx 
+  :: (MonadError String m, MonadSupply Name m, MonadReader (ClassEnv (PatternExpr NodeInfo), TypeEnv, [Name]) m) 
+  => Predicate 
+  -> PatternExpr NodeInfo 
+  -> StateT [(Name, Type)] m (PatternExpr NodeInfo)
 funx (InClass name ty) expr = do
     env <- asks fst3
     if isVar ty 
@@ -126,16 +141,74 @@ funx (InClass name ty) expr = do
             tv <- Text.replace "a" "&" <$> supply
             let t = tApp (tCon (kArr kTyp (fromJust (kindOf ty))) name) ty
                 dict = varExpr (NodeInfo t []) tv
-            --tell [(tv, t)]
             modify ((tv, t) :)
             pure (appExpr (exprTag expr) [expr, dict])
-        else 
-            case lookupClassInstance name ty env of
-                Nothing -> 
+        else do
+            --let baz = msum [tryInstance i | i <- Env.toList env]
+            case lookupClassInstance2 name ty env of
+                Nothing -> do
+                    --traceShowM name
+                    --traceShowM ty
+                    --traceShowM env
                     error "missing class instance" -- throwError "baaaah"
 
-                Just (a, Instance{..}) -> 
-                    pure (appExpr (exprTag expr) [expr, mapTags (`NodeInfo` []) instanceDict])
+                Just (a, i@Instance{..}) -> do
+                    --traceShowM (pretty instanceDict)
+                    traceShowM "^^^^^^^"
+                    --undefined
+                    traceShowM (pretty instanceDict)
+                    foo <- rebuildTree22 instanceDict
+                    env2 <- asks snd3
+                    mapM_ traceShowM (Env.toList env2) -- (Env.lookup "showList" env2)
+                    --traceShowM (pretty foo)
+                    traceShowM "^^^^^^^"
+                    --let foo = instanceDict
+
+                    --let zz:_ = a 
+                    --let fork = [lookupClassInstance zz ty env | zz <- a]
+
+                    --let dog = fork :: Int
+
+                    --traceShowM fork
+
+                    --[funx (InClass zzz ty) expr | zzz <- a]
+                    --let zzz:_ = a
+                    --hello <- funx (InClass zzz ty) expr
+                    --traceShowM hello
+
+                    --deps a (appExpr (exprTag expr) [expr, mapTags (`NodeInfo` []) instanceDict])
+
+                    --pure (appExpr (exprTag expr) [expr, mapTags (`NodeInfo` []) instanceDict])
+                    pure (appExpr (exprTag expr) [expr, foo])
+
+                    --pure (letExpr (exprTag expr) (varPat (exprTag expr) "show") (varExpr (exprTag expr) "@showInt") (appExpr (exprTag expr) [expr, mapTags (`NodeInfo` []) instanceDict]))
+
+--                  where
+--                    deps :: (MonadError String m) => [Name] -> PatternExpr NodeInfo -> m (PatternExpr NodeInfo)
+--                    deps a e
+--                        | Prelude.null a = pure e
+--                        | otherwise      = x
+--                      where
+--                        x :: (MonadError String m) => m (PatternExpr NodeInfo) -- [([Name], Instance (PatternExpr Type))]
+--                        x = do
+--                            (yyy, zzz) <- unzip <$> traverse gork a
+--                            let ddd = foldr bork e zzz
+--                            deps (concat yyy) ddd
+--
+--                        gork :: (MonadError String m) => Name -> m ([Name], Instance (PatternExpr Type))
+--                        gork zz = 
+--                            case lookupClassInstance zz ty env of
+--                                Nothing -> throwError ""
+--                                Just i -> pure i
+--
+--                        bork :: Instance (PatternExpr Type) -> PatternExpr NodeInfo -> PatternExpr NodeInfo
+--                        bork Instance{..} ex = undefined
+
+--                        yy = [Maybe a] -> ([a], 
+
+
+
+
 
 joinDicts :: PatternExpr Type -> PatternExpr Type -> PatternExpr Type
 joinDicts d1 d2 =
@@ -251,6 +324,23 @@ addClassInstance name ty ex =
 --  where
 --    abc = find ((ty ==) . instanceType) (instances env name)
 
+lookupClassInstance2 :: Name -> Type -> ClassEnv (PatternExpr NodeInfo) -> Maybe ([Name], Instance (PatternExpr NodeInfo))
+lookupClassInstance2 name ty env = do -- undefined -- find ((ty ==) . instanceType) (instances env name)
+    (super, instances) <- Env.lookup name env
+    msum [tryX i | i <- instances]
+    --instance_ <- find ((ty ==) . instanceType) instances
+    --pure undefined -- (super, instance_)
+  where
+--    tryX :: Instance a -> Maybe ([Name], Instance (PatternExpr NodeInfo))
+    tryX (Instance ps t d) = 
+        case match t ty of
+            Left _    -> Nothing
+            --Right sub -> do
+                --let ee = d :: PatternExpr NodeInfo
+                --Just ([], undefined) -- apply sub t
+            Right sub -> Just ([], Instance ps t (mapTags (apply sub) d))
+
+
 lookupClassInstance :: Name -> Type -> ClassEnv a -> Maybe ([Name], Instance a)
 lookupClassInstance name ty env = do -- undefined -- find ((ty ==) . instanceType) (instances env name)
     (super, instances) <- Env.lookup name env
@@ -271,11 +361,13 @@ bySuper env self@(InClass name ty) =
     self:concat [bySuper env (InClass tc ty) | tc <- super env name]
 
 byInstance :: ClassEnv a -> Predicate -> Maybe [Predicate]
-byInstance env self@(InClass name ty) = 
+byInstance env self@(InClass name ty) = do
+--    traceShowM self
     msum $ rightToMaybe <$> [tryInstance i | i <- instances env name]
   where
     tryInstance :: Instance a -> Either String [Predicate]
     tryInstance (Instance ps h _) = 
+        -- TODO: use match???
         apply <$> matchClass (InClass name h) self <*> pure ps
 
 --instance Substitutable Predicate where
@@ -302,7 +394,8 @@ toHeadNormalForm env = fmap concat . mapM (hnf env)
     hnf env tycl 
         | isHeadNormalForm tycl = pure [tycl]
         | otherwise = case byInstance env tycl of
-            Nothing  -> error "ContextReductionFailed" -- throwError ContextReductionFailed Just cls -> toHeadNormalForm env cls
+            Nothing  -> error "ContextReductionFailed" -- throwError ContextReductionFailed 
+            Just cls -> toHeadNormalForm env cls
 
 
 -- remove a class constraint if it is entailed by the other constraints in the list
@@ -445,11 +538,12 @@ generalize ty = do
     let ty1   = apply sub1 ty
         pairs = filter ((`notElem` free (apply sub1 env)) . fst) (typeVars ty1)
         sub2  = fromList [(fst v, tGen n) | (v, n) <- zip pairs [0..]]
-        ty2   = apply sub2 (upgrade ty1)
+        --ty2   = apply sub2 (upgrade ty1)
     ps <- lookupPredicates (fst <$> pairs)
     pure (Forall (snd <$> pairs) 
                  (traverse (maybeToList . getTypeIndex) =<< apply sub2 
-                 (upgrade <$$> ps)) ty2)
+                 --(upgrade <$$> ps)) ty2)
+                 (upgrade <$$> ps)) (apply sub2 (upgrade ty1)))
   where
     typeVars :: Type -> [(Name, Kind)]
     typeVars ty = nub . flip cata ty $ \case
