@@ -24,7 +24,7 @@ import qualified Tau.Env as Env
 
 -- | Base functor for Kind
 data KindF a 
-    = KTyp                    -- ^ A concrete type (the kind of types that have values)
+    = KTyp                    -- ^ A concrete type (kind of value-types)
     | KArr a a                -- ^ Type constructor
 --  | KCls
     deriving (Show, Eq, Ord, Functor, Foldable, Traversable)
@@ -55,7 +55,7 @@ type TypeT a = Fix (TypeF a)
 -- | Standalone type (a type that is not part of a type scheme)
 type Type = TypeT Void
 
--- | A type that appears in a type scheme
+-- | A type which appears in a type scheme
 type PolyType = TypeT Int
 
 -- | Type class constraints
@@ -65,7 +65,7 @@ data PredicateT a = InClass Name a
 -- | A standalone typeclass constraint 
 type Predicate = PredicateT Type 
 
--- | A typeclass constraint that appears in a type scheme
+-- | A typeclass constraint which appears in a type scheme
 type PolyPredicate = PredicateT Int
 
 -- | Polymorphic type schemes
@@ -77,9 +77,9 @@ type Class a = ([Name], [Instance a])
 
 -- | Type class instance
 data Instance a = Instance 
-    { instancePredicates :: [Predicate] 
-    , instanceType       :: Type 
-    , instanceDict       :: a
+    { predicates   :: [Predicate] 
+    , instanceType :: Type 
+    , instanceDict :: a
     } deriving (Show, Eq)
 
 class Free t where
@@ -192,7 +192,7 @@ infixr 1 `tArr`
 tApp :: TypeT a -> TypeT a -> TypeT a
 tApp = embed2 TApp 
 
-typ :: Name -> Type
+typ :: Name -> TypeT a
 typ = tCon kTyp
 
 tUnit :: Type
@@ -216,8 +216,18 @@ tString = typ "String"
 tChar :: Type
 tChar = typ "Char" 
 
-tListCon :: Type
+tListCon :: TypeT a
 tListCon = tCon kFun "List"
 
-tList :: Type -> Type
+tList :: TypeT a -> TypeT a
 tList = tApp tListCon 
+
+tPair :: TypeT a -> TypeT a -> TypeT a
+tPair = tApp . tApp (tCon (kArr kTyp (kArr kTyp kTyp)) "(,)")
+
+tTriple :: TypeT a -> TypeT a -> TypeT a -> TypeT a
+tTriple t1 t2 t3 = tApp (tApp (tApp (tCon (kArr kTyp (kArr kTyp (kArr kTyp kTyp))) "(,,)") t1) t2) t3
+
+tTuple :: [TypeT a] -> TypeT a
+tTuple ts = foldl tApp (tCon kind ("(" <> Text.replicate (length ts - 1) "," <> ")")) ts
+  where kind = foldr (const (kArr kTyp)) kTyp ts

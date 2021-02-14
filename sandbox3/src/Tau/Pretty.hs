@@ -5,6 +5,7 @@
 module Tau.Pretty where
 -- Tau.Lang.Pretty
 
+import Control.Arrow ((>>>))
 import Data.List (sortOn)
 import Data.Maybe (fromJust, maybeToList)
 import Data.Text.Prettyprint.Doc
@@ -34,12 +35,14 @@ namesToFields name =
   where
     stripped = Text.stripSuffix "}" =<< Text.stripPrefix "{" name
 
+-- TODO: rename
 data Constructor 
     = CTuple
     | CRecord
     | CPlain
     deriving (Show, Eq)
 
+-- TODO: rename
 conType :: Name -> Constructor
 conType con
     | Text.null con = CPlain
@@ -48,6 +51,13 @@ conType con
             ('(', ')') -> CTuple
             ('{', '}') -> CRecord
             _          -> CPlain
+
+-- TODO: rename
+conType_ :: TypeT v -> Maybe Constructor
+conType_ = cata $ \case
+    TApp c _ -> c
+    TCon _ c -> Just (conType c)
+    _        -> Nothing
 
 prettyStructType :: TypeT v -> Maybe (Doc a)
 prettyStructType ty =
@@ -78,8 +88,11 @@ instance Pretty (TypeT v) where
                 Just doc -> doc
                 Nothing  -> snd a <+> cata rhs (fst b)
           where
+            con = conType_ (fst b)
             rhs = \case
-                TApp{} -> parens (snd b)
+                TApp{} 
+                    | Just CRecord == con || Just CTuple == con -> snd b
+                    | otherwise -> parens (snd b)
                 TArr{} -> parens (snd b)
                 _      -> snd b
 
@@ -215,10 +228,10 @@ prettyExpr f = para $ \case
         app a = (rhs :)
           where
             rhs = flip cata (fst a) $ \case 
-                EApp{}      -> parens (snd a)
-                ECon _ _ [] -> snd a
-                ECon{}      -> parens (snd a)
-                _           -> snd a
+                EApp{}       -> parens (snd a)
+                ECon _ _ []  -> snd a
+                ECon _ con _ -> if CTuple == conType con then snd a else parens (snd a)
+                _            -> snd a
 
 instance Pretty (PatternExpr t) where
     pretty = prettyExpr f

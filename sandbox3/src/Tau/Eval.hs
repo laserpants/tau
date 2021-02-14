@@ -172,7 +172,7 @@ tryClause
   -> Maybe [(Name, Value m)]
 tryClause xs ys = cata alg (zip xs ys)
   where
-    alg :: Algebra (ListF (Prep t, Value m)) (Maybe [(Name, Value m)])
+    alg :: (Show t) => Algebra (ListF (Prep t, Value m)) (Maybe [(Name, Value m)])
     alg = \case 
         Cons (RVar _ var, val) xs -> 
             Just [(var, val)] <> xs
@@ -185,7 +185,10 @@ tryClause xs ys = cata alg (zip xs ys)
             let ys = [(v, w) | (n, v) <- zip (labels con) ps, (p, w) <- fields, n == p]
             (<>) <$> Just ys <*> xs
 
-        Cons _ _ -> 
+        Cons x y -> do
+            traceShowM x
+            traceShowM y
+            traceShowM "."
             error "Incompatible patterns"
 
         Nil -> 

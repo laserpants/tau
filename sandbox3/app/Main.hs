@@ -127,6 +127,10 @@ expr36 = -- appExpr () [varExpr () "@strconcat", litExpr () (LString "List : "),
 expr37 =
     letExpr () (varPat () "first") (lamExpr () (varPat () "a") (lamExpr () (varPat () "b") (varExpr () "a"))) (appExpr () [varExpr () "first", litExpr () (LInt 1), litExpr () (LInt 2)])
 
+expr38 :: PatternExpr ()
+expr38 =
+    appExpr () [varExpr () "show", conExpr () "(,)" [litExpr () (LInt 9), litExpr () (LBool True)]]
+
 
 {-
 
@@ -183,10 +187,12 @@ myTypeEnv = Env.fromList
     , ( "show"     , Forall [kTyp] [InClass "Show" 0] (tGen 0 `tArr` upgrade tString) )
     , ( "singleton" , Forall [kTyp] [] (tGen 0 `tArr` (tApp (upgrade tListCon) (tGen 0))) )
     , ( "head"     , Forall [kTyp] [] (tApp (upgrade tListCon) (tGen 0) `tArr` tGen 0))
+    , ( "fst"      , Forall [kTyp, kTyp] [] (tPair (tGen 0) (tGen 1) `tArr` (tGen 0)))
+    , ( "snd"      , Forall [kTyp, kTyp] [] (tPair (tGen 0) (tGen 1) `tArr` (tGen 1)))
+    ]
 
 --    [ -- ( "@strlen" , sScheme (tCon kStar "String" `tArr` tCon kStar "Int") )
 --    , -- ( "show"    , sForall kStar ["Show"] (sScheme (tGen 0 `tArr` tCon kStar "String")) )
-    ]
 
 --type ClassEnv a = Env (Class a)
 --type Class a = ([Name], [Instance a])
@@ -195,14 +201,40 @@ foo11 = varExpr (NodeInfo ((tList (tVar kTyp "a")) `tArr` tString) [InClass "Sho
 
 --foo11 = lamExpr undefined (varPat undefined "xs") (appExpr undefined [varExpr undefined "show", appExpr undefined [varExpr () "head", varExpr undefined "xs"]])
 
+--showPair :: PatternExpr NodeInfo
+--showPair = 
+--    case runExcept (runMaybeT (evalSupplyT (runReaderT (comp zork) (myClassEnv, myTypeEnv)) (numSupply "a"))) of
+--        Left e  -> error (show e)
+--        Right x -> fromJust x
+--  where
+----    zork = lamExpr () (varPat () "p") (appExpr () [varExpr () "show", (appExpr () [varExpr () "fst", varExpr () "p"])])
+--    zork = lamExpr () (varPat () "p") (appExpr () [varExpr () "show", (appExpr () [varExpr () "fst", varExpr () "p"])])
+--    comp e = do
+--        (tree, (sub, xxx1)) <- runStateT (infer e) mempty
+--        let tree2 = (mapTags (apply sub) tree) 
+--        pure tree2
+--        --(tree4, _) <- withReaderT (\(a,b) -> (a,b,[])) (runStateT (rebuildTree22 tree2) [])
+--        --let zzz3 = simplified (mapTags nodeType tree4)
+--        --let Right zzz1 = zzz3
+--        --pure zzz1
+
+
+-- \p -> show (fst p)
+showPair_ = lamExpr (NodeInfo (tPair (tVar kTyp "a") (tVar kTyp "b") `tArr` tString) []) (varPat (NodeInfo (tPair (tVar kTyp "a") (tVar kTyp "b")) []) "p") 
+              (appExpr (NodeInfo tString []) [varExpr (NodeInfo (tString `tArr` tString `tArr` tString `tArr` tString) []) "@strconcat3", appExpr (NodeInfo tString []) [varExpr (NodeInfo (tVar kTyp "a" `tArr` tString) [InClass "Show" (tVar kTyp "a")]) "show", (appExpr (NodeInfo (tVar kTyp "a") []) [varExpr (NodeInfo (tPair (tVar kTyp "a") (tVar kTyp "b") `tArr` tVar kTyp "a") []) "fst", varExpr (NodeInfo (tPair (tVar kTyp "a") (tVar kTyp "b")) []) "p"])], litExpr (NodeInfo tString []) (LString ","), appExpr (NodeInfo tString []) [varExpr (NodeInfo (tVar kTyp "b" `tArr` tString) [InClass "Show" (tVar kTyp "b")]) "show", appExpr (NodeInfo (tVar kTyp "b") []) [varExpr (NodeInfo (tPair (tVar kTyp "a") (tVar kTyp "b") `tArr` tVar kTyp "b") []) "snd", varExpr (NodeInfo (tPair (tVar kTyp "a") (tVar kTyp "b")) []) "p"]]])
+
+
 myClassEnv :: ClassEnv (PatternExpr NodeInfo)
 myClassEnv = Env.fromList
     [ ( "Show"
       , ( []
          , [ Instance [] tInt  (recExpr (NodeInfo (tApp (tCon (kArr kTyp kTyp) "Show") tInt) [])  [Field (NodeInfo (tInt `tArr` tString) []) "show" (varExpr (NodeInfo (tInt `tArr` tString) []) "@showInt")])
+           , Instance [] tBool (recExpr (NodeInfo (tApp (tCon (kArr kTyp kTyp) "Show") tBool) [])  [Field (NodeInfo (tBool `tArr` tString) []) "show" (varExpr (NodeInfo (tBool `tArr` tString) []) "@showBool")])
            , Instance [InClass "Show" (tVar kTyp "a")] (tList (tVar kTyp "a")) (recExpr (NodeInfo (tApp (tCon (kArr kTyp kTyp) "Show") (tList (tVar kTyp "a"))) []) [Field (NodeInfo ((tList (tVar kTyp "a")) `tArr` tString) []) "show" foo11])
+           , Instance [] (tPair (tVar kTyp "a") (tVar kTyp "b")) (recExpr (NodeInfo (tApp (tCon (kArr kTyp kTyp) "Show") (tPair (tVar kTyp "a") (tVar kTyp "b"))) []) [Field (NodeInfo (tPair (tVar kTyp "a") (tVar kTyp "b") `tArr` tString) []) "show" showPair_])
 --           , Instance [] tBool (recExpr (tApp (tCon (kArr kTyp kTyp) "Show") tBool) [Field (tBool `tArr` tString) "show" (varExpr (tBool `tArr` tString) "@showBool")])
 --           , Instance [] tUnit (recExpr (tApp (tCon (kArr kTyp kTyp) "Show") tUnit) [Field (tUnit `tArr` tString) "show" (varExpr (tUnit `tArr` tString) "@showUnit")])
+--           0
            ]
         )
       )
@@ -262,8 +294,6 @@ pipeline e =  do
 
     debugTree tree2
     traceShowM "==============================================================="
-    traceShowM "==============================================================="
-    traceShowM "==============================================================="
 
     let tree3 = tree2 -- (insertDicts xxx1 tree2)
 
@@ -322,8 +352,16 @@ myEvalEnv = Env.fromList
     , ("Cons"     , constructor "Cons" 2) -- fromJust (runEval (eval pair) mempty))
     , ("singleton" , fromJust (runEval (eval singleton ) mempty))
     , ("head"     , fromJust (runEval (eval head_) mempty))
+    , ("fst"      , fromJust (runEval (eval fst_) mempty))
+    , ("snd"      , fromJust (runEval (eval snd_) mempty))
     ]
   where
+    Right snd_ = simplified foo25
+    foo25 = lamExpr () (varPat () "p") (matExpr () [varExpr () "p"] [Clause [conPat () "(,)" [anyPat (), varPat () "b"]] [] (varExpr () "b")])
+
+    Right fst_ = simplified foo24
+    foo24 = lamExpr () (varPat () "p") (matExpr () [varExpr () "p"] [Clause [conPat () "(,)" [varPat () "a", anyPat ()]] [] (varExpr () "a")])
+
     Right head_ = simplified foo23
     foo23 = lamExpr () (varPat () "xs") (matExpr () [varExpr () "xs"] [Clause [conPat () "Cons" [varPat () "x", anyPat ()]] [] (varExpr () "x")])
 
@@ -364,13 +402,13 @@ runPipeline a = do
 --runTest2_ = runPipeline expr24
 --runTest2_ = runPipeline expr25
 --runTest2_ = runPipeline expr26
-runTest2_ = runPipeline expr32
+--runTest2_ = runPipeline expr32
 --runTest2_ = runPipeline expr35
 --runTest2_ = runPipeline expr3
 --runTest2_ = runPipeline expr6
 --runTest2_ = runPipeline expr25
 --runTest2_ = runPipeline $ appExpr () [expr5, litExpr () (LInt 55555)]
---runTest2_ = runPipeline expr35
+runTest2_ = runPipeline expr38
 
 --
 --
