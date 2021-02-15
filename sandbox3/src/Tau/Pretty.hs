@@ -8,9 +8,10 @@ module Tau.Pretty where
 import Control.Arrow ((>>>))
 import Data.List (sortOn)
 import Data.Maybe (fromJust, maybeToList)
+import Data.Maybe (isJust)
 import Data.Text.Prettyprint.Doc
-import Data.Void
 import Data.Tuple.Extra (dupe)
+import Data.Void
 import Tau.Expr
 import Tau.Type
 import Tau.Util
@@ -39,6 +40,8 @@ namesToFields name =
 data Constructor 
     = CTuple
     | CRecord
+    | CNil
+    | CCons
     | CPlain
     deriving (Show, Eq)
 
@@ -46,6 +49,8 @@ data Constructor
 conType :: Name -> Constructor
 conType con
     | Text.null con = CPlain
+    | "(::)" == con = CCons
+    | "[]"   == con = CNil
     | otherwise = 
         case (Text.head con, Text.last con) of
             ('(', ')') -> CTuple
@@ -68,6 +73,8 @@ prettyStructType ty =
     fun as con = case conType con of
         CTuple  -> Just (prettyTuple as)
         CRecord -> Just (prettyRecord colon (namesToFields con as))
+        --CNil    -> Just "CNil"
+        --CCons   -> Just "CCons"
         _       -> Nothing
 
     headCon (TCon _ c) = Just c
@@ -91,7 +98,7 @@ instance Pretty (TypeT v) where
             con = conType_ (fst b)
             rhs = \case
                 TApp{} 
-                    | Just CRecord == con || Just CTuple == con -> snd b
+                    | isJust con && Just CPlain /= con -> snd b
                     | otherwise -> parens (snd b)
                 TArr{} -> parens (snd b)
                 _      -> snd b
@@ -150,7 +157,7 @@ instance Pretty Literal where
 instance Pretty (Prep t) where
     pretty = \case
         RVar _ var    -> pretty var
-        RCon _ con rs -> prettyCon con (dupe <$> rs) (args . fst)
+        RCon _ con rs -> prettyCon id con (dupe <$> rs) (args . fst)
       where
         args :: Name -> [Doc a] -> [Doc a]
         args n = (pretty n :)
@@ -158,7 +165,7 @@ instance Pretty (Prep t) where
 instance Pretty (Pattern t) where
     pretty = para $ \case
         PVar _ var     -> pretty var
-        PCon _ con ps  -> prettyCon con ps args
+        PCon _ con ps  -> prettyCon (concatMap unlistPat) con ps args
         PLit _ lit     -> pretty lit
         PRec _ fields  -> prettyRecord equals (snd <$$> fields)
         PAny _         -> "_"
@@ -214,7 +221,7 @@ instance (Pretty p, Pretty q, Pretty (Expr t p q)) => Pretty (Op (Expr t p q)) w
 prettyExpr :: (Pretty p, Pretty q, Pretty (Expr t p q)) => (q -> Doc a) -> Expr t p q -> Doc a
 prettyExpr f = para $ \case
         EVar _ var     -> pretty var
-        ECon _ con exs -> prettyCon con exs app
+        ECon _ con exs -> prettyCon (concatMap unlist) con exs app
         ELit _ lit     -> pretty lit
         EApp _ exs     -> hsep (foldr app [] exs)
         ELet _ p e1 e2 -> prettyLet p e1 e2
@@ -245,14 +252,28 @@ instance Pretty (PatternExpr t) where
 instance Pretty (Expr t (Prep t) Name) where
     pretty = prettyExpr pretty
 
-prettyCon :: (Pretty p) => Name -> [(p, q)] -> ((p, q) -> [Doc a] -> [Doc a]) -> Doc a
-prettyCon con exs fun
+prettyCon :: (Pretty p) => ([p] -> [p]) -> Name -> [(p, q)] -> ((p, q) -> [Doc a] -> [Doc a]) -> Doc a
+prettyCon flatten con exs fun
     | null exs      = pretty con
     | CRecord == ct = prettyRecord equals (namesToFields con (pretty . fst <$> exs))
     | CTuple  == ct = prettyTuple (pretty . fst <$> exs)
+    | CNil    == ct = "[]"
+    | CCons   == ct = "[" <> commaSep (pretty <$> flatten (fst <$> exs)) <> "]"
     | otherwise     = pretty con <+> hsep (foldr fun [] exs)
   where
     ct = conType con
+
+unlist :: Expr t p q -> [Expr t p q]
+unlist = para $ \case
+    ECon _ "[]"   [] -> []
+    ECon _ "(::)" es -> concat (snd <$> es)
+    e                -> [embed (fst <$> e)]
+
+unlistPat :: Pattern t -> [Pattern t]
+unlistPat = para $ \case
+    PCon _ "[]"   [] -> []
+    PCon _ "(::)" ps -> concat (snd <$> ps)
+    p                -> [embed (fst <$> p)]
 
 prettyMatch :: (Pretty p, Pretty q) => [(a, Doc ann)] -> [Clause p (q, r)] -> Doc ann
 prettyMatch exs eqs = 

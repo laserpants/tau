@@ -102,14 +102,15 @@ data ExprF t p q a
     | ELit t Literal          -- ^ Literal value
     | EApp t [a]              -- ^ Function application
     | ELet t q a a            -- ^ Let-binding
+    | ELFn t Name [q] a a     -- ^ Let-function expression (let f x = e) 
     | ELam t q a              -- ^ Lambda abstraction
+--    | ELam t [q] a         
     | EIf  t a ~a ~a          -- ^ If-clause
     | EMat t [a] [Clause p a] -- ^ Match expression
     | EOp  t (Op a)           -- ^ Operator
     | ERec t [Field t a]      -- ^ Record
 --  | EFun t [Clause p a]     -- ^ Lambda-like match
---  | ELFn t Name [q] a       -- ^ Let-function expression (let f x = e) 
---  | EAnn Scheme a
+--  | EAnn Scheme a           -- ^ Type-annotated expression
     deriving (Functor, Foldable, Traversable)
 
 deriveShow  ''ExprF
@@ -320,6 +321,9 @@ appExpr = embed2 EApp
 letExpr :: t -> q -> Expr t p q -> Expr t p q -> Expr t p q
 letExpr = embed4 ELet 
 
+lFnExpr :: t -> Name -> [q] -> Expr t p q -> Expr t p q -> Expr t p q
+lFnExpr = embed5 ELFn
+
 lamExpr :: t -> q -> Expr t p q -> Expr t p q
 lamExpr = embed3 ELam 
 
@@ -346,3 +350,6 @@ andOp = binOpExpr OAnd
 
 orOp :: t -> Expr t p q -> Expr t p q -> Expr t p q
 orOp = binOpExpr OOr
+
+dotOp :: t -> Name -> Expr t p q -> Expr t p q
+dotOp = binOpExpr ODot

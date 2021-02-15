@@ -628,7 +628,7 @@ infer = cata alg
                 let (_, ns, fs) = unzip3 (fieldsInfo fields)
                     info f = setFieldTag (NodeInfo (typeOf (fieldValue f)) []) f
                 es <- sequence fs
-                unifyTyped newTy (foldl tApp (recordConstructor ns) (typeOf <$> es))
+                unifyTyped newTy (foldl tApp (tRecord ns) (typeOf <$> es))
                 pure (recExpr (NodeInfo newTy []) (zipWith (info <$$> Field ()) ns es))
 
 inferClause
@@ -682,7 +682,7 @@ inferPattern = cata alg
                 let (_, ns, fs) = unzip3 (fieldsInfo fields)
                 ps <- sequence fs
                 let tfs = zipWith (\n p -> Field (patternTag p) n p) ns ps
-                lift (unifyTyped newTy (foldl tApp (recordConstructor ns) (typeOf <$> ps)))
+                lift (unifyTyped newTy (foldl tApp (tRecord ns) (typeOf <$> ps)))
                 pure (recPat (NodeInfo newTy []) tfs)
 
             PAny _ -> 

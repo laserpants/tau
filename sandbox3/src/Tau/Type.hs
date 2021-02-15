@@ -133,11 +133,11 @@ toScheme = Forall [] [] . upgrade
 newTVar :: (MonadSupply Name m) => Kind -> m (TypeT a)
 newTVar kind = tVar kind <$> supply 
 
-recordConstructor :: [Name] -> TypeT a
-recordConstructor names = 
-    tCon kind ("{" <> Text.intercalate "," names <> "}")
-  where 
-    kind = foldr kArr kTyp (replicate (length names) kTyp)
+recordCon :: [Name] -> Name
+recordCon names = "{" <> Text.intercalate "," names <> "}"
+
+tupleCon :: Int -> Name
+tupleCon n = "(" <> Text.replicate (n - 1) "," <> ")"
 
 upgrade :: Type -> PolyType
 upgrade = cata $ \case
@@ -230,10 +230,14 @@ tList :: TypeT a -> TypeT a
 tList = tApp tListCon 
 
 tTuple :: [TypeT a] -> TypeT a
-tTuple ts = foldl tApp (tCon kind con) ts
+tTuple ts = foldl tApp (tCon kind (tupleCon (length ts))) ts
   where 
-    con  = "(" <> Text.replicate (length ts - 1) "," <> ")"
     kind = foldr (const (kArr kTyp)) kTyp ts
+
+tRecord :: [Name] -> TypeT a
+tRecord names = tCon kind (recordCon names)
+  where 
+    kind = foldr kArr kTyp (replicate (length names) kTyp)
 
 tPair :: TypeT a -> TypeT a -> TypeT a
 tPair t1 t2 = tTuple [t1, t2]

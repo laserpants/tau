@@ -17,6 +17,7 @@ module Tau.Util
   , embed2
   , embed3
   , embed4
+  , embed5
   , first3M
   , firstM
   , intToText
@@ -115,6 +116,9 @@ embed3 t a b c = embed (t a b c)
 
 embed4 :: (Corecursive t) => (t1 -> t2 -> t3 -> t4 -> Base t t) -> t1 -> t2 -> t3 -> t4 -> t
 embed4 t a b c d = embed (t a b c d)
+
+embed5 :: (Corecursive t) => (t1 -> t2 -> t3 -> t4 -> t5 -> Base t t) -> t1 -> t2 -> t3 -> t4 -> t5 -> t
+embed5 t a b c d e = embed (t a b c d e)
 
 integerToText :: Integer -> Text
 integerToText = Text.toStrict . toLazyText . decimal

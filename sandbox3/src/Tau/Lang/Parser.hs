@@ -42,6 +42,9 @@ spaces = Lexer.space
 parens :: Parser a -> Parser a
 parens = between (symbol "(") (symbol ")")
 
+brackets :: Parser a -> Parser a
+brackets = between (symbol "[") (symbol "]")
+
 surroundedBy :: Parser Text -> Parser a -> Parser a
 surroundedBy p = between p p
 
@@ -66,10 +69,13 @@ reserved =
     , "else"
     , "match"
     , "with"
-    , "True"
-    , "False"
+    , "fun"
     , "not"
     , "forall"
+    , "True"
+    , "False"
+    , "Void"
+    , "Unit"
     ]
 
 word :: Parser Text -> Parser Text
@@ -89,15 +95,62 @@ constructor = word (withInitial upperChar)
 -- == Expression tree
 -- ============================================================================
 
-expr = undefined
+ast :: Parser (PatternExpr ())
+ast = do
+    app <- appExpr () <$> some atom
+    pure $ case project app of
+        EApp () [e] -> e
+        _           -> app
+  where
+    atom = ifClause
+        <|> letBinding
+--        <|> matchWith
+        <|> lambda
+        <|> literalExpr
+        <|> list_
+        <|> record
+        <|> tuple
+        <|> identifier
 
-lambda :: Parser (Expr () p q)
+expr :: Parser (PatternExpr ())
+expr = flip makeExprParser operator $ do
+    term <- ast
+    dots <- many (symbol "." *> name)
+    pure (foldl (flip (dotOp ())) term dots)
+
+letBinding :: Parser (PatternExpr ())
+letBinding = do
+    keyword "let"
+    pats <- many pattern_
+    term <- symbol  "="  *> expr
+    body <- keyword "in" *> expr
+    case pats of
+        [pat]                -> pure (letExpr () pat term body)
+        (Fix (PVar () f):ps) -> pure (lFnExpr () f ps term body)
+        _                    -> fail "Invalid let-expression"
+
+ifClause :: Parser (PatternExpr ())
+ifClause = do
+    cond  <- keyword "if"   *> expr
+    true  <- keyword "then" *> expr
+    false <- keyword "else" *> expr
+    pure (ifExpr () cond true false)
+
+lambda :: Parser (PatternExpr ())
 lambda = do
     void (symbol "\\")
     pats <- some pattern_
     body <- symbol "=>" *> expr
-    undefined
-    --pure (expandLam body pats)
+    pure (foldr (lamExpr ()) body pats)
+
+funExpr :: Parser (PatternExpr ())
+funExpr = undefined
+
+identifier :: Parser (PatternExpr ())
+identifier = varExpr () <$> word (withInitial letterChar)
+
+literalExpr :: Parser (PatternExpr ())
+literalExpr = litExpr () <$> literal
 
 unit :: Parser Literal
 unit = symbol "()" $> LUnit
@@ -131,6 +184,15 @@ stringLit :: Parser Literal
 stringLit = lexeme (LString . pack <$> chars) where
     chars = char '\"' *> manyTill Lexer.charLiteral (char '\"')
 
+literal :: Parser Literal
+literal = bool
+    <|> number
+    <|> charLit
+    <|> stringLit
+
+operator :: [[Operator Parser (PatternExpr ())]]
+operator = [[]]
+
 -- ============================================================================
 -- == Patterns
 -- ============================================================================
@@ -142,26 +204,80 @@ patternCons :: Pattern () -> Pattern () -> Pattern ()
 patternCons hd tl = conPat () "(::)" [hd, tl]
 
 patternExpr :: Parser (Pattern ())
-patternExpr = undefined -- wildcard
---    <|> conPattern
---    <|> litPattern
---    <|> varPattern
---    <|> listPattern
---    <|> tuplePattern
---    <|> recordPattern
+patternExpr = wildcard
+    <|> conPattern
+    <|> litPattern
+    <|> varPattern
+    <|> listPattern
+    <|> tuplePattern
+    <|> recordPattern
+
+varPattern :: Parser (Pattern ())
+varPattern = varPat () <$> name
+
+conPattern :: Parser (Pattern ())
+conPattern = do
+    con <- constructor
+    pats <- many pattern_
+    pure (conPat () con pats)
+
+litPattern :: Parser (Pattern ())
+litPattern = litPat () <$> literal
+
+wildcard :: Parser (Pattern ())
+wildcard = symbol "_" $> anyPat ()
+
+listPattern :: Parser (Pattern ())
+listPattern = do
+    elems <- elements pattern_
+    pure $ case elems of
+        [] -> conPat () "[]" []
+        _  -> conPat () "(::)" (elems <> [conPat () "[]" []])
+
+tuplePattern :: Parser (Pattern ())
+tuplePattern = do
+    elems <- components pattern_
+    pure $ case elems of
+        [p] -> p
+        []  -> litPat () LUnit
+        _   -> conPat () (tupleCon (length elems)) elems
+
+recordPattern :: Parser (Pattern ())
+recordPattern = recPat () <$> fields "=" pattern_
 
 -- ============================================================================
 -- == Lists and Tuples
 -- ============================================================================
 
-components :: Parser a -> Parser [a]
-components parser = symbol "(" *> parser `sepBy` symbol "," <* symbol ")"
+commaSep :: Parser a -> Parser [a]
+commaSep parser = parser `sepBy` symbol ","
 
+elements :: Parser a -> Parser [a]
+elements = brackets . commaSep 
+
+components :: Parser a -> Parser [a]
+components = parens . commaSep 
+
+list_ :: Parser (PatternExpr ())
+list_ = do
+    elems <- elements expr
+    pure (foldr cons1 (conExpr () "[]" []) elems)
+  where
+    cons1 hd tl = conExpr () "(::)" [hd, tl]
+
+tuple :: Parser (PatternExpr ())
+tuple = do
+    elems <- components expr
+    pure $ case elems of
+        []  -> litExpr () LUnit
+        [e] -> e
+        _   -> conExpr () (tupleCon (length elems)) elems
+--
 -- ============================================================================
 -- == Records
 -- ============================================================================
 
-record :: Parser (Expr () p q)
+record :: Parser (PatternExpr ())
 record = recExpr () <$> fields "=" expr
 
 fields :: Text -> Parser a -> Parser [Field () a]
@@ -214,7 +330,7 @@ tupleType = do
 recordType :: Parser (TypeT a)
 recordType = do
     (keys, vals) <- unzip <$> fieldPairs ":" type_
-    pure (foldl tApp (recordConstructor keys) vals)
+    pure (foldl tApp (tRecord keys) vals)
 
 predicate :: Parser a -> Parser (PredicateT a)
 predicate p = InClass <$> constructor <*> p
@@ -226,13 +342,13 @@ predicate p = InClass <$> constructor <*> p
 quantifier :: Parser [Name]
 quantifier = keyword "forall" *> some name <* symbol "."
 
-classConstraints :: Parser [PredicateT Name]
-classConstraints = components (predicate name) <* symbol "=>"
+constraints :: Parser [PredicateT Name]
+constraints = components (predicate name) <* symbol "=>"
 
 scheme :: Parser Scheme
 scheme = do
     vs <- fromMaybe [] <$> optional quantifier
-    ps <- try classConstraints <|> pure []
+    ps <- try constraints <|> pure []
     ty <- type_
     let (names, kinds) = unzip (filter (flip elem vs . fst) (typeVars ty))
         sub = Map.fromList (zip names [0..])
@@ -245,9 +361,9 @@ scheme = do
             case Map.lookup var map of
                 Nothing -> tVar kind var
                 Just n  -> tGen n
-        t -> Fix t
+        t -> embed t
 
-    substPredicate :: Map Name Int -> PredicateT Name -> Parser (PredicateT Int)
+    substPredicate :: Map Name Int -> PredicateT Name -> Parser PolyPredicate
     substPredicate map (InClass name var) = 
         case Map.lookup var map of
             Nothing -> fail ("Variable " <> Text.unpack var <> " does not appear bound in type")
