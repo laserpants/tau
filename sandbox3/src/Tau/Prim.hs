@@ -107,5 +107,5 @@ primEnv = Env.fromList
     , ( "(==)String" , fun2 ((==)   :: String -> String -> Bool) )
     , ( "strlen"     , fun1 (length :: String -> Int) )
     , ( "strconcat"  , fun2 ((++)   :: String -> String -> String) )
-    , ( "strconcat3" , fun3 ((\s t u -> s ++ t ++ u) :: String -> String -> String -> String) )
+    , ( "strconcat3" , fun3 ((\s t u -> s ++ t ++ u) :: String -> String -> String -> String) )  -- TODO: remove
     ]

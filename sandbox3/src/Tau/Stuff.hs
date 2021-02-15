@@ -146,7 +146,7 @@ funx (InClass name ty) expr = do
             pure (appExpr (exprTag expr) [expr, dict])
         else do
             --let baz = msum [tryInstance i | i <- Env.toList env]
-            case lookupClassInstance2 name ty env of
+            case lookupClassInstance name ty env of
                 Nothing -> do
                     --traceShowM name
                     --traceShowM ty
@@ -219,12 +219,12 @@ funx (InClass name ty) expr = do
 
 
 
-joinDicts :: PatternExpr Type -> PatternExpr Type -> PatternExpr Type
-joinDicts d1 d2 =
-    case (project d1, project d2) of
-        (ERec _ fields1, ERec t fields2) ->
-            recExpr t (fields1 <> fields2)
-        _ -> d2 -- error !!
+--joinDicts :: PatternExpr Type -> PatternExpr Type -> PatternExpr Type
+--joinDicts d1 d2 =
+--    case (project d1, project d2) of
+--        (ERec _ fields1, ERec t fields2) ->
+--            recExpr t (fields1 <> fields2)
+--        _ -> d2 -- error !!
 
 --buildDict 
 --  :: (MonadError String m, MonadSupply Name m, MonadState Environments m) 
@@ -333,8 +333,8 @@ addClassInstance name ty ex =
 --  where
 --    abc = find ((ty ==) . instanceType) (instances env name)
 
-lookupClassInstance2 :: Name -> Type -> ClassEnv (PatternExpr NodeInfo) -> Maybe ([Name], Instance (PatternExpr NodeInfo))
-lookupClassInstance2 name ty env = do -- undefined -- find ((ty ==) . instanceType) (instances env name)
+lookupClassInstance :: Name -> Type -> ClassEnv (PatternExpr NodeInfo) -> Maybe ([Name], Instance (PatternExpr NodeInfo))
+lookupClassInstance name ty env = do -- undefined -- find ((ty ==) . instanceType) (instances env name)
     (super, instances) <- Env.lookup name env
     msum [tryX i | i <- instances]
     --instance_ <- find ((ty ==) . instanceType) instances
@@ -493,10 +493,10 @@ unifyTyped
   :: ( MonadSupply Name m
      , MonadReader (ClassEnv a, TypeEnv) m
      , MonadError String m
-     , Typed s
-     , Typed t ) 
-  => s
-  -> t
+     , Typed t
+     , Typed u ) 
+  => t
+  -> u
   -> StateT (Substitution, Env [Predicate]) m ()
 unifyTyped v1 v2 = do 
     sub <- unified (typeOf v1) (typeOf v2)
@@ -556,13 +556,6 @@ generalize ty = do
                  (traverse (maybeToList . getTypeIndex) =<< apply sub2 
                  --(upgrade <$$> ps)) ty2)
                  (upgrade <$$> ps)) (apply sub2 (upgrade ty1)))
-  where
-    typeVars :: Type -> [(Name, Kind)]
-    typeVars ty = nub . flip cata ty $ \case
-        TVar k var -> [(var, k)]
-        TArr t1 t2 -> t1 <> t2
-        TApp t1 t2 -> t1 <> t2
-        ty         -> []
 
 infer
   :: (MonadSupply Name m, MonadReader (ClassEnv a, TypeEnv) m, MonadError String m) 
@@ -615,7 +608,7 @@ infer = cata alg
                 e1 <- cond
                 e2 <- tr
                 e3 <- fl
-                unifyTyped e1 tBool 
+                unifyTyped e1 (tBool :: Type)
                 unifyTyped e2 e3
                 unifyTyped newTy e2
                 pure (ifExpr (NodeInfo newTy []) e1 e2 e3)
@@ -647,7 +640,7 @@ inferClause
 inferClause ty exprs1 clause@(Clause ps _ _) = do
     (tps, vs) <- runWriterT (traverse inferPattern ps)
     let Clause _ exs e = local (second (Env.inserts (toScheme <$$> vs))) <$> clause
-    forM_ exs (>>= unifyTyped tBool . typeOf)
+    forM_ exs (>>= unifyTyped (tBool :: Type) . typeOf)
     forM_ (zip tps exprs1) (\(p, e2) -> unifyTyped (typeOf p) (typeOf e2)) 
     e >>= unifyTyped ty . typeOf
     Clause tps <$> sequence exs <*> e
@@ -703,9 +696,9 @@ inferLogicOp
   -> StateT (Substitution, Env [Predicate]) m (PatternExpr NodeInfo)
 inferLogicOp op a b = do
     (newTy, e1, e2) <- operands a b 
-    unifyTyped newTy tBool
-    unifyTyped e1 tBool
-    unifyTyped e2 tBool
+    unifyTyped newTy (tBool :: Type)
+    unifyTyped e1 (tBool :: Type)
+    unifyTyped e2 (tBool :: Type)
     pure (opExpr (NodeInfo newTy []) (op e1 e2))
 
 inferBinOp

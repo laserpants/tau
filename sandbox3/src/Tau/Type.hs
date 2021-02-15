@@ -154,7 +154,7 @@ replaceBound ts = cata $ \case
     TVar k var -> tVar k var
     TCon k con -> tCon k con
 
-kindOf :: Type -> Maybe Kind
+kindOf :: TypeT a -> Maybe Kind
 kindOf = histo $ \case
     TApp (Just t :< _) _ -> appKind (project t) 
     TCon k _             -> Just k
@@ -163,6 +163,13 @@ kindOf = histo $ \case
   where
     appKind (KArr _ k)    = Just k
     appKind _             = Nothing
+
+typeVars :: Type -> [(Name, Kind)]
+typeVars ty = nub . flip cata ty $ \case
+    TVar k var -> [(var, k)]
+    TArr t1 t2 -> t1 <> t2
+    TApp t1 t2 -> t1 <> t2
+    ty         -> []
 
 kTyp :: Kind
 kTyp = embed KTyp
@@ -195,25 +202,25 @@ tApp = embed2 TApp
 typ :: Name -> TypeT a
 typ = tCon kTyp
 
-tUnit :: Type
+tUnit :: TypeT a
 tUnit = typ "Unit"
 
-tBool :: Type
+tBool :: TypeT a
 tBool = typ "Bool" 
 
-tInt :: Type
+tInt :: TypeT a
 tInt = typ "Int" 
 
-tInteger :: Type
+tInteger :: TypeT a
 tInteger = typ "Integer"
 
-tFloat :: Type
+tFloat :: TypeT a
 tFloat = typ "Float" 
 
-tString :: Type
+tString :: TypeT a
 tString = typ "String" 
 
-tChar :: Type
+tChar :: TypeT a
 tChar = typ "Char" 
 
 tListCon :: TypeT a
@@ -222,12 +229,14 @@ tListCon = tCon kFun "List"
 tList :: TypeT a -> TypeT a
 tList = tApp tListCon 
 
+tTuple :: [TypeT a] -> TypeT a
+tTuple ts = foldl tApp (tCon kind con) ts
+  where 
+    con  = "(" <> Text.replicate (length ts - 1) "," <> ")"
+    kind = foldr (const (kArr kTyp)) kTyp ts
+
 tPair :: TypeT a -> TypeT a -> TypeT a
-tPair = tApp . tApp (tCon (kArr kTyp (kArr kTyp kTyp)) "(,)")
+tPair t1 t2 = tTuple [t1, t2]
 
 tTriple :: TypeT a -> TypeT a -> TypeT a -> TypeT a
-tTriple t1 t2 t3 = tApp (tApp (tApp (tCon (kArr kTyp (kArr kTyp (kArr kTyp kTyp))) "(,,)") t1) t2) t3
-
-tTuple :: [TypeT a] -> TypeT a
-tTuple ts = foldl tApp (tCon kind ("(" <> Text.replicate (length ts - 1) "," <> ")")) ts
-  where kind = foldr (const (kArr kTyp)) kTyp ts
+tTriple t1 t2 t3 = tTuple [t1, t2, t3]

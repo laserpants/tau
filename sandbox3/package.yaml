@@ -19,10 +19,13 @@ dependencies:
 - either
 - extra
 - free
+- megaparsec
 - monad-supply
 - mtl
+- parser-combinators
 - prettyprinter
 - recursion-schemes
+- repline
 - set-monad
 - text
 - transformers

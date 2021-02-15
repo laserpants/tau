@@ -5,18 +5,20 @@ module Main where
 import Control.Arrow (second, first)
 import Control.Monad.Except
 import Control.Monad.Reader
-import Control.Monad.Writer
-import Control.Monad.Trans.Maybe
 import Control.Monad.State
 import Control.Monad.Supply
+import Control.Monad.Trans.Maybe
+import Control.Monad.Writer
 import Data.Maybe (fromJust)
 import Data.Void
 import Tau.Comp.Patterns
+import Tau.Env (Env)
 import Tau.Eval
+import Tau.Eval.Repl
 import Tau.Expr
+import Tau.Lang.Parser
 import Tau.Pretty
 import Tau.PrettyTree
-import Tau.Env (Env)
 import Tau.Prim
 import Tau.Stuff
 import Tau.Type
@@ -173,22 +175,22 @@ runTest1 = runInfer mempty typeEnv (infer expr6) where
 
 myTypeEnv :: Env Scheme
 myTypeEnv = Env.fromList 
-    [ ( "@strlen"  , Forall [] [] (upgrade  (tString `tArr` tInt)) )
-    , ( "@showInt" , Forall [] [] (upgrade  (tInt `tArr` tString)) )
-    , ( "@strconcat" , Forall [] [] (upgrade tString `tArr` upgrade tString `tArr` upgrade tString) )
-    , ( "@strconcat3" , Forall [] [] (upgrade tString `tArr` upgrade tString `tArr` upgrade tString `tArr` upgrade tString) )
-    , ( "lenShow"  , Forall [kTyp, kTyp] [InClass "Show" 0] (tGen 0 `tArr` upgrade tInt) ) 
-    , ( "lenShow2" , Forall [kTyp, kTyp] [InClass "Show" 0, InClass "Eq" 0] (tGen 0 `tArr` upgrade tInt) ) 
-    , ( "(,)"      , Forall [kTyp, kTyp] [] (tGen 0 `tArr` tGen 1 `tArr` (tApp (tApp (tCon (kArr kTyp (kArr kTyp kTyp)) "(,)") (tGen 0)) (tGen 1))))
-    , ( "Nil"      , Forall [kTyp] [] (tApp (upgrade tListCon) (tGen 0)) )
-    , ( "Cons"     , Forall [kTyp] [] (tGen 0 `tArr` tApp (upgrade tListCon) (tGen 0) `tArr` tApp (upgrade tListCon) (tGen 0)) )
-    , ( "(==)"     , Forall [kTyp] [InClass "Eq" 0] (tGen 0 `tArr` tGen 0 `tArr` upgrade tBool) )
-    , ( "toString" , Forall [kTyp] [InClass "ToString" 0] (tGen 0 `tArr` upgrade tString) )
-    , ( "show"     , Forall [kTyp] [InClass "Show" 0] (tGen 0 `tArr` upgrade tString) )
-    , ( "singleton" , Forall [kTyp] [] (tGen 0 `tArr` (tApp (upgrade tListCon) (tGen 0))) )
-    , ( "head"     , Forall [kTyp] [] (tApp (upgrade tListCon) (tGen 0) `tArr` tGen 0))
-    , ( "fst"      , Forall [kTyp, kTyp] [] (tPair (tGen 0) (tGen 1) `tArr` (tGen 0)))
-    , ( "snd"      , Forall [kTyp, kTyp] [] (tPair (tGen 0) (tGen 1) `tArr` (tGen 1)))
+    [ ( "@strlen"      , Forall [] [] (upgrade  (tString `tArr` tInt)) )
+    , ( "@showInt"     , Forall [] [] (upgrade  (tInt `tArr` tString)) )
+    , ( "@strconcat"   , Forall [] [] (upgrade tString `tArr` upgrade tString `tArr` upgrade tString) )
+    , ( "@strconcat3"  , Forall [] [] (upgrade tString `tArr` upgrade tString `tArr` upgrade tString `tArr` upgrade tString) )
+    , ( "lenShow"      , Forall [kTyp, kTyp] [InClass "Show" 0] (tGen 0 `tArr` upgrade tInt) ) 
+    , ( "lenShow2"     , Forall [kTyp, kTyp] [InClass "Show" 0, InClass "Eq" 0] (tGen 0 `tArr` upgrade tInt) ) 
+    , ( "(,)"          , Forall [kTyp, kTyp] [] (tGen 0 `tArr` tGen 1 `tArr` (tApp (tApp (tCon (kArr kTyp (kArr kTyp kTyp)) "(,)") (tGen 0)) (tGen 1))))
+    , ( "Nil"          , Forall [kTyp] [] (tApp (upgrade tListCon) (tGen 0)) )
+    , ( "Cons"         , Forall [kTyp] [] (tGen 0 `tArr` tApp (upgrade tListCon) (tGen 0) `tArr` tApp (upgrade tListCon) (tGen 0)) )
+    , ( "(==)"         , Forall [kTyp] [InClass "Eq" 0] (tGen 0 `tArr` tGen 0 `tArr` upgrade tBool) )
+    , ( "toString"     , Forall [kTyp] [InClass "ToString" 0] (tGen 0 `tArr` upgrade tString) )
+    , ( "show"         , Forall [kTyp] [InClass "Show" 0] (tGen 0 `tArr` upgrade tString) )
+    , ( "singleton"    , Forall [kTyp] [] (tGen 0 `tArr` (tApp (upgrade tListCon) (tGen 0))) )
+    , ( "head"         , Forall [kTyp] [] (tApp (upgrade tListCon) (tGen 0) `tArr` tGen 0))
+    , ( "fst"          , Forall [kTyp, kTyp] [] (tPair (tGen 0) (tGen 1) `tArr` (tGen 0)))
+    , ( "snd"          , Forall [kTyp, kTyp] [] (tPair (tGen 0) (tGen 1) `tArr` (tGen 1)))
     ]
 
 --    [ -- ( "@strlen" , sScheme (tCon kStar "String" `tArr` tCon kStar "Int") )
@@ -344,16 +346,16 @@ pipeline e =  do
 --    pure zzz1
 
 myEvalEnv = Env.fromList 
-    [ ("toString" , fromJust (runEval (eval toString) mempty))
-    , ("show"     , fromJust (runEval (eval show_) mempty))
-    , ("lenShow"  , fromJust (runEval (eval lenShow) mempty))
-    , ("(,)"      , constructor "(,)" 2) -- fromJust (runEval (eval pair) mempty))
-    , ("Nil"      , constructor "Nil" 0) -- fromJust (runEval (eval pair) mempty))
-    , ("Cons"     , constructor "Cons" 2) -- fromJust (runEval (eval pair) mempty))
-    , ("singleton" , fromJust (runEval (eval singleton ) mempty))
-    , ("head"     , fromJust (runEval (eval head_) mempty))
-    , ("fst"      , fromJust (runEval (eval fst_) mempty))
-    , ("snd"      , fromJust (runEval (eval snd_) mempty))
+    [ ("toString"   , fromJust (runEval (eval toString) mempty))
+    , ("show"       , fromJust (runEval (eval show_) mempty))
+    , ("lenShow"    , fromJust (runEval (eval lenShow) mempty))
+    , ("(,)"        , Tau.Eval.constructor "(,)" 2) -- fromJust (runEval (eval pair) mempty))
+    , ("Nil"        , Tau.Eval.constructor "Nil" 0) -- fromJust (runEval (eval pair) mempty))
+    , ("Cons"       , Tau.Eval.constructor "Cons" 2) -- fromJust (runEval (eval pair) mempty))
+    , ("singleton"  , fromJust (runEval (eval singleton ) mempty))
+    , ("head"       , fromJust (runEval (eval head_) mempty))
+    , ("fst"        , fromJust (runEval (eval fst_) mempty))
+    , ("snd"        , fromJust (runEval (eval snd_) mempty))
     ]
   where
     Right snd_ = simplified foo25

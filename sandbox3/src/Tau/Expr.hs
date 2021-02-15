@@ -236,6 +236,9 @@ updatePatternTag update pat = setPatternTag (update (patternTag pat)) pat
 instance Injective (Field t a) (t, Name, a) where
     to (Field t n v) = (t, n, v)
 
+instance Injective (t, Name, a) (Field t a) where
+    to (t, n, v) = Field t n v
+
 instance (Typed t) => Typed (Expr t (Pattern t) (Pattern t)) where
     typeOf = typeOf . exprTag
 
