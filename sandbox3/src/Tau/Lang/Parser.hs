@@ -91,6 +91,65 @@ constructor = word (withInitial upperChar)
 
 expr = undefined
 
+lambda :: Parser (Expr () p q)
+lambda = do
+    void (symbol "\\")
+    pats <- some pattern_
+    body <- symbol "=>" *> expr
+    undefined
+    --pure (expandLam body pats)
+
+unit :: Parser Literal
+unit = symbol "()" $> LUnit
+
+bool :: Parser Literal
+bool = true <|> false
+  where
+    true  = keyword "True"  $> LBool True
+    false = keyword "False" $> LBool False
+
+integral :: Parser Literal
+integral = do
+    n <- lexeme Lexer.decimal
+    pure $ if n > maxInt || n < minInt
+        then LInteger n
+        else LInt (fromIntegral n)
+  where
+    maxInt = fromIntegral (maxBound :: Int)
+    minInt = fromIntegral (minBound :: Int)
+
+float :: Parser Literal
+float = LFloat <$> lexeme Lexer.float
+
+number :: Parser Literal
+number = try float <|> integral
+
+charLit :: Parser Literal
+charLit = LChar <$> surroundedBy (symbol "'") printChar
+
+stringLit :: Parser Literal
+stringLit = lexeme (LString . pack <$> chars) where
+    chars = char '\"' *> manyTill Lexer.charLiteral (char '\"')
+
+-- ============================================================================
+-- == Patterns
+-- ============================================================================
+
+pattern_ :: Parser (Pattern ())
+pattern_ = makeExprParser patternExpr [[ InfixR (patternCons <$ symbol "::") ]]
+
+patternCons :: Pattern () -> Pattern () -> Pattern ()
+patternCons hd tl = conPat () "(::)" [hd, tl]
+
+patternExpr :: Parser (Pattern ())
+patternExpr = undefined -- wildcard
+--    <|> conPattern
+--    <|> litPattern
+--    <|> varPattern
+--    <|> listPattern
+--    <|> tuplePattern
+--    <|> recordPattern
+
 -- ============================================================================
 -- == Lists and Tuples
 -- ============================================================================
@@ -103,10 +162,13 @@ components parser = symbol "(" *> parser `sepBy` symbol "," <* symbol ")"
 -- ============================================================================
 
 record :: Parser (Expr () p q)
-record = recExpr () <$> (uncurry (Field ()) <$$> fields "=" expr)
+record = recExpr () <$> fields "=" expr
 
-fields :: Text -> Parser a -> Parser [(Name, a)]
-fields sym parser = do
+fields :: Text -> Parser a -> Parser [Field () a]
+fields sym parser = uncurry (Field ()) <$$> fieldPairs sym parser
+
+fieldPairs :: Text -> Parser a -> Parser [(Name, a)]
+fieldPairs sym parser = do
     pairs <- symbol "{" *> (sortOn fst <$> field `sepBy1` symbol ",") <* symbol "}"
     when (hasDups (fst <$> pairs)) (fail "Duplicate field name in record")
     pure pairs
@@ -151,7 +213,7 @@ tupleType = do
 
 recordType :: Parser (TypeT a)
 recordType = do
-    (keys, vals) <- unzip <$> fields ":" type_
+    (keys, vals) <- unzip <$> fieldPairs ":" type_
     pure (foldl tApp (recordConstructor keys) vals)
 
 predicate :: Parser a -> Parser (PredicateT a)

@@ -62,10 +62,10 @@ type PolyType = TypeT Int
 data PredicateT a = InClass Name a
     deriving (Show, Eq, Ord, Functor, Foldable, Traversable)
 
--- | A standalone typeclass constraint 
+-- | A standalone type-class constraint 
 type Predicate = PredicateT Type 
 
--- | A typeclass constraint which appears in a type scheme
+-- | A type-class constraint which appears in a type scheme
 type PolyPredicate = PredicateT Int
 
 -- | Polymorphic type schemes
