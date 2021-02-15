@@ -104,7 +104,7 @@ ast = do
   where
     atom = ifClause
         <|> letBinding
---        <|> matchWith
+        <|> matchWith
         <|> lambda
         <|> literalExpr
         <|> list_
@@ -117,6 +117,27 @@ expr = flip makeExprParser operator $ do
     term <- ast
     dots <- many (symbol "." *> name)
     pure (foldl (flip (dotOp ())) term dots)
+
+matchWith :: Parser (PatternExpr ())
+matchWith = do
+    terms <- keyword "match" *> commaSep expr
+    matExpr () terms <$> ((:) <$> clause with <*> many (clause pipe))
+
+with :: Parser ()
+with = void $ keyword "with" *> optional (symbol "|")
+
+pipe :: Parser ()
+pipe = void (symbol "|")
+
+clause :: Parser () -> Parser (Clause (Pattern ()) (PatternExpr ()))
+clause sym = do
+    pats <- sym *> commaSep pattern_
+    cond <- fromMaybe [] <$> optional whens
+    term <- symbol "=>" *> expr
+    pure (Clause pats cond term)
+
+whens :: Parser [PatternExpr ()]
+whens = keyword "when" *> (pure <$> expr)
 
 letBinding :: Parser (PatternExpr ())
 letBinding = do
@@ -330,7 +351,7 @@ tupleType = do
 recordType :: Parser (TypeT a)
 recordType = do
     (keys, vals) <- unzip <$> fieldPairs ":" type_
-    pure (foldl tApp (tRecord keys) vals)
+    pure (tRecord keys vals)
 
 predicate :: Parser a -> Parser (PredicateT a)
 predicate p = InClass <$> constructor <*> p

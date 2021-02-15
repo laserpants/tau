@@ -95,6 +95,11 @@ data Op a
 deriveShow1 ''Op
 deriveEq1   ''Op
 
+--data Let q a
+--    = Simplet q a
+--    | Funlet Name [q] a
+--    deriving (Show, Eq)
+
 -- | Base functor for Expr
 data ExprF t p q a
     = EVar t Name             -- ^ Variable
@@ -103,6 +108,7 @@ data ExprF t p q a
     | EApp t [a]              -- ^ Function application
     | ELet t q a a            -- ^ Let-binding
     | ELFn t Name [q] a a     -- ^ Let-function expression (let f x = e) 
+--    | ELet t (Let q a) a
     | ELam t q a              -- ^ Lambda abstraction
 --    | ELam t [q] a         
     | EIf  t a ~a ~a          -- ^ If-clause

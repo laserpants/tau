@@ -234,8 +234,8 @@ tTuple ts = foldl tApp (tCon kind (tupleCon (length ts))) ts
   where 
     kind = foldr (const (kArr kTyp)) kTyp ts
 
-tRecord :: [Name] -> TypeT a
-tRecord names = tCon kind (recordCon names)
+tRecord :: [Name] -> [TypeT a] -> TypeT a
+tRecord names = foldl tApp (tCon kind (recordCon names)) 
   where 
     kind = foldr kArr kTyp (replicate (length names) kTyp)
 
