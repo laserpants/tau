@@ -230,7 +230,7 @@ operator =
       , InfixL (subOp () <$ symbol "-")
       ]
       -- 5
-    , [
+    , [ InfixR (cons <$ symbol "::")
       ]
       -- 4
     , [ InfixN (eqOp  () <$ symbol "==")
@@ -256,6 +256,9 @@ operator =
     , [
       ]
     ]
+
+cons :: PatternExpr () -> PatternExpr () -> PatternExpr ()
+cons hd tl = conExpr () "(::)" [hd, tl]
 
 -- ============================================================================
 -- == Patterns
@@ -325,9 +328,7 @@ components = parens . commaSep
 list_ :: Parser (PatternExpr ())
 list_ = do
     elems <- elements expr
-    pure (foldr cons1 (conExpr () "[]" []) elems)
-  where
-    cons1 hd tl = conExpr () "(::)" [hd, tl]
+    pure (foldr cons (conExpr () "[]" []) elems)
 
 tuple :: Parser (PatternExpr ())
 tuple = do
@@ -336,7 +337,7 @@ tuple = do
         []  -> litExpr () LUnit
         [e] -> e
         _   -> conExpr () (tupleCon (length elems)) elems
---
+
 -- ============================================================================
 -- == Records
 -- ============================================================================
@@ -354,10 +355,7 @@ fieldPairs sym parser = do
     pure pairs
   where
     hasDups names = length names /= length (nub names)
-    field = do
-        key <- name
-        val <- symbol sym *> parser
-        pure (key, val)
+    field = (,) <$> name <*> (symbol sym *> parser)
 
 -- ============================================================================
 -- == Type
@@ -421,11 +419,8 @@ scheme = do
   where
     subst :: Map Name Int -> PolyType -> PolyType
     subst map = cata $ \case
-        TVar kind var -> 
-            case Map.lookup var map of
-                Nothing -> tVar kind var
-                Just n  -> tGen n
-        t -> embed t
+        TVar kind var -> maybe (tVar kind var) tGen (Map.lookup var map)
+        t             -> embed t
 
     substPredicate :: Map Name Int -> PredicateT Name -> Parser PolyPredicate
     substPredicate map (InClass name var) = 
