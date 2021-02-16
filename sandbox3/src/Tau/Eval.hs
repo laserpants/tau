@@ -72,7 +72,7 @@ eval = cata $ \case
         val <- expr1
         local (Env.insert var val) expr2
 
-    ELam _ var expr ->
+    ELam2 _ var expr ->
         asks (Closure var expr)
 
     EIf _ cond true false -> do

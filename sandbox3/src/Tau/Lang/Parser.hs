@@ -105,6 +105,7 @@ ast = do
     atom = ifClause
         <|> letBinding
         <|> matchWith
+        <|> funExpr
         <|> lambda
         <|> literalExpr
         <|> list_
@@ -117,6 +118,11 @@ expr = flip makeExprParser operator $ do
     term <- ast
     dots <- many (symbol "." *> name)
     pure (foldl (flip (dotOp ())) term dots)
+
+funExpr :: Parser (PatternExpr ())
+funExpr = do
+    keyword "fun" 
+    matExpr () [] <$> ((:) <$> clause (void (optional (symbol "|"))) <*> many (clause pipe))
 
 matchWith :: Parser (PatternExpr ())
 matchWith = do
@@ -163,9 +169,6 @@ lambda = do
     pats <- some pattern_
     body <- symbol "=>" *> expr
     pure (lam2Expr () pats body)
-
-funExpr :: Parser (PatternExpr ())
-funExpr = undefined
 
 identifier :: Parser (PatternExpr ())
 identifier = varExpr () <$> word (withInitial letterChar)

@@ -39,22 +39,22 @@ import qualified Tau.Env as Env
 expr1 :: PatternExpr ()
 expr1 = letExpr () (varPat () "f") (varExpr () "lenShow") (varExpr () "f")
 expr2 = letExpr () (varPat () "f") (varExpr () "lenShow") (appExpr () [varExpr () "f", litExpr () (LInt 5)])
-expr3 = lamExpr () (varPat () "x") (appExpr () [varExpr () "lenShow", varExpr () "x"])
-expr4 = lamExpr () (varPat () "x") (letExpr () (varPat () "f") (varExpr () "lenShow") (appExpr () [varExpr () "f", varExpr () "x"]))
-expr5 = letExpr () (varPat () "f") (varExpr () "lenShow") (lamExpr () (varPat () "x") (appExpr () [varExpr () "f", varExpr () "x"]))
+expr3 = lam2Expr () [varPat () "x"] (appExpr () [varExpr () "lenShow", varExpr () "x"])
+expr4 = lam2Expr () [varPat () "x"] (letExpr () (varPat () "f") (varExpr () "lenShow") (appExpr () [varExpr () "f", varExpr () "x"]))
+expr5 = letExpr () (varPat () "f") (varExpr () "lenShow") (lam2Expr () [varPat () "x"] (appExpr () [varExpr () "f", varExpr () "x"]))
 expr6 = appExpr () [varExpr () "lenShow", litExpr () (LInt 555)]
-expr7 = lamExpr () (varPat () "x") (appExpr () [varExpr () "f", varExpr () "x"])
-expr8 = lamExpr () (varPat () "x") (lamExpr () (varPat () "y") (appExpr () [varExpr () "f", lamExpr () (varPat () "x") (lamExpr () (varPat () "y") (varExpr () "z"))]))
-expr9 = lamExpr () (varPat () "x") (appExpr () [varExpr () "lenShow2", varExpr () "x"])
-expr99 = appExpr () [lamExpr () (varPat () "f") (appExpr () [varExpr () "f", litExpr () (LInt 5)]), varExpr () "lenShow"]
-expr20 = letExpr () (varPat () "id") (lamExpr () (varPat () "x") (varExpr () "x")) 
+expr7 = lam2Expr () [varPat () "x"] (appExpr () [varExpr () "f", varExpr () "x"])
+expr8 = lam2Expr () [varPat () "x"] (lam2Expr () [varPat () "y"] (appExpr () [varExpr () "f", lam2Expr () [varPat () "x"] (lam2Expr () [varPat () "y"] (varExpr () "z"))]))
+expr9 = lam2Expr () [varPat () "x"] (appExpr () [varExpr () "lenShow2", varExpr () "x"])
+expr99 = appExpr () [lam2Expr () [varPat () "f"] (appExpr () [varExpr () "f", litExpr () (LInt 5)]), varExpr () "lenShow"]
+expr20 = letExpr () (varPat () "id") (lam2Expr () [varPat () "x"] (varExpr () "x")) 
               (appExpr () [
                   varExpr () "(,)"
                 , appExpr () [varExpr () "id", litExpr () (LInt 5)]
                 , appExpr () [varExpr () "id", litExpr () (LBool True)]
               ])
-expr21 = lamExpr () (varPat () "x") (letExpr () (varPat () "f") (lamExpr () (varPat () "y") (varExpr () "x")) (litExpr () (LInt 1)))
-expr22 = lamExpr () (varPat () "x") (letExpr () (varPat () "f") (varExpr () "lenShow2") (appExpr () [varExpr () "f", varExpr () "x"]))
+expr21 = lam2Expr () [varPat () "x"] (letExpr () (varPat () "f") (lam2Expr () [varPat () "y"] (varExpr () "x")) (litExpr () (LInt 1)))
+expr22 = lam2Expr () [varPat () "x"] (letExpr () (varPat () "f") (varExpr () "lenShow2") (appExpr () [varExpr () "f", varExpr () "x"]))
 expr23 = recExpr () [Field () "name" (litExpr () (LString "Bob")), Field () "id" (litExpr () (LInt 11)), Field () "admin" (litExpr () (LBool True))]
 
 expr24 :: PatternExpr ()
@@ -90,44 +90,44 @@ expr2411 = matExpr () [litExpr () (LInt 1)]
 --expr25 = letExpr () (varPat () "show") (varExpr () "@showInt") (appExpr () [varExpr () "toString", litExpr () (LInt 5)])
 expr25 = appExpr () [varExpr () "toString", litExpr () (LInt 5)]
 
-expr26 = appExpr () [lamExpr () (varPat () "x") (appExpr () [varExpr () "toString", varExpr () "x"]), litExpr () (LInt 5)]
+expr26 = appExpr () [lam2Expr () [varPat () "x"] (appExpr () [varExpr () "toString", varExpr () "x"]), litExpr () (LInt 5)]
 
 expr27 :: PatternExpr ()
 expr27 = matExpr () [recExpr () [Field () "a" (litExpr () (LInt 5))]] [Clause [recPat () [Field () "a" (varPat () "b")]] [] (varExpr () "b")]
 
 expr28 = letExpr () 
             (varPat () "f") 
-            (lamExpr () (varPat () "d") (matExpr () [varExpr () "d"] [Clause [recPat () [Field () "toString" (varPat () "toString")]] [] (varExpr () "toString")]))
+            (lam2Expr () [varPat () "d"] (matExpr () [varExpr () "d"] [Clause [recPat () [Field () "toString" (varPat () "toString")]] [] (varExpr () "toString")]))
             (appExpr () [varExpr () "f", recExpr () [Field () "toString" (varExpr () "@showInt")], litExpr () (LInt 5)])
 
 expr29 = letExpr () 
-            (varPat () "f") (lamExpr () (varPat () "d") (matExpr () [varExpr () "d"] [Clause [recPat () [Field () "show" (varPat () "show"), Field () "toString" (varPat () "toString")]] [] (letExpr () (varPat () "show") (varExpr () "@showInt") (varExpr () "toString"))]))
+            (varPat () "f") (lam2Expr () [varPat () "d"] (matExpr () [varExpr () "d"] [Clause [recPat () [Field () "show" (varPat () "show"), Field () "toString" (varPat () "toString")]] [] (letExpr () (varPat () "show") (varExpr () "@showInt") (varExpr () "toString"))]))
             (appExpr () [varExpr () "f", recExpr () [Field () "show" (varExpr () "@showInt"), Field () "toString" (varExpr () "show")], litExpr () (LInt 5)])
 
 
 expr30 = varExpr () "toString"
 
-expr31 = letExpr () (varPat () "f") (lamExpr () (recPat () [Field () "stuff" (varPat () "x")]) (varExpr () "x")) (appExpr () [varExpr () "f", recExpr () [Field () "stuff" (litExpr () (LInt 5))]])
+expr31 = letExpr () (varPat () "f") (lam2Expr () [recPat () [Field () "stuff" (varPat () "x")]] (varExpr () "x")) (appExpr () [varExpr () "f", recExpr () [Field () "stuff" (litExpr () (LInt 5))]])
 
 expr32 = appExpr () [varExpr () "toString", litExpr () (LInt 5)]
 
 expr33 = letExpr () (varPat () "toStringInt") (varExpr () "show") 
               (appExpr () 
-                [ (lamExpr () (varPat () "d") (matExpr () [varExpr () "d"] [Clause [recPat () [Field () "toString" (varPat () "toString")]] [] (varExpr () "toString")]))
+                [ (lam2Expr () [varPat () "d"] (matExpr () [varExpr () "d"] [Clause [recPat () [Field () "toString" (varPat () "toString")]] [] (varExpr () "toString")]))
                 , (recExpr () [Field () "toString" (varExpr () "toStringInt")])
                 , (litExpr () (LInt 5))
               ])
 
 expr34 = letExpr () (varPat () "f") (varExpr () "show") (appExpr () [varExpr () "f", litExpr () (LInt 5)])
 
-expr35 = letExpr () (varPat () "f") (varExpr () "show") (appExpr () [lamExpr () (varPat () "x") (varExpr () "f"), litExpr () LUnit, litExpr () (LInt 5)])
+expr35 = letExpr () (varPat () "f") (varExpr () "show") (appExpr () [lam2Expr () [varPat () "x"] (varExpr () "f"), litExpr () LUnit, litExpr () (LInt 5)])
 
 expr36 = -- appExpr () [varExpr () "@strconcat", litExpr () (LString "List : "), 
-    appExpr () [letExpr () (varPat () "showList") (lamExpr () (varPat () "xs") (appExpr () [varExpr () "@strconcat3", litExpr () (LString "List"), litExpr () (LString " ::: "), appExpr () [varExpr () "show", appExpr () [varExpr () "head", varExpr () "xs"]]])) (lamExpr () (varPat () "x") (appExpr () [varExpr () "show", appExpr () [varExpr () "singleton", varExpr () "x"]])), litExpr () (LInt 9)]
+    appExpr () [letExpr () (varPat () "showList") (lam2Expr () [varPat () "xs"] (appExpr () [varExpr () "@strconcat3", litExpr () (LString "List"), litExpr () (LString " ::: "), appExpr () [varExpr () "show", appExpr () [varExpr () "head", varExpr () "xs"]]])) (lam2Expr () [varPat () "x"] (appExpr () [varExpr () "show", appExpr () [varExpr () "singleton", varExpr () "x"]])), litExpr () (LInt 9)]
 
 
 expr37 =
-    letExpr () (varPat () "first") (lamExpr () (varPat () "a") (lamExpr () (varPat () "b") (varExpr () "a"))) (appExpr () [varExpr () "first", litExpr () (LInt 1), litExpr () (LInt 2)])
+    letExpr () (varPat () "first") (lam2Expr () [varPat () "a"] (lam2Expr () [varPat () "b"] (varExpr () "a"))) (appExpr () [varExpr () "first", litExpr () (LInt 1), litExpr () (LInt 2)])
 
 expr38 :: PatternExpr ()
 expr38 =
@@ -231,7 +231,7 @@ foo11 = varExpr (NodeInfo ((tList (tVar kTyp "a")) `tArr` tString) [InClass "Sho
 
 
 -- \p -> show (fst p)
-showPair_ = lamExpr (NodeInfo (tPair (tVar kTyp "a") (tVar kTyp "b") `tArr` tString) []) (varPat (NodeInfo (tPair (tVar kTyp "a") (tVar kTyp "b")) []) "p") 
+showPair_ = lam2Expr (NodeInfo (tPair (tVar kTyp "a") (tVar kTyp "b") `tArr` tString) []) [varPat (NodeInfo (tPair (tVar kTyp "a") (tVar kTyp "b")) []) "p"] 
               (appExpr (NodeInfo tString []) [varExpr (NodeInfo (tString `tArr` tString `tArr` tString `tArr` tString) []) "@strconcat3", appExpr (NodeInfo tString []) [varExpr (NodeInfo (tVar kTyp "a" `tArr` tString) [InClass "Show" (tVar kTyp "a")]) "show", (appExpr (NodeInfo (tVar kTyp "a") []) [varExpr (NodeInfo (tPair (tVar kTyp "a") (tVar kTyp "b") `tArr` tVar kTyp "a") []) "fst", varExpr (NodeInfo (tPair (tVar kTyp "a") (tVar kTyp "b")) []) "p"])], litExpr (NodeInfo tString []) (LString ","), appExpr (NodeInfo tString []) [varExpr (NodeInfo (tVar kTyp "b" `tArr` tString) [InClass "Show" (tVar kTyp "b")]) "show", appExpr (NodeInfo (tVar kTyp "b") []) [varExpr (NodeInfo (tPair (tVar kTyp "a") (tVar kTyp "b") `tArr` tVar kTyp "b") []) "snd", varExpr (NodeInfo (tPair (tVar kTyp "a") (tVar kTyp "b")) []) "p"]]])
 
 
@@ -368,29 +368,29 @@ myEvalEnv = Env.fromList
     ]
   where
     Right snd_ = simplified foo25
-    foo25 = lamExpr () (varPat () "p") (matExpr () [varExpr () "p"] [Clause [conPat () "(,)" [anyPat (), varPat () "b"]] [] (varExpr () "b")])
+    foo25 = lam2Expr () [varPat () "p"] (matExpr () [varExpr () "p"] [Clause [conPat () "(,)" [anyPat (), varPat () "b"]] [] (varExpr () "b")])
 
     Right fst_ = simplified foo24
-    foo24 = lamExpr () (varPat () "p") (matExpr () [varExpr () "p"] [Clause [conPat () "(,)" [varPat () "a", anyPat ()]] [] (varExpr () "a")])
+    foo24 = lam2Expr () [varPat () "p"] (matExpr () [varExpr () "p"] [Clause [conPat () "(,)" [varPat () "a", anyPat ()]] [] (varExpr () "a")])
 
     Right head_ = simplified foo23
-    foo23 = lamExpr () (varPat () "xs") (matExpr () [varExpr () "xs"] [Clause [conPat () "Cons" [varPat () "x", anyPat ()]] [] (varExpr () "x")])
+    foo23 = lam2Expr () [varPat () "xs"] (matExpr () [varExpr () "xs"] [Clause [conPat () "Cons" [varPat () "x", anyPat ()]] [] (varExpr () "x")])
 
     Right singleton = simplified foo22
-    foo22 = lamExpr () (varPat () "x") (conExpr () "Cons" [varExpr () "x", conExpr () "Nil" []])
+    foo22 = lam2Expr () [varPat () "x"] (conExpr () "Cons" [varExpr () "x", conExpr () "Nil" []])
 
     Right show_ = simplified foo2
-    foo2 = lamExpr () (varPat () "d") (matExpr () [varExpr () "d"] [ Clause [recPat () [Field () "show" (varPat () "show")]] [] (varExpr () "show") ])
+    foo2 = lam2Expr () [varPat () "d"] (matExpr () [varExpr () "d"] [ Clause [recPat () [Field () "show" (varPat () "show")]] [] (varExpr () "show") ])
 
     Right toString = simplified foo
 --  -- \d => match d with | { toString = toString } => toString 
-    foo = lamExpr () (varPat () "d") (matExpr () [varExpr () "d"] 
+    foo = lam2Expr () [varPat () "d"] (matExpr () [varExpr () "d"] 
           [ Clause [recPat () [Field () "toString" (varPat () "toString") ]] [] ((varExpr () "toString"))
           ])
 
     Right lenShow = simplified foo3
     --foo3 = lamExpr () (varPat () "d") (lamExpr () (varPat () "x") (litExpr () (LInt 8))) -- (appExpr () [varExpr () "@length", appExpr () [varExpr () "show", varExpr () "d", varExpr () "x"]]))
-    foo3 = lamExpr () (varPat () "d") (lamExpr () (varPat () "x") (appExpr () [varExpr () "@strlen", appExpr () [varExpr () "show", varExpr () "d", varExpr () "x"]]))
+    foo3 = lam2Expr () [varPat () "d"] (lam2Expr () [varPat () "x"] (appExpr () [varExpr () "@strlen", appExpr () [varExpr () "show", varExpr () "d", varExpr () "x"]]))
 
 
 --runPipeline :: PatternExpr t -> Either String (PatternExpr NodeInfo, Environments)

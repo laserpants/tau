@@ -113,7 +113,7 @@ unrollLambdas = cata $ \case
     EOp  t op         -> opExpr  t op
     ERec t fields     -> recExpr t fields
   where
-    unroll pat ex = lamExpr (arrow (patternTag pat) (exprTag ex)) pat ex
+    unroll pat ex = lam2Expr (arrow (patternTag pat) (exprTag ex)) pat ex
 
 simplify 
   :: (Boolean t, Show t) 
@@ -134,15 +134,15 @@ simplify = cata $ \case
     --
     --  The same restriction applies to lambdas
     --
-    ELam t (Fix (PVar _ var)) e1 -> 
-        lamExpr t var <$> e1 
+    ELam2 t (Fix (PVar _ var)) e1 -> 
+        lam2Expr t var <$> e1 
 
     --
     --  Expressions like \5 => ..., let 5 = ..., or let _ = ... are not allowed
     --
-    ELam _ (Fix PLit{}) _   -> throwError "Pattern not allowed"
+    ELam2 _ (Fix PLit{}) _   -> throwError "Pattern not allowed"
     ELet _ (Fix PLit{}) _ _ -> throwError "Pattern not allowed"
-    ELam _ (Fix PAny{}) _   -> throwError "Pattern not allowed"
+    ELam2 _ (Fix PAny{}) _   -> throwError "Pattern not allowed"
     ELet _ (Fix PAny{}) _ _ -> throwError "Pattern not allowed"
 
     --
@@ -159,11 +159,11 @@ simplify = cata $ \case
     --  get translated to \$z => match $z with | C x => f x in $z
     --  where $z is a fresh variable
     --
-    ELam t rep e1 -> do
+    ELam2 t rep e1 -> do
         fresh <- supply
         body <- e1
         expr <- compile [varExpr t fresh] [Clause [rep] [] body]
-        pure (lamExpr t fresh expr)
+        pure (lam2Expr t fresh expr)
 
     EIf t cond e1 e2 ->
         ifExpr t <$> cond <*> e1 <*> e2
@@ -288,16 +288,16 @@ translate = futu $ project >>> \case
 
 substitute 
   :: Name 
-  -> Expr t (Prep t) Name r
-  -> Expr t (Prep t) Name r
-  -> Expr t (Prep t) Name r
+  -> Expr t (Prep t) Name Name
+  -> Expr t (Prep t) Name Name
+  -> Expr t (Prep t) Name Name
 substitute name subst = para $ \case
     ELet t pat (_, e1) e2 -> letExpr t pat e1 e2'
       where 
         e2' | name == pat = fst e2
             | otherwise   = snd e2
 
-    ELam t pat e1 -> lamExpr t pat e1'
+    ELam2 t pat e1 -> lam2Expr t pat e1'
       where
         e1' | name == pat = fst e1
             | otherwise   = snd e1

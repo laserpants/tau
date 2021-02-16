@@ -76,7 +76,7 @@ insertDicts env = mapTags $ \info@NodeInfo{..} ->
 --
 
 
-frog e1 = foldr (\(a, b) e -> lamExpr (NodeInfo (tArr b (typeOf e1)) []) (varPat (NodeInfo b []) a) e) e1 
+frog e1 = foldr (\(a, b) e -> lam2Expr (NodeInfo (tArr b (typeOf e1)) []) [varPat (NodeInfo b []) a] e) e1 
 
 --stuffs :: (Monad m) => Pattern t -> m [(Name, Scheme)]
 --stuffs = cata $ \case
@@ -598,11 +598,11 @@ infer = cata alg
                 unifyTyped newTy e2
                 pure (letExpr (NodeInfo newTy []) tp e1 e2)
 
-            ELam _ pat expr1 -> do
-                (tp, vs) <- runWriterT (inferPattern pat)
-                e1 <- local (second (Env.inserts (toScheme <$$> vs))) expr1
-                unifyTyped newTy (typeOf tp `tArr` typeOf e1)
-                pure (lamExpr (NodeInfo newTy []) tp e1)
+            --ELam _ pat expr1 -> do
+            --    (tp, vs) <- runWriterT (inferPattern pat)
+            --    e1 <- local (second (Env.inserts (toScheme <$$> vs))) expr1
+            --    unifyTyped newTy (typeOf tp `tArr` typeOf e1)
+            --    pure (lamExpr (NodeInfo newTy []) tp e1)
 
             ELam2 _ pats expr1 -> do
                 (tps, vs) <- runWriterT (traverse inferPattern pats)

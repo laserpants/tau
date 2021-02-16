@@ -109,8 +109,8 @@ data ExprF t p q r a
     | ELet t q a a            -- ^ Let-binding
     | ELFn t Name [q] a a     -- ^ Let-function expression (let f x = e) 
 --    | ELet t (Let q a) a
-    | ELam t q a              -- ^ Lambda abstraction
-    | ELam2 t r a
+--    | ELam t q a              -- ^ Lambda abstraction
+    | ELam2 t r a              -- ^ Lambda abstraction
     | EIf  t a ~a ~a          -- ^ If-clause
     | EMat t [a] [Clause p a] -- ^ Match expression
     -- TODO: use empty list to represent fun-match???
@@ -191,7 +191,7 @@ exprTag = project >>> \case
     ELit t _       -> t
     EApp t _       -> t
     ELet t _ _ _   -> t
-    ELam t _ _     -> t
+--    ELam t _ _     -> t
     ELam2 t _ _     -> t
     EIf  t _ _ _   -> t
     EMat t _ _     -> t
@@ -205,7 +205,7 @@ setExprTag t = project >>> \case
     ELit _ a       -> litExpr t a
     EApp _ a       -> appExpr t a
     ELet _ p a b   -> letExpr t p a b
-    ELam _ p a     -> lamExpr t p a
+--    ELam _ p a     -> lamExpr t p a
     ELam2 _ r a     -> lam2Expr t r a
     EIf  _ a b c   -> ifExpr  t a b c
     EMat _ a b     -> matExpr t a b
@@ -271,7 +271,7 @@ mapTags f = cata $ \case
     ELit t a       -> litExpr (f t) a
     EApp t a       -> appExpr (f t) a
     ELet t p a b   -> letExpr (f t) (mapPatternTags f p) a b
-    ELam t p a     -> lamExpr (f t) (mapPatternTags f p) a
+--    ELam t p a     -> lamExpr (f t) (mapPatternTags f p) a
     ELam2 t r a     -> lam2Expr (f t) (mapPatternTags f <$> r) a
     EIf  t a b c   -> ifExpr  (f t) a b c
     EMat t a e     -> matExpr (f t) a (clause <$> e)
@@ -334,8 +334,8 @@ letExpr = embed4 ELet
 lFnExpr :: t -> Name -> [q] -> Expr t p q r -> Expr t p q r -> Expr t p q r
 lFnExpr = embed5 ELFn
 
-lamExpr :: t -> q -> Expr t p q r -> Expr t p q r
-lamExpr = embed3 ELam 
+--lamExpr :: t -> q -> Expr t p q r -> Expr t p q r
+--lamExpr a b c = lam2Expr a [b] c
 
 lam2Expr :: t -> r -> Expr t p q r -> Expr t p q r
 lam2Expr = embed3 ELam2
