@@ -96,8 +96,8 @@ deriveShow1 ''Op
 deriveEq1   ''Op
 
 --data Let q a
---    = Simplet q a
---    | Funlet Name [q] a
+--    = Let q a
+--    | LetFun Name [q] a
 --    deriving (Show, Eq)
 
 -- | Base functor for Expr
