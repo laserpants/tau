@@ -93,7 +93,7 @@ instance Free (TypeT a) where
         TVar _ var     -> Set.singleton var
         TArr t1 t2     -> t1 `Set.union` t2
         TApp t1 t2     -> t1 `Set.union` t2
-        ty             -> mempty
+        _              -> mempty
 
 instance Free (PredicateT (TypeT a)) where
     free (InClass _ ty) = free ty
@@ -165,11 +165,12 @@ kindOf = histo $ \case
     appKind _             = Nothing
 
 typeVars :: Type -> [(Name, Kind)]
-typeVars = nub . cata (\case
-    TVar k var -> [(var, k)]
-    TArr t1 t2 -> t1 <> t2
-    TApp t1 t2 -> t1 <> t2
-    _          -> [])
+typeVars = nub . cata alg where 
+    alg = \case
+        TVar k var -> [(var, k)]
+        TArr t1 t2 -> t1 <> t2
+        TApp t1 t2 -> t1 <> t2
+        _          -> []
 
 kTyp :: Kind
 kTyp = embed KTyp
