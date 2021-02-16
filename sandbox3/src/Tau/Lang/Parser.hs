@@ -211,8 +211,51 @@ literal = bool
     <|> charLit
     <|> stringLit
 
+-- ============================================================================
+-- == Operators
+-- ============================================================================
+
 operator :: [[Operator Parser (PatternExpr ())]]
-operator = [[]]
+operator = 
+    [
+      -- 8
+      [ InfixR (powOp () <$ symbol "^")
+      ]
+      -- 7
+    , [ InfixL (mulOp () <$ symbol "*")
+      , InfixL (divOp () <$ try (symbol "/" <* notFollowedBy (symbol "=")))
+      ]
+      -- 6
+    , [ InfixL (addOp () <$ symbol "+")
+      , InfixL (subOp () <$ symbol "-")
+      ]
+      -- 5
+    , [
+      ]
+      -- 4
+    , [ InfixN (eqOp  () <$ symbol "==")
+      , InfixN (nEqOp () <$ symbol "/=")
+      , InfixN (ltOp  () <$ try (symbol "<" <* notFollowedBy (symbol "=")))
+      , InfixN (gtOp  () <$ try (symbol ">" <* notFollowedBy (symbol "=")))
+      , InfixN (ltEOp () <$ symbol "<=")
+      , InfixN (gtEOp () <$ symbol ">=")
+      ]
+      -- 3
+    , [ InfixR (andOp () <$ symbol "&&")
+      ]
+      -- 2
+    , [ InfixR (orOp  () <$ symbol "||")
+      ]
+      -- 1
+    , [ InfixR (lArrOp () <$ symbol "<<")
+      , InfixR (rArrOp () <$ symbol ">>")
+      , InfixL (fPipeOp () <$ symbol "|>")
+      , InfixR (bPipeOp () <$ symbol "<|")
+      ]
+      -- 0
+    , [
+      ]
+    ]
 
 -- ============================================================================
 -- == Patterns

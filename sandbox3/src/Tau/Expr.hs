@@ -348,14 +348,56 @@ opExpr = embed2 EOp
 binOpExpr :: (a -> b -> Op (Expr t p q)) -> t -> a -> b -> Expr t p q
 binOpExpr op t a b = opExpr t (op a b)
 
+dotOp :: t -> Name -> Expr t p q -> Expr t p q
+dotOp = binOpExpr ODot
+
+addOp :: t -> Expr t p q -> Expr t p q -> Expr t p q
+addOp = binOpExpr OAdd
+
+subOp :: t -> Expr t p q -> Expr t p q -> Expr t p q
+subOp = binOpExpr OSub
+
+mulOp :: t -> Expr t p q -> Expr t p q -> Expr t p q
+mulOp = binOpExpr OMul
+
+divOp :: t -> Expr t p q -> Expr t p q -> Expr t p q
+divOp = binOpExpr ODiv
+
+powOp :: t -> Expr t p q -> Expr t p q -> Expr t p q
+powOp = binOpExpr OPow
+
 eqOp :: t -> Expr t p q -> Expr t p q -> Expr t p q
-eqOp = binOpExpr OEq 
+eqOp = binOpExpr OEq
+
+nEqOp :: t -> Expr t p q -> Expr t p q -> Expr t p q
+nEqOp = binOpExpr ONEq
+
+ltOp :: t -> Expr t p q -> Expr t p q -> Expr t p q
+ltOp = binOpExpr OLt
+
+gtOp :: t -> Expr t p q -> Expr t p q -> Expr t p q
+gtOp = binOpExpr OGt
+
+ltEOp :: t -> Expr t p q -> Expr t p q -> Expr t p q
+ltEOp = binOpExpr OLtE
+
+gtEOp :: t -> Expr t p q -> Expr t p q -> Expr t p q
+gtEOp = binOpExpr OGtE
 
 andOp :: t -> Expr t p q -> Expr t p q -> Expr t p q
-andOp = binOpExpr OAnd 
+andOp = binOpExpr OAnd
 
 orOp :: t -> Expr t p q -> Expr t p q -> Expr t p q
 orOp = binOpExpr OOr
 
-dotOp :: t -> Name -> Expr t p q -> Expr t p q
-dotOp = binOpExpr ODot
+lArrOp :: t -> Expr t p q -> Expr t p q -> Expr t p q
+lArrOp = binOpExpr OLArr
+
+rArrOp :: t -> Expr t p q -> Expr t p q -> Expr t p q
+rArrOp = binOpExpr ORArr
+
+fPipeOp :: t -> Expr t p q -> Expr t p q -> Expr t p q
+fPipeOp = binOpExpr OFPipe
+
+bPipeOp :: t -> Expr t p q -> Expr t p q -> Expr t p q
+bPipeOp = binOpExpr OBPipe
