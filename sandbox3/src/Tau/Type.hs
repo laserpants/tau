@@ -8,7 +8,7 @@
 module Tau.Type where
 -- Tau.Lang.Type
 
-import Control.Arrow (second, (>>>))
+import Control.Arrow (second, (<<<), (>>>))
 import Control.Comonad.Cofree
 import Control.Monad.Supply
 import Data.Functor.Foldable
@@ -165,11 +165,11 @@ kindOf = histo $ \case
     appKind _             = Nothing
 
 typeVars :: Type -> [(Name, Kind)]
-typeVars ty = nub . flip cata ty $ \case
+typeVars = nub . cata (\case
     TVar k var -> [(var, k)]
     TArr t1 t2 -> t1 <> t2
     TApp t1 t2 -> t1 <> t2
-    ty         -> []
+    _          -> [])
 
 kTyp :: Kind
 kTyp = embed KTyp

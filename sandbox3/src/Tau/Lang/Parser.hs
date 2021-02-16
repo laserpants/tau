@@ -162,7 +162,7 @@ lambda = do
     void (symbol "\\")
     pats <- some pattern_
     body <- symbol "=>" *> expr
-    pure (foldr (lamExpr ()) body pats)
+    pure (lam2Expr () pats body)
 
 funExpr :: Parser (PatternExpr ())
 funExpr = undefined

@@ -133,6 +133,13 @@ expr38 :: PatternExpr ()
 expr38 =
     appExpr () [varExpr () "show", conExpr () "(,)" [litExpr () (LInt 9), litExpr () (LBool True)]]
 
+expr991 = appExpr () [lam2Expr () [varPat () "f"] (appExpr () [varExpr () "f", litExpr () (LInt 5)]), varExpr () "lenShow"]
+
+
+--    --                                 Int -> Bool -> String -> Unit
+--    , ( "fn1"          , Forall [] [] (tInt `tArr` tBool `tArr` tString `tArr` tUnit) )
+expr992 = lam2Expr () [varPat () "x", varPat () "y", varPat () "z"] (appExpr () [varExpr () "fn1", varExpr () "x", varExpr () "y", varExpr () "z"])
+
 
 {-
 
@@ -191,6 +198,8 @@ myTypeEnv = Env.fromList
     , ( "head"         , Forall [kTyp] [] (tApp (upgrade tListCon) (tGen 0) `tArr` tGen 0))
     , ( "fst"          , Forall [kTyp, kTyp] [] (tPair (tGen 0) (tGen 1) `tArr` (tGen 0)))
     , ( "snd"          , Forall [kTyp, kTyp] [] (tPair (tGen 0) (tGen 1) `tArr` (tGen 1)))
+    --                                 Int -> Bool -> String -> Unit
+    , ( "fn1"          , Forall [] [] (tInt `tArr` tBool `tArr` tString `tArr` tUnit) )
     ]
 
 --    [ -- ( "@strlen" , sScheme (tCon kStar "String" `tArr` tCon kStar "Int") )
@@ -410,7 +419,8 @@ runPipeline a = do
 --runTest2_ = runPipeline expr6
 --runTest2_ = runPipeline expr25
 --runTest2_ = runPipeline $ appExpr () [expr5, litExpr () (LInt 55555)]
-runTest2_ = runPipeline expr38
+--runTest2_ = runPipeline expr38
+runTest2_ = runPipeline expr992
 
 --
 --

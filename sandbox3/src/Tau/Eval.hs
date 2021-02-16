@@ -48,12 +48,12 @@ newtype Eval a = Eval { unEval :: ReaderT (ValueEnv Eval) Maybe a } deriving
 runEval :: Eval a -> ValueEnv Eval -> Maybe a
 runEval = runReaderT . unEval 
 
-evalExpr :: (Show t) => Expr t (Prep t) Name -> ValueEnv Eval -> Maybe (Value Eval)
+evalExpr :: (Show t) => Expr t (Prep t) Name Name -> ValueEnv Eval -> Maybe (Value Eval)
 evalExpr = runEval . eval
 
 eval 
   :: (Show t, MonadFail m, MonadReader (ValueEnv m) m) 
-  => Expr t (Prep t) Name 
+  => Expr t (Prep t) Name Name
   -> m (Value m)
 eval = cata $ \case
     EVar _ var ->

@@ -101,7 +101,7 @@ deriveEq1   ''Op
 --    deriving (Show, Eq)
 
 -- | Base functor for Expr
-data ExprF t p q a
+data ExprF t p q r a
     = EVar t Name             -- ^ Variable
     | ECon t Name [a]         -- ^ Constructor
     | ELit t Literal          -- ^ Literal value
@@ -110,12 +110,13 @@ data ExprF t p q a
     | ELFn t Name [q] a a     -- ^ Let-function expression (let f x = e) 
 --    | ELet t (Let q a) a
     | ELam t q a              -- ^ Lambda abstraction
---    | ELam t [q] a         
+    | ELam2 t r a
     | EIf  t a ~a ~a          -- ^ If-clause
     | EMat t [a] [Clause p a] -- ^ Match expression
+    -- TODO: use empty list to represent fun-match???
+--  | EFun t [Clause p a]     -- ^ Lambda-like match
     | EOp  t (Op a)           -- ^ Operator
     | ERec t [Field t a]      -- ^ Record
---  | EFun t [Clause p a]     -- ^ Lambda-like match
 --  | EAnn Scheme a           -- ^ Type-annotated expression
     deriving (Functor, Foldable, Traversable)
 
@@ -125,10 +126,10 @@ deriveShow1 ''ExprF
 deriveEq1   ''ExprF
 
 -- | Expression language tagged term tree
-type Expr t p q = Fix (ExprF t p q)
+type Expr t p q r = Fix (ExprF t p q r)
 
 -- | Term tree with unabridged patterns
-type PatternExpr t = Expr t (Pattern t) (Pattern t)
+type PatternExpr t = Expr t (Pattern t) (Pattern t) [Pattern t]
 
 -- | Return the precedence of a binary operator
 opPrecedence :: Op a -> Int
@@ -183,7 +184,7 @@ opAssoc = \case
     ODot   _ _ -> AssocL
     _          -> error "Not a binary operator"
 
-exprTag :: Expr t p q -> t
+exprTag :: Expr t p q r -> t
 exprTag = project >>> \case
     EVar t _       -> t
     ECon t _ _     -> t
@@ -191,12 +192,13 @@ exprTag = project >>> \case
     EApp t _       -> t
     ELet t _ _ _   -> t
     ELam t _ _     -> t
+    ELam2 t _ _     -> t
     EIf  t _ _ _   -> t
     EMat t _ _     -> t
     EOp  t _       -> t
     ERec t _       -> t
 
-setExprTag :: t -> Expr t p q -> Expr t p q
+setExprTag :: t -> Expr t p q r -> Expr t p q r
 setExprTag t = project >>> \case
     EVar _ a       -> varExpr t a
     ECon _ a b     -> conExpr t a b
@@ -204,12 +206,13 @@ setExprTag t = project >>> \case
     EApp _ a       -> appExpr t a
     ELet _ p a b   -> letExpr t p a b
     ELam _ p a     -> lamExpr t p a
+    ELam2 _ r a     -> lam2Expr t r a
     EIf  _ a b c   -> ifExpr  t a b c
     EMat _ a b     -> matExpr t a b
     EOp  _ a       -> opExpr  t a
     ERec _ s       -> recExpr t s
 
-updateExprTag :: (t -> t) -> Expr t p q -> Expr t p q
+updateExprTag :: (t -> t) -> Expr t p q r -> Expr t p q r
 updateExprTag update expr = setExprTag (update (exprTag expr)) expr
 
 fieldTag :: Field t a -> t
@@ -246,7 +249,7 @@ instance Injective (Field t a) (t, Name, a) where
 instance Injective (t, Name, a) (Field t a) where
     to (t, n, v) = Field t n v
 
-instance (Typed t) => Typed (Expr t (Pattern t) (Pattern t)) where
+instance (Typed t) => Typed (PatternExpr t) where
     typeOf = typeOf . exprTag
 
 instance (Typed t) => Typed (Pattern t) where
@@ -269,6 +272,7 @@ mapTags f = cata $ \case
     EApp t a       -> appExpr (f t) a
     ELet t p a b   -> letExpr (f t) (mapPatternTags f p) a b
     ELam t p a     -> lamExpr (f t) (mapPatternTags f p) a
+    ELam2 t r a     -> lam2Expr (f t) (mapPatternTags f <$> r) a
     EIf  t a b c   -> ifExpr  (f t) a b c
     EMat t a e     -> matExpr (f t) a (clause <$> e)
     EOp  t a       -> opExpr  (f t) a
@@ -312,92 +316,95 @@ recPat = embed2 PRec
 anyPat :: t -> Pattern t
 anyPat = embed1 PAny 
 
-varExpr :: t -> Name -> Expr t p q
+varExpr :: t -> Name -> Expr t p q r
 varExpr = embed2 EVar
 
-conExpr :: t -> Name -> [Expr t p q] -> Expr t p q
+conExpr :: t -> Name -> [Expr t p q r] -> Expr t p q r
 conExpr = embed3 ECon 
 
-litExpr :: t -> Literal -> Expr t p q
+litExpr :: t -> Literal -> Expr t p q r
 litExpr = embed2 ELit 
 
-appExpr :: t -> [Expr t p q] -> Expr t p q
+appExpr :: t -> [Expr t p q r] -> Expr t p q r
 appExpr = embed2 EApp 
 
-letExpr :: t -> q -> Expr t p q -> Expr t p q -> Expr t p q
+letExpr :: t -> q -> Expr t p q r -> Expr t p q r -> Expr t p q r
 letExpr = embed4 ELet 
 
-lFnExpr :: t -> Name -> [q] -> Expr t p q -> Expr t p q -> Expr t p q
+lFnExpr :: t -> Name -> [q] -> Expr t p q r -> Expr t p q r -> Expr t p q r
 lFnExpr = embed5 ELFn
 
-lamExpr :: t -> q -> Expr t p q -> Expr t p q
+lamExpr :: t -> q -> Expr t p q r -> Expr t p q r
 lamExpr = embed3 ELam 
 
-matExpr :: t -> [Expr t p q] -> [Clause p (Expr t p q)] -> Expr t p q
+lam2Expr :: t -> r -> Expr t p q r -> Expr t p q r
+lam2Expr = embed3 ELam2
+
+matExpr :: t -> [Expr t p q r] -> [Clause p (Expr t p q r)] -> Expr t p q r
 matExpr = embed3 EMat 
 
-ifExpr :: t -> Expr t p q -> Expr t p q -> Expr t p q -> Expr t p q
+ifExpr :: t -> Expr t p q r -> Expr t p q r -> Expr t p q r -> Expr t p q r
 ifExpr = embed4 EIf
 
-recExpr :: t -> [Field t (Expr t p q)] -> Expr t p q
+recExpr :: t -> [Field t (Expr t p q r)] -> Expr t p q r
 recExpr = embed2 ERec 
 
-opExpr :: t -> Op (Expr t p q) -> Expr t p q
+opExpr :: t -> Op (Expr t p q r) -> Expr t p q r
 opExpr = embed2 EOp 
 
-binOpExpr :: (a -> b -> Op (Expr t p q)) -> t -> a -> b -> Expr t p q
+binOpExpr :: (a -> b -> Op (Expr t p q r)) -> t -> a -> b -> Expr t p q r
 binOpExpr op t a b = opExpr t (op a b)
 
-dotOp :: t -> Name -> Expr t p q -> Expr t p q
+dotOp :: t -> Name -> Expr t p q r -> Expr t p q r
 dotOp = binOpExpr ODot
 
-addOp :: t -> Expr t p q -> Expr t p q -> Expr t p q
+addOp :: t -> Expr t p q r -> Expr t p q r -> Expr t p q r
 addOp = binOpExpr OAdd
 
-subOp :: t -> Expr t p q -> Expr t p q -> Expr t p q
+subOp :: t -> Expr t p q r -> Expr t p q r -> Expr t p q r
 subOp = binOpExpr OSub
 
-mulOp :: t -> Expr t p q -> Expr t p q -> Expr t p q
+mulOp :: t -> Expr t p q r -> Expr t p q r -> Expr t p q r
 mulOp = binOpExpr OMul
 
-divOp :: t -> Expr t p q -> Expr t p q -> Expr t p q
+divOp :: t -> Expr t p q r -> Expr t p q r -> Expr t p q r
 divOp = binOpExpr ODiv
 
-powOp :: t -> Expr t p q -> Expr t p q -> Expr t p q
+powOp :: t -> Expr t p q r -> Expr t p q r -> Expr t p q r
 powOp = binOpExpr OPow
 
-eqOp :: t -> Expr t p q -> Expr t p q -> Expr t p q
-eqOp = binOpExpr OEq
+eqOp :: t -> Expr t p q r -> Expr t p q r -> Expr t p q r
+eqOp = binOpExpr OEq 
 
-nEqOp :: t -> Expr t p q -> Expr t p q -> Expr t p q
-nEqOp = binOpExpr ONEq
+nEqOp :: t -> Expr t p q r -> Expr t p q r -> Expr t p q r
+nEqOp = binOpExpr ONEq 
 
-ltOp :: t -> Expr t p q -> Expr t p q -> Expr t p q
+ltOp :: t -> Expr t p q r -> Expr t p q r -> Expr t p q r
 ltOp = binOpExpr OLt
 
-gtOp :: t -> Expr t p q -> Expr t p q -> Expr t p q
+gtOp :: t -> Expr t p q r -> Expr t p q r -> Expr t p q r
 gtOp = binOpExpr OGt
 
-ltEOp :: t -> Expr t p q -> Expr t p q -> Expr t p q
+ltEOp :: t -> Expr t p q r -> Expr t p q r -> Expr t p q r
 ltEOp = binOpExpr OLtE
 
-gtEOp :: t -> Expr t p q -> Expr t p q -> Expr t p q
+gtEOp :: t -> Expr t p q r -> Expr t p q r -> Expr t p q r
 gtEOp = binOpExpr OGtE
 
-andOp :: t -> Expr t p q -> Expr t p q -> Expr t p q
+andOp :: t -> Expr t p q r -> Expr t p q r -> Expr t p q r
 andOp = binOpExpr OAnd
 
-orOp :: t -> Expr t p q -> Expr t p q -> Expr t p q
+orOp :: t -> Expr t p q r -> Expr t p q r -> Expr t p q r
 orOp = binOpExpr OOr
 
-lArrOp :: t -> Expr t p q -> Expr t p q -> Expr t p q
+lArrOp :: t -> Expr t p q r -> Expr t p q r -> Expr t p q r
 lArrOp = binOpExpr OLArr
 
-rArrOp :: t -> Expr t p q -> Expr t p q -> Expr t p q
+rArrOp :: t -> Expr t p q r -> Expr t p q r -> Expr t p q r
 rArrOp = binOpExpr ORArr
 
-fPipeOp :: t -> Expr t p q -> Expr t p q -> Expr t p q
+fPipeOp :: t -> Expr t p q r -> Expr t p q r -> Expr t p q r
 fPipeOp = binOpExpr OFPipe
 
-bPipeOp :: t -> Expr t p q -> Expr t p q -> Expr t p q
+bPipeOp :: t -> Expr t p q r -> Expr t p q r -> Expr t p q r
 bPipeOp = binOpExpr OBPipe

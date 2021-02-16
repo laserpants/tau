@@ -8,6 +8,7 @@
 {-# LANGUAGE TemplateHaskell   #-}
 {-# LANGUAGE OverloadedStrings #-}
 module Tau.Comp.Patterns where
+-- Tau.Comp.Sugar
 
 import Control.Applicative ((<|>))
 import Control.Arrow
@@ -52,7 +53,7 @@ runSimplify = unSimplify
     >>> fromMaybe (throwError "Error") -- (throwError ImplementationError)
 
 data MatchExprF t a
-    = Match [Expr t (Prep t) Name] [Clause (Pattern t) (Expr t (Prep t) Name)] a
+    = Match [Expr t (Prep t) Name Name] [Clause (Pattern t) (Expr t (Prep t) Name Name)] a
     | Fail
     deriving (Show, Eq, Functor, Foldable, Traversable)
 
@@ -62,7 +63,7 @@ data TranslatedF m t a
     = Wrap (m a)
     | SimpleMatch a [(Prep t, a)]
     | If a a a
-    | Expr (Expr t (Prep t) Name)
+    | Expr (Expr t (Prep t) Name Name)
     deriving (Show, Eq, Functor, Foldable, Traversable)
 
 type Translated m t = Fix (TranslatedF m t)
@@ -75,27 +76,49 @@ deriveEq1   ''TranslatedF
 
 class Boolean t where
     boolean :: t
+    arrow   :: t -> t -> t
 
 instance Boolean () where
-    boolean = ()
+    boolean   = ()
+    arrow _ _ = ()
 
 instance Boolean Type where
     boolean = tBool
+    arrow   = tArr 
 
 -- ??? TODO
-instance Boolean (Type, [a]) where
-    boolean = (tBool, [])
+--instance Boolean (Type, [a]) where
+--    boolean = (tBool, [])
+--    arrow (a, x) (b, y) = (tArr a b, [])
 
 simplified 
   :: (Boolean t, Show t) 
-  => Expr t (Pattern t) (Pattern t) 
-  -> Either String (Expr t (Prep t) Name)
-simplified = runSimplify . simplify
+  => Expr t (Pattern t) (Pattern t) [Pattern t]
+  -> Either String (Expr t (Prep t) Name Name)
+simplified = runSimplify . simplify . unrollLambdas
+
+unrollLambdas
+  :: (Boolean t) 
+  => Expr t (Pattern t) (Pattern t) [Pattern t]
+  -> Expr t (Pattern t) (Pattern t) (Pattern t)
+unrollLambdas = cata $ \case
+    ELam2 t ps a      -> foldr unroll a ps
+    EVar t var        -> varExpr t var
+    ECon t con exs    -> conExpr t con exs
+    ELit t lit        -> litExpr t lit
+    EApp t exs        -> appExpr t exs
+    ELet t pat e1 e2  -> letExpr t pat e1 e2
+    EIf  t cond e1 e2 -> ifExpr  t cond e1 e2
+    EMat t exs eqs    -> matExpr t exs eqs
+    EOp  t op         -> opExpr  t op
+    ERec t fields     -> recExpr t fields
+  where
+    unroll pat ex = lamExpr (arrow (patternTag pat) (exprTag ex)) pat ex
 
 simplify 
   :: (Boolean t, Show t) 
-  => Expr t (Pattern t) (Pattern t) 
-  -> Simplify (Expr t (Prep t) Name)
+  => Expr t (Pattern t) (Pattern t) (Pattern t)
+  -> Simplify (Expr t (Prep t) Name Name)
 simplify = cata $ \case
     EVar t var     -> pure (varExpr t var)
     ECon t con exs -> conExpr t con <$> sequence exs
@@ -154,15 +177,15 @@ simplify = cata $ \case
     ERec t fields ->
         recExpr t <$> traverse sequence fields
 
-simplifyOp :: t -> Op (Simplify (Expr t p q)) -> Simplify (Expr t p q)
+simplifyOp :: t -> Op (Simplify (Expr t p q r)) -> Simplify (Expr t p q r)
 simplifyOp t (OEq  a b) = eqOp  t <$> a <*> b
 simplifyOp t (OAnd a b) = andOp t <$> a <*> b
 simplifyOp t (OOr  a b) = orOp  t <$> a <*> b
 
 flatten 
   :: (Boolean t, Show t, Show p, Show q) 
-  => Clause (Pattern t) (Expr t p q) 
-  -> Clause (Pattern t) (Expr t p q)
+  => Clause (Pattern t) (Expr t p q r) 
+  -> Clause (Pattern t) (Expr t p q r)
 flatten (Clause ps exs e) = Clause qs (exs <> exs1) e
   where
     (qs, exs1) = fromJust (evalSupply fun (nameSupply "="))
@@ -187,9 +210,9 @@ flatten (Clause ps exs e) = Clause qs (exs <> exs1) e
 
 compile 
   :: (Boolean t, Show t) 
-  => [Expr t (Prep t) Name]
-  -> [Clause (Pattern t) (Expr t (Prep t) Name)]
-  -> Simplify (Expr t (Prep t) Name)
+  => [Expr t (Prep t) Name Name]
+  -> [Clause (Pattern t) (Expr t (Prep t) Name Name)]
+  -> Simplify (Expr t (Prep t) Name Name)
 compile es qs = 
     Match es (flatten <$> qs) (embed Fail)
       & embed
@@ -198,7 +221,7 @@ compile es qs =
   where
     collapse 
       :: Translated Simplify t 
-      -> Simplify (Expr t (Prep t) Name)
+      -> Simplify (Expr t (Prep t) Name Name)
     collapse = cata $ \case
         Wrap a -> join a
         Expr a -> pure a
@@ -265,9 +288,9 @@ translate = futu $ project >>> \case
 
 substitute 
   :: Name 
-  -> Expr t (Prep t) Name 
-  -> Expr t (Prep t) Name 
-  -> Expr t (Prep t) Name
+  -> Expr t (Prep t) Name r
+  -> Expr t (Prep t) Name r
+  -> Expr t (Prep t) Name r
 substitute name subst = para $ \case
     ELet t pat (_, e1) e2 -> letExpr t pat e1 e2'
       where 

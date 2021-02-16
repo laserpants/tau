@@ -14,13 +14,13 @@ import Tau.Pretty
 import Tau.Util
 import qualified Data.Text as Text
 
-debugTree :: (Monad m, Show t, Pretty t, Pretty p, Pretty q, Pretty (Expr t p q)) => Expr t p q -> m ()
+debugTree :: (Monad m, Show t, Pretty t, Pretty p, Pretty q, Pretty r, Pretty (Expr t p q r)) => Expr t p q r -> m ()
 debugTree expr = debug (showTree (Text.unpack <$> prettyExprTree expr) :: String)
 
 xxx2 :: Text -> Tree Text -> Tree Text
 xxx2 t (Node a b) = Node (t <> a) b
 
-prettyExprTree :: (Show t, Pretty t, Pretty p, Pretty q, Pretty (Expr t p q)) => Expr t p q -> Tree Text
+prettyExprTree :: (Show t, Pretty t, Pretty p, Pretty q, Pretty r, Pretty (Expr t p q r)) => Expr t p q r -> Tree Text
 prettyExprTree = para $ \case
     EVar t var        -> node t var []
     ECon t con exs    -> node t (conExpr t con (fst <$> exs)) []
@@ -28,6 +28,7 @@ prettyExprTree = para $ \case
     EApp t exs        -> node t (text "(@)") (snd <$> exs)
     ELet t pat e1 e2  -> node t (text "let") [ Node (renderDoc (pretty pat <+> equals)) [snd e1], Node "in" [snd e2] ] --  <+> pretty (fst e1))) []
     ELam t pat e1     -> node t (renderDoc ("λ" <> pretty pat)) [snd e1]
+    ELam2 t pats e1     -> node t (renderDoc ("λ" <> pretty pats)) [snd e1]
     EIf  t cond tr fl -> node t (text "if") (snd <$> [cond, ("then " <>) <$$> tr, ("else " <>) <$$> fl])
     ERec t fields     -> node t ("{" <> Text.intercalate "," (fieldName <$> fields) <> "}") (field_ <$> fields) -- (fst <$$> fields)) []
     EMat t exs eqs    -> node t (renderDoc ("match" <+> matchExprs (fst <$> exs) <+> "with")) (clauseTree <$> eqs)

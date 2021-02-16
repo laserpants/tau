@@ -604,6 +604,12 @@ infer = cata alg
                 unifyTyped newTy (typeOf tp `tArr` typeOf e1)
                 pure (lamExpr (NodeInfo newTy []) tp e1)
 
+            ELam2 _ pats expr1 -> do
+                (tps, vs) <- runWriterT (traverse inferPattern pats)
+                e1 <- local (second (Env.inserts (toScheme <$$> vs))) expr1
+                unifyTyped newTy (foldr tArr (typeOf e1) (typeOf <$> tps))
+                pure (lam2Expr (NodeInfo newTy []) tps e1)
+
             EIf _ cond tr fl -> do
                 e1 <- cond
                 e2 <- tr
