@@ -100,7 +100,7 @@ deriveEq1   ''Op
 --    | LetFun Name [q] a
 --    deriving (Show, Eq)
 
--- | Base functor for Expr
+-- | Base functor for Expr  (TODO: q ~ r ??)
 data ExprF t p q r a
     = EVar t Name             -- ^ Variable
     | ECon t Name [a]         -- ^ Constructor
