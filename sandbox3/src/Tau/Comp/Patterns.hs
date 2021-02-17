@@ -181,6 +181,8 @@ simplifyOp :: t -> Op (Simplify (Expr t p q r)) -> Simplify (Expr t p q r)
 simplifyOp t (OEq  a b) = eqOp  t <$> a <*> b
 simplifyOp t (OAnd a b) = andOp t <$> a <*> b
 simplifyOp t (OOr  a b) = orOp  t <$> a <*> b
+simplifyOp t (OAdd a b) = addOp t <$> a <*> b
+simplifyOp t (OSub a b) = subOp t <$> a <*> b
 
 flatten 
   :: (Boolean t, Show t, Show p, Show q) 

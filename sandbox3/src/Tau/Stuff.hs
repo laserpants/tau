@@ -109,6 +109,12 @@ rebuildTree22 a = do
             traceShowM xxxs
             pure (letExpr t pat (frog e1 (nub xxxs)) e2)
 
+        EOp t (OAdd a b) -> do
+            e1 <- a
+            e2 <- b
+            let t1 = nodeType t
+            rebuildTree22 (appExpr t [varExpr (NodeInfo (t1 `tArr` t1 `tArr` t1) [InClass "Num" t1]) "(+)", e1, e2])
+
         EVar t var -> do
             -- 1. lambda bound var
             -- 2. let-bound variable
@@ -129,6 +135,9 @@ rebuildTree22 a = do
 
         e -> 
             embed <$> sequence e
+
+abcd (Fix (EVar t name)) = varExpr t ("." <> name)
+abcd e = e
 
 funx 
   :: (MonadError String m, MonadSupply Name m, MonadReader (ClassEnv (PatternExpr NodeInfo), TypeEnv, [Name]) m) 
@@ -155,22 +164,22 @@ funx (InClass name ty) expr = do
 
                 Just (a, i@Instance{..}) -> do
                     --traceShowM (pretty instanceDict)
-                    traceShowM "vvvvvvv"
-                    traceShowM "vvvvvvv"
-                    traceShowM "vvvvvvv"
-                    --undefined
-                    (debugTree instanceDict)
+--                    traceShowM "vvvvvvv"
+--                    traceShowM "vvvvvvv"
+--                    traceShowM "vvvvvvv"
+--                    --undefined
+--                    (debugTree instanceDict)
 
 
                     foo <- rebuildTree22 instanceDict
-                    traceShowM (pretty foo)
-                    traceShowM (pretty (typeOf foo))
-                    --env2 <- asks snd3
-                    --mapM_ traceShowM (Env.toList env2) -- (Env.lookup "showList" env2)
-                    traceShowM "^^^^^^^"
-                    traceShowM "^^^^^^^"
-                    traceShowM "^^^^^^^"
-
+--                    traceShowM (pretty foo)
+--                    traceShowM (pretty (typeOf foo))
+--                    --env2 <- asks snd3
+--                    --mapM_ traceShowM (Env.toList env2) -- (Env.lookup "showList" env2)
+--                    traceShowM "^^^^^^^"
+--                    traceShowM "^^^^^^^"
+--                    traceShowM "^^^^^^^"
+--
                     --let foo = instanceDict
 
                     --let zz:_ = a 
@@ -188,130 +197,15 @@ funx (InClass name ty) expr = do
                     --deps a (appExpr (exprTag expr) [expr, mapTags (`NodeInfo` []) instanceDict])
 
                     --pure (appExpr (exprTag expr) [expr, mapTags (`NodeInfo` []) instanceDict])
-                    pure (appExpr (exprTag expr) [expr, foo])
+                    let ee = setExprTag (NodeInfo (typeOf foo `tArr` nodeType (exprTag expr)) []) expr
+
+                    pure (appExpr (exprTag expr) [abcd ee, foo])
 
                     --pure (letExpr (exprTag expr) (varPat (exprTag expr) "show") (varExpr (exprTag expr) "@showInt") (appExpr (exprTag expr) [expr, mapTags (`NodeInfo` []) instanceDict]))
 
---                  where
---                    deps :: (MonadError String m) => [Name] -> PatternExpr NodeInfo -> m (PatternExpr NodeInfo)
---                    deps a e
---                        | Prelude.null a = pure e
---                        | otherwise      = x
---                      where
---                        x :: (MonadError String m) => m (PatternExpr NodeInfo) -- [([Name], Instance (PatternExpr Type))]
---                        x = do
---                            (yyy, zzz) <- unzip <$> traverse gork a
---                            let ddd = foldr bork e zzz
---                            deps (concat yyy) ddd
---
---                        gork :: (MonadError String m) => Name -> m ([Name], Instance (PatternExpr Type))
---                        gork zz = 
---                            case lookupClassInstance zz ty env of
---                                Nothing -> throwError ""
---                                Just i -> pure i
---
---                        bork :: Instance (PatternExpr Type) -> PatternExpr NodeInfo -> PatternExpr NodeInfo
---                        bork Instance{..} ex = undefined
-
---                        yy = [Maybe a] -> ([a], 
 
 
 
-
-
---joinDicts :: PatternExpr Type -> PatternExpr Type -> PatternExpr Type
---joinDicts d1 d2 =
---    case (project d1, project d2) of
---        (ERec _ fields1, ERec t fields2) ->
---            recExpr t (fields1 <> fields2)
---        _ -> d2 -- error !!
-
---buildDict 
---  :: (MonadError String m, MonadSupply Name m, MonadState Environments m) 
---  => Name 
---  -> Type 
---  -> ClassEnv a
---  -> m (PatternExpr Type)
---buildDict name ty env =
---    case lookupClassInstance name ty env of
---        Nothing -> throwError "bananas"
---        Just (super, i@Instance{..}) -> do
---            undefined
---            --zzz <- traverse foo instancePredicates
---            --yyy <- traverse boo super
---            --pure (foldr1 joinDicts (instanceDict:zzz <> yyy))
---  where
-----    foo 
-----      :: (MonadError String m, MonadSupply Name m, MonadState Environments m) 
-----      => Predicate 
-----      -> m a
---    foo (InClass name1 ty1) = buildDict name1 ty1 env
---
---    boo name2 = buildDict name2 ty env
-
---rebuildTree 
---  :: (MonadError String m, MonadSupply Name m, MonadState Environments m) 
---  => PatternExpr NodeInfo 
---  -> ReaderT Bool m (PatternExpr NodeInfo)
---rebuildTree =
---    cata $ \case
---        EApp t exs -> do
---            sequence exs >>= \case
---                [] -> pure (appExpr t [])
---                (e:es) -> do
---                    let NodeInfo{..} = exprTag e 
---                    ds <- traverse dict (sort nodePredicates)
---                    pure (stripExprPredicates (appExpr t (e:ds <> (stripExprPredicates <$> es))))
---                  where
---                    dict 
---                      :: (MonadError String m, MonadSupply Name m, MonadState Environments m) 
---                      => Predicate 
---                      -> m (PatternExpr NodeInfo)
---                    dict (InClass name ty) = do
---                        env <- gets classEnv
---                        xx <- buildDict name ty env
---                        traceShowM (pretty xx)
---                        traceShowM ".^^."
---                        pure (mapTags (`NodeInfo` []) xx)
---                        --gets classEnv >>= \e -> 
---                        --    case buildDict name ty e of
---                        --        Nothing -> error ("Missing class instance: " <> Text.unpack (name <> " " <> prettyPrint ty))
---                        --        Just e  -> do
---                        --            traceShowM $ pretty e
---                        --            traceShowM "...."
---                        --            pure (mapTags (`NodeInfo` []) e)
---
---                    stripExprPredicates = updateExprTag stripNodePredicates
---
---        ELam t@NodeInfo{..} pat e1 -> do
---           nested <- ask
---           if nested then 
---               lamExpr t pat <$> local (const True) e1
---
---           else do
---               vs <- Text.replace "a" "&" <$$> supplies (length nodePredicates)
---               let pairs = zip (sort nodePredicates) vs
---               modifyClassEnv (flip (foldr insertInstance) pairs)
---               e <- lamExpr t (stripPatternPredicates pat) <$> local (const True) e1
---               fst <$> foldl extendLam (pure (e, [])) (reverse pairs)
---            where
---              stripPatternPredicates = updatePatternTag stripNodePredicates
---
---              insertInstance (InClass name ty, var) = 
---                  let t = tApp (tCon (kArr kTyp (fromJust (kindOf ty))) name) ty
---                   in addClassInstance name ty (varExpr t var)
---
---              extendLam pex (p@(InClass name ty), var) = do 
---                  (e, ps) <- pex
---                  let t  = tApp (tCon (kArr kTyp (fromJust (kindOf ty))) name) ty
---                      e1 = varPat (NodeInfo t []) var
---                  pure (lamExpr (exprTag e) e1 (updateExprTag (setNodePredicates ps) e), p:ps) 
---
---        e -> 
---            embed <$> local (const False) (sequence e)
---
---
---
 
 type ClassEnv a = Env (Class a)
 
@@ -622,6 +516,7 @@ infer = cata alg
             EOp  _ (OAnd a b) -> inferLogicOp OAnd a b
             EOp  _ (OOr  a b) -> inferLogicOp OOr a b
             EOp  _ (OEq  a b) -> inferBinOp "(==)" OEq a b
+            EOp  _ (OAdd a b) -> inferBinOp "(+)"  OAdd a b
 
             EOp  _ _ -> undefined
 
@@ -717,6 +612,9 @@ inferBinOp
 inferBinOp name op a b = do
     (newTy, e1, e2) <- operands a b 
     (ty, ps) <- lookupScheme name >>= instantiate
+    traceShowM (pretty ty)
+    traceShowM ps
+    traceShowM "**"
     unifyTyped (typeOf e1 `tArr` typeOf e2 `tArr` newTy) ty 
     pure (opExpr (NodeInfo newTy ps) (op e1 e2))
 

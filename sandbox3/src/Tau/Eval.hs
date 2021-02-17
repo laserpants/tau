@@ -186,9 +186,6 @@ tryClause xs ys = cata alg (zip xs ys)
             (<>) <$> Just ys <*> xs
 
         Cons x y -> do
-            traceShowM x
-            traceShowM y
-            traceShowM "."
             error "Incompatible patterns"
 
         Nil -> 
