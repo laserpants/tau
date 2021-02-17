@@ -17,6 +17,7 @@ dependencies:
 - data-fix
 - deriving-compat
 - either
+- exceptions
 - extra
 - free
 - megaparsec

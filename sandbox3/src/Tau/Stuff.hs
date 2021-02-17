@@ -199,7 +199,7 @@ funx (InClass name ty) expr = do
                     --pure (appExpr (exprTag expr) [expr, mapTags (`NodeInfo` []) instanceDict])
                     let ee = setExprTag (NodeInfo (typeOf foo `tArr` nodeType (exprTag expr)) []) expr
 
-                    pure (appExpr (exprTag expr) [abcd ee, foo])
+                    pure (appExpr (exprTag expr) [ee, foo])
 
                     --pure (letExpr (exprTag expr) (varPat (exprTag expr) "show") (varExpr (exprTag expr) "@showInt") (appExpr (exprTag expr) [expr, mapTags (`NodeInfo` []) instanceDict]))
 

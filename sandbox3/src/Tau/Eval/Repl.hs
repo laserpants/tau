@@ -118,8 +118,8 @@ typeEnv_ = Env.fromList
     ]
 
 evalEnv_ = Env.fromList 
-    [ ("(+)"   , fromJust (runEval (eval plus_) mempty))
-    , ("show"  , fromJust (runEval (eval show_) mempty))
+    [ ("(+)"  , fromJust (runEval (eval plus_) mempty))
+    , ("show" , fromJust (runEval (eval show_) mempty))
     , ("(,)"   , Tau.Eval.constructor "(,)" 2) -- fromJust (runEval (eval pair) mempty))
     , ("fst"   , fromJust (runEval (eval fst_) mempty))
     , ("snd"   , fromJust (runEval (eval snd_) mempty))
