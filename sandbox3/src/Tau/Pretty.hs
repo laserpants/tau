@@ -244,7 +244,7 @@ instance Pretty (PatternExpr t) where
     pretty = prettyExpr (hsep . fmap f)
       where
         f :: Pattern t -> Doc a
-        f p = flip cata p $ \case
+        f p = flip cata p $ \case  -- TODO: use project?
             PCon _ _ [] -> pretty p
             PCon{}      -> parens (pretty p)
             _           -> pretty p
