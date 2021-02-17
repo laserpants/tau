@@ -84,7 +84,6 @@ data Op a
     | OGtE a a                -- ^ Greater-than-or-equal-to operator (>=)
     | ONeg a                  -- ^ Unary negation
     | ONot a                  -- ^ Logical Not
---  | OIso a                  -- ^ Isomorphism operator (~)
     | OLArr a a               -- ^ Function composition operator (<<)
     | ORArr a a               -- ^ Reverse function composition (>>)               
     | OFPipe a a              -- ^ Forward pipe operator (|>)
@@ -100,6 +99,9 @@ deriveEq1   ''Op
 --    | LetFun Name [q] a
 --    deriving (Show, Eq)
 
+--data Let q = Let q | LetFun Name [q]
+--    deriving (Show, Eq)
+
 -- | Base functor for Expr  (TODO: q ~ r ??)
 data ExprF t p q r a
     = EVar t Name             -- ^ Variable
@@ -112,7 +114,8 @@ data ExprF t p q r a
 --    | ELam t q a              -- ^ Lambda abstraction
     | ELam2 t r a              -- ^ Lambda abstraction
     | EIf  t a ~a ~a          -- ^ If-clause
-    | EMat t [a] [Clause p a] -- ^ Match expression
+    | EMat t [a] [Clause p a] -- ^ Match and fun expressions
+    -- TODO: renamte to EPat
     -- TODO: use empty list to represent fun-match???
 --  | EFun t [Clause p a]     -- ^ Lambda-like match
     | EOp  t (Op a)           -- ^ Operator
