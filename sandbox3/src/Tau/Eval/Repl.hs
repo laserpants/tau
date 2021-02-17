@@ -115,6 +115,8 @@ typeEnv_ = Env.fromList
     , ( "(,)"  , Forall [kTyp, kTyp] [] (tGen 0 `tArr` tGen 1 `tArr` (tApp (tApp (tCon (kArr kTyp (kArr kTyp kTyp)) "(,)") (tGen 0)) (tGen 1))))
     , ( "first" , Forall [kTyp, kTyp] [] (tPair (tGen 0) (tGen 1) `tArr` (tGen 0)))
     , ( "second" , Forall [kTyp, kTyp] [] (tPair (tGen 0) (tGen 1) `tArr` (tGen 1)))
+    , ( "(::)"  , Forall [kTyp] [] (tGen 0 `tArr` tList (tGen 0) `tArr` tList (tGen 0)) )
+    , ( "[]"    , Forall [kTyp] [] (tList (tGen 0)) )
     ]
 
 evalEnv_ = Env.fromList 
@@ -123,6 +125,8 @@ evalEnv_ = Env.fromList
     , ("(,)"   , Tau.Eval.constructor "(,)" 2) -- fromJust (runEval (eval pair) mempty))
     , ("fst"   , fromJust (runEval (eval fst_) mempty))
     , ("snd"   , fromJust (runEval (eval snd_) mempty))
+    , ("(::)"  , Tau.Eval.constructor "(::)" 2)  
+    , ("[]"    , Tau.Eval.constructor "[]" 0)  
     ]
   where
     Right snd_ = simplified foo25
