@@ -117,16 +117,17 @@ typeEnv_ = Env.fromList
     , ( "second" , Forall [kTyp, kTyp] [] (tPair (tGen 0) (tGen 1) `tArr` (tGen 1)))
     , ( "(::)"  , Forall [kTyp] [] (tGen 0 `tArr` tList (tGen 0) `tArr` tList (tGen 0)) )
     , ( "[]"    , Forall [kTyp] [] (tList (tGen 0)) )
+    , ( "length" , Forall [kTyp] [] (tList (tGen 0) `tArr` tInt) )
     ]
 
 evalEnv_ = Env.fromList 
-    [ ("(+)"  , fromJust (runEval (eval plus_) mempty))
-    , ("show" , fromJust (runEval (eval show_) mempty))
-    , ("(,)"   , Tau.Eval.constructor "(,)" 2) -- fromJust (runEval (eval pair) mempty))
-    , ("fst"   , fromJust (runEval (eval fst_) mempty))
-    , ("snd"   , fromJust (runEval (eval snd_) mempty))
-    , ("(::)"  , Tau.Eval.constructor "(::)" 2)  
-    , ("[]"    , Tau.Eval.constructor "[]" 0)  
+    [ ("(+)"    , fromJust (runEval (eval plus_) mempty))
+    , ("show"   , fromJust (runEval (eval show_) mempty))
+    , ("(,)"    , Tau.Eval.constructor "(,)" 2) -- fromJust (runEval (eval pair) mempty))
+    , ("fst"    , fromJust (runEval (eval fst_) mempty))
+    , ("snd"    , fromJust (runEval (eval snd_) mempty))
+    , ("(::)"   , Tau.Eval.constructor "(::)" 2)  
+    , ("[]"     , Tau.Eval.constructor "[]" 0)  
     ]
   where
     Right snd_ = simplified foo25

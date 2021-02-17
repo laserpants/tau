@@ -145,6 +145,9 @@ evalOp = \case
         Value (LBool e2) <- b
         pure (Value (LBool (e1 || e2)))
 
+    ODot name a -> 
+        foldl1 evalApp [evalVar name, a]
+
 evalMatch
   :: (Show t, MonadFail m, MonadReader (ValueEnv m) m)
   => [Clause (Prep t) (m (Value m))]

@@ -518,7 +518,11 @@ infer = cata alg
             EOp  _ (OEq  a b) -> inferBinOp "(==)" OEq a b
             EOp  _ (OAdd a b) -> inferBinOp "(+)"  OAdd a b
 
-            EOp  _ _ -> undefined
+            EOp  _ (ODot name a) -> do
+                e1 <- a
+                (ty, ps) <- lookupScheme name >>= instantiate
+                unifyTyped (typeOf e1 `tArr` newTy) ty
+                pure (opExpr (NodeInfo newTy ps) (ODot name e1))
 
             EMat _ exs eqs -> do
                 es1 <- sequence exs
