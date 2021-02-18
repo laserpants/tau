@@ -9,6 +9,7 @@
 {-# LANGUAGE OverloadedStrings #-}
 module Tau.Comp.Patterns where
 -- Tau.Comp.Sugar
+-- Tau.Comp.Core
 
 import Control.Applicative ((<|>))
 import Control.Arrow
@@ -93,25 +94,24 @@ simplified
   :: (Boolean t, Show t) 
   => Expr t (Pattern t) (Let (Pattern t)) [Pattern t]
   -> Either String (Expr t (Prep t) Name Name)
-simplified = runSimplify . simplify . unrollLambdas . funExpansion
+simplified = runSimplify . simplify . unrollLambdas 
 
-funExpansion 
-  :: (Boolean t) 
-  => Expr t (Pattern t) (Let (Pattern t)) [Pattern t]
-  -> Expr t (Pattern t) (Let (Pattern t)) [Pattern t]
-funExpansion = cata $ \case
-    EPat t [] eqs -> lamExpr t [varPat dom "$0"] (patExpr cod [varExpr dom "$0"] eqs)
-      where (dom, cod) = fromArr t
-    e -> Fix e
-
--- TODO: combine?
+--funExpansion 
+--  :: (Boolean t) 
+--  => Expr t (Pattern t) (Let (Pattern t)) [Pattern t]
+--  -> Expr t (Pattern t) (Let (Pattern t)) [Pattern t]
+--funExpansion = cata $ \case
+--    EPat t [] eqs -> lamExpr t [varPat dom "$0"] (patExpr cod [varExpr dom "$0"] eqs)
+--      where (dom, cod) = fromArr t
+--    e -> Fix e
+--
 
 unrollLambdas
   :: (Boolean t) 
   => Expr t (Pattern t) (Let (Pattern t)) [Pattern t]
   -> Expr t (Pattern t) (Let (Pattern t)) (Pattern t)
 unrollLambdas = cata $ \case
-    ELam t ps a       -> foldr unroll a ps
+    ELam _ ps a       -> foldr unroll a ps
     EVar t var        -> varExpr t var
     ECon t con exs    -> conExpr t con exs
     ELit t lit        -> litExpr t lit
@@ -119,6 +119,9 @@ unrollLambdas = cata $ \case
     EFix t name e1 e2 -> fixExpr t name e1 e2
     ELet t pat e1 e2  -> letExpr t pat e1 e2
     EIf  t cond e1 e2 -> ifExpr  t cond e1 e2
+    EPat t [] eqs -> do
+        let (dom, cod) = fromArr t
+        unroll (varPat dom "$0") (patExpr cod [varExpr dom "$0"] eqs)
     EPat t exs eqs    -> patExpr t exs eqs
     EOp  t op         -> opExpr  t op
     ERec t fields     -> recExpr t fields
