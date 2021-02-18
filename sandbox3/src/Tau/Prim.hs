@@ -6,11 +6,11 @@ module Tau.Prim where
 -- Tau.Lang.Prim
 -- Tau.Eval.Prim
 
-import Tau.Env (Env)
+import Tau.Util.Env (Env)
 import Tau.Expr
 import Tau.Util
 import qualified Data.Text as Text
-import qualified Tau.Env as Env
+import qualified Tau.Util.Env as Env
 
 class Prim a where
     toLiteral :: a -> Literal

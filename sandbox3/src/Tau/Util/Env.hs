@@ -1,6 +1,5 @@
 {-# LANGUAGE GeneralizedNewtypeDeriving #-}
-module Tau.Env where
--- Tau.Util.Env
+module Tau.Util.Env where
 
 import Data.Map.Strict (Map)
 import Prelude hiding (lookup, insert)

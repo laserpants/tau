@@ -33,7 +33,7 @@ import Tau.Util
 import Text.Megaparsec (runParser)
 import Text.Megaparsec.Error (errorBundlePretty)
 import qualified Data.Set.Monad as Set
-import qualified Tau.Env as Env
+import qualified Tau.Util.Env as Env
 
 --data ReplEnv = ReplEnv
 --    { values       :: ValueEnv Eval

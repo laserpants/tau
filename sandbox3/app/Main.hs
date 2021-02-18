@@ -14,7 +14,7 @@ import Control.Monad.Writer
 import Data.Maybe (fromJust)
 import Data.Void
 import Tau.Comp.Patterns
-import Tau.Env (Env)
+import Tau.Util.Env (Env)
 import Tau.Eval
 import Tau.Eval.Repl
 import Tau.Expr
@@ -26,7 +26,7 @@ import Tau.Stuff
 import Tau.Type
 import Tau.Type.Substitution
 import Tau.Util
-import qualified Tau.Env as Env
+import qualified Tau.Util.Env as Env
 
 
 --data FlatList = FlatNil | FlatCons Int FlatList

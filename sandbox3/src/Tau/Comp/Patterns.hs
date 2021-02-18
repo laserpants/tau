@@ -28,7 +28,7 @@ import Data.Maybe (fromJust, fromMaybe, maybeToList)
 import Data.Set.Monad (Set)
 import Data.Tuple.Extra (fst3, snd3, thd3)
 import Debug.Trace
-import Tau.Env
+import Tau.Util.Env
 import Tau.Pretty
 import Tau.Expr
 import Tau.Type
@@ -37,7 +37,7 @@ import Tau.Util
 import qualified Control.Monad.Free as Monad
 import qualified Data.Set.Monad as Set
 import qualified Data.Text as Text
-import qualified Tau.Env as Env
+import qualified Tau.Util.Env as Env
 
 newtype Simplify a = Simplify { unSimplify :: ExceptT String (Supply Name) a } deriving
     ( Functor

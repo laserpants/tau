@@ -16,11 +16,11 @@ import Data.List (nub)
 import Data.Maybe (fromMaybe)
 import Data.Set.Monad (Set)
 import Data.Void
-import Tau.Env
+import Tau.Util.Env
 import Tau.Util
 import qualified Data.Set.Monad as Set
 import qualified Data.Text as Text
-import qualified Tau.Env as Env
+import qualified Tau.Util.Env as Env
 
 -- | Base functor for Kind
 data KindF a 
