@@ -197,7 +197,7 @@ instance (Pretty p, Pretty q, Pretty (Expr t p q r)) => Pretty (Op (Expr t p q r
         ORArr  a b -> binOp a b ">>"
         OFPipe a b -> binOp a b "|>"
         OBPipe a b -> binOp a b "<|"
-        ODot   a b -> pretty a <> dot <> subOp AssocR b
+        ODot   a b -> subOp AssocR b <> dot <> pretty a 
       where
         binOp a b symb = subOp AssocL a
                      <+> symb

@@ -104,6 +104,8 @@ funExpansion = cata $ \case
       where (dom, cod) = fromArr t
     e -> Fix e
 
+-- TODO: cobine?
+
 unrollLambdas
   :: (Boolean t) 
   => Expr t (Pattern t) (Pattern t) [Pattern t]
