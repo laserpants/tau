@@ -105,7 +105,7 @@ classEnv_ = Env.fromList
     ]
   where
     foo11 = varExpr (NodeInfo ((tList (tVar kTyp "a")) `tArr` tString) [InClass "Show" (tVar kTyp "a")]) "showList"
-    showPair_ = lam2Expr (NodeInfo (tPair (tVar kTyp "a") (tVar kTyp "b") `tArr` tString) []) [varPat (NodeInfo (tPair (tVar kTyp "a") (tVar kTyp "b")) []) "p"] (appExpr (NodeInfo tString []) [varExpr (NodeInfo (tString `tArr` tString `tArr` tString `tArr` tString) []) "@strconcat3", appExpr (NodeInfo tString []) [varExpr (NodeInfo (tVar kTyp "a" `tArr` tString) [InClass "Show" (tVar kTyp "a")]) "show", (appExpr (NodeInfo (tVar kTyp "a") []) [varExpr (NodeInfo (tPair (tVar kTyp "a") (tVar kTyp "b") `tArr` tVar kTyp "a") []) "fst", varExpr (NodeInfo (tPair (tVar kTyp "a") (tVar kTyp "b")) []) "p"])], litExpr (NodeInfo tString []) (LString ","), appExpr (NodeInfo tString []) [varExpr (NodeInfo (tVar kTyp "b" `tArr` tString) [InClass "Show" (tVar kTyp "b")]) "show", appExpr (NodeInfo (tVar kTyp "b") []) [varExpr (NodeInfo (tPair (tVar kTyp "a") (tVar kTyp "b") `tArr` tVar kTyp "b") []) "snd", varExpr (NodeInfo (tPair (tVar kTyp "a") (tVar kTyp "b")) []) "p"]]])
+    showPair_ = lamExpr (NodeInfo (tPair (tVar kTyp "a") (tVar kTyp "b") `tArr` tString) []) [varPat (NodeInfo (tPair (tVar kTyp "a") (tVar kTyp "b")) []) "p"] (appExpr (NodeInfo tString []) [varExpr (NodeInfo (tString `tArr` tString `tArr` tString `tArr` tString) []) "@strconcat3", appExpr (NodeInfo tString []) [varExpr (NodeInfo (tVar kTyp "a" `tArr` tString) [InClass "Show" (tVar kTyp "a")]) "show", (appExpr (NodeInfo (tVar kTyp "a") []) [varExpr (NodeInfo (tPair (tVar kTyp "a") (tVar kTyp "b") `tArr` tVar kTyp "a") []) "fst", varExpr (NodeInfo (tPair (tVar kTyp "a") (tVar kTyp "b")) []) "p"])], litExpr (NodeInfo tString []) (LString ","), appExpr (NodeInfo tString []) [varExpr (NodeInfo (tVar kTyp "b" `tArr` tString) [InClass "Show" (tVar kTyp "b")]) "show", appExpr (NodeInfo (tVar kTyp "b") []) [varExpr (NodeInfo (tPair (tVar kTyp "a") (tVar kTyp "b") `tArr` tVar kTyp "b") []) "snd", varExpr (NodeInfo (tPair (tVar kTyp "a") (tVar kTyp "b")) []) "p"]]])
 
 typeEnv_ = Env.fromList 
     [ ( "(==)" , Forall [kTyp] [InClass "Eq" 0] (tGen 0 `tArr` tGen 0 `tArr` upgrade tBool) )
@@ -134,19 +134,19 @@ evalEnv_ = Env.fromList
     ]
   where
     Right length_ = simplified foo26
-    foo26 = lam2Expr () [varPat () "x"] (litExpr () (LInt 11))
+    foo26 = lamExpr () [varPat () "x"] (litExpr () (LInt 11))
 
     Right snd_ = simplified foo25
-    foo25 = lam2Expr () [varPat () "p"] (matExpr () [varExpr () "p"] [Clause [conPat () "(,)" [anyPat (), varPat () "b"]] [] (varExpr () "b")])
+    foo25 = lamExpr () [varPat () "p"] (matExpr () [varExpr () "p"] [Clause [conPat () "(,)" [anyPat (), varPat () "b"]] [] (varExpr () "b")])
 
     Right fst_ = simplified foo24
-    foo24 = lam2Expr () [varPat () "p"] (matExpr () [varExpr () "p"] [Clause [conPat () "(,)" [varPat () "a", anyPat ()]] [] (varExpr () "a")])
+    foo24 = lamExpr () [varPat () "p"] (matExpr () [varExpr () "p"] [Clause [conPat () "(,)" [varPat () "a", anyPat ()]] [] (varExpr () "a")])
 
     Right plus_ = simplified foo1
-    foo1 = lam2Expr () [varPat () "d"] (matExpr () [varExpr () "d"] [ Clause [recPat () [Field () "(+)" (varPat () "(+)")]] [] (varExpr () "(+)") ])
+    foo1 = lamExpr () [varPat () "d"] (matExpr () [varExpr () "d"] [ Clause [recPat () [Field () "(+)" (varPat () "(+)")]] [] (varExpr () "(+)") ])
 
     Right show_ = simplified foo2
-    foo2 = lam2Expr () [varPat () "d"] (matExpr () [varExpr () "d"] [ Clause [recPat () [Field () "show" (varPat () "show")]] [] (varExpr () "show") ])
+    foo2 = lamExpr () [varPat () "d"] (matExpr () [varExpr () "d"] [ Clause [recPat () [Field () "show" (varPat () "show")]] [] (varExpr () "show") ])
 
 
 

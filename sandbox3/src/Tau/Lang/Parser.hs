@@ -168,7 +168,7 @@ lambda = do
     void (symbol "\\")
     pats <- some pattern_
     body <- symbol "=>" *> expr
-    pure (lam2Expr () pats body)
+    pure (lamExpr () pats body)
 
 identifier :: Parser (PatternExpr ())
 identifier = varExpr () <$> word (withInitial letterChar)

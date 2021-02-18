@@ -111,10 +111,9 @@ data ExprF t p q r a
     | ELet t q a a            -- ^ Let-binding
     | ELFn t Name [q] a a     -- ^ Let-function expression (let f x = e) 
     | EFix t Name a a
-
 --    | ELet t (Let q a) a
 --    | ELam t q a              -- ^ Lambda abstraction
-    | ELam2 t r a              -- ^ Lambda abstraction
+    | ELam t r a              -- ^ Lambda abstraction
     | EIf  t a ~a ~a          -- ^ If-clause
     | EMat t [a] [Clause p a] -- ^ Match and fun expressions
     -- TODO: renamte to EPat
@@ -197,7 +196,7 @@ exprTag = project >>> \case
     EApp t _       -> t
     ELet t _ _ _   -> t
 --    ELam t _ _     -> t
-    ELam2 t _ _     -> t
+    ELam t _ _     -> t
     EIf  t _ _ _   -> t
     EMat t _ _     -> t
     EOp  t _       -> t
@@ -211,7 +210,7 @@ setExprTag t = project >>> \case
     EApp _ a       -> appExpr t a
     ELet _ p a b   -> letExpr t p a b
 --    ELam _ p a     -> lamExpr t p a
-    ELam2 _ r a     -> lam2Expr t r a
+    ELam _ r a     -> lamExpr t r a
     EIf  _ a b c   -> ifExpr  t a b c
     EMat _ a b     -> matExpr t a b
     EOp  _ a       -> opExpr  t a
@@ -280,7 +279,7 @@ mapTags f = cata $ \case
     EFix t n a b   -> fixExpr (f t) n a b
 
 --    ELam t p a     -> lamExpr (f t) (mapPatternTags f p) a
-    ELam2 t r a     -> lam2Expr (f t) (mapPatternTags f <$> r) a
+    ELam t r a     -> lamExpr (f t) (mapPatternTags f <$> r) a
     EIf  t a b c   -> ifExpr  (f t) a b c
     EMat t a e     -> matExpr (f t) a (clause <$> e)
     EOp  t a       -> opExpr  (f t) a
@@ -345,11 +344,8 @@ lFnExpr = embed5 ELFn
 fixExpr :: t -> Name -> Expr t p q r -> Expr t p q r -> Expr t p q r
 fixExpr = embed4 EFix
 
---lamExpr :: t -> q -> Expr t p q r -> Expr t p q r
---lamExpr a b c = lam2Expr a [b] c
-
-lam2Expr :: t -> r -> Expr t p q r -> Expr t p q r
-lam2Expr = embed3 ELam2
+lamExpr :: t -> r -> Expr t p q r -> Expr t p q r
+lamExpr = embed3 ELam
 
 matExpr :: t -> [Expr t p q r] -> [Clause p (Expr t p q r)] -> Expr t p q r
 matExpr = embed3 EMat 

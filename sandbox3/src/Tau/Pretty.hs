@@ -213,7 +213,7 @@ instance (Pretty p, Pretty q, Pretty (Expr t p q r)) => Pretty (Op (Expr t p q r
              in flip cata a $ \case
                  EApp{}              -> parens (pretty a)
                  ELet{}              -> parens (pretty a)
-                 ELam2{}              -> parens (pretty a)
+                 ELam{}              -> parens (pretty a)
                  EIf{}               -> parens (pretty a)
                  EOp _ ops | par ops -> parens (pretty a)
                  _                   -> pretty a
@@ -225,7 +225,7 @@ prettyExpr f = para $ \case
     ELit _ lit     -> pretty lit
     EApp _ exs     -> hsep (foldr app [] exs)
     ELet _ p e1 e2 -> prettyLet p e1 e2
-    ELam2 _ p e1    -> prettyLam (f p) e1
+    ELam _ p e1    -> prettyLam (f p) e1
     EIf  _ c e1 e2 -> prettyIf c e1 e2
     EMat _ exs eqs -> prettyMatch exs eqs
     EOp  _ op      -> pretty (fst <$> op)

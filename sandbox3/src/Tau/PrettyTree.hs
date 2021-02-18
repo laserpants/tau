@@ -29,7 +29,7 @@ prettyExprTree = para $ \case
     ELet t pat e1 e2  -> node t (text "let") [ Node (renderDoc (pretty pat <+> equals)) [snd e1], Node "in" [snd e2] ] --  <+> pretty (fst e1))) []
     EFix t name e1 e2 -> node t (text "letrec") [ Node (renderDoc (pretty name <+> equals)) [snd e1], Node "in" [snd e2] ] --  <+> pretty (fst e1))) []
 
-    ELam2 t pats e1    -> node t (renderDoc ("λ" <> pretty pats)) [snd e1]
+    ELam t pats e1    -> node t (renderDoc ("λ" <> pretty pats)) [snd e1]
     EIf  t cond tr fl -> node t (text "if") (snd <$> [cond, ("then " <>) <$$> tr, ("else " <>) <$$> fl])
     ERec t fields     -> node t ("{" <> Text.intercalate "," (fieldName <$> fields) <> "}") (field_ <$> fields) -- (fst <$$> fields)) []
     EMat t exs eqs    -> node t (renderDoc ("match" <+> matchExprs (fst <$> exs) <+> "with")) (clauseTree <$> eqs)
