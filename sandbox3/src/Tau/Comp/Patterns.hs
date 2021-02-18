@@ -119,9 +119,9 @@ unrollLambdas = cata $ \case
     EFix t name e1 e2 -> fixExpr t name e1 e2
     ELet t pat e1 e2  -> letExpr t pat e1 e2
     EIf  t cond e1 e2 -> ifExpr  t cond e1 e2
-    EPat t [] eqs -> do
+    EPat t [] eqs ->
         let (dom, cod) = fromArr t
-        unroll (varPat dom "$0") (patExpr cod [varExpr dom "$0"] eqs)
+         in unroll (varPat dom "$0") (patExpr cod [varExpr dom "$0"] eqs)
     EPat t exs eqs    -> patExpr t exs eqs
     EOp  t op         -> opExpr  t op
     ERec t fields     -> recExpr t fields
@@ -170,10 +170,8 @@ simplify = cata $ \case
         body <- e2
         compile [expr] [Clause [rep] [] body]
 
-    EFix t name e1 e2 -> do
-        expr <- e1
-        body <- e2
-        pure (fixExpr t name expr body)
+    EFix t name e1 e2 -> 
+        fixExpr t name <$> e1 <*> e2
 
     --
     --  Lambda expressions like \(C x) => f x
@@ -195,15 +193,6 @@ simplify = cata $ \case
     ERec t fields ->
         recExpr t <$> traverse sequence fields
 
-fffn
-  :: (Boolean t, Show t) 
-  => Pattern t
-  -> Simplify (Expr t (Prep t) Name Name)
-  -> Simplify (Expr t (Prep t) Name Name)
-fffn pat ex = do
-    e1 <- ex
-    simplifyLam (arrow (patternTag pat) (exprTag e1)) pat ex
-
 simplifyLam 
   :: (Boolean t, Show t)
   => t
@@ -214,6 +203,15 @@ simplifyLam t rep e1 = do
     fresh <- supply
     body <- e1
     lamExpr t fresh <$> compile [varExpr t fresh] [Clause [rep] [] body]
+
+fffn
+  :: (Boolean t, Show t) 
+  => Pattern t
+  -> Simplify (Expr t (Prep t) Name Name)
+  -> Simplify (Expr t (Prep t) Name Name)
+fffn pat ex = do
+    e1 <- ex
+    simplifyLam (arrow (patternTag pat) (exprTag e1)) pat ex
 
 simplifyOp :: t -> Op (Simplify (Expr t p q r)) -> Simplify (Expr t p q r)
 simplifyOp t (OEq  a b) = eqOp  t <$> a <*> b
@@ -355,17 +353,6 @@ substitute name subst = para $ \case
             | otherwise   -> varExpr t var
 
         e -> embed e
-
-        --ECon t con exs  -> conExpr t con exs
-        --ELit t lit      -> litExpr t lit
-        --EApp t exs      -> appExpr t exs
-        --EIf  t c e1 e2  -> ifExpr  t c e1 e2
-        --EOp  t op       -> substOp t op
---  where
---    substOp t = \case
---        OEq  a b -> eqOp  t a b
---        OAnd a b -> andOp t a b
---        OOr  a b -> orOp  t a b
 
 data Tagged a = ConTag a | VarTag a
     deriving (Show, Eq, Ord)
