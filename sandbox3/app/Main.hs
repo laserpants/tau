@@ -19,7 +19,7 @@ import Tau.Eval
 import Tau.Eval.Repl
 import Tau.Expr
 import Tau.Lang.Parser
-import Tau.Pretty
+import Tau.Lang.Pretty
 import Tau.PrettyTree
 import Tau.Prim
 import Tau.Stuff

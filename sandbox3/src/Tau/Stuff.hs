@@ -29,7 +29,7 @@ import Data.Tuple.Extra (fst3, snd3, thd3, third3, second3)
 import Data.Void
 import Tau.Util.Env (Env(..))
 import Tau.Expr
-import Tau.Pretty
+import Tau.Lang.Pretty
 import Tau.PrettyTree
 import Tau.Type
 import Tau.Type.Substitution

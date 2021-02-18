@@ -24,7 +24,7 @@ import Tau.Comp.Patterns
 import Tau.Expr
 import Tau.Eval
 import Tau.Lang.Parser
-import Tau.Pretty
+import Tau.Lang.Pretty
 import Tau.PrettyTree
 import Tau.Stuff
 import Tau.Type

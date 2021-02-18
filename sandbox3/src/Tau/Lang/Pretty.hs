@@ -2,8 +2,7 @@
 {-# LANGUAGE FlexibleInstances #-}
 {-# LANGUAGE LambdaCase        #-}
 {-# LANGUAGE OverloadedStrings #-}
-module Tau.Pretty where
--- Tau.Lang.Pretty
+module Tau.Lang.Pretty where
 
 import Control.Arrow ((>>>))
 import Data.List (sortOn)
