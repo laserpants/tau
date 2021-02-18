@@ -97,6 +97,8 @@ simplified
   -> Either String (Expr t (Prep t) Name Name)
 simplified = runSimplify . simplify . unrollLambdas
 
+funExpansion = undefined
+
 unrollLambdas
   :: (Boolean t) 
   => Expr t (Pattern t) (Pattern t) [Pattern t]
