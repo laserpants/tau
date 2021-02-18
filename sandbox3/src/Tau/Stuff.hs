@@ -483,7 +483,7 @@ infer = cata alg
                     f:args -> unifyTyped f (foldr tArr newTy (typeOf <$> args))
                 pure (appExpr (NodeInfo newTy []) es)
 
-            ELetRec _ name expr1 expr2 -> do
+            EFix _ name expr1 expr2 -> do
 
                 --let boss :: (MonadSupply Name m, MonadReader (ClassEnv a, TypeEnv) m, MonadError String m) => PatternExpr NodeInfo -> StateT (Substitution, Env [Predicate]) m (PatternExpr NodeInfo)
                 --    boss pex = do 
@@ -500,7 +500,7 @@ infer = cata alg
                 s <- generalize (typeOf e1)
                 e2 <- local (second (Env.insert name s)) expr2
                 unifyTyped newTy e2
-                pure (Fix (ELetRec (NodeInfo newTy []) name e1 e2))
+                pure (fixExpr (NodeInfo newTy []) name e1 e2)
 
             ELet _ pat expr1 expr2 -> do
                 (tp, vs) <- runWriterT (inferPattern pat)

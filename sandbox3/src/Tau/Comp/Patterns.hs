@@ -110,7 +110,7 @@ unrollLambdas = cata $ \case
     ELit t lit        -> litExpr t lit
     EApp t exs        -> appExpr t exs
 
-    ELetRec t name e1 e2  -> Fix (ELetRec t name e1 e2)
+    EFix t name e1 e2  -> Fix (EFix t name e1 e2)
 
     ELet t pat e1 e2  -> letExpr t pat e1 e2
     EIf  t cond e1 e2 -> ifExpr  t cond e1 e2
@@ -159,10 +159,10 @@ simplify = cata $ \case
         body <- e2
         compile [expr] [Clause [rep] [] body]
 
-    ELetRec t name e1 e2 -> do
+    EFix t name e1 e2 -> do
         expr <- e1
         body <- e2
-        pure (Fix (ELetRec t name expr body))
+        pure (fixExpr t name expr body)
 
     --
     --  Lambda expressions like \(C x) => f x

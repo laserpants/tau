@@ -176,7 +176,7 @@ expr991 = appExpr () [lam2Expr () [varPat () "f"] (appExpr () [varExpr () "f", l
 --    , ( "fn1"          , Forall [] [] (tInt `tArr` tBool `tArr` tString `tArr` tUnit) )
 expr992 = lam2Expr () [varPat () "x", varPat () "y", varPat () "z"] (appExpr () [varExpr () "fn1", varExpr () "x", varExpr () "y", varExpr () "z"])
 
-expr993 = Fix (ELetRec () "len" (lam2Expr () [varPat () "xs"] (matExpr () [varExpr () "xs"] [Clause [conPat () "Nil" []] [] (litExpr () (LInt 0)), Clause [conPat () "Cons" [anyPat (), varPat () "ys"]] [] (addOp () (litExpr () (LInt 1)) (appExpr () [varExpr () "len", varExpr () "ys"]))])) (appExpr () [varExpr () "len", conExpr () "Cons" [litExpr () (LInt 5), conExpr () "Cons" [litExpr () (LInt 4), conExpr () "Nil" []]]]))
+expr993 = fixExpr () "len" (lam2Expr () [varPat () "xs"] (matExpr () [varExpr () "xs"] [Clause [conPat () "Nil" []] [] (litExpr () (LInt 0)), Clause [conPat () "Cons" [anyPat (), varPat () "ys"]] [] (addOp () (litExpr () (LInt 1)) (appExpr () [varExpr () "len", varExpr () "ys"]))])) (appExpr () [varExpr () "len", conExpr () "Cons" [litExpr () (LInt 5), conExpr () "Cons" [litExpr () (LInt 4), conExpr () "Nil" []]]])
 
 --expr993 = letExpr () (varPat () "len") 
 --                  (lam2Expr () [varPat () "xs"] (matExpr () [varExpr () "xs"] [Clause [conPat () "Nil" []] [] (litExpr () (LInt 0)), Clause [conPat () "Cons" [anyPat (), varPat () "ys"]] [] (addOp () (litExpr () (LInt 1)) (appExpr () [varExpr () "len", varExpr () "ys"]))])) 

@@ -68,7 +68,7 @@ eval = cata $ \case
     EApp _ exprs -> 
         foldl1 evalApp exprs
 
-    ELetRec _ name expr1 expr2 -> do
+    EFix _ name expr1 expr2 -> do
         val <- expr1
         local (Env.insert name val) expr2
 

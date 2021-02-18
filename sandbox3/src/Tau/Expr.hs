@@ -110,8 +110,7 @@ data ExprF t p q r a
     | EApp t [a]              -- ^ Function application
     | ELet t q a a            -- ^ Let-binding
     | ELFn t Name [q] a a     -- ^ Let-function expression (let f x = e) 
-    
-    | ELetRec t Name a a
+    | EFix t Name a a
 
 --    | ELet t (Let q a) a
 --    | ELam t q a              -- ^ Lambda abstraction
@@ -278,7 +277,7 @@ mapTags f = cata $ \case
     EApp t a       -> appExpr (f t) a
     ELet t p a b   -> letExpr (f t) (mapPatternTags f p) a b
 
-    ELetRec t n a b   -> Fix (ELetRec (f t) n a b)
+    EFix t n a b   -> fixExpr (f t) n a b
 
 --    ELam t p a     -> lamExpr (f t) (mapPatternTags f p) a
     ELam2 t r a     -> lam2Expr (f t) (mapPatternTags f <$> r) a
@@ -342,6 +341,9 @@ letExpr = embed4 ELet
 
 lFnExpr :: t -> Name -> [q] -> Expr t p q r -> Expr t p q r -> Expr t p q r
 lFnExpr = embed5 ELFn
+
+fixExpr :: t -> Name -> Expr t p q r -> Expr t p q r -> Expr t p q r
+fixExpr = embed4 EFix
 
 --lamExpr :: t -> q -> Expr t p q r -> Expr t p q r
 --lamExpr a b c = lam2Expr a [b] c

@@ -137,7 +137,7 @@ recordCon :: [Name] -> Name
 recordCon names = "{" <> Text.intercalate "," names <> "}"
 
 tupleCon :: Int -> Name
-tupleCon n = "(" <> Text.replicate (n - 1) "," <> ")"
+tupleCon n = "(" <> Text.replicate (pred n) "," <> ")"
 
 upgrade :: Type -> PolyType
 upgrade = cata $ \case
