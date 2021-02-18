@@ -198,8 +198,8 @@ fffn
   -> Simplify (Expr t (Prep t) Name Name)
   -> Simplify (Expr t (Prep t) Name Name)
 fffn pat ex = do
-    x <- ex
-    simplifyLam (arrow (patternTag pat) (exprTag x)) pat ex
+    e1 <- ex
+    simplifyLam (arrow (patternTag pat) (exprTag e1)) pat ex
 
 simplifyLam 
   :: (Boolean t, Show t)
