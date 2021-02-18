@@ -120,6 +120,8 @@ typeEnv_ = Env.fromList
 --    , ( "Cons"  , Forall [kTyp] [] (tGen 0 `tArr` tList (tGen 0) `tArr` tList (tGen 0)) )
     , ( "[]"    , Forall [kTyp] [] (tList (tGen 0)) )
     , ( "length" , Forall [kTyp] [] (tList (tGen 0) `tArr` tInt) )
+    , ( "None"   , Forall [kTyp] [] (tApp (tCon kFun "Option") (tGen 0)) )
+    , ( "Some"   , Forall [kTyp] [] (tGen 0 `tArr` tApp (tCon kFun "Option") (tGen 0)) )
     ]
 
 evalEnv_ = Env.fromList 
@@ -131,6 +133,8 @@ evalEnv_ = Env.fromList
     , ("(::)"   , Tau.Eval.constructor "(::)" 2)  
     , ("[]"     , Tau.Eval.constructor "[]" 0)  
     , ("length" , fromJust (runEval (eval length_) mempty))
+    , ("Some"    , Tau.Eval.constructor "Some" 1)  
+    , ("None"    , Tau.Eval.constructor "None" 0)  
     ]
   where
     Right length_ = simplified foo26

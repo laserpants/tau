@@ -96,8 +96,8 @@ deriveEq1   ''Op
 
 -- | Let-bindings
 data Let q 
-    = Let q 
-    | LetFun Name [q]
+    = Let q                   -- ^ Plain let
+    | LetFun Name [q]         -- ^ Let f x = e type-of binding
     deriving (Show, Eq)
 
 deriveShow1 ''Let
