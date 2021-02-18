@@ -94,6 +94,7 @@ data Op a
 deriveShow1 ''Op
 deriveEq1   ''Op
 
+-- | Let-bindings
 data Let q 
     = Let q 
     | LetFun Name [q]
@@ -108,7 +109,7 @@ data ExprF t p q r a
     | ECon t Name [a]         -- ^ Constructor
     | ELit t Literal          -- ^ Literal value
     | EApp t [a]              -- ^ Function application
-    | ELet t q a a            -- ^ Let-binding
+    | ELet t q a a            -- ^ Let expression
     | EFix t Name a a         -- ^ Recursive let
     | ELam t r a              -- ^ Lambda abstraction
     | EIf  t a ~a ~a          -- ^ If-clause
