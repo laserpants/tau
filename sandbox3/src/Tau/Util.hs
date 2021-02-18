@@ -63,7 +63,7 @@ letters :: [Text]
 letters = pack <$> ([1..] >>= flip replicateM ['a'..'z'])
 
 prefixed :: [Text] -> Text -> [Name]
-prefixed supply prefix = fmap (prefix <>) supply
+prefixed suppls prefix = fmap (prefix <>) suppls
 
 nameSupply :: Text -> [Name]
 nameSupply = prefixed letters
