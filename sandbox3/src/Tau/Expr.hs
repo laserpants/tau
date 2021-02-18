@@ -110,6 +110,9 @@ data ExprF t p q r a
     | EApp t [a]              -- ^ Function application
     | ELet t q a a            -- ^ Let-binding
     | ELFn t Name [q] a a     -- ^ Let-function expression (let f x = e) 
+    
+    | ELetRec t Name a a
+
 --    | ELet t (Let q a) a
 --    | ELam t q a              -- ^ Lambda abstraction
     | ELam2 t r a              -- ^ Lambda abstraction
@@ -274,6 +277,9 @@ mapTags f = cata $ \case
     ELit t a       -> litExpr (f t) a
     EApp t a       -> appExpr (f t) a
     ELet t p a b   -> letExpr (f t) (mapPatternTags f p) a b
+
+    ELetRec t n a b   -> Fix (ELetRec (f t) n a b)
+
 --    ELam t p a     -> lamExpr (f t) (mapPatternTags f p) a
     ELam2 t r a     -> lam2Expr (f t) (mapPatternTags f <$> r) a
     EIf  t a b c   -> ifExpr  (f t) a b c

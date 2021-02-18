@@ -452,7 +452,7 @@ generalize ty = do
                  (upgrade <$$> ps)) (apply sub2 (upgrade ty1)))
 
 infer
-  :: (MonadSupply Name m, MonadReader (ClassEnv a, TypeEnv) m, MonadError String m) 
+  :: (MonadFix m, MonadSupply Name m, MonadReader (ClassEnv a, TypeEnv) m, MonadError String m) 
   => PatternExpr t 
   -> StateT (Substitution, Env [Predicate]) m (PatternExpr NodeInfo)
 infer = cata alg
@@ -482,6 +482,25 @@ infer = cata alg
                     []     -> pure ()
                     f:args -> unifyTyped f (foldr tArr newTy (typeOf <$> args))
                 pure (appExpr (NodeInfo newTy []) es)
+
+            ELetRec _ name expr1 expr2 -> do
+
+                --let boss :: (MonadSupply Name m, MonadReader (ClassEnv a, TypeEnv) m, MonadError String m) => PatternExpr NodeInfo -> StateT (Substitution, Env [Predicate]) m (PatternExpr NodeInfo)
+                --    boss pex = do 
+                --            s <- generalize (typeOf pex)
+                --            local (second (Env.insert name s)) (pure pex)
+
+                --e1 <- mfix boss
+
+                --e1 <- local (second (Env.insert name undefined)) expr1
+
+                t1 <- newTVar kTyp
+                e1 <- local (second (Env.insert name (toScheme t1))) expr1
+                unifyTyped t1 e1
+                s <- generalize (typeOf e1)
+                e2 <- local (second (Env.insert name s)) expr2
+                unifyTyped newTy e2
+                pure (Fix (ELetRec (NodeInfo newTy []) name e1 e2))
 
             ELet _ pat expr1 expr2 -> do
                 (tp, vs) <- runWriterT (inferPattern pat)

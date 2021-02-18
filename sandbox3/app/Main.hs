@@ -1,3 +1,5 @@
+{-# LANGUAGE DeriveFunctor #-}
+{-# LANGUAGE DeriveFoldable #-}
 {-# LANGUAGE FlexibleContexts  #-}
 {-# LANGUAGE OverloadedStrings #-}
 module Main where
@@ -27,10 +29,44 @@ import Tau.Util
 import qualified Tau.Env as Env
 
 
+--data FlatList = FlatNil | FlatCons Int FlatList
+--
+--data RecList a = RecNil | RecCons Int a
+--    deriving (Show, Functor, Foldable)
+--
+--_lengthAlg :: Algebra RecList Int
+--_lengthAlg RecNil = 0
+--_lengthAlg (RecCons _ n) = 1 + n
+--
+--_length :: Fix RecList -> Int
+--_length = cata _lengthAlg
+--
+--_xs = Fix (RecCons 5 (Fix (RecCons 4 (Fix RecNil))))
+--
+--tail :: Fix RecList -> Maybe (Fix RecList)
+--tail (Fix RecNil) = Nothing
+--tail (Fix (RecCons _ xs)) = Just xs
+
+
 --bork :: Int -> [a]
 --bork = cata alg where
 --    alg :: Algebra NatF [a]
 --    alg = undefined
+
+
+--
+
+-- length : List a -> Nat
+-- length = 
+--   fun 
+--     | [] => Zero
+--     | (x :: xs) => Succ (length xs)
+
+-- length : List a -> Nat
+-- length = 
+--   cata
+--     | [] => Zero
+--     | (x :: xs) => Succ xs
 
 
 --
@@ -140,6 +176,12 @@ expr991 = appExpr () [lam2Expr () [varPat () "f"] (appExpr () [varExpr () "f", l
 --    , ( "fn1"          , Forall [] [] (tInt `tArr` tBool `tArr` tString `tArr` tUnit) )
 expr992 = lam2Expr () [varPat () "x", varPat () "y", varPat () "z"] (appExpr () [varExpr () "fn1", varExpr () "x", varExpr () "y", varExpr () "z"])
 
+expr993 = Fix (ELetRec () "len" (lam2Expr () [varPat () "xs"] (matExpr () [varExpr () "xs"] [Clause [conPat () "Nil" []] [] (litExpr () (LInt 0)), Clause [conPat () "Cons" [anyPat (), varPat () "ys"]] [] (addOp () (litExpr () (LInt 1)) (appExpr () [varExpr () "len", varExpr () "ys"]))])) (appExpr () [varExpr () "len", conExpr () "Cons" [litExpr () (LInt 5), conExpr () "Cons" [litExpr () (LInt 4), conExpr () "Nil" []]]]))
+
+--expr993 = letExpr () (varPat () "len") 
+--                  (lam2Expr () [varPat () "xs"] (matExpr () [varExpr () "xs"] [Clause [conPat () "Nil" []] [] (litExpr () (LInt 0)), Clause [conPat () "Cons" [anyPat (), varPat () "ys"]] [] (addOp () (litExpr () (LInt 1)) (appExpr () [varExpr () "len", varExpr () "ys"]))])) 
+--                  (appExpr () [varExpr () "len", conExpr () "Cons" [litExpr () (LInt 5), conExpr () "Cons" [litExpr () (LInt 4), conExpr () "Nil" []]]])
+
 
 {-
 
@@ -200,6 +242,7 @@ myTypeEnv = Env.fromList
     , ( "snd"          , Forall [kTyp, kTyp] [] (tPair (tGen 0) (tGen 1) `tArr` (tGen 1)))
     --                                 Int -> Bool -> String -> Unit
     , ( "fn1"          , Forall [] [] (tInt `tArr` tBool `tArr` tString `tArr` tUnit) )
+    , ( "(+)"  , Forall [kTyp] [InClass "Num" 0] (tGen 0 `tArr` tGen 0 `tArr` tGen 0) )
     ]
 
 --    [ -- ( "@strlen" , sScheme (tCon kStar "String" `tArr` tCon kStar "Int") )
@@ -260,6 +303,12 @@ myClassEnv = Env.fromList
 --      , ( []
 --        , [] )
 --      )
+    , ( "Num"
+      , ( []
+        , [ Instance [] tInt (recExpr (NodeInfo (tApp (tCon (kArr kTyp kTyp) "Num") tInt) []) [Field (NodeInfo (tInt `tArr` tInt `tArr` tInt) []) "(+)" (varExpr (NodeInfo (tInt `tArr` tInt `tArr` tInt) []) "@(+)Int")])
+          ] 
+        )
+      )
     ]
 
 --data X = X
@@ -365,8 +414,12 @@ myEvalEnv = Env.fromList
     , ("head"       , fromJust (runEval (eval head_) mempty))
     , ("fst"        , fromJust (runEval (eval fst_) mempty))
     , ("snd"        , fromJust (runEval (eval snd_) mempty))
+    , ("(+)"        , fromJust (runEval (eval plus_) mempty))
     ]
   where
+    Right plus_ = simplified foo123
+    foo123 = lam2Expr () [varPat () "d"] (matExpr () [varExpr () "d"] [ Clause [recPat () [Field () "(+)" (varPat () "(+)")]] [] (varExpr () "(+)") ])
+
     Right snd_ = simplified foo25
     foo25 = lam2Expr () [varPat () "p"] (matExpr () [varExpr () "p"] [Clause [conPat () "(,)" [anyPat (), varPat () "b"]] [] (varExpr () "b")])
 
@@ -420,7 +473,7 @@ runPipeline a = do
 --runTest2_ = runPipeline expr25
 --runTest2_ = runPipeline $ appExpr () [expr5, litExpr () (LInt 55555)]
 --runTest2_ = runPipeline expr38
-runTest2_ = runPipeline expr992
+runTest2_ = runPipeline expr993
 
 --
 --

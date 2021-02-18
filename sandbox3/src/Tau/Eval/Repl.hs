@@ -75,7 +75,7 @@ repl = runRepl $ ReplOpts
     , finaliser        = replFinalizer
     }
 
-stuff :: (MonadSupply Name m, MonadError String m) => PatternExpr t -> ReaderT (ClassEnv (PatternExpr NodeInfo), TypeEnv) m (Expr Type (Prep Type) Name Name)
+stuff :: (MonadFix m, MonadSupply Name m, MonadError String m) => PatternExpr t -> ReaderT (ClassEnv (PatternExpr NodeInfo), TypeEnv) m (Expr Type (Prep Type) Name Name)
 stuff expr = do
     (tree, (sub, _)) <- runStateT (infer expr) mempty
     debugTree tree
@@ -116,6 +116,8 @@ typeEnv_ = Env.fromList
     , ( "first" , Forall [kTyp, kTyp] [] (tPair (tGen 0) (tGen 1) `tArr` (tGen 0)))
     , ( "second" , Forall [kTyp, kTyp] [] (tPair (tGen 0) (tGen 1) `tArr` (tGen 1)))
     , ( "(::)"  , Forall [kTyp] [] (tGen 0 `tArr` tList (tGen 0) `tArr` tList (tGen 0)) )
+--    , ( "Nil"    , Forall [kTyp] [] (tList (tGen 0)) )
+--    , ( "Cons"  , Forall [kTyp] [] (tGen 0 `tArr` tList (tGen 0) `tArr` tList (tGen 0)) )
     , ( "[]"    , Forall [kTyp] [] (tList (tGen 0)) )
     , ( "length" , Forall [kTyp] [] (tList (tGen 0) `tArr` tInt) )
     ]
@@ -128,8 +130,12 @@ evalEnv_ = Env.fromList
     , ("snd"    , fromJust (runEval (eval snd_) mempty))
     , ("(::)"   , Tau.Eval.constructor "(::)" 2)  
     , ("[]"     , Tau.Eval.constructor "[]" 0)  
+    , ("length" , fromJust (runEval (eval length_) mempty))
     ]
   where
+    Right length_ = simplified foo26
+    foo26 = lam2Expr () [varPat () "x"] (litExpr () (LInt 11))
+
     Right snd_ = simplified foo25
     foo25 = lam2Expr () [varPat () "p"] (matExpr () [varExpr () "p"] [Clause [conPat () "(,)" [anyPat (), varPat () "b"]] [] (varExpr () "b")])
 
