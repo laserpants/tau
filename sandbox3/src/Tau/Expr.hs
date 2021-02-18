@@ -94,13 +94,13 @@ data Op a
 deriveShow1 ''Op
 deriveEq1   ''Op
 
---data Let q a
---    = Let q a
---    | LetFun Name [q] a
---    deriving (Show, Eq)
+data Let q 
+    = Let q 
+    | LetFun Name [q]
+    deriving (Show, Eq)
 
---data Let q = Let q | LetFun Name [q]
---    deriving (Show, Eq)
+deriveShow1 ''Let
+deriveEq1   ''Let
 
 -- | Base functor for Expr  
 data ExprF t p q r a
@@ -109,14 +109,12 @@ data ExprF t p q r a
     | ELit t Literal          -- ^ Literal value
     | EApp t [a]              -- ^ Function application
     | ELet t q a a            -- ^ Let-binding
-    | ELFn t Name [q] a a     -- ^ Let-function expression (let f x = e) 
-    | EFix t Name a a
---    | ELet t (Let q a) a
+    | EFix t Name a a         -- ^ Recursive let
     | ELam t r a              -- ^ Lambda abstraction
     | EIf  t a ~a ~a          -- ^ If-clause
     | EPat t [a] [Clause p a] -- ^ Match and fun expressions
     | EOp  t (Op a)           -- ^ Operator
-    | ERec t [Field t a]      -- ^ Record
+    | ERec t [Field t a]      -- ^ Records
 --  | EAnn Scheme a           -- ^ Type-annotated expression
     deriving (Functor, Foldable, Traversable)
 
@@ -129,7 +127,7 @@ deriveEq1   ''ExprF
 type Expr t p q r = Fix (ExprF t p q r)
 
 -- | Term tree with unabridged patterns
-type PatternExpr t = Expr t (Pattern t) (Pattern t) [Pattern t]
+type PatternExpr t = Expr t (Pattern t) (Let (Pattern t)) [Pattern t]
 
 -- | Return the precedence of a binary operator
 opPrecedence :: Op a -> Int
@@ -268,7 +266,7 @@ mapTags f = cata $ \case
     ECon t a b     -> conExpr (f t) a b
     ELit t a       -> litExpr (f t) a
     EApp t a       -> appExpr (f t) a
-    ELet t p a b   -> letExpr (f t) (mapPatternTags f p) a b
+    ELet t p a b   -> letExpr (f t) (mapLet f p) a b
     EFix t n a b   -> fixExpr (f t) n a b
     ELam t r a     -> lamExpr (f t) (mapPatternTags f <$> r) a
     EIf  t a b c   -> ifExpr  (f t) a b c
@@ -277,6 +275,11 @@ mapTags f = cata $ \case
     ERec t s       -> recExpr (f t) (mapField f <$> s)
   where
     clause (Clause p a b) = Clause (mapPatternTags f <$> p) a b
+
+mapLet :: (s -> t) -> Let (Pattern s) -> Let (Pattern t)
+mapLet f = \case
+    Let p          -> Let (mapPatternTags f p)
+    LetFun name ps -> LetFun name (mapPatternTags f <$> ps)
 
 mapPatternTags :: (s -> t) -> Pattern s -> Pattern t
 mapPatternTags f = cata $ \case
@@ -329,8 +332,8 @@ appExpr = embed2 EApp
 letExpr :: t -> q -> Expr t p q r -> Expr t p q r -> Expr t p q r
 letExpr = embed4 ELet 
 
-lFnExpr :: t -> Name -> [q] -> Expr t p q r -> Expr t p q r -> Expr t p q r
-lFnExpr = embed5 ELFn
+letPExpr :: t -> Pattern t -> PatternExpr t -> PatternExpr t -> PatternExpr t 
+letPExpr t p a b = embed (ELet t (Let p) a b)
 
 fixExpr :: t -> Name -> Expr t p q r -> Expr t p q r -> Expr t p q r
 fixExpr = embed4 EFix

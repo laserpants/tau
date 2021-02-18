@@ -75,7 +75,7 @@ repl = runRepl $ ReplOpts
     , finaliser        = replFinalizer
     }
 
-stuff :: (MonadFix m, MonadSupply Name m, MonadError String m) => PatternExpr t -> ReaderT (ClassEnv (PatternExpr NodeInfo), TypeEnv) m (Expr Type (Prep Type) Name Name)
+stuff :: (MonadSupply Name m, MonadError String m) => PatternExpr t -> ReaderT (ClassEnv (PatternExpr NodeInfo), TypeEnv) m (Expr Type (Prep Type) Name Name)
 stuff expr = do
     (tree, (sub, _)) <- runStateT (infer expr) mempty
     debugTree tree

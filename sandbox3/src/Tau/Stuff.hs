@@ -452,7 +452,7 @@ generalize ty = do
                  (upgrade <$$> ps)) (apply sub2 (upgrade ty1)))
 
 infer
-  :: (MonadFix m, MonadSupply Name m, MonadReader (ClassEnv a, TypeEnv) m, MonadError String m) 
+  :: (MonadSupply Name m, MonadReader (ClassEnv a, TypeEnv) m, MonadError String m) 
   => PatternExpr t 
   -> StateT (Substitution, Env [Predicate]) m (PatternExpr NodeInfo)
 infer = cata alg
@@ -484,16 +484,6 @@ infer = cata alg
                 pure (appExpr (NodeInfo newTy []) es)
 
             EFix _ name expr1 expr2 -> do
-
-                --let boss :: (MonadSupply Name m, MonadReader (ClassEnv a, TypeEnv) m, MonadError String m) => PatternExpr NodeInfo -> StateT (Substitution, Env [Predicate]) m (PatternExpr NodeInfo)
-                --    boss pex = do 
-                --            s <- generalize (typeOf pex)
-                --            local (second (Env.insert name s)) (pure pex)
-
-                --e1 <- mfix boss
-
-                --e1 <- local (second (Env.insert name undefined)) expr1
-
                 t1 <- newTVar kTyp
                 e1 <- local (second (Env.insert name (toScheme t1))) expr1
                 unifyTyped t1 e1
@@ -502,20 +492,26 @@ infer = cata alg
                 unifyTyped newTy e2
                 pure (fixExpr (NodeInfo newTy []) name e1 e2)
 
-            ELet _ pat expr1 expr2 -> do
+            ELet _ (Let pat) expr1 expr2 -> do
                 (tp, vs) <- runWriterT (inferPattern pat)
                 e1 <- expr1
                 unifyTyped tp e1
                 vs1 <- traverse (secondM generalize) vs
                 e2 <- local (second (Env.inserts vs1)) expr2
                 unifyTyped newTy e2
-                pure (letExpr (NodeInfo newTy []) tp e1 e2)
+                pure (letExpr (NodeInfo newTy []) (Let tp) e1 e2)
 
-            --ELam _ pat expr1 -> do
-            --    (tp, vs) <- runWriterT (inferPattern pat)
-            --    e1 <- local (second (Env.inserts (toScheme <$$> vs))) expr1
-            --    unifyTyped newTy (typeOf tp `tArr` typeOf e1)
-            --    pure (lamExpr (NodeInfo newTy []) tp e1)
+            -- let f x y = e
+            -- let f = \x y -> e
+
+            ELet _ (LetFun f pats) expr1 expr2 -> do
+                (tps, vs) <- runWriterT (traverse inferPattern pats)
+                e1 <- local (second (Env.inserts (toScheme <$$> vs))) expr1
+                t1 <- newTVar kTyp
+                unifyTyped (t1 :: Type) (foldr tArr (typeOf e1) (typeOf <$> tps))
+                e2 <- local (second (Env.insert f (toScheme t1))) expr2
+                unifyTyped newTy e2
+                pure (letExpr (NodeInfo newTy []) (LetFun f tps) e1 e2)
 
             ELam _ pats expr1 -> do
                 (tps, vs) <- runWriterT (traverse inferPattern pats)
@@ -543,15 +539,11 @@ infer = cata alg
                 unifyTyped (typeOf e1 `tArr` newTy) ty
                 pure (opExpr (NodeInfo newTy ps) (ODot name e1))
 
---            \xs => match [xs] with
---              | (x :: xs) => 0
             EPat _ [] eqs -> do
                 t1 <- newTVar kTyp
                 es2 <- sequence (inferClause newTy [t1] <$> eqs)
                 pure (patExpr (NodeInfo (t1 `tArr` newTy) []) [] es2)
 
---            match xs with
---              | (x :: xs) => 0
             EPat _ exs eqs -> do
                 es1 <- sequence exs
                 es2 <- sequence (inferClause newTy (typeOf <$> es1) <$> eqs)
@@ -577,20 +569,6 @@ inferClause ty types clause@(Clause ps _ _) = do
     forM_ (zip tps types) (uncurry unifyTyped) 
     e >>= unifyTyped ty . typeOf
     Clause tps <$> sequence exs <*> e
-
---inferClause
---  :: (MonadSupply Name m, MonadReader (ClassEnv a, TypeEnv) m, MonadError String m) 
---  => Type
---  -> [PatternExpr NodeInfo]
---  -> Clause (Pattern t) (StateT (Substitution, Env [Predicate]) m (PatternExpr NodeInfo)) 
---  -> StateT (Substitution, Env [Predicate]) m (Clause (Pattern NodeInfo) (PatternExpr NodeInfo))
---inferClause ty exprs1 clause@(Clause ps _ _) = do
---    (tps, vs) <- runWriterT (traverse inferPattern ps)
---    let Clause _ exs e = local (second (Env.inserts (toScheme <$$> vs))) <$> clause
---    forM_ exs (>>= unifyTyped (tBool :: Type) . typeOf)
---    forM_ (zip tps exprs1) (\(p, e2) -> unifyTyped (typeOf p) (typeOf e2)) 
---    e >>= unifyTyped ty . typeOf
---    Clause tps <$> sequence exs <*> e
 
 inferLiteral :: (MonadSupply Name m) => Literal -> StateT (Substitution, Env [Predicate]) m Type
 inferLiteral = pure . \case
@@ -658,9 +636,6 @@ inferBinOp
 inferBinOp name op a b = do
     (newTy, e1, e2) <- operands a b 
     (ty, ps) <- lookupScheme name >>= instantiate
-    traceShowM (pretty ty)
-    traceShowM ps
-    traceShowM "**"
     unifyTyped (typeOf e1 `tArr` typeOf e2 `tArr` newTy) ty 
     pure (opExpr (NodeInfo newTy ps) (op e1 e2))
 

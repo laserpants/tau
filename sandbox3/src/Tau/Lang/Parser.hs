@@ -152,8 +152,8 @@ letBinding = do
     term <- symbol  "="  *> expr
     body <- keyword "in" *> expr
     case pats of
-        [pat]                -> pure (letExpr () pat term body)
-        (Fix (PVar () f):ps) -> pure (lFnExpr () f ps term body)
+        [pat]                -> pure (letExpr () (Let pat) term body)
+        (Fix (PVar () f):ps) -> pure (letExpr () (LetFun f ps) term body)
         _                    -> fail "Invalid let-expression"
 
 ifClause :: Parser (PatternExpr ())

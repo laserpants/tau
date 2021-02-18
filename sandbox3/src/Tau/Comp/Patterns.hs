@@ -91,25 +91,25 @@ instance Boolean Type where
 
 simplified 
   :: (Boolean t, Show t) 
-  => Expr t (Pattern t) (Pattern t) [Pattern t]
+  => Expr t (Pattern t) (Let (Pattern t)) [Pattern t]
   -> Either String (Expr t (Prep t) Name Name)
 simplified = runSimplify . simplify . unrollLambdas . funExpansion
 
 funExpansion 
   :: (Boolean t) 
-  => Expr t (Pattern t) (Pattern t) [Pattern t]
-  -> Expr t (Pattern t) (Pattern t) [Pattern t]
+  => Expr t (Pattern t) (Let (Pattern t)) [Pattern t]
+  -> Expr t (Pattern t) (Let (Pattern t)) [Pattern t]
 funExpansion = cata $ \case
     EPat t [] eqs -> lamExpr t [varPat dom "$0"] (patExpr cod [varExpr dom "$0"] eqs)
       where (dom, cod) = fromArr t
     e -> Fix e
 
--- TODO: cobine?
+-- TODO: combine?
 
 unrollLambdas
   :: (Boolean t) 
-  => Expr t (Pattern t) (Pattern t) [Pattern t]
-  -> Expr t (Pattern t) (Pattern t) (Pattern t)
+  => Expr t (Pattern t) (Let (Pattern t)) [Pattern t]
+  -> Expr t (Pattern t) (Let (Pattern t)) (Pattern t)
 unrollLambdas = cata $ \case
     ELam t ps a       -> foldr unroll a ps
     EVar t var        -> varExpr t var
@@ -127,7 +127,7 @@ unrollLambdas = cata $ \case
 
 simplify 
   :: (Boolean t, Show t) 
-  => Expr t (Pattern t) (Pattern t) (Pattern t)
+  => Expr t (Pattern t) (Let (Pattern t)) (Pattern t)
   -> Simplify (Expr t (Prep t) Name Name)
 simplify = cata $ \case
     EVar t var     -> pure (varExpr t var)
@@ -138,8 +138,11 @@ simplify = cata $ \case
     --
     --  Let-expressions can only bind to variables patterns (formal parameters)
     --
-    ELet t (Fix (PVar _ var)) e1 e2 -> 
+    ELet t (Let (Fix (PVar _ var))) e1 e2 -> 
         letExpr t var <$> e1 <*> e2
+
+    ELet t (LetFun f ps) e1 e2 -> 
+        letExpr t f <$> foldr fffn e1 ps <*> e2
 
     --
     --  The same restriction applies to lambdas
@@ -150,16 +153,16 @@ simplify = cata $ \case
     --
     --  Expressions like \5 => ..., let 5 = ..., or let _ = ... are not allowed
     --
-    ELam _ (Fix PLit{}) _   -> throwError "Pattern not allowed"
-    ELet _ (Fix PLit{}) _ _ -> throwError "Pattern not allowed"
-    ELam _ (Fix PAny{}) _   -> throwError "Pattern not allowed"
-    ELet _ (Fix PAny{}) _ _ -> throwError "Pattern not allowed"
+    ELam _ (Fix PLit{}) _         -> throwError "Pattern not allowed"
+    ELet _ (Let (Fix PLit{})) _ _ -> throwError "Pattern not allowed"
+    ELam _ (Fix PAny{}) _         -> throwError "Pattern not allowed"
+    ELet _ (Let (Fix PAny{})) _ _ -> throwError "Pattern not allowed"
 
     --
     --  Expressions like let C x = y in f x
     --  get translated to: match y with | C x => f x
     --
-    ELet _ rep e1 e2 -> do
+    ELet _ (Let rep) e1 e2 -> do
         expr <- e1
         body <- e2
         compile [expr] [Clause [rep] [] body]
@@ -174,11 +177,8 @@ simplify = cata $ \case
     --  get translated to \$z => match $z with | C x => f x in $z
     --  where $z is a fresh variable
     --
-    ELam t rep e1 -> do
-        fresh <- supply
-        body <- e1
-        expr <- compile [varExpr t fresh] [Clause [rep] [] body]
-        pure (lamExpr t fresh expr)
+    ELam t rep e1 -> 
+        simplifyLam t rep e1
 
     EIf t cond e1 e2 ->
         ifExpr t <$> cond <*> e1 <*> e2
@@ -191,6 +191,26 @@ simplify = cata $ \case
 
     ERec t fields ->
         recExpr t <$> traverse sequence fields
+
+fffn
+  :: (Boolean t, Show t) 
+  => Pattern t
+  -> Simplify (Expr t (Prep t) Name Name)
+  -> Simplify (Expr t (Prep t) Name Name)
+fffn pat ex = do
+    x <- ex
+    simplifyLam (arrow (patternTag pat) (exprTag x)) pat ex
+
+simplifyLam 
+  :: (Boolean t, Show t)
+  => t
+  -> Pattern t
+  -> Simplify (Expr t (Prep t) Name Name)
+  -> Simplify (Expr t (Prep t) Name Name)
+simplifyLam t rep e1 = do
+    fresh <- supply
+    body <- e1
+    lamExpr t fresh <$> compile [varExpr t fresh] [Clause [rep] [] body]
 
 simplifyOp :: t -> Op (Simplify (Expr t p q r)) -> Simplify (Expr t p q r)
 simplifyOp t (OEq  a b) = eqOp  t <$> a <*> b

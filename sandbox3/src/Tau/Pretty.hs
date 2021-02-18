@@ -73,8 +73,6 @@ prettyStructType ty =
     fun as con = case conType con of
         CTuple  -> Just (prettyTuple as)
         CRecord -> Just (prettyRecord colon (namesToFields con as))
-        --CNil    -> Just "CNil"
-        --CCons   -> Just "CCons"
         _       -> Nothing
 
     headCon (TCon _ c) = Just c
@@ -240,6 +238,10 @@ prettyExpr f = para $ \case
             ECon _ con _ -> if CTuple == conType con then snd a else parens (snd a)
             _            -> snd a
 
+instance (Pretty p) => Pretty (Let p) where
+    pretty (Let p)       = pretty p
+    pretty (LetFun f ps) = pretty f <+> hsep (pretty <$> ps)
+
 instance Pretty (PatternExpr t) where
     pretty = prettyExpr (hsep . fmap f)
       where
@@ -324,7 +326,6 @@ prettyLet p e1 e =
 
 -- | Pretty printer for lambda abstractions
 prettyLam :: (Pretty (Expr t p q r)) => Doc a -> (Expr t p q r, Doc a) -> Doc a
---prettyLam arg e1 = undefined -- group (nest 2 (vsep [backslash <> arg <+> "=>", pretty (fst e1)]))
 prettyLam arg e1 = group (nest 2 (vsep [backslash <> arg <+> "=>", pretty (fst e1)]))
 
 -- | Pretty printer for if-clauses
