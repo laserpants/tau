@@ -77,44 +77,47 @@ deriveEq1   ''TranslatedF
 class Boolean t where
     boolean :: t
     arrow   :: t -> t -> t
+    fromArr :: t -> (t, t)
 
 instance Boolean () where
     boolean   = ()
     arrow _ _ = ()
+    fromArr _ = ((), ())
 
 instance Boolean Type where
-    boolean = tBool
-    arrow   = tArr 
-
--- ??? TODO
---instance Boolean (Type, [a]) where
---    boolean = (tBool, [])
---    arrow (a, x) (b, y) = (tArr a b, [])
+    boolean   = tBool
+    arrow     = tArr 
+    fromArr f = case project f of (TArr dom cod) -> (dom, cod)
 
 simplified 
   :: (Boolean t, Show t) 
   => Expr t (Pattern t) (Pattern t) [Pattern t]
   -> Either String (Expr t (Prep t) Name Name)
-simplified = runSimplify . simplify . unrollLambdas
+simplified = runSimplify . simplify . unrollLambdas . funExpansion
 
-funExpansion = undefined
+funExpansion 
+  :: (Boolean t) 
+  => Expr t (Pattern t) (Pattern t) [Pattern t]
+  -> Expr t (Pattern t) (Pattern t) [Pattern t]
+funExpansion = cata $ \case
+    EPat t [] eqs -> lamExpr t [varPat dom "$0"] (patExpr cod [varExpr dom "$0"] eqs)
+      where (dom, cod) = fromArr t
+    e -> Fix e
 
 unrollLambdas
   :: (Boolean t) 
   => Expr t (Pattern t) (Pattern t) [Pattern t]
   -> Expr t (Pattern t) (Pattern t) (Pattern t)
 unrollLambdas = cata $ \case
-    ELam t ps a      -> foldr unroll a ps
+    ELam t ps a       -> foldr unroll a ps
     EVar t var        -> varExpr t var
     ECon t con exs    -> conExpr t con exs
     ELit t lit        -> litExpr t lit
     EApp t exs        -> appExpr t exs
-
-    EFix t name e1 e2  -> Fix (EFix t name e1 e2)
-
+    EFix t name e1 e2 -> fixExpr t name e1 e2
     ELet t pat e1 e2  -> letExpr t pat e1 e2
     EIf  t cond e1 e2 -> ifExpr  t cond e1 e2
-    EMat t exs eqs    -> matExpr t exs eqs
+    EPat t exs eqs    -> patExpr t exs eqs
     EOp  t op         -> opExpr  t op
     ERec t fields     -> recExpr t fields
   where
@@ -178,7 +181,7 @@ simplify = cata $ \case
     EIf t cond e1 e2 ->
         ifExpr t <$> cond <*> e1 <*> e2
 
-    EMat t exs eqs ->
+    EPat t exs eqs ->
         join (compile <$> sequence exs <*> traverse sequence eqs)
 
     EOp t op ->
@@ -246,7 +249,7 @@ compile es qs =
         SimpleMatch ex css -> do
             expr <- ex
             (eqs, ts) <- unzip <$> traverse fn css
-            pure (matExpr (head ts) [expr] eqs)
+            pure (patExpr (head ts) [expr] eqs)
           where
             fn (rep, ex1) = do
                 expr <- ex1
@@ -315,7 +318,7 @@ substitute name subst = para $ \case
         e1' | name == pat = fst e1
             | otherwise   = snd e1
 
-    EMat t exs eqs -> matExpr t (snd <$> exs) (substEq <$> eqs)
+    EPat t exs eqs -> patExpr t (snd <$> exs) (substEq <$> eqs)
       where
         substEq eq@(Clause ps _ _) 
             | name `elem` free ps = fst <$> eq

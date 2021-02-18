@@ -83,7 +83,7 @@ eval = cata $ \case
         Value (LBool isTrue) <- cond
         if isTrue then true else false
 
-    EMat _ exs eqs -> 
+    EPat _ exs eqs -> 
         sequence exs >>= evalMatch eqs 
 
     EOp _ op ->

@@ -122,12 +122,12 @@ expr = flip makeExprParser operator $ do
 funExpr :: Parser (PatternExpr ())
 funExpr = do
     keyword "fun" 
-    matExpr () [] <$> ((:) <$> clause (void (optional (symbol "|"))) <*> many (clause pipe))
+    patExpr () [] <$> ((:) <$> clause (void (optional (symbol "|"))) <*> many (clause pipe))
 
 matchWith :: Parser (PatternExpr ())
 matchWith = do
     terms <- keyword "match" *> commaSep expr
-    matExpr () terms <$> ((:) <$> clause with <*> many (clause pipe))
+    patExpr () terms <$> ((:) <$> clause with <*> many (clause pipe))
 
 with :: Parser ()
 with = void $ keyword "with" *> optional (symbol "|")

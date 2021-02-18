@@ -112,13 +112,9 @@ data ExprF t p q r a
     | ELFn t Name [q] a a     -- ^ Let-function expression (let f x = e) 
     | EFix t Name a a
 --    | ELet t (Let q a) a
---    | ELam t q a              -- ^ Lambda abstraction
     | ELam t r a              -- ^ Lambda abstraction
     | EIf  t a ~a ~a          -- ^ If-clause
-    | EMat t [a] [Clause p a] -- ^ Match and fun expressions
-    -- TODO: renamte to EPat
-    -- TODO: use empty list to represent fun-match???
---  | EFun t [Clause p a]     -- ^ Lambda-like match
+    | EPat t [a] [Clause p a] -- ^ Match and fun expressions
     | EOp  t (Op a)           -- ^ Operator
     | ERec t [Field t a]      -- ^ Record
 --  | EAnn Scheme a           -- ^ Type-annotated expression
@@ -195,10 +191,9 @@ exprTag = project >>> \case
     ELit t _       -> t
     EApp t _       -> t
     ELet t _ _ _   -> t
---    ELam t _ _     -> t
     ELam t _ _     -> t
     EIf  t _ _ _   -> t
-    EMat t _ _     -> t
+    EPat t _ _     -> t
     EOp  t _       -> t
     ERec t _       -> t
 
@@ -209,10 +204,9 @@ setExprTag t = project >>> \case
     ELit _ a       -> litExpr t a
     EApp _ a       -> appExpr t a
     ELet _ p a b   -> letExpr t p a b
---    ELam _ p a     -> lamExpr t p a
     ELam _ r a     -> lamExpr t r a
     EIf  _ a b c   -> ifExpr  t a b c
-    EMat _ a b     -> matExpr t a b
+    EPat _ a b     -> patExpr t a b
     EOp  _ a       -> opExpr  t a
     ERec _ s       -> recExpr t s
 
@@ -275,13 +269,10 @@ mapTags f = cata $ \case
     ELit t a       -> litExpr (f t) a
     EApp t a       -> appExpr (f t) a
     ELet t p a b   -> letExpr (f t) (mapPatternTags f p) a b
-
     EFix t n a b   -> fixExpr (f t) n a b
-
---    ELam t p a     -> lamExpr (f t) (mapPatternTags f p) a
     ELam t r a     -> lamExpr (f t) (mapPatternTags f <$> r) a
     EIf  t a b c   -> ifExpr  (f t) a b c
-    EMat t a e     -> matExpr (f t) a (clause <$> e)
+    EPat t a e     -> patExpr (f t) a (clause <$> e)
     EOp  t a       -> opExpr  (f t) a
     ERec t s       -> recExpr (f t) (mapField f <$> s)
   where
@@ -347,8 +338,8 @@ fixExpr = embed4 EFix
 lamExpr :: t -> r -> Expr t p q r -> Expr t p q r
 lamExpr = embed3 ELam
 
-matExpr :: t -> [Expr t p q r] -> [Clause p (Expr t p q r)] -> Expr t p q r
-matExpr = embed3 EMat 
+patExpr :: t -> [Expr t p q r] -> [Clause p (Expr t p q r)] -> Expr t p q r
+patExpr = embed3 EPat 
 
 ifExpr :: t -> Expr t p q r -> Expr t p q r -> Expr t p q r -> Expr t p q r
 ifExpr = embed4 EIf

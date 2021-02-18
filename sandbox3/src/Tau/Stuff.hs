@@ -537,16 +537,25 @@ infer = cata alg
             EOp  _ (OEq  a b) -> inferBinOp "(==)" OEq a b
             EOp  _ (OAdd a b) -> inferBinOp "(+)"  OAdd a b
 
-            EOp  _ (ODot name a) -> do
-                e1 <- a
+            EOp  _ (ODot name expr1) -> do
+                e1 <- expr1
                 (ty, ps) <- lookupScheme name >>= instantiate
                 unifyTyped (typeOf e1 `tArr` newTy) ty
                 pure (opExpr (NodeInfo newTy ps) (ODot name e1))
 
-            EMat _ exs eqs -> do
+--            \xs => match [xs] with
+--              | (x :: xs) => 0
+            EPat _ [] eqs -> do
+                t1 <- newTVar kTyp
+                es2 <- sequence (inferClause newTy [t1] <$> eqs)
+                pure (patExpr (NodeInfo (t1 `tArr` newTy) []) [] es2)
+
+--            match xs with
+--              | (x :: xs) => 0
+            EPat _ exs eqs -> do
                 es1 <- sequence exs
-                es2 <- sequence (inferClause newTy es1 <$> eqs)
-                pure (matExpr (NodeInfo newTy []) es1 es2)
+                es2 <- sequence (inferClause newTy (typeOf <$> es1) <$> eqs)
+                pure (patExpr (NodeInfo newTy []) es1 es2)
 
             ERec _ fields -> do
                 let (_, ns, fs) = unzip3 (fieldsInfo fields)
@@ -558,16 +567,30 @@ infer = cata alg
 inferClause
   :: (MonadSupply Name m, MonadReader (ClassEnv a, TypeEnv) m, MonadError String m) 
   => Type
-  -> [PatternExpr NodeInfo]
+  -> [Type]
   -> Clause (Pattern t) (StateT (Substitution, Env [Predicate]) m (PatternExpr NodeInfo)) 
   -> StateT (Substitution, Env [Predicate]) m (Clause (Pattern NodeInfo) (PatternExpr NodeInfo))
-inferClause ty exprs1 clause@(Clause ps _ _) = do
+inferClause ty types clause@(Clause ps _ _) = do
     (tps, vs) <- runWriterT (traverse inferPattern ps)
     let Clause _ exs e = local (second (Env.inserts (toScheme <$$> vs))) <$> clause
     forM_ exs (>>= unifyTyped (tBool :: Type) . typeOf)
-    forM_ (zip tps exprs1) (\(p, e2) -> unifyTyped (typeOf p) (typeOf e2)) 
+    forM_ (zip tps types) (uncurry unifyTyped) 
     e >>= unifyTyped ty . typeOf
     Clause tps <$> sequence exs <*> e
+
+--inferClause
+--  :: (MonadSupply Name m, MonadReader (ClassEnv a, TypeEnv) m, MonadError String m) 
+--  => Type
+--  -> [PatternExpr NodeInfo]
+--  -> Clause (Pattern t) (StateT (Substitution, Env [Predicate]) m (PatternExpr NodeInfo)) 
+--  -> StateT (Substitution, Env [Predicate]) m (Clause (Pattern NodeInfo) (PatternExpr NodeInfo))
+--inferClause ty exprs1 clause@(Clause ps _ _) = do
+--    (tps, vs) <- runWriterT (traverse inferPattern ps)
+--    let Clause _ exs e = local (second (Env.inserts (toScheme <$$> vs))) <$> clause
+--    forM_ exs (>>= unifyTyped (tBool :: Type) . typeOf)
+--    forM_ (zip tps exprs1) (\(p, e2) -> unifyTyped (typeOf p) (typeOf e2)) 
+--    e >>= unifyTyped ty . typeOf
+--    Clause tps <$> sequence exs <*> e
 
 inferLiteral :: (MonadSupply Name m) => Literal -> StateT (Substitution, Env [Predicate]) m Type
 inferLiteral = pure . \case

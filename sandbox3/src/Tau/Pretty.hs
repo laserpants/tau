@@ -227,7 +227,7 @@ prettyExpr f = para $ \case
     ELet _ p e1 e2 -> prettyLet p e1 e2
     ELam _ p e1    -> prettyLam (f p) e1
     EIf  _ c e1 e2 -> prettyIf c e1 e2
-    EMat _ exs eqs -> prettyMatch exs eqs
+    EPat _ exs eqs -> prettyMatch exs eqs
     EOp  _ op      -> pretty (fst <$> op)
     ERec _ fields  -> prettyRecord equals (snd <$$> fields)
   where
