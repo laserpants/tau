@@ -33,6 +33,7 @@ import Tau.Type.Substitution
 import Tau.Util
 import Text.Megaparsec (runParser)
 import Text.Megaparsec.Error (errorBundlePretty)
+import qualified Data.Text as Text
 import qualified Data.Set.Monad as Set
 import qualified Tau.Util.Env as Env
 
@@ -184,8 +185,17 @@ replCommand input =
                         Nothing -> 
                             putStrIO "ERR"
 
-                        Just res ->
-                            putStrIO (show res)
+                        Just res -> do
+                            putStrIO "------------------------------------"
+                            putStrIO (Text.unpack (prettyPrint result))
+
+                            putStrIO "------------------------------------"
+                            let t = exprTag r
+                            let zzz = (prettyAnnValue res (toScheme t))
+                            let yyy = renderDoc zzz 
+                            let zzz = Text.unpack yyy
+                            putStrIO zzz
+
             --runExceptT (evalCommand result) >>= \case
             --    Left err ->
             --        putStrIO (show err)
@@ -197,7 +207,7 @@ replCommand input =
 replOptions :: Options (HaskelineT Repl)
 replOptions =
     [ ("quit" , quit)
---    , ("help" , help)
+    , ("help" , help)
 --    , ("type" , letTypeCommand)
 --    , ("let"  , letCommand)
 --    , ("env"  , envCommand)

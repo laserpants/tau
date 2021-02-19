@@ -95,10 +95,10 @@ applyFun fun args =
 
 primEnv :: Env Fun
 primEnv = Env.fromList
-    -- Int_show
-    -- Int_(==)
-    -- String_length
-    -- String_concat
+    -- Int:show
+    -- Int:(==)
+    -- String:length
+    -- String:concat
     [ ( "showInt"    , fun1 (show   :: Int -> String) )
     , ( "showBool"   , fun1 (show   :: Bool -> String) )
     , ( "showUnit"   , fun1 (show   :: () -> String) )

@@ -127,7 +127,8 @@ intToText :: Int -> Text
 intToText = integerToText . fromIntegral
 
 renderDoc :: Doc a -> Text
-renderDoc = renderStrict . layoutPretty defaultLayoutOptions
+renderDoc = renderStrict . layoutPretty -- defaultLayoutOptions
+    (LayoutOptions {layoutPageWidth = AvailablePerLine 40 1.0})
 
 prettyPrint :: (Pretty p) => p -> Text
 prettyPrint = renderDoc . pretty

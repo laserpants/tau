@@ -8,12 +8,14 @@ import Control.Arrow ((>>>))
 import Data.List (sortOn)
 import Data.Maybe (fromJust, maybeToList)
 import Data.Maybe (isJust)
+import Data.Text (Text)
 import Data.Text.Prettyprint.Doc
 import Data.Tuple.Extra (dupe)
 import Data.Void
 import Tau.Lang.Expr
 import Tau.Lang.Type
 import Tau.Util
+import Tau.Eval
 import qualified Data.Text as Text
 
 commaSep :: [Doc a] -> Doc a
@@ -222,7 +224,8 @@ prettyExpr f = para $ \case
     ECon _ con exs -> prettyCon (concatMap unlist) con exs app
     ELit _ lit     -> pretty lit
     EApp _ exs     -> hsep (foldr app [] exs)
-    ELet _ p e1 e2 -> prettyLet p e1 e2
+    ELet _ p e1 e2 -> prettyLet "let" p e1 e2
+    EFix _ n e1 e2 -> prettyLet "fix" n e1 e2
     ELam _ p e1    -> prettyLam (f p) e1
     EIf  _ c e1 e2 -> prettyIf c e1 e2
     EPat _ exs eqs -> prettyMatch exs eqs
@@ -313,15 +316,16 @@ splitClause (Clause ps exs e) =
 
 -- | Pretty printer for let expressions
 prettyLet
-  :: (Pretty p, Pretty q, Pretty (Expr t p q r))
-  => q
+  :: (Pretty p, Pretty q, Pretty s, Pretty (Expr t p q r))
+  => Doc a
+  -> s
   -> (Expr t p q r, Doc a)
   -> (Expr t p q r, Doc a)
   -> Doc a
-prettyLet p e1 e =
+prettyLet keyword p e1 e =
     group (vsep
       [ nest 2 (vsep
-        [ "let"
+        [ keyword
         , pretty p <+> equals <+> expr
         , nest 2 (vsep ["in", body])
         ])
@@ -347,3 +351,28 @@ prettyIf c e1 e2 =
     if_   = "if"   <+> pretty (fst c)
     then_ = "then" <+> pretty (fst e1)
     else_ = "else" <+> pretty (fst e2)
+
+instance Pretty (Value m) where
+    pretty = \case
+        Closure{}      -> "<<function>>"
+        PrimFun{}      -> "<<primitive>>"
+        Value lit      -> pretty lit
+        Record fields  -> prettyRecord colon (uncurry (Field ()) . fmap pretty <$> fields)
+        Data name vals -> prettyCon (concatMap unlistValues) name (dupe <$> vals) args
+      where
+        args :: (Value m, t) -> [Doc a] -> [Doc a]
+        args (val, _) = (rhs :)
+          where
+            rhs = case val of
+              Data _ [] -> pretty val
+              Data{}    -> parens (pretty val)
+              _         -> pretty val
+
+unlistValues :: Value m -> [Value m]
+unlistValues = \case
+    Data "[]"   [] -> []
+    Data "(::)" vs -> unlistValues =<< vs
+    v              -> [v]
+
+prettyAnnValue :: Value m -> Scheme -> Doc a
+prettyAnnValue value scheme = pretty value <+> ":" <+> pretty scheme

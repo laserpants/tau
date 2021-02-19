@@ -8,17 +8,18 @@ module Tau.Eval where
 import Control.Monad.Reader
 import Data.Function ((&))
 import Data.List (zip)
-import Tau.Util.Env (Env(..))
-import Tau.Lang.Expr
 import Tau.Eval.Prim
-import Tau.Stuff
+import Tau.Lang.Expr
 import Tau.Util
+import Tau.Util.Env (Env(..))
 import qualified Data.Map.Strict as Map
 import qualified Data.Text as Text
 import qualified Tau.Util.Env as Env
 
 type ValueEnv m = Env (Value m)
 
+-- | An expression evaluates to a literal value, a fully applied data
+-- constructor, a record, a primitive function, or a closure.
 data Value m
     = Value Literal
     | Data Name [Value m]
