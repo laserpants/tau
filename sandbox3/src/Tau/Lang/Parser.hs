@@ -63,6 +63,7 @@ keyword tok =
 reserved :: [Text]
 reserved =
     [ "let"
+    , "fix"
     , "in"
     , "if"
     , "then"
