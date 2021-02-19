@@ -70,6 +70,7 @@ reserved =
     , "else"
     , "match"
     , "with"
+    , "when"
     , "as"
     , "fun"
     , "not"
@@ -106,6 +107,7 @@ ast = do
   where
     atom = ifClause
         <|> letBinding
+        <|> fixBinding
         <|> matchWith
         <|> funExpr
         <|> lambda
@@ -157,6 +159,14 @@ letBinding = do
         [pat]                -> pure (letExpr () (Let pat) term body)
         (Fix (PVar () f):ps) -> pure (letExpr () (LetFun f ps) term body)
         _                    -> fail "Invalid let-expression"
+
+fixBinding :: Parser (PatternExpr ())
+fixBinding = do
+    keyword "fix"
+    var <- name
+    term <- symbol  "="  *> expr
+    body <- keyword "in" *> expr
+    pure (fixExpr () var term body)
 
 ifClause :: Parser (PatternExpr ())
 ifClause = do

@@ -190,6 +190,7 @@ exprTag = project >>> \case
     ELit t _       -> t
     EApp t _       -> t
     ELet t _ _ _   -> t
+    EFix t _ _ _   -> t
     ELam t _ _     -> t
     EIf  t _ _ _   -> t
     EPat t _ _     -> t
@@ -203,6 +204,7 @@ setExprTag t = project >>> \case
     ELit _ a       -> litExpr t a
     EApp _ a       -> appExpr t a
     ELet _ p a b   -> letExpr t p a b
+    EFix _ n a b   -> fixExpr t n a b
     ELam _ r a     -> lamExpr t r a
     EIf  _ a b c   -> ifExpr  t a b c
     EPat _ a b     -> patExpr t a b
