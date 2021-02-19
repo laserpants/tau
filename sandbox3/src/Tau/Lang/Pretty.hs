@@ -112,8 +112,8 @@ instance Pretty (TypeT v) where
 
 instance Pretty Kind where
     pretty = para $ \case
-        KTyp -> "*"
-        KArr a b  -> cata lhs (fst a) <+> "->" <+> snd b
+        KTyp     -> "*"
+        KArr a b -> cata lhs (fst a) <+> "->" <+> snd b
           where
             lhs = \case
                 KArr{} -> parens (snd a)
