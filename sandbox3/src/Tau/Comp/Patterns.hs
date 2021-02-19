@@ -263,21 +263,6 @@ flatten (Clause ps exs e) = Clause qs (exs <> exs1) e
         pat ->
             embed <$> sequence pat
 
--- match (1, 4), 2, 3 with
---  | (x, y) as p, y, z => p
-
--- match (1, 4), 2, 3 with
-
--- match (1, 4), 2, 3 with
---  | (x, y), y, z => let p = (x, y) in p
-
---ork :: Clause (Pattern t) (Expr t p q r) -> Clause (Pattern t) (Expr t p q r)
---ork (Clause ps exs e) = Clause (f <$> ps) exs e
---
---f :: Pattern t -> (Pattern t
---f (Fix (PAs t name pat)) = undefined
---f p = p
-
 compile 
   :: (Boolean t, Show t) 
   => [Expr t (Prep t) Name Name]
