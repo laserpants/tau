@@ -23,6 +23,7 @@ import System.Console.Repline
 import Tau.Comp.Patterns
 import Tau.Lang.Expr
 import Tau.Eval
+import Tau.Eval.Prim
 import Tau.Lang.Parser
 import Tau.Lang.Pretty
 import Tau.PrettyTree
@@ -227,5 +228,5 @@ replFinalizer = printExitMessage >> pure Exit
 ----printWelcomeMessage :: Repl ()
 printWelcomeMessage = putStrIO "Welcome!"
 
-----printExitMessage :: Repl ()
+printExitMessage :: HaskelineT Repl ()
 printExitMessage = putStrIO "Bye!"

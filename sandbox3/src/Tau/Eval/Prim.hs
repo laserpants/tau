@@ -2,9 +2,7 @@
 {-# LANGUAGE LambdaCase        #-}
 {-# LANGUAGE OverloadedStrings #-}
 {-# LANGUAGE StrictData        #-}
-module Tau.Prim where
--- Tau.Lang.Prim
--- Tau.Eval.Prim
+module Tau.Eval.Prim where
 
 import Tau.Util.Env (Env)
 import Tau.Lang.Expr
@@ -97,6 +95,10 @@ applyFun fun args =
 
 primEnv :: Env Fun
 primEnv = Env.fromList
+    -- Int_show
+    -- Int_(==)
+    -- String_length
+    -- String_concat
     [ ( "showInt"    , fun1 (show   :: Int -> String) )
     , ( "showBool"   , fun1 (show   :: Bool -> String) )
     , ( "showUnit"   , fun1 (show   :: () -> String) )

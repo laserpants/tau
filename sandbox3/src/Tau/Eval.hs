@@ -10,7 +10,7 @@ import Data.Function ((&))
 import Data.List (zip)
 import Tau.Util.Env (Env(..))
 import Tau.Lang.Expr
-import Tau.Prim
+import Tau.Eval.Prim
 import Tau.Stuff
 import Tau.Util
 import qualified Data.Map.Strict as Map

@@ -21,7 +21,7 @@ import Tau.Lang.Expr
 import Tau.Lang.Parser
 import Tau.Lang.Pretty
 import Tau.PrettyTree
-import Tau.Prim
+import Tau.Eval.Prim
 import Tau.Stuff
 import Tau.Lang.Type
 import Tau.Type.Substitution
