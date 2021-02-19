@@ -406,6 +406,9 @@ andOp = binOpExpr OAnd
 orOp :: t -> Expr t p q r -> Expr t p q r -> Expr t p q r
 orOp = binOpExpr OOr
 
+notOp :: t -> Expr t p q r -> Expr t p q r
+notOp t a = opExpr t (ONot a)
+
 lArrOp :: t -> Expr t p q r -> Expr t p q r -> Expr t p q r
 lArrOp = binOpExpr OLArr
 

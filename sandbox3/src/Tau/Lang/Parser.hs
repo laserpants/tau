@@ -69,6 +69,7 @@ reserved =
     , "else"
     , "match"
     , "with"
+    , "as"
     , "fun"
     , "not"
     , "forall"
@@ -248,6 +249,7 @@ operator =
       ]
       -- 2
     , [ InfixR (orOp  () <$ symbol "||")
+      , Prefix (notOp () <$ (keyword "not" *> spaces))
       ]
       -- 1
     , [ InfixR (lArrOp () <$ symbol "<<")
