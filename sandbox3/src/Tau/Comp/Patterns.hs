@@ -171,7 +171,6 @@ simplify = cata $ \case
     --
     ELam _ (Fix PLit{}) _         -> throwError "Pattern not allowed"
     ELet _ (Let (Fix PLit{})) _ _ -> throwError "Pattern not allowed"
-    ELam _ (Fix PAny{}) _         -> throwError "Pattern not allowed"
     ELet _ (Let (Fix PAny{})) _ _ -> throwError "Pattern not allowed"
 
     --
