@@ -31,7 +31,7 @@ import Tau.Util.Env (Env(..))
 import Tau.Lang.Expr
 import Tau.Lang.Pretty
 import Tau.PrettyTree
-import Tau.Type
+import Tau.Lang.Type
 import Tau.Type.Substitution
 import Tau.Type.Unification
 import Tau.Util

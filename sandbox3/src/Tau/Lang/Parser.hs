@@ -12,7 +12,7 @@ import Data.Text (Text, pack, unpack)
 import Data.Tuple.Extra (first)
 import Data.Void
 import Tau.Lang.Expr
-import Tau.Type
+import Tau.Lang.Type
 import Tau.Type.Substitution
 import Tau.Util (Name, Fix(..), embed, project, cata, to, (<$$>))
 import Text.Megaparsec hiding (ParseError)

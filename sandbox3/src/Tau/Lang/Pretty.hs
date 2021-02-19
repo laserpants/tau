@@ -12,7 +12,7 @@ import Data.Text.Prettyprint.Doc
 import Data.Tuple.Extra (dupe)
 import Data.Void
 import Tau.Lang.Expr
-import Tau.Type
+import Tau.Lang.Type
 import Tau.Util
 import qualified Data.Text as Text
 

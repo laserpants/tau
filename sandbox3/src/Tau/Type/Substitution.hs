@@ -9,7 +9,7 @@ module Tau.Type.Substitution where
 import Data.List (intersect)
 import Data.Map.Strict (Map)
 import Prelude hiding (null)
-import Tau.Type
+import Tau.Lang.Type
 import Tau.Util
 import qualified Data.Map.Strict as Map
 

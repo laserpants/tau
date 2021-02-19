@@ -32,7 +32,7 @@ import Debug.Trace
 import Tau.Util.Env
 import Tau.Lang.Pretty
 import Tau.Lang.Expr
-import Tau.Type
+import Tau.Lang.Type
 import Tau.Type.Substitution
 import Tau.Util
 import qualified Control.Monad.Free as Monad

@@ -23,7 +23,7 @@ import Tau.Lang.Pretty
 import Tau.PrettyTree
 import Tau.Prim
 import Tau.Stuff
-import Tau.Type
+import Tau.Lang.Type
 import Tau.Type.Substitution
 import Tau.Util
 import qualified Tau.Util.Env as Env

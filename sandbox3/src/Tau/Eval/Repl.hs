@@ -27,7 +27,7 @@ import Tau.Lang.Parser
 import Tau.Lang.Pretty
 import Tau.PrettyTree
 import Tau.Stuff
-import Tau.Type
+import Tau.Lang.Type
 import Tau.Type.Substitution
 import Tau.Util
 import Text.Megaparsec (runParser)

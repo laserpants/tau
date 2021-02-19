@@ -14,7 +14,7 @@ import Data.List
 import Data.Text (Text)
 import Data.Tuple.Extra (snd3)
 import Data.Types.Injective
-import Tau.Type
+import Tau.Lang.Type
 import Tau.Util
 import qualified Data.Set.Monad as Set
 

@@ -5,8 +5,7 @@
 {-# LANGUAGE OverloadedStrings #-}
 {-# LANGUAGE StrictData        #-}
 {-# LANGUAGE TemplateHaskell   #-}
-module Tau.Type where
--- Tau.Lang.Type
+module Tau.Lang.Type where
 
 import Control.Arrow (second, (<<<), (>>>))
 import Control.Comonad.Cofree
