@@ -11,7 +11,7 @@ import Data.Maybe (fromMaybe, fromJust)
 import Data.Text (Text, pack, unpack)
 import Data.Tuple.Extra (first)
 import Data.Void
-import Tau.Expr
+import Tau.Lang.Expr
 import Tau.Type
 import Tau.Type.Substitution
 import Tau.Util (Name, Fix(..), embed, project, cata, to, (<$$>))

@@ -11,7 +11,7 @@ import Data.Maybe (isJust)
 import Data.Text.Prettyprint.Doc
 import Data.Tuple.Extra (dupe)
 import Data.Void
-import Tau.Expr
+import Tau.Lang.Expr
 import Tau.Type
 import Tau.Util
 import qualified Data.Text as Text

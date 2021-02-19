@@ -6,8 +6,7 @@
 {-# LANGUAGE StrictData            #-}
 {-# LANGUAGE TemplateHaskell       #-}
 {-# LANGUAGE TypeFamilies          #-}
-module Tau.Expr where
--- Tau.Lang.Expr
+module Tau.Lang.Expr where
 
 import Control.Arrow ((>>>))
 import Control.Monad.Supply

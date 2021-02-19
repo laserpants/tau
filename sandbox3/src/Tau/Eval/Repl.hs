@@ -21,7 +21,7 @@ import Data.Text (pack, unpack)
 import System.Console.Repline
 import System.Console.Repline
 import Tau.Comp.Patterns
-import Tau.Expr
+import Tau.Lang.Expr
 import Tau.Eval
 import Tau.Lang.Parser
 import Tau.Lang.Pretty

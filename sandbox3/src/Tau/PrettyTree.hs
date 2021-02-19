@@ -9,7 +9,7 @@ import Data.Text.Prettyprint.Doc.Render.Text
 import Data.Tree
 import Data.Tree.View (showTree)
 import Data.Tuple.Extra (snd3)
-import Tau.Expr
+import Tau.Lang.Expr
 import Tau.Lang.Pretty
 import Tau.Util
 import qualified Data.Text as Text

@@ -31,7 +31,7 @@ import Data.Tuple.Extra (fst3, snd3, thd3)
 import Debug.Trace
 import Tau.Util.Env
 import Tau.Lang.Pretty
-import Tau.Expr
+import Tau.Lang.Expr
 import Tau.Type
 import Tau.Type.Substitution
 import Tau.Util
