@@ -185,6 +185,10 @@ expr994 = fixExpr () "len" (patExpr () [] [Clause [conPat () "Nil" []] [] (litEx
 --                  (appExpr () [varExpr () "len", conExpr () "Cons" [litExpr () (LInt 5), conExpr () "Cons" [litExpr () (LInt 4), conExpr () "Nil" []]]])
 
 
+expr995 = letPExpr () (asPat () "pair" (conPat () "(,)" [anyPat (), anyPat ()])) (conExpr () "(,)" [litExpr () (LInt 1), litExpr () LUnit]) (varExpr () "pair")
+
+expr996 = patExpr () [conExpr () "(,)" [litExpr () (LInt 3), litExpr () LUnit]] [Clause [asPat () "pair" (conPat () "(,)" [varPat () "a", varPat () "b"])] [] (varExpr () "pair")] 
+
 {-
 
 xxList :: (X a) => [a] -> String
@@ -477,7 +481,7 @@ runPipeline a = do
 --runTest2_ = runPipeline expr25
 --runTest2_ = runPipeline $ appExpr () [expr5, litExpr () (LInt 55555)]
 --runTest2_ = runPipeline expr38
-runTest2_ = runPipeline expr994
+runTest2_ = runPipeline expr996
 
 --
 --

@@ -165,6 +165,7 @@ instance Pretty (Pattern t) where
         PCon _ con ps  -> prettyCon (concatMap unlistPat) con ps args
         PLit _ lit     -> pretty lit
         PRec _ fields  -> prettyRecord equals (snd <$$> fields)
+        PAs  _ name p  -> pretty (fst p) <+> "as" <+> pretty name
         PAny _         -> "_"
       where
         args :: (Pattern t, Doc a) -> [Doc a] -> [Doc a]

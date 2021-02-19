@@ -94,24 +94,37 @@ simplified
   :: (Boolean t, Show t) 
   => Expr t (Pattern t) (Let (Pattern t)) [Pattern t]
   -> Either String (Expr t (Prep t) Name Name)
-simplified = runSimplify . simplify . unrollLambdas 
+simplified = runSimplify . simplify . unrollAsPats . unrollLambdas
 
---funExpansion 
---  :: (Boolean t) 
---  => Expr t (Pattern t) (Let (Pattern t)) [Pattern t]
---  -> Expr t (Pattern t) (Let (Pattern t)) [Pattern t]
---funExpansion = cata $ \case
---    EPat t [] eqs -> lamExpr t [varPat dom "$0"] (patExpr cod [varExpr dom "$0"] eqs)
---      where (dom, cod) = fromArr t
---    e -> Fix e
---
+unrollAsPats 
+  :: (Boolean t) 
+  => Expr t (Pattern t) (Let (Pattern t)) (Pattern t)
+  -> Expr t (Pattern t) (Let (Pattern t)) (Pattern t)
+unrollAsPats = cata $ \case
+    ELam t ps a                 -> let ([qs], rs) = run [ps] in lamExpr t qs (foldr fun a rs)
+    ELet t (Let p) e1 e2        -> let ([qs], rs) = run [p] in letExpr t (Let qs) e1 (foldr fun e2 rs)
+    ELet t (LetFun f ps) e1 e2  -> let (qs, rs) = run ps in letExpr t (LetFun f qs) e1 (foldr fun e2 rs)
+    EPat t exs eqs              -> patExpr t exs (clause <$> eqs)
+    e                           -> embed e
+  where
+    fun (name, p) e = 
+        patExpr (exprTag e) [varExpr (patternTag p) name] [Clause [p] [] e]
+
+    clause (Clause ps exs e) = 
+        let (qs, rs) = run ps in Clause qs exs (foldr fun e rs)
+
+    run ps = second concat (unzip (split <$> ps))
+
+    split :: Pattern t -> (Pattern t, [(Name, Pattern t)])
+    split (Fix (PAs t name p)) = (varPat t name, [(name, p)])
+    split p                    = (p, [])
 
 unrollLambdas
   :: (Boolean t) 
   => Expr t (Pattern t) (Let (Pattern t)) [Pattern t]
   -> Expr t (Pattern t) (Let (Pattern t)) (Pattern t)
 unrollLambdas = cata $ \case
-    ELam _ ps a       -> foldr unroll a ps
+    ELam _ ps a       -> foldr unrolled a ps
     EVar t var        -> varExpr t var
     ECon t con exs    -> conExpr t con exs
     ELit t lit        -> litExpr t lit
@@ -121,12 +134,12 @@ unrollLambdas = cata $ \case
     EIf  t cond e1 e2 -> ifExpr  t cond e1 e2
     EPat t [] eqs ->
         let (dom, cod) = fromArr t
-         in unroll (varPat dom "$0") (patExpr cod [varExpr dom "$0"] eqs)
+         in unrolled (varPat dom "$0") (patExpr cod [varExpr dom "$0"] eqs)
     EPat t exs eqs    -> patExpr t exs eqs
     EOp  t op         -> opExpr  t op
     ERec t fields     -> recExpr t fields
   where
-    unroll pat ex = lamExpr (arrow (patternTag pat) (exprTag ex)) pat ex
+    unrolled pat ex = lamExpr (arrow (patternTag pat) (exprTag ex)) pat ex
 
 simplify 
   :: (Boolean t, Show t) 
@@ -244,8 +257,26 @@ flatten (Clause ps exs e) = Clause qs (exs <> exs1) e
             ps <- traverse thd3 info
             pure (conPat t ("{" <> Text.intercalate "," (snd3 <$> info) <> "}") ps)
 
+        PAs t name p -> 
+            error "Implementation error" 
+
         pat ->
             embed <$> sequence pat
+
+-- match (1, 4), 2, 3 with
+--  | (x, y) as p, y, z => p
+
+-- match (1, 4), 2, 3 with
+
+-- match (1, 4), 2, 3 with
+--  | (x, y), y, z => let p = (x, y) in p
+
+--ork :: Clause (Pattern t) (Expr t p q r) -> Clause (Pattern t) (Expr t p q r)
+--ork (Clause ps exs e) = Clause (f <$> ps) exs e
+--
+--f :: Pattern t -> (Pattern t
+--f (Fix (PAs t name pat)) = undefined
+--f p = p
 
 compile 
   :: (Boolean t, Show t) 

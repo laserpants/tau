@@ -135,6 +135,8 @@ evalEnv_ = Env.fromList
     , ("length" , fromJust (runEval (eval length_) mempty))
     , ("Some"    , Tau.Eval.constructor "Some" 1)  
     , ("None"    , Tau.Eval.constructor "None" 0)  
+    , ("first"  , fromJust (runEval (eval fst_) mempty))
+    , ("second" , fromJust (runEval (eval snd_) mempty))
     ]
   where
     Right length_ = simplified foo26

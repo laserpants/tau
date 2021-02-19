@@ -274,13 +274,15 @@ patternCons :: Pattern () -> Pattern () -> Pattern ()
 patternCons hd tl = conPat () "(::)" [hd, tl]
 
 patternExpr :: Parser (Pattern ())
-patternExpr = wildcard
-    <|> conPattern
-    <|> litPattern
-    <|> varPattern
-    <|> listPattern
-    <|> tuplePattern
-    <|> recordPattern
+patternExpr = try (asPattern pexpr) <|> pexpr
+  where
+    pexpr = wildcard
+        <|> conPattern
+        <|> litPattern
+        <|> varPattern
+        <|> listPattern
+        <|> tuplePattern
+        <|> recordPattern
 
 varPattern :: Parser (Pattern ())
 varPattern = varPat () <$> name
@@ -293,6 +295,13 @@ conPattern = do
 
 litPattern :: Parser (Pattern ())
 litPattern = litPat () <$> literal
+
+asPattern :: Parser (Pattern ()) -> Parser (Pattern ())
+asPattern parser = do
+    pat <- parser
+    keyword "as"
+    var <- name
+    pure (asPat () var pat)
 
 wildcard :: Parser (Pattern ())
 wildcard = symbol "_" $> anyPat ()

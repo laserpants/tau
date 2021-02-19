@@ -610,6 +610,10 @@ inferPattern = cata alg
                 lift (unifyTyped newTy (tRecord ns (typeOf <$> ps)))
                 pure (recPat (NodeInfo newTy []) tfs)
 
+            PAs _ name pat -> do
+                tell [(name, newTy)]
+                asPat (NodeInfo newTy []) name <$> pat
+
             PAny _ -> 
                 pure (anyPat (NodeInfo newTy []))
 

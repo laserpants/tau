@@ -43,7 +43,7 @@ data PatternF t a
     | PCon t Name [a]         -- ^ Constuctor pattern
     | PLit t Literal          -- ^ Literal pattern
     | PRec t [Field t a]      -- ^ Record pattern
---  | PAs  t Name a
+    | PAs  t Name a           -- ^ As pattern
 --  | POr  t a a
     | PAny t                  -- ^ Wildcard pattern
     deriving (Show, Eq, Functor, Foldable, Traversable)
@@ -228,6 +228,7 @@ patternTag = project >>> \case
     PLit t _       -> t
     PRec t _       -> t
     PAny t         -> t
+    PAs  t _ _     -> t
 
 setPatternTag :: t -> Pattern t -> Pattern t
 setPatternTag t = project >>> \case
@@ -236,6 +237,7 @@ setPatternTag t = project >>> \case
     PLit _ a       -> litPat t a
     PRec _ s       -> recPat t s
     PAny _         -> anyPat t
+    PAs  _ a b     -> asPat t a b
 
 updatePatternTag :: (t -> t) -> Pattern t -> Pattern t
 updatePatternTag update pat = setPatternTag (update (patternTag pat)) pat
@@ -289,6 +291,7 @@ mapPatternTags f = cata $ \case
     PLit t a       -> litPat (f t) a
     PRec t s       -> recPat (f t) (mapField f <$> s)
     PAny t         -> anyPat (f t)
+    PAs  t a b     -> asPat  (f t) a b
 
 mapField :: (s -> t) -> Field s a -> Field t a
 mapField f (Field t a b) = Field (f t) a b
@@ -297,6 +300,7 @@ instance Free (Pattern t) where
     free = cata $ \case
         PVar _ name -> Set.singleton name
         PCon _ _ ps -> unions ps
+        PAs  _ _ p  -> p
         _           -> mempty
 
 instance Free (Prep t) where
@@ -308,6 +312,9 @@ varPat = embed2 PVar
 
 conPat :: t -> Name -> [Pattern t] -> Pattern t
 conPat = embed3 PCon
+
+asPat :: t -> Name -> Pattern t -> Pattern t
+asPat = embed3 PAs
 
 litPat :: t -> Literal -> Pattern t
 litPat = embed2 PLit
