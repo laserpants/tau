@@ -244,8 +244,11 @@ prettyExpr f = para $ \case
             EOp _ ODot{} -> snd a
             EOp{}        -> parens (snd a)
             ECon _ _ []  -> snd a
-            ECon _ con _ -> if CTuple == conType con then snd a else parens (snd a)
-            _            -> snd a
+            ECon _ con _ -> 
+                if CCons == conType con || CTuple == conType con 
+                    then snd a 
+                    else parens (snd a)
+            _ -> snd a
 
 instance Pretty (Let (Pattern t)) where
     pretty (Let p)       = pretty p
@@ -419,7 +422,7 @@ instance Pretty (Value m) where
         Closure{}      -> "<<function>>"
         PrimFun{}      -> "<<primitive>>"
         Value lit      -> pretty lit
-        Record fields  -> prettyRecord colon (uncurry (Field ()) . fmap pretty <$> fields)
+        Record fields  -> prettyRecord equals (uncurry (Field ()) . fmap pretty <$> fields)
         Data name vals -> prettyCon (unlistValues_ (Data name vals)) name (dupe <$> vals) args
       where
         args :: (Value m, t) -> [Doc a] -> [Doc a]
