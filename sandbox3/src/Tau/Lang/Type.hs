@@ -230,9 +230,9 @@ tList :: TypeT a -> TypeT a
 tList = tApp tListCon 
 
 tTuple :: [TypeT a] -> TypeT a
-tTuple ts = foldl tApp (tCon kind (tupleCon (length ts))) ts
+tTuple types = foldl tApp (tCon kind (tupleCon (length types))) types
   where 
-    kind = foldr (const (kArr kTyp)) kTyp ts
+    kind = foldr (const (kArr kTyp)) kTyp types
 
 tRecord :: [Name] -> [TypeT a] -> TypeT a
 tRecord names = foldl tApp (tCon kind (recordCon names)) 
