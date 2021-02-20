@@ -1,5 +1,10 @@
 # tau
 
+[-] Exhaustive patterns check
+[-] Or-patterns
+[-] Pr. printer ()
+[-] Tests
+
 let map f xs = fix g = fun [] => [] | (x :: xs) => f x :: g xs in g xs in map (\x => x + 1) [1,2,3,4]
 
 let
