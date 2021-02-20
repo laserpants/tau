@@ -217,6 +217,7 @@ instance (Pretty p, Pretty q, Pretty (Expr t p q r)) => Pretty (Op (Expr t p q r
                  ELet{}              -> parens (pretty a)
                  ELam{}              -> parens (pretty a)
                  EIf{}               -> parens (pretty a)
+                 EOp _ ODot{}        -> pretty a
                  EOp _ ops | par ops -> parens (pretty a)
                  _                   -> pretty a
 
@@ -240,22 +241,24 @@ prettyExpr f = para $ \case
         rhs = flip cata (fst a) $ \case
             EApp{}       -> parens (snd a)
             ELam{}       -> parens (snd a)
+            EOp _ ODot{} -> snd a
+            EOp{}        -> parens (snd a)
             ECon _ _ []  -> snd a
             ECon _ con _ -> if CTuple == conType con then snd a else parens (snd a)
             _            -> snd a
 
-instance (Pretty p) => Pretty (Let p) where
+instance Pretty (Let (Pattern t)) where
     pretty (Let p)       = pretty p
-    pretty (LetFun f ps) = pretty f <+> hsep (pretty <$> ps)
+    pretty (LetFun f ps) = pretty f <+> (hsep (fmap ffff ps)) -- hsep (pretty <$> ps)
 
 instance Pretty (PatternExpr t) where
-    pretty = prettyExpr (hsep . fmap f)
-      where
-        f :: Pattern t -> Doc a
-        f p = case project p of
-            PCon _ _ [] -> pretty p
-            PCon{}      -> parens (pretty p)
-            _           -> pretty p
+    pretty = prettyExpr (hsep . fmap ffff)
+
+ffff :: Pattern t -> Doc a
+ffff p = case project p of
+    PCon _ _ [] -> pretty p
+    PCon{}      -> parens (pretty p)
+    _           -> pretty p
 
 instance (Pretty r) => Pretty (Expr t (Prep t) Name r) where
     pretty = prettyExpr pretty

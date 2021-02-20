@@ -1,13 +1,9 @@
 # tau
 
-[-] Exhaustive patterns check
+[-] Records, tuples and lists in exhaustive patterns check
 [-] Or-patterns
 [-] Pr. printer ()
 [-] Tests
-
---
-
-let f = fun (Some a) b => 0 | None _ => 1 in f (Some 3) ()
 
 --
 
