@@ -131,8 +131,10 @@ funExpr = do
 
 matchWith :: Parser (PatternExpr ())
 matchWith = do
-    terms <- keyword "match" *> commaSep expr
-    patExpr () terms <$> ((:) <$> clause with <*> many (clause pipe))
+    term <- keyword "match" *> expr
+    patExpr () [term] <$> ((:) <$> clause with <*> many (clause pipe))
+    --terms <- keyword "match" *> commaSep expr
+    --patExpr () terms <$> ((:) <$> clause with <*> many (clause pipe))
 
 with :: Parser ()
 with = void $ keyword "with" *> optional (symbol "|")
@@ -142,10 +144,14 @@ pipe = void (symbol "|")
 
 clause :: Parser () -> Parser (Clause (Pattern ()) (PatternExpr ()))
 clause sym = do
-    pats <- sym *> commaSep pattern_
+    pat <- sym *> pattern_
     cond <- fromMaybe [] <$> optional whens
     term <- symbol "=>" *> expr
-    pure (Clause pats cond term)
+    pure (Clause [pat] cond term)
+--    pats <- sym *> commaSep pattern_
+--    cond <- fromMaybe [] <$> optional whens
+--    term <- symbol "=>" *> expr
+--    pure (Clause pats cond term)
 
 whens :: Parser [PatternExpr ()]
 whens = keyword "when" *> (pure <$> expr)
