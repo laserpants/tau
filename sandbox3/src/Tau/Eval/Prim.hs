@@ -103,6 +103,8 @@ primEnv = Env.fromList
     , ( "showBool"   , fun1 (show   :: Bool -> String) )
     , ( "showUnit"   , fun1 (show   :: () -> String) )
     , ( "(+)Int"     , fun2 ((+)    :: Int -> Int -> Int) )
+    , ( "(*)Int"     , fun2 ((*)    :: Int -> Int -> Int) )
+    , ( "(-)Int"     , fun2 ((-)    :: Int -> Int -> Int) )
     , ( "(==)Int"    , fun2 ((==)   :: Int -> Int -> Bool) )
     , ( "(==)Bool"   , fun2 ((==)   :: Bool -> Bool -> Bool) )
     , ( "(==)Unit"   , fun2 ((==)   :: () -> () -> Bool) )

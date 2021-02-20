@@ -91,7 +91,11 @@ stuff expr = do
 classEnv_ = Env.fromList 
     [ ( "Num"
       , ( []
-        , [ Instance [] tInt (recExpr (NodeInfo (tApp (tCon (kArr kTyp kTyp) "Num") tInt) []) [Field (NodeInfo (tInt `tArr` tInt `tArr` tInt) []) "(+)" (varExpr (NodeInfo (tInt `tArr` tInt `tArr` tInt) []) "@(+)Int")])
+        , [ Instance [] tInt (recExpr (NodeInfo (tApp (tCon (kArr kTyp kTyp) "Num") tInt) []) 
+              [ Field (NodeInfo (tInt `tArr` tInt `tArr` tInt) []) "(+)" (varExpr (NodeInfo (tInt `tArr` tInt `tArr` tInt) []) "@(+)Int")
+              , Field (NodeInfo (tInt `tArr` tInt `tArr` tInt) []) "(*)" (varExpr (NodeInfo (tInt `tArr` tInt `tArr` tInt) []) "@(*)Int")
+              , Field (NodeInfo (tInt `tArr` tInt `tArr` tInt) []) "(-)" (varExpr (NodeInfo (tInt `tArr` tInt `tArr` tInt) []) "@(-)Int")
+              ])
           ] 
         )
       )
@@ -112,6 +116,8 @@ classEnv_ = Env.fromList
 typeEnv_ = Env.fromList 
     [ ( "(==)" , Forall [kTyp] [InClass "Eq" 0] (tGen 0 `tArr` tGen 0 `tArr` upgrade tBool) )
     , ( "(+)"  , Forall [kTyp] [InClass "Num" 0] (tGen 0 `tArr` tGen 0 `tArr` tGen 0) )
+    , ( "(-)"  , Forall [kTyp] [InClass "Num" 0] (tGen 0 `tArr` tGen 0 `tArr` tGen 0) )
+    , ( "(*)"  , Forall [kTyp] [InClass "Num" 0] (tGen 0 `tArr` tGen 0 `tArr` tGen 0) )
     , ( "show" , Forall [kTyp] [InClass "Show" 0] (tGen 0 `tArr` tString) )
     , ( "add"  , Forall [kTyp] [InClass "Num" 0] (tGen 0 `tArr` tGen 0 `tArr` tGen 0) )
     , ( "(,)"  , Forall [kTyp, kTyp] [] (tGen 0 `tArr` tGen 1 `tArr` (tApp (tApp (tCon (kArr kTyp (kArr kTyp kTyp)) "(,)") (tGen 0)) (tGen 1))))
@@ -128,6 +134,8 @@ typeEnv_ = Env.fromList
 
 evalEnv_ = Env.fromList 
     [ ("(+)"    , fromJust (runEval (eval plus_) mempty))
+    , ("(-)"    , fromJust (runEval (eval sub_) mempty))
+    , ("(*)"    , fromJust (runEval (eval mul_) mempty))
     , ("show"   , fromJust (runEval (eval show_) mempty))
     , ("(,)"    , Tau.Eval.constructor "(,)" 2) -- fromJust (runEval (eval pair) mempty))
     , ("fst"    , fromJust (runEval (eval fst_) mempty))
@@ -152,6 +160,12 @@ evalEnv_ = Env.fromList
 
     Right plus_ = simplified foo1
     foo1 = lamExpr () [varPat () "d"] (patExpr () [varExpr () "d"] [ Clause [recPat () [Field () "(+)" (varPat () "(+)")]] [] (varExpr () "(+)") ])
+
+    Right sub_ = simplified foo111
+    foo111 = lamExpr () [varPat () "d"] (patExpr () [varExpr () "d"] [ Clause [recPat () [Field () "(-)" (varPat () "(-)")]] [] (varExpr () "(-)") ])
+
+    Right mul_ = simplified foo112
+    foo112 = lamExpr () [varPat () "d"] (patExpr () [varExpr () "d"] [ Clause [recPat () [Field () "(*)" (varPat () "(*)")]] [] (varExpr () "(*)") ])
 
     Right show_ = simplified foo2
     foo2 = lamExpr () [varPat () "d"] (patExpr () [varExpr () "d"] [ Clause [recPat () [Field () "show" (varPat () "show")]] [] (varExpr () "show") ])

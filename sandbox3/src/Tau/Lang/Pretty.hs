@@ -5,6 +5,7 @@
 module Tau.Lang.Pretty where
 
 import Control.Arrow ((>>>))
+import Control.Monad (join)
 import Data.List (sortOn)
 import Data.Maybe (fromJust, maybeToList)
 import Data.Maybe (isJust)
@@ -156,7 +157,7 @@ instance Pretty Literal where
 instance Pretty (Prep t) where
     pretty = \case
         RVar _ var    -> pretty var
-        RCon _ con rs -> prettyCon id con (dupe <$> rs) (args . fst)
+        RCon t con rs -> prettyCon (unlistPrep_ (RCon t con rs)) con (dupe <$> rs) (args . fst) -- prettyCon id con (dupe <$> rs) (args . fst)
       where
         args :: Name -> [Doc a] -> [Doc a]
         args n = (pretty n :)
@@ -164,7 +165,7 @@ instance Pretty (Prep t) where
 instance Pretty (Pattern t) where
     pretty = para $ \case
         PVar _ var     -> pretty var
-        PCon _ con ps  -> prettyCon (concatMap unlistPat) con ps args
+        PCon t con ps  -> prettyCon (unlistPat_ (conPat t con (fst <$> ps))) con ps args -- undefined -- prettyCon (concatMap unlistPat) con ps args
         PLit _ lit     -> pretty lit
         PRec _ fields  -> prettyRecord equals (snd <$$> fields)
         PAs  _ name p  -> pretty (fst p) <+> "as" <+> pretty name
@@ -221,7 +222,7 @@ instance (Pretty p, Pretty q, Pretty (Expr t p q r)) => Pretty (Op (Expr t p q r
 prettyExpr :: (Pretty p, Pretty q, Pretty (Expr t p q r)) => (r -> Doc a) -> Expr t p q r -> Doc a
 prettyExpr f = para $ \case
     EVar _ var     -> pretty var
-    ECon _ con exs -> prettyCon (concatMap unlist) con exs app
+    ECon t con exs -> prettyCon (unlist_ (conExpr t con (fst <$> exs))) con exs app -- (concatMap unlist) con exs app
     ELit _ lit     -> pretty lit
     EApp _ exs     -> hsep (foldr app [] exs)
     ELet _ p e1 e2 -> prettyLet "let" p e1 e2
@@ -237,6 +238,7 @@ prettyExpr f = para $ \case
       where
         rhs = flip cata (fst a) $ \case
             EApp{}       -> parens (snd a)
+            ELam{}       -> parens (snd a)
             ECon _ _ []  -> snd a
             ECon _ con _ -> if CTuple == conType con then snd a else parens (snd a)
             _            -> snd a
@@ -254,37 +256,93 @@ instance Pretty (PatternExpr t) where
             PCon{}      -> parens (pretty p)
             _           -> pretty p
 
---        f :: Pattern t -> Doc a
---        f p = flip cata p $ \case  -- TODO: use project?
---            PCon _ _ [] -> pretty p
---            PCon{}      -> parens (pretty p)
---            _           -> pretty p
-
 instance (Pretty r) => Pretty (Expr t (Prep t) Name r) where
     pretty = prettyExpr pretty
 
-prettyCon :: (Pretty p) => ([p] -> [p]) -> Name -> [(p, q)] -> ((p, q) -> [Doc a] -> [Doc a]) -> Doc a
-prettyCon flatten con exs fun
+prettyCon :: (Pretty p) => Maybe [Doc a] -> Name -> [(p, q)] -> ((p, q) -> [Doc a] -> [Doc a]) -> Doc a
+prettyCon list con exs fun 
     | null exs      = pretty con
+
     | CRecord == ct = prettyRecord equals (namesToFields con (pretty . fst <$> exs))
     | CTuple  == ct = prettyTuple (pretty . fst <$> exs)
     | CNil    == ct = "[]"
-    | CCons   == ct = "[" <> commaSep (pretty <$> flatten (fst <$> exs)) <> "]"
+    | CCons == ct = -- xxx (flatten (fst <$> exs)) -- (pretty <$> flatten (fst <$> exs)) -- "[" <> commaSep (pretty <$> flatten (fst <$> exs)) <> "]"
+        case (list, fst <$> exs) of
+            (Nothing, [hd, tl]) -> pretty hd <+> "::" <+> pretty tl
+            (Just elems, _)     -> "[" <> commaSep elems <> "]"
+
     | otherwise     = pretty con <+> hsep (foldr fun [] exs)
+
   where
     ct = conType con
 
-unlist :: Expr t p q r -> [Expr t p q r]
-unlist = para $ \case
-    ECon _ "[]"   [] -> []
-    ECon _ "(::)" es -> concat (snd <$> es)
-    e                -> [embed (fst <$> e)]
+--    yyy [a, b] = traceShow (flatten (fst <$> exs)) ( pretty (fst a) <+> "::" <+> pretty (fst b) )
 
-unlistPat :: Pattern t -> [Pattern t]
-unlistPat = para $ \case
-    PCon _ "[]"   [] -> []
-    PCon _ "(::)" ps -> concat (snd <$> ps)
-    p                -> [embed (fst <$> p)]
+--prettyCon :: (Pretty p, Show p) => ([p] -> [p]) -> Name -> [(p, q)] -> ((p, q) -> [Doc a] -> [Doc a]) -> Doc a
+--prettyCon flatten con exs fun
+--    | null exs      = pretty con
+--    | CRecord == ct = prettyRecord equals (namesToFields con (pretty . fst <$> exs))
+--    | CTuple  == ct = prettyTuple (pretty . fst <$> exs)
+--    | CNil    == ct = "[]"
+--    | CCons   == ct = yyy exs -- xxx (flatten (fst <$> exs)) -- (pretty <$> flatten (fst <$> exs)) -- "[" <> commaSep (pretty <$> flatten (fst <$> exs)) <> "]"
+--    | otherwise     = pretty con <+> hsep (foldr fun [] exs)
+--  where
+--    ct = conType con
+--
+--    yyy [a, b] = traceShow (flatten (fst <$> exs)) ( pretty (fst a) <+> "::" <+> pretty (fst b) )
+
+--    xxx [a, b] = pretty a <+> "::" <+> pretty b 
+--    xxx xs     = "[" <> commaSep (pretty <$> xs) <> "]"
+
+--unlist :: Expr t p q r -> [Expr t p q r]
+--unlist = para $ \case
+--    ECon _ "[]"   [] -> []
+--    ECon _ "(::)" es -> concat (snd <$> es)
+--    e                -> [embed (fst <$> e)]
+
+    --Fix (ECon _ "[]" [])       -> []
+    --Fix (ECon _ "(::)" (Fix (ECon _ "(::)" ys):xs)) -> ys <> xs
+    --a@(Fix (ECon _ "(::)" _)) -> [a]
+    -- x -> []
+
+--unlistPat :: Pattern t -> [Pattern t]
+--unlistPat = para $ \case
+--    PCon _ "[]"   [] -> []
+--    PCon _ "(::)" ps -> concat (snd <$> ps)
+--    p                -> [embed (fst <$> p)]
+
+unlist_ :: (Pretty (Expr t p q r)) => Expr t p q r -> Maybe [Doc a] -- Expr t p q r]
+unlist_ = \case
+    Fix (ECon _ "(::)" (e:es)) -> 
+        case sequence (unlist_ <$> es) of
+            Just fs -> Just ([pretty e] <> join fs)
+            Nothing -> Nothing
+    Fix (ECon _ "[]" []) -> Just [] 
+    _ -> Nothing
+
+unlistPat_ :: Pattern t -> Maybe [Doc a]
+unlistPat_ = \case
+    Fix (PCon _ "(::)" (p:ps)) -> 
+        case sequence (unlistPat_ <$> ps) of
+            Just qs -> Just ([pretty p] <> join qs)
+            Nothing -> Nothing
+    Fix (PCon _ "[]" []) -> Just [] 
+    _ -> Nothing
+
+unlistPrep_ :: Prep t -> Maybe [Doc a]
+unlistPrep_ = \case
+    RCon _ "(::)" rs -> Just (pretty <$> rs)
+    RCon _ "[]" [] -> Just [] 
+    _ -> Nothing
+
+unlistValues_ :: Value m -> Maybe [Doc a]
+unlistValues_ = \case
+    Data "[]"   [] -> Just []
+    Data "(::)" (v:vs) -> 
+        case sequence (unlistValues_ <$> vs) of
+            Just ws -> Just ([pretty v] <> join ws)
+            _       -> Nothing
+    _ -> Nothing
 
 prettyMatch :: (Pretty p, Pretty q) => [(a, Doc ann)] -> [Clause p (q, r)] -> Doc ann
 prettyMatch exs eqs =
@@ -358,7 +416,7 @@ instance Pretty (Value m) where
         PrimFun{}      -> "<<primitive>>"
         Value lit      -> pretty lit
         Record fields  -> prettyRecord colon (uncurry (Field ()) . fmap pretty <$> fields)
-        Data name vals -> prettyCon (concatMap unlistValues) name (dupe <$> vals) args
+        Data name vals -> prettyCon (unlistValues_ (Data name vals)) name (dupe <$> vals) args
       where
         args :: (Value m, t) -> [Doc a] -> [Doc a]
         args (val, _) = (rhs :)
@@ -367,12 +425,6 @@ instance Pretty (Value m) where
               Data _ [] -> pretty val
               Data{}    -> parens (pretty val)
               _         -> pretty val
-
-unlistValues :: Value m -> [Value m]
-unlistValues = \case
-    Data "[]"   [] -> []
-    Data "(::)" vs -> unlistValues =<< vs
-    v              -> [v]
 
 prettyAnnValue :: Value m -> Scheme -> Doc a
 prettyAnnValue value scheme = pretty value <+> ":" <+> pretty scheme

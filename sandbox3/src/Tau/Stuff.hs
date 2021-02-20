@@ -115,6 +115,18 @@ rebuildTree22 a = do
             let t1 = nodeType t
             rebuildTree22 (appExpr t [varExpr (NodeInfo (t1 `tArr` t1 `tArr` t1) [InClass "Num" t1]) "(+)", e1, e2])
 
+        EOp t (OSub a b) -> do
+            e1 <- a
+            e2 <- b
+            let t1 = nodeType t
+            rebuildTree22 (appExpr t [varExpr (NodeInfo (t1 `tArr` t1 `tArr` t1) [InClass "Num" t1]) "(-)", e1, e2])
+
+        EOp t (OMul a b) -> do
+            e1 <- a
+            e2 <- b
+            let t1 = nodeType t
+            rebuildTree22 (appExpr t [varExpr (NodeInfo (t1 `tArr` t1 `tArr` t1) [InClass "Num" t1]) "(*)", e1, e2])
+
         EVar t var -> do
             -- 1. lambda bound var
             -- 2. let-bound variable
@@ -532,6 +544,8 @@ infer = cata alg
             EOp  _ (OOr  a b) -> inferLogicOp OOr a b
             EOp  _ (OEq  a b) -> inferBinOp "(==)" OEq a b
             EOp  _ (OAdd a b) -> inferBinOp "(+)"  OAdd a b
+            EOp  _ (OSub a b) -> inferBinOp "(-)"  OSub a b
+            EOp  _ (OMul a b) -> inferBinOp "(*)"  OMul a b
 
             EOp  _ (ODot name expr1) -> do
                 e1 <- expr1

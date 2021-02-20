@@ -231,6 +231,7 @@ simplifyOp t (OAnd a b) = andOp t <$> a <*> b
 simplifyOp t (OOr  a b) = orOp  t <$> a <*> b
 simplifyOp t (OAdd a b) = addOp t <$> a <*> b
 simplifyOp t (OSub a b) = subOp t <$> a <*> b
+simplifyOp t (OMul a b) = mulOp t <$> a <*> b
 simplifyOp t (ODot name a) = dotOp t name <$> a
 
 flatten 
