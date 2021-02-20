@@ -104,6 +104,8 @@ constructors = constructorEnv
     , ("Zero"     , ["Succ", "Zero"])
     , ("Ok"       , ["Ok", "Fail"])
     , ("Fail"     , ["Ok", "Fail"])
+    , ("[]"       , ["(::)", "[]"])
+    , ("(::)"     , ["(::)", "[]"])
     ]
 
 classEnv_ = Env.fromList 

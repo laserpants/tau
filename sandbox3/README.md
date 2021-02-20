@@ -7,19 +7,36 @@
 
 --
 
-let f (Some a) b = a in f (Some 42) ()
-
-let map f xs = fix g = fun [] => [] | (x :: xs) => f x :: g xs in g xs in map (\x => x + 1) [1,2,3,4]
+let map f xs = fix mu = fun [] => [] | (x :: xs) => f x :: mu xs in mu xs in let addOne = map (\x => x + 1) in [1,2,3,4].addOne
 
 let
   map f xs = fix
-    g = fun
+    mu = fun
       | []      => []
-      | x :: xs => f x :: g xs
+      | x :: xs => f x :: mu xs
     in
-      g xs
+      mu xs
   in
-    map (\x => x + 1) ([1, 2, 3, 4])
+    let
+      addOne = map (\x => x + 1)
+      in
+        [1, 2, 3, 4].addOne
+
+--
+
+let f (Some a) b = a in f (Some 42) ()
+
+let map f xs = fix mu = fun [] => [] | (x :: xs) => f x :: mu xs in mu xs in map (\x => x + 1) [1,2,3,4]
+
+let
+  map f xs = fix
+    mu = fun
+      | []      => []
+      | x :: xs => f x :: mu xs
+    in
+      mu xs
+  in
+    map (\x => x + 1) [1, 2, 3, 4]
 
 
 map : forall a b f. (Functor f) => (a -> b) -> f a -> f b
