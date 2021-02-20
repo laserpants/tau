@@ -14,7 +14,7 @@ import Data.Void
 import Tau.Lang.Expr
 import Tau.Lang.Type
 import Tau.Type.Substitution
-import Tau.Util (Name, Fix(..), embed, project, cata, to, (<$$>))
+import Tau.Util (Name, Fix(..), embed, project, cata, to, (<$$>), traceShowM)
 import Text.Megaparsec hiding (ParseError)
 import Text.Megaparsec.Char
 import qualified Data.Map.Strict as Map
@@ -330,9 +330,7 @@ wildcard = symbol "_" $> anyPat ()
 listPattern :: Parser (Pattern ())
 listPattern = do
     elems <- elements pattern_
-    pure $ case elems of
-        [] -> conPat () "[]" []
-        _  -> conPat () "(::)" (elems <> [conPat () "[]" []])
+    pure (foldr patternCons (conPat () "[]" []) elems)
 
 tuplePattern :: Parser (Pattern ())
 tuplePattern = do
