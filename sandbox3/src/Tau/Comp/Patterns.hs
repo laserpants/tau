@@ -94,7 +94,8 @@ simplified
   :: (Boolean t, Show t) 
   => Expr t (Pattern t) (Let (Pattern t)) [Pattern t]
   -> Either String (Expr t (Prep t) Name Name)
-simplified = runSimplify . simplify . unrollOrPats . unrollAsPats . unrollLambdas
+simplified = runSimplify . simplify . unrollAsPats . unrollLambdas
+--simplified = runSimplify . simplify . unrollOrPats . unrollAsPats . unrollLambdas
 
 unrollOrPats 
   :: (Boolean t) 
