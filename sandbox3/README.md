@@ -2,7 +2,6 @@
 
 [-] Exhaustive patterns check
 [-] Or-patterns
-[-] let [a, b] = [1,2] in a
 [-] Pr. printer ()
 [-] Tests
 
@@ -25,11 +24,11 @@ map : forall a b f. (Functor f) => (a -> b) -> f a -> f b
 
 map : forall a b. (a -> b) -> List a -> List b
 map f xs = fix
-  g = fun
+  nu = fun
     | []      => []
     | x :: xs => f x :: g xs
   in
-    g xs
+    nu xs
 
 --
 
