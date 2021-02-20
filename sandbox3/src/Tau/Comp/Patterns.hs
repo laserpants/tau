@@ -94,7 +94,22 @@ simplified
   :: (Boolean t, Show t) 
   => Expr t (Pattern t) (Let (Pattern t)) [Pattern t]
   -> Either String (Expr t (Prep t) Name Name)
-simplified = runSimplify . simplify . unrollAsPats . unrollLambdas
+simplified = runSimplify . simplify . unrollOrPats . unrollAsPats . unrollLambdas
+
+unrollOrPats 
+  :: (Boolean t) 
+  => Expr t (Pattern t) (Let (Pattern t)) (Pattern t)
+  -> Expr t (Pattern t) (Let (Pattern t)) (Pattern t)
+unrollOrPats = cata $ \case
+    ELam t ps a                -> undefined
+    ELet t (Let p) e1 e2       -> undefined
+    ELet t (LetFun f ps) e1 e2 -> undefined
+    EPat t exs eqs             -> patExpr t exs (clause =<< eqs)
+    e                          -> embed e
+  where
+    clause (Clause ps exs e) = 
+        undefined
+
 
 unrollAsPats 
   :: (Boolean t) 

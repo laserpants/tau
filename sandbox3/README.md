@@ -2,8 +2,11 @@
 
 [-] Exhaustive patterns check
 [-] Or-patterns
+[-] let [a, b] = [1,2] in a
 [-] Pr. printer ()
 [-] Tests
+
+let f (Some a) b = a in f (Some 42) ()
 
 let map f xs = fix g = fun [] => [] | (x :: xs) => f x :: g xs in g xs in map (\x => x + 1) [1,2,3,4]
 
@@ -18,7 +21,9 @@ let
     map (\x => x + 1) ([1, 2, 3, 4])
 
 
-map : forall a. (Functor f) => (a -> b) -> f a -> f b
+map : forall a b f. (Functor f) => (a -> b) -> f a -> f b
+
+map : forall a b. (a -> b) -> List a -> List b
 map f xs = fix
   g = fun
     | []      => []

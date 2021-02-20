@@ -72,6 +72,7 @@ reserved =
     , "with"
     , "when"
     , "as"
+    , "or"
     , "fun"
     , "not"
     , "forall"
@@ -287,7 +288,7 @@ patternCons :: Pattern () -> Pattern () -> Pattern ()
 patternCons hd tl = conPat () "(::)" [hd, tl]
 
 patternExpr :: Parser (Pattern ())
-patternExpr = try (asPattern pexpr) <|> pexpr
+patternExpr = try (orPattern pexpr) <|> try (asPattern pexpr) <|> pexpr
   where
     pexpr = wildcard
         <|> conPattern
@@ -308,6 +309,13 @@ conPattern = do
 
 litPattern :: Parser (Pattern ())
 litPattern = litPat () <$> literal
+
+orPattern :: Parser (Pattern ()) -> Parser (Pattern ())
+orPattern parser = do
+    p1 <- parser
+    keyword "or"
+    p2 <- parser
+    pure (orPat () p1 p2)
 
 asPattern :: Parser (Pattern ()) -> Parser (Pattern ())
 asPattern parser = do

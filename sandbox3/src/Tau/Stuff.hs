@@ -628,6 +628,13 @@ inferPattern = cata alg
                 tell [(name, newTy)]
                 asPat (NodeInfo newTy []) name <$> pat
 
+            POr _ pat1 pat2 -> do
+                p1 <- pat1
+                p2 <- pat2
+                lift (unifyTyped newTy p1)
+                lift (unifyTyped newTy p2)
+                pure (orPat (NodeInfo newTy []) p1 p2)
+
             PAny _ -> 
                 pure (anyPat (NodeInfo newTy []))
 

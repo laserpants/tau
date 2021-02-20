@@ -169,6 +169,7 @@ instance Pretty (Pattern t) where
         PLit _ lit     -> pretty lit
         PRec _ fields  -> prettyRecord equals (snd <$$> fields)
         PAs  _ name p  -> pretty (fst p) <+> "as" <+> pretty name
+        POr  _ p1 p2   -> pretty (fst p1) <+> "or" <+> pretty (fst p2)
         PAny _         -> "_"
       where
         args :: (Pattern t, Doc a) -> [Doc a] -> [Doc a]
