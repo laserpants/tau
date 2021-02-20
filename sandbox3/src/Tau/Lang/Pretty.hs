@@ -7,8 +7,7 @@ module Tau.Lang.Pretty where
 import Control.Arrow ((>>>))
 import Control.Monad (join)
 import Data.List (sortOn)
-import Data.Maybe (fromJust, maybeToList)
-import Data.Maybe (isJust)
+import Data.Maybe (isJust, fromJust, maybeToList)
 import Data.Text (Text)
 import Data.Text.Prettyprint.Doc
 import Data.Tuple.Extra (dupe)
@@ -213,7 +212,8 @@ instance (Pretty p, Pretty q, Pretty (Expr t p q r)) => Pretty (Op (Expr t p q r
                       GT -> True
                       EQ -> assoc /= opAssoc op
              in flip cata a $ \case
-                 EApp{}              -> parens (pretty a)
+                 EApp{}              -> pretty a
+                 -- EApp{}              -> parens (pretty a)
                  ELet{}              -> parens (pretty a)
                  ELam{}              -> parens (pretty a)
                  EIf{}               -> parens (pretty a)
@@ -240,6 +240,7 @@ prettyExpr f = para $ \case
       where
         rhs = flip cata (fst a) $ \case
             EApp{}       -> parens (snd a)
+            EPat{}       -> parens (snd a)
             ELam{}       -> parens (snd a)
             EOp _ ODot{} -> snd a
             EOp{}        -> parens (snd a)
@@ -434,4 +435,4 @@ instance Pretty (Value m) where
               _         -> pretty val
 
 prettyAnnValue :: Value m -> Scheme -> Doc a
-prettyAnnValue value scheme = pretty value <+> ":" <+> pretty scheme
+prettyAnnValue value scheme = pretty value <+> colon <+> pretty scheme
