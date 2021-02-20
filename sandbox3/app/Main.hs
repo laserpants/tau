@@ -228,6 +228,11 @@ runTest1 = runInfer mempty typeEnv (infer expr6) where
 --        , ( "(,)"     , Forall [kTyp, kTyp] [] (tGen 0 `tArr` tGen 1 `tArr` (tApp (tApp (tCon (kArr kTyp (kArr kTyp kTyp)) "(,)") (tGen 0)) (tGen 1))))
 --        ]
 
+myConstructorEnv :: ConstructorEnv
+myConstructorEnv = constructorEnv -- Env.fromList
+    [ 
+    ]
+
 myTypeEnv :: Env Scheme
 myTypeEnv = Env.fromList 
     [ ( "@strlen"      , Forall [] [] (upgrade  (tString `tArr` tInt)) )

@@ -81,12 +81,30 @@ stuff :: (MonadSupply Name m, MonadError String m) => PatternExpr t -> ReaderT (
 stuff expr = do
     (tree, (sub, _)) <- runStateT (infer expr) mempty
     debugTree tree
+
     let tree2 = mapTags (apply sub) tree
     debugTree tree2
+
+    xxx <- runReaderT (checkExhaustive tree2) constructors 
+    traceShowM "////////////////"
+    traceShowM xxx
+    traceShowM "////////////////"
+
     (tree3, _) <- withReaderT (\(a,b) -> (a,b,[])) (runStateT (rebuildTree22 tree2) [])
     debugTree tree3
     let tree4 = simplified (mapTags nodeType tree3)
     liftEither tree4
+
+
+constructors :: ConstructorEnv
+constructors = constructorEnv
+    [ ("Some"     , ["Some", "None"])
+    , ("None"     , ["Some", "None"])
+    , ("Succ"     , ["Succ", "Zero"])
+    , ("Zero"     , ["Succ", "Zero"])
+    , ("Ok"       , ["Ok", "Fail"])
+    , ("Fail"     , ["Ok", "Fail"])
+    ]
 
 classEnv_ = Env.fromList 
     [ ( "Num"

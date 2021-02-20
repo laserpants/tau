@@ -5,6 +5,12 @@
 [-] Pr. printer ()
 [-] Tests
 
+--
+
+let f = fun (Some a) b => 0 | None _ => 1 in f (Some 3) ()
+
+--
+
 let f (Some a) b = a in f (Some 42) ()
 
 let map f xs = fix g = fun [] => [] | (x :: xs) => f x :: g xs in g xs in map (\x => x + 1) [1,2,3,4]

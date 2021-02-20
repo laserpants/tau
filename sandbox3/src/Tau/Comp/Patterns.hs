@@ -11,6 +11,7 @@ module Tau.Comp.Patterns where
 -- Tau.Comp.Sugar
 -- Tau.Comp.Core
 
+import Control.Monad.Extra (anyM, andM, (&&^))
 import Control.Applicative ((<|>))
 import Control.Arrow
 import Control.Monad
@@ -512,6 +513,51 @@ useful px@(ps:_) qs =
 exhaustive :: (MonadReader ConstructorEnv m) => [[Pattern t]] -> m Bool
 exhaustive []        = pure False
 exhaustive px@(ps:_) = not <$> useful px (anyPat . patternTag <$> ps)
+
+toMatrix :: Clause p a -> [[p]]
+toMatrix (Clause ps [] _) = [ps]
+toMatrix _                = []
+
+clausesAreExhaustive :: (MonadReader ConstructorEnv m) => [Clause (Pattern t) a] -> m Bool
+clausesAreExhaustive = exhaustive . concatMap toMatrix
+
+checkExhaustive :: (MonadReader ConstructorEnv m) => PatternExpr t -> m Bool
+checkExhaustive = cata $ \case
+
+    ECon t _ exprs ->
+        andM exprs
+
+    EApp t exprs ->
+        andM exprs
+
+    ELet t (Let p) e1 e2 ->
+        exhaustive [[p]] &&^ e1 &&^ e2
+
+    ELet t (LetFun f ps) e1 e2 ->
+        exhaustive [ps] &&^ e1 &&^ e2
+
+    EFix t name e1 e2 -> 
+        e1 &&^ e2
+
+    ELam _ ps expr ->
+        exhaustive [ps] &&^ expr
+
+    EIf _ cond tr fl ->
+        cond &&^ tr &&^ fl
+
+    EPat _ exs eqs -> 
+        andM exs &&^ clausesAreExhaustive eqs
+
+    EOp _ (OAdd a b) -> a &&^ b
+    EOp _ (OSub a b) -> a &&^ b
+    EOp _ (OMul a b) -> a &&^ b
+    EOp _ (ONot a)   -> a 
+
+    ERec _ fields ->
+        andM (fieldValue <$> fields)
+
+    _ ->
+        pure True
 
 --
 --
