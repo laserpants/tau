@@ -17,8 +17,8 @@ import qualified Data.Text as Text
 debugTree :: (Monad m, Show t, Pretty t, Pretty p, Pretty q, Pretty r, Pretty (Expr t p q r)) => Expr t p q r -> m ()
 debugTree expr = debug (showTree (Text.unpack <$> prettyExprTree expr) :: String)
 
-xxx2 :: Text -> Tree Text -> Tree Text
-xxx2 t (Node a b) = Node (t <> a) b
+prefixLabel :: Text -> Tree Text -> Tree Text
+prefixLabel t (Node a b) = Node (t <> a) b
 
 prettyExprTree :: (Show t, Pretty t, Pretty p, Pretty q, Pretty r, Pretty (Expr t p q r)) => Expr t p q r -> Tree Text
 prettyExprTree = para $ \case
@@ -30,13 +30,13 @@ prettyExprTree = para $ \case
     EFix t name e1 e2 -> node t (text "fix") [ Node (renderDoc (pretty name <+> equals)) [snd e1], Node "in" [snd e2] ] --  <+> pretty (fst e1))) []
 
     ELam t pats e1    -> node t (renderDoc ("λ" <> pretty pats)) [snd e1]
-    EIf  t cond tr fl -> node t (text "if") (snd <$> [cond, ("then " <>) <$$> tr, ("else " <>) <$$> fl])
+    EIf  t cond tr fl -> node t (text "if") (snd <$> [cond, prefixLabel "then " <$> tr, prefixLabel "else " <$> fl])
     ERec t fields     -> node t ("{" <> Text.intercalate "," (fieldName <$> fields) <> "}") (field_ <$> fields) -- (fst <$$> fields)) []
     EPat t [] eqs     -> node t (renderDoc "fun") (clauseTree <$> eqs)
     EPat t exs eqs    -> node t (renderDoc ("match" <+> matchExprs (fst <$> exs) <+> "with")) (clauseTree <$> eqs)
     EOp t op          -> node t (fst <$> op) []
   where
-    field_ (Field _ name e) = xxx2 (name <> " = ") (snd e) -- Node (renderDoc (pretty name)) [snd e]
+    field_ (Field _ name e) = prefixLabel (name <> " = ") (snd e) -- Node (renderDoc (pretty name)) [snd e]
 
     text :: Text -> Text
     text = id
