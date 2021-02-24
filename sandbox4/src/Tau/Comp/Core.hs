@@ -32,8 +32,7 @@ pipeline
   :: (TypeTag t, MonadSupply Name m) 
   => Expr t (Pattern t) (Binding (Pattern t)) [Pattern t] 
   -> m (Expr t Prep Name Name)
-pipeline =
-    expandFunPats 
+pipeline = expandFunPats 
     >=> unrollLets
     >=> simplify
 
