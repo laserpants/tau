@@ -31,7 +31,7 @@ instance TypeTag Type where
 pipeline
   :: (TypeTag t, MonadSupply Name m) 
   => Expr t (Pattern t) (Binding (Pattern t)) [Pattern t] 
-  -> m (Expr t Rep Name Name)
+  -> m (Expr t Prep Name Name)
 pipeline =
     expandFunPats 
     >=> unrollLets
@@ -119,7 +119,7 @@ unrollLets = cata $ \case
 simplify
   :: (TypeTag t, MonadSupply Name m) 
   => Expr t (Pattern t) (Pattern t) [Pattern t] 
-  -> m (Expr t Rep Name Name)
+  -> m (Expr t Prep Name Name)
 simplify = cata $ \case
     EVar t var       -> pure (varExpr t var)
     ECon t con exs   -> conExpr t con <$> sequence exs
@@ -169,16 +169,16 @@ compilePatterns
   :: (MonadSupply Name m) 
   => [a]
   -> [Clause (Pattern t) a]
-  -> m (Expr t Rep Name Name)
+  -> m (Expr t Prep Name Name)
 compilePatterns =
     undefined
 
 matchAlgo 
   :: (MonadSupply Name m) 
   => [a]
-  -> [Clause (Pattern t) (Expr t Rep Name Name)]
-  -> Expr t Rep Name Name
-  -> m (Expr t Rep Name Name)
+  -> [Clause (Pattern t) (Expr t Prep Name Name)]
+  -> Expr t Prep Name Name
+  -> m (Expr t Prep Name Name)
 matchAlgo [] [] c                 = pure c
 matchAlgo [] (Clause [] [] e:_) _ = pure e
 

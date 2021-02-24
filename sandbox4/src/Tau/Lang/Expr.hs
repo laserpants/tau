@@ -65,6 +65,11 @@ deriveEq1   ''PatternF
 -- | Patterns
 type Pattern t = Fix (PatternF t)
 
+data Prep 
+    = RVar Name               -- ^ Simple variable pattern
+    | RCon Name [Name]        -- ^ Simple constuctor pattern
+    deriving (Show, Eq)
+
 -- | Pattern match expression clause
 data Clause p a = Clause [p] [a] a
     deriving (Show, Eq, Functor, Foldable, Traversable)
