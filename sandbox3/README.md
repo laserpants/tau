@@ -1,9 +1,39 @@
-# tau
-
+# tau 
 [-] Records, tuples and lists in exhaustive patterns check
 [-] Or-patterns
-[-] Pr. printer ()
+[-] Pr. printer ()   -- (fun expression is wrong)
 [-] Tests
+[-] Type schemes
+
+
+--
+
+
+(fun ((Some x)) _ => None | None () => Some 0) (Some 99) ()
+
+
+--
+
+(fun ((Some x) as someX) _ => someX | None _ => Some 0) (Some 99) ()
+
+
+--
+
+(fun ((Some x) as someX) _ => someX | None _ => Some 0) None ()
+
+--
+
+
+fails:
+    (fun (Some x as someX) _ => x | None _ => 0) (Some 5) ()
+
+--
+
+(fun (Some x) _ when x == 1 => x | None _ => 0 | _ _ => 2 ) (Some 5) ()
+
+--
+
+(fun (Some x) _ => x | None _ => 0) (Some 5) ()
 
 --
 

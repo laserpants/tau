@@ -8,24 +8,18 @@
 module Tau.Lang.Type where
 
 import Control.Arrow (second, (<<<), (>>>))
-import Control.Comonad.Cofree
 import Control.Monad.Supply
 import Data.Functor.Foldable
 import Data.List (nub)
-import Data.Maybe (fromMaybe)
-import Data.Set.Monad (Set)
 import Data.Void
-import Tau.Util.Env
 import Tau.Util
-import qualified Data.Set.Monad as Set
 import qualified Data.Text as Text
-import qualified Tau.Util.Env as Env
 
 -- | Base functor for Kind
 data KindF a 
     = KTyp                    -- ^ A concrete type (kind of value-types)
     | KArr a a                -- ^ Type constructor
---  | KClc                    -- ^ A type class constraint
+    | KCls                    -- ^ A type class constraint
     deriving (Show, Eq, Ord, Functor, Foldable, Traversable)
 
 deriveShow1 ''KindF
@@ -81,24 +75,24 @@ data Instance a = Instance
     , instanceDict :: a
     } deriving (Show, Eq)
 
-class Free t where
-    free :: t -> Set Name
-
-instance (Free t) => Free [t] where
-    free = foldr (Set.union . free) mempty
-
-instance Free (TypeT a) where
-    free = cata $ \case
-        TVar _ var     -> Set.singleton var
-        TArr t1 t2     -> t1 `Set.union` t2
-        TApp t1 t2     -> t1 `Set.union` t2
-        _              -> mempty
-
-instance Free (PredicateT (TypeT a)) where
-    free (InClass _ ty) = free ty
-
-instance Free Scheme where
-    free (Forall _ _ ty) = free ty
+--class Free t where
+--    free :: t -> Set Name
+--
+--instance (Free t) => Free [t] where
+--    free = foldr (Set.union . free) mempty
+--
+--instance Free (TypeT a) where
+--    free = cata $ \case
+--        TVar _ var     -> Set.singleton var
+--        TArr t1 t2     -> t1 `Set.union` t2
+--        TApp t1 t2     -> t1 `Set.union` t2
+--        _              -> mempty
+--
+--instance Free (PredicateT (TypeT a)) where
+--    free (InClass _ ty) = free ty
+--
+--instance Free Scheme where
+--    free (Forall _ _ ty) = free ty
 
 class Typed a where
     typeOf :: a -> Type
@@ -108,21 +102,21 @@ instance Typed Type where
 
 isVar :: Type -> Bool
 isVar = project >>> \case
-    TVar{} -> True
-    _      -> False
+    TVar{}   -> True
+    _        -> False
 
 getTypeVar :: Type -> Maybe Name
-getTypeVar = cata $ \case
+getTypeVar = project >>> \case
     TVar _ v -> Just v
     _        -> Nothing
 
 getTypeCon :: Type -> Maybe Name
-getTypeCon = cata $ \case
+getTypeCon = project >>> \case
     TCon _ c -> Just c
     _        -> Nothing
 
 getTypeIndex :: PolyType -> Maybe Int
-getTypeIndex = cata $ \case
+getTypeIndex = project >>> \case
     TGen n   -> Just n
     _        -> Nothing
 
@@ -153,15 +147,15 @@ replaceBound ts = cata $ \case
     TVar k var -> tVar k var
     TCon k con -> tCon k con
 
-kindOf :: TypeT a -> Maybe Kind
-kindOf = histo $ \case
-    TApp (Just t :< _) _ -> appKind (project t) 
-    TCon k _             -> Just k
-    TVar k _             -> Just k
-    TArr{}               -> Just kTyp
-  where
-    appKind (KArr _ k)    = Just k
-    appKind _             = Nothing
+--kindOf :: TypeT a -> Maybe Kind
+--kindOf = histo $ \case
+--    TApp (Just t :< _) _ -> appKind (project t) 
+--    TCon k _             -> Just k
+--    TVar k _             -> Just k
+--    TArr{}               -> Just kTyp
+--  where
+--    appKind (KArr _ k)    = Just k
+--    appKind _             = Nothing
 
 typeVars :: Type -> [(Name, Kind)]
 typeVars = nub . cata alg where 

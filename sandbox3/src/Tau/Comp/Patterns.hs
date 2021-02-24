@@ -24,13 +24,15 @@ import Control.Monad.Trans.Free (FreeT(..))
 import Control.Monad.Writer
 import Data.Foldable (foldrM)
 import Data.Function ((&))
-import Data.List (sort)
+import Data.List (sort, unfoldr)
 import Data.List.Extra (groupSortOn, groupBy, sortOn)
 import Data.Maybe (fromJust, fromMaybe, maybeToList)
 import Data.Set.Monad (Set)
 import Data.Tuple.Extra (fst3, snd3, thd3)
 import Debug.Trace
+import Tau.Util (intToText)
 import Tau.Util.Env
+import Tau.PrettyTree
 import Tau.Lang.Pretty
 import Tau.Lang.Expr
 import Tau.Lang.Type
@@ -76,68 +78,150 @@ deriveEq1   ''MatchExprF
 deriveShow1 ''TranslatedF
 deriveEq1   ''TranslatedF
 
+-- TODO: rename 
 class Boolean t where
     boolean :: t
     arrow   :: t -> t -> t
-    fromArr :: t -> (t, t)
+    fromArr :: t -> [t]
+    fromApp :: t -> [t]
 
 instance Boolean () where
     boolean   = ()
     arrow _ _ = ()
-    fromArr _ = ((), ())
+    fromArr _ = [()]
+    fromApp _ = [()]
 
 instance Boolean Type where
     boolean   = tBool
     arrow     = tArr 
-    fromArr f = case project f of (TArr dom cod) -> (dom, cod)
+    fromArr   = unfoldr ((project >>> fun) <$>) . Just
+      where
+        fun = \case 
+            (TArr t1 t2) -> (t1, Just t2)
+            t            -> (Fix t, Nothing)
+
+    fromApp   = unfoldr ((project >>> fun) <$>) . Just
+      where
+        fun = \case 
+            (TApp t1 t2) -> (t1, Just t2)
+            t            -> (Fix t, Nothing)
 
 simplified 
-  :: (Boolean t, Show t) 
+  :: (Boolean t, Pretty t, Show t) 
   => Expr t (Pattern t) (Let (Pattern t)) [Pattern t]
   -> Either String (Expr t (Prep t) Name Name)
-simplified = runSimplify . simplify . unrollAsPats . unrollLambdas
+simplified x = do
+    --traceShowM "vvvvvvvvvvvvv"
+    --debugTree (unrollAsPats (unrollLambdas ( unrollFunPats x)))
+    --traceShowM "^^^^^^^^^^^^^"
+    runSimplify (simplify (unrollLambdas ( unrollFunPats x)))
+
 --simplified = runSimplify . simplify . unrollOrPats . unrollAsPats . unrollLambdas
 
-unrollOrPats 
-  :: (Boolean t) 
-  => Expr t (Pattern t) (Let (Pattern t)) (Pattern t)
-  -> Expr t (Pattern t) (Let (Pattern t)) (Pattern t)
-unrollOrPats = cata $ \case
-    ELam t ps a                -> undefined
-    ELet t (Let p) e1 e2       -> undefined
-    ELet t (LetFun f ps) e1 e2 -> undefined
-    EPat t exs eqs             -> patExpr t exs (clause =<< eqs)
-    e                          -> embed e
-  where
-    clause (Clause ps exs e) = 
-        undefined
+--unrollOrPats 
+--  :: (Boolean t) 
+--  => Expr t (Pattern t) (Let (Pattern t)) (Pattern t)
+--  -> Expr t (Pattern t) (Let (Pattern t)) (Pattern t)
+--unrollOrPats = cata $ \case
+--    ELam t ps a                -> undefined
+--    ELet t (Let p) e1 e2       -> undefined
+--    ELet t (LetFun f ps) e1 e2 -> undefined
+--    EPat t exs eqs             -> patExpr t exs (clause =<< eqs)
+--    e                          -> embed e
+--  where
+--    clause (Clause ps exs e) = 
+--        undefined
 
 
-unrollAsPats 
-  :: (Boolean t) 
-  => Expr t (Pattern t) (Let (Pattern t)) (Pattern t)
-  -> Expr t (Pattern t) (Let (Pattern t)) (Pattern t)
-unrollAsPats = cata $ \case
-    ELam t ps a                 -> let ([qs], rs) = run [ps] in lamExpr t qs (foldr fun a rs)
-    ELet t (Let p) e1 e2        -> let ([qs], rs) = run [p] in letExpr t (Let qs) e1 (foldr fun e2 rs)
-    ELet t (LetFun f ps) e1 e2  -> let (qs, rs) = run ps in letExpr t (LetFun f qs) e1 (foldr fun e2 rs)
-    EPat t exs eqs              -> patExpr t exs (clause <$> eqs)
-    e                           -> embed e
-  where
-    fun (name, p) e = 
-        patExpr (exprTag e) [varExpr (patternTag p) name] [Clause [p] [] e]
+--unrollAsPats 
+--  :: (Boolean t) 
+--  => Expr t (Pattern t) (Let (Pattern t)) (Pattern t)
+--  -> Expr t (Pattern t) (Let (Pattern t)) (Pattern t)
+--unrollAsPats = cata $ \case
+----    ELam t ps a                 -> let ([qs], rs) = run [ps] in lamExpr t qs (foldr fun a rs)
+----    ELet t (Let p) e1 e2        -> let ([qs], rs) = run [p] in letExpr t (Let qs) e1 (foldr fun e2 rs)
+----    ELet t (LetFun f ps) e1 e2  -> let (qs, rs) = run ps in letExpr t (LetFun f qs) e1 (foldr fun e2 rs)
+--    EPat t exs eqs              -> patExpr t exs (clause <$> eqs)
+--    e                           -> embed e
+--  where
+--    fun (name, p) e = 
+--        patExpr (exprTag e) [varExpr (patternTag p) name] [Clause [p] [] e]
+--
+--    clause (Clause ps exs e) = 
+--        let (qs, rs) = run ps in Clause qs exs (foldr fun e rs)
+--
+--    run ps = second concat (unzip (split <$> ps))
+--
+--    split :: Pattern t -> (Pattern t, [(Name, Pattern t)])
+--    split (Fix (PAs t name p)) = (varPat t name, [(name, p)])
+--    split p                    = (p, [])
 
-    clause (Clause ps exs e) = 
-        let (qs, rs) = run ps in Clause qs exs (foldr fun e rs)
 
-    run ps = second concat (unzip (split <$> ps))
+--unrollFunPatterns 
+--  :: (Show t, Boolean t) 
+--  => Expr t (Pattern t) (Let (Pattern t)) [Pattern t]
+--  -> Expr t (Pattern t) (Let (Pattern t)) [Pattern t]
+--unrollFunPatterns = cata $ \case
+--    EPat t [] eqs ->
+--        let ts = fromArr t
+--            ns = take (length ts) ("$0" : [ n <> "0" | n <- ns ])
+--            vars = fmap (uncurry varExpr) (zip ts ns)
+--            goork = foldr (\(t, n) e -> lamExpr undefined n undefined) (patExpr t undefined eqs) (zip ts ns) -- (arrow t (exprTag e)) (varPat t n) e) (patExpr t vars eqs) (zip ts ns)
+--        in
+--        undefined
+--
+--    e ->
+--        embed e
 
-    split :: Pattern t -> (Pattern t, [(Name, Pattern t)])
-    split (Fix (PAs t name p)) = (varPat t name, [(name, p)])
-    split p                    = (p, [])
+unrollFunPats
+  :: (Pretty t, Show t, Boolean t) 
+  => Expr t (Pattern t) (Let (Pattern t)) [Pattern t]
+  -> Expr t (Pattern t) (Let (Pattern t)) [Pattern t]
+unrollFunPats = cata $ \case
+--    ELam _ ps a       -> foldr unrolled a ps
+--    EVar t var        -> varExpr t var
+--    ECon t con exs    -> conExpr t con exs
+--    ELit t lit        -> litExpr t lit
+--    EApp t exs        -> appExpr t exs
+--    EFix t name e1 e2 -> fixExpr t name e1 e2
+--    ELet t pat e1 e2  -> letExpr t pat e1 e2
+--    EIf  t cond e1 e2 -> ifExpr  t cond e1 e2
+
+    EPat t [] eqs -> do
+        let --ts = init (fromArr t)
+            --t1 = last ts
+            (t1:ts1) = reverse (fromArr t)
+            ts = reverse ts1
+
+            ns = "$/" : [ n <> "/" | n <- ns ]
+            vars = fmap (uncurry varExpr) (zip ts ns)
+            --goork = lamExpr undefined undefined undefined
+            --zoork = undefined -- unrollLambdas goork
+            in foldr (\(t, n) e -> lamExpr (arrow t (exprTag e)) [varPat t n] e) (patExpr t1 vars eqs) (zip ts ns)
+
+    e ->
+        embed e
+
+----        --lamExpr undefined (varPat undefined "$0")
+--        --    (lamExpr undefined (varPat undefined "$00") (patExpr undefined [varExpr undefined "$0", varExpr undefined "$00"] eqs))
+----        | 4 == length (head eqs) -> error "yy"
+--
+----    EPat t [] eqs ->
+----        undefined
+----        let (dom, cod) = fromArr t
+----         in unrolled (varPat dom "$0") (patExpr cod [varExpr dom "$0"] eqs)
+
+
+--    EPat t exs eqs    -> patExpr t exs eqs
+--    EOp  t op         -> opExpr  t op
+--    ERec t fields     -> recExpr t fields
+--  where
+--    unrolled pat ex = lamExpr (arrow (patternTag pat) (exprTag ex)) [pat] ex
+
+
 
 unrollLambdas
-  :: (Boolean t) 
+  :: (Show t, Boolean t) 
   => Expr t (Pattern t) (Let (Pattern t)) [Pattern t]
   -> Expr t (Pattern t) (Let (Pattern t)) (Pattern t)
 unrollLambdas = cata $ \case
@@ -149,9 +233,24 @@ unrollLambdas = cata $ \case
     EFix t name e1 e2 -> fixExpr t name e1 e2
     ELet t pat e1 e2  -> letExpr t pat e1 e2
     EIf  t cond e1 e2 -> ifExpr  t cond e1 e2
-    EPat t [] eqs ->
-        let (dom, cod) = fromArr t
-         in unrolled (varPat dom "$0") (patExpr cod [varExpr dom "$0"] eqs)
+
+--    EPat t [] eqs -> do
+--        let ts = fromArr t
+--            ns = take (length ts) ("$0" : [ n <> "0" | n <- ns ])
+--            vars = fmap (uncurry varExpr) (zip ts ns)
+--            goork = foldr (\(t, n) e -> lamExpr t (varPat t n) e) (patExpr t vars eqs) (zip ts ns) -- (arrow t (exprTag e)) (varPat t n) e) (patExpr t vars eqs) (zip ts ns)
+--            --goork = lamExpr undefined undefined undefined
+--            --zoork = undefined -- unrollLambdas goork
+--        goork
+
+--        --lamExpr undefined (varPat undefined "$0")
+        --    (lamExpr undefined (varPat undefined "$00") (patExpr undefined [varExpr undefined "$0", varExpr undefined "$00"] eqs))
+--        | 4 == length (head eqs) -> error "yy"
+
+--    EPat t [] eqs ->
+--        undefined
+--        let (dom, cod) = fromArr t
+--         in unrolled (varPat dom "$0") (patExpr cod [varExpr dom "$0"] eqs)
     EPat t exs eqs    -> patExpr t exs eqs
     EOp  t op         -> opExpr  t op
     ERec t fields     -> recExpr t fields
@@ -258,11 +357,11 @@ flatten
 flatten (Clause ps exs e) = Clause qs (exs <> exs1) e
   where
     (qs, exs1) = fromJust (evalSupply fun (nameSupply "="))
-    fun = second concat . unzip <$> traverse (runWriterT . cata alg) ps
+    fun = second concat . unzip <$> traverse (\(p, n) -> runWriterT (cata (alg n) p)) (zip ps [0..])
 
-    alg = \case
+    alg n = \case
         PAny t -> 
-            pure (varPat t "$_")
+            pure (varPat t ("$_" <> intToText n))
 
         PLit t lit -> do
             var <- supply
@@ -275,7 +374,7 @@ flatten (Clause ps exs e) = Clause qs (exs <> exs1) e
             pure (conPat t ("{" <> Text.intercalate "," (snd3 <$> info) <> "}") ps)
 
         PAs t name p -> 
-            error "Implementation error" 
+            asPat t name <$> p
 
         pat ->
             embed <$> sequence pat
@@ -312,7 +411,7 @@ compile es qs =
                 pure ( Clause [rep] [] expr
                      , exprTag expr )
 
-translate :: (Show t) => MatchExpr t -> Translated Simplify t
+translate :: (Boolean t, Show t) => MatchExpr t -> Translated Simplify t
 translate = futu $ project >>> \case
     Fail ->
         Wrap (throwError "Fail")
@@ -333,16 +432,27 @@ translate = futu $ project >>> \case
             [VarTag eqs] -> 
                 pure (Pure (embed (Match us (runSubst <$> eqs) c)))
                   where
+                    runSubst (Clause (Fix (PAs _ name p@(Fix (PVar t x))):ps) exs e) =
+                        runSubst (substitute name (varExpr t x) <$> Clause (p:ps) exs e)
+
                     runSubst (Clause (Fix (PVar _ name):ps) exs e) =
                         substitute name u <$> Clause ps exs e
 
             [ConTag eqs] -> do
                 Free . SimpleMatch (Free (Expr u)) <$> traverse toSimpleMatch (conGroups eqs)
                   where
-                    toSimpleMatch (ConGroup t con ps eqs) = do
+                    toSimpleMatch cg@(ConGroup t con names ps eqs) = do
                         vars <- supplies (length ps)
+                        --let xxs = fromApp t
+                        --traceShowM xxs
+                        --traceShowM "****"
+
+                        let (_:ts1) = reverse (fromApp t)
+                            ts = reverse ts1
+
+                        let eqs1 = foldr (\n e -> substitute n (conExpr t con (uncurry varExpr <$> zip ts vars)) <$$> e) eqs names
                         pure ( RCon t con vars
-                             , Pure (embed (Match (combine ps vars <> us) eqs c)) )
+                             , Pure (embed (Match (combine ps vars <> us) eqs1 c)) )
 
                     combine ps vs = 
                         uncurry (varExpr . patternTag) <$> zip ps vs
@@ -393,8 +503,9 @@ data Tagged a = ConTag a | VarTag a
 taggedEq :: Clause (Pattern t) a -> Tagged (Clause (Pattern t) a)
 taggedEq eq@(Clause ps _ _) = 
     case project <$> ps of
-        PCon{}:_ -> ConTag eq
-        _        -> VarTag eq
+        PAs _ _ (Fix PCon{}):_ -> ConTag eq
+        PCon{}:_               -> ConTag eq
+        _                      -> VarTag eq
 
 equationGroups :: [Clause (Pattern t) a] -> [Tagged [Clause (Pattern t) a]]
 equationGroups = cata alg . fmap taggedEq where
@@ -404,21 +515,30 @@ equationGroups = cata alg . fmap taggedEq where
     alg (Cons (ConTag e) ts) = ConTag [e]:ts
     alg (Cons (VarTag e) ts) = VarTag [e]:ts
 
-data ConGroup t a = ConGroup t Name [Pattern t] [Clause (Pattern t) a]
+data ConGroup t a = ConGroup t Name [Name] [Pattern t] [Clause (Pattern t) a]
     deriving (Show, Eq)
+
+fst4 (a, _, _, _) = a
+snd4 (_, b, _, _) = b
+fth4 (_, _, _, d) = d
 
 conGroups :: [Clause (Pattern t) a] -> [ConGroup t a]
 conGroups =
     concatMap conGroup
-      . groupSortOn (fst3 . snd)
+      . groupSortOn (fst4 . snd)
       . concatMap expanded
   where
-    conGroup all@((t, (con, ps, _)):_) = 
-        [ConGroup t con ps (thd3 . snd <$> all)]
+    conGroup all@((t, (con, _, ps, _)):_) = 
+        [ConGroup t con (concat (snd4 . snd <$> all)) ps (fth4 . snd <$> all)]
     conGroup [] = 
         []
-    expanded (Clause (Fix (PCon t con ps):qs) exs e) =
-        [(t, (con, ps, Clause (ps <> qs) exs e))]
+    expanded (Clause (Fix (PAs _ name (Fix q)):qs) exs e) =
+        xxx q qs [name] exs e
+    expanded (Clause (Fix q:qs) exs e) =
+        xxx q qs [] exs e
+
+    xxx (PCon t con ps) qs names exs e =
+        [(t, (con, names, ps, Clause (ps <> qs) exs e))]
 
 patternVars :: Pattern t -> [(Name, t)]
 patternVars = cata $ \case
@@ -472,9 +592,18 @@ headCons = fmap concat . traverse fun where
 constructorEnv :: [(Name, [Name])] -> ConstructorEnv
 constructorEnv = Env.fromList . fmap (Set.fromList <$>)
 
-useful :: (MonadReader ConstructorEnv m) => [[Pattern t]] -> [Pattern t] -> m Bool
+isUseful :: (Show t, MonadReader ConstructorEnv m) => [[Pattern t]] -> [Pattern t] -> m Bool 
+isUseful px qs = useful (eliminateAsPats <$$> px) (eliminateAsPats <$> qs)
+
+eliminateAsPats :: Pattern t -> Pattern t
+eliminateAsPats = cata $ \case
+    PAs _ _ p -> p
+    q         -> embed q
+
+useful :: (Show t, MonadReader ConstructorEnv m) => [[Pattern t]] -> [Pattern t] -> m Bool
 useful [] _ = pure True        -- Zero rows (0x0 matrix)
-useful px@(ps:_) qs =
+useful px@(ps:_) qs =do
+    traceShowM px
     case (qs, length ps) of
         (_, 0)  -> pure False  -- One or more rows but no columns
         ([], _) -> error "Implementation error (useful)"
@@ -510,18 +639,18 @@ useful px@(ps:_) qs =
         , ("$String",   []) 
         ]
 
-exhaustive :: (MonadReader ConstructorEnv m) => [[Pattern t]] -> m Bool
+exhaustive :: (Show t, MonadReader ConstructorEnv m) => [[Pattern t]] -> m Bool
 exhaustive []        = pure False
-exhaustive px@(ps:_) = not <$> useful px (anyPat . patternTag <$> ps)
+exhaustive px@(ps:_) = not <$> isUseful px (anyPat . patternTag <$> ps)
 
 toMatrix :: Clause p a -> [[p]]
 toMatrix (Clause ps [] _) = [ps]
 toMatrix _                = []
 
-clausesAreExhaustive :: (MonadReader ConstructorEnv m) => [Clause (Pattern t) a] -> m Bool
+clausesAreExhaustive :: (Show t, MonadReader ConstructorEnv m) => [Clause (Pattern t) a] -> m Bool
 clausesAreExhaustive = exhaustive . concatMap toMatrix
 
-checkExhaustive :: (MonadReader ConstructorEnv m) => PatternExpr t -> m Bool
+checkExhaustive :: (Show t, MonadReader ConstructorEnv m) => PatternExpr t -> m Bool
 checkExhaustive = cata $ \case
 
     ECon t _ exprs ->
@@ -599,7 +728,7 @@ checkExhaustive = cata $ \case
 --            Next $ case qs of
 --                Fix (PCon _ con rs):_ -> 
 --                    let special = specialized con (getTag <$> rs)
---                    in -- useful (special px) (head (special [qs]))
+--                    in -- isUseful (special px) (head (special [qs]))
 --                    pure (Pure (Fix (Matrix (special px) (head (special [qs])))))
 --
 --                _:qs1 -> do

@@ -464,7 +464,7 @@ generalize ty = do
                  (upgrade <$$> ps)) (apply sub2 (upgrade ty1)))
 
 infer
-  :: (MonadSupply Name m, MonadReader (ClassEnv a, TypeEnv) m, MonadError String m) 
+  :: (Show t, MonadSupply Name m, MonadReader (ClassEnv a, TypeEnv) m, MonadError String m) 
   => PatternExpr t 
   -> StateT (Substitution, Env [Predicate]) m (PatternExpr NodeInfo)
 infer = cata alg
@@ -553,11 +553,25 @@ infer = cata alg
                 unifyTyped (typeOf e1 `tArr` newTy) ty
                 pure (opExpr (NodeInfo newTy ps) (ODot name e1))
 
-            EPat _ [] eqs -> do
-                t1 <- newTVar kTyp
-                es2 <- sequence (inferClause newTy [t1] <$> eqs)
-                pure (patExpr (NodeInfo (t1 `tArr` newTy) []) [] es2)
+            --
+            --  Anonymous fun-expression pattern matching 
+            --
+            --    fun 
+            --      | Some a => a
+            --      | None   => 0
+            --
+            EPat _ [] eqs@(Clause ps _ _:_) -> do
+                ts <- tVar kTyp <$$> supplies (length ps)
+                es2 <- sequence (inferClause newTy ts <$> eqs)
+                pure (patExpr (NodeInfo (foldr tArr newTy ts) []) [] es2)
 
+            --
+            --  Explicit match expression
+            --
+            --    match someValue with
+            --      | Some value => value
+            --      | None       => 0
+            --
             EPat _ exs eqs -> do
                 es1 <- sequence exs
                 es2 <- sequence (inferClause newTy (typeOf <$> es1) <$> eqs)
@@ -571,7 +585,7 @@ infer = cata alg
                 pure (recExpr (NodeInfo newTy []) (zipWith (info <$$> Field ()) ns es))
 
 inferClause
-  :: (MonadSupply Name m, MonadReader (ClassEnv a, TypeEnv) m, MonadError String m) 
+  :: (Show t, MonadSupply Name m, MonadReader (ClassEnv a, TypeEnv) m, MonadError String m) 
   => Type
   -> [Type]
   -> Clause (Pattern t) (StateT (Substitution, Env [Predicate]) m (PatternExpr NodeInfo)) 

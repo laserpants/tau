@@ -193,8 +193,8 @@ tryClause xs ys = cata alg (zip xs ys)
             let ys = [(v, w) | (n, v) <- zip (labels con) ps, (p, w) <- fields, n == p]
             (<>) <$> Just ys <*> xs
 
-        Cons x y -> do
-            error "Incompatible patterns"
+        Cons x y -> 
+            error "Implementation error (incompatible patterns)"
 
         Nil -> 
             Just []

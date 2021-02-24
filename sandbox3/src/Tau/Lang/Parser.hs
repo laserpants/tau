@@ -78,6 +78,7 @@ reserved =
     , "forall"
     , "True"
     , "False"
+    , "List"
     , "Void"
     , "Unit"
     ]
@@ -131,8 +132,12 @@ funExpr = do
 
 matchWith :: Parser (PatternExpr ())
 matchWith = do
-    term <- keyword "match" *> expr
-    patExpr () [term] <$> ((:) <$> clause with <*> many (clause pipe))
+    terms <- keyword "match" *> some expr
+    patExpr () terms <$> ((:) <$> clause with <*> many (clause pipe))
+
+    --term <- keyword "match" *> expr
+    --patExpr () [term] <$> ((:) <$> clause with <*> many (clause pipe))
+
     --terms <- keyword "match" *> commaSep expr
     --patExpr () terms <$> ((:) <$> clause with <*> many (clause pipe))
 
@@ -144,10 +149,15 @@ pipe = void (symbol "|")
 
 clause :: Parser () -> Parser (Clause (Pattern ()) (PatternExpr ()))
 clause sym = do
-    pat <- sym *> pattern_
+    pats <- sym *> some pattern_
     cond <- fromMaybe [] <$> optional whens
     term <- symbol "=>" *> expr
-    pure (Clause [pat] cond term)
+    pure (Clause pats cond term)
+
+--    pat <- sym *> pattern_
+--    cond <- fromMaybe [] <$> optional whens
+--    term <- symbol "=>" *> expr
+--    pure (Clause [pat] cond term)
 --    pats <- sym *> commaSep pattern_
 --    cond <- fromMaybe [] <$> optional whens
 --    term <- symbol "=>" *> expr
@@ -290,19 +300,53 @@ cons hd tl = conExpr () "(::)" [hd, tl]
 pattern_ :: Parser (Pattern ())
 pattern_ = makeExprParser patternExpr [[ InfixR (patternCons <$ symbol "::") ]]
 
-patternCons :: Pattern () -> Pattern () -> Pattern ()
-patternCons hd tl = conPat () "(::)" [hd, tl]
-
 patternExpr :: Parser (Pattern ())
 patternExpr = try (orPattern pexpr) <|> try (asPattern pexpr) <|> pexpr
+--    con <- constructor
+--    pure (conPat () con [])
   where
     pexpr = wildcard
-        <|> conPattern
+--        <|> conPattern2
+--        <|> xxx
+        <|> bbb
         <|> litPattern
         <|> varPattern
         <|> listPattern
         <|> tuplePattern
         <|> recordPattern
+
+bbb = do
+    try aaa <|> try (parens conPattern)
+
+aaa = do
+    con <- constructor
+    pure (conPat () con [])
+
+
+--expr :: Parser (PatternExpr ())
+--expr = flip makeExprParser operator $ do
+--    term <- ast
+--    dots <- many (symbol "." *> name)
+--    pure (foldl (flip (dotOp ())) term dots)
+
+--ast :: Parser (PatternExpr ())
+--ast = do
+--    app <- appExpr () <$> some atom
+--    pure $ case project app of
+--        EApp () [e] -> e
+--        _           -> app
+--  where
+--    atom = ifClause
+--        <|> letBinding
+--        <|> fixBinding
+--        <|> matchWith
+--        <|> funExpr
+--        <|> lambda
+--        <|> literalExpr
+--        <|> list_
+--        <|> record
+--        <|> tuple
+--        <|> identifier
 
 varPattern :: Parser (Pattern ())
 varPattern = varPat () <$> name
@@ -348,6 +392,9 @@ tuplePattern = do
 
 recordPattern :: Parser (Pattern ())
 recordPattern = recPat () <$> fields "=" pattern_
+
+patternCons :: Pattern () -> Pattern () -> Pattern ()
+patternCons hd tl = conPat () "(::)" [hd, tl]
 
 -- ============================================================================
 -- == Lists and Tuples

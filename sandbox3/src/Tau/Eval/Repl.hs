@@ -77,7 +77,7 @@ repl = runRepl $ ReplOpts
     , finaliser        = replFinalizer
     }
 
-stuff :: (MonadSupply Name m, MonadError String m) => PatternExpr t -> ReaderT (ClassEnv (PatternExpr NodeInfo), TypeEnv) m (Expr Type (Prep Type) Name Name)
+stuff :: (Show t, MonadSupply Name m, MonadError String m) => PatternExpr t -> ReaderT (ClassEnv (PatternExpr NodeInfo), TypeEnv) m (Expr Type (Prep Type) Name Name)
 stuff expr = do
     (tree, (sub, _)) <- runStateT (infer expr) mempty
     debugTree tree
@@ -192,7 +192,7 @@ evalEnv_ = Env.fromList
 
 
 
-runStuff :: PatternExpr t -> Either String (Expr Type (Prep Type) Name Name)
+runStuff :: (Show t) => PatternExpr t -> Either String (Expr Type (Prep Type) Name Name)
 runStuff a = do
     x <- runExcept f
     case x of

@@ -99,13 +99,18 @@ data Let q
     | LetFun Name [q]         -- ^ Let f x = e type-of binding
     deriving (Show, Eq)
 
+--data Binding q 
+--    = BLet q                  -- ^ Plain let
+--    | BFun Name [q]           -- ^ Let f x = e type-of binding
+--    deriving (Show, Eq)
+
 deriveShow1 ''Let
 deriveEq1   ''Let
 
 -- | Base functor for Expr  
 data ExprF t p q r a
     = EVar t Name             -- ^ Variable
-    | ECon t Name [a]         -- ^ Constructor
+    | ECon t Name [a]         -- ^ Data constructor
     | ELit t Literal          -- ^ Literal value
     | EApp t [a]              -- ^ Function application
     | ELet t q a a            -- ^ Let expression
@@ -115,6 +120,7 @@ data ExprF t p q r a
     | EPat t [a] [Clause p a] -- ^ Match and fun expressions
     | EOp  t (Op a)           -- ^ Operator
     | ERec t [Field t a]      -- ^ Records
+--  | ETpl t [a]              -- ^ Tuples
 --  | EAnn Scheme a           -- ^ Type-annotated expression
     deriving (Functor, Foldable, Traversable)
 

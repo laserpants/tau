@@ -23,6 +23,7 @@ import Tau.Lang.Pretty
 import Tau.PrettyTree
 import Tau.Eval.Prim
 import Tau.Stuff
+import Tau.Lang.Core
 import Tau.Lang.Type
 import Tau.Type.Substitution
 import Tau.Util
@@ -189,6 +190,43 @@ expr995 = letPExpr () (asPat () "pair" (conPat () "(,)" [anyPat (), anyPat ()]))
 
 expr996 = patExpr () [conExpr () "(,)" [litExpr () (LInt 3), litExpr () LUnit]] [Clause [asPat () "pair" (conPat () "(,)" [varPat () "a", varPat () "b"])] [] (varExpr () "pair")] 
 
+expr997 =
+    appExpr () [patExpr () []
+        [ Clause [asPat () "s" (conPat () "Some" [anyPat ()]), anyPat ()] [] (varExpr () "s")
+--        [ Clause [(conPat () "Some" [anyPat ()]), anyPat ()] []                           (conExpr () "Some" [litExpr () (LInt 5)])
+        , Clause [conPat () "None" [], litPat () (LBool True)] []                         (conExpr () "Some" [litExpr () (LInt 0)])
+        ],
+      (conExpr () "Some" [litExpr () (LInt 112)]),
+      --(conExpr () "None" []),
+      (litExpr () (LBool False))
+    ]
+
+
+expr998 =
+    appExpr () [patExpr () []
+        [ Clause [asPat () "someX" (conPat () "Some" [varPat () "x"]), anyPat ()] [] (varExpr () "someX")
+        --[ Clause [(conPat () "Some" [varPat () "x"]), anyPat ()] [] (conExpr () "Some" [litExpr () (LInt 1)])
+        , Clause [conPat () "None" [], anyPat ()] []                                 (conExpr () "Some" [litExpr () (LInt 0)])
+        ],
+      --(conExpr () "None" []),
+      (conExpr () "Some" [litExpr () (LInt 112)]),
+      (litExpr () LUnit)
+    ]
+
+expr999 =
+    letPExpr () (asPat () "someX" (conPat () "Some" [varPat () "x"])) (conExpr () "Some" [litExpr () (LInt 5)]) (varExpr () "someX")
+
+
+
+
+expraa1 :: (MonadReader ConstructorEnv m) => m Bool
+expraa1 =
+    exhaustive 
+      [ [ conPat () "Some" [ varPat () "x" ], anyPat () ]
+      , [ conPat () "None" [ ], conPat () "()" [] ]
+      ]
+
+
 {-
 
 xxList :: (X a) => [a] -> String
@@ -254,6 +292,8 @@ myTypeEnv = Env.fromList
     --                                 Int -> Bool -> String -> Unit
     , ( "fn1"          , Forall [] [] (tInt `tArr` tBool `tArr` tString `tArr` tUnit) )
     , ( "(+)"  , Forall [kTyp] [InClass "Num" 0] (tGen 0 `tArr` tGen 0 `tArr` tGen 0) )
+    , ( "None"   , Forall [kTyp] [] (tApp (tCon kFun "Option") (tGen 0)) )
+    , ( "Some"   , Forall [kTyp] [] (tGen 0 `tArr` tApp (tCon kFun "Option") (tGen 0)) )
     ]
 
 --    [ -- ( "@strlen" , sScheme (tCon kStar "String" `tArr` tCon kStar "Int") )
@@ -357,38 +397,48 @@ pipeline e =  do
     (tree, (sub, xxx1)) <- runStateT (infer e) mempty
 
     debugTree tree
-    debugTree (mapTags (apply sub) tree)
---    debug (show x)
---    debug (show (apply sub <$$> x))
+    traceShowM "==============================================================="
 
     let tree2 = (mapTags (apply sub) tree) 
 
     debugTree tree2
     traceShowM "==============================================================="
 
-    let tree3 = tree2 -- (insertDicts xxx1 tree2)
 
-    debugTree tree3
-    
-    --tree4 <- runReaderT (rebuildTree22 tree3) []
-    (tree4, _) <- withReaderT (\(a,b) -> (a,b,[])) (runStateT (rebuildTree22 tree3) [])
+    xxx <- runReaderT (checkExhaustive tree2) constructors 
+    traceShowM "////////////////"
+    traceShowM xxx
+    traceShowM "==============================================================="
+
+    traceShowM (pretty tree2)
+    traceShowM "==============================================================="
+
+
+--    let tree3 = tree2 -- (insertDicts xxx1 tree2)
+--
+--    debugTree tree3
+--    
+--    --tree4 <- runReaderT (rebuildTree22 tree3) []
+    (tree4, _) <- withReaderT (\(a,b) -> (a,b,[])) (runStateT (rebuildTree22 tree2) [])
 
     debugTree tree4
+    traceShowM "==============================================================="
 
-    --
+--    --
 
     let zzz3 = simplified (mapTags nodeType tree4)
     --traceShowM zzz3
     let Right zzz1 = zzz3
 
     debugTree zzz1
+    traceShowM "==============================================================="
 
     let boo = evalExpr zzz1 myEvalEnv
     let Just foo = boo
-
-    traceShowM boo
+--
+----    traceShowM boo
     traceShowM foo
-    traceShowM "===="
+    traceShowM "==============================================================="
 
     pure ()
     -- >> Apply context reduction
@@ -428,6 +478,8 @@ myEvalEnv = Env.fromList
     , ("fst"        , fromJust (runEval (eval fst_) mempty))
     , ("snd"        , fromJust (runEval (eval snd_) mempty))
     , ("(+)"        , fromJust (runEval (eval plus_) mempty))
+    , ("Some"       , Tau.Eval.constructor "Some" 1)  
+    , ("None"       , Tau.Eval.constructor "None" 0)  
     ]
   where
     Right plus_ = simplified foo123
@@ -486,7 +538,8 @@ runPipeline a = do
 --runTest2_ = runPipeline expr25
 --runTest2_ = runPipeline $ appExpr () [expr5, litExpr () (LInt 55555)]
 --runTest2_ = runPipeline expr38
-runTest2_ = runPipeline expr996
+--runTest2_ = runPipeline expr997
+runTest2_ = runPipeline expr999
 
 --
 --
