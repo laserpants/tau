@@ -65,6 +65,7 @@ deriveEq1   ''PatternF
 -- | Patterns
 type Pattern t = Fix (PatternF t)
 
+-- | Simple patterns
 data Prep 
     = RVar Name               -- ^ Simple variable pattern
     | RCon Name [Name]        -- ^ Simple constuctor pattern
