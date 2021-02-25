@@ -3,8 +3,10 @@
 module Main where
 
 import Control.Monad.Supply 
+import Data.Maybe
 import Data.Text (Text)
 import Tau.Comp.Core
+import Tau.Eval.Core
 import Tau.Lang.Core
 import Tau.Lang.Expr
 import Tau.Lang.Type
@@ -57,10 +59,17 @@ test1 = evalSupply mapPairs (numSupply "$")
 
 test2 = evalSupply (pipeline e) (numSupply "$")
   where
-    e = patExpr () [litExpr () (LInt 5)]
-          [ Clause [litPat () (LInt 5)] [] (varExpr () "1")
-          , Clause [varPat () "y"] [] (varExpr () "2") ]
+    e = appExpr () 
+        [ lamExpr () [varPat () "x"]
+            (patExpr () [varExpr () "x"]
+                [ Clause [litPat () (LInt 5)] [] (varExpr () "1")
+                , Clause [varPat () "y"] [] (varExpr () "2") ])
+        , litExpr () (LInt 5) ]
 
+
+test22 = case test2 of
+    Just c -> 
+        evalExpr c mempty
 
 --test1 = runSupply e (numSupply "$")
 --  where

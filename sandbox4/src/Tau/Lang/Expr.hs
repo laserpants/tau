@@ -67,7 +67,6 @@ type Pattern t = Fix (PatternF t)
 
 -- | Simple patterns
 data Prep t
---    = RVar t Name             -- ^ Simple variable pattern
     = RCon t Name [Name]      -- ^ Simple constuctor pattern
     deriving (Show, Eq)
 

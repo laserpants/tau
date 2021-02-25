@@ -130,6 +130,11 @@ newTVar kind = tVar kind <$> supply
 recordCon :: [Name] -> Name
 recordCon names = "{" <> Text.intercalate "," names <> "}"
 
+recordKeys :: Name -> [Name]
+recordKeys tag = maybe [] (Text.split (== ',')) items
+  where
+    items = Text.stripPrefix "{" =<< Text.stripSuffix "}" tag
+
 tupleCon :: Int -> Name
 tupleCon size = "(" <> Text.replicate (pred size) "," <> ")"
 

@@ -19,7 +19,7 @@ import Tau.Lang.Expr
 import Tau.Lang.Type
 import Tau.Util
 
-class Show t => TypeTag t where
+class TypeTag t where
     tvar  :: Name -> t
     tarr  :: t -> t -> t
     tapp  :: t -> t -> t
@@ -40,10 +40,12 @@ instance TypeTag Type where
 pipeline
   :: (TypeTag t, MonadSupply Name m) 
   => Expr t (Pattern t) (Binding (Pattern t)) [Pattern t] 
-  -> m (Expr t (Prep t) Name Name)
+  -- -> m (Expr t (Prep t) Name Name)
+  -> m Core
 pipeline = expandFunPats 
     >=> unrollLets
     >=> simplify
+    >=> toCore
 
 expandFunPats 
   :: (MonadSupply Name m) 
@@ -299,9 +301,37 @@ substitute name subst = para $ \case
 
 toCore 
   :: (MonadSupply Name m) 
-  => Expr t p q r
+  => Expr t (Prep t) Name Name
   -> m Core
 toCore = cata $ \case
-    EVar t var -> undefined
-    -- 
+    EVar _ var       -> pure (cVar var)
+    ELit _ lit       -> pure (cLit lit)
+    EIf  _ e1 e2 e3  -> cIf <$> e1 <*> e2 <*> e3
+    EApp _ exs       -> cApp <$> sequence exs
+    ECon _ con exs   -> cApp <$> sequence (pure (cVar con):exs)
+    ELet _ var e1 e2 -> cLet var <$> e1 <*> e2
+    ELam _ var e1    -> cLam var <$> e1
+    EFix _ var e1 e2 -> cLet var <$> e1 <*> e2  -- ????
+    EOp1 _ op a      -> cApp <$> sequence [pure (prefix1 op), a]
+    EOp2 _ op a b    -> cApp <$> sequence [pure (prefix2 op), a, b]
+    EDot _ name e1   -> cApp <$> sequence [pure (cVar name), e1]
+    ERec _ (FieldSet fields) -> do
+        exprs <- traverse fieldValue fields
+        pure (cApp (cVar (recordCon (fieldName <$> fields)):exprs))
+    ETup _ exs -> do
+        exprs <- sequence exs
+        pure (cApp (cVar (tupleCon (length exs)):exprs))
+    EPat _ eqs exs   -> do
+        cs <- sequence eqs
+        case cs of 
+            [expr] -> cPat expr <$> traverse desugarClause exs
+            _      -> error "Implementation error"
+  where
+    prefix1 ONeg = cVar "negate"
+    prefix1 ONot = cVar "not"
+    prefix2 op = cVar ("(" <> opSymbol op <> ")")
 
+    desugarClause (Clause [RCon _ con ps] exs e) = 
+        Clause (con:ps) <$> sequence exs <*> e
+    desugarClause _ = 
+        error "Implementation error"
