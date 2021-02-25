@@ -9,7 +9,7 @@ module Tau.Comp.Core where
 import Control.Arrow
 import Control.Monad
 import Control.Monad.Writer
-import Control.Monad.Supply 
+import Control.Monad.Supply
 import Data.Foldable (foldrM)
 import Data.Function ((&))
 import Data.List.Extra (groupSortOn)
@@ -38,17 +38,17 @@ instance TypeTag Type where
     tbool = tBool
 
 pipeline
-  :: (TypeTag t, MonadSupply Name m) 
-  => Expr t (Pattern t) (Binding (Pattern t)) [Pattern t] 
+  :: (TypeTag t, MonadSupply Name m)
+  => Expr t (Pattern t) (Binding (Pattern t)) [Pattern t]
   -> m Core
-pipeline = expandFunPats 
+pipeline = expandFunPats
     >=> unrollLets
     >=> simplify
     >=> toCore
 
 --pipeline
---  :: (TypeTag t, MonadSupply Name m) 
---  => Expr t (Pattern t) (Binding (Pattern t)) [Pattern t] 
+--  :: (TypeTag t, MonadSupply Name m)
+--  => Expr t (Pattern t) (Binding (Pattern t)) [Pattern t]
 --  -> m Core
 --pipeline e = do
 --    a <- expandFunPats e
@@ -56,9 +56,9 @@ pipeline = expandFunPats
 --    c <- simplify b
 --    toCore c
 
-expandFunPats 
-  :: (MonadSupply Name m) 
-  => Expr t (Pattern t) q [Pattern t] 
+expandFunPats
+  :: (MonadSupply Name m)
+  => Expr t (Pattern t) q [Pattern t]
   -> m (Expr t (Pattern t) q [Pattern t])
 expandFunPats = cata $ \case
 
@@ -68,12 +68,12 @@ expandFunPats = cata $ \case
         let e1 = patExpr (exprTag body) exprs
         lamExpr t pats . e1 <$> traverse sequence exs
 
-    e -> 
+    e ->
         embed <$> sequence e
 
 unrollLets
-  :: (TypeTag t, MonadSupply Name m) 
-  => Expr t p (Binding (Pattern t)) [Pattern t] 
+  :: (TypeTag t, MonadSupply Name m)
+  => Expr t p (Binding (Pattern t)) [Pattern t]
   -> m (Expr t p (Pattern t) [Pattern t])
 unrollLets = cata $ \case
 
@@ -91,18 +91,18 @@ unrollLets = cata $ \case
     ERec t fields    -> recExpr t <$> sequence fields
     ETup t exs       -> tupExpr t <$> sequence exs
 
-    ELet t (BLet pat) e1 e2 -> 
+    ELet t (BLet pat) e1 e2 ->
         letExpr t pat <$> e1 <*> e2
 
     ELet t (BFun f ps) e1 e2 -> do
         vars <- supplies (length ps)
         expr <- e1
-        let t1 = foldr tarr (exprTag expr) (patternTag <$> ps) 
+        let t1 = foldr tarr (exprTag expr) (patternTag <$> ps)
         letExpr t (varPat t1 f) (lamExpr t1 ps expr) <$> e2
 
 simplify
-  :: (TypeTag t, MonadSupply Name m) 
-  => Expr t (Pattern t) (Pattern t) [Pattern t] 
+  :: (TypeTag t, MonadSupply Name m)
+  => Expr t (Pattern t) (Pattern t) [Pattern t]
   -> m (Expr t (Prep t) Name Name)
 simplify = cata $ \case
     EVar t var       -> pure (varExpr t var)
@@ -128,7 +128,7 @@ simplify = cata $ \case
     ELam t ps e1 -> do
         (vars, exprs, _) <- patternInfo varPat ps
         body <- e1
-        expr <- desugarPatterns [Clause ps [] body] >>= compilePatterns exprs 
+        expr <- desugarPatterns [Clause ps [] body] >>= compilePatterns exprs
         let toLam v t e = lamExpr (tarr t (exprTag e)) v e
         pure (foldr (uncurry toLam) expr vars)
 
@@ -136,40 +136,40 @@ simplify = cata $ \case
         exs1 <- traverse sequence exs
         join (compilePatterns <$> sequence eqs <*> desugarPatterns exs1)
 
-desugarPatterns 
-  :: (TypeTag t, MonadSupply Name m) 
-  => [Clause (Pattern t) (Expr t p q r)] 
+desugarPatterns
+  :: (TypeTag t, MonadSupply Name m)
+  => [Clause (Pattern t) (Expr t p q r)]
   -> m [Clause (Pattern t) (Expr t p q r)]
-desugarPatterns = expandLitPats . expandOrPats 
+desugarPatterns = expandLitPats . expandOrPats
 
-expandLitPats 
-  :: (TypeTag t, MonadSupply Name m) 
-  => [Clause (Pattern t) (Expr t p q r)] 
+expandLitPats
+  :: (TypeTag t, MonadSupply Name m)
+  => [Clause (Pattern t) (Expr t p q r)]
   -> m [Clause (Pattern t) (Expr t p q r)]
 expandLitPats = traverse expandClause
   where
     expandClause (Clause ps exs e) = do
         (qs, exs1) <- runWriterT (traverse expand1 ps)
-        pure (Clause qs (exs <> exs1) e) 
+        pure (Clause qs (exs <> exs1) e)
 
     expand1 = cata $ \case
         PLit t lit -> do
             var <- supply
-            tell [appExpr tbool 
+            tell [appExpr tbool
                      [ varExpr (tarr t (tarr t tbool)) ("@" <> literalName lit <> ".(==)")
                      , varExpr t var
                      , litExpr t lit ]]
             pure (varPat t var)
 
-        p -> 
+        p ->
             embed <$> sequence p
 
 expandOrPats :: [Clause (Pattern t) a] -> [Clause (Pattern t) a]
-expandOrPats = concatMap $ \(Clause ps exs e) -> 
+expandOrPats = concatMap $ \(Clause ps exs e) ->
     [Clause qs exs e | qs <- traverse fork ps]
   where
     fork :: Pattern t -> [Pattern t]
-    fork = project >>> \case 
+    fork = project >>> \case
         PCon t con ps  -> conPat t con <$> traverse fork ps
         PTup t ps      -> tupPat t <$> traverse fork ps
         PRec t fields  -> recPat t <$> traverse fork fields
@@ -177,22 +177,22 @@ expandOrPats = concatMap $ \(Clause ps exs e) ->
         POr  _ a b     -> fork a <> fork b -- need to be the same set ????
         p              -> [embed p]
 
-compilePatterns 
-  :: (TypeTag t, MonadSupply Name m) 
+compilePatterns
+  :: (TypeTag t, MonadSupply Name m)
   => [Expr t (Prep t) Name Name]
   -> [Clause (Pattern t) (Expr t (Prep t) Name Name)]
   -> m (Expr t (Prep t) Name Name)
 compilePatterns us qs = matchAlgo us qs (varExpr (tvar "FAIL") "FAIL")
 
-matchAlgo 
-  :: (TypeTag t, MonadSupply Name m) 
+matchAlgo
+  :: (TypeTag t, MonadSupply Name m)
   => [Expr t (Prep t) Name Name]
   -> [Clause (Pattern t) (Expr t (Prep t) Name Name)]
   -> Expr t (Prep t) Name Name
   -> m (Expr t (Prep t) Name Name)
 matchAlgo [] []                   c = pure c
 matchAlgo [] (Clause [] []  e:_)  _ = pure e
-matchAlgo [] (Clause [] exs e:qs) c = 
+matchAlgo [] (Clause [] exs e:qs) c =
     ifExpr (exprTag c) (foldr1 (op2Expr tbool OAnd) exs) e <$> matchAlgo [] qs c
 matchAlgo (u:us) qs c =
     case clauseGroups qs of
@@ -201,7 +201,7 @@ matchAlgo (u:us) qs c =
           where
             runSubst c@(Clause (Fix (PVar t name):ps) exs e) =
                 substitute name u <$> Clause ps exs e
-            runSubst clause = 
+            runSubst clause =
                 clause
 
         [Constructor eqs@(Clause _ _ e:_)] -> do
@@ -252,8 +252,7 @@ clauses (Constructor eqs) = eqs
 clauses (Variable    eqs) = eqs
 
 labeledClause :: Clause (Pattern t) a -> Labeled (Clause (Pattern t) a)
-labeledClause eq@(Clause (p:_) _ _) = f p
-  where
+labeledClause eq@(Clause (p:_) _ _) = f p where
     f = project >>> \case
         POr{}     -> error "Implementation error"
         PAs _ _ q -> f q
@@ -273,9 +272,9 @@ clauseGroups = cata alg . fmap labeledClause where
     alg (Cons (Variable e) ts) = Variable [e]:ts
 
 patternInfo
-  :: (MonadSupply Name m) 
+  :: (MonadSupply Name m)
   => (t -> Name -> a)
-  -> [Pattern t] 
+  -> [Pattern t]
   -> m ([(Name, t)], [Expr t p q r], [a])
 patternInfo con pats = do
     vars <- supplies (length pats)
@@ -283,14 +282,14 @@ patternInfo con pats = do
         make c = uncurry c <$> zip ts vars
     pure (zip vars ts, make varExpr, make con)
 
-substitute 
-  :: Name 
+substitute
+  :: Name
   -> Expr t (Prep t) Name Name
   -> Expr t (Prep t) Name Name
   -> Expr t (Prep t) Name Name
 substitute name subst = para $ \case
     ELet t pat (_, e1) e2 -> letExpr t pat e1 e2'
-      where 
+      where
         e2' | name == pat = fst e2
             | otherwise   = snd e2
 
@@ -299,23 +298,23 @@ substitute name subst = para $ \case
         e1' | name == pat = fst e1
             | otherwise   = snd e1
 
-    EPat t exs eqs -> 
+    EPat t exs eqs ->
         patExpr t (snd <$> exs) (substEq <$> eqs)
       where
-        substEq eq@(Clause ps _ _) 
+        substEq eq@(Clause ps _ _)
             | name `elem` (pats =<< ps) = fst <$> eq
             | otherwise                 = snd <$> eq
         pats (RCon _ _ ps) = ps
 
     expr -> snd <$> expr & \case
-        EVar t var 
+        EVar t var
             | name == var -> subst
             | otherwise   -> varExpr t var
 
         e -> embed e
 
-toCore 
-  :: (MonadSupply Name m) 
+toCore
+  :: (MonadSupply Name m)
   => Expr t (Prep t) Name Name
   -> m Core
 toCore = cata $ \case
@@ -341,7 +340,7 @@ toCore = cata $ \case
 
     EPat _ eqs exs   -> do
         cs <- sequence eqs
-        case cs of 
+        case cs of
             [expr] -> cPat expr <$> traverse desugarClause exs
             _      -> error "Implementation error"
   where
@@ -349,7 +348,7 @@ toCore = cata $ \case
     prefix1 ONot = cVar "not"
     prefix2 op = cVar ("(" <> opSymbol op <> ")")
 
-    desugarClause (Clause [RCon _ con ps] exs e) = 
+    desugarClause (Clause [RCon _ con ps] exs e) =
         Clause (con:ps) <$> sequence exs <*> e
-    desugarClause _ = 
+    desugarClause _ =
         error "Implementation error"
