@@ -17,7 +17,7 @@ import Tau.Util
 import qualified Data.Text as Text
 
 -- | Base functor for Kind
-data KindF a 
+data KindF a
     = KTyp                    -- ^ A concrete type (kind of value-types)
     | KArr a a                -- ^ Type constructor
     | KCls                    -- ^ A type class constraint
@@ -32,8 +32,8 @@ type Kind = Fix KindF
 
 -- | Base functor for Type
 data TypeF g a
-    = TVar Kind Name 
-    | TCon Kind Name 
+    = TVar Kind Name
+    | TCon Kind Name
     | TArr a a
     | TApp a a
     | TGen g
@@ -56,8 +56,8 @@ type PolyType = TypeT Int
 data PredicateT a = InClass Name a
     deriving (Show, Eq, Ord, Functor, Foldable, Traversable)
 
--- | A standalone type-class constraint 
-type Predicate = PredicateT Type 
+-- | A standalone type-class constraint
+type Predicate = PredicateT Type
 
 -- | A type-class constraint which appears in a type scheme
 type PolyPredicate = PredicateT Int
@@ -70,9 +70,9 @@ data Scheme = Forall [Kind] [PolyPredicate] PolyType
 type Class a = ([Name], [Instance a])
 
 -- | Type class instance
-data Instance a = Instance 
-    { predicates   :: [Predicate] 
-    , instanceType :: Type 
+data Instance a = Instance
+    { predicates   :: [Predicate]
+    , instanceType :: Type
     , instanceDict :: a
     } deriving (Show, Eq)
 
@@ -125,7 +125,7 @@ toScheme :: Type -> Scheme
 toScheme = Forall [] [] . upgrade
 
 newTVar :: (MonadSupply Name m) => Kind -> m (TypeT a)
-newTVar kind = tVar kind <$> supply 
+newTVar kind = tVar kind <$> supply
 
 recordCon :: [Name] -> Name
 recordCon names = "{" <> Text.intercalate "," names <> "}"
@@ -155,7 +155,7 @@ replaceBound ts = cata $ \case
 
 kindOf :: TypeT a -> Maybe Kind
 kindOf = histo $ \case
-    TApp (Just t :< _) _ -> appKind (project t) 
+    TApp (Just t :< _) _ -> appKind (project t)
     TCon k _             -> Just k
     TVar k _             -> Just k
     TArr{}               -> Just kTyp
@@ -164,7 +164,7 @@ kindOf = histo $ \case
     appKind _             = Nothing
 
 typeVars :: Type -> [(Name, Kind)]
-typeVars = nub . cata alg where 
+typeVars = nub . cata alg where
     alg = \case
         TVar k var -> [(var, k)]
         TArr t1 t2 -> t1 <> t2
@@ -175,7 +175,7 @@ kTyp :: Kind
 kTyp = embed KTyp
 
 kArr :: Kind -> Kind -> Kind
-kArr = embed2 KArr 
+kArr = embed2 KArr
 
 infixr 1 `kArr`
 
@@ -183,21 +183,21 @@ kFun :: Kind
 kFun = kTyp `kArr` kTyp
 
 tVar :: Kind -> Name -> TypeT a
-tVar = embed2 TVar 
+tVar = embed2 TVar
 
 tGen :: Int -> PolyType
-tGen = embed1 TGen 
+tGen = embed1 TGen
 
 tCon :: Kind -> Name -> TypeT a
-tCon = embed2 TCon 
+tCon = embed2 TCon
 
 tArr :: TypeT a -> TypeT a -> TypeT a
-tArr = embed2 TArr 
+tArr = embed2 TArr
 
 infixr 1 `tArr`
 
 tApp :: TypeT a -> TypeT a -> TypeT a
-tApp = embed2 TApp 
+tApp = embed2 TApp
 
 typ :: Name -> TypeT a
 typ = tCon kTyp
@@ -206,37 +206,37 @@ tUnit :: TypeT a
 tUnit = typ "Unit"
 
 tBool :: TypeT a
-tBool = typ "Bool" 
+tBool = typ "Bool"
 
 tInt :: TypeT a
-tInt = typ "Int" 
+tInt = typ "Int"
 
 tInteger :: TypeT a
 tInteger = typ "Integer"
 
 tFloat :: TypeT a
-tFloat = typ "Float" 
+tFloat = typ "Float"
 
 tString :: TypeT a
-tString = typ "String" 
+tString = typ "String"
 
 tChar :: TypeT a
-tChar = typ "Char" 
+tChar = typ "Char"
 
 tListCon :: TypeT a
 tListCon = tCon kFun "List"
 
 tList :: TypeT a -> TypeT a
-tList = tApp tListCon 
+tList = tApp tListCon
 
 tRecord :: [Name] -> [TypeT a] -> TypeT a
-tRecord names = foldl tApp (tCon kind (recordCon names)) 
-  where 
+tRecord names = foldl tApp (tCon kind (recordCon names))
+  where
     kind = foldr kArr kTyp (replicate (length names) kTyp)
 
 tTuple :: [TypeT a] -> TypeT a
 tTuple types = foldl tApp (tCon kind (tupleCon (length types))) types
-  where 
+  where
     kind = foldr (const (kArr kTyp)) kTyp types
 
 tPair :: TypeT a -> TypeT a -> TypeT a

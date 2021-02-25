@@ -26,8 +26,8 @@ data Literal
     deriving (Show, Eq)
 
 -- | Record fields
-data Field t a = Field 
-    { fieldTag   :: t 
+data Field t a = Field
+    { fieldTag   :: t
     , fieldName  :: Name
     , fieldValue :: a
     } deriving (Show, Eq, Ord, Functor, Foldable, Traversable)
@@ -78,34 +78,34 @@ deriveShow1 ''Clause
 deriveEq1   ''Clause
 
 -- | Unary operators
-data Op1 
+data Op1
     = ONeg                    -- ^ Unary negation
     | ONot                    -- ^ Logical NOT
     deriving (Show, Eq)
 
 -- | Binary operators
-data Op2 
+data Op2
     = OEq                     -- ^ Equal-to operator
     | ONEq                    -- ^ Not-equal-to operator
     | OAnd                    -- ^ Logical AND
     | OOr                     -- ^ Logical OR
-    | OAdd                    -- ^ Addition operator 
-    | OSub                    -- ^ Subtraction operator 
-    | OMul                    -- ^ Multiplication operator 
-    | ODiv                    -- ^ Division operator 
-    | OPow                    -- ^ Exponentiation operator 
-    | OLt                     -- ^ Strictly less-than operator 
-    | OGt                     -- ^ Strictly greater-than operator 
-    | OLtE                    -- ^ Less-than-or-equal-to operator 
-    | OGtE                    -- ^ Greater-than-or-equal-to operator 
-    | OLArr                   -- ^ Function composition operator 
-    | ORArr                   -- ^ Reverse function composition 
-    | OFPipe                  -- ^ Forward pipe operator 
-    | OBPipe                  -- ^ Reverse pipe operator 
+    | OAdd                    -- ^ Addition operator
+    | OSub                    -- ^ Subtraction operator
+    | OMul                    -- ^ Multiplication operator
+    | ODiv                    -- ^ Division operator
+    | OPow                    -- ^ Exponentiation operator
+    | OLt                     -- ^ Strictly less-than operator
+    | OGt                     -- ^ Strictly greater-than operator
+    | OLtE                    -- ^ Less-than-or-equal-to operator
+    | OGtE                    -- ^ Greater-than-or-equal-to operator
+    | OLArr                   -- ^ Function composition operator
+    | ORArr                   -- ^ Reverse function composition
+    | OFPipe                  -- ^ Forward pipe operator
+    | OBPipe                  -- ^ Reverse pipe operator
     deriving (Show, Eq)
 
 -- | Let name-bindings
-data Binding p 
+data Binding p
     = BLet p                  -- ^ Plain let
     | BFun Name [p]           -- ^ Let f x = e type-of binding
     deriving (Show, Eq)
@@ -113,7 +113,7 @@ data Binding p
 deriveShow1 ''Binding
 deriveEq1   ''Binding
 
--- | Base functor for Expr  
+-- | Base functor for Expr
 data ExprF t p q r a
     = EVar t Name             -- ^ Variable
     | ECon t Name [a]         -- ^ Data constructor
@@ -140,74 +140,84 @@ deriveEq1   ''ExprF
 -- | Expression language tagged term tree
 type Expr t p q r = Fix (ExprF t p q r)
 
+literalName :: Literal -> Name
+literalName = \case
+    LUnit        -> "Unit"
+    (LBool    _) -> "Bool"
+    (LInt     _) -> "Int"
+    (LInteger _) -> "Integer"
+    (LFloat   _) -> "Float"
+    (LChar    _) -> "Char"
+    (LString  _) -> "String"
+
 -- | Return the precedence of a binary operator
 opPrecedence :: Op2 -> Int
 opPrecedence = \case
     OEq    -> 4
-    ONEq   -> 4    
-    OAnd   -> 3   
-    OOr    -> 2   
-    OAdd   -> 6    
+    ONEq   -> 4
+    OAnd   -> 3
+    OOr    -> 2
+    OAdd   -> 6
     OSub   -> 6
     OMul   -> 7
     ODiv   -> 7
     OPow   -> 8
     OLt    -> 4
     OGt    -> 4
-    OLtE   -> 4    
+    OLtE   -> 4
     OGtE   -> 4
-    OLArr  -> 1   
-    ORArr  -> 1   
-    OFPipe -> 1 
+    OLArr  -> 1
+    ORArr  -> 1
+    OFPipe -> 1
     OBPipe -> 1
 
 -- | Operator associativity
-data Assoc 
-    = AssocL                  -- ^ Operator is left-associative 
-    | AssocR                  -- ^ Operator is right-associative 
-    | AssocN                  -- ^ Operator is non-associative 
+data Assoc
+    = AssocL                  -- ^ Operator is left-associative
+    | AssocR                  -- ^ Operator is right-associative
+    | AssocN                  -- ^ Operator is non-associative
     deriving (Show, Eq)
 
 -- | Return the associativity of a binary operator
 opAssoc :: Op2 -> Assoc
 opAssoc = \case
     OEq    -> AssocN
-    ONEq   -> AssocN    
+    ONEq   -> AssocN
     OAnd   -> AssocR
-    OOr    -> AssocR   
-    OAdd   -> AssocL    
+    OOr    -> AssocR
+    OAdd   -> AssocL
     OSub   -> AssocL
     OMul   -> AssocL
     ODiv   -> AssocL
     OPow   -> AssocR
     OLt    -> AssocN
     OGt    -> AssocN
-    OLtE   -> AssocN    
+    OLtE   -> AssocN
     OGtE   -> AssocN
-    OLArr  -> AssocR   
-    ORArr  -> AssocR   
-    OFPipe -> AssocL 
+    OLArr  -> AssocR
+    ORArr  -> AssocR
+    OFPipe -> AssocL
     OBPipe -> AssocR
 
 opSymbol :: Op2 -> Name
 opSymbol = \case
     OEq    -> "=="
-    ONEq   -> "/="    
+    ONEq   -> "/="
     OAnd   -> "&&"
-    OOr    -> "||"   
-    OAdd   -> "+"    
+    OOr    -> "||"
+    OAdd   -> "+"
     OSub   -> "-"
     OMul   -> "*"
     ODiv   -> "/"
     OPow   -> "^"
     OLt    -> "<"
     OGt    -> ">"
-    OLtE   -> "<="    
+    OLtE   -> "<="
     OGtE   -> ">="
-    OLArr  -> "<<"   
-    ORArr  -> ">>"   
-    OFPipe -> "<|" 
-    OBPipe -> "|>"
+    OLArr  -> "<<"
+    ORArr  -> ">>"
+    OFPipe -> "|>"
+    OBPipe -> "<|"
 
 fieldSet :: [Field t a] -> FieldSet t a
 fieldSet fields = FieldSet (to <$> sortOn fieldName fields)
@@ -273,22 +283,22 @@ tupPat :: t -> [Pattern t] -> Pattern t
 tupPat = embed2 PTup
 
 anyPat :: t -> Pattern t
-anyPat = embed1 PAny 
+anyPat = embed1 PAny
 
 varExpr :: t -> Name -> Expr t p q r
 varExpr = embed2 EVar
 
 conExpr :: t -> Name -> [Expr t p q r] -> Expr t p q r
-conExpr = embed3 ECon 
+conExpr = embed3 ECon
 
 litExpr :: t -> Literal -> Expr t p q r
-litExpr = embed2 ELit 
+litExpr = embed2 ELit
 
 appExpr :: t -> [Expr t p q r] -> Expr t p q r
-appExpr = embed2 EApp 
+appExpr = embed2 EApp
 
 letExpr :: t -> q -> Expr t p q r -> Expr t p q r -> Expr t p q r
-letExpr = embed4 ELet 
+letExpr = embed4 ELet
 
 fixExpr :: t -> Name -> Expr t p q r -> Expr t p q r -> Expr t p q r
 fixExpr = embed4 EFix

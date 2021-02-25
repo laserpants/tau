@@ -19,7 +19,8 @@ import Tau.Lang.Expr
 import Tau.Lang.Type
 import Tau.Util
 
-class TypeTag t where
+--class TypeTag t where
+class Show t => TypeTag t where
     tvar  :: Name -> t
     tarr  :: t -> t -> t
     tapp  :: t -> t -> t
@@ -40,12 +41,21 @@ instance TypeTag Type where
 pipeline
   :: (TypeTag t, MonadSupply Name m) 
   => Expr t (Pattern t) (Binding (Pattern t)) [Pattern t] 
-  -- -> m (Expr t (Prep t) Name Name)
   -> m Core
 pipeline = expandFunPats 
     >=> unrollLets
     >=> simplify
     >=> toCore
+
+--pipeline
+--  :: (TypeTag t, MonadSupply Name m) 
+--  => Expr t (Pattern t) (Binding (Pattern t)) [Pattern t] 
+--  -> m Core
+--pipeline e = do
+--    a <- expandFunPats e
+--    b <- unrollLets a
+--    c <- simplify b
+--    toCore c
 
 expandFunPats 
   :: (MonadSupply Name m) 
@@ -117,10 +127,9 @@ simplify = cata $ \case
         compilePatterns [expr] exs
 
     ELam t ps e1 -> do
-        (vars, exprs, pats) <- patternInfo varPat ps
+        (vars, exprs, _) <- patternInfo varPat ps
         body <- e1
-        exs <- desugarPatterns [Clause pats [] body]
-        expr <- compilePatterns exprs exs
+        expr <- desugarPatterns [Clause ps [] body] >>= compilePatterns exprs 
         let toLam v t e = lamExpr (tarr t (exprTag e)) v e
         pure (foldr (uncurry toLam) expr vars)
 
@@ -134,7 +143,10 @@ desugarPatterns
   -> m [Clause (Pattern t) (Expr t p q r)]
 desugarPatterns = expandLitPats . expandOrPats 
 
-expandLitPats :: (TypeTag t, MonadSupply Name m) => [Clause (Pattern t) (Expr t p q r)] -> m [Clause (Pattern t) (Expr t p q r)]
+expandLitPats 
+  :: (TypeTag t, MonadSupply Name m) 
+  => [Clause (Pattern t) (Expr t p q r)] 
+  -> m [Clause (Pattern t) (Expr t p q r)]
 expandLitPats = traverse expandClause
   where
     expandClause (Clause ps exs e) = do
@@ -144,8 +156,12 @@ expandLitPats = traverse expandClause
     expand1 = cata $ \case
         PLit t lit -> do
             var <- supply
-            tell [op2Expr tbool OEq (varExpr t var) (litExpr t lit)]
+            tell [appExpr tbool 
+                     [ varExpr (tarr t (tarr t tbool)) ("@" <> literalName lit <> ".(==)")
+                     , varExpr t var
+                     , litExpr t lit ]]
             pure (varPat t var)
+
         p -> 
             embed <$> sequence p
 
@@ -310,17 +326,20 @@ toCore = cata $ \case
     EApp _ exs       -> cApp <$> sequence exs
     ECon _ con exs   -> cApp <$> sequence (pure (cVar con):exs)
     ELet _ var e1 e2 -> cLet var <$> e1 <*> e2
+--  EFix _ var e1 e2 -> cLet var <$> e1 <*> e2
     ELam _ var e1    -> cLam var <$> e1
-    EFix _ var e1 e2 -> cLet var <$> e1 <*> e2  -- ????
     EOp1 _ op a      -> cApp <$> sequence [pure (prefix1 op), a]
     EOp2 _ op a b    -> cApp <$> sequence [pure (prefix2 op), a, b]
     EDot _ name e1   -> cApp <$> sequence [pure (cVar name), e1]
+
     ERec _ (FieldSet fields) -> do
         exprs <- traverse fieldValue fields
         pure (cApp (cVar (recordCon (fieldName <$> fields)):exprs))
+
     ETup _ exs -> do
         exprs <- sequence exs
         pure (cApp (cVar (tupleCon (length exs)):exprs))
+
     EPat _ eqs exs   -> do
         cs <- sequence eqs
         case cs of 

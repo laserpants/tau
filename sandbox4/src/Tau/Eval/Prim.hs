@@ -4,9 +4,10 @@
 {-# LANGUAGE StrictData        #-}
 module Tau.Eval.Prim where
 
-import Tau.Util.Env (Env)
+import Data.Text (Text)
 import Tau.Lang.Expr
 import Tau.Util
+import Tau.Util.Env (Env)
 import qualified Data.Text as Text
 import qualified Tau.Util.Env as Env
 
@@ -32,11 +33,12 @@ instance Prim Double where
         LFloat lit -> lit
         _          -> 0
 
-instance Prim String where
-    toLiteral = LString . Text.pack
+instance Prim Text where
+    toLiteral = LString 
     primitive = \case
-        LString lit -> Text.unpack lit
-        _           -> ""
+        LString lit -> lit
+        _           -> Text.pack ""
+
 
 instance Prim Char where
     toLiteral = LChar
@@ -93,23 +95,13 @@ applyFun fun args =
         Fun4 f -> f (head args) (args !! 1) (args !! 2) (args !! 3)
         Fun5 f -> f (head args) (args !! 1) (args !! 2) (args !! 3) (args !! 4)
 
---primEnv :: Env Fun
---primEnv = Env.fromList
---    -- Int:show
---    -- Int:(==)
---    -- String:length
---    -- String:concat
---    [ ( "showInt"    , fun1 (show   :: Int -> String) )
---    , ( "showBool"   , fun1 (show   :: Bool -> String) )
---    , ( "showUnit"   , fun1 (show   :: () -> String) )
---    , ( "(+)Int"     , fun2 ((+)    :: Int -> Int -> Int) )
---    , ( "(*)Int"     , fun2 ((*)    :: Int -> Int -> Int) )
---    , ( "(-)Int"     , fun2 ((-)    :: Int -> Int -> Int) )
---    , ( "(==)Int"    , fun2 ((==)   :: Int -> Int -> Bool) )
---    , ( "(==)Bool"   , fun2 ((==)   :: Bool -> Bool -> Bool) )
---    , ( "(==)Unit"   , fun2 ((==)   :: () -> () -> Bool) )
---    , ( "(==)String" , fun2 ((==)   :: String -> String -> Bool) )
---    , ( "strlen"     , fun1 (length :: String -> Int) )
---    , ( "strconcat"  , fun2 ((++)   :: String -> String -> String) )
---    , ( "strconcat3" , fun3 ((\s t u -> s ++ t ++ u) :: String -> String -> String -> String) )  -- TODO: remove
---    ]
+primEnv :: Env Fun
+primEnv = Env.fromList
+    [ ( "Unit.(==)"    , fun2 ((==) :: () -> () -> Bool) )
+    , ( "Bool.(==)"    , fun2 ((==) :: Bool -> Bool -> Bool) )
+    , ( "Int.(==)"     , fun2 ((==) :: Int -> Int -> Bool) )
+    , ( "Integer.(==)" , fun2 ((==) :: Integer -> Integer -> Bool) )
+    , ( "Float.(==)"   , fun2 ((==) :: Double -> Double -> Bool) )
+    , ( "Char.(==)"    , fun2 ((==) :: Char -> Char -> Bool) )
+    , ( "String.(==)"  , fun2 ((==) :: Text -> Text -> Bool) )
+    ]

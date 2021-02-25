@@ -11,6 +11,7 @@ import Tau.Lang.Core
 import Tau.Lang.Expr
 import Tau.Lang.Type
 import Tau.Util
+import qualified Tau.Util.Env as Env
 
 noDups = undefined
 
@@ -59,17 +60,36 @@ test1 = evalSupply mapPairs (numSupply "$")
 
 test2 = evalSupply (pipeline e) (numSupply "$")
   where
-    e = appExpr () 
-        [ lamExpr () [varPat () "x"]
-            (patExpr () [varExpr () "x"]
-                [ Clause [litPat () (LInt 5)] [] (varExpr () "1")
-                , Clause [varPat () "y"] [] (varExpr () "2") ])
-        , litExpr () (LInt 5) ]
-
+    e = appExpr ()
+            [ lamExpr () [varPat () "x"]
+                (patExpr () [varExpr () "x"]
+                    [ Clause [litPat () (LInt 5)] [] (litExpr () (LInt 1))
+                    , Clause [varPat () "y"] [] (litExpr () (LInt 2)) ])
+            , litExpr () (LInt 5) ]
 
 test22 = case test2 of
-    Just c -> 
+    Just c -> do
+        traceShowM c
         evalExpr c mempty
+
+test3 = evalSupply (pipeline e) (numSupply "$")
+  where 
+    e = patExpr () [litExpr () (LInt 5), conExpr () "[]" [], conExpr () "(::)" [litExpr () (LInt 9), conExpr () "[]" []]]
+        [ Clause [varPat () "f", conPat () "[]" [], varPat () "ys"] [] (varExpr () "ys")
+        , Clause [varPat () "f", conPat () "(::)" [varPat () "x", varPat () "xs"], conPat () "[]" []] [] (litExpr () (LString "e2"))
+        , Clause [varPat () "f", conPat () "(::)" [varPat () "x", varPat () "xs"], conPat () "(::)" [varPat () "y", varPat () "ys"]] [] (litExpr () (LString "e3"))
+        ]
+
+test33 = case test3 of
+    Just c -> do
+        traceShowM c
+        evalExpr c evalEnv
+
+evalEnv = Env.fromList 
+    [ ("(::)" , constructor "(::)" 2)  
+    , ("[]"   , constructor "[]"   0)  
+    ]
+ 
 
 --test1 = runSupply e (numSupply "$")
 --  where

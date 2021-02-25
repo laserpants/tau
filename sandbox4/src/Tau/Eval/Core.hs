@@ -120,11 +120,6 @@ evalPrim name fun args
     literal (Value lit) = pure lit
     literal _ = fail "Runtime error (evalPrim)"
 
-primEnv :: Env Fun
-primEnv = Env.fromList
-    [
-    ]
-
 evalApp
   :: (MonadFail m, MonadReader (ValueEnv m) m)
   => m (Value m)
