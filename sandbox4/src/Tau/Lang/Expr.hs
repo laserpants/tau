@@ -166,10 +166,10 @@ opPrecedence = \case
     OGt    -> 4
     OLtE   -> 4
     OGtE   -> 4
-    OLArr  -> 1
-    ORArr  -> 1
-    OFPipe -> 1
-    OBPipe -> 1
+    OLArr  -> 9
+    ORArr  -> 9
+    OFPipe -> 0
+    OBPipe -> 0
 
 -- | Operator associativity
 data Assoc
@@ -194,8 +194,8 @@ opAssoc = \case
     OGt    -> AssocN
     OLtE   -> AssocN
     OGtE   -> AssocN
+    ORArr  -> AssocL
     OLArr  -> AssocR
-    ORArr  -> AssocR
     OFPipe -> AssocL
     OBPipe -> AssocR
 
