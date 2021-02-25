@@ -141,8 +141,8 @@ kindOf = histo $ \case
     TVar k _             -> Just k
     TArr{}               -> Just kTyp
   where
-    appKind (KArr _ k)    = Just k
-    appKind _             = Nothing
+    appKind (KArr _ k) = Just k
+    appKind _ = Nothing
 
 typeVars :: Type -> [(Name, Kind)]
 typeVars = nub . cata alg where

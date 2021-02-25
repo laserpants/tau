@@ -26,11 +26,11 @@ module Tau.Util
   , numSupply
   , prettyPrint
   , renderDoc
+  , reset
   , second3M
   , secondM
   , third3M
   , unions
-  , reset
   ) where
 
 import Control.Monad
