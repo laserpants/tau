@@ -18,7 +18,7 @@ import Tau.Lang.Expr
 import Tau.Lang.Type
 import Tau.Util
 
-class Show t => TypeTag t where
+class TypeTag t where
     tvar :: Name -> t
     tarr :: t -> t -> t
     tapp :: t -> t -> t
