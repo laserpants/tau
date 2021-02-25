@@ -41,7 +41,8 @@ pipeline
   :: (TypeTag t, MonadSupply Name m)
   => Expr t (Pattern t) (Binding (Pattern t)) [Pattern t]
   -> m Core
-pipeline = expandFunPats
+pipeline = 
+    expandFunPats
     >=> unrollLets
     >=> simplify
     >=> toCore
