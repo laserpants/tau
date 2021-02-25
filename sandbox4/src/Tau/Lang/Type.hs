@@ -8,6 +8,7 @@
 module Tau.Lang.Type where
 
 import Control.Arrow (second, (<<<), (>>>))
+import Control.Comonad.Cofree
 import Control.Monad.Supply
 import Data.Functor.Foldable
 import Data.List (nub)
@@ -147,15 +148,15 @@ replaceBound ts = cata $ \case
     TVar k var -> tVar k var
     TCon k con -> tCon k con
 
---kindOf :: TypeT a -> Maybe Kind
---kindOf = histo $ \case
---    TApp (Just t :< _) _ -> appKind (project t) 
---    TCon k _             -> Just k
---    TVar k _             -> Just k
---    TArr{}               -> Just kTyp
---  where
---    appKind (KArr _ k)    = Just k
---    appKind _             = Nothing
+kindOf :: TypeT a -> Maybe Kind
+kindOf = histo $ \case
+    TApp (Just t :< _) _ -> appKind (project t) 
+    TCon k _             -> Just k
+    TVar k _             -> Just k
+    TArr{}               -> Just kTyp
+  where
+    appKind (KArr _ k)    = Just k
+    appKind _             = Nothing
 
 typeVars :: Type -> [(Name, Kind)]
 typeVars = nub . cata alg where 

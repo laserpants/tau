@@ -27,9 +27,9 @@ data Literal
 
 -- | Record fields
 data Field t a = Field 
-    { fieldTag    :: t 
-    , fieldName   :: Name
-    , fieldValule :: a
+    { fieldTag   :: t 
+    , fieldName  :: Name
+    , fieldValue :: a
     } deriving (Show, Eq, Ord, Functor, Foldable, Traversable)
 
 deriveShow1 ''Field
@@ -66,9 +66,9 @@ deriveEq1   ''PatternF
 type Pattern t = Fix (PatternF t)
 
 -- | Simple patterns
-data Prep 
-    = RVar Name               -- ^ Simple variable pattern
-    | RCon Name [Name]        -- ^ Simple constuctor pattern
+data Prep t
+--    = RVar t Name             -- ^ Simple variable pattern
+    = RCon t Name [Name]      -- ^ Simple constuctor pattern
     deriving (Show, Eq)
 
 -- | Pattern match expression clause
@@ -243,10 +243,14 @@ patternTag = project >>> \case
 
 patternVars :: Pattern t -> [(Name, t)]
 patternVars = cata $ \case
-    PVar t var     -> [(var, t)]
-    PCon _ _ rs    -> concat rs
-    PLit _ lit     -> []
-    PAny _         -> []
+    PVar t var           -> [(var, t)]
+    PCon _ _ rs          -> concat rs
+    PRec _ (FieldSet fs) -> fieldValue =<< fs
+    PTup _ elems         -> concat elems
+    POr  _ a b           -> a <> b
+    PAs  _ _ a           -> a
+    PLit _ _             -> []
+    PAny _               -> []
 
 varPat :: t -> Name -> Pattern t
 varPat = embed2 PVar
