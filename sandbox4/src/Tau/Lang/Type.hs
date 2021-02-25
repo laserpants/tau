@@ -76,25 +76,6 @@ data Instance a = Instance
     , instanceDict :: a
     } deriving (Show, Eq)
 
---class Free t where
---    free :: t -> Set Name
---
---instance (Free t) => Free [t] where
---    free = foldr (Set.union . free) mempty
---
---instance Free (TypeT a) where
---    free = cata $ \case
---        TVar _ var     -> Set.singleton var
---        TArr t1 t2     -> t1 `Set.union` t2
---        TApp t1 t2     -> t1 `Set.union` t2
---        _              -> mempty
---
---instance Free (PredicateT (TypeT a)) where
---    free (InClass _ ty) = free ty
---
---instance Free Scheme where
---    free (Forall _ _ ty) = free ty
-
 class Typed a where
     typeOf :: a -> Type
 
