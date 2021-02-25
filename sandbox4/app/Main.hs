@@ -54,6 +54,14 @@ mapPairs4 =
 
 test1 = evalSupply mapPairs (numSupply "$")
 
+
+test2 = evalSupply (pipeline e) (numSupply "$")
+  where
+    e = patExpr () [litExpr () (LInt 5)]
+          [ Clause [litPat () (LInt 5)] [] (varExpr () "1")
+          , Clause [varPat () "y"] [] (varExpr () "2") ]
+
+
 --test1 = runSupply e (numSupply "$")
 --  where
 --    e :: (MonadSupply Name m) => m (Expr () (Prep ()) Name Name)

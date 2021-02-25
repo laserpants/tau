@@ -8,6 +8,7 @@ module Tau.Comp.Core where
 
 import Control.Arrow
 import Control.Monad
+import Control.Monad.Writer
 import Control.Monad.Supply 
 import Data.Foldable (foldrM)
 import Data.Function ((&))
@@ -18,20 +19,23 @@ import Tau.Lang.Expr
 import Tau.Lang.Type
 import Tau.Util
 
-class TypeTag t where
-    tvar :: Name -> t
-    tarr :: t -> t -> t
-    tapp :: t -> t -> t
+class Show t => TypeTag t where
+    tvar  :: Name -> t
+    tarr  :: t -> t -> t
+    tapp  :: t -> t -> t
+    tbool :: t
 
 instance TypeTag () where
     tvar _   = ()
     tarr _ _ = ()
     tapp _ _ = ()
+    tbool    = ()
 
 instance TypeTag Type where
-    tvar = tVar kTyp
-    tarr = tArr
-    tapp = tApp
+    tvar  = tVar kTyp
+    tarr  = tArr
+    tapp  = tApp
+    tbool = tBool
 
 pipeline
   :: (TypeTag t, MonadSupply Name m) 
@@ -107,18 +111,41 @@ simplify = cata $ \case
     ELet t pat e1 e2 -> do
         expr <- e1
         body <- e2
-        compilePatterns [expr] (expandOrPats [Clause [pat] [] body])
+        exs <- desugarPatterns [Clause [pat] [] body]
+        compilePatterns [expr] exs
 
     ELam t ps e1 -> do
         (vars, exprs, pats) <- patternInfo varPat ps
         body <- e1
-        expr <- compilePatterns exprs (expandOrPats [Clause pats [] body])
+        exs <- desugarPatterns [Clause pats [] body]
+        expr <- compilePatterns exprs exs
         let toLam v t e = lamExpr (tarr t (exprTag e)) v e
         pure (foldr (uncurry toLam) expr vars)
 
-    EPat t eqs exs -> 
-        join (compilePatterns <$> sequence eqs 
-                              <*> traverse sequence (expandOrPats exs))
+    EPat t eqs exs -> do
+        exs1 <- traverse sequence exs
+        join (compilePatterns <$> sequence eqs <*> desugarPatterns exs1)
+
+desugarPatterns 
+  :: (TypeTag t, MonadSupply Name m) 
+  => [Clause (Pattern t) (Expr t p q r)] 
+  -> m [Clause (Pattern t) (Expr t p q r)]
+desugarPatterns = expandLitPats . expandOrPats 
+
+expandLitPats :: (TypeTag t, MonadSupply Name m) => [Clause (Pattern t) (Expr t p q r)] -> m [Clause (Pattern t) (Expr t p q r)]
+expandLitPats = traverse expandClause
+  where
+    expandClause (Clause ps exs e) = do
+        (qs, exs1) <- runWriterT (traverse expand1 ps)
+        pure (Clause qs (exs <> exs1) e) 
+
+    expand1 = cata $ \case
+        PLit t lit -> do
+            var <- supply
+            tell [op2Expr tbool OEq (varExpr t var) (litExpr t lit)]
+            pure (varPat t var)
+        p -> 
+            embed <$> sequence p
 
 expandOrPats :: [Clause (Pattern t) a] -> [Clause (Pattern t) a]
 expandOrPats = concatMap $ \(Clause ps exs e) -> 
@@ -146,9 +173,10 @@ matchAlgo
   -> [Clause (Pattern t) (Expr t (Prep t) Name Name)]
   -> Expr t (Prep t) Name Name
   -> m (Expr t (Prep t) Name Name)
-matchAlgo [] []                  c = pure c
-matchAlgo [] (Clause [] []  e:_) _ = pure e
-matchAlgo [] (Clause [] exs e:_) _ = error "TODO"
+matchAlgo [] []                   c = pure c
+matchAlgo [] (Clause [] []  e:_)  _ = pure e
+matchAlgo [] (Clause [] exs e:qs) c = 
+    ifExpr (exprTag c) (foldr1 (op2Expr tbool OAnd) exs) e <$> matchAlgo [] qs c
 matchAlgo (u:us) qs c =
     case clauseGroups qs of
         [Variable eqs] -> do
