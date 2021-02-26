@@ -325,7 +325,7 @@ toCore = cata $ \case
     EApp _ exs       -> cApp <$> sequence exs
     ECon _ con exs   -> cApp <$> sequence (pure (cVar con):exs)
     ELet _ var e1 e2 -> cLet var <$> e1 <*> e2
---  EFix _ var e1 e2 -> cLet var <$> e1 <*> e2
+    EFix _ var e1 e2 -> cLet var <$> e1 <*> e2
     ELam _ var e1    -> cLam var <$> e1
     EOp1 _ op a      -> cApp <$> sequence [pure (prefix1 op), a]
     EOp2 _ op a b    -> cApp <$> sequence [pure (prefix2 op), a, b]

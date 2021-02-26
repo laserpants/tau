@@ -104,4 +104,8 @@ primEnv = Env.fromList
     , ( "Float.(==)"   , fun2 ((==) :: Double -> Double -> Bool) )
     , ( "Char.(==)"    , fun2 ((==) :: Char -> Char -> Bool) )
     , ( "String.(==)"  , fun2 ((==) :: Text -> Text -> Bool) )
+
+    , ( "Int.(*)"      , fun2 ((*) :: Int -> Int -> Int ) )
+
+    , ( "Int.(-)"      , fun2 ((-) :: Int -> Int -> Int ) )
     ]

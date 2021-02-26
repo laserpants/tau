@@ -91,6 +91,40 @@ evalEnv = Env.fromList
     ]
  
 
+-- fix f = fun | 0 => 1 | n => n * f (n - 1) in f 5
+test4 = evalSupply (pipeline e) (numSupply "$")
+  where 
+    e = letExpr () (BLet (varPat () "f")) (patExpr () [] 
+        [ Clause [litPat () (LInt 0)] [] (litExpr () (LInt 1))
+        , Clause [varPat () "n"] [] (appExpr () [varExpr () "@Int.(*)", varExpr () "n", appExpr () [varExpr () "f", appExpr () [varExpr () "@Int.(-)", varExpr () "n", litExpr () (LInt 1)]]])
+      ]) (appExpr () [varExpr () "f", litExpr () (LInt 5)]) 
+
+--    (appExpr () [varExpr () "@Int.(*)", varExpr () "n", appExpr () [varExpr () "@Int.(-)", varExpr () "n", litExpr () (LInt 1)]])
+
+test44 = case test4 of
+    Just c -> do
+        traceShowM c
+        evalExpr c evalEnv
+
+
+-- fix f = fun | 0 => 1 | n => n * f (n - 1) in f 5
+test5 = evalSupply (pipeline e) (numSupply "$")
+  where 
+    e = fixExpr () "f" (patExpr () [] 
+        [ Clause [litPat () (LInt 0)] [] (litExpr () (LInt 1))
+        , Clause [varPat () "n"] [] (appExpr () [varExpr () "@Int.(*)", varExpr () "n", appExpr () [varExpr () "f", appExpr () [varExpr () "@Int.(-)", varExpr () "n", litExpr () (LInt 1)]]])
+      ]) (appExpr () [varExpr () "f", litExpr () (LInt 10)]) 
+
+--    (appExpr () [varExpr () "@Int.(*)", varExpr () "n", appExpr () [varExpr () "@Int.(-)", varExpr () "n", litExpr () (LInt 1)]])
+
+test55 = case test5 of
+    Just c -> do
+        traceShowM c
+        evalExpr c evalEnv
+
+
+
+
 --test1 = runSupply e (numSupply "$")
 --  where
 --    e :: (MonadSupply Name m) => m (Expr () (Prep ()) Name Name)
