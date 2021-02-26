@@ -51,6 +51,20 @@ let
       in
         [1, 2, 3, 4].addOne
 
+let
+  map f xs = fix
+    mu = fun
+      | []      => []
+      | x :: xs => f x :: mu xs
+    in
+      mu xs
+  in
+    let
+      addOne = map ((+) 1)
+      in
+        [1, 2, 3, 4].addOne
+
+
 --
 
 let f (Some a) b = a in f (Some 42) ()
@@ -92,5 +106,59 @@ let
 
 
 --
+
+rec
+  fact = fun
+    | Zero   => 1 
+    | Succ n => Succ n) * next
+  in
+    fact 5
+
+
+recursive
+fact Zero     = 1
+fact (Succ n) = (Succ n) * next
+
+--
+
+rec
+  nth n (x :: xs) = 
+    match n with
+      | Zero   => x
+      | Succ n => next xs 
+  in
+    nth 4 [1,2,3,4,5,6]
+
+
+recursive 
+nth Zero (x :: _) = x
+nth _ (_ :: xs) = next xs
+
+
+
+--
+
+rec 
+  take n (x :: xs) =
+    match n with
+      | Zero   => []
+      | Succ n => x :: next xs
+
+
+recursive
+take Zero _ = []
+take (Succ n) (x :: xs) = x :: next xs
+
+
+--
+
+rec 
+  map n f xs = 
+    match xs with
+      | []      => []
+      | y :: ys => f y :: next ys
+
+
+type Nat = Zero | Succ Nat
 
 
