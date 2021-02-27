@@ -144,7 +144,19 @@ kindOf = histo $ \case
     appKind (KArr _ k) = Just k
     appKind _ = Nothing
 
-typeVars :: Type -> [(Name, Kind)]
+class Free t where
+    free :: t -> [Name]
+
+instance (Free t) => Free [t] where
+    free = concatMap free
+
+instance Free (TypeT a) where
+    free = (fst <$>) . typeVars
+
+instance Free Scheme where
+    free (Forall _ _ t) = free t
+
+typeVars :: TypeT a -> [(Name, Kind)]
 typeVars = nub . cata alg where
     alg = \case
         TVar k var -> [(var, k)]

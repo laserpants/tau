@@ -222,6 +222,9 @@ opSymbol = \case
 fieldSet :: [Field t a] -> FieldSet t a
 fieldSet fields = FieldSet (to <$> sortOn fieldName fields)
 
+fieldList :: FieldSet t a -> [(t, Name, a)]
+fieldList (FieldSet fields) = to <$> fields
+
 exprTag :: Expr t p q r -> t
 exprTag = project >>> \case
     EVar t _       -> t

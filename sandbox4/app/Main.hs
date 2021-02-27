@@ -2,13 +2,22 @@
 {-# LANGUAGE OverloadedStrings #-}
 module Main where
 
+import Control.Arrow
+import Control.Monad.Except
+import Control.Monad.Reader
+import Control.Monad.State
 import Control.Monad.Supply 
+import Control.Monad.Writer
 import Data.Maybe
 import Data.Text (Text)
 import Tau.Comp.Core
+import Tau.Comp.Type.Inference
+import Tau.Comp.Type.Substitution
+import Tau.Comp.Type.Unification
 import Tau.Eval.Core
 import Tau.Lang.Core
 import Tau.Lang.Expr
+import Tau.Lang.Pretty.Ast
 import Tau.Lang.Type
 import Tau.Util
 import qualified Tau.Util.Env as Env
@@ -123,6 +132,42 @@ test55 = case test5 of
         evalExpr c evalEnv
 
 
+type Infer a = StateT Substitution (ReaderT (ClassEnv a, TypeEnv) (SupplyT Name (ExceptT String Maybe))) a 
+
+runInfer :: ClassEnv a -> TypeEnv -> Infer a -> Either String (a, Substitution)
+runInfer e1 e2 = 
+    flip runStateT mempty
+        >>> flip runReaderT (e1, e2)
+        >>> flip evalSupplyT (numSupply "a")
+        >>> runExceptT
+        >>> fromMaybe (Left "error")
+
+test6 =
+    runInfer classEnv typeEnv f
+  where
+    f :: Infer (Ast NodeInfo)
+    f = infer e
+--    e = appExpr ()
+--            [ lamExpr () [varPat () "x"]
+--                (patExpr () [varExpr () "x"]
+--                    [ Clause [litPat () (LInt 5)] [] (litExpr () (LInt 1))
+--                    , Clause [varPat () "y"] [] (litExpr () (LInt 2)) ])
+--            , litExpr () (LInt 5) ]
+
+    -- match 5 [] (9 :: []) with
+    --   | f []        ys        => ys
+    --   | f (x :: xs) []        => e2
+    --   | f (x :: xs) (y :: ys) => ys
+    -- 
+    e = patExpr () [litExpr () (LInt 5), conExpr () "[]" [], conExpr () "(::)" [litExpr () (LInt 9), conExpr () "[]" []]]
+        [ Clause [varPat () "f" , conPat () "[]" []                                , varPat () "ys"] []    
+              (varExpr () "ys")
+        , Clause [varPat () "f" , conPat () "(::)" [varPat () "x", varPat () "xs"] , conPat () "[]" []] [] 
+              (conExpr () "[]" [])
+        , Clause [varPat () "f" , conPat () "(::)" [varPat () "x", varPat () "xs"] , conPat () "(::)" [varPat () "y", varPat () "ys"]] [] 
+              (varExpr () "ys")
+        ]
+
 
 
 --test1 = runSupply e (numSupply "$")
@@ -131,3 +176,25 @@ test55 = case test5 of
 --    e = pipeline mapPairs
 
 main = print "Hello"
+
+classEnv = Env.fromList []
+
+typeEnv = Env.fromList 
+    [ ( "(==)" , Forall [kTyp] [InClass "Eq" 0] (tGen 0 `tArr` tGen 0 `tArr` upgrade tBool) )
+    , ( "(+)"  , Forall [kTyp] [InClass "Num" 0] (tGen 0 `tArr` tGen 0 `tArr` tGen 0) )
+    , ( "(-)"  , Forall [kTyp] [InClass "Num" 0] (tGen 0 `tArr` tGen 0 `tArr` tGen 0) )
+    , ( "(*)"  , Forall [kTyp] [InClass "Num" 0] (tGen 0 `tArr` tGen 0 `tArr` tGen 0) )
+    , ( "show" , Forall [kTyp] [InClass "Show" 0] (tGen 0 `tArr` tString) )
+    , ( "add"  , Forall [kTyp] [InClass "Num" 0] (tGen 0 `tArr` tGen 0 `tArr` tGen 0) )
+    , ( "(,)"  , Forall [kTyp, kTyp] [] (tGen 0 `tArr` tGen 1 `tArr` (tApp (tApp (tCon (kArr kTyp (kArr kTyp kTyp)) "(,)") (tGen 0)) (tGen 1))))
+    , ( "first" , Forall [kTyp, kTyp] [] (tPair (tGen 0) (tGen 1) `tArr` (tGen 0)))
+    , ( "second" , Forall [kTyp, kTyp] [] (tPair (tGen 0) (tGen 1) `tArr` (tGen 1)))
+    , ( "(::)"  , Forall [kTyp] [] (tGen 0 `tArr` tList (tGen 0) `tArr` tList (tGen 0)) )
+--    , ( "Nil"    , Forall [kTyp] [] (tList (tGen 0)) )
+--    , ( "Cons"  , Forall [kTyp] [] (tGen 0 `tArr` tList (tGen 0) `tArr` tList (tGen 0)) )
+    , ( "[]"    , Forall [kTyp] [] (tList (tGen 0)) )
+    , ( "length" , Forall [kTyp] [] (tList (tGen 0) `tArr` tInt) )
+    , ( "None"   , Forall [kTyp] [] (tApp (tCon kFun "Option") (tGen 0)) )
+    , ( "Some"   , Forall [kTyp] [] (tGen 0 `tArr` tApp (tCon kFun "Option") (tGen 0)) )
+    ]
+
