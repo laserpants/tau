@@ -95,7 +95,7 @@ infer = cata $ \expr -> do
             (tps, vs) <- runWriterT (traverse inferPattern pats)
             e1 <- local (second (Env.inserts (toScheme <$$> vs))) expr1
             t1 <- newTVar kTyp
-            unifyTyped (t1 :: Type) (foldr tArr (typeOf e1) (typeOf <$> tps))
+            unifyTyped t1 (foldr tArr (typeOf e1) (typeOf <$> tps))
             e2 <- local (second (Env.insert f (toScheme t1))) expr2
             unifyTyped newTy e2
             pure (letExpr (NodeInfo newTy []) (BFun f tps) e1 e2)

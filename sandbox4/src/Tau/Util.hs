@@ -38,6 +38,7 @@ import Control.Monad.State
 import Data.Eq.Deriving
 import Data.Fix (Fix(..))
 import Data.Functor.Foldable
+import Data.List (unfoldr)
 import Data.Ord.Deriving
 import Data.Set.Monad (Set)
 import Data.Text (Text, pack)
