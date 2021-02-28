@@ -44,7 +44,7 @@ prettyAst = para $ \case
             Node ("(@)" <+> colon <+> pretty t) exprs
 
         ELet t (BLet pat) e1 e2 -> 
-            Node (patternDoc "let" pat) [prefix "=" e1, Node "in" [e2]]
+            Node (patternDoc "let" pat <+> colon <+> pretty t) [prefix "=" e1, Node "in" [e2]]
 
         ELet t (BFun f ps) e1 e2 -> 
             Node (foldl patternDoc ("let" <+> pretty f) ps) [prefix "=" e1, Node "in" [e2]]

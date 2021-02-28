@@ -272,7 +272,12 @@ test999 =
         ]
 
 
-
+test10a = let Right r = runTest testExpr2 in putStrLn (showTree (nodesToString (prettyAst r)))
+  where
+    testExpr2 = letExpr () (BLet (varPat () "f")) (varExpr () "lenShow") (varExpr () "f")
+    runTest expr = do
+        (ast, sub) <- runInfer classEnv typeEnv (infer expr)
+        pure (mapExprTags (apply sub) ast)
 
 main = print "Hello"
 
@@ -300,5 +305,6 @@ typeEnv = Env.fromList
     , ( "@Int.(-)" , Forall [] [] (tInt `tArr` tInt `tArr` tInt) )
     , ( "@Int.(*)" , Forall [] [] (tInt `tArr` tInt `tArr` tInt) )
 
+    , ( "lenShow"  , Forall [kTyp, kTyp] [InClass "Show" 0] (tGen 0 `tArr` upgrade tInt) ) 
     ]
 

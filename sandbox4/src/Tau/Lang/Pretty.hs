@@ -7,9 +7,11 @@ module Tau.Lang.Pretty where
 import Control.Arrow ((>>>))
 import Control.Monad
 import Data.List (unfoldr)
+import Data.Maybe (fromJust)
 import Data.Text (Text)
 import Data.Text.Prettyprint.Doc
 import Data.Tuple.Extra (both)
+import Tau.Comp.Type.Inference
 import Tau.Lang.Expr
 import Tau.Lang.Type
 import Tau.Util
@@ -124,6 +126,17 @@ instance Pretty Scheme where
             | otherwise  = tupled preds <+> "=> "
 
         preds = [pretty c <+> pretty (instt (tGen ty)) | InClass c ty <- ps]
+
+instance Pretty Predicate where
+    pretty (InClass name ty) = pretty (tApp con ty)
+      where
+        con = tCon (kArr kTyp (fromJust (kindOf ty))) name
+
+instance Pretty NodeInfo where
+    pretty (NodeInfo ty ps) = 
+        case ps of 
+            [] -> pretty ty 
+            _  -> parens (pretty ty <> comma <+> pretty ps)
 
 instance Pretty Kind where
     pretty = para $ \case
