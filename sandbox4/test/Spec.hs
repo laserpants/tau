@@ -1,5 +1,6 @@
 import Test.Hspec
 import Tau.TypeUnificationTests
+import Tau.TypeInferenceTests
 
 main :: IO ()
 main =

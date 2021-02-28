@@ -108,6 +108,23 @@ unfoldArr = para alg
     alg (TCon k c) = [tCon k c]
     alg (TVar k v) = [tVar k v]
 
+instance Pretty Scheme where
+    pretty (Forall kinds ps ty) = forall <> classes <> pretty (instt ty)
+      where
+        names = nameSupply ""
+        bound = take (length kinds) names
+        instt = replaceBound (tVar kTyp <$> names)
+
+        forall
+            | null kinds = ""
+            | otherwise  = "forall" <+> sep (pretty <$> bound) <> ". "
+
+        classes
+            | null ps    = ""
+            | otherwise  = tupled preds <+> "=> "
+
+        preds = [pretty c <+> pretty (instt (tGen ty)) | InClass c ty <- ps]
+
 instance Pretty Kind where
     pretty = para $ \case
         KTyp -> "*"
@@ -125,9 +142,6 @@ instance Pretty (Pattern t) where
         PAs  _ name p         -> pretty (fst p) <+> "as" <+> pretty name
         POr  _ p1 p2          -> pretty (fst p1) <+> "or" <+> pretty (fst p2)
         PAny _                -> "_"
-
---patternConArg :: Doc a -> (Pattern p, Doc a) -> Doc a
---patternConArg out (pat, doc) = out <+> addParens pat doc 
 
 conArg :: (Parens p, Pretty p) => Doc a -> p -> Doc a
 conArg out el = out <+> addParens el (pretty el)
@@ -187,14 +201,8 @@ instance Pretty Op2 where
 --      ])
 --    )
 
---conArg :: Doc a -> (Expr t p q r, Doc a) -> Doc a
---conArg out (expr, doc) = out <+> addParens expr doc 
-
 commaSep :: [Doc a] -> Doc a
 commaSep = hsep . punctuate comma
-
---prettyTuple :: [Doc a] -> Doc a
---prettyTuple = parens . commaSep
 
 prettyRecord :: Doc a -> FieldSet t (Doc a) -> Doc a
 prettyRecord sep fset
@@ -203,3 +211,10 @@ prettyRecord sep fset
   where
     fields = fieldList fset
     prettyField (_, key, val) = pretty key <+> sep <+> val
+
+--patternConArg :: Doc a -> (Pattern p, Doc a) -> Doc a
+--patternConArg out (pat, doc) = out <+> addParens pat doc 
+--conArg :: Doc a -> (Expr t p q r, Doc a) -> Doc a
+--conArg out (expr, doc) = out <+> addParens expr doc 
+--prettyTuple :: [Doc a] -> Doc a
+--prettyTuple = parens . commaSep
