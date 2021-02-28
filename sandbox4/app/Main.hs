@@ -10,6 +10,7 @@ import Control.Monad.Supply
 import Control.Monad.Writer
 import Data.Maybe
 import Data.Text (Text)
+import Data.Tree.View (showTree)
 import Tau.Comp.Core
 import Tau.Comp.Type.Inference
 import Tau.Comp.Type.Substitution
@@ -169,6 +170,7 @@ test6 =
         ]
 
 
+test66 = let Right (ast, sub) = test6 in putStrLn (showTree (yyy (prettyAst (mapExprTags (apply sub) (mapExprTags nodeType ast)))))
 
 --test1 = runSupply e (numSupply "$")
 --  where

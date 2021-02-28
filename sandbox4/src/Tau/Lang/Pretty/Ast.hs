@@ -30,6 +30,7 @@ yyy = fmap (Text.unpack . renderDoc)
 prettyAst :: (Pretty t, Show t) => Ast t -> Tree (Doc a)
 prettyAst = para $ \case
 
+    EPat t [] eqs  -> Node "fun" []
     EPat t exs eqs -> Node (foldl fonArg "match" (fst <$> exs) <+> "with") (prettyClauseTree =<< fst <$$> eqs)
 
     a -> case snd <$> a of
@@ -43,7 +44,6 @@ prettyAst = para $ \case
         EFix t name e1 e2        -> Node "fix" [Node (pretty name) [], prefix "=" e1, prefix "in" e2]
         ELam t pats e1           -> Node "λ" ((prettyPatternTree <$> pats) <> [Node "=>" [e1]])
         EIf  t cond tr fl        -> Node "if" [cond, prefix "then" tr, prefix "else" fl]
-        EPat t [] eqs            -> Node "fun" []
         EOp1 t ONot a            -> Node "not" [a]
         EOp1 t ONeg a            -> Node "negate" [a]
         EOp2 t op a b            -> Node (pretty (opSymbol op)) [a, b]
@@ -51,17 +51,18 @@ prettyAst = para $ \case
         ERec t (FieldSet fields) -> Node (pretty (recordCon (fieldName <$> fields))) (prettyFieldTree <$> fields)
         ETup t elems             -> Node (pretty (tupleCon (length elems))) elems
 
-fonArg :: (Pretty t) => Doc a -> Expr t p q r -> Doc a
+--fonArg :: (Pretty t) => Doc a -> Expr t p q r -> Doc a
 --fonArg out expr = out <+> addParens expr (pretty expr)
-fonArg out expr = out <+> parens (pretty expr <+> pretty (exprTag expr)) -- addParens expr (pretty expr)
+fonArg out expr = out <+> parens (pretty expr <+> colon <+> pretty (exprTag expr)) -- addParens expr (pretty expr)
 
 prettyClauseTree :: (Pretty t, Show t) => Clause (Pattern t) (Ast t) -> [Tree (Doc a)]
 prettyClauseTree (Clause ps exs e) = 
-    (prettyPatternTree <$> ps) <> whens <> [Node "=>" [prettyAst e]]
-  where
-    whens 
-        | null exs  = []
-        | otherwise = [] -- [Node "when" exs]
+    undefined
+--    (prettyPatternTree <$> ps) <> whens <> [Node "=>" [prettyAst e]]
+--  where
+--    whens 
+--        | null exs  = []
+--        | otherwise = [] -- [Node "when" exs]
 
 prettyPatternTree :: Pattern t -> Tree (Doc a)
 prettyPatternTree = cata $ \case
