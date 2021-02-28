@@ -10,7 +10,7 @@ import Utils
 
 testDescription :: Type -> Type -> String
 testDescription t1 t2 =
-    "The types (" <> prettyString t1 <> ") and (" <> prettyString t2 <> ")"
+    "The types " <> prettyParString t1 <> " and " <> prettyParString t2 
 
 failUnifyTypes :: Type -> Type -> SpecWith ()
 failUnifyTypes t1 t2 = do
@@ -87,3 +87,11 @@ testTypeUnification = do
 
 --        $(parseType "List a")
 --        tInt
+
+    succeedUnifyTypes
+        tInt
+        tInt
+
+    failUnifyTypes
+        tUnit
+        tInt
