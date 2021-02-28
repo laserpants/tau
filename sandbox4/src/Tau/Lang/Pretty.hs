@@ -43,8 +43,8 @@ instance Parens (Expr t p q r) where
         ECon{}      -> True
         _           -> False
 
-addParens :: (Parens t) => t -> Doc a -> Doc a
-addParens a doc = if needsParens a then parens doc else doc
+addParens :: (Parens p) => p -> Doc a -> Doc a
+addParens el doc = if needsParens el then parens doc else doc
 
 instance Pretty Literal where
     pretty = \case
@@ -119,38 +119,76 @@ instance Pretty (Pattern t) where
         PVar _ var            -> pretty var
         PCon _ "(::)" [x, xs] -> pretty (fst x) <+> "::" <+> pretty (fst xs)
         PCon _ con []         -> pretty con
-        PCon _ con ps         -> foldl patternConArg (pretty con) ps
+        PCon _ con ps         -> foldl conArg (pretty con) (fst <$> ps)
         PLit _ lit            -> pretty lit
         PRec _ fields         -> prettyRecord equals (snd <$> fields)
         PAs  _ name p         -> pretty (fst p) <+> "as" <+> pretty name
         POr  _ p1 p2          -> pretty (fst p1) <+> "or" <+> pretty (fst p2)
         PAny _                -> "_"
 
-patternConArg :: Doc a -> (Pattern t, Doc a) -> Doc a
-patternConArg out (pat, doc) = out <+> addParens pat doc 
+--patternConArg :: Doc a -> (Pattern p, Doc a) -> Doc a
+--patternConArg out (pat, doc) = out <+> addParens pat doc 
 
-instance Pretty (Expr t p q r) where
+conArg :: (Parens p, Pretty p) => Doc a -> p -> Doc a
+conArg out el = out <+> addParens el (pretty el)
+
+instance (Pretty t) => Pretty (Binding (Pattern t)) where
+    pretty (BLet p)    = pretty p
+    pretty (BFun f ps) = foldl conArg (pretty f) ps
+
+instance (Pretty p, Pretty q) => Pretty (Expr t p q r) where
     pretty = para $ \case
         EVar _ var            -> pretty var
         ELit _ lit            -> pretty lit
         ECon _ "(::)" [x, xs] -> pretty (fst x) <+> "::" <+> pretty (fst xs)
         ECon _ con []         -> pretty con
-        ECon _ con args       -> foldl conArg (pretty con) args
-        _                     -> "TODO"
---        EApp t [a]              
---        ELet t q a a            
---        EFix t Name a a         
---        ELam t r a              
---        EIf  t a a a            
---        EPat t [a] [Clause p a] 
---        EOp1 t Op1 a            
---        EOp2 t Op2 a a          
---        EDot t Name a           
---        ERec t (FieldSet t a)   
---        ETup t [a]              
+        ECon _ con args       -> foldl conArg (pretty con) (fst <$> args)
+        EApp _ _              -> "TODO:eapp"
+        ELet _ b e1 e2        -> prettyLet "let" b e1 e2 -- "let" <+> pretty b <+> equals <+> snd e1 <+> "in" <+> snd e2
+        EFix _ b e1 e2        -> prettyLet "fix" b e1 e2
+        ELam _ ps e2          -> "TODO:lam" -- prettyLam ps e2
+        EIf  _ _ _ _          -> "TODO:eif"
+        EPat _ _ _            -> "TODO:epat"
+        EOp1 _ op a           -> "TODO:eop1"
+        EOp2 _ op a b         -> "TODO:" <+> pretty op <+> snd a <+> snd b
+        EDot _ name e1        -> snd e1 <> dot <> pretty name
+        ERec _ _              -> "TODO:erec"
+        ETup _ _              -> "TODO:etup"
 
-conArg :: Doc a -> (Expr t p q r, Doc a) -> Doc a
-conArg out (expr, doc) = out <+> addParens expr doc 
+-- | Pretty printer for let expressions
+prettyLet
+  :: (Pretty p, Pretty q, Pretty l)
+  => Doc a
+  -> l
+  -> (Expr t p q r, Doc a)
+  -> (Expr t p q r, Doc a)
+  -> Doc a
+prettyLet keyword p e1 e =
+    group (vsep
+        [ nest 2 (vsep
+            [ keyword
+            , pretty p <+> equals <+> expr
+            , nest 2 (vsep ["in", body])
+            ])
+        ])
+  where
+    expr = pretty (fst e1)
+    body = pretty (fst e)
+
+instance Pretty Op2 where
+    pretty = pretty . opSymbol
+
+---- | Pretty printer for lambda abstractions
+--prettyLam :: (Pretty (Expr t p q r)) => Doc a -> (Expr t p q r, Doc a) -> Doc a
+--prettyLam arg e1 = 
+--    group (nest 2 (vsep 
+--      [ backslash <> arg <+> "=>"
+--      , pretty (fst e1)
+--      ])
+--    )
+
+--conArg :: Doc a -> (Expr t p q r, Doc a) -> Doc a
+--conArg out (expr, doc) = out <+> addParens expr doc 
 
 commaSep :: [Doc a] -> Doc a
 commaSep = hsep . punctuate comma

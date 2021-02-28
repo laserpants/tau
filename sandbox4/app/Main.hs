@@ -96,8 +96,10 @@ test33 = case test3 of
         evalExpr c evalEnv
 
 evalEnv = Env.fromList 
-    [ ("(::)" , constructor "(::)" 2)  
-    , ("[]"   , constructor "[]"   0)  
+    [ ("(::)"   , constructor "(::)" 2)  
+    , ("[]"     , constructor "[]"   0)  
+    , ("Some"   , constructor "Some" 1)  
+    , ("None"   , constructor "None" 0)  
     ]
  
 
@@ -133,6 +135,7 @@ test55 = case test5 of
         evalExpr c evalEnv
 
 
+
 type Infer a = StateT Substitution (ReaderT (ClassEnv a, TypeEnv) (SupplyT Name (ExceptT String Maybe))) a 
 
 runInfer :: ClassEnv a -> TypeEnv -> Infer a -> Either String (a, Substitution)
@@ -161,7 +164,8 @@ test6 =
     --   | f (x :: xs) (y :: ys) => ys
     -- 
     e = patExpr () [litExpr () (LInt 5), conExpr () "[]" [], conExpr () "(::)" [litExpr () (LInt 9), conExpr () "[]" []]]
-        [ Clause [varPat () "f" , conPat () "[]" []                                , varPat () "ys"] []    
+        [ Clause [varPat () "f" , conPat () "[]" []                                , varPat () "ys"] 
+              [op2Expr () OEq (litExpr () (LInt 5)) (litExpr () (LInt 8))]    
               (varExpr () "ys")
         , Clause [varPat () "f" , conPat () "(::)" [varPat () "x", varPat () "xs"] , conPat () "[]" []] [] 
               (conExpr () "[]" [])
@@ -170,12 +174,105 @@ test6 =
         ]
 
 
-test66 = let Right (ast, sub) = test6 in putStrLn (showTree (yyy (prettyAst (mapExprTags (apply sub) (mapExprTags nodeType ast)))))
+test66 = let Right (ast, sub) = test6 in putStrLn (showTree (nodesToString (prettyAst (mapExprTags (apply sub) (mapExprTags nodeType ast)))))
+
+
+test7 =
+    runInfer classEnv typeEnv f
+  where
+    f :: Infer (Ast NodeInfo)
+    f = infer e
+    e = fixExpr () "f" (patExpr () [] 
+        [ Clause [litPat () (LInt 0)] [] (litExpr () (LInt 1))
+        , Clause [varPat () "n"] [] (appExpr () [varExpr () "@Int.(*)", varExpr () "n", appExpr () [varExpr () "f", appExpr () [varExpr () "@Int.(-)", varExpr () "n", litExpr () (LInt 1)]]])
+      ]) (appExpr () [varExpr () "f", litExpr () (LInt 5)]) 
+
+test77 = 
+    case test7 of
+        Left e -> error e
+        Right (ast, sub) -> 
+            putStrLn (showTree (nodesToString (prettyAst (mapExprTags (apply sub) (mapExprTags nodeType ast)))))
+
 
 --test1 = runSupply e (numSupply "$")
 --  where
 --    e :: (MonadSupply Name m) => m (Expr () (Prep ()) Name Name)
 --    e = pipeline mapPairs
+
+
+test8 =
+    runInfer classEnv typeEnv f
+  where
+    f :: Infer (Ast NodeInfo)
+    f = infer e
+    -- let g x (Some y) = \z => z in g (Some 5) ()
+    e = letExpr () (BFun "baz" [varPat () "x"]) (op2Expr () OAdd (varExpr () "x") (litExpr () (LInt 1))) (dotExpr () "baz" (litExpr () (LInt 5)))
+    --e = letExpr () (BFun "baz" [varPat () "x"]) (appExpr () [varExpr () "@Int.(+)", varExpr () "x", litExpr () (LInt 1)]) (dotExpr () "baz" (litExpr () (LInt 5)))
+    --e = letExpr () (BLet (varPat () "baz")) (lamExpr () [varPat () "x"] (appExpr () [varExpr () "@Int.(+)", varExpr () "x", litExpr () (LInt 1)])) (dotExpr () "baz" (litExpr () (LInt 5)))
+--    e = letExpr () (BLet (varPat () "baz")) (lamExpr () [varPat () "x"] (appExpr () [varExpr () "@Int.(+)", varExpr () "x", litExpr () (LInt 1)])) (appExpr () [varExpr () "baz", litExpr () (LInt 5)])
+--    e = letExpr () (BFun "g" [varPat () "x", conPat () "Some" [varPat () "y"]]) (lamExpr () [varPat () "z"] (varExpr () "z"))
+--        (appExpr () [varExpr () "g", litExpr () (LInt 1), conExpr () "Some" [litExpr () (LInt 5)], litExpr () LUnit])
+         
+
+test88 = 
+    case test8 of
+        Left e -> error e
+        Right (ast, sub) -> do
+            traceShowM ast
+            traceShowM "^^^^^^^^^^^^^^"
+            traceShowM (mapExprTags nodeType ast)
+            traceShowM "^^^^^^^^^^^^^^"
+            traceShowM (mapExprTags (apply sub) (mapExprTags nodeType ast))
+            traceShowM "^^^^^^^^^^^^^^"
+            traceShowM "^^^^^^^^^^^^^^"
+            putStrLn (showTree (nodesToString (prettyAst (mapExprTags (apply sub) (mapExprTags nodeType ast)))))
+
+
+test888 = 
+    case evalSupply (pipeline e) (numSupply "$") of
+        Just c -> evalExpr c evalEnv
+  where
+--    e = letExpr () (BFun "baz" [varPat () "x"]) (op2Expr () OAdd (varExpr () "x") (litExpr () (LInt 1))) (dotExpr () "baz" (litExpr () (LInt 5)))
+--    e = letExpr () (BLet (varPat () "baz")) (lamExpr () [varPat () "x"] (appExpr () [varExpr () "@Int.(+)", varExpr () "x", litExpr () (LInt 1)])) (appExpr () [varExpr () "baz", litExpr () (LInt 5)])
+--    e = letExpr () (BFun "baz" [varPat () "x"]) (op2Expr () OAdd (varExpr () "x") (litExpr () (LInt 1))) (dotExpr () "baz" (litExpr () (LInt 5)))
+
+--    e = letExpr () (BFun "baz" [varPat () "x"]) (op2Expr () OAdd (varExpr () "x") (litExpr () (LInt 1))) (dotExpr () "baz" (litExpr () (LInt 5)))
+ 
+    e = letExpr () (BFun "baz" [varPat () "x"]) (appExpr () [varExpr () "@Int.(+)", varExpr () "x", litExpr () (LInt 1)]) (dotExpr () "baz" (litExpr () (LInt 5)))
+
+
+test9 =
+    runInfer classEnv typeEnv f
+  where
+    f :: Infer (Ast NodeInfo)
+    f = infer e
+    -- let g x (Some y) = \z => z in g (Some 5) ()
+    e = appExpr () 
+        [ lamExpr () [conPat () "Some" [varPat () "s"], conPat () "(::)" [varPat () "x", varPat () "xs"]] (varExpr () "s")
+        , conExpr () "Some" [litExpr () (LInt 5)]
+        , conExpr () "(::)" [litExpr () (LInt 3), conExpr () "[]" []]
+        ]
+
+
+test99 = 
+    case test9 of
+        Left e -> error e
+        Right (ast, sub) -> 
+            putStrLn (showTree (nodesToString (prettyAst (mapExprTags (apply sub) (mapExprTags nodeType ast)))))
+
+
+test999 = 
+    case evalSupply (pipeline e) (numSupply "$") of
+        Just c -> evalExpr c evalEnv
+  where
+    e = appExpr () 
+        [ lamExpr () [conPat () "Some" [varPat () "s"], conPat () "(::)" [varPat () "x", varPat () "xs"]] (varExpr () "s")
+        , conExpr () "Some" [litExpr () (LInt 5)]
+        , conExpr () "(::)" [litExpr () (LInt 3), conExpr () "[]" []]
+        ]
+
+
+
 
 main = print "Hello"
 
@@ -198,5 +295,10 @@ typeEnv = Env.fromList
     , ( "length" , Forall [kTyp] [] (tList (tGen 0) `tArr` tInt) )
     , ( "None"   , Forall [kTyp] [] (tApp (tCon kFun "Option") (tGen 0)) )
     , ( "Some"   , Forall [kTyp] [] (tGen 0 `tArr` tApp (tCon kFun "Option") (tGen 0)) )
+
+    , ( "@Int.(+)" , Forall [] [] (tInt `tArr` tInt `tArr` tInt) )
+    , ( "@Int.(-)" , Forall [] [] (tInt `tArr` tInt `tArr` tInt) )
+    , ( "@Int.(*)" , Forall [] [] (tInt `tArr` tInt `tArr` tInt) )
+
     ]
 

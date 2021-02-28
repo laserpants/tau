@@ -48,14 +48,23 @@ pipeline =
     >=> toCore
 
 --pipeline
---  :: (TypeTag t, MonadSupply Name m)
+--  :: (Pretty (Expr t (Pattern t) (Binding (Pattern t)) [Pattern t]), Show t, TypeTag t, MonadSupply Name m)
 --  => Expr t (Pattern t) (Binding (Pattern t)) [Pattern t]
 --  -> m Core
 --pipeline e = do
 --    a <- expandFunPats e
+--    traceShowM (pretty a)
+--    traceShowM "1-------------------------------"
 --    b <- unrollLets a
+--    traceShowM b
+--    traceShowM "2-------------------------------"
 --    c <- simplify b
---    toCore c
+--    traceShowM c
+--    traceShowM "3-------------------------------"
+--    d <- toCore c
+--    traceShowM d
+--    traceShowM "4-------------------------------"
+--    pure d
 
 expandFunPats
   :: (MonadSupply Name m)
@@ -118,7 +127,10 @@ simplify = cata $ \case
     ERec t fields    -> recExpr t <$> sequence fields
     ETup t exs       -> tupExpr t <$> sequence exs
 
-    -- Check for disallowed patterns
+    -- TODO: Check for disallowed patterns
+
+    ELet t (Fix (PVar _ var)) e1 e2 -> 
+        letExpr t var <$> e1 <*> e2
 
     ELet t pat e1 e2 -> do
         expr <- e1

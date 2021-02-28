@@ -190,7 +190,7 @@ infer = cata $ \expr -> do
 
         EOp2 _ op expr1 expr2 -> do
             a <- expr1
-            b <- expr1
+            b <- expr2
             let name = "(" <> opSymbol op <> ")"
             (ty, ps) <- lookupScheme name >>= instantiate
             unifyTyped (typeOf a `tArr` typeOf b `tArr` newTy) ty 
