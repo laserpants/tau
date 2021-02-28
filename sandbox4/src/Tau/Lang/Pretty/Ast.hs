@@ -27,7 +27,7 @@ yyy = fmap (Text.unpack . renderDoc)
 --xxx :: Tree (Doc a) -> Tree Text
 --xxx = fmap renderDoc 
 
-prettyAst :: (Show t) => Ast t -> Tree (Doc a)
+prettyAst :: (Pretty t, Show t) => Ast t -> Tree (Doc a)
 prettyAst = para $ \case
 
     EPat t exs eqs -> Node (foldl fonArg "match" (fst <$> exs) <+> "with") (prettyClauseTree =<< fst <$$> eqs)
@@ -51,10 +51,11 @@ prettyAst = para $ \case
         ERec t (FieldSet fields) -> Node (pretty (recordCon (fieldName <$> fields))) (prettyFieldTree <$> fields)
         ETup t elems             -> Node (pretty (tupleCon (length elems))) elems
 
-fonArg :: Doc a -> Expr t p q r -> Doc a
-fonArg out expr = out <+> addParens expr (pretty expr)
+fonArg :: (Pretty t) => Doc a -> Expr t p q r -> Doc a
+--fonArg out expr = out <+> addParens expr (pretty expr)
+fonArg out expr = out <+> parens (pretty expr <+> pretty (exprTag expr)) -- addParens expr (pretty expr)
 
-prettyClauseTree :: (Show t) => Clause (Pattern t) (Ast t) -> [Tree (Doc a)]
+prettyClauseTree :: (Pretty t, Show t) => Clause (Pattern t) (Ast t) -> [Tree (Doc a)]
 prettyClauseTree (Clause ps exs e) = 
     (prettyPatternTree <$> ps) <> whens <> [Node "=>" [prettyAst e]]
   where

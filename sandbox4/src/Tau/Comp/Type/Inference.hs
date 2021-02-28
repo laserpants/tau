@@ -35,6 +35,40 @@ instance Free TypeEnv where
 
 type Ast t = Expr t (Pattern t) (Binding (Pattern t)) [Pattern t]
 
+mapExprTags :: (s -> t) -> Ast s -> Ast t
+mapExprTags f = cata $ \case
+    EVar t a               -> varExpr (f t) a
+    ECon t a b             -> conExpr (f t) a b
+    ELit t a               -> litExpr (f t) a 
+    EApp t a               -> appExpr (f t) a 
+    ELet t (BLet p) a b    -> letExpr (f t) (BLet (mapPatternTags f p)) a b
+    ELet t (BFun g ps) a b -> letExpr (f t) (BFun g (mapPatternTags f <$> ps)) a b
+    EFix t n a b           -> fixExpr (f t) n a b
+    ELam t p a             -> lamExpr (f t) (mapPatternTags f <$> p) a
+    EIf  t a b c           -> ifExpr  (f t) a b c
+    EPat t a cs            -> patExpr (f t) a (mapClauseTags f <$> cs)
+    EOp1 t o a             -> op1Expr (f t) o a
+    EOp2 t o a b           -> op2Expr (f t) o a b
+    EDot t a b             -> dotExpr (f t) a b
+    ERec t (FieldSet fs)   -> recExpr (f t) (FieldSet (mapFieldTags f <$> fs)) 
+    ETup t a               -> tupExpr (f t) a 
+
+mapClauseTags :: (s -> t) -> Clause (Pattern s) a -> Clause (Pattern t) a
+mapClauseTags f (Clause p a b) = Clause (mapPatternTags f <$> p) a b
+
+mapPatternTags :: (s -> t) -> Pattern s -> Pattern t
+mapPatternTags f = cata $ \case
+    PVar t a               -> varPat (f t) a
+    PCon t a b             -> conPat (f t) a b
+    PLit t a               -> litPat (f t) a
+    PRec t (FieldSet fs)   -> recPat (f t) (FieldSet (mapFieldTags f <$> fs))
+    PAny t                 -> anyPat (f t)
+    PAs  t a b             -> asPat  (f t) a b
+    POr  t a b             -> orPat  (f t) a b
+
+mapFieldTags :: (s -> t) -> Field s a -> Field t a
+mapFieldTags f (Field t a b) = Field (f t) a b
+
 data NodeInfo = NodeInfo 
     { nodeType       :: Type
     , nodePredicates :: [Predicate]
