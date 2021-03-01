@@ -35,6 +35,8 @@ instance Substitutable TypeEnv Type where
 instance Free TypeEnv where
     free = free . Env.elems
 
+-- >> move to Tau.Lang.Ast
+
 type Ast t = Expr t (Pattern t) (Binding (Pattern t)) [Pattern t]
 
 mapExprTags :: (s -> t) -> Ast s -> Ast t
