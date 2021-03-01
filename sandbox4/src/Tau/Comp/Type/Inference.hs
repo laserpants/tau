@@ -82,7 +82,9 @@ instance Typed NodeInfo where
     typeOf = nodeType
 
 instance Substitutable NodeInfo Type where
-    apply sub NodeInfo{..} = NodeInfo{ nodeType = apply sub nodeType, .. }
+    apply sub NodeInfo{..} = 
+        NodeInfo{ nodeType       = apply sub nodeType
+                , nodePredicates = apply sub nodePredicates }
 
 instance (Typed t) => Typed (Ast t) where
     typeOf = typeOf . exprTag

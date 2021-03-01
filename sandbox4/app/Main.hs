@@ -274,11 +274,18 @@ test999 =
 
 
 test10a = do
-    let Right (r, q) = runTest testExpr2 
+    let Right (r, q) = runTest testExpr9 
     putStrLn (showTree (nodesToString (prettyAst r)))
     putStrLn (showTree (nodesToString (prettyAst q)))
   where
     testExpr2 = letExpr () (BLet (varPat () "f")) (varExpr () "lenShow") (varExpr () "f")
+    testExpr3 = letExpr () (BLet (varPat () "f")) (varExpr () "lenShow") (appExpr () [varExpr () "f", litExpr () (LInt 5)])
+    testExpr4 = lamExpr () [varPat () "x"] (appExpr () [varExpr () "lenShow", varExpr () "x"])
+    testExpr5 = lamExpr () [varPat () "x"] (letExpr () (BLet (varPat () "f")) (varExpr () "lenShow") (appExpr () [varExpr () "f", varExpr () "x"]))
+    testExpr6 = letExpr () (BLet (varPat () "f")) (varExpr () "lenShow") (lamExpr () [varPat () "x"] (appExpr () [varExpr () "f", varExpr () "x"]))
+    testExpr7 = appExpr () [varExpr () "lenShow", litExpr () (LInt 555)]
+    testExpr8 = lamExpr () [varPat () "x"] (appExpr () [varExpr () "f", varExpr () "x"])
+    testExpr9 = letExpr () (BLet (varPat () "f")) (varExpr () "lenShow") (varExpr () "f")
     runTest expr = do
         (ast, (sub, x)) <- runInfer classEnv typeEnv (infer expr)
         traceShowM sub

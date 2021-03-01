@@ -104,13 +104,19 @@ testExpr1 = letExpr () (BLet (varPat () "const")) (lamExpr () [varPat () "a", va
 
 testExpr2 = letExpr () (BLet (varPat () "f")) (varExpr () "lenShow") (varExpr () "f")
 
---expr2 = letPExpr () (varPat () "f") (varExpr () "lenShow") (appExpr () [varExpr () "f", litExpr () (LInt 5)])
---expr3 = lamExpr () [varPat () "x"] (appExpr () [varExpr () "lenShow", varExpr () "x"])
---expr4 = lamExpr () [varPat () "x"] (letPExpr () (varPat () "f") (varExpr () "lenShow") (appExpr () [varExpr () "f", varExpr () "x"]))
---expr5 = letPExpr () (varPat () "f") (varExpr () "lenShow") (lamExpr () [varPat () "x"] (appExpr () [varExpr () "f", varExpr () "x"]))
---expr6 = appExpr () [varExpr () "lenShow", litExpr () (LInt 555)]
---expr7 = lamExpr () [varPat () "x"] (appExpr () [varExpr () "f", varExpr () "x"])
---expr1 = letPExpr () (varPat () "f") (varExpr () "lenShow") (varExpr () "f")
+testExpr3 = letExpr () (BLet (varPat () "f")) (varExpr () "lenShow") (appExpr () [varExpr () "f", litExpr () (LInt 5)])
+
+testExpr4 = lamExpr () [varPat () "x"] (appExpr () [varExpr () "lenShow", varExpr () "x"])
+
+testExpr5 = lamExpr () [varPat () "x"] (letExpr () (BLet (varPat () "f")) (varExpr () "lenShow") (appExpr () [varExpr () "f", varExpr () "x"]))
+
+testExpr6 = letExpr () (BLet (varPat () "f")) (varExpr () "lenShow") (lamExpr () [varPat () "x"] (appExpr () [varExpr () "f", varExpr () "x"]))
+
+testExpr7 = appExpr () [varExpr () "lenShow", litExpr () (LInt 555)]
+
+testExpr8 = lamExpr () [varPat () "x"] (appExpr () [varExpr () "f", varExpr () "x"])
+
+testExpr9 = letExpr () (BLet (varPat () "f")) (varExpr () "lenShow") (varExpr () "f")
 
 testTypeInference :: SpecWith ()
 testTypeInference = do

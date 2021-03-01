@@ -69,10 +69,10 @@ prettyAst = para $ \case
                  (prettyFieldTree <$> fields)
 
         EIf t cond tr fl -> 
-            Node "if" [cond, prefix "then" tr, prefix "else" fl]
+            Node ("if" <+> colon <+> pretty t) [cond, prefix "then" tr, prefix "else" fl]
 
         ELam t pats e1 -> 
-            Node (foldl patternDoc "λ" pats) [prefix "=>" e1]
+            Node (foldl patternDoc "λ" pats <+> colon <+> pretty t) [prefix "=>" e1]
 
 exprDoc :: (Pretty t, Pretty p, Pretty q) => Doc a -> Expr t p q r -> Doc a
 exprDoc out expr = out <+> parens (pretty expr <+> colon <+> pretty (exprTag expr))
