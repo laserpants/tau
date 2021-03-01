@@ -117,7 +117,7 @@ primEnv = Env.fromList
     , ( "Integer.(*)"  , fun2 ((*) :: Integer -> Integer -> Integer ) )
     , ( "Float.(*)"    , fun2 ((*) :: Double -> Double -> Double ) )
 
-    , ( "String.(++)"  , fun2 ((<>) :: Text -> Text -> Text ) )
+    , ( "(++)"         , fun2 ((<>) :: Text -> Text -> Text ) )
 
     , ( "(&&)"         , fun2 ((&&) :: Bool -> Bool -> Bool ) )
     , ( "(||)"         , fun2 ((||) :: Bool -> Bool -> Bool ) )
