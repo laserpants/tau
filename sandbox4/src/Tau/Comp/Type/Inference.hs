@@ -6,20 +6,22 @@
 {-# LANGUAGE RecordWildCards       #-}
 module Tau.Comp.Type.Inference where
 
+import Control.Arrow ((>>>))
 import Control.Monad.Except
 import Control.Monad.Reader
 import Control.Monad.State
 import Control.Monad.Supply
 import Control.Monad.Writer
-import Data.Maybe (maybeToList)
+import Data.Maybe (fromMaybe, maybeToList)
 import Data.Text (Text)
-import Data.Tuple.Extra (second)
+import Data.Tuple.Extra (first, second)
 import Tau.Comp.Type.Substitution
 import Tau.Comp.Type.Unification
 import Tau.Lang.Expr
 import Tau.Lang.Type
 import Tau.Util
 import Tau.Util.Env (Env(..))
+import qualified Data.Map.Strict as Map
 import qualified Data.Text as Text
 import qualified Tau.Util.Env as Env
 
@@ -89,7 +91,7 @@ instance (Typed t) => Typed (Pattern t) where
 infer 
   :: ( MonadSupply Name m
      , MonadReader (ClassEnv a, TypeEnv) m
-     , MonadState Substitution m
+     , MonadState (Substitution, Env [Predicate]) m
      , MonadError String m )
   => Ast t
   -> m (Ast NodeInfo)
@@ -232,7 +234,7 @@ inferLiteral = pure . \case
 inferClause
   :: ( MonadSupply Name m
      , MonadReader (ClassEnv a, TypeEnv) m
-     , MonadState Substitution m
+     , MonadState (Substitution, Env [Predicate]) m
      , MonadError String m ) 
   => Type
   -> [Type]
@@ -249,7 +251,7 @@ inferClause ty types clause@(Clause ps _ _) = do
 inferPattern
   :: ( MonadSupply Name m
      , MonadReader (ClassEnv a, TypeEnv) m
-     , MonadState Substitution m
+     , MonadState (Substitution, Env [Predicate]) m
      , MonadError String m ) 
   => Pattern t 
   -> WriterT [(Name, Type)] m (Pattern NodeInfo)
@@ -298,6 +300,7 @@ inferPattern = cata $ \pat -> do
 instantiate 
   :: ( MonadSupply Name m
      , MonadReader (ClassEnv a, TypeEnv) m
+     , MonadState (Substitution, Env [Predicate]) m
      , MonadError String m ) 
   => Scheme 
   -> m (Type, [Predicate])
@@ -307,32 +310,42 @@ instantiate (Forall kinds ps ty) = do
         preds = fun <$> ps
         fun p@(InClass name n) = ( names !! n
                                  , replaceBound ts <$> (tGen <$> p) )
---    modify (second (flip (foldr (uncurry (\k -> Env.insertWith (<>) k . pure))) preds))
+    modify (second (flip (foldr (uncurry (\k -> Env.insertWith (<>) k . pure))) preds))
     pure (replaceBound ts ty, snd <$> preds)
 
 generalize
   :: ( MonadSupply Name m
      , MonadReader (ClassEnv a, TypeEnv) m
-     , MonadState Substitution m
+     , MonadState (Substitution, Env [Predicate]) m
      , MonadError String m ) 
   => Type
   -> m Scheme
 generalize ty = do
     env <- asks snd
-    sub1 <- get
+    sub1 <- gets fst
     let ty1   = apply sub1 ty
         pairs = filter ((`notElem` free (apply sub1 env)) . fst) (typeVars ty1)
         sub2  = fromList [(fst v, tGen n) | (v, n) <- zip pairs [0..]]
---    ps <- lookupPredicates (fst <$> pairs)
+    ps <- lookupPredicates (fst <$> pairs)
     pure (Forall (snd <$> pairs) 
                  (traverse (maybeToList . getTypeIndex) =<< apply sub2 
---                 (upgrade <$$> ps)) (apply sub2 (upgrade ty1)))
-                 []) (apply sub2 (upgrade ty1)))
+                 (upgrade <$$> ps)) (apply sub2 (upgrade ty1)))
+
+lookupPredicates 
+  :: ( MonadSupply Name m
+     , MonadReader (ClassEnv a, TypeEnv) m
+     , MonadState (Substitution, Env [Predicate]) m
+     , MonadError String m ) 
+  => [Name]
+  -> m [Predicate]
+lookupPredicates vars = do
+    env <- gets snd
+    pure (concat [Env.findWithDefault [] v env | v <- vars])
 
 lookupScheme 
   :: ( MonadSupply Name m
      , MonadReader (ClassEnv a, TypeEnv) m
-     , MonadState Substitution m
+     , MonadState (Substitution, Env [Predicate]) m
      , MonadError String m ) 
   => Name 
   -> m Scheme
@@ -340,24 +353,23 @@ lookupScheme name = do
     env <- asks snd 
     case Env.lookup name env of
         Nothing     -> throwError ("Unbound type identifier: " <> Text.unpack name)
-        Just scheme -> gets apply <*> pure scheme
---        Just scheme -> gets (apply . fst) <*> pure scheme
+        Just scheme -> gets (apply . fst) <*> pure scheme
 
 unified 
-  :: ( MonadState Substitution m 
+  :: ( MonadState (Substitution, Env [Predicate]) m 
      , MonadError String m ) 
   => Type 
   -> Type 
   -> m Substitution
 unified t1 t2 = do
-    sub1 <- get
+    sub1 <- gets fst
     sub2 <- unify (apply sub1 t1) (apply sub1 t2)
     pure (sub2 <> sub1)
 
 unifyTyped 
   :: ( MonadSupply Name m
      , MonadReader (ClassEnv a, TypeEnv) m
-     , MonadState Substitution m
+     , MonadState (Substitution, Env [Predicate]) m
      , MonadError String m
      , Typed t
      , Typed u ) 
@@ -366,5 +378,8 @@ unifyTyped
   -> m ()
 unifyTyped v1 v2 = do 
     sub <- unified (typeOf v1) (typeOf v2)
-    modify (sub <>)
---    modify (second (Env.map (apply sub) >>> propagateClasses sub))
+    modify (first (sub <>))
+    modify (second (Env.map (apply sub) >>> propagateClasses sub))
+  where
+    propagateClasses sub env = Map.foldrWithKey copy env (getSub sub)
+    copy k v e = fromMaybe e (Env.copy k <$> getTypeVar v <*> pure e)

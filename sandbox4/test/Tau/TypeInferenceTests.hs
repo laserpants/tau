@@ -14,6 +14,7 @@ import Tau.Comp.Type.Substitution
 import Tau.Lang.Expr
 import Tau.Lang.Type
 import Tau.Util
+import Tau.Util.Env (Env(..))
 import Test.Hspec
 import Utils
 import qualified Tau.Util.Env as Env
@@ -67,9 +68,9 @@ typeEnv = Env.fromList
 runInfer 
   :: ClassEnv a 
   -> TypeEnv 
-  -> StateT Substitution (ReaderT (ClassEnv a, TypeEnv) (SupplyT Name (ExceptT String Maybe))) a 
-  -> Either String (a, Substitution)
-runInfer e1 e2 = flip runStateT mempty
+  -> StateT (Substitution, Env [Predicate]) (ReaderT (ClassEnv a, TypeEnv) (SupplyT Name (ExceptT String Maybe))) a 
+  -> Either String (a, (Substitution, Env [Predicate]))
+runInfer e1 e2 = flip runStateT (mempty, mempty)
     >>> flip runReaderT (e1, e2)
     >>> flip evalSupplyT (numSupply "a")
     >>> runExceptT
@@ -77,7 +78,7 @@ runInfer e1 e2 = flip runStateT mempty
 
 runTest :: Expr t (Pattern t) (Binding (Pattern t)) [Pattern t] -> Either String (Ast NodeInfo)
 runTest expr = do
-    (ast, sub) <- runInfer classEnv typeEnv (infer expr)
+    (ast, (sub, _)) <- runInfer classEnv typeEnv (infer expr)
     pure (mapExprTags (apply sub) ast)
 
 --result :: Expr -> Either e Scheme

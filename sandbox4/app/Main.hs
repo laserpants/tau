@@ -21,6 +21,7 @@ import Tau.Lang.Expr
 import Tau.Lang.Pretty.Ast
 import Tau.Lang.Type
 import Tau.Util
+import Tau.Util.Env (Env(..))
 import qualified Tau.Util.Env as Env
 
 noDups = undefined
@@ -136,11 +137,11 @@ test55 = case test5 of
 
 
 
-type Infer a = StateT Substitution (ReaderT (ClassEnv a, TypeEnv) (SupplyT Name (ExceptT String Maybe))) a 
+type Infer a = StateT (Substitution, Env [Predicate]) (ReaderT (ClassEnv a, TypeEnv) (SupplyT Name (ExceptT String Maybe))) a 
 
-runInfer :: ClassEnv a -> TypeEnv -> Infer a -> Either String (a, Substitution)
+runInfer :: ClassEnv a -> TypeEnv -> Infer a -> Either String (a, (Substitution, Env [Predicate]))
 runInfer e1 e2 = 
-    flip runStateT mempty
+    flip runStateT (mempty, mempty)
         >>> flip runReaderT (e1, e2)
         >>> flip evalSupplyT (numSupply "a")
         >>> runExceptT
@@ -174,7 +175,7 @@ test6 =
         ]
 
 
-test66 = let Right (ast, sub) = test6 in putStrLn (showTree (nodesToString (prettyAst (mapExprTags (apply sub) (mapExprTags nodeType ast)))))
+test66 = let Right (ast, (sub, _)) = test6 in putStrLn (showTree (nodesToString (prettyAst (mapExprTags (apply sub) (mapExprTags nodeType ast)))))
 
 
 test7 =
@@ -190,7 +191,7 @@ test7 =
 test77 = 
     case test7 of
         Left e -> error e
-        Right (ast, sub) -> 
+        Right (ast, (sub, _)) -> 
             putStrLn (showTree (nodesToString (prettyAst (mapExprTags (apply sub) (mapExprTags nodeType ast)))))
 
 
@@ -217,7 +218,7 @@ test8 =
 test88 = 
     case test8 of
         Left e -> error e
-        Right (ast, sub) -> do
+        Right (ast, (sub, _)) -> do
             traceShowM ast
             traceShowM "^^^^^^^^^^^^^^"
             traceShowM (mapExprTags nodeType ast)
@@ -257,7 +258,7 @@ test9 =
 test99 = 
     case test9 of
         Left e -> error e
-        Right (ast, sub) -> 
+        Right (ast, (sub, _)) -> 
             putStrLn (showTree (nodesToString (prettyAst (mapExprTags (apply sub) (mapExprTags nodeType ast)))))
 
 
@@ -272,12 +273,18 @@ test999 =
         ]
 
 
-test10a = let Right r = runTest testExpr2 in putStrLn (showTree (nodesToString (prettyAst r)))
+test10a = do
+    let Right (r, q) = runTest testExpr2 
+    putStrLn (showTree (nodesToString (prettyAst r)))
+    putStrLn (showTree (nodesToString (prettyAst q)))
   where
     testExpr2 = letExpr () (BLet (varPat () "f")) (varExpr () "lenShow") (varExpr () "f")
     runTest expr = do
-        (ast, sub) <- runInfer classEnv typeEnv (infer expr)
-        pure (mapExprTags (apply sub) ast)
+        (ast, (sub, x)) <- runInfer classEnv typeEnv (infer expr)
+        traceShowM sub
+        traceShowM x
+--        pure ast
+        pure (ast, mapExprTags (apply sub) ast)
 
 main = print "Hello"
 
