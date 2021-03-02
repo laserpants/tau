@@ -1,4 +1,6 @@
 
+ (づ｡◕‿‿◕｡)づ
+
 % modulo operator
 // (integer div)
 ++ 
