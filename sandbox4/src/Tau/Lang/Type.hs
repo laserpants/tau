@@ -12,9 +12,12 @@ import Control.Comonad.Cofree
 import Control.Monad.Supply
 import Data.Functor.Foldable
 import Data.List (nub)
+import Data.Set.Monad (Set)
 import Data.Void
 import Tau.Util
+import Tau.Util.Env (Env(..))
 import qualified Data.Text as Text
+import qualified Tau.Util.Env as Env
 
 -- | Base functor for Kind
 data KindF a
@@ -118,10 +121,14 @@ maybeSplit :: Maybe Name -> [Name]
 maybeSplit = maybe [] $ Text.split (== ',')
 
 recordFieldNames :: Name -> [Name]
-recordFieldNames tag = maybeSplit (Text.stripPrefix "{" =<< Text.stripSuffix "}" tag)
+recordFieldNames tag = 
+    maybeSplit (Text.stripPrefix "{" 
+        =<< Text.stripSuffix "}" tag)
 
 tupleElems :: Name -> [Name]
-tupleElems tag = maybeSplit (Text.stripPrefix "(" =<< Text.stripSuffix ")" tag)
+tupleElems tag = 
+    maybeSplit (Text.stripPrefix "(" 
+        =<< Text.stripSuffix ")" tag)
 
 upgrade :: Type -> PolyType
 upgrade = cata $ \case
@@ -167,6 +174,15 @@ typeVars = nub . cata alg where
         TArr t1 t2 -> t1 <> t2
         TApp t1 t2 -> t1 <> t2
         _          -> []
+
+type ClassEnv a = Env (Class a)
+
+type TypeEnv = Env Scheme
+
+instance Free TypeEnv where
+    free = free . Env.elems
+
+type Context = Env (Set Name)
 
 kTyp :: Kind
 kTyp = embed KTyp

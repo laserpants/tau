@@ -4,15 +4,18 @@
 {-# LANGUAGE MultiParamTypeClasses #-}
 {-# LANGUAGE OverloadedStrings     #-}
 {-# LANGUAGE RecordWildCards       #-}
+{-# LANGUAGE StrictData            #-}
 module Tau.Comp.Type.Inference where
 
-import Control.Arrow ((>>>))
+import Control.Arrow ((>>>), (***))
 import Control.Monad.Except
 import Control.Monad.Reader
 import Control.Monad.State
 import Control.Monad.Supply
 import Control.Monad.Writer
-import Data.Maybe (fromMaybe, maybeToList)
+import Data.Either.Extra (maybeToEither)
+import Data.Maybe (fromMaybe, maybeToList, fromJust)
+import Data.Set.Monad (Set)
 import Data.Text (Text)
 import Data.Tuple.Extra (first, second)
 import Tau.Comp.Type.Substitution
@@ -22,69 +25,22 @@ import Tau.Lang.Type
 import Tau.Util
 import Tau.Util.Env (Env(..))
 import qualified Data.Map.Strict as Map
+import qualified Data.Set.Monad as Set
 import qualified Data.Text as Text
 import qualified Tau.Util.Env as Env
-
-type ClassEnv a = Env (Class a)
-
-type TypeEnv = Env Scheme
-
-instance Substitutable TypeEnv Type where
-    apply sub = Env.map (apply sub)
-
-instance Free TypeEnv where
-    free = free . Env.elems
-
--- >> move to Tau.Lang.Ast
-
-type Ast t = Expr t (Pattern t) (Binding (Pattern t)) [Pattern t]
-
-mapExprTags :: (s -> t) -> Ast s -> Ast t
-mapExprTags f = cata $ \case
-    EVar t a               -> varExpr (f t) a
-    ECon t a b             -> conExpr (f t) a b
-    ELit t a               -> litExpr (f t) a 
-    EApp t a               -> appExpr (f t) a 
-    ELet t (BLet p) a b    -> letExpr (f t) (BLet (mapPatternTags f p)) a b
-    ELet t (BFun g ps) a b -> letExpr (f t) (BFun g (mapPatternTags f <$> ps)) a b
-    EFix t n a b           -> fixExpr (f t) n a b
-    ELam t p a             -> lamExpr (f t) (mapPatternTags f <$> p) a
-    EIf  t a b c           -> ifExpr  (f t) a b c
-    EPat t a cs            -> patExpr (f t) a (mapClauseTags f <$> cs)
-    EOp1 t o a             -> op1Expr (f t) o a
-    EOp2 t o a b           -> op2Expr (f t) o a b
-    EDot t a b             -> dotExpr (f t) a b
-    ERec t (FieldSet fs)   -> recExpr (f t) (FieldSet (mapFieldTags f <$> fs)) 
-    ETup t a               -> tupExpr (f t) a 
-
-mapClauseTags :: (s -> t) -> Clause (Pattern s) a -> Clause (Pattern t) a
-mapClauseTags f (Clause p a b) = Clause (mapPatternTags f <$> p) a b
-
-mapPatternTags :: (s -> t) -> Pattern s -> Pattern t
-mapPatternTags f = cata $ \case
-    PVar t a               -> varPat (f t) a
-    PCon t a b             -> conPat (f t) a b
-    PLit t a               -> litPat (f t) a
-    PRec t (FieldSet fs)   -> recPat (f t) (FieldSet (mapFieldTags f <$> fs))
-    PAny t                 -> anyPat (f t)
-    PAs  t a b             -> asPat  (f t) a b
-    POr  t a b             -> orPat  (f t) a b
-
-mapFieldTags :: (s -> t) -> Field s a -> Field t a
-mapFieldTags f (Field t a b) = Field (f t) a b
 
 data NodeInfo = NodeInfo 
     { nodeType       :: Type
     , nodePredicates :: [Predicate]
     } deriving (Show, Eq)
 
+instance Substitutable NodeInfo Type where
+    apply sub NodeInfo{..} = NodeInfo
+        { nodeType       = apply sub nodeType
+        , nodePredicates = apply sub nodePredicates }
+
 instance Typed NodeInfo where
     typeOf = nodeType
-
-instance Substitutable NodeInfo Type where
-    apply sub NodeInfo{..} = 
-        NodeInfo{ nodeType       = apply sub nodeType
-                , nodePredicates = apply sub nodePredicates }
 
 instance (Typed t) => Typed (Ast t) where
     typeOf = typeOf . exprTag
@@ -94,8 +50,8 @@ instance (Typed t) => Typed (Pattern t) where
 
 infer 
   :: ( MonadSupply Name m
-     , MonadReader (ClassEnv a, TypeEnv) m
-     , MonadState (Substitution, Env [Predicate]) m
+     , MonadReader (ClassEnv (Ast NodeInfo), TypeEnv) m
+     , MonadState (Substitution, Context) m
      , MonadError String m )
   => Ast t
   -> m (Ast NodeInfo)
@@ -237,8 +193,8 @@ inferLiteral = pure . \case
 
 inferClause
   :: ( MonadSupply Name m
-     , MonadReader (ClassEnv a, TypeEnv) m
-     , MonadState (Substitution, Env [Predicate]) m
+     , MonadReader (ClassEnv (Ast NodeInfo), TypeEnv) m
+     , MonadState (Substitution, Context) m
      , MonadError String m ) 
   => Type
   -> [Type]
@@ -254,8 +210,8 @@ inferClause ty types clause@(Clause ps _ _) = do
 
 inferPattern
   :: ( MonadSupply Name m
-     , MonadReader (ClassEnv a, TypeEnv) m
-     , MonadState (Substitution, Env [Predicate]) m
+     , MonadReader (ClassEnv (Ast NodeInfo), TypeEnv) m
+     , MonadState (Substitution, Context) m
      , MonadError String m ) 
   => Pattern t 
   -> WriterT [(Name, Type)] m (Pattern NodeInfo)
@@ -304,52 +260,64 @@ inferPattern = cata $ \pat -> do
 instantiate 
   :: ( MonadSupply Name m
      , MonadReader (ClassEnv a, TypeEnv) m
-     , MonadState (Substitution, Env [Predicate]) m
+     , MonadState (Substitution, Context) m
      , MonadError String m ) 
   => Scheme 
   -> m (Type, [Predicate])
 instantiate (Forall kinds ps ty) = do
     names <- supplies (length kinds)
-    let ts = zipWith tVar kinds names 
-        preds = fun <$> ps
-        fun p@(InClass name n) = ( names !! n
-                                 , replaceBound ts <$> (tGen <$> p) )
-    modify (second (flip (foldr (uncurry (\k -> Env.insertWith (<>) k . pure))) preds))
-    pure (replaceBound ts ty, snd <$> preds)
+    let ts = zipWith tVar kinds names
+        --pred p = replaceBound ts <$> (tGen <$> p)
+        fn p@(InClass cl n) = 
+            ( (names !! n, Set.singleton cl)
+            , replaceBound ts <$> (tGen <$> p) )
+        --preds = fun <$> ps
+        (pairs, preds) = unzip (fn <$> ps)
+        --fun p@(InClass name n) = (names !! n, replaceBound ts <$> (tGen <$> p))
+--    modify (second (`insertAll` (pure <$$> preds)))
+    modify (second (`insertAll` pairs))
+    --traceShowM "////////////"
+    --xx <- gets snd
+    --traceShowM xx
+    --traceShowM "////////////"
+    pure (replaceBound ts ty, preds)
+  where
+    insertAll :: Context -> [(Name, Set Name)] -> Context
+    insertAll = foldr (uncurry (Env.insertWith Set.union)) 
 
 generalize
   :: ( MonadSupply Name m
      , MonadReader (ClassEnv a, TypeEnv) m
-     , MonadState (Substitution, Env [Predicate]) m
+     , MonadState (Substitution, Context) m
      , MonadError String m ) 
   => Type
   -> m Scheme
 generalize ty = do
     env <- asks snd
-    sub1 <- gets fst
-    let ty1   = apply sub1 ty
-        pairs = filter ((`notElem` free (apply sub1 env)) . fst) (typeVars ty1)
-        sub2  = fromList [(fst v, tGen n) | (v, n) <- zip pairs [0..]]
-    ps <- lookupPredicates (fst <$> pairs)
-    pure (Forall (snd <$> pairs) 
-                 (traverse (maybeToList . getTypeIndex) =<< apply sub2 
-                 (upgrade <$$> ps)) (apply sub2 (upgrade ty1)))
+    sub <- gets fst
+    let ty1 = apply sub ty
+        (vs, ks) = unzip $ filter ((`notElem` free (apply sub env)) . fst) (typeVars ty1)
+        ixs = Map.fromList (zip vs [0..])
+    ps <- lookupPredicates vs
+    pure (Forall ks (toPred ixs <$> ps) (apply (tGen <$> Sub ixs) (upgrade ty1)))
+  where
+    toPred map (var, cl) = InClass cl (fromJust (Map.lookup var map))
 
 lookupPredicates 
   :: ( MonadSupply Name m
      , MonadReader (ClassEnv a, TypeEnv) m
-     , MonadState (Substitution, Env [Predicate]) m
+     , MonadState (Substitution, Context) m
      , MonadError String m ) 
   => [Name]
-  -> m [Predicate]
+  -> m [(Name, Name)]
 lookupPredicates vars = do
     env <- gets snd
-    pure (concat [Env.findWithDefault [] v env | v <- vars])
+    pure [(v, cl) | v <- vars, cl <- Set.toList (Env.findWithDefault mempty v env)]
 
 lookupScheme 
   :: ( MonadSupply Name m
      , MonadReader (ClassEnv a, TypeEnv) m
-     , MonadState (Substitution, Env [Predicate]) m
+     , MonadState (Substitution, c) m
      , MonadError String m ) 
   => Name 
   -> m Scheme
@@ -360,7 +328,7 @@ lookupScheme name = do
         Just scheme -> gets (apply . fst) <*> pure scheme
 
 unified 
-  :: ( MonadState (Substitution, Env [Predicate]) m 
+  :: ( MonadState (Substitution, c) m 
      , MonadError String m ) 
   => Type 
   -> Type 
@@ -372,8 +340,8 @@ unified t1 t2 = do
 
 unifyTyped 
   :: ( MonadSupply Name m
-     , MonadReader (ClassEnv a, TypeEnv) m
-     , MonadState (Substitution, Env [Predicate]) m
+     , MonadReader (ClassEnv (Ast NodeInfo), TypeEnv) m
+     , MonadState (Substitution, Context) m
      , MonadError String m
      , Typed t
      , Typed u ) 
@@ -382,8 +350,109 @@ unifyTyped
   -> m ()
 unifyTyped v1 v2 = do 
     sub <- unified (typeOf v1) (typeOf v2)
+    --modify (first (sub <>))
+    --modify (second (Env.map (apply sub)))
     modify (first (sub <>))
-    modify (second (Env.map (apply sub) >>> propagateClasses sub))
+    --modify ((sub <>) *** Env.map (apply sub))
+    forM_ (Map.toList (getSub sub)) (uncurry xxxyyy)  
+
+    --modify (second (Env.map (apply sub) >>> foo sub)) -- propagateClasses sub))
+
+--  where
+--    propagateClasses sub env = Map.foldrWithKey copy env (getSub sub)
+--    copy k v e = fromMaybe e (Env.copy k <$> getTypeVar v <*> pure e)
+
+xxxyyy
+  :: ( MonadSupply Name m
+     , MonadReader (ClassEnv (Ast NodeInfo), TypeEnv) m
+     , MonadState (Substitution, Context) m
+     , MonadError String m )
+  => Name 
+  -> Type 
+  -> m ()
+xxxyyy tv ty = do
+    env <- gets snd
+    propagateClasses ty (fromMaybe mempty (Env.lookup tv env))
+
+propagateClasses 
+  :: ( MonadSupply Name m
+     , MonadReader (ClassEnv (Ast NodeInfo), TypeEnv) m
+     , MonadState (Substitution, Context) m
+     , MonadError String m )
+  => Type 
+  -> Set Name
+  -> m ()
+propagateClasses (Fix (TVar _ var)) ps =
+    unless (Set.null ps) 
+        (modify (second (Env.insertWith Set.union var ps)))
+propagateClasses ty ps =
+    forM_ ps (zork2 ty)
+
+--propagateClasses 
+--  :: ( MonadSupply Name m
+--     , MonadReader (ClassEnv (Ast NodeInfo), TypeEnv) m
+--     , MonadState (Substitution, Env [Predicate]) m
+--     , MonadError String m )
+--  => Type 
+--  -> [Predicate]
+--  -> m ()
+--propagateClasses (Fix (TVar _ var)) ps = 
+--    modify (second (Env.insertWith (<>) var ps))
+--propagateClasses ty ps = do
+--    traceShowM ps
+--    forM_ ps (zork2 ty)
+
+zork2 
+  :: ( MonadSupply Name m
+     , MonadReader (ClassEnv (Ast NodeInfo), TypeEnv) m
+     , MonadState (Substitution, Context) m
+     , MonadError String m )
+  => Type 
+  -> Name
+  -> m () 
+zork2 ty name = do
+    env <- asks fst
+    (xxx, Instance preds ty dict) <- liftEither (lookupClassInstance name ty env)
+    sequence_ [propagateClasses t (Set.singleton a) | InClass a t <- preds]
+
+--zork2 
+--  :: ( MonadSupply Name m
+--     , MonadReader (ClassEnv (Ast NodeInfo), TypeEnv) m
+--     , MonadState (Substitution, Env [Predicate]) m
+--     , MonadError String m )
+--  => Type 
+--  -> Predicate 
+--  -> m () 
+--zork2 ty (InClass name _) = do
+----    env <- asks fst
+----    (xxx, Instance preds ty dict) <- liftEither (lookupClassInstance name ty env)
+----    traceShowM "**********"
+----    traceShowM xxx
+----    traceShowM preds
+----    traceShowM ty
+----    traceShowM "**********"
+--    undefined
+----    propagateClasses [] undefined 
+----    case lookupClassInstance name ty env of
+----        Left e -> error "Nope!!!"
+----        Right foo -> do
+----            let zoo = foo :: ([Name], Instance (Ast NodeInfo))
+----            undefined
+
+lookupClassInstance 
+  :: Name 
+  -> Type 
+  -> ClassEnv (Ast NodeInfo) 
+  -> Either String ([Name], Instance (Ast NodeInfo))
+lookupClassInstance name ty env = do
+    (sups, insts) <- maybeToEither "xxx??" (Env.lookup name env)
+    inst <- msum [tryMatch i | i <- insts]
+    pure (sups, inst)
   where
-    propagateClasses sub env = Map.foldrWithKey copy env (getSub sub)
-    copy k v e = fromMaybe e (Env.copy k <$> getTypeVar v <*> pure e)
+    applyToInstance Instance{..} sub = 
+          Instance { predicates   = apply sub predicates
+                   , instanceType = apply sub instanceType
+                   , instanceDict = mapTags (apply sub) instanceDict }
+
+    tryMatch inst = 
+        applyToInstance inst <$> match (instanceType inst) ty

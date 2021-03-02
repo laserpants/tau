@@ -7,7 +7,7 @@ module Tau.Lang.Pretty where
 import Control.Arrow ((>>>))
 import Control.Monad
 import Data.List (unfoldr)
-import Data.Maybe (fromJust)
+import Data.Maybe (fromJust, fromMaybe)
 import Data.Text (Text)
 import Data.Text.Prettyprint.Doc
 import Data.Tuple.Extra (both)
@@ -22,6 +22,11 @@ class Parens t where
 
 instance Parens Type where
     needsParens = project >>> \case
+        TApp t1 t2 
+            | Just True == (isTupleCon <$> con)  -> False
+            | Just True == (isRecordCon <$> con) -> False
+          where
+            con = leftmostCon t1
         TApp{} -> True
         TArr{} -> True
         _      -> False
@@ -61,35 +66,38 @@ instance Pretty Literal where
 instance Pretty Type where
     pretty = para $ \case
         TApp (t1, doc1) (t2, doc2)
-            | isTupleCon t1 ->
+            | Just True == (isTupleCon <$> con) ->
                 let (_:ts) = unfoldApp (tApp t1 t2)
                  in parens (commaSep (pretty <$> ts))
-            | isRecordCon t1 ->
+            | Just True == (isRecordCon <$> con) ->
                 let (Fix (TCon _ con):ts) = unfoldApp (tApp t1 t2)
                     ns = recordFieldNames con
                  in prettyRecord colon (fieldSet (uncurry (Field ()) <$> zip ns (pretty <$> ts)))
             | otherwise ->
                 doc1 <+> addParens t2 doc2
+          where
+            con = leftmostCon t1
 
-        TArr (t1, doc1) (_, doc2) -> addParens t1 doc1 <+> "->" <+> doc2
+        TArr (t1, doc1) (_, doc2) -> 
+            addParens t1 doc1 <+> "->" <+> doc2
 
         TCon _ name -> pretty name
         TVar _ name -> pretty name
 
-leftmost :: (Name -> Bool) -> Type -> Bool
-leftmost test = cata $ \case
-    TCon _ con -> test con
+leftmostCon :: Type -> Maybe Name
+leftmostCon = cata $ \case
+    TCon _ con -> Just con
     TApp a _   -> a
-    _          -> False
+    _          -> Nothing
 
-isTupleCon :: Type -> Bool
-isTupleCon = leftmost (\con -> Just True == (allCommas <$> stripped con))
+isTupleCon :: Name -> Bool
+isTupleCon con = Just True == (allCommas <$> stripped con)
   where
     allCommas = Text.all (== ',')
-    stripped = Text.stripSuffix ")" <=< Text.stripPrefix "("
+    stripped  = Text.stripSuffix ")" <=< Text.stripPrefix "("
 
-isRecordCon :: Type -> Bool
-isRecordCon = leftmost ((==) ("{", "}") . fstLst)
+isRecordCon :: Name -> Bool
+isRecordCon con = ("{", "}") == fstLst con
   where
     fstLst ""  = ("", "")
     fstLst con = both Text.singleton (Text.head con, Text.last con)

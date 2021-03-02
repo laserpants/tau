@@ -33,56 +33,56 @@ succeedUnifyTypes t1 t2 = do
 testTypeUnification :: SpecWith ()
 testTypeUnification = do
     succeedUnifyTypes
-        (tVar kTyp "a" `tArr` tVar kTyp "b")
+        (_a `tArr` _b)
         (tInt `tArr` tInt)
 
 --        $(parseType "a -> b")
 --        $(parseType "Int -> Int")
 
     failUnifyTypes
-        (tVar kTyp "a" `tArr` tVar kTyp "a")
+        (_a `tArr` _a)
         (tInt `tArr` tBool)
 
 --        $(parseType "a -> a")
 --        $(parseType "Int -> Bool")
 
     succeedUnifyTypes
-        (tVar kTyp "a" `tArr` tVar kTyp "a")
+        (_a `tArr` _a)
         (tInt `tArr` tInt)
 
 --        $(parseType "a -> a")
 --        $(parseType "Int -> Int")
 
     succeedUnifyTypes
-        (tVar kTyp "a" `tArr` tVar kTyp "b" `tArr` tVar kTyp "a")
-        (tVar kTyp "a" `tArr` tInt `tArr` tVar kTyp "a")
+        (_a `tArr` _b `tArr` _a)
+        (_a `tArr` tInt `tArr` _a)
 
 --        $(parseType "a -> b -> a")
 --        $(parseType "a -> Int -> a")
 
     succeedUnifyTypes
-        (tVar kTyp "a" `tArr` tVar kTyp "b" `tArr` tVar kTyp "a")
-        (tVar kTyp "a" `tArr` tInt `tArr` tVar kTyp "b")
+        (_a `tArr` _b `tArr` _a)
+        (_a `tArr` tInt `tArr` _b)
 
 --        $(parseType "a -> b -> a")
 --        $(parseType "a -> Int -> b")
 
     failUnifyTypes
-        (tVar kTyp "a" `tArr` tVar kTyp "b" `tArr` tVar kTyp "a")
+        (_a `tArr` _b `tArr` _a)
         (tInt `tArr` tInt `tArr` tBool)
 
 --        $(parseType "a -> b -> a")
 --        $(parseType "Int -> Int -> Bool")
 
     succeedUnifyTypes
-        (tList (tVar kTyp "a"))
+        (tList _a)
         (tList tInt)
         
 --        $(parseType "List a")
 --        $(parseType "List Int")
 
     failUnifyTypes
-        (tList (tVar kTyp "a"))
+        (tList _a)
         tInt
 
 --        $(parseType "List a")

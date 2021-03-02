@@ -22,6 +22,8 @@ import Tau.Lang.Pretty.Ast
 import Tau.Lang.Type
 import Tau.Util
 import Tau.Util.Env (Env(..))
+import qualified Data.Map.Strict as Map
+import qualified Data.Set.Monad as Set
 import qualified Tau.Util.Env as Env
 
 noDups = undefined
@@ -137,9 +139,9 @@ test55 = case test5 of
 
 
 
-type Infer a = StateT (Substitution, Env [Predicate]) (ReaderT (ClassEnv a, TypeEnv) (SupplyT Name (ExceptT String Maybe))) a 
+type Infer a = StateT (Substitution, Context) (ReaderT (ClassEnv a, TypeEnv) (SupplyT Name (ExceptT String Maybe))) a 
 
-runInfer :: ClassEnv a -> TypeEnv -> Infer a -> Either String (a, (Substitution, Env [Predicate]))
+runInfer :: ClassEnv a -> TypeEnv -> Infer a -> Either String (a, (Substitution, Context))
 runInfer e1 e2 = 
     flip runStateT (mempty, mempty)
         >>> flip runReaderT (e1, e2)
@@ -175,7 +177,7 @@ test6 =
         ]
 
 
-test66 = let Right (ast, (sub, _)) = test6 in putStrLn (showTree (nodesToString (prettyAst (mapExprTags (apply sub) (mapExprTags nodeType ast)))))
+test66 = let Right (ast, (sub, _)) = test6 in putStrLn (showTree (nodesToString (prettyAst (mapTags (apply sub) (mapTags nodeType ast)))))
 
 
 test7 =
@@ -192,7 +194,7 @@ test77 =
     case test7 of
         Left e -> error e
         Right (ast, (sub, _)) -> 
-            putStrLn (showTree (nodesToString (prettyAst (mapExprTags (apply sub) (mapExprTags nodeType ast)))))
+            putStrLn (showTree (nodesToString (prettyAst (mapTags (apply sub) (mapTags nodeType ast)))))
 
 
 --test1 = runSupply e (numSupply "$")
@@ -221,12 +223,12 @@ test88 =
         Right (ast, (sub, _)) -> do
             traceShowM ast
             traceShowM "^^^^^^^^^^^^^^"
-            traceShowM (mapExprTags nodeType ast)
+            traceShowM (mapTags nodeType ast)
             traceShowM "^^^^^^^^^^^^^^"
-            traceShowM (mapExprTags (apply sub) (mapExprTags nodeType ast))
+            traceShowM (mapTags (apply sub) (mapTags nodeType ast))
             traceShowM "^^^^^^^^^^^^^^"
             traceShowM "^^^^^^^^^^^^^^"
-            putStrLn (showTree (nodesToString (prettyAst (mapExprTags (apply sub) (mapExprTags nodeType ast)))))
+            putStrLn (showTree (nodesToString (prettyAst (mapTags (apply sub) (mapTags nodeType ast)))))
 
 
 test888 = 
@@ -259,7 +261,7 @@ test99 =
     case test9 of
         Left e -> error e
         Right (ast, (sub, _)) -> 
-            putStrLn (showTree (nodesToString (prettyAst (mapExprTags (apply sub) (mapExprTags nodeType ast)))))
+            putStrLn (showTree (nodesToString (prettyAst (mapTags (apply sub) (mapTags nodeType ast)))))
 
 
 test999 = 
@@ -274,7 +276,8 @@ test999 =
 
 
 test10a = do
-    let Right (r, q) = runTest testExpr9 
+    --let Right (r, q) = runTest testExpr3
+    let Right (r, q) = runTest testExpr12
     putStrLn (showTree (nodesToString (prettyAst r)))
     putStrLn (showTree (nodesToString (prettyAst q)))
   where
@@ -286,16 +289,107 @@ test10a = do
     testExpr7 = appExpr () [varExpr () "lenShow", litExpr () (LInt 555)]
     testExpr8 = lamExpr () [varPat () "x"] (appExpr () [varExpr () "f", varExpr () "x"])
     testExpr9 = letExpr () (BLet (varPat () "f")) (varExpr () "lenShow") (varExpr () "f")
+
+    -- let f x = lenShow in f ()
+    testExpr10 = letExpr () (BFun "f" [varPat () "x"]) (varExpr () "lenShow") (appExpr () [varExpr () "f", litExpr () LUnit])
+
+    -- let p = (5, 1) in show p
+    testExpr11 = letExpr () (BLet (varPat () "p")) (conExpr () "(,)" [litExpr () (LInt 5), litExpr () (LInt 1)]) (appExpr () [varExpr () "show", varExpr () "p"])
+
+    -- \x => show (x, x)
+    testExpr12 = lamExpr () [varPat () "x"] (appExpr () [varExpr () "show", conExpr () "(,)" [varExpr () "x", varExpr () "x"]])
+
     runTest expr = do
         (ast, (sub, x)) <- runInfer classEnv typeEnv (infer expr)
-        traceShowM sub
+--        mapM_ traceShowM (Map.toList (getSub sub))
         traceShowM x
 --        pure ast
-        pure (ast, mapExprTags (apply sub) ast)
+        pure (ast, mapTags (apply sub) ast)
+
+
+test11 =
+    runInfer mempty mempty xx 
+  where
+    xx = generalize ((tTuple [tVar kTyp "a1", tVar kTyp "a1"] `tArr` tInt) :: Type)
+    runInfer e1 e2 = 
+        --flip runStateT (mempty, Env.fromList [("a1", [InClass "Show" (tVar kTyp "a1")])])
+        flip runStateT (mempty, Env.fromList [("a1", Set.fromList ["Show"])])
+            >>> flip runReaderT (e1, e2)
+            >>> flip evalSupplyT (numSupply "a")
+            >>> runExceptT
+            >>> fromMaybe (Left "error")
+
+
+test15 = 
+    runInfer classEnv mempty xx 
+  where
+    xx = xxxyyy "a1" (tTuple [tUnit, tInt])
+    runInfer e1 e2 = 
+        --flip runStateT (mempty, Env.fromList [("a1", [InClass "Show" (tVar kTyp "a1")])])
+        flip runStateT (mempty, Env.fromList [("a1", Set.fromList ["Show"])])
+            >>> flip runReaderT (e1, e2)
+            >>> flip evalSupplyT (numSupply "a")
+            >>> runExceptT
+            >>> fromMaybe (Left "error")
+
+
+test16 = 
+    runInfer classEnv mempty xx 
+  where
+    xx = instantiate (Forall [kTyp] [InClass "Show" 0] (tArr (tGen 0) tInt))
+    runInfer e1 e2 = 
+        -- flip runStateT (mempty, Env.fromList [("a1", [InClass "Show" (tVar kTyp "a1")])])
+        flip runStateT (mempty, Env.fromList [("a1", Set.fromList ["Show"])])
+            >>> flip runReaderT (e1, e2)
+            >>> flip evalSupplyT (numSupply "a")
+            >>> runExceptT
+            >>> fromMaybe (Left "error")
+
+
+test17 = 
+    runInfer classEnv mempty xx 
+  where
+    xx = generalize (tVar kTyp "a1" `tArr` tVar kTyp "a2" `tArr` tInt)
+    runInfer e1 e2 = 
+        -- flip runStateT (mempty, Env.fromList [("a1", [InClass "Show" (tVar kTyp "a1")])])
+        flip runStateT (mempty, Env.fromList [("a1", Set.fromList ["Show"])])
+            >>> flip runReaderT (e1, e2)
+            >>> flip evalSupplyT (numSupply "a")
+            >>> runExceptT
+            >>> fromMaybe (Left "error")
+
+
+
+
+
 
 main = print "Hello"
 
-classEnv = Env.fromList []
+classEnv :: ClassEnv (Ast NodeInfo)
+classEnv = Env.fromList 
+    [ ( "Num"
+      , ( []
+        , [ -- Instance [] tInt (recExpr (NodeInfo (tApp (tCon (kArr kTyp kTyp) "Num") tInt) []) 
+--              [ Field (NodeInfo (tInt `tArr` tInt `tArr` tInt) []) "(+)" (varExpr (NodeInfo (tInt `tArr` tInt `tArr` tInt) []) "@(+)Int")
+--              , Field (NodeInfo (tInt `tArr` tInt `tArr` tInt) []) "(*)" (varExpr (NodeInfo (tInt `tArr` tInt `tArr` tInt) []) "@(*)Int")
+--              , Field (NodeInfo (tInt `tArr` tInt `tArr` tInt) []) "(-)" (varExpr (NodeInfo (tInt `tArr` tInt `tArr` tInt) []) "@(-)Int")
+--              ])
+          ] 
+        )
+      )
+    , ( "Show"
+      , ( []
+        , [ -- Instance [] tInt  (recExpr (NodeInfo (tApp (tCon (kArr kTyp kTyp) "Show") tInt) [])  (fieldSet [Field (NodeInfo (tInt `tArr` tString) []) "show" (varExpr (NodeInfo (tInt `tArr` tString) []) "@showInt")]))
+          --, Instance [] tBool (recExpr (NodeInfo (tApp (tCon (kArr kTyp kTyp) "Show") tBool) [])  (fieldSet [Field (NodeInfo (tBool `tArr` tString) []) "show" (varExpr (NodeInfo (tBool `tArr` tString) []) "@showBool")]))
+--          , Instance [InClass "Show" (tVar kTyp "a")] (tList (tVar kTyp "a")) (recExpr (NodeInfo (tApp (tCon (kArr kTyp kTyp) "Show") (tList (tVar kTyp "a"))) []) (fieldSet [Field (NodeInfo ((tList (tVar kTyp "a")) `tArr` tString) []) "show" foo11]))
+            Instance [InClass "Show" (tVar kTyp "a"), InClass "Show" (tVar kTyp "b")] (tPair (tVar kTyp "a") (tVar kTyp "b")) (recExpr (NodeInfo (tApp (tCon (kArr kTyp kTyp) "Show") (tPair (tVar kTyp "a") (tVar kTyp "b"))) []) (fieldSet [Field (NodeInfo (tPair (tVar kTyp "a") (tVar kTyp "b") `tArr` tString) []) "show" showPair_]))
+          ]
+        )
+      )
+    ]
+  where
+    foo11 = varExpr (NodeInfo ((tList (tVar kTyp "a")) `tArr` tString) [InClass "Show" (tVar kTyp "a")]) "showList"
+    showPair_ = lamExpr (NodeInfo (tPair (tVar kTyp "a") (tVar kTyp "b") `tArr` tString) []) [varPat (NodeInfo (tPair (tVar kTyp "a") (tVar kTyp "b")) []) "p"] (appExpr (NodeInfo tString []) [varExpr (NodeInfo (tString `tArr` tString `tArr` tString `tArr` tString) []) "@strconcat3", appExpr (NodeInfo tString []) [varExpr (NodeInfo (tVar kTyp "a" `tArr` tString) [InClass "Show" (tVar kTyp "a")]) "show", (appExpr (NodeInfo (tVar kTyp "a") []) [varExpr (NodeInfo (tPair (tVar kTyp "a") (tVar kTyp "b") `tArr` tVar kTyp "a") []) "fst", varExpr (NodeInfo (tPair (tVar kTyp "a") (tVar kTyp "b")) []) "p"])], litExpr (NodeInfo tString []) (LString ","), appExpr (NodeInfo tString []) [varExpr (NodeInfo (tVar kTyp "b" `tArr` tString) [InClass "Show" (tVar kTyp "b")]) "show", appExpr (NodeInfo (tVar kTyp "b") []) [varExpr (NodeInfo (tPair (tVar kTyp "a") (tVar kTyp "b") `tArr` tVar kTyp "b") []) "snd", varExpr (NodeInfo (tPair (tVar kTyp "a") (tVar kTyp "b")) []) "p"]]])
 
 typeEnv = Env.fromList 
     [ ( "(==)" , Forall [kTyp] [InClass "Eq" 0] (tGen 0 `tArr` tGen 0 `tArr` upgrade tBool) )

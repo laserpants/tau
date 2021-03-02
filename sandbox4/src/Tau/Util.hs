@@ -30,7 +30,6 @@ module Tau.Util
   , second3M
   , secondM
   , third3M
-  , unions
   ) where
 
 import Control.Monad
@@ -56,9 +55,6 @@ import qualified Data.Text.Lazy as Text (toStrict)
 type Name = Text
 
 type Algebra f a = f a -> a
-
-unions :: (Ord a) => [Set a] -> Set a
-unions = foldr1 Set.union 
 
 letters :: [Text]
 letters = pack <$> ([1..] >>= flip replicateM ['a'..'z'])

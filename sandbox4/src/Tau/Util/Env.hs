@@ -56,9 +56,3 @@ update f name (Env emap) = Env (Map.update f name emap)
 
 map :: (a -> b) -> Env a -> Env b
 map f (Env emap) = Env (Map.map f emap)
-
-copy :: Name -> Name -> Env a -> Env a
-copy old new emap =
-    case lookup old emap of
-        Nothing  -> emap
-        Just val -> insert new val emap

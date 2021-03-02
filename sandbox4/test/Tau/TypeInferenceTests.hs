@@ -68,8 +68,9 @@ typeEnv = Env.fromList
 runInfer 
   :: ClassEnv a 
   -> TypeEnv 
-  -> StateT (Substitution, Env [Predicate]) (ReaderT (ClassEnv a, TypeEnv) (SupplyT Name (ExceptT String Maybe))) a 
-  -> Either String (a, (Substitution, Env [Predicate]))
+  -- -> StateT (Substitution, Env [Predicate]) (ReaderT (ClassEnv a, TypeEnv) (SupplyT Name (ExceptT String Maybe))) a 
+  -> StateT (Substitution, Context) (ReaderT (ClassEnv a, TypeEnv) (SupplyT Name (ExceptT String Maybe))) a 
+  -> Either String (a, (Substitution, Context))
 runInfer e1 e2 = flip runStateT (mempty, mempty)
     >>> flip runReaderT (e1, e2)
     >>> flip evalSupplyT (numSupply "a")
@@ -79,7 +80,7 @@ runInfer e1 e2 = flip runStateT (mempty, mempty)
 runTest :: Expr t (Pattern t) (Binding (Pattern t)) [Pattern t] -> Either String (Ast NodeInfo)
 runTest expr = do
     (ast, (sub, _)) <- runInfer classEnv typeEnv (infer expr)
-    pure (mapExprTags (apply sub) ast)
+    pure (mapTags (apply sub) ast)
 
 --result :: Expr -> Either e Scheme
 --result expr = normalize . generalize mempty [] . fst <$> runTest expr
@@ -120,7 +121,7 @@ testExpr9 = letExpr () (BLet (varPat () "f")) (varExpr () "lenShow") (varExpr ()
 
 testTypeInference :: SpecWith ()
 testTypeInference = do
-    undefined
+    pure ()
 --    succeedInferType
 --        $(parseExpr "let const = \\a => \\b => a in const ()")
 --        $(parseScheme "forall a. a -> Unit")

@@ -1,3 +1,4 @@
+{-# LANGUAGE DeriveFunctor         #-}
 {-# LANGUAGE FlexibleContexts      #-}
 {-# LANGUAGE FlexibleInstances     #-}
 {-# LANGUAGE LambdaCase            #-}
@@ -11,9 +12,10 @@ import Prelude hiding (null)
 import Tau.Lang.Type
 import Tau.Util
 import qualified Data.Map.Strict as Map
+import qualified Tau.Util.Env as Env
 
 newtype SubstitutionT a = Sub { getSub :: Map Name a }
-    deriving (Show, Eq)
+    deriving (Show, Eq, Functor)
 
 type Substitution = SubstitutionT Type
 
@@ -44,6 +46,9 @@ instance Substitutable (TypeT a) (TypeT a) where
 
 instance Substitutable PolyType Type where
     apply (Sub sub) = apply (Sub (upgrade <$> sub))
+
+instance Substitutable TypeEnv Type where
+    apply = Env.map . apply 
 
 null :: SubstitutionT a
 null = Sub mempty
