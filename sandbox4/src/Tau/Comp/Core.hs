@@ -37,6 +37,7 @@ instance TypeTag Type where
     tapp  = tApp
     tbool = tBool
 
+-- compileExpr?
 pipeline
   :: (TypeTag t, MonadSupply Name m)
   => Expr t (Pattern t) (Binding (Pattern t)) [Pattern t]

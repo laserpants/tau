@@ -36,57 +36,33 @@ testTypeUnification = do
         (_a `tArr` _b)
         (tInt `tArr` tInt)
 
---        $(parseType "a -> b")
---        $(parseType "Int -> Int")
-
     failUnifyTypes
         (_a `tArr` _a)
         (tInt `tArr` tBool)
-
---        $(parseType "a -> a")
---        $(parseType "Int -> Bool")
 
     succeedUnifyTypes
         (_a `tArr` _a)
         (tInt `tArr` tInt)
 
---        $(parseType "a -> a")
---        $(parseType "Int -> Int")
-
     succeedUnifyTypes
         (_a `tArr` _b `tArr` _a)
         (_a `tArr` tInt `tArr` _a)
-
---        $(parseType "a -> b -> a")
---        $(parseType "a -> Int -> a")
 
     succeedUnifyTypes
         (_a `tArr` _b `tArr` _a)
         (_a `tArr` tInt `tArr` _b)
 
---        $(parseType "a -> b -> a")
---        $(parseType "a -> Int -> b")
-
     failUnifyTypes
         (_a `tArr` _b `tArr` _a)
         (tInt `tArr` tInt `tArr` tBool)
-
---        $(parseType "a -> b -> a")
---        $(parseType "Int -> Int -> Bool")
 
     succeedUnifyTypes
         (tList _a)
         (tList tInt)
         
---        $(parseType "List a")
---        $(parseType "List Int")
-
     failUnifyTypes
         (tList _a)
         tInt
-
---        $(parseType "List a")
---        tInt
 
     succeedUnifyTypes
         tInt
