@@ -27,7 +27,7 @@ module Tau.Util
   , numSupply
   , prettyPrint
   , renderDoc
-  , reset
+  , acquireState
   , second3M
   , secondM
   , third3M
@@ -138,8 +138,8 @@ prettyPrint = renderDoc . pretty
 
 infixl 4 <$$>
 
-reset :: (Monoid a, MonadState a m) => m a
-reset = do
+acquireState :: (Monoid a, MonadState a m) => m a
+acquireState = do
     a <- get
     put mempty
     pure a

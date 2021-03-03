@@ -46,7 +46,7 @@ insertDictArgs expr = foldr fun expr
     fun (a, b) = lamExpr (NodeInfo (tArr b (typeOf expr)) []) [varPat (NodeInfo b []) a] 
 
 collect :: (MonadState [(Name, Type)] m) => m [(Name, Type)]
-collect = nub <$> reset
+collect = nub <$> acquireState
 
 applyDicts
   :: (MonadError String m, MonadSupply Name m, MonadReader (ClassEnv (Ast NodeInfo), TypeEnv) m)
