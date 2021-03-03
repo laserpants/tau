@@ -277,9 +277,12 @@ test999 =
 
 test10a = do
     --let Right (r, q) = runTest testExpr3
-    let Right (r, q) = runTest testExpr12
-    putStrLn (showTree (nodesToString (prettyAst r)))
-    putStrLn (showTree (nodesToString (prettyAst q)))
+    --let Right (r, q) = runTest testExpr3
+    case runTest testExpr3 of
+        Left e -> error e
+        Right (r, q) -> do
+            putStrLn (showTree (nodesToString (prettyAst r)))
+            putStrLn (showTree (nodesToString (prettyAst q)))
   where
     testExpr2 = letExpr () (BLet (varPat () "f")) (varExpr () "lenShow") (varExpr () "f")
     testExpr3 = letExpr () (BLet (varPat () "f")) (varExpr () "lenShow") (appExpr () [varExpr () "f", litExpr () (LInt 5)])
@@ -300,6 +303,8 @@ test10a = do
     testExpr12 = lamExpr () [varPat () "x"] (appExpr () [varExpr () "show", conExpr () "(,)" [varExpr () "x", varExpr () "x"]])
 
     runTest expr = do
+        --runInfer classEnv typeEnv (infer expr)
+        --traceShowM "=="
         (ast, (sub, x)) <- runInfer classEnv typeEnv (infer expr)
 --        mapM_ traceShowM (Map.toList (getSub sub))
         traceShowM x
@@ -320,17 +325,17 @@ test11 =
             >>> fromMaybe (Left "error")
 
 
-test15 = 
-    runInfer classEnv mempty xx 
-  where
-    xx = xxxyyy "a1" (tTuple [tUnit, tInt])
-    runInfer e1 e2 = 
-        --flip runStateT (mempty, Env.fromList [("a1", [InClass "Show" (tVar kTyp "a1")])])
-        flip runStateT (mempty, Env.fromList [("a1", Set.fromList ["Show"])])
-            >>> flip runReaderT (e1, e2)
-            >>> flip evalSupplyT (numSupply "a")
-            >>> runExceptT
-            >>> fromMaybe (Left "error")
+--test15 = 
+--    runInfer classEnv mempty xx 
+--  where
+--    xx = xxxyyy "a1" (tTuple [tUnit, tInt])
+--    runInfer e1 e2 = 
+--        --flip runStateT (mempty, Env.fromList [("a1", [InClass "Show" (tVar kTyp "a1")])])
+--        flip runStateT (mempty, Env.fromList [("a1", Set.fromList ["Show"])])
+--            >>> flip runReaderT (e1, e2)
+--            >>> flip evalSupplyT (numSupply "a")
+--            >>> runExceptT
+--            >>> fromMaybe (Left "error")
 
 
 test16 = 
@@ -379,10 +384,10 @@ classEnv = Env.fromList
       )
     , ( "Show"
       , ( []
-        , [ -- Instance [] tInt  (recExpr (NodeInfo (tApp (tCon (kArr kTyp kTyp) "Show") tInt) [])  (fieldSet [Field (NodeInfo (tInt `tArr` tString) []) "show" (varExpr (NodeInfo (tInt `tArr` tString) []) "@showInt")]))
+        , [ Instance [] tInt (recExpr (NodeInfo (tApp (tCon (kArr kTyp kTyp) "Show") tInt) []) (fieldSet [Field (NodeInfo (tInt `tArr` tString) []) "show" (varExpr (NodeInfo (tInt `tArr` tString) []) "@showInt")]))
           --, Instance [] tBool (recExpr (NodeInfo (tApp (tCon (kArr kTyp kTyp) "Show") tBool) [])  (fieldSet [Field (NodeInfo (tBool `tArr` tString) []) "show" (varExpr (NodeInfo (tBool `tArr` tString) []) "@showBool")]))
 --          , Instance [InClass "Show" (tVar kTyp "a")] (tList (tVar kTyp "a")) (recExpr (NodeInfo (tApp (tCon (kArr kTyp kTyp) "Show") (tList (tVar kTyp "a"))) []) (fieldSet [Field (NodeInfo ((tList (tVar kTyp "a")) `tArr` tString) []) "show" foo11]))
-            Instance [InClass "Show" (tVar kTyp "a"), InClass "Show" (tVar kTyp "b")] (tPair (tVar kTyp "a") (tVar kTyp "b")) (recExpr (NodeInfo (tApp (tCon (kArr kTyp kTyp) "Show") (tPair (tVar kTyp "a") (tVar kTyp "b"))) []) (fieldSet [Field (NodeInfo (tPair (tVar kTyp "a") (tVar kTyp "b") `tArr` tString) []) "show" showPair_]))
+          , Instance [InClass "Show" (tVar kTyp "a"), InClass "Show" (tVar kTyp "b")] (tPair (tVar kTyp "a") (tVar kTyp "b")) (recExpr (NodeInfo (tApp (tCon (kArr kTyp kTyp) "Show") (tPair (tVar kTyp "a") (tVar kTyp "b"))) []) (fieldSet [Field (NodeInfo (tPair (tVar kTyp "a") (tVar kTyp "b") `tArr` tString) []) "show" showPair_]))
           ]
         )
       )

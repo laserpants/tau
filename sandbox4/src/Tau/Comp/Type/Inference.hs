@@ -13,7 +13,7 @@ import Control.Monad.Reader
 import Control.Monad.State
 import Control.Monad.Supply
 import Control.Monad.Writer
-import Data.Either.Extra (maybeToEither)
+import Data.Either.Extra (maybeToEither, isLeft)
 import Data.Maybe (fromMaybe, maybeToList, fromJust)
 import Data.Set.Monad (Set)
 import Data.Text (Text)
@@ -267,19 +267,11 @@ instantiate
 instantiate (Forall kinds ps ty) = do
     names <- supplies (length kinds)
     let ts = zipWith tVar kinds names
-        --pred p = replaceBound ts <$> (tGen <$> p)
         fn p@(InClass cl n) = 
             ( (names !! n, Set.singleton cl)
             , replaceBound ts <$> (tGen <$> p) )
-        --preds = fun <$> ps
         (pairs, preds) = unzip (fn <$> ps)
-        --fun p@(InClass name n) = (names !! n, replaceBound ts <$> (tGen <$> p))
---    modify (second (`insertAll` (pure <$$> preds)))
     modify (second (`insertAll` pairs))
-    --traceShowM "////////////"
-    --xx <- gets snd
-    --traceShowM xx
-    --traceShowM "////////////"
     pure (replaceBound ts ty, preds)
   where
     insertAll :: Context -> [(Name, Set Name)] -> Context
@@ -297,9 +289,9 @@ generalize ty = do
     sub <- gets fst
     let ty1 = apply sub ty
         (vs, ks) = unzip $ filter ((`notElem` free (apply sub env)) . fst) (typeVars ty1)
-        ixs = Map.fromList (zip vs [0..])
+        ixd = Map.fromList (zip vs [0..])
     ps <- lookupPredicates vs
-    pure (Forall ks (toPred ixs <$> ps) (apply (tGen <$> Sub ixs) (upgrade ty1)))
+    pure (Forall ks (toPred ixd <$> ps) (apply (tGen <$> Sub ixd) (upgrade ty1)))
   where
     toPred map (var, cl) = InClass cl (fromJust (Map.lookup var map))
 
@@ -350,29 +342,12 @@ unifyTyped
   -> m ()
 unifyTyped v1 v2 = do 
     sub <- unified (typeOf v1) (typeOf v2)
-    --modify (first (sub <>))
-    --modify (second (Env.map (apply sub)))
     modify (first (sub <>))
-    --modify ((sub <>) *** Env.map (apply sub))
-    forM_ (Map.toList (getSub sub)) (uncurry xxxyyy)  
-
-    --modify (second (Env.map (apply sub) >>> foo sub)) -- propagateClasses sub))
-
---  where
---    propagateClasses sub env = Map.foldrWithKey copy env (getSub sub)
---    copy k v e = fromMaybe e (Env.copy k <$> getTypeVar v <*> pure e)
-
-xxxyyy
-  :: ( MonadSupply Name m
-     , MonadReader (ClassEnv (Ast NodeInfo), TypeEnv) m
-     , MonadState (Substitution, Context) m
-     , MonadError String m )
-  => Name 
-  -> Type 
-  -> m ()
-xxxyyy tv ty = do
-    env <- gets snd
-    propagateClasses ty (fromMaybe mempty (Env.lookup tv env))
+    forM_ (Map.toList (getSub sub)) (uncurry propagate)  
+  where
+    propagate tv ty = do
+        env <- gets snd
+        propagateClasses ty (fromMaybe mempty (Env.lookup tv env))
 
 propagateClasses 
   :: ( MonadSupply Name m
@@ -382,77 +357,30 @@ propagateClasses
   => Type 
   -> Set Name
   -> m ()
-propagateClasses (Fix (TVar _ var)) ps =
-    unless (Set.null ps) 
-        (modify (second (Env.insertWith Set.union var ps)))
+propagateClasses (Fix (TVar _ var)) ps 
+    | Set.null ps = pure ()
+    | otherwise   = modify (second (Env.insertWith Set.union var ps))
 propagateClasses ty ps =
-    forM_ ps (zork2 ty)
-
---propagateClasses 
---  :: ( MonadSupply Name m
---     , MonadReader (ClassEnv (Ast NodeInfo), TypeEnv) m
---     , MonadState (Substitution, Env [Predicate]) m
---     , MonadError String m )
---  => Type 
---  -> [Predicate]
---  -> m ()
---propagateClasses (Fix (TVar _ var)) ps = 
---    modify (second (Env.insertWith (<>) var ps))
---propagateClasses ty ps = do
---    traceShowM ps
---    forM_ ps (zork2 ty)
-
-zork2 
-  :: ( MonadSupply Name m
-     , MonadReader (ClassEnv (Ast NodeInfo), TypeEnv) m
-     , MonadState (Substitution, Context) m
-     , MonadError String m )
-  => Type 
-  -> Name
-  -> m () 
-zork2 ty name = do
-    env <- asks fst
-    (xxx, Instance preds ty dict) <- liftEither (lookupClassInstance name ty env)
-    sequence_ [propagateClasses t (Set.singleton a) | InClass a t <- preds]
-
---zork2 
---  :: ( MonadSupply Name m
---     , MonadReader (ClassEnv (Ast NodeInfo), TypeEnv) m
---     , MonadState (Substitution, Env [Predicate]) m
---     , MonadError String m )
---  => Type 
---  -> Predicate 
---  -> m () 
---zork2 ty (InClass name _) = do
-----    env <- asks fst
-----    (xxx, Instance preds ty dict) <- liftEither (lookupClassInstance name ty env)
-----    traceShowM "**********"
-----    traceShowM xxx
-----    traceShowM preds
-----    traceShowM ty
-----    traceShowM "**********"
---    undefined
-----    propagateClasses [] undefined 
-----    case lookupClassInstance name ty env of
-----        Left e -> error "Nope!!!"
-----        Right foo -> do
-----            let zoo = foo :: ([Name], Instance (Ast NodeInfo))
-----            undefined
+    forM_ ps $ \name -> do
+        env <- asks fst
+        (_ , Instance preds ty dict) <- liftEither (lookupClassInstance name ty env)
+        -- TODO: super-classes?
+        sequence_ [propagateClasses t (Set.singleton a) | InClass a t <- preds]
 
 lookupClassInstance 
-  :: Name 
+  :: (MonadPlus m, MonadError String m) 
+  => Name 
   -> Type 
   -> ClassEnv (Ast NodeInfo) 
-  -> Either String ([Name], Instance (Ast NodeInfo))
+  -> m ([Name], Instance (Ast NodeInfo))
 lookupClassInstance name ty env = do
-    (sups, insts) <- maybeToEither "xxx??" (Env.lookup name env)
-    inst <- msum [tryMatch i | i <- insts]
+    (sups, insts) <- liftMaybe ("No class " <> Text.unpack name) (Env.lookup name env)
+    inst <- catchError (msum [tryMatch i | i <- insts]) (const (throwError "Missing class instance"))
     pure (sups, inst)
   where
     applyToInstance Instance{..} sub = 
           Instance { predicates   = apply sub predicates
                    , instanceType = apply sub instanceType
                    , instanceDict = mapTags (apply sub) instanceDict }
-
     tryMatch inst = 
         applyToInstance inst <$> match (instanceType inst) ty
