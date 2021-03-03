@@ -1,4 +1,9 @@
 {-# LANGUAGE OverloadedStrings #-}
-module TypeSubstitutionTests where
+module Tau.TypeSubstitutionTests where
 
+import Test.Hspec
+import Utils
 
+testTypeSubstitution :: SpecWith ()
+testTypeSubstitution =
+    pure ()

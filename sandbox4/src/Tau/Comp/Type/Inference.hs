@@ -29,15 +29,20 @@ import qualified Data.Set.Monad as Set
 import qualified Data.Text as Text
 import qualified Tau.Util.Env as Env
 
-data NodeInfo = NodeInfo 
-    { nodeType       :: Type
+data NodeInfoT t = NodeInfo
+    { nodeType       :: t
     , nodePredicates :: [Predicate]
     } deriving (Show, Eq)
+
+type NodeInfo = NodeInfoT Type
 
 instance Substitutable NodeInfo Type where
     apply sub NodeInfo{..} = NodeInfo
         { nodeType       = apply sub nodeType
         , nodePredicates = apply sub nodePredicates }
+
+instance (Free t) => Free (NodeInfoT t) where
+    free = free . nodeType
 
 instance Typed NodeInfo where
     typeOf = nodeType

@@ -9,6 +9,7 @@
 module Tau.Lang.Expr where
 
 import Control.Arrow ((>>>))
+import Control.Monad.Identity
 import Data.List (sortOn)
 import Data.Text (Text)
 import Data.Types.Injective
@@ -266,39 +267,49 @@ patternVars = cata $ \case
 
 type Ast t = Expr t (Pattern t) (Binding (Pattern t)) [Pattern t]
 
-mapTags :: (s -> t) -> Ast s -> Ast t
-mapTags f = cata $ \case
-    EVar t a                   -> varExpr (f t) a
-    ECon t a b                 -> conExpr (f t) a b
-    ELit t a                   -> litExpr (f t) a 
-    EApp t a                   -> appExpr (f t) a 
-    ELet t (BLet p) a b        -> letExpr (f t) (BLet (mapPatternTags f p)) a b
-    ELet t (BFun g ps) a b     -> letExpr (f t) (BFun g (mapPatternTags f <$> ps)) a b
-    EFix t n a b               -> fixExpr (f t) n a b
-    ELam t p a                 -> lamExpr (f t) (mapPatternTags f <$> p) a
-    EIf  t a b c               -> ifExpr  (f t) a b c
-    EPat t a cs                -> patExpr (f t) a (mapClauseTags f <$> cs)
-    EOp1 t o a                 -> op1Expr (f t) o a
-    EOp2 t o a b               -> op2Expr (f t) o a b
-    EDot t a b                 -> dotExpr (f t) a b
-    ERec t (FieldSet fs)       -> recExpr (f t) (FieldSet (mapFieldTags f <$> fs)) 
-    ETup t a                   -> tupExpr (f t) a 
+mapTagsM :: (Monad m) => (s -> m t) -> Ast s -> m (Ast t)
+mapTagsM f = cata $ \case
+    EVar t a                -> varExpr <$> f t <*> pure a
+    ECon t a b              -> conExpr <$> f t <*> pure a <*> sequence b
+    ELit t a                -> litExpr <$> f t <*> pure a
+    EApp t a                -> appExpr <$> f t <*> sequence a
+    ELet t (BLet p) a b     -> letExpr <$> f t <*> (BLet <$> mapPatternTags f p) <*> a <*> b
+    ELet t (BFun g ps) a b  -> letExpr <$> f t <*> (BFun g <$> traverse (mapPatternTags f) ps) <*> a <*> b
+    EFix t n a b            -> fixExpr <$> f t <*> pure n <*> a <*> b
+    ELam t p a              -> lamExpr <$> f t <*> traverse (mapPatternTags f) p <*> a
+    EIf  t a b c            -> ifExpr  <$> f t <*> a <*> b <*> c
+    EOp1 t o a              -> op1Expr <$> f t <*> pure o <*> a
+    EOp2 t o a b            -> op2Expr <$> f t <*> pure o <*> a <*> b
+    EDot t a b              -> dotExpr <$> f t <*> pure a <*> b
+    ETup t a                -> tupExpr <$> f t <*> sequence a 
+    EPat t a cs -> do
+        clauses <- traverse (mapClauseTags f) cs
+        patExpr <$> f t <*> sequence a <*> traverse sequence clauses
+    ERec t (FieldSet fs) -> do
+        fields <- traverse (mapFieldTags f) fs
+        recExpr <$> f t <*> sequence (FieldSet fields)
   where
-    mapPatternTags :: (s -> t) -> Pattern s -> Pattern t
+    mapPatternTags :: (Monad m) => (s -> m t) -> Pattern s -> m (Pattern t)
     mapPatternTags f = cata $ \case
-        PVar t a               -> varPat (f t) a
-        PCon t a b             -> conPat (f t) a b
-        PLit t a               -> litPat (f t) a
-        PRec t (FieldSet fs)   -> recPat (f t) (FieldSet (mapFieldTags f <$> fs))
-        PAny t                 -> anyPat (f t)
-        PAs  t a b             -> asPat  (f t) a b
-        POr  t a b             -> orPat  (f t) a b
+        PVar t a            -> varPat <$> f t <*> pure a
+        PCon t a b          -> conPat <$> f t <*> pure a <*> sequence b
+        PLit t a            -> litPat <$> f t <*> pure a
+        PAny t              -> anyPat <$> f t 
+        PAs  t a b          -> asPat  <$> f t <*> pure a <*> b
+        POr  t a b          -> orPat  <$> f t <*> a <*> b
+        PRec t (FieldSet fs) -> do
+            fields <- traverse (mapFieldTags f) fs
+            recPat <$> f t <*> sequence (FieldSet fields)
 
-    mapClauseTags :: (s -> t) -> Clause (Pattern s) a -> Clause (Pattern t) a
-    mapClauseTags f (Clause p a b) = Clause (mapPatternTags f <$> p) a b
+    mapClauseTags :: (Monad m) => (s -> m t) -> Clause (Pattern s) a -> m (Clause (Pattern t) a)
+    mapClauseTags f (Clause p a b) = 
+        Clause <$> traverse (mapPatternTags f) p <*> pure a <*> pure b
 
-    mapFieldTags :: (s -> t) -> Field s a -> Field t a
-    mapFieldTags f (Field t a b) = Field (f t) a b
+    mapFieldTags :: (Monad m) => (s -> m t) -> Field s a -> m (Field t a)
+    mapFieldTags f (Field t a b) = Field <$> f t <*> pure a <*> pure b
+
+mapTags :: (s -> t) -> Ast s -> Ast t
+mapTags f = runIdentity . mapTagsM (pure . f)
 
 varPat :: t -> Name -> Pattern t
 varPat = embed2 PVar

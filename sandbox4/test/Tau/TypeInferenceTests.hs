@@ -65,11 +65,13 @@ typeEnv = Env.fromList
     , ( "lenShow"  , Forall [kTyp, kTyp] [InClass "Show" 0] (tGen 0 `tArr` upgrade tInt) ) 
     ]
 
+type InferenceStack a =
+    StateT (Substitution, Context) (ReaderT (ClassEnv a, TypeEnv) (SupplyT Name (ExceptT String Maybe))) a
+
 runInfer 
   :: ClassEnv a 
   -> TypeEnv 
-  -- -> StateT (Substitution, Env [Predicate]) (ReaderT (ClassEnv a, TypeEnv) (SupplyT Name (ExceptT String Maybe))) a 
-  -> StateT (Substitution, Context) (ReaderT (ClassEnv a, TypeEnv) (SupplyT Name (ExceptT String Maybe))) a 
+  -> InferenceStack a
   -> Either String (a, (Substitution, Context))
 runInfer e1 e2 = flip runStateT (mempty, mempty)
     >>> flip runReaderT (e1, e2)

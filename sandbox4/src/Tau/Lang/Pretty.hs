@@ -131,7 +131,7 @@ instance Pretty Scheme where
 
         classes
             | null ps    = ""
-            | otherwise  = tupled preds <+> "=> "
+            | otherwise  = parens (commaSep preds) <+> "=> "
 
         preds = [pretty c <+> pretty (instt (tGen ty)) | InClass c ty <- ps]
 
@@ -140,7 +140,7 @@ instance Pretty Predicate where
       where
         con = tCon (kArr kTyp (fromJust (kindOf ty))) name
 
-instance Pretty NodeInfo where
+instance (Pretty t) => Pretty (NodeInfoT t) where
     pretty (NodeInfo ty ps) = 
         case ps of 
             [] -> pretty ty 

@@ -1,5 +1,7 @@
 {-# LANGUAGE FlexibleContexts  #-}
+{-# LANGUAGE LambdaCase #-}
 {-# LANGUAGE OverloadedStrings #-}
+{-# LANGUAGE FlexibleInstances #-}
 module Main where
 
 import Control.Arrow
@@ -8,6 +10,8 @@ import Control.Monad.Reader
 import Control.Monad.State
 import Control.Monad.Supply 
 import Control.Monad.Writer
+import Data.Map.Strict (Map)
+import Data.List (nub)
 import Data.Maybe
 import Data.Text (Text)
 import Data.Tree.View (showTree)
@@ -141,7 +145,7 @@ test55 = case test5 of
 
 type Infer a = StateT (Substitution, Context) (ReaderT (ClassEnv a, TypeEnv) (SupplyT Name (ExceptT String Maybe))) a 
 
-runInfer :: ClassEnv a -> TypeEnv -> Infer a -> Either String (a, (Substitution, Context))
+--runInfer :: ClassEnv a -> TypeEnv -> Infer a -> Either String (a, (Substitution, Context))
 runInfer e1 e2 = 
     flip runStateT (mempty, mempty)
         >>> flip runReaderT (e1, e2)
@@ -278,11 +282,13 @@ test999 =
 test10a = do
     --let Right (r, q) = runTest testExpr3
     --let Right (r, q) = runTest testExpr3
-    case runTest testExpr3 of
+    case runTest testExpr5 of
         Left e -> error e
-        Right (r, q) -> do
+        Right r -> do
             putStrLn (showTree (nodesToString (prettyAst r)))
-            putStrLn (showTree (nodesToString (prettyAst q)))
+--        Right (r, q) -> do
+--            putStrLn (showTree (nodesToString (prettyAst r)))
+--            putStrLn (showTree (nodesToString (prettyAst q)))
   where
     testExpr2 = letExpr () (BLet (varPat () "f")) (varExpr () "lenShow") (varExpr () "f")
     testExpr3 = letExpr () (BLet (varPat () "f")) (varExpr () "lenShow") (appExpr () [varExpr () "f", litExpr () (LInt 5)])
@@ -305,12 +311,59 @@ test10a = do
     runTest expr = do
         --runInfer classEnv typeEnv (infer expr)
         --traceShowM "=="
-        (ast, (sub, x)) <- runInfer classEnv typeEnv (infer expr)
---        mapM_ traceShowM (Map.toList (getSub sub))
-        traceShowM x
---        pure ast
-        pure (ast, mapTags (apply sub) ast)
+        (ast, (sub, x)) <- runInfer classEnv typeEnv (do
+            ast <- infer expr
+            sub <- gets fst
+            let ast' = mapTags (apply sub) ast
+            --mapTagsM generalizeType ast'
+            traceShowM (astVars ast')
+            pure ast'
+            )
 
+        traceShowM x
+        pure ast
+--        mapM_ traceShowM (Map.toList (getSub sub))
+--        traceShowM x
+----        pure ast
+--        let ast' = mapTags (apply sub) ast
+----        let ast'' = runInfer mempty mempty (mapTagsM foo ast')
+--        pure (ast, ast'')
+
+--generalizeType (NodeInfo t ps) = do
+--    s <- generalize t
+--    pure (NodeInfo s ps)
+
+--boop ast =
+--    undefined
+--  where
+--    fs = zoop ast
+
+astVars :: (Free t) => Ast t -> [Name]
+astVars = nub . cata alg 
+  where 
+    alg = \case
+        EVar t _                -> free t
+        ECon t _ a              -> free t <> concat a
+        ELit t _                -> free t
+        EApp t a                -> free t <> concat a
+        ELet t _ a b            -> free t <> a <> b
+        EFix t _ a b            -> free t <> a <> b
+        EPat t a cs             -> free t <> concatMap (\(Clause _ a b) -> concat a <> b) cs
+        ELam t _ a              -> free t <> a
+        EIf  t a b c            -> free t <> a <> b <> c
+        EOp1 t _ a              -> free t <> a
+        EOp2 t _ a b            -> free t <> a <> b
+        EDot t _ a              -> free t <> a
+        ERec t (FieldSet fs)    -> free t <> concatMap (\(Field t _ a) -> free t <> a) fs
+        ETup t a                -> free t <> concat a
+--    mapPatternTags f = cata $ \case
+--        PVar t a            -> undefined
+--        PCon t a b          -> undefined
+--        PLit t a            -> undefined
+--        PAny t              -> undefined
+--        PAs  t a b          -> undefined
+--        POr  t a b          -> undefined
+--        PRec t (FieldSet fs) -> undefined
 
 test11 =
     runInfer mempty mempty xx 
@@ -421,3 +474,15 @@ typeEnv = Env.fromList
     , ( "lenShow"  , Forall [kTyp, kTyp] [InClass "Show" 0] (tGen 0 `tArr` upgrade tInt) ) 
     ]
 
+
+--normalize :: Context -> Type -> Scheme
+--normalize ctx ty = 
+--    runInfer mempty mempty (generalize ty)
+--    Forall [] 
+--  where
+--    updateVar v = Map.findWithDefault v v maps
+--    --maps :: Map Name (Name, Kind)
+--    sub = fromList (ork <$> (typeVars ty `zip` letters))
+--    ork ((n, k), v) = (n, tVar k v)
+
+--normalizeAst :: Ast 

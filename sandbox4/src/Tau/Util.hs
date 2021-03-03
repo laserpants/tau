@@ -22,6 +22,7 @@ module Tau.Util
   , firstM
   , intToText
   , integerToText
+  , letters
   , nameSupply
   , numSupply
   , prettyPrint
