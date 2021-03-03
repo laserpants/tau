@@ -243,6 +243,23 @@ exprTag = project >>> \case
     ERec t _       -> t
     ETup t _       -> t
 
+setExprTag :: t -> Expr t p q r -> Expr t p q r
+setExprTag t = project >>> \case
+    EVar _ a       -> varExpr t a
+    ECon _ a b     -> conExpr t a b
+    ELit _ a       -> litExpr t a
+    EApp _ a       -> appExpr t a
+    ELet _ p a b   -> letExpr t p a b
+    EFix _ n a b   -> fixExpr t n a b
+    ELam _ p a     -> lamExpr t p a
+    EIf  _ a b c   -> ifExpr  t a b c
+    EPat _ o a     -> patExpr t o a
+    EOp1 _ o a     -> op1Expr t o a
+    EOp2 _ a b c   -> op2Expr t a b c
+    EDot _ a b     -> dotExpr t a b
+    ERec _ a       -> recExpr t a
+    ETup _ a       -> tupExpr t a
+
 patternTag :: Pattern t -> t
 patternTag = project >>> \case
     PVar t _       -> t
@@ -253,6 +270,17 @@ patternTag = project >>> \case
     PAny t         -> t
     PAs  t _ _     -> t
     POr  t _ _     -> t
+
+setPatternTag :: t -> Pattern t -> Pattern t
+setPatternTag t = project >>> \case
+    PVar _ a       -> varPat t a
+    PCon _ a b     -> conPat t a b
+    PLit _ a       -> litPat t a
+    PRec _ s       -> recPat t s
+    PTup _ a       -> tupPat t a
+    PAny _         -> anyPat t
+    PAs  _ a b     -> asPat t a b
+    POr  _ a b     -> orPat t a b
 
 patternVars :: Pattern t -> [(Name, t)]
 patternVars = cata $ \case
@@ -301,7 +329,11 @@ mapTagsM f = cata $ \case
             fields <- traverse (mapFieldTags f) fs
             recPat <$> f t <*> sequence (FieldSet fields)
 
-    mapClauseTags :: (Monad m) => (s -> m t) -> Clause (Pattern s) a -> m (Clause (Pattern t) a)
+    mapClauseTags 
+      :: (Monad m) 
+      => (s -> m t) 
+      -> Clause (Pattern s) a 
+      -> m (Clause (Pattern t) a)
     mapClauseTags f (Clause p a b) = 
         Clause <$> traverse (mapPatternTags f) p <*> pure a <*> pure b
 

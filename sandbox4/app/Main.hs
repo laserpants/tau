@@ -10,11 +10,12 @@ import Control.Monad.Reader
 import Control.Monad.State
 import Control.Monad.Supply 
 import Control.Monad.Writer
-import Data.Map.Strict (Map)
 import Data.List (nub)
+import Data.Map.Strict (Map)
 import Data.Maybe
 import Data.Text (Text)
 import Data.Tree.View (showTree)
+import Tau.Comp.Classes
 import Tau.Comp.Core
 import Tau.Comp.Type.Inference
 import Tau.Comp.Type.Substitution
@@ -75,7 +76,7 @@ mapPairs4 =
 test1 = evalSupply mapPairs (numSupply "$")
 
 
-test2 = evalSupply (pipeline e) (numSupply "$")
+test2 = evalSupply (compileExpr e) (numSupply "$")
   where
     e = appExpr ()
             [ lamExpr () [varPat () "x"]
@@ -89,7 +90,7 @@ test22 = case test2 of
         traceShowM c
         evalExpr c mempty
 
-test3 = evalSupply (pipeline e) (numSupply "$")
+test3 = evalSupply (compileExpr e) (numSupply "$")
   where 
     e = patExpr () [litExpr () (LInt 5), conExpr () "[]" [], conExpr () "(::)" [litExpr () (LInt 9), conExpr () "[]" []]]
         [ Clause [varPat () "f", conPat () "[]" [], varPat () "ys"] [] (varExpr () "ys")
@@ -111,7 +112,7 @@ evalEnv = Env.fromList
  
 
 -- fix f = fun | 0 => 1 | n => n * f (n - 1) in f 5
-test4 = evalSupply (pipeline e) (numSupply "$")
+test4 = evalSupply (compileExpr e) (numSupply "$")
   where 
     e = letExpr () (BLet (varPat () "f")) (patExpr () [] 
         [ Clause [litPat () (LInt 0)] [] (litExpr () (LInt 1))
@@ -127,7 +128,7 @@ test44 = case test4 of
 
 
 -- fix f = fun | 0 => 1 | n => n * f (n - 1) in f 5
-test5 = evalSupply (pipeline e) (numSupply "$")
+test5 = evalSupply (compileExpr e) (numSupply "$")
   where 
     e = fixExpr () "f" (patExpr () [] 
         [ Clause [litPat () (LInt 0)] [] (litExpr () (LInt 1))
@@ -204,7 +205,7 @@ test77 =
 --test1 = runSupply e (numSupply "$")
 --  where
 --    e :: (MonadSupply Name m) => m (Expr () (Prep ()) Name Name)
---    e = pipeline mapPairs
+--    e = compileExpr mapPairs
 
 
 test8 =
@@ -236,7 +237,7 @@ test88 =
 
 
 test888 = 
-    case evalSupply (pipeline e) (numSupply "$") of
+    case evalSupply (compileExpr e) (numSupply "$") of
         Just c -> evalExpr c evalEnv
   where
 --    e = letExpr () (BFun "baz" [varPat () "x"]) (op2Expr () OAdd (varExpr () "x") (litExpr () (LInt 1))) (dotExpr () "baz" (litExpr () (LInt 5)))
@@ -269,7 +270,7 @@ test99 =
 
 
 test999 = 
-    case evalSupply (pipeline e) (numSupply "$") of
+    case evalSupply (compileExpr e) (numSupply "$") of
         Just c -> evalExpr c evalEnv
   where
     e = appExpr () 
@@ -282,10 +283,11 @@ test999 =
 test10a = do
     --let Right (r, q) = runTest testExpr3
     --let Right (r, q) = runTest testExpr3
-    case runTest testExpr5 of
+    case runTest testExpr7 of
         Left e -> error e
-        Right r -> do
+        Right (r, q) -> do
             putStrLn (showTree (nodesToString (prettyAst r)))
+            putStrLn (showTree (nodesToString (prettyAst q)))
 --        Right (r, q) -> do
 --            putStrLn (showTree (nodesToString (prettyAst r)))
 --            putStrLn (showTree (nodesToString (prettyAst q)))
@@ -311,17 +313,22 @@ test10a = do
     runTest expr = do
         --runInfer classEnv typeEnv (infer expr)
         --traceShowM "=="
-        (ast, (sub, x)) <- runInfer classEnv typeEnv (do
+        ((ast, ast2), (sub, x)) <- runInfer classEnv typeEnv (do
             ast <- infer expr
             sub <- gets fst
             let ast' = mapTags (apply sub) ast
-            --mapTagsM generalizeType ast'
-            traceShowM (astVars ast')
-            pure ast'
+
+            --foo <- undefined (evalSupplyT (evalStateT (compileClasses ast') []) [])
+            ----mapTagsM generalizeType ast'
+            --traceShowM (astVars ast')
+            foo <- evalStateT (compileClasses ast') [] 
+
+            pure (ast', foo)
             )
 
+
         traceShowM x
-        pure ast
+        pure (ast, ast2)
 --        mapM_ traceShowM (Map.toList (getSub sub))
 --        traceShowM x
 ----        pure ast

@@ -37,22 +37,21 @@ instance TypeTag Type where
     tapp  = tApp
     tbool = tBool
 
--- compileExpr?
-pipeline
+compileExpr
   :: (TypeTag t, MonadSupply Name m)
   => Expr t (Pattern t) (Binding (Pattern t)) [Pattern t]
   -> m Core
-pipeline = 
+compileExpr = 
     expandFunPats
     >=> unrollLets
     >=> simplify
     >=> toCore
 
---pipeline
+--compileExpr
 --  :: (Pretty (Expr t (Pattern t) (Binding (Pattern t)) [Pattern t]), Show t, TypeTag t, MonadSupply Name m)
 --  => Expr t (Pattern t) (Binding (Pattern t)) [Pattern t]
 --  -> m Core
---pipeline e = do
+--compileExpr e = do
 --    a <- expandFunPats e
 --    traceShowM (pretty a)
 --    traceShowM "1-------------------------------"

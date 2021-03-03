@@ -25,6 +25,7 @@ instance Parens Type where
         TApp t1 t2 
             | Just True == (isTupleCon <$> con)  -> False
             | Just True == (isRecordCon <$> con) -> False
+            | isCon t1                           -> False
           where
             con = leftmostCon t1
         TApp{} -> True

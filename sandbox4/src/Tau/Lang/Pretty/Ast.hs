@@ -1,7 +1,7 @@
-{-# LANGUAGE FlexibleContexts  #-}
-{-# LANGUAGE LambdaCase        #-}
+{-# LANGUAGE FlexibleContexts      #-}
+{-# LANGUAGE LambdaCase            #-}
 {-# LANGUAGE MultiParamTypeClasses #-}
-{-# LANGUAGE OverloadedStrings #-}
+{-# LANGUAGE OverloadedStrings     #-}
 module Tau.Lang.Pretty.Ast where
 
 import Data.Text (Text)
@@ -28,6 +28,10 @@ prettyAst = para $ \case
 
     EDot t name (a, _) -> 
         Node (pretty a <> dot <> pretty name <+> colon <+> pretty t) []
+
+    ERec t (FieldSet fields) -> 
+        Node (pretty (recordCon (fieldName <$> fields)) <+> colon <+> pretty t) 
+             (prettyFieldTree <$> fields)
 
     a -> case snd <$> a of
 
@@ -64,10 +68,6 @@ prettyAst = para $ \case
         ETup t elems -> 
             Node (pretty (tupleCon (length elems))) elems
 
-        ERec t (FieldSet fields) -> 
-            Node (pretty (recordCon (fieldName <$> fields))) 
-                 (prettyFieldTree <$> fields)
-
         EIf t cond tr fl -> 
             Node ("if" <+> colon <+> pretty t) [cond, prefix "then" tr, prefix "else" fl]
 
@@ -88,8 +88,9 @@ prettyClauseTree (Clause ps exs e) =
       | null exs  = []
       | otherwise = [Node "when" (prettyAst <$> exs)]
 
-prettyFieldTree :: Field t (Tree (Doc a)) -> Tree (Doc a)
-prettyFieldTree (Field t name val) = Node (pretty name) [val]
+prettyFieldTree :: (Pretty t) => Field t (Ast t, Tree (Doc a)) -> Tree (Doc a)
+prettyFieldTree (Field t name (val, _)) = 
+    Node (pretty name <+> equals <+> pretty val <+> colon <+> pretty t) []
 
 prefix :: Text -> Tree (Doc a) -> Tree (Doc a)
 prefix txt (Node label forest) = Node (pretty txt <+> label) forest

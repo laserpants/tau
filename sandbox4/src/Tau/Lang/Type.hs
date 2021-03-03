@@ -90,6 +90,11 @@ isVar = project >>> \case
     TVar{}   -> True
     _        -> False
 
+isCon :: Type -> Bool
+isCon = project >>> \case
+    TCon{}   -> True
+    _        -> False
+
 getTypeVar :: Type -> Maybe Name
 getTypeVar = project >>> \case
     TVar _ v -> Just v

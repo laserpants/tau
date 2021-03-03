@@ -27,7 +27,7 @@ module Tau.Util
   , numSupply
   , prettyPrint
   , renderDoc
---  , reset
+  , reset
   , second3M
   , secondM
   , third3M
@@ -138,11 +138,11 @@ prettyPrint = renderDoc . pretty
 
 infixl 4 <$$>
 
---reset :: (Monoid a, MonadState a m) => m a
---reset = do
---    a <- get
---    put mempty
---    pure a
+reset :: (Monoid a, MonadState a m) => m a
+reset = do
+    a <- get
+    put mempty
+    pure a
 
 liftMaybe :: (MonadError e m) => e -> Maybe a -> m a
 liftMaybe err Nothing = throwError err
