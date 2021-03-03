@@ -104,11 +104,19 @@ test33 = case test3 of
         evalExpr c evalEnv
 
 evalEnv = Env.fromList 
-    [ ("(::)"   , constructor "(::)" 2)  
-    , ("[]"     , constructor "[]"   0)  
-    , ("Some"   , constructor "Some" 1)  
-    , ("None"   , constructor "None" 0)  
+    [ ("(::)"    , constructor "(::)" 2)  
+    , ("[]"      , constructor "[]"   0)  
+    , ("Some"    , constructor "Some" 1)  
+    , ("None"    , constructor "None" 0)  
+    , ("{show}"  , constructor "{show}" 1)  
+    , ("show"    , fromJust (evalExpr show_ mempty))
+    , ("lenShow" , fromJust (evalExpr lenShow mempty))
     ]
+  where
+    lenShow = fromJust (evalSupply (compileExpr foo3) (numSupply "$"))
+    show_   = fromJust (evalSupply (compileExpr foo4) (numSupply "$"))
+    foo3 = lamExpr () [varPat () "d"] (lamExpr () [varPat () "x"] (appExpr () [varExpr () "@String.length", appExpr () [varExpr () "show", varExpr () "d", varExpr () "x"]]))
+    foo4 = lamExpr () [varPat () "d"] (patExpr () [varExpr () "d"] [ Clause [recPat () (fieldSet [Field () "show" (varPat () "show")])] [] (varExpr () "show") ])
  
 
 -- fix f = fun | 0 => 1 | n => n * f (n - 1) in f 5
@@ -283,11 +291,13 @@ test999 =
 test10a = do
     --let Right (r, q) = runTest testExpr3
     --let Right (r, q) = runTest testExpr3
+    --case runTest testExpr11 of
     case runTest testExpr7 of
         Left e -> error e
-        Right (r, q) -> do
+        Right (r, q, z) -> do
             putStrLn (showTree (nodesToString (prettyAst r)))
             putStrLn (showTree (nodesToString (prettyAst q)))
+            putStrLn (show z)
 --        Right (r, q) -> do
 --            putStrLn (showTree (nodesToString (prettyAst r)))
 --            putStrLn (showTree (nodesToString (prettyAst q)))
@@ -297,7 +307,7 @@ test10a = do
     testExpr4 = lamExpr () [varPat () "x"] (appExpr () [varExpr () "lenShow", varExpr () "x"])
     testExpr5 = lamExpr () [varPat () "x"] (letExpr () (BLet (varPat () "f")) (varExpr () "lenShow") (appExpr () [varExpr () "f", varExpr () "x"]))
     testExpr6 = letExpr () (BLet (varPat () "f")) (varExpr () "lenShow") (lamExpr () [varPat () "x"] (appExpr () [varExpr () "f", varExpr () "x"]))
-    testExpr7 = appExpr () [varExpr () "lenShow", litExpr () (LInt 555)]
+    testExpr7 = appExpr () [varExpr () "lenShow", litExpr () (LInt 12345)]
     testExpr8 = lamExpr () [varPat () "x"] (appExpr () [varExpr () "f", varExpr () "x"])
     testExpr9 = letExpr () (BLet (varPat () "f")) (varExpr () "lenShow") (varExpr () "f")
 
@@ -328,7 +338,24 @@ test10a = do
 
 
         traceShowM x
-        pure (ast, ast2)
+
+        let z = case evalSupply (compileExpr (mapTags nodeType ast2)) (numSupply "$") of
+                  Just c -> do
+                      traceShowM "===="
+                      traceShowM c
+                      traceShowM "===="
+                      evalExpr c evalEnv
+                  Nothing -> error "==fail=="
+
+--        let z = case evalSupply (compileExpr (mapTags nodeType ast2)) (numSupply "$") of
+--                  Just c -> do
+--                      traceShowM c
+--                      evalExpr c evalEnv
+--                  Nothing -> error "==fail=="
+
+        traceShowM z
+
+        pure (ast, ast2, z)
 --        mapM_ traceShowM (Map.toList (getSub sub))
 --        traceShowM x
 ----        pure ast
@@ -444,7 +471,7 @@ classEnv = Env.fromList
       )
     , ( "Show"
       , ( []
-        , [ Instance [] tInt (recExpr (NodeInfo (tApp (tCon (kArr kTyp kTyp) "Show") tInt) []) (fieldSet [Field (NodeInfo (tInt `tArr` tString) []) "show" (varExpr (NodeInfo (tInt `tArr` tString) []) "@showInt")]))
+        , [ Instance [] tInt (recExpr (NodeInfo (tApp (tCon (kArr kTyp kTyp) "Show") tInt) []) (fieldSet [Field (NodeInfo (tInt `tArr` tString) []) "show" (varExpr (NodeInfo (tInt `tArr` tString) []) "@Int.show")]))
           --, Instance [] tBool (recExpr (NodeInfo (tApp (tCon (kArr kTyp kTyp) "Show") tBool) [])  (fieldSet [Field (NodeInfo (tBool `tArr` tString) []) "show" (varExpr (NodeInfo (tBool `tArr` tString) []) "@showBool")]))
 --          , Instance [InClass "Show" (tVar kTyp "a")] (tList (tVar kTyp "a")) (recExpr (NodeInfo (tApp (tCon (kArr kTyp kTyp) "Show") (tList (tVar kTyp "a"))) []) (fieldSet [Field (NodeInfo ((tList (tVar kTyp "a")) `tArr` tString) []) "show" foo11]))
           , Instance [InClass "Show" (tVar kTyp "a"), InClass "Show" (tVar kTyp "b")] (tPair (tVar kTyp "a") (tVar kTyp "b")) (recExpr (NodeInfo (tApp (tCon (kArr kTyp kTyp) "Show") (tPair (tVar kTyp "a") (tVar kTyp "b"))) []) (fieldSet [Field (NodeInfo (tPair (tVar kTyp "a") (tVar kTyp "b") `tArr` tString) []) "show" showPair_]))

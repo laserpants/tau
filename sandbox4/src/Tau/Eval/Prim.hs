@@ -97,28 +97,32 @@ applyFun fun args =
 
 primEnv :: Env Fun
 primEnv = Env.fromList
-    [ ( "Unit.(==)"    , fun2 ((==) :: () -> () -> Bool) )
-    , ( "Bool.(==)"    , fun2 ((==) :: Bool -> Bool -> Bool) )
-    , ( "Int.(==)"     , fun2 ((==) :: Int -> Int -> Bool) )
-    , ( "Integer.(==)" , fun2 ((==) :: Integer -> Integer -> Bool) )
-    , ( "Float.(==)"   , fun2 ((==) :: Double -> Double -> Bool) )
-    , ( "Char.(==)"    , fun2 ((==) :: Char -> Char -> Bool) )
-    , ( "String.(==)"  , fun2 ((==) :: Text -> Text -> Bool) )
+    [ ( "Unit.(==)"      , fun2 ((==) :: () -> () -> Bool) )
+    , ( "Bool.(==)"      , fun2 ((==) :: Bool -> Bool -> Bool) )
+    , ( "Int.(==)"       , fun2 ((==) :: Int -> Int -> Bool) )
+    , ( "Integer.(==)"   , fun2 ((==) :: Integer -> Integer -> Bool) )
+    , ( "Float.(==)"     , fun2 ((==) :: Double -> Double -> Bool) )
+    , ( "Char.(==)"      , fun2 ((==) :: Char -> Char -> Bool) )
+    , ( "String.(==)"    , fun2 ((==) :: Text -> Text -> Bool) )
 
-    , ( "Int.(+)"      , fun2 ((+) :: Int -> Int -> Int ) )
-    , ( "Integer.(+)"  , fun2 ((+) :: Integer -> Integer -> Integer ) )
-    , ( "Float.(+)"    , fun2 ((+) :: Double -> Double -> Double ) )
+    , ( "Int.(+)"        , fun2 ((+) :: Int -> Int -> Int ) )
+    , ( "Integer.(+)"    , fun2 ((+) :: Integer -> Integer -> Integer ) )
+    , ( "Float.(+)"      , fun2 ((+) :: Double -> Double -> Double ) )
 
-    , ( "Int.(-)"      , fun2 ((-) :: Int -> Int -> Int ) )
-    , ( "Integer.(-)"  , fun2 ((-) :: Integer -> Integer -> Integer ) )
-    , ( "Float.(-)"    , fun2 ((-) :: Double -> Double -> Double ) )
+    , ( "Int.(-)"        , fun2 ((-) :: Int -> Int -> Int ) )
+    , ( "Integer.(-)"    , fun2 ((-) :: Integer -> Integer -> Integer ) )
+    , ( "Float.(-)"      , fun2 ((-) :: Double -> Double -> Double ) )
 
-    , ( "Int.(*)"      , fun2 ((*) :: Int -> Int -> Int ) )
-    , ( "Integer.(*)"  , fun2 ((*) :: Integer -> Integer -> Integer ) )
-    , ( "Float.(*)"    , fun2 ((*) :: Double -> Double -> Double ) )
+    , ( "Int.(*)"        , fun2 ((*) :: Int -> Int -> Int ) )
+    , ( "Integer.(*)"    , fun2 ((*) :: Integer -> Integer -> Integer ) )
+    , ( "Float.(*)"      , fun2 ((*) :: Double -> Double -> Double ) )
 
-    , ( "(++)"         , fun2 ((<>) :: Text -> Text -> Text ) )
+    , ( "Int.show"       , fun1 (Text.pack . show :: Int -> Text ) )
 
-    , ( "(&&)"         , fun2 ((&&) :: Bool -> Bool -> Bool ) )
-    , ( "(||)"         , fun2 ((||) :: Bool -> Bool -> Bool ) )
+    , ( "String.length"  , fun1 (Text.length :: Text -> Int ) )
+
+    , ( "(++)"           , fun2 ((<>) :: Text -> Text -> Text ) )
+
+    , ( "(&&)"           , fun2 ((&&) :: Bool -> Bool -> Bool ) )
+    , ( "(||)"           , fun2 ((||) :: Bool -> Bool -> Bool ) )
     ]
