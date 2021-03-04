@@ -141,11 +141,11 @@ evalApp fun arg = fun >>= \case
 --  -> m (Value m)
 evalPat 
   :: (MonadFail m, MonadReader (ValueEnv m) m)
-  => [CClause (m (Value m))]
+  => [([Name], m (Value m))]
   -> Value m
   -> m (Value m)
 evalPat [] _ = fail "Runtime error (evalMatch)"
-evalPat (CClause (p:ps) e:eqs) val =
+evalPat ((p:ps, e):eqs) val =
     case val of
         Data con args | p == con -> local (Env.inserts (zip ps args)) e
         _                        -> evalPat eqs val

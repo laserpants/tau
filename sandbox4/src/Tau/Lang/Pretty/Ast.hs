@@ -129,8 +129,8 @@ prettyCore = para $ \case
         CIf cond tr fl -> 
             Node "if" [cond, prefix "then" tr, prefix "else" fl]
 
-prettyClauseTree_ :: CClause Core -> [Tree (Doc a)]
-prettyClauseTree_ (CClause ps e) =
+prettyClauseTree_ :: ([Name], Core) -> [Tree (Doc a)]
+prettyClauseTree_ (ps, e) =
     [Node (hsep (pretty <$> "─┬" : ps)) [prefix "=>" (prettyCore e)]]
 
 --prettyClauseTree_ :: Clause Name Core -> [Tree (Doc a)]

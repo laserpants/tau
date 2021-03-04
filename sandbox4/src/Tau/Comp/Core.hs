@@ -373,8 +373,8 @@ toCore = cata $ \case
             [expr] -> cPat expr <$> traverse desugarClause exs
             _      -> error "Implementation error"
   where
-    desugarClause (Clause [RCon _ con ps] [] e) =
-        CClause (con:ps) <$> e
+    desugarClause (Clause [RCon _ con ps] [] e) = 
+        (,) (con:ps) <$> e
     desugarClause _ =
         error "Implementation error"
 
