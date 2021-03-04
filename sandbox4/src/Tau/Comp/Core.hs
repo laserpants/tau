@@ -204,6 +204,9 @@ compilePatterns
   -> m (Expr t (Prep t) Name Name)
 compilePatterns us qs = matchAlgo us qs (varExpr (tvar "FAIL") "FAIL")
 
+andExpr :: (TypeTag t) => Expr t p q r -> Expr t p q r -> Expr t p q r
+andExpr x y = appExpr tbool [varExpr (tarr tbool (tarr tbool tbool)) "(&&)", x, y]
+
 matchAlgo
   :: (TypeTag t, MonadSupply Name m)
   => [Expr t (Prep t) Name Name]
@@ -214,7 +217,7 @@ matchAlgo [] []                   c = pure c
 matchAlgo [] (Clause [] []  e:_)  _ = pure e
 matchAlgo [] (Clause [] exs e:qs) c =
     --ifExpr (exprTag c) (foldr1 (op2Expr tbool (OAnd (tarr tbool (tarr tbool tbool)))) exs) e <$> matchAlgo [] qs c
-    ifExpr (exprTag c) (foldr1 (\x y -> appExpr tbool [varExpr (tarr tbool (tarr tbool tbool)) "(&&)", x, y]) exs) e <$> matchAlgo [] qs c
+    ifExpr (exprTag c) (foldr1 andExpr exs) e <$> matchAlgo [] qs c
 matchAlgo (u:us) qs c =
     case clauseGroups qs of
         [Variable eqs] -> do
