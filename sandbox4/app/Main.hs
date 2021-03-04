@@ -15,7 +15,6 @@ import Data.Map.Strict (Map)
 import Data.Maybe
 import Data.Text (Text)
 import Data.Tree.View (showTree)
-import Tau.Comp.Classes
 import Tau.Comp.Core
 import Tau.Comp.Type.Inference
 import Tau.Comp.Type.Substitution
