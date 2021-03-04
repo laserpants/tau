@@ -6,6 +6,12 @@ module Tau.Lang.Core where
 import Tau.Lang.Expr
 import Tau.Util
 
+data CClause a = CClause [Name] a
+    deriving (Show, Eq, Functor, Foldable, Traversable)
+
+deriveShow1 ''CClause
+deriveEq1   ''CClause
+
 data CoreF a
     = CVar Name                 -- ^ Variable
     | CLit Literal              -- ^ Literal value
@@ -13,7 +19,8 @@ data CoreF a
     | CLet Name a a             -- ^ Let expression
     | CLam Name a               -- ^ Lambda abstraction
     | CIf a ~a ~a               -- ^ If-clause
-    | CPat a [Clause Name a]    -- ^ Pattern matching clause-matrix
+--    | CPat a [Clause Name a]    -- ^ Pattern matching clause-matrix
+    | CPat a [CClause a]        -- ^ Pattern matching clause-matrix
     deriving (Show, Eq, Functor, Foldable, Traversable)
 
 deriveShow1 ''CoreF
@@ -39,5 +46,8 @@ cLam = embed2 CLam
 cIf :: Core -> Core -> Core -> Core
 cIf = embed3 CIf
 
-cPat :: Core -> [Clause Name Core] -> Core
+--cPat :: Core -> [Clause Name Core] -> Core
+--cPat = embed2 CPat
+
+cPat :: Core -> [CClause Core] -> Core
 cPat = embed2 CPat

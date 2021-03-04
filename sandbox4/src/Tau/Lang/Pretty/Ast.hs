@@ -129,10 +129,14 @@ prettyCore = para $ \case
         CIf cond tr fl -> 
             Node "if" [cond, prefix "then" tr, prefix "else" fl]
 
-prettyClauseTree_ :: Clause Name Core -> [Tree (Doc a)]
-prettyClauseTree_ (Clause ps exs e) =
-    [Node (hsep (pretty <$> "─┬" : ps)) (whens <> [prefix "=>" (prettyCore e)])]
-  where
-    whens 
-      | null exs  = []
-      | otherwise = [Node "when" (prettyCore <$> exs)]
+prettyClauseTree_ :: CClause Core -> [Tree (Doc a)]
+prettyClauseTree_ (CClause ps e) =
+    [Node (hsep (pretty <$> "─┬" : ps)) [prefix "=>" (prettyCore e)]]
+
+--prettyClauseTree_ :: Clause Name Core -> [Tree (Doc a)]
+--prettyClauseTree_ (Clause ps exs e) =
+--    [Node (hsep (pretty <$> "─┬" : ps)) (whens <> [prefix "=>" (prettyCore e)])]
+--  where
+--    whens 
+--      | null exs  = []
+--      | otherwise = [Node "when" (prettyCore <$> exs)]

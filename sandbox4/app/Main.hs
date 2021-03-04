@@ -302,7 +302,7 @@ test999 =
 test10a = do
     --let Right (r, q) = runTest testExpr3
     --let Right (r, q) = runTest testExpr3
-    case runTest testExpr22 of
+    case runTest testExpr7 of
     --case runTest testExpr21 of
         Left e -> error e
         Right (r, q, c, z) -> do
@@ -343,6 +343,10 @@ test10a = do
         , Clause [ conPat () "(::)" [anyPat (), anyPat ()]
                  , varPat () "x" ] [] (litExpr () (LString "three"))
         ], conExpr () "(::)" [litExpr () (LInt 3), conExpr () "[]" []], litExpr () (LInt 4)]
+
+    testExpr23 = appExpr () [letExpr () (BFun "f" [varPat () "x"]) (varExpr () "lenShow") (appExpr () [varExpr () "f", litExpr () LUnit]), litExpr () (LInt 873)] 
+
+    testExpr24 = appExpr () [lamExpr () [varPat () "x"] (appExpr () [varExpr () "show", conExpr () "(,)" [varExpr () "x", varExpr () "x"]]), litExpr () (LInt 11)]
 
     runTest expr = do
         --runInfer classEnv typeEnv (infer expr)

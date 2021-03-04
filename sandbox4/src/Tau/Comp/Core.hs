@@ -213,8 +213,8 @@ matchAlgo
 matchAlgo [] []                   c = pure c
 matchAlgo [] (Clause [] []  e:_)  _ = pure e
 matchAlgo [] (Clause [] exs e:qs) c =
-    -- TODO: use prefix application instead (&&)
-    ifExpr (exprTag c) (foldr1 (op2Expr tbool (OAnd (tarr tbool (tarr tbool tbool)))) exs) e <$> matchAlgo [] qs c
+    --ifExpr (exprTag c) (foldr1 (op2Expr tbool (OAnd (tarr tbool (tarr tbool tbool)))) exs) e <$> matchAlgo [] qs c
+    ifExpr (exprTag c) (foldr1 (\x y -> appExpr tbool [varExpr (tarr tbool (tarr tbool tbool)) "(&&)", x, y]) exs) e <$> matchAlgo [] qs c
 matchAlgo (u:us) qs c =
     case clauseGroups qs of
         [Variable eqs] -> do
@@ -373,10 +373,15 @@ toCore = cata $ \case
             [expr] -> cPat expr <$> traverse desugarClause exs
             _      -> error "Implementation error"
   where
-    desugarClause (Clause [RCon _ con ps] exs e) =
-        Clause (con:ps) <$> sequence exs <*> e
+    desugarClause (Clause [RCon _ con ps] [] e) =
+        CClause (con:ps) <$> e
     desugarClause _ =
         error "Implementation error"
+
+--    desugarClause (Clause [RCon _ con ps] exs e) =
+--        Clause (con:ps) <$> sequence exs <*> e
+--    desugarClause _ =
+--        error "Implementation error"
 
 desugarOperators
   :: Expr t p q r
