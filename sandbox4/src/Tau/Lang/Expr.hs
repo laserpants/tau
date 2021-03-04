@@ -362,8 +362,8 @@ mapTagsM f = cata $ \case
   where
     mapOp1Tags :: (Monad m) => (s -> m t) -> Op1 s -> m (Op1 t)
     mapOp1Tags f = \case
-        ONeg   t -> ONeg <$> f t
-        ONot   t -> ONot <$> f t
+        ONeg   t -> ONeg   <$> f t
+        ONot   t -> ONot   <$> f t
 
     mapOp2Tags :: (Monad m) => (s -> m t) -> Op2 s -> m (Op2 t)
     mapOp2Tags f = \case
