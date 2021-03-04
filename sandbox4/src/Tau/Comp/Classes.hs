@@ -54,7 +54,6 @@ compileClasses expr =
         e -> 
             embed <$> sequence e
 
-
 insertDictArgs :: Ast NodeInfo -> [(Name, Type)] -> Ast NodeInfo
 insertDictArgs expr = foldr fun expr
   where
