@@ -384,10 +384,10 @@ test10a = do
 --  where
 --    fs = zoop ast
 
---compileExpr2
---  :: (MonadSupply Name m)
---  => Expr NodeInfo (Pattern NodeInfo) (Binding (Pattern NodeInfo)) [Pattern NodeInfo]
---  -> m Core
+compileExpr2
+  :: (MonadState (Substitution, Context) m, MonadError String m, MonadSupply Name m, MonadReader (ClassEnv (Ast NodeInfo), TypeEnv) m)
+  => Expr t (Pattern t) (Binding (Pattern t)) [Pattern t]
+  -> m Core
 compileExpr2 e = do
     ast <- infer e
     sub <- gets fst

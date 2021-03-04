@@ -376,18 +376,18 @@ desugarOperators
 desugarOperators = cata $ \case
 
     EOp1 t op a -> 
-        appExpr t [prefix1 (op1Tag op) op, a]
+        appExpr t [prefix1 op, a]
 
     EOp2 t op a b -> 
-        appExpr t [prefix2 (op2Tag op) op, a, b]
+        appExpr t [prefix2 op, a, b]
 
     e -> 
         embed e
 
   where
-    prefix1 t (ONeg _) = varExpr t "negate"
-    prefix1 t (ONot _) = varExpr t "not"
-    prefix2 t op = varExpr t ("(" <> op2Symbol op <> ")")
+    prefix1 (ONeg t) = varExpr t "negate"
+    prefix1 (ONot t) = varExpr t "not"
+    prefix2 op = varExpr (op2Tag op) ("(" <> op2Symbol op <> ")")
 
 compileClasses 
   :: (MonadError String m, MonadSupply Name m, MonadReader (ClassEnv (Ast NodeInfo), TypeEnv) m)
