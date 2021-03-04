@@ -19,7 +19,8 @@ import Tau.Lang.Expr
 import Tau.Lang.Type
 import Tau.Util
 
-class TypeTag t where
+class Show t => TypeTag t where
+--class TypeTag t where
     tvar  :: Name -> t
     tarr  :: t -> t -> t
     tapp  :: t -> t -> t
@@ -214,8 +215,9 @@ matchAlgo (u:us) qs c =
           where
             runSubst c@(Clause (Fix (PVar t name):ps) exs e) =
                 substitute name u <$> Clause ps exs e
-            runSubst clause =
-                clause
+            -- The remaining case is for wildcard and literal patterns 
+            runSubst (Clause (Fix _:ps) exs e) =
+                Clause ps exs e
 
         [Constructor eqs@(Clause _ _ e:_)] -> do
             qs' <- traverse (toSimpleMatch c) (consGroups eqs)
@@ -229,6 +231,15 @@ matchAlgo (u:us) qs c =
 
         mixed -> do
             foldrM (matchAlgo (u:us)) c (clauses <$> mixed)
+
+matchAlgo a b c = do
+    traceShowM "............"
+    traceShowM a
+    traceShowM b
+    traceShowM c
+    traceShowM "^^^^^^^^^^^^"
+    undefined
+
 
 data ConsGroup t = ConsGroup
     { consName     :: Name

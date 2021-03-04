@@ -125,4 +125,6 @@ primEnv = Env.fromList
 
     , ( "(&&)"           , fun2 ((&&) :: Bool -> Bool -> Bool ) )
     , ( "(||)"           , fun2 ((||) :: Bool -> Bool -> Bool ) )
+
+    , ( "strconcat3"     , fun3 (\s1 s2 s3 -> Text.concat [s1, s2, s3]) )
     ]

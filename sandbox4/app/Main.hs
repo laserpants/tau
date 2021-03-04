@@ -109,14 +109,21 @@ evalEnv = Env.fromList
     , ("Some"    , constructor "Some" 1)  
     , ("None"    , constructor "None" 0)  
     , ("{show}"  , constructor "{show}" 1)  
+    , ("(,)"     , constructor "(,)" 2)  
     , ("show"    , fromJust (evalExpr show_ mempty))
     , ("lenShow" , fromJust (evalExpr lenShow mempty))
+    , ("first"   , fromJust (runEval (eval fst_) mempty))
+    , ("second"  , fromJust (runEval (eval snd_) mempty))
     ]
   where
     lenShow = fromJust (evalSupply (compileExpr foo3) (numSupply "$"))
     show_   = fromJust (evalSupply (compileExpr foo4) (numSupply "$"))
     foo3 = lamExpr () [varPat () "d"] (lamExpr () [varPat () "x"] (appExpr () [varExpr () "@String.length", appExpr () [varExpr () "show", varExpr () "d", varExpr () "x"]]))
     foo4 = lamExpr () [varPat () "d"] (patExpr () [varExpr () "d"] [ Clause [recPat () (fieldSet [Field () "show" (varPat () "show")])] [] (varExpr () "show") ])
+    fst_ = fromJust (evalSupply (compileExpr foo24) (numSupply "$"))
+    snd_ = fromJust (evalSupply (compileExpr foo25) (numSupply "$"))
+    foo24 = lamExpr () [varPat () "p"] (patExpr () [varExpr () "p"] [Clause [conPat () "(,)" [varPat () "a", anyPat ()]] [] (varExpr () "a")])
+    foo25 = lamExpr () [varPat () "p"] (patExpr () [varExpr () "p"] [Clause [conPat () "(,)" [varPat () "zz", varPat () "b"]] [] (varExpr () "b")])
  
 
 -- fix f = fun | 0 => 1 | n => n * f (n - 1) in f 5
@@ -292,7 +299,7 @@ test10a = do
     --let Right (r, q) = runTest testExpr3
     --let Right (r, q) = runTest testExpr3
     --case runTest testExpr11 of
-    case runTest testExpr7 of
+    case runTest testExpr11 of
         Left e -> error e
         Right (r, q, z) -> do
             putStrLn (showTree (nodesToString (prettyAst r)))
@@ -481,7 +488,7 @@ classEnv = Env.fromList
     ]
   where
     foo11 = varExpr (NodeInfo ((tList (tVar kTyp "a")) `tArr` tString) [InClass "Show" (tVar kTyp "a")]) "showList"
-    showPair_ = lamExpr (NodeInfo (tPair (tVar kTyp "a") (tVar kTyp "b") `tArr` tString) []) [varPat (NodeInfo (tPair (tVar kTyp "a") (tVar kTyp "b")) []) "p"] (appExpr (NodeInfo tString []) [varExpr (NodeInfo (tString `tArr` tString `tArr` tString `tArr` tString) []) "@strconcat3", appExpr (NodeInfo tString []) [varExpr (NodeInfo (tVar kTyp "a" `tArr` tString) [InClass "Show" (tVar kTyp "a")]) "show", (appExpr (NodeInfo (tVar kTyp "a") []) [varExpr (NodeInfo (tPair (tVar kTyp "a") (tVar kTyp "b") `tArr` tVar kTyp "a") []) "fst", varExpr (NodeInfo (tPair (tVar kTyp "a") (tVar kTyp "b")) []) "p"])], litExpr (NodeInfo tString []) (LString ","), appExpr (NodeInfo tString []) [varExpr (NodeInfo (tVar kTyp "b" `tArr` tString) [InClass "Show" (tVar kTyp "b")]) "show", appExpr (NodeInfo (tVar kTyp "b") []) [varExpr (NodeInfo (tPair (tVar kTyp "a") (tVar kTyp "b") `tArr` tVar kTyp "b") []) "snd", varExpr (NodeInfo (tPair (tVar kTyp "a") (tVar kTyp "b")) []) "p"]]])
+    showPair_ = lamExpr (NodeInfo (tPair (tVar kTyp "a") (tVar kTyp "b") `tArr` tString) []) [varPat (NodeInfo (tPair (tVar kTyp "a") (tVar kTyp "b")) []) "p"] (appExpr (NodeInfo tString []) [varExpr (NodeInfo (tString `tArr` tString `tArr` tString `tArr` tString) []) "@strconcat3", appExpr (NodeInfo tString []) [varExpr (NodeInfo (tVar kTyp "a" `tArr` tString) [InClass "Show" (tVar kTyp "a")]) "show", (appExpr (NodeInfo (tVar kTyp "a") []) [varExpr (NodeInfo (tPair (tVar kTyp "a") (tVar kTyp "b") `tArr` tVar kTyp "a") []) "first", varExpr (NodeInfo (tPair (tVar kTyp "a") (tVar kTyp "b")) []) "p"])], litExpr (NodeInfo tString []) (LString ","), appExpr (NodeInfo tString []) [varExpr (NodeInfo (tVar kTyp "b" `tArr` tString) [InClass "Show" (tVar kTyp "b")]) "show", appExpr (NodeInfo (tVar kTyp "b") []) [varExpr (NodeInfo (tPair (tVar kTyp "a") (tVar kTyp "b") `tArr` tVar kTyp "b") []) "second", varExpr (NodeInfo (tPair (tVar kTyp "a") (tVar kTyp "b")) []) "p"]]])
 
 typeEnv = Env.fromList 
     [ ( "(==)" , Forall [kTyp] [InClass "Eq" 0] (tGen 0 `tArr` tGen 0 `tArr` upgrade tBool) )
@@ -520,3 +527,53 @@ typeEnv = Env.fromList
 --    ork ((n, k), v) = (n, tVar k v)
 
 --normalizeAst :: Ast 
+
+
+--xs = 5 : (4 : (11 : []))
+--
+--add1 (x:_) xs = (x + 1) : xs
+--
+--mapp f (x:_) xs = f x : xs
+--
+--len (_:_) n  = 1 + n
+--
+----a1 = f [1,2,3,4,5] (f [2,3,4,5] (f [3,4,5] (f [4,5] (f [5] (f [] [])))))
+--
+--unrollCons :: t -> ([a] -> t -> t) -> [a] -> t
+--unrollCons a f (x:xs) = f (x:xs) (unrollCons a f xs)
+--unrollCons a _ _      = a
+--
+--example1 = unrollCons [] (\(x:_) acc -> x+1 : acc) 
+--
+--example2 = unrollCons 0 (\(_:_) n -> n + 1)  
+--
+--example22 = unrollCons2 $ \xs n ->
+--    case (n, xs) of
+--        (_     , []) -> 0
+--        (Just m, _ ) -> m + 1
+--
+----unrollCons2 :: ([a] -> t -> t) -> [a] -> t
+--unrollCons2 f (x:xs) = f (x:xs) (Just (unrollCons2 f xs))
+--unrollCons2 f xs     = f xs Nothing
+--
+----example3 = baz [] (mapp (+2)) xs
+--
+--data Tree = Leaf Int | Tree Tree Tree
+--
+--example4 = unrollTree 0 (\Tree a b acc -> )
+--
+--unrollTree f (Tree a b) = f (Tree a b) (unrollTree f a)
+--
+----add11 b a =
+----    case a of
+----        (x:_) -> x + 1:b 
+----        []    -> []
+----
+----len11 b a =
+----    case a of
+----        (_:_) -> 1+b
+----        []    -> 0
+----
+----baz2 f (x:xs) = f (baz2 f xs) (x:xs) 
+----baz2 f []     = f (baz2 f []) []
+--
