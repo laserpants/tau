@@ -12,6 +12,7 @@ import Data.Text (Text)
 import Data.Text.Prettyprint.Doc
 import Data.Tuple.Extra (both)
 import Tau.Comp.Type.Inference
+import Tau.Lang.Core
 import Tau.Lang.Expr
 import Tau.Lang.Type
 import Tau.Util
@@ -240,3 +241,39 @@ prettyRecord sep fset
 --conArg out (expr, doc) = out <+> addParens expr doc 
 --prettyTuple :: [Doc a] -> Doc a
 --prettyTuple = parens . commaSep
+--
+
+instance Pretty Core where
+    pretty = para $ \case
+        CVar var ->
+            pretty var
+        CLit lit ->
+            pretty lit
+        CApp exprs -> 
+            "TODO:CApp"
+        CLet var e1 e2 ->
+            prettyLet_ "let" var (snd e1) (snd e2)
+        CLam var e1 ->
+            "TODO:CLam"
+        CIf cond tr fl ->
+            "TODO:CIf"
+        CPat e1 cs ->
+            "TODO:CPat"
+
+--prettyLet_
+--  :: (Pretty p, Pretty q, Pretty l)
+--  => Doc a
+--  -> l
+--  -> (Expr t p q r, Doc a)
+--  -> (Expr t p q r, Doc a)
+--  -> Doc a
+prettyLet_ keyword p e1 e2 =
+    group (vsep
+        [ nest 2 (vsep
+            [ keyword
+            , pretty p <+> equals <+> e1
+            , nest 2 (vsep ["in", e2])
+            ])
+        ])
+
+

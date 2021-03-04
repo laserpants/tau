@@ -10,6 +10,7 @@ import Data.Text.Prettyprint.Doc.Render.Text
 import Data.Tree
 import Data.Tree.View (showTree)
 import Tau.Comp.Type.Inference
+import Tau.Lang.Core
 import Tau.Lang.Expr
 import Tau.Lang.Pretty
 import Tau.Lang.Type
@@ -100,3 +101,29 @@ suffix (Node label forest) txt = Node (label <+> pretty txt) forest
 
 nodesToString :: Tree (Doc a) -> Tree String
 nodesToString = fmap (Text.unpack . renderDoc)
+
+prettyCore :: Core -> Tree (Doc a)
+prettyCore = para $ \case
+
+    CPat (expr, _) clauses ->
+        Node ("match" <+> pretty expr <+> "with") []
+
+    a -> case snd <$> a of
+
+        CVar var -> 
+            Node (pretty var) []
+
+        CLit lit -> 
+            Node (pretty lit) []
+
+        CApp exprs -> 
+            Node "(@)" exprs
+
+        CLet var e1 e2 -> 
+            Node ("let" <+> pretty var) [prefix "=" e1, Node "in" [e2]]
+
+        CLam var e1 ->
+            Node ("λ" <> pretty var) [prefix "=>" e1]
+
+        CIf cond tr fl -> 
+            Node "if" [cond, prefix "then" tr, prefix "else" fl]

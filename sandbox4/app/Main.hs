@@ -301,9 +301,10 @@ test10a = do
     --case runTest testExpr11 of
     case runTest testExpr11 of
         Left e -> error e
-        Right (r, q, z) -> do
+        Right (r, q, c, z) -> do
             putStrLn (showTree (nodesToString (prettyAst r)))
             putStrLn (showTree (nodesToString (prettyAst q)))
+            putStrLn (showTree (nodesToString (prettyCore c)))
             putStrLn (show z)
 --        Right (r, q) -> do
 --            putStrLn (showTree (nodesToString (prettyAst r)))
@@ -344,14 +345,11 @@ test10a = do
             )
 
 
-        traceShowM x
 
-        let z = case evalSupply (compileExpr (mapTags nodeType ast2)) (numSupply "$") of
+        let (c, z) = case evalSupply (compileExpr (mapTags nodeType ast2)) (numSupply "$") of
                   Just c -> do
-                      traceShowM "===="
-                      traceShowM c
-                      traceShowM "===="
-                      evalExpr c evalEnv
+                      --debugLog (showTree (nodesToString (prettyCore c)))
+                      (c, evalExpr c evalEnv)
                   Nothing -> error "==fail=="
 
 --        let z = case evalSupply (compileExpr (mapTags nodeType ast2)) (numSupply "$") of
@@ -360,9 +358,9 @@ test10a = do
 --                      evalExpr c evalEnv
 --                  Nothing -> error "==fail=="
 
-        traceShowM z
+--        traceShowM z
 
-        pure (ast, ast2, z)
+        pure (ast, ast2, c, z)
 --        mapM_ traceShowM (Map.toList (getSub sub))
 --        traceShowM x
 ----        pure ast
