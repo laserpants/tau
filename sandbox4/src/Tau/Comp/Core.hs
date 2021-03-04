@@ -366,3 +366,25 @@ toCore = cata $ \case
         Clause (con:ps) <$> sequence exs <*> e
     desugarClause _ =
         error "Implementation error"
+
+desugarOperators
+  :: Expr t (Pattern t) q [Pattern t]
+  -> Expr t (Pattern t) q [Pattern t]
+desugarOperators = cata $ \case
+
+    EOp1 t op a -> 
+        appExpr t [(prefix1 t op), a] -- TODO
+--        EOp1 _ op a      -> cApp <$> sequence [pure (prefix1 op), a]
+--        EOp2 _ op a b    -> cApp <$> sequence [pure (prefix2 op), a, b]
+
+    EOp2 t op a b -> 
+        appExpr t [(prefix2 t op), a, b] -- TODO
+
+    e -> 
+        embed e
+
+  where
+    prefix1 t ONeg = varExpr t "negate"
+    prefix1 t ONot = varExpr t "not"
+    prefix2 t op = varExpr t ("(" <> opSymbol op <> ")")
+

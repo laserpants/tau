@@ -34,11 +34,26 @@ compileClasses expr =
             xs <- collect
             letExpr t pat (insertDictArgs e1 xs) <$> expr2
 
+--        EOp2 t op expr1 expr2 -> do
+--            op2Expr t op <$> expr1 <*> expr2
+
+--        EOp1 _ op a -> 
+--            undefined
+--
+--        EOp2 _ op expr1 expr2 -> do
+--            a <- expr1
+--            b <- expr2
+--            appExpr <$> sequence [pure (prefix2 op), a, b]
+--
+--        prefix2 op = 
+--            varExpr ("(" <> opSymbol op <> ")")
+
         EVar t var -> 
             foldrM applyDicts (varExpr (stripNodePredicates t) var) (nodePredicates t)
 
         e -> 
             embed <$> sequence e
+
 
 insertDictArgs :: Ast NodeInfo -> [(Name, Type)] -> Ast NodeInfo
 insertDictArgs expr = foldr fun expr

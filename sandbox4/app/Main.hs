@@ -299,7 +299,7 @@ test10a = do
     --let Right (r, q) = runTest testExpr3
     --let Right (r, q) = runTest testExpr3
     --case runTest testExpr11 of
-    case runTest testExpr11 of
+    case runTest testExpr21 of
         Left e -> error e
         Right (r, q, c, z) -> do
             putStrLn (showTree (nodesToString (prettyAst r)))
@@ -328,6 +328,9 @@ test10a = do
     -- \x => show (x, x)
     testExpr12 = lamExpr () [varPat () "x"] (appExpr () [varExpr () "show", conExpr () "(,)" [varExpr () "x", varExpr () "x"]])
 
+    --testExpr21 = op2Expr () OAdd (litExpr () (LFloat 3.1)) (litExpr () (LFloat 4.1)) 
+    testExpr21 = op2Expr () OAdd (litExpr () (LInt 3)) (litExpr () (LInt 4)) 
+
     runTest expr = do
         --runInfer classEnv typeEnv (infer expr)
         --traceShowM "=="
@@ -339,7 +342,7 @@ test10a = do
             --foo <- undefined (evalSupplyT (evalStateT (compileClasses ast') []) [])
             ----mapTagsM generalizeType ast'
             --traceShowM (astVars ast')
-            foo <- evalStateT (compileClasses ast') [] 
+            foo <- evalStateT (compileClasses (desugarOperators ast')) [] 
 
             pure (ast', foo)
             )
@@ -466,7 +469,11 @@ classEnv :: ClassEnv (Ast NodeInfo)
 classEnv = Env.fromList 
     [ ( "Num"
       , ( []
-        , [ -- Instance [] tInt (recExpr (NodeInfo (tApp (tCon (kArr kTyp kTyp) "Num") tInt) []) 
+        , [ Instance [] tInt (recExpr (NodeInfo (tApp (tCon (kArr kTyp kTyp) "Num") tInt) []) (fieldSet [
+              Field (NodeInfo (tInt `tArr` tInt `tArr` tInt) []) "(+)" (varExpr (NodeInfo (tInt `tArr` tInt `tArr` tInt) []) "@(+)Int")
+              , Field (NodeInfo (tInt `tArr` tInt `tArr` tInt) []) "(*)" (varExpr (NodeInfo (tInt `tArr` tInt `tArr` tInt) []) "@(*)Int")
+              , Field (NodeInfo (tInt `tArr` tInt `tArr` tInt) []) "(-)" (varExpr (NodeInfo (tInt `tArr` tInt `tArr` tInt) []) "@(-)Int")
+            ]))
 --              [ Field (NodeInfo (tInt `tArr` tInt `tArr` tInt) []) "(+)" (varExpr (NodeInfo (tInt `tArr` tInt `tArr` tInt) []) "@(+)Int")
 --              , Field (NodeInfo (tInt `tArr` tInt `tArr` tInt) []) "(*)" (varExpr (NodeInfo (tInt `tArr` tInt `tArr` tInt) []) "@(*)Int")
 --              , Field (NodeInfo (tInt `tArr` tInt `tArr` tInt) []) "(-)" (varExpr (NodeInfo (tInt `tArr` tInt `tArr` tInt) []) "@(-)Int")

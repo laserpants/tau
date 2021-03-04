@@ -106,7 +106,7 @@ prettyCore :: Core -> Tree (Doc a)
 prettyCore = para $ \case
 
     CPat (expr, _) clauses ->
-        Node ("match" <+> pretty expr <+> "with") []
+        Node ("match" <+> pretty expr <+> "with") [] -- TODO
 
     a -> case snd <$> a of
 
