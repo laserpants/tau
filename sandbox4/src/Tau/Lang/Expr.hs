@@ -79,30 +79,30 @@ deriveShow1 ''Clause
 deriveEq1   ''Clause
 
 -- | Unary operators
-data Op1
-    = ONeg                    -- ^ Unary negation
-    | ONot                    -- ^ Logical NOT
+data Op1 t
+    = ONeg t                  -- ^ Unary negation
+    | ONot t                  -- ^ Logical NOT
     deriving (Show, Eq)
 
 -- | Binary operators
-data Op2
-    = OEq                     -- ^ Equal-to operator
-    | ONEq                    -- ^ Not-equal-to operator
-    | OAnd                    -- ^ Logical AND
-    | OOr                     -- ^ Logical OR
-    | OAdd                    -- ^ Addition operator
-    | OSub                    -- ^ Subtraction operator
-    | OMul                    -- ^ Multiplication operator
-    | ODiv                    -- ^ Division operator
-    | OPow                    -- ^ Exponentiation operator
-    | OLt                     -- ^ Strictly less-than operator
-    | OGt                     -- ^ Strictly greater-than operator
-    | OLtE                    -- ^ Less-than-or-equal-to operator
-    | OGtE                    -- ^ Greater-than-or-equal-to operator
-    | OLArr                   -- ^ Function composition operator
-    | ORArr                   -- ^ Reverse function composition
-    | OFPipe                  -- ^ Forward pipe operator
-    | OBPipe                  -- ^ Reverse pipe operator
+data Op2 t
+    = OEq  t                  -- ^ Equal-to operator
+    | ONEq t                  -- ^ Not-equal-to operator
+    | OAnd t                  -- ^ Logical AND
+    | OOr  t                  -- ^ Logical OR
+    | OAdd t                  -- ^ Addition operator
+    | OSub t                  -- ^ Subtraction operator
+    | OMul t                  -- ^ Multiplication operator
+    | ODiv t                  -- ^ Division operator
+    | OPow t                  -- ^ Exponentiation operator
+    | OLt  t                  -- ^ Strictly less-than operator
+    | OGt  t                  -- ^ Strictly greater-than operator
+    | OLtE t                  -- ^ Less-than-or-equal-to operator
+    | OGtE t                  -- ^ Greater-than-or-equal-to operator
+    | OLArr t                 -- ^ Function composition operator
+    | ORArr t                 -- ^ Reverse function composition
+    | OFPipe t                -- ^ Forward pipe operator
+    | OBPipe t                -- ^ Reverse pipe operator
     deriving (Show, Eq)
 
 -- | Let name-bindings
@@ -115,6 +115,9 @@ deriveShow1 ''Binding
 deriveEq1   ''Binding
 
 -- | Base functor for Expr
+
+--data ExprF t p q r a n o
+
 data ExprF t p q r a
     = EVar t Name             -- ^ Variable
     | ECon t Name [a]         -- ^ Data constructor
@@ -125,8 +128,8 @@ data ExprF t p q r a
     | ELam t r a              -- ^ Lambda abstraction
     | EIf  t a a a            -- ^ If-clause
     | EPat t [a] [Clause p a] -- ^ Match and fun expressions
-    | EOp1 t Op1 a            -- ^ Unary operator
-    | EOp2 t Op2 a a          -- ^ Unary operator
+    | EOp1 t (Op1 t) a        -- ^ Unary operator
+    | EOp2 t (Op2 t) a a      -- ^ Unary operator
     | EDot t Name a           -- ^ Dot operator
     | ERec t (FieldSet t a)   -- ^ Records
     | ETup t [a]              -- ^ Tuples
@@ -152,25 +155,25 @@ literalName = \case
     (LString  _) -> "String"
 
 -- | Return the precedence of a binary operator
-opPrecedence :: Op2 -> Int
+opPrecedence :: Op2 t -> Int
 opPrecedence = \case
-    OEq    -> 4
-    ONEq   -> 4
-    OAnd   -> 3
-    OOr    -> 2
-    OAdd   -> 6
-    OSub   -> 6
-    OMul   -> 7
-    ODiv   -> 7
-    OPow   -> 8
-    OLt    -> 4
-    OGt    -> 4
-    OLtE   -> 4
-    OGtE   -> 4
-    OLArr  -> 9
-    ORArr  -> 9
-    OFPipe -> 0
-    OBPipe -> 0
+    OEq    _ -> 4
+    ONEq   _ -> 4
+    OAnd   _ -> 3
+    OOr    _ -> 2
+    OAdd   _ -> 6
+    OSub   _ -> 6
+    OMul   _ -> 7
+    ODiv   _ -> 7
+    OPow   _ -> 8
+    OLt    _ -> 4
+    OGt    _ -> 4
+    OLtE   _ -> 4
+    OGtE   _ -> 4
+    OLArr  _ -> 9
+    ORArr  _ -> 9
+    OFPipe _ -> 0
+    OBPipe _ -> 0
 
 -- | Operator associativity
 data Assoc
@@ -180,45 +183,46 @@ data Assoc
     deriving (Show, Eq)
 
 -- | Return the associativity of a binary operator
-opAssoc :: Op2 -> Assoc
+opAssoc :: Op2 t -> Assoc
 opAssoc = \case
-    OEq    -> AssocN
-    ONEq   -> AssocN
-    OAnd   -> AssocR
-    OOr    -> AssocR
-    OAdd   -> AssocL
-    OSub   -> AssocL
-    OMul   -> AssocL
-    ODiv   -> AssocL
-    OPow   -> AssocR
-    OLt    -> AssocN
-    OGt    -> AssocN
-    OLtE   -> AssocN
-    OGtE   -> AssocN
-    ORArr  -> AssocL
-    OLArr  -> AssocR
-    OFPipe -> AssocL
-    OBPipe -> AssocR
+    OEq    _ -> AssocN
+    ONEq   _ -> AssocN
+    OAnd   _ -> AssocR
+    OOr    _ -> AssocR
+    OAdd   _ -> AssocL
+    OSub   _ -> AssocL
+    OMul   _ -> AssocL
+    ODiv   _ -> AssocL
+    OPow   _ -> AssocR
+    OLt    _ -> AssocN
+    OGt    _ -> AssocN
+    OLtE   _ -> AssocN
+    OGtE   _ -> AssocN
+    ORArr  _ -> AssocL
+    OLArr  _ -> AssocR
+    OFPipe _ -> AssocL
+    OBPipe _ -> AssocR
 
-opSymbol :: Op2 -> Name
-opSymbol = \case
-    OEq    -> "=="
-    ONEq   -> "/="
-    OAnd   -> "&&"
-    OOr    -> "||"
-    OAdd   -> "+"
-    OSub   -> "-"
-    OMul   -> "*"
-    ODiv   -> "/"
-    OPow   -> "^"
-    OLt    -> "<"
-    OGt    -> ">"
-    OLtE   -> "<="
-    OGtE   -> ">="
-    OLArr  -> "<<"
-    ORArr  -> ">>"
-    OFPipe -> "|>"
-    OBPipe -> "<|"
+-- | Return the symbolic representation of a binary operator
+op2Symbol :: Op2 t -> Name
+op2Symbol = \case
+    OEq    _ -> "=="
+    ONEq   _ -> "/="
+    OAnd   _ -> "&&"
+    OOr    _ -> "||"
+    OAdd   _ -> "+"
+    OSub   _ -> "-"
+    OMul   _ -> "*"
+    ODiv   _ -> "/"
+    OPow   _ -> "^"
+    OLt    _ -> "<"
+    OGt    _ -> ">"
+    OLtE   _ -> "<="
+    OGtE   _ -> ">="
+    OLArr  _ -> "<<"
+    ORArr  _ -> ">>"
+    OFPipe _ -> "|>"
+    OBPipe _ -> "<|"
 
 fieldSet :: [Field t a] -> FieldSet t a
 fieldSet fields = FieldSet (to <$> sortOn fieldName fields)
@@ -282,6 +286,31 @@ setPatternTag t = project >>> \case
     PAs  _ a b     -> asPat t a b
     POr  _ a b     -> orPat t a b
 
+op1Tag :: Op1 t -> t
+op1Tag = \case
+    ONeg   t -> t
+    ONot   t -> t
+
+op2Tag :: Op2 t -> t
+op2Tag = \case
+    OEq    t -> t 
+    ONEq   t -> t
+    OAnd   t -> t
+    OOr    t -> t
+    OAdd   t -> t
+    OSub   t -> t
+    OMul   t -> t
+    ODiv   t -> t
+    OPow   t -> t
+    OLt    t -> t
+    OGt    t -> t
+    OLtE   t -> t
+    OGtE   t -> t
+    OLArr  t -> t
+    ORArr  t -> t
+    OFPipe t -> t
+    OBPipe t -> t
+
 patternVars :: Pattern t -> [(Name, t)]
 patternVars = cata $ \case
     PVar t var           -> [(var, t)]
@@ -297,19 +326,33 @@ type Ast t = Expr t (Pattern t) (Binding (Pattern t)) [Pattern t]
 
 mapTagsM :: (Monad m) => (s -> m t) -> Ast s -> m (Ast t)
 mapTagsM f = cata $ \case
-    EVar t a                -> varExpr <$> f t <*> pure a
-    ECon t a b              -> conExpr <$> f t <*> pure a <*> sequence b
-    ELit t a                -> litExpr <$> f t <*> pure a
-    EApp t a                -> appExpr <$> f t <*> sequence a
-    ELet t (BLet p) a b     -> letExpr <$> f t <*> (BLet <$> mapPatternTags f p) <*> a <*> b
-    ELet t (BFun g ps) a b  -> letExpr <$> f t <*> (BFun g <$> traverse (mapPatternTags f) ps) <*> a <*> b
-    EFix t n a b            -> fixExpr <$> f t <*> pure n <*> a <*> b
-    ELam t p a              -> lamExpr <$> f t <*> traverse (mapPatternTags f) p <*> a
-    EIf  t a b c            -> ifExpr  <$> f t <*> a <*> b <*> c
-    EOp1 t o a              -> op1Expr <$> f t <*> pure o <*> a
-    EOp2 t o a b            -> op2Expr <$> f t <*> pure o <*> a <*> b
-    EDot t a b              -> dotExpr <$> f t <*> pure a <*> b
-    ETup t a                -> tupExpr <$> f t <*> sequence a 
+
+    EVar t a -> 
+        varExpr <$> f t <*> pure a
+    ECon t a b -> 
+        conExpr <$> f t <*> pure a <*> sequence b
+    ELit t a -> 
+        litExpr <$> f t <*> pure a
+    EApp t a -> 
+        appExpr <$> f t <*> sequence a
+    ELet t (BLet p) a b -> 
+        letExpr <$> f t <*> (BLet <$> mapPatternTags f p) <*> a <*> b
+    ELet t (BFun g ps) a b -> 
+        letExpr <$> f t <*> (BFun g <$> traverse (mapPatternTags f) ps) <*> a <*> b
+    EFix t n a b -> 
+        fixExpr <$> f t <*> pure n <*> a <*> b
+    ELam t p a -> 
+        lamExpr <$> f t <*> traverse (mapPatternTags f) p <*> a
+    EIf  t a b c -> 
+        ifExpr  <$> f t <*> a <*> b <*> c
+    EOp1 t o a -> 
+        op1Expr <$> f t <*> mapOp1Tags f o <*> a
+    EOp2 t o a b -> 
+        op2Expr <$> f t <*> mapOp2Tags f o <*> a <*> b
+    EDot t a b -> 
+        dotExpr <$> f t <*> pure a <*> b
+    ETup t a -> 
+        tupExpr <$> f t <*> sequence a 
     EPat t a cs -> do
         clauses <- traverse (mapClauseTags f) cs
         patExpr <$> f t <*> sequence a <*> traverse sequence clauses
@@ -317,6 +360,31 @@ mapTagsM f = cata $ \case
         fields <- traverse (mapFieldTags f) fs
         recExpr <$> f t <*> sequence (FieldSet fields)
   where
+    mapOp1Tags :: (Monad m) => (s -> m t) -> Op1 s -> m (Op1 t)
+    mapOp1Tags f = \case
+        ONeg   t -> ONeg <$> f t
+        ONot   t -> ONot <$> f t
+
+    mapOp2Tags :: (Monad m) => (s -> m t) -> Op2 s -> m (Op2 t)
+    mapOp2Tags f = \case
+        OEq    t -> OEq    <$> f t 
+        ONEq   t -> ONEq   <$> f t
+        OAnd   t -> OAnd   <$> f t
+        OOr    t -> OOr    <$> f t
+        OAdd   t -> OAdd   <$> f t
+        OSub   t -> OSub   <$> f t
+        OMul   t -> OMul   <$> f t
+        ODiv   t -> ODiv   <$> f t
+        OPow   t -> OPow   <$> f t
+        OLt    t -> OLt    <$> f t
+        OGt    t -> OGt    <$> f t
+        OLtE   t -> OLtE   <$> f t
+        OGtE   t -> OGtE   <$> f t
+        OLArr  t -> OLArr  <$> f t
+        ORArr  t -> ORArr  <$> f t
+        OFPipe t -> OFPipe <$> f t
+        OBPipe t -> OBPipe <$> f t
+
     mapPatternTags :: (Monad m) => (s -> m t) -> Pattern s -> m (Pattern t)
     mapPatternTags f = cata $ \case
         PVar t a            -> varPat <$> f t <*> pure a
@@ -394,10 +462,10 @@ ifExpr = embed4 EIf
 patExpr :: t -> [Expr t p q r] -> [Clause p (Expr t p q r)] -> Expr t p q r
 patExpr = embed3 EPat
 
-op1Expr :: t -> Op1 -> Expr t p q r -> Expr t p q r
+op1Expr :: t -> Op1 t -> Expr t p q r -> Expr t p q r
 op1Expr = embed3 EOp1
 
-op2Expr :: t -> Op2 -> Expr t p q r -> Expr t p q r -> Expr t p q r
+op2Expr :: t -> Op2 t -> Expr t p q r -> Expr t p q r -> Expr t p q r
 op2Expr = embed4 EOp2
 
 dotExpr :: t -> Name -> Expr t p q r -> Expr t p q r

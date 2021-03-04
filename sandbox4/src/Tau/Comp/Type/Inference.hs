@@ -53,6 +53,12 @@ instance (Typed t) => Typed (Ast t) where
 instance (Typed t) => Typed (Pattern t) where
     typeOf = typeOf . patternTag
 
+instance (Typed t) => Typed (Op1 t) where
+    typeOf = typeOf . op1Tag
+
+instance (Typed t) => Typed (Op2 t) where
+    typeOf = typeOf . op2Tag
+
 infer 
   :: ( MonadSupply Name m
      , MonadReader (ClassEnv (Ast NodeInfo), TypeEnv) m
@@ -148,23 +154,18 @@ infer = cata $ \expr -> do
             es2 <- sequence (inferClause newTy (typeOf <$> es1) <$> eqs)
             pure (patExpr (NodeInfo newTy []) es1 es2)
 
-        EOp1 _ ONot expr1 -> do
+        EOp1 _ op expr1 -> do
             a <- expr1
-            unifyTyped newTy (tBool :: Type)
-            pure (op1Expr (NodeInfo newTy []) ONot a)
-
-        EOp1 _ ONeg expr1 -> do
-            a <- expr1
-            unifyTyped newTy (typeOf a)
-            pure (op1Expr (NodeInfo newTy []) ONeg a)
+            (top, ps) <- inferOp1Type op
+            unifyTyped (typeOf a `tArr` newTy) (typeOf top)
+            pure (op1Expr (NodeInfo newTy ps) top a)
 
         EOp2 _ op expr1 expr2 -> do
             a <- expr1
             b <- expr2
-            let name = "(" <> opSymbol op <> ")"
-            (ty, ps) <- lookupScheme name >>= instantiate
-            unifyTyped (typeOf a `tArr` typeOf b `tArr` newTy) ty 
-            pure (op2Expr (NodeInfo newTy ps) op a b)
+            (top, ps) <- inferOp2Type op
+            unifyTyped (typeOf a `tArr` typeOf b `tArr` newTy) (typeOf top)
+            pure (op2Expr (NodeInfo newTy ps) top a b)
 
         EDot _ name expr1 -> do          
             e1 <- expr1
@@ -261,6 +262,55 @@ inferPattern = cata $ \pat -> do
 
         PAny _ ->
             pure (anyPat (NodeInfo newTy []))
+
+opType
+  :: ( MonadSupply Name m
+     , MonadReader (ClassEnv (Ast NodeInfo), TypeEnv) m
+     , MonadState (Substitution, Context) m
+     , MonadError String m ) 
+  => (NodeInfo -> a)
+  -> Scheme
+  -> m (a, [Predicate])
+opType op scheme = do
+    (t, ps) <- instantiate scheme
+    pure (op (NodeInfo t ps), ps)
+
+inferOp1Type 
+  :: ( MonadSupply Name m
+     , MonadReader (ClassEnv (Ast NodeInfo), TypeEnv) m
+     , MonadState (Substitution, Context) m
+     , MonadError String m ) 
+  => Op1 t
+  -> m (Op1 NodeInfo, [Predicate])
+inferOp1Type = \case
+    ONeg _ -> opType ONeg (Forall [kTyp] [InClass "Num" 0] (tGen 0 `tArr` tGen 0))
+    ONot _ -> opType ONot (Forall [] [] (tBool `tArr` tBool))
+
+inferOp2Type 
+  :: ( MonadSupply Name m
+     , MonadReader (ClassEnv (Ast NodeInfo), TypeEnv) m
+     , MonadState (Substitution, Context) m
+     , MonadError String m ) 
+  => Op2 t
+  -> m (Op2 NodeInfo, [Predicate])
+inferOp2Type = \case
+    OEq  _ -> opType OEq  (Forall [kTyp] [InClass "Eq" 0] (tGen 0 `tArr` tGen 0 `tArr` tGen 0))
+    ONEq _ -> opType ONEq (Forall [kTyp] [InClass "Eq" 0] (tGen 0 `tArr` tGen 0 `tArr` tGen 0))
+    OAdd _ -> opType OAdd (Forall [kTyp] [InClass "Num" 0] (tGen 0 `tArr` tGen 0 `tArr` tGen 0))
+    OMul _ -> opType OMul (Forall [kTyp] [InClass "Num" 0] (tGen 0 `tArr` tGen 0 `tArr` tGen 0))
+    OSub _ -> opType OSub (Forall [kTyp] [InClass "Num" 0] (tGen 0 `tArr` tGen 0 `tArr` tGen 0))
+    OAnd _ -> opType OAnd (Forall [] [] (tBool `tArr` tBool `tArr` tBool))
+    OOr  _ -> opType OOr  (Forall [] [] (tBool `tArr` tBool `tArr` tBool))
+    OLt  _ -> opType OLt  (Forall [kTyp] [InClass "Ord" 0] (tGen 0 `tArr` tGen 0 `tArr` tBool))
+    OGt  _ -> opType OGt  (Forall [kTyp] [InClass "Ord" 0] (tGen 0 `tArr` tGen 0 `tArr` tBool))
+    OLtE _ -> opType OLtE (Forall [kTyp] [InClass "Ord" 0] (tGen 0 `tArr` tGen 0 `tArr` tBool))
+    OGtE _ -> opType OGtE (Forall [kTyp] [InClass "Ord" 0] (tGen 0 `tArr` tGen 0 `tArr` tBool))
+--    ODiv _ ->
+--    OPow _ ->
+--    OLArr _ ->
+--    ORArr _ ->
+--    OFPipe _ ->
+--    OBPipe _ ->
 
 instantiate 
   :: ( MonadSupply Name m

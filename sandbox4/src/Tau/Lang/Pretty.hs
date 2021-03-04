@@ -212,8 +212,8 @@ prettyLet keyword p e1 e =
     expr = pretty (fst e1)
     body = pretty (fst e)
 
-instance Pretty Op2 where
-    pretty = pretty . opSymbol
+instance Pretty (Op2 t) where
+    pretty = pretty . op2Symbol
 
 ---- | Pretty printer for lambda abstractions
 --prettyLam :: (Pretty (Expr t p q r)) => Doc a -> (Expr t p q r, Doc a) -> Doc a

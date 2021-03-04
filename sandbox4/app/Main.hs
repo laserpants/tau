@@ -109,17 +109,22 @@ evalEnv = Env.fromList
     , ("Some"    , constructor "Some" 1)  
     , ("None"    , constructor "None" 0)  
     , ("{show}"  , constructor "{show}" 1)  
+    , ("{(*),(+),(-)}" , constructor "{(*),(+),(-)}" 3)  
     , ("(,)"     , constructor "(,)" 2)  
     , ("show"    , fromJust (evalExpr show_ mempty))
     , ("lenShow" , fromJust (evalExpr lenShow mempty))
     , ("first"   , fromJust (runEval (eval fst_) mempty))
     , ("second"  , fromJust (runEval (eval snd_) mempty))
+    , ("(+)"     , fromJust (evalExpr plus__ mempty))
     ]
   where
     lenShow = fromJust (evalSupply (compileExpr foo3) (numSupply "$"))
     show_   = fromJust (evalSupply (compileExpr foo4) (numSupply "$"))
+    plus__  = fromJust (evalSupply (compileExpr foo5) (numSupply "$"))
     foo3 = lamExpr () [varPat () "d"] (lamExpr () [varPat () "x"] (appExpr () [varExpr () "@String.length", appExpr () [varExpr () "show", varExpr () "d", varExpr () "x"]]))
     foo4 = lamExpr () [varPat () "d"] (patExpr () [varExpr () "d"] [ Clause [recPat () (fieldSet [Field () "show" (varPat () "show")])] [] (varExpr () "show") ])
+    foo5 = lamExpr () [varPat () "d"] (patExpr () [varExpr () "d"] [ Clause [recPat () (fieldSet 
+              [ Field () "(+)" (varPat () "x"), Field () "(*)" (anyPat ()), Field () "(-)" (anyPat ()) ])] [] (varExpr () "x") ])
     fst_ = fromJust (evalSupply (compileExpr foo24) (numSupply "$"))
     snd_ = fromJust (evalSupply (compileExpr foo25) (numSupply "$"))
     foo24 = lamExpr () [varPat () "p"] (patExpr () [varExpr () "p"] [Clause [conPat () "(,)" [varPat () "a", anyPat ()]] [] (varExpr () "a")])
@@ -188,7 +193,7 @@ test6 =
     -- 
     e = patExpr () [litExpr () (LInt 5), conExpr () "[]" [], conExpr () "(::)" [litExpr () (LInt 9), conExpr () "[]" []]]
         [ Clause [varPat () "f" , conPat () "[]" []                                , varPat () "ys"] 
-              [op2Expr () OEq (litExpr () (LInt 5)) (litExpr () (LInt 8))]    
+              [op2Expr () (OEq ()) (litExpr () (LInt 5)) (litExpr () (LInt 8))]    
               (varExpr () "ys")
         , Clause [varPat () "f" , conPat () "(::)" [varPat () "x", varPat () "xs"] , conPat () "[]" []] [] 
               (conExpr () "[]" [])
@@ -229,7 +234,7 @@ test8 =
     f :: Infer (Ast NodeInfo)
     f = infer e
     -- let g x (Some y) = \z => z in g (Some 5) ()
-    e = letExpr () (BFun "baz" [varPat () "x"]) (op2Expr () OAdd (varExpr () "x") (litExpr () (LInt 1))) (dotExpr () "baz" (litExpr () (LInt 5)))
+    e = letExpr () (BFun "baz" [varPat () "x"]) (op2Expr () (OAdd ()) (varExpr () "x") (litExpr () (LInt 1))) (dotExpr () "baz" (litExpr () (LInt 5)))
     --e = letExpr () (BFun "baz" [varPat () "x"]) (appExpr () [varExpr () "@Int.(+)", varExpr () "x", litExpr () (LInt 1)]) (dotExpr () "baz" (litExpr () (LInt 5)))
     --e = letExpr () (BLet (varPat () "baz")) (lamExpr () [varPat () "x"] (appExpr () [varExpr () "@Int.(+)", varExpr () "x", litExpr () (LInt 1)])) (dotExpr () "baz" (litExpr () (LInt 5)))
 --    e = letExpr () (BLet (varPat () "baz")) (lamExpr () [varPat () "x"] (appExpr () [varExpr () "@Int.(+)", varExpr () "x", litExpr () (LInt 1)])) (appExpr () [varExpr () "baz", litExpr () (LInt 5)])
@@ -298,8 +303,8 @@ test999 =
 test10a = do
     --let Right (r, q) = runTest testExpr3
     --let Right (r, q) = runTest testExpr3
-    --case runTest testExpr11 of
     case runTest testExpr21 of
+    --case runTest testExpr21 of
         Left e -> error e
         Right (r, q, c, z) -> do
             putStrLn (showTree (nodesToString (prettyAst r)))
@@ -329,7 +334,7 @@ test10a = do
     testExpr12 = lamExpr () [varPat () "x"] (appExpr () [varExpr () "show", conExpr () "(,)" [varExpr () "x", varExpr () "x"]])
 
     --testExpr21 = op2Expr () OAdd (litExpr () (LFloat 3.1)) (litExpr () (LFloat 4.1)) 
-    testExpr21 = op2Expr () OAdd (litExpr () (LInt 3)) (litExpr () (LInt 4)) 
+    testExpr21 = op2Expr () (OAdd ()) (litExpr () (LInt 3)) (litExpr () (LInt 4)) 
 
     runTest expr = do
         --runInfer classEnv typeEnv (infer expr)
@@ -470,9 +475,9 @@ classEnv = Env.fromList
     [ ( "Num"
       , ( []
         , [ Instance [] tInt (recExpr (NodeInfo (tApp (tCon (kArr kTyp kTyp) "Num") tInt) []) (fieldSet [
-              Field (NodeInfo (tInt `tArr` tInt `tArr` tInt) []) "(+)" (varExpr (NodeInfo (tInt `tArr` tInt `tArr` tInt) []) "@(+)Int")
-              , Field (NodeInfo (tInt `tArr` tInt `tArr` tInt) []) "(*)" (varExpr (NodeInfo (tInt `tArr` tInt `tArr` tInt) []) "@(*)Int")
-              , Field (NodeInfo (tInt `tArr` tInt `tArr` tInt) []) "(-)" (varExpr (NodeInfo (tInt `tArr` tInt `tArr` tInt) []) "@(-)Int")
+              Field (NodeInfo (tInt `tArr` tInt `tArr` tInt) []) "(+)" (varExpr (NodeInfo (tInt `tArr` tInt `tArr` tInt) []) "@Int.(+)")
+              , Field (NodeInfo (tInt `tArr` tInt `tArr` tInt) []) "(*)" (varExpr (NodeInfo (tInt `tArr` tInt `tArr` tInt) []) "@Int.(*)")
+              , Field (NodeInfo (tInt `tArr` tInt `tArr` tInt) []) "(-)" (varExpr (NodeInfo (tInt `tArr` tInt `tArr` tInt) []) "@Int.(-)")
             ]))
 --              [ Field (NodeInfo (tInt `tArr` tInt `tArr` tInt) []) "(+)" (varExpr (NodeInfo (tInt `tArr` tInt `tArr` tInt) []) "@(+)Int")
 --              , Field (NodeInfo (tInt `tArr` tInt `tArr` tInt) []) "(*)" (varExpr (NodeInfo (tInt `tArr` tInt `tArr` tInt) []) "@(*)Int")
