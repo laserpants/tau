@@ -213,6 +213,7 @@ matchAlgo
 matchAlgo [] []                   c = pure c
 matchAlgo [] (Clause [] []  e:_)  _ = pure e
 matchAlgo [] (Clause [] exs e:qs) c =
+    -- TODO: use prefix application instead (&&)
     ifExpr (exprTag c) (foldr1 (op2Expr tbool (OAnd (tarr tbool (tarr tbool tbool)))) exs) e <$> matchAlgo [] qs c
 matchAlgo (u:us) qs c =
     case clauseGroups qs of
@@ -334,6 +335,13 @@ substitute name subst = para $ \case
 
         e -> embed e
 
+sequenceExs :: (Monad m) => [m Core] -> m Core
+sequenceExs exs = do
+    xs <- sequence exs
+    case xs of
+        [e] -> pure e
+        _   -> pure (cApp xs)
+
 toCore
   :: (MonadSupply Name m)
   => Expr t (Prep t) Name Name
@@ -342,14 +350,14 @@ toCore = cata $ \case
     EVar _ var       -> pure (cVar var)
     ELit _ lit       -> pure (cLit lit)
     EIf  _ e1 e2 e3  -> cIf <$> e1 <*> e2 <*> e3
-    EApp _ exs       -> cApp <$> sequence exs
-    ECon _ con exs   -> cApp <$> sequence (pure (cVar con):exs)
+    EApp _ exs       -> sequenceExs exs
+    ECon _ con exs   -> sequenceExs (pure (cVar con):exs)
     ELet _ var e1 e2 -> cLet var <$> e1 <*> e2
     EFix _ var e1 e2 -> cLet var <$> e1 <*> e2
     ELam _ var e1    -> cLam var <$> e1
     EOp1{}           -> error "Implementation error"
     EOp2{}           -> error "Implementation error"
-    EDot _ name e1   -> cApp <$> sequence [pure (cVar name), e1]
+    EDot _ name e1   -> sequenceExs [pure (cVar name), e1]
 
     ERec _ (FieldSet fields) -> do
         exprs <- traverse fieldValue fields

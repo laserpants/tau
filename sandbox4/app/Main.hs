@@ -302,7 +302,7 @@ test999 =
 test10a = do
     --let Right (r, q) = runTest testExpr3
     --let Right (r, q) = runTest testExpr3
-    case runTest testExpr21 of
+    case runTest testExpr22 of
     --case runTest testExpr21 of
         Left e -> error e
         Right (r, q, c, z) -> do
@@ -334,6 +334,15 @@ test10a = do
 
     --testExpr21 = op2Expr () OAdd (litExpr () (LFloat 3.1)) (litExpr () (LFloat 4.1)) 
     testExpr21 = op2Expr () (OAdd ()) (litExpr () (LInt 3)) (litExpr () (LInt 4)) 
+
+    testExpr22 = appExpr () [patExpr () [] [
+          Clause [ conPat () "(::)" [litPat () (LInt 2), varPat () "z"]
+                 , varPat () "y" ] [] (litExpr () (LString "one")) 
+        , Clause [ varPat () "x"       
+                 , litPat () (LInt 4) ] [] (litExpr () (LString "two")) 
+        , Clause [ conPat () "(::)" [anyPat (), anyPat ()]
+                 , varPat () "x" ] [] (litExpr () (LString "three"))
+        ], conExpr () "(::)" [litExpr () (LInt 3), conExpr () "[]" []], litExpr () (LInt 4)]
 
     runTest expr = do
         --runInfer classEnv typeEnv (infer expr)
