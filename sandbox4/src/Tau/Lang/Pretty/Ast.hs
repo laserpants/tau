@@ -105,8 +105,9 @@ nodesToString = fmap (Text.unpack . renderDoc)
 prettyCore :: Core -> Tree (Doc a)
 prettyCore = para $ \case
 
-    CPat (expr, _) clauses ->
-        Node ("match" <+> pretty expr <+> "with") [] -- TODO
+    CPat (expr, _) eqs ->
+        Node ("match" <+> pretty expr <+> "with") 
+            (prettyClauseTree_ =<< fst <$$> eqs)
 
     a -> case snd <$> a of
 
@@ -127,3 +128,11 @@ prettyCore = para $ \case
 
         CIf cond tr fl -> 
             Node "if" [cond, prefix "then" tr, prefix "else" fl]
+
+prettyClauseTree_ :: Clause Name Core -> [Tree (Doc a)]
+prettyClauseTree_ (Clause ps exs e) =
+    [Node (hsep (pretty <$> "─┬" : ps)) (whens <> [prefix "=>" (prettyCore e)])]
+  where
+    whens 
+      | null exs  = []
+      | otherwise = [Node "when" (prettyCore <$> exs)]
