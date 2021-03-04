@@ -385,6 +385,21 @@ test10a = do
 --  where
 --    fs = zoop ast
 
+--compileExpr2
+--  :: (MonadSupply Name m)
+--  => Expr NodeInfo (Pattern NodeInfo) (Binding (Pattern NodeInfo)) [Pattern NodeInfo]
+--  -> m Core
+compileExpr2 e = do
+    ast <- infer e
+    sub <- gets fst
+    let ast' = mapTags (apply sub) ast
+    bb <- evalStateT (compileClasses (desugarOperators ast')) []
+    cc <- expandFunPats (mapTags nodeType bb)
+    dd <- unrollLets cc
+    ee <- simplify dd
+    toCore ee
+
+
 astVars :: (Free t) => Ast t -> [Name]
 astVars = nub . cata alg 
   where 

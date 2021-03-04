@@ -95,8 +95,8 @@ unrollLets = cata $ \case
     ELam t pat e1    -> lamExpr t pat <$> e1
     EIf  t e1 e2 e3  -> ifExpr  t <$> e1 <*> e2 <*> e3
     EPat t eqs exs   -> patExpr t <$> sequence eqs <*> traverse sequence exs
---    EOp1 t op a      -> op1Expr t op <$> a
---    EOp2 t op a b    -> op2Expr t op <$> a <*> b
+    EOp1{}           -> error "Implementation error"
+    EOp2{}           -> error "Implementation error"
     EDot t name e1   -> dotExpr t name <$> e1
     ERec t fields    -> recExpr t <$> sequence fields
     ETup t exs       -> tupExpr t <$> sequence exs
@@ -121,8 +121,8 @@ simplify = cata $ \case
     EApp t exs       -> appExpr t <$> sequence exs
     EFix t var e1 e2 -> fixExpr t var <$> e1 <*> e2
     EIf  t e1 e2 e3  -> ifExpr  t <$> e1 <*> e2 <*> e3
---    EOp1 t op a      -> op1Expr t op <$> a
---    EOp2 t op a b    -> op2Expr t op <$> a <*> b
+    EOp1{}           -> error "Implementation error"
+    EOp2{}           -> error "Implementation error"
     EDot t name e1   -> dotExpr t name <$> e1
     ERec t fields    -> recExpr t <$> sequence fields
     ETup t exs       -> tupExpr t <$> sequence exs
@@ -340,8 +340,8 @@ toCore = cata $ \case
     ELet _ var e1 e2 -> cLet var <$> e1 <*> e2
     EFix _ var e1 e2 -> cLet var <$> e1 <*> e2
     ELam _ var e1    -> cLam var <$> e1
---    EOp1 _ op a      -> cApp <$> sequence [pure (prefix1 op), a]
---    EOp2 _ op a b    -> cApp <$> sequence [pure (prefix2 op), a, b]
+    EOp1{}           -> error "Implementation error"
+    EOp2{}           -> error "Implementation error"
     EDot _ name e1   -> cApp <$> sequence [pure (cVar name), e1]
 
     ERec _ (FieldSet fields) -> do
@@ -358,18 +358,14 @@ toCore = cata $ \case
             [expr] -> cPat expr <$> traverse desugarClause exs
             _      -> error "Implementation error"
   where
---    prefix1 ONeg = cVar "negate"
---    prefix1 ONot = cVar "not"
---    prefix2 op = cVar ("(" <> opSymbol op <> ")")
-
     desugarClause (Clause [RCon _ con ps] exs e) =
         Clause (con:ps) <$> sequence exs <*> e
     desugarClause _ =
         error "Implementation error"
 
 desugarOperators
-  :: Expr t (Pattern t) q [Pattern t]
-  -> Expr t (Pattern t) q [Pattern t]
+  :: Expr t p q r
+  -> Expr t p q r
 desugarOperators = cata $ \case
 
     EOp1 t op a -> 
