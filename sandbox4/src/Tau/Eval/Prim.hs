@@ -39,7 +39,6 @@ instance Prim Text where
         LString lit -> lit
         _           -> Text.pack ""
 
-
 instance Prim Char where
     toLiteral = LChar
     primitive = \case
