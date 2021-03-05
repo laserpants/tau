@@ -230,6 +230,14 @@ fieldSet fields = FieldSet (to <$> sortOn fieldName fields)
 fieldList :: FieldSet t a -> [(t, Name, a)]
 fieldList (FieldSet fields) = to <$> fields
 
+lookupField :: Name -> FieldSet t a -> Maybe (t, a)
+lookupField name (FieldSet fields) = lookup name fields 
+  where
+    lookup _ [] = Nothing
+    lookup name ((Field t n val):fs) 
+        | n == name = Just (t, val)
+        | otherwise = lookup name fs 
+
 exprTag :: Expr t p q r -> t
 exprTag = project >>> \case
     EVar t _       -> t

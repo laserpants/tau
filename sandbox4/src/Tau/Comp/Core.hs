@@ -461,21 +461,16 @@ applyDicts (InClass name ty) expr
 
                 dict <- compileClasses instanceDict
 
-                let expr' = setExprTag (NodeInfo (typeOf dict `tArr` typeOf expr) []) expr
-                    def   = appExpr (exprTag expr) [expr', dict]
+                let def = appExpr (exprTag expr) 
+                            [ setExprTag (NodeInfo (typeOf dict `tArr` typeOf expr) []) expr
+                            , dict ]
 
                 pure $ case (project expr, project dict) of
                     (EVar _ var, ERec _ fields) -> 
-                        fromMaybe def (findField var (fieldList fields))
+                        maybe def snd (lookupField var fields)
                     _ -> 
                         def
                         
-findField :: (Eq t) => t -> [(a, t, v)] -> Maybe v
-findField name [] = Nothing
-findField name ((_, n, val):fs)
-    | n == name = Just val
-    | otherwise = findField name fs
-
 setNodeType :: Type -> NodeInfo -> NodeInfo
 setNodeType ty info = info{ nodeType = ty }
 
