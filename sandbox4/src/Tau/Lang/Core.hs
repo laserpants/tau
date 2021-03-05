@@ -13,7 +13,6 @@ data CoreF a
     | CLet Name a a             -- ^ Let expression
     | CLam Name a               -- ^ Lambda abstraction
     | CIf a ~a ~a               -- ^ If-clause
---    | CPat a [Clause Name a]    -- ^ Pattern matching clause-matrix
     | CPat a [([Name], a)]      -- ^ Pattern matching clause-matrix
     deriving (Show, Eq, Functor, Foldable, Traversable)
 
