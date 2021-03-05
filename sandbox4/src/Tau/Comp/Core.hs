@@ -17,7 +17,7 @@ import Data.Foldable (foldrM)
 import Data.Function ((&))
 import Data.List (nub)
 import Data.List.Extra (groupSortOn)
-import Data.Maybe (fromJust)
+import Data.Maybe (fromJust, fromMaybe)
 import Data.Tuple.Extra (thd3)
 import Tau.Comp.Type.Inference
 import Tau.Lang.Core
@@ -453,10 +453,28 @@ applyDicts (InClass name ty) expr
         case lookupClassInstance name ty env of
             Left e -> throwError e
             Right (_ , Instance{..}) -> do
+                --dict <- compileClasses instanceDict
+--                let expr' = setExprTag (NodeInfo (typeOf dict `tArr` typeOf expr) []) expr
+--                pure (appExpr (exprTag expr) [expr', dict])
+
                 -- TODO: super-classes???
+
                 dict <- compileClasses instanceDict
+
                 let expr' = setExprTag (NodeInfo (typeOf dict `tArr` typeOf expr) []) expr
-                pure (appExpr (exprTag expr) [expr', dict])
+                    def   = appExpr (exprTag expr) [expr', dict]
+
+                pure $ case (project expr, project dict) of
+                    (EVar _ var, ERec _ fields) -> 
+                        fromMaybe def (findField var (fieldList fields))
+                    _ -> 
+                        def
+                        
+findField :: (Eq t) => t -> [(a, t, v)] -> Maybe v
+findField name [] = Nothing
+findField name ((_, n, val):fs)
+    | n == name = Just val
+    | otherwise = findField name fs
 
 setNodeType :: Type -> NodeInfo -> NodeInfo
 setNodeType ty info = info{ nodeType = ty }
