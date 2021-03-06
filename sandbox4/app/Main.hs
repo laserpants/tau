@@ -621,7 +621,7 @@ typeEnv = Env.fromList
 
 
 -- =====================================
--- 
+-- Pattern anomalies
 -- =====================================
 
 type ConstructorEnv = Env (Set Name)
