@@ -307,7 +307,7 @@ test999 =
 test10a = do
     --let Right (r, q) = runTest testExpr3
     --let Right (r, q) = runTest testExpr3
-    case runTest testExpr23 of
+    case runTest testExpr2 of
     --case runTest testExpr21 of
         Left e -> error e
         Right (r, q, c, z) -> do

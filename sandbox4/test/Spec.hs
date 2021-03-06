@@ -1,9 +1,10 @@
-import Test.Hspec
 import Tau.CoreEvalTests
+import Tau.ParserTests
 import Tau.PatternAnomaliesTests
 import Tau.TypeInferenceTests
 import Tau.TypeSubstitutionTests
 import Tau.TypeUnificationTests
+import Test.Hspec
 
 main :: IO ()
 main =
@@ -13,3 +14,4 @@ main =
         describe "\nType substitution\n" testTypeSubstitution
         describe "\nPattern anomalies\n" testPatternAnomalies
         describe "\nCore evaluation\n" testCoreEval
+        describe "\nParser\n" testParser

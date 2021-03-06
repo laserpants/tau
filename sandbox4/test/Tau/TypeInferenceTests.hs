@@ -36,11 +36,13 @@ classEnv = Env.fromList
         , [ Instance [] tInt  (recExpr (NodeInfo (tApp (tCon (kArr kTyp kTyp) "Show") tInt) [])  (fieldSet [Field (NodeInfo (tInt `tArr` tString) []) "show" (varExpr (NodeInfo (tInt `tArr` tString) []) "@showInt")]))
           , Instance [] tBool (recExpr (NodeInfo (tApp (tCon (kArr kTyp kTyp) "Show") tBool) [])  (fieldSet [Field (NodeInfo (tBool `tArr` tString) []) "show" (varExpr (NodeInfo (tBool `tArr` tString) []) "@showBool")]))
 --          , Instance [InClass "Show" (tVar kTyp "a")] (tList (tVar kTyp "a")) (recExpr (NodeInfo (tApp (tCon (kArr kTyp kTyp) "Show") (tList (tVar kTyp "a"))) []) [Field (NodeInfo ((tList (tVar kTyp "a")) `tArr` tString) []) "show" foo11])
---          , Instance [] (tPair (tVar kTyp "a") (tVar kTyp "b")) (recExpr (NodeInfo (tApp (tCon (kArr kTyp kTyp) "Show") (tPair (tVar kTyp "a") (tVar kTyp "b"))) []) [Field (NodeInfo (tPair (tVar kTyp "a") (tVar kTyp "b") `tArr` tString) []) "show" showPair_])
+          , Instance [] (tPair (tVar kTyp "a") (tVar kTyp "b")) (recExpr (NodeInfo (tApp (tCon (kArr kTyp kTyp) "Show") (tPair (tVar kTyp "a") (tVar kTyp "b"))) []) (fieldSet [Field (NodeInfo (tPair (tVar kTyp "a") (tVar kTyp "b") `tArr` tString) []) "show" showPair_]))
           ]
         )
       )
     ]
+  where
+    showPair_ = lamExpr (NodeInfo (tPair (tVar kTyp "a") (tVar kTyp "b") `tArr` tString) []) [varPat (NodeInfo (tPair (tVar kTyp "a") (tVar kTyp "b")) []) "p"] (appExpr (NodeInfo tString []) [varExpr (NodeInfo (tString `tArr` tString `tArr` tString `tArr` tString) []) "@strconcat3", appExpr (NodeInfo tString []) [varExpr (NodeInfo (tVar kTyp "a" `tArr` tString) [InClass "Show" (tVar kTyp "a")]) "show", (appExpr (NodeInfo (tVar kTyp "a") []) [varExpr (NodeInfo (tPair (tVar kTyp "a") (tVar kTyp "b") `tArr` tVar kTyp "a") []) "first", varExpr (NodeInfo (tPair (tVar kTyp "a") (tVar kTyp "b")) []) "p"])], litExpr (NodeInfo tString []) (LString ","), appExpr (NodeInfo tString []) [varExpr (NodeInfo (tVar kTyp "b" `tArr` tString) [InClass "Show" (tVar kTyp "b")]) "show", appExpr (NodeInfo (tVar kTyp "b") []) [varExpr (NodeInfo (tPair (tVar kTyp "a") (tVar kTyp "b") `tArr` tVar kTyp "b") []) "second", varExpr (NodeInfo (tPair (tVar kTyp "a") (tVar kTyp "b")) []) "p"]]])
 
 typeEnv :: TypeEnv
 typeEnv = Env.fromList 
@@ -65,31 +67,31 @@ typeEnv = Env.fromList
     , ( "lenShow"  , Forall [kTyp, kTyp] [InClass "Show" 0] (tGen 0 `tArr` upgrade tInt) ) 
     ]
 
-type InferenceStack a =
-    StateT (Substitution, Context) (ReaderT (ClassEnv a, TypeEnv) (SupplyT Name (ExceptT String Maybe))) a
-
-runInfer 
-  :: ClassEnv a 
-  -> TypeEnv 
-  -> InferenceStack a
-  -> Either String (a, (Substitution, Context))
-runInfer e1 e2 = flip runStateT (mempty, mempty)
-    >>> flip runReaderT (e1, e2)
+--type InferenceStack a =
+--    StateT (Substitution, Context) (ReaderT (ClassEnv a, TypeEnv) (SupplyT Name (ExceptT String Maybe))) a
+--
+--runInfer 
+--  :: ClassEnv a 
+--  -> TypeEnv 
+--  -> InferenceStack a
+--  -> Either String (a, (Substitution, Context))
+runInfer classEnv typeEnv = flip runStateT (mempty, mempty)
+    >>> flip runReaderT (classEnv, typeEnv)
     >>> flip evalSupplyT (numSupply "a")
     >>> runExceptT
     >>> fromMaybe (Left "error")
 
-runTest :: Expr t (Pattern t) (Binding (Pattern t)) [Pattern t] -> Either String (Ast NodeInfo)
-runTest expr = do
-    (ast, (sub, _)) <- runInfer classEnv typeEnv (infer expr)
-    pure (mapTags (apply sub) ast)
-
---result :: Expr -> Either e Scheme
---result expr = normalize . generalize mempty [] . fst <$> runTest expr
-
-result = undefined
-
-normalize = undefined
+--runTest :: Expr t (Pattern t) (Binding (Pattern t)) [Pattern t] -> Either String (Ast NodeInfo)
+--runTest expr = do
+--    (ast, (sub, _)) <- runInfer classEnv typeEnv (infer expr)
+--    pure (mapTags (apply sub) ast)
+--
+----result :: Expr -> Either e Scheme
+----result expr = normalize . generalize mempty [] . fst <$> runTest expr
+--
+--result = undefined
+--
+--normalize = undefined
 
 --succeedInferType :: Expr t p q r -> Scheme -> SpecWith ()
 --succeedInferType expr expected =
@@ -102,6 +104,18 @@ normalize = undefined
 --    describe ("The expression : " <> prettyString expr) $
 --        it ("✗ fails with error " <> show err) $
 --            result expr == Left err
+
+runTestExpr expr = 
+    case runInfer classEnv typeEnv run of
+        Left e ->
+            error e
+        Right (ttree, (_, context)) ->
+            (pretty (typeOf ttree), context)
+  where
+    run = do
+        ast <- infer expr
+        sub <- gets fst
+        pure (mapTags (apply sub) ast)
 
 testExpr1 = letExpr () (BLet (varPat () "const")) (lamExpr () [varPat () "a", varPat () "b"] (varExpr () "a")) (appExpr () [varExpr () "const", litExpr () LUnit])
 
@@ -120,6 +134,14 @@ testExpr7 = appExpr () [varExpr () "lenShow", litExpr () (LInt 555)]
 testExpr8 = lamExpr () [varPat () "x"] (appExpr () [varExpr () "f", varExpr () "x"])
 
 testExpr9 = letExpr () (BLet (varPat () "f")) (varExpr () "lenShow") (varExpr () "f")
+
+testExpr10 = letExpr () (BFun "f" [varPat () "x"]) (varExpr () "lenShow") (appExpr () [varExpr () "f", litExpr () LUnit])
+
+testExpr11 = letExpr () (BLet (varPat () "p")) (conExpr () "(,)" [litExpr () (LInt 5), litExpr () (LInt 1)]) (appExpr () [varExpr () "show", varExpr () "p"])
+
+testExpr12 = lamExpr () [varPat () "x"] (appExpr () [varExpr () "show", conExpr () "(,)" [varExpr () "x", varExpr () "x"]])
+
+-- TODO
 
 testTypeInference :: SpecWith ()
 testTypeInference = do
