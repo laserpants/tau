@@ -164,6 +164,7 @@ instance Pretty (Pattern t) where
         PCon _ con ps         -> foldl conArg (pretty con) (fst <$> ps)
         PLit _ lit            -> pretty lit
         PRec _ fields         -> prettyRecord equals (snd <$> fields)
+        PTup _ elems          -> prettyTuple (snd <$> elems)
         PAs  _ name p         -> pretty (fst p) <+> "as" <+> pretty name
         POr  _ p1 p2          -> pretty (fst p1) <+> "or" <+> pretty (fst p2)
         PAny _                -> "_"
@@ -241,9 +242,10 @@ prettyRecord sep fset
 --patternConArg out (pat, doc) = out <+> addParens pat doc 
 --conArg :: Doc a -> (Expr t p q r, Doc a) -> Doc a
 --conArg out (expr, doc) = out <+> addParens expr doc 
---prettyTuple :: [Doc a] -> Doc a
---prettyTuple = parens . commaSep
---
+
+prettyTuple :: [Doc a] -> Doc a
+prettyTuple = parens . commaSep
+
 
 instance Pretty Core where
     pretty = para $ \case

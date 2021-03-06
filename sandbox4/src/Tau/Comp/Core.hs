@@ -9,6 +9,7 @@ module Tau.Comp.Core where
 import Control.Arrow
 import Control.Monad.Error.Class (liftEither)
 import Control.Monad.Except
+import Control.Monad.Extra
 import Control.Monad.Reader
 import Control.Monad.State
 import Control.Monad.Supply
@@ -18,13 +19,17 @@ import Data.Function ((&))
 import Data.List (nub)
 import Data.List.Extra (groupSortOn)
 import Data.Maybe (fromJust, fromMaybe)
-import Data.Tuple.Extra (thd3)
+import Data.Set.Monad (Set)
+import Data.Tuple.Extra (both, thd3)
 import Tau.Comp.Type.Inference
 import Tau.Lang.Core
 import Tau.Lang.Expr
 import Tau.Lang.Type
 import Tau.Util
+import Tau.Util.Env (Env(..))
+import qualified Data.Set.Monad as Set
 import qualified Data.Text as Text
+import qualified Tau.Util.Env as Env
 
 class TypeTag t where
     tvar  :: Name -> t
@@ -478,3 +483,176 @@ setNodePredicates ps info = info{ nodePredicates = ps }
 
 stripNodePredicates :: NodeInfoT a -> NodeInfoT a
 stripNodePredicates = setNodePredicates []
+
+-- ============================================================================
+-- Pattern anomalies check
+-- ============================================================================
+
+type ConstructorEnv = Env (Set Name)
+
+constructorEnv :: [(Name, [Name])] -> ConstructorEnv
+constructorEnv = Env.fromList . (Set.fromList <$$>)
+
+headCons :: [[Pattern t]] -> [(Name, [Pattern t])]
+headCons = (fun =<<) 
+  where
+    fun :: [Pattern t] -> [(Name, [Pattern t])]
+    fun [] = error "Implementation error (headCons)"
+    fun (p:ps) = 
+        case project p of
+            PLit _ lit -> 
+                [(prim lit, [])]
+
+            PCon _ name rs -> 
+                [(name, rs)]
+
+            PRec t (FieldSet fields) ->
+                fun (conPat t (recordCon (fieldName <$> fields)) (fieldValue <$> fields):ps)
+
+            PTup t elems ->
+                fun (conPat t (tupleCon (length elems)) elems:ps)
+
+            PAs _ _ q -> 
+                fun (q:ps)
+
+            POr _ a b -> 
+                fun (a:ps) <> fun (b:ps)
+
+            _  -> 
+                []
+
+    prim (LBool True)  = "#True"
+    prim (LBool False) = "#False"
+    prim LUnit         = "#()"
+    prim LInt{}        = "#Int"
+    prim LInteger{}    = "#Integer"
+    prim LFloat{}      = "#Float"
+    prim LChar{}       = "#Char"
+    prim LString{}     = "#String"
+
+defaultMatrix :: [[Pattern t]] -> [[Pattern t]]
+defaultMatrix = (fun =<<)
+  where 
+    fun :: [Pattern t] -> [[Pattern t]]
+    fun (p:ps) =
+        case project p of
+            PCon{}    -> []
+            PRec{}    -> []
+            PTup{}    -> []
+            PLit{}    -> []
+            PAs _ _ q -> fun (q:ps)
+            POr _ a b -> fun (a:ps) <> fun (b:ps)
+            _         -> [ps]
+
+specialized :: Name -> [t] -> [[Pattern t]] -> [[Pattern t]]
+specialized name ts = concatMap rec 
+  where
+    rec [] = error "Implementation error (specialized)"
+    rec (p:ps) =
+        case project p of
+            PCon _ con rs
+                | con == name -> [rs <> ps]
+                | otherwise   -> []
+
+            PRec t (FieldSet fields) -> do
+                -- TODO: DRY
+                let q = conPat t (recordCon (fieldName <$> fields)) (fieldValue <$> fields)
+                rec (q:ps)
+
+            PTup t elems -> do
+                -- TODO: DRY
+                let q = conPat t (tupleCon (length elems)) elems
+                rec (q:ps)
+
+            PAs _ _ q ->
+                rec (q:ps)
+
+            POr _ p1 p2 ->
+                rec (p1:ps) <> rec (p2:ps)
+
+            _ ->
+                [(anyPat <$> ts) <> ps]
+
+-- TODO: rename
+data AType t 
+    = ACon Name [Pattern t] 
+    | AOr (Pattern t) (Pattern t) 
+    | AAny
+
+getA :: Pattern t -> AType t
+getA = project >>> \case
+    PCon _ con rs -> 
+        ACon con rs
+
+    PRec t (FieldSet fields) -> 
+        -- TODO: DRY
+        getA (conPat t (recordCon (fieldName <$> fields)) (fieldValue <$> fields))
+
+    PTup t elems ->
+        -- TODO: DRY
+        getA (conPat t (tupleCon (length elems)) elems)
+
+    PAs _ _ a -> 
+        getA a
+
+    POr _ a b -> 
+        AOr a b
+
+    _ -> 
+        AAny
+
+useful :: (MonadReader ConstructorEnv m) => [[Pattern t]] -> [Pattern t] -> m Bool
+useful [] _   = pure True   -- Zero rows (0x0 matrix)
+useful (p1:_) qs 
+    | null p1 = pure False  -- One or more rows but no columns
+    | null qs = error "Implementation error (useful)"
+useful pss (q:qs) =
+    case getA q of
+        ACon con rs  ->
+            let special = specialized con (patternTag <$> rs)
+             in useful (special pss) (head (special [q:qs]))
+        AAny -> do
+            let cs = headCons pss
+            isComplete <- complete (fst <$> cs)
+            if isComplete
+                then cs & anyM (\(con, rs) ->
+                    let special = specialized con (patternTag <$> rs)
+                     in useful (special pss) (head (special [q:qs]))) 
+                else 
+                    useful (defaultMatrix pss) qs
+        AOr a b -> 
+            useful pss (a:qs) ||^ useful pss (b:qs)
+  where
+    complete [] = pure False
+    complete names@(name:_) = do
+        defined <- ask
+        pure (lookupCon (defined `Env.union` builtIn) name == Set.fromList names)
+    lookupCon constructors con 
+        | isTupleCon con || isRecordCon con = Set.singleton con
+        | otherwise = Env.findWithDefaultEmpty con constructors
+
+    builtIn = constructorEnv
+        [ ("#True",     ["#True", "#False"])
+        , ("#False",    ["#True", "#False"])
+        , ("#()",       ["#()"])
+        , ("#Int",      [])
+        , ("#Integer",  [])
+        , ("#Float",    [])
+        , ("#Char",     [])
+        , ("#String",   []) ]
+
+isTupleCon :: Name -> Bool
+isTupleCon con = Just True == (allCommas <$> stripped con)
+  where
+    allCommas = Text.all (== ',')
+    stripped  = Text.stripSuffix ")" <=< Text.stripPrefix "("
+
+isRecordCon :: Name -> Bool
+isRecordCon con = ("{", "}") == fstLst con
+  where
+    fstLst ""  = ("", "")
+    fstLst con = both Text.singleton (Text.head con, Text.last con)
+
+exhaustive :: (MonadReader ConstructorEnv m) => [[Pattern t]] -> m Bool
+exhaustive []         = pure False
+exhaustive pss@(ps:_) = not <$> useful pss (anyPat . patternTag <$> ps)
