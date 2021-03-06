@@ -55,10 +55,10 @@ instance Parens (Expr t p q r) where
 
 instance Parens (Value m) where
     needsParens = \case
-        Value lit -> False
-        Data _ [] -> False
-        Data{}    -> True
-        _         -> False
+        Value lit   -> False
+        Data _ []   -> False
+        Data{}      -> True
+        _           -> False
 
 addParens :: (Parens p) => p -> Doc a -> Doc a
 addParens el doc = if needsParens el then parens doc else doc
@@ -266,11 +266,11 @@ instance Pretty Core where
         CLet var e1 e2 ->
             prettyLet_ "let" var (snd e1) (snd e2)
         CLam var e1 ->
-            "TODO:CLam"
+            prettyLam_ (pretty var) e1
         CIf cond tr fl ->
             "TODO:CIf"
         CPat e1 cs ->
-            "TODO:CPat"
+            "match" <+> pretty (fst e1) <+> "with" <+> "TODO"
 
 --prettyLet_
 --  :: (Pretty p, Pretty q, Pretty l)
@@ -288,6 +288,14 @@ prettyLet_ keyword p e1 e2 =
             ])
         ])
 
+--prettyLam :: (Pretty (Expr t p q r)) => Doc a -> (Expr t p q r, Doc a) -> Doc a
+prettyLam_ arg e1 = 
+    group (nest 2 (vsep 
+      [ backslash <> arg <+> "=>"
+      , pretty (fst e1)
+      ])
+    )
+
 instance Pretty (Value m) where
     pretty = \case
         Value lit ->
@@ -301,6 +309,3 @@ instance Pretty (Value m) where
 
         Closure name _ _ ->
             "<<function>>"
-
---valueArg = undefined
---valueArg out el = out <+> addParens el (pretty el)
