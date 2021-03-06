@@ -202,45 +202,96 @@ testPatternAnomalies = do
         , [anyPat ()]
         ]
 
---    nonExhaustivePatterns
---        [ $(parsePattern "{ x = 3, y = 4 }")
---        , $(parsePattern "{ x = 6, y = 7 }")
---        ]
---
---    exhaustivePatterns
---        [ $(parsePattern "{ x = 3, y = 4 }")
---        , $(parsePattern "{ x = 6, y = 7 }")
---        , $(parsePattern "{ x = _, y = 7 }")
---        , $(parsePattern "{ x = x, y = _ }")
---        ]
---
---    exhaustivePatterns
---        [ $(parsePattern "{ x = _ }")
---        ]
---
---    exhaustivePatterns
---        [ $(parsePattern "{ x = _, y = a }")
---        ]
---
---    exhaustivePatterns
---        [ $(parsePattern "{ a = x }")
---        ]
---
---    exhaustivePatterns
---        [ $(parsePattern "{ x = 3, y = { a = 3 } }")
---        , $(parsePattern "{ x = 6, y = { a = 4 } }")
---        , $(parsePattern "{ x = _, y = { a = 5 } }")
---        , $(parsePattern "{ x = x, y = { a = _ } }")
---        ]
---
---    nonExhaustivePatterns
---        [ $(parsePattern "{ x = 3, y = { a = 3 } }")
---        , $(parsePattern "{ x = 6, y = { a = 4 } }")
---        , $(parsePattern "{ x = _, y = { a = 5 } }")
---        , $(parsePattern "{ x = x, y = { a = 6 } }")
---        ]
+    nonExhaustivePatterns
+        [ [recPat () (fieldSet [Field () "x" (litPat () (LInt 3)), Field () "y" (litPat () (LInt 4))])]
+        , [recPat () (fieldSet [Field () "x" (litPat () (LInt 6)), Field () "y" (litPat () (LInt 7))])]
+        ]
 
--- Or-patterns
+    exhaustivePatterns
+        [ [recPat () (fieldSet [Field () "x" (litPat () (LInt 3)), Field () "y" (litPat () (LInt 4))])]
+        , [recPat () (fieldSet [Field () "x" (litPat () (LInt 6)), Field () "y" (litPat () (LInt 7))])]
+        , [recPat () (fieldSet [Field () "x" (anyPat ()), Field () "y" (litPat () (LInt 7))])]
+        , [recPat () (fieldSet [Field () "x" (varPat () "x"), Field () "y" (anyPat ())])]
+        ]
 
--- As-patterns
+    exhaustivePatterns
+        [ [recPat () (fieldSet [Field () "x" (anyPat ())])] ]
+
+    exhaustivePatterns
+        [ [recPat () (fieldSet [Field () "x" (anyPat ()), Field () "y" (varPat () "a")])] ]
+
+    exhaustivePatterns
+        [ [recPat () (fieldSet 
+              [ Field () "x" (litPat () (LInt 3))
+              , Field () "y" (recPat () (fieldSet 
+                  [ Field () "a" (litPat () (LInt 3))
+                  ]))
+              ])]
+        , [recPat () (fieldSet 
+              [ Field () "x" (litPat () (LInt 6))
+              , Field () "y" (recPat () (fieldSet 
+                  [ Field () "a" (litPat () (LInt 4))
+                  ]))
+              ])]
+        , [recPat () (fieldSet 
+              [ Field () "x" (anyPat ())
+              , Field () "y" (recPat () (fieldSet 
+                  [ Field () "a" (litPat () (LInt 5))
+                  ]))
+              ])]
+        , [recPat () (fieldSet 
+              [ Field () "x" (varPat () "x")
+              , Field () "y" (recPat () (fieldSet 
+                  [ Field () "a" (anyPat ())
+                  ]))
+              ])]
+        ]
+
+    nonExhaustivePatterns
+        [ [recPat () (fieldSet 
+              [ Field () "x" (litPat () (LInt 3))
+              , Field () "y" (recPat () (fieldSet 
+                  [ Field () "a" (litPat () (LInt 3))
+                  ]))
+              ])]
+        , [recPat () (fieldSet 
+              [ Field () "x" (litPat () (LInt 6))
+              , Field () "y" (recPat () (fieldSet 
+                  [ Field () "a" (litPat () (LInt 4))
+                  ]))
+              ])]
+        , [recPat () (fieldSet 
+              [ Field () "x" (anyPat ())
+              , Field () "y" (recPat () (fieldSet 
+                  [ Field () "a" (litPat () (LInt 5))
+                  ]))
+              ])]
+        , [recPat () (fieldSet 
+              [ Field () "x" (varPat () "x")
+              , Field () "y" (recPat () (fieldSet 
+                  [ Field () "a" (litPat () (LInt 6))
+                  ]))
+              ])]
+        ]
+
+    -- Or-patterns
+
+    nonExhaustivePatterns
+        [ [litPat () (LBool False)]
+        ]
+
+    exhaustivePatterns
+        [ [orPat () (litPat () (LBool False)) (litPat () (LBool True))]
+        ]
+
+    -- As-patterns
+
+    exhaustivePatterns
+        [ [asPat () "cons" (conPat () "Cons" [varPat () "x", varPat () "ys"])]
+        , [conPat () "Nil" []]
+        ]
+
+    nonExhaustivePatterns
+        [ [asPat () "cons" (conPat () "Cons" [varPat () "x", varPat () "ys"])]
+        ]
 
