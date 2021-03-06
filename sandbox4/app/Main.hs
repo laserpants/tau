@@ -1,23 +1,27 @@
 {-# LANGUAGE FlexibleContexts  #-}
+{-# LANGUAGE FlexibleInstances #-}
 {-# LANGUAGE LambdaCase #-}
 {-# LANGUAGE OverloadedStrings #-}
-{-# LANGUAGE FlexibleInstances #-}
 module Main where
 
 import Control.Arrow
 import Control.Monad.Except
+import Control.Monad.Extra
 import Control.Monad.Reader
 import Control.Monad.State
 import Control.Monad.Supply 
 import Control.Monad.Writer
+import Data.Function ((&))
 import Data.List (nub)
 import Data.Map.Strict (Map)
 import Data.Maybe
+import Data.Set.Monad (Set)
 import Data.Text (Text)
 import Data.Tree.View (showTree)
+import Data.Tuple.Extra (both)
 import Tau.Comp.Core
 import Tau.Comp.Type.Inference
-import Tau.Comp.Type.Substitution
+import Tau.Comp.Type.Substitution (Substitution, apply)
 import Tau.Comp.Type.Unification
 import Tau.Eval.Core
 import Tau.Lang.Core
@@ -28,6 +32,7 @@ import Tau.Util
 import Tau.Util.Env (Env(..))
 import qualified Data.Map.Strict as Map
 import qualified Data.Set.Monad as Set
+import qualified Data.Text as Text
 import qualified Tau.Util.Env as Env
 
 noDups = undefined
@@ -613,4 +618,420 @@ typeEnv = Env.fromList
 ----
 ----baz2 f (x:xs) = f (baz2 f xs) (x:xs) 
 ----baz2 f []     = f (baz2 f []) []
+
+
+-- =====================================
+-- 
+-- =====================================
+
+type ConstructorEnv = Env (Set Name)
+
+constructorEnv :: [(Name, [Name])] -> ConstructorEnv
+constructorEnv = Env.fromList . (Set.fromList <$$>)
+
+headCons :: [[Pattern t]] -> [(Name, [Pattern t])]
+headCons = (fun =<<) 
+  where
+    fun :: [Pattern t] -> [(Name, [Pattern t])]
+    fun [] = error "Implementation error (headCons)"
+    fun (p:ps) = 
+        case project p of
+            PLit _ lit -> 
+                [(prim lit, [])]
+
+            PCon _ name rs -> 
+                [(name, rs)]
+
+            PRec t (FieldSet fields) ->
+                fun (conPat t (recordCon (fieldName <$> fields)) (fieldValue <$> fields):ps)
+
+            PTup t elems ->
+                fun (conPat t (tupleCon (length elems)) elems:ps)
+
+            PAs _ _ q -> 
+                fun (q:ps)
+
+            POr _ a b -> 
+                fun (a:ps) <> fun (b:ps)
+
+            _  -> 
+                []
+
+    prim (LBool True)  = "#True"
+    prim (LBool False) = "#False"
+    prim LUnit         = "#()"
+    prim LInt{}        = "#Int"
+    prim LInteger{}    = "#Integer"
+    prim LFloat{}      = "#Float"
+    prim LChar{}       = "#Char"
+    prim LString{}     = "#String"
+
+defaultMatrix :: [[Pattern t]] -> [[Pattern t]]
+defaultMatrix = (fun =<<)
+  where 
+    fun :: [Pattern t] -> [[Pattern t]]
+    fun (p:ps) =
+        case project p of
+            PCon{}    -> []
+            PRec{}    -> []
+            PTup{}    -> []
+            PLit{}    -> []
+            PAs _ _ q -> fun (q:ps)
+            POr _ a b -> fun (a:ps) <> fun (b:ps)
+            _         -> [ps]
+
+specialized :: Name -> [t] -> [[Pattern t]] -> [[Pattern t]]
+specialized name ts = concatMap rec 
+  where
+    rec [] = error "Implementation error (specialized)"
+    rec (p:ps) =
+        case project p of
+            PCon _ con rs
+                | con == name -> [rs <> ps]
+                | otherwise   -> []
+
+            PRec t (FieldSet fields) -> do
+                -- TODO: DRY
+                let q = conPat t (recordCon (fieldName <$> fields)) (fieldValue <$> fields)
+                rec (q:ps)
+
+            PTup t elems -> do
+                -- TODO: DRY
+                let q = conPat t (tupleCon (length elems)) elems
+                rec (q:ps)
+
+            PAs _ _ q ->
+                rec (q:ps)
+
+            POr _ p1 p2 ->
+                rec (p1:ps) <> rec (p2:ps)
+
+            _ ->
+                [(anyPat <$> ts) <> ps]
+
+data AType t 
+    = ACon Name [Pattern t] 
+    | AOr (Pattern t) (Pattern t) 
+    | AAny
+
+getA :: Pattern t -> AType t
+getA = project >>> \case
+    PCon _ con rs -> 
+        ACon con rs
+
+    PRec t (FieldSet fields) -> 
+        -- TODO: DRY
+        getA (conPat t (recordCon (fieldName <$> fields)) (fieldValue <$> fields))
+
+    PTup t elems ->
+        -- TODO: DRY
+        getA (conPat t (tupleCon (length elems)) elems)
+
+    PAs _ _ a -> 
+        getA a
+
+    POr _ a b -> 
+        AOr a b
+
+    _ -> 
+        AAny
+
+useful :: (MonadReader ConstructorEnv m) => [[Pattern t]] -> [Pattern t] -> m Bool
+useful [] _   = pure True   -- Zero rows (0x0 matrix)
+useful (p1:_) qs 
+    | null p1 = pure False  -- One or more rows but no columns
+    | null qs = error "Implementation error (useful)"
+useful pss (q:qs) =
+    case getA q of
+        ACon con rs  ->
+            let special = specialized con (patternTag <$> rs)
+             in useful (special pss) (head (special [q:qs]))
+        AAny -> do
+            let cs = headCons pss
+            isComplete <- complete (fst <$> cs)
+            if isComplete
+                then cs & anyM (\(con, rs) ->
+                    let special = specialized con (patternTag <$> rs)
+                     in useful (special pss) (head (special [q:qs]))) 
+                else 
+                    useful (defaultMatrix pss) qs
+        AOr a b -> 
+            useful pss (a:qs) ||^ useful pss (b:qs)
+  where
+    complete [] = pure False
+    complete names@(name:_) = do
+        defined <- ask
+        pure (bork (defined `Env.union` builtIn) name == Set.fromList names)
+    bork constructors con 
+        | isTupleCon con || isRecordCon con = Set.singleton con
+        | otherwise = Env.findWithDefaultEmpty con constructors
+
+    builtIn = constructorEnv
+        [ ("#True",     ["#True", "#False"])
+        , ("#False",    ["#True", "#False"])
+        , ("#()",       ["#()"])
+        , ("#Int",      [])
+        , ("#Integer",  [])
+        , ("#Float",    [])
+        , ("#Char",     [])
+        , ("#String",   []) ]
+
+isTupleCon :: Name -> Bool
+isTupleCon con = Just True == (allCommas <$> stripped con)
+  where
+    allCommas = Text.all (== ',')
+    stripped  = Text.stripSuffix ")" <=< Text.stripPrefix "("
+
+isRecordCon :: Name -> Bool
+isRecordCon con = ("{", "}") == fstLst con
+  where
+    fstLst ""  = ("", "")
+    fstLst con = both Text.singleton (Text.head con, Text.last con)
+
+exhaustive :: (MonadReader ConstructorEnv m) => [[Pattern t]] -> m Bool
+exhaustive []         = pure False
+exhaustive pss@(ps:_) = not <$> useful pss (anyPat . patternTag <$> ps)
+
+
+
+
+
+runExhaustive :: [[Pattern t]] -> Bool
+runExhaustive ps = runReader (exhaustive ps) myConstrEnv 
+  where
+    myConstrEnv :: ConstructorEnv
+    myConstrEnv = constructorEnv
+        [ ("Nil"      , ["Nil", "Cons"])
+        , ("Cons"     , ["Nil", "Cons"])
+        , ("Some"     , ["Some", "None"])
+        , ("None"     , ["Some", "None"])
+        , ("Succ"     , ["Succ", "Zero"])
+        , ("Zero"     , ["Succ", "Zero"])
+        , ("Ok"       , ["Ok", "Fail"])
+        , ("Fail"     , ["Ok", "Fail"])
+        ]
+
+
+
+-- True
+test123 = runExhaustive [[]]
+
+-- True
+test124 = runExhaustive 
+    [ [litPat () (LBool True)]
+    , [litPat () (LBool False)]
+    ]
+
+-- False
+test125 = runExhaustive 
+    [ [litPat () (LBool True)]
+    ]
+
+-- True
+test126 = runExhaustive 
+    [ [conPat () "Cons" [varPat () "x", conPat () "Cons" [varPat () "y", varPat () "ys"]]]
+    , [conPat () "Nil" []]
+    , [conPat () "Cons" [varPat () "z", varPat () "zs"]]
+    ]
+
+-- False
+test127 = runExhaustive 
+    [ [conPat () "Cons" [varPat () "x", conPat () "Cons" [varPat () "y", varPat () "ys"]]]
+    , [conPat () "Cons" [varPat () "z", varPat () "zs"]]
+    ]
+
+-- False
+test128 = runExhaustive 
+    [ [conPat () "Cons" [varPat () "x", conPat () "Cons" [varPat () "y", varPat () "ys"]]]
+    , [conPat () "Cons" [varPat () "z", varPat () "zs"]]
+    , [conPat () "Cons" [anyPat (), anyPat ()]]
+    ]
+
+-- True
+test129 = runExhaustive 
+    [ [conPat () "Cons" [varPat () "x", conPat () "Cons" [varPat () "y", varPat () "ys"]]]
+    , [conPat () "Cons" [varPat () "z", varPat () "zs"]]
+    , [conPat () "Cons" [anyPat (), anyPat ()]]
+    , [conPat () "Nil" []]
+    ]
+
+
+-- True
+test130 = runExhaustive 
+    [ [conPat () "Cons" [varPat () "x", conPat () "Cons" [varPat () "y", varPat () "ys"]]]
+    , [conPat () "Nil" []]
+    , [conPat () "Cons" [varPat () "z", conPat () "Nil" []]]
+    ]
+
+-- False
+test131 = runExhaustive 
+    [ [conPat () "Cons" [varPat () "x", conPat () "Cons" [varPat () "y", varPat () "ys"]]]
+    , [conPat () "Nil" []]
+    ]
+
+-- False
+test132 = runExhaustive 
+    [ [conPat () "Nil" []]
+    ]
+
+-- True
+test133 = runExhaustive 
+    [ [anyPat ()]
+    ]
+
+-- True
+test134 = runExhaustive 
+    [ [conPat () "Cons" [varPat () "x", varPat () "ys"]]
+    , [conPat () "Nil" []]
+    ]
+
+-- True
+test135 = runExhaustive 
+    [ [conPat () "Cons" [varPat () "x", varPat () "ys"]]
+    , [varPat () "x"]
+    ]
+
+
+-- True
+test136 = runExhaustive 
+    [ [litPat () (LInt 5)]
+    , [varPat () "x"]
+    ]
+
+-- False
+test137 = runExhaustive 
+    [ [litPat () (LInt 5)]
+    , [litPat () (LInt 4)]
+    ]
+
+-- True
+test138 = runExhaustive 
+    [ [litPat () (LInt 5), litPat () (LInt 5)]
+    , [varPat () "x", varPat () "y"]
+    ]
+
+-- False
+test139 = runExhaustive 
+    [ [litPat () (LInt 5), litPat () (LInt 5)]
+    , [varPat () "x", litPat () (LInt 0)]
+    ]
+
+
+-- True
+test140 = runExhaustive 
+    [ [litPat () (LBool True)]
+    , [litPat () (LBool False)]
+    ]
+
+
+-- True
+test141 = runExhaustive 
+    [ [litPat () (LBool True)]
+    , [anyPat ()]
+    ]
+
+
+-- False
+test142 = runExhaustive 
+    [ [litPat () (LBool True)]
+    ]
+
+
+-- True
+test143 = runExhaustive 
+    [ [litPat () LUnit]
+    ]
+
+
+-- False
+test144 = runExhaustive 
+    [ [litPat () (LString "x")]
+    , [litPat () (LString "y")]
+    ]
+
+-- True
+test146 = runExhaustive 
+    [ [litPat () (LString "x")]
+    , [litPat () (LString "y")]
+    , [anyPat ()]
+    ]
+
+
+-- False
+test147 = runExhaustive 
+    [ [tupPat () [litPat () (LInt 1), litPat () (LInt 2)]]
+    ]
+
+
+-- True
+test148 = runExhaustive 
+    [ [tupPat () [anyPat (), anyPat ()]]
+    ]
+
+
+
+-- True
+test149 = runExhaustive 
+    [ [tupPat () [litPat () (LInt 1), litPat () (LInt 2)]]
+    , [tupPat () [anyPat (), anyPat ()]]
+    ]
+
+-- False
+test150 = runExhaustive 
+    [ [tupPat () [conPat () "Cons" [varPat () "x", varPat () "xs"], litPat () (LInt 2)]]
+    , [tupPat () [conPat () "Nil" [], anyPat ()]]
+    ]
+
+
+-- True
+test151 = runExhaustive 
+    [ [tupPat () [conPat () "Cons" [varPat () "x", varPat () "xs"], litPat () (LBool True)]]
+    , [tupPat () [conPat () "Cons" [varPat () "x", varPat () "xs"], litPat () (LBool False)]]
+    , [tupPat () [conPat () "Nil" [], anyPat ()]]
+    ]
+
+-- False
+test152 = runExhaustive 
+    [ [tupPat () [conPat () "Cons" [varPat () "x", varPat () "xs"], litPat () (LBool True)]]
+    , [tupPat () [conPat () "Cons" [litPat () (LInt 3), varPat () "xs"], litPat () (LBool False)]]
+    , [tupPat () [conPat () "Nil" [], anyPat ()]]
+    ]
+
+
+--    nonExhaustivePatterns
+--        [ $(parsePattern "{ x = 3, y = 4 }")
+--        , $(parsePattern "{ x = 6, y = 7 }")
+--        ]
 --
+--    exhaustivePatterns
+--        [ $(parsePattern "{ x = 3, y = 4 }")
+--        , $(parsePattern "{ x = 6, y = 7 }")
+--        , $(parsePattern "{ x = _, y = 7 }")
+--        , $(parsePattern "{ x = x, y = _ }")
+--        ]
+--
+--    exhaustivePatterns
+--        [ $(parsePattern "{ x = _ }")
+--        ]
+--
+--    exhaustivePatterns
+--        [ $(parsePattern "{ x = _, y = a }")
+--        ]
+--
+--    exhaustivePatterns
+--        [ $(parsePattern "{ a = x }")
+--        ]
+--
+--    exhaustivePatterns
+--        [ $(parsePattern "{ x = 3, y = { a = 3 } }")
+--        , $(parsePattern "{ x = 6, y = { a = 4 } }")
+--        , $(parsePattern "{ x = _, y = { a = 5 } }")
+--        , $(parsePattern "{ x = x, y = { a = _ } }")
+--        ]
+--
+--    nonExhaustivePatterns
+--        [ $(parsePattern "{ x = 3, y = { a = 3 } }")
+--        , $(parsePattern "{ x = 6, y = { a = 4 } }")
+--        , $(parsePattern "{ x = _, y = { a = 5 } }")
+--        , $(parsePattern "{ x = x, y = { a = 6 } }")
+--        ]

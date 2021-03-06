@@ -92,12 +92,14 @@ leftmostCon = cata $ \case
     TApp a _   -> a
     _          -> Nothing
 
+-- TODO: move?
 isTupleCon :: Name -> Bool
 isTupleCon con = Just True == (allCommas <$> stripped con)
   where
     allCommas = Text.all (== ',')
     stripped  = Text.stripSuffix ")" <=< Text.stripPrefix "("
 
+-- TODO: move?
 isRecordCon :: Name -> Bool
 isRecordCon con = ("{", "}") == fstLst con
   where
