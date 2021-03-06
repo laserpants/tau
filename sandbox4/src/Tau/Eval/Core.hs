@@ -37,6 +37,12 @@ instance Show (Value m) where
     show Closure{} =
         "<<function>>"
 
+instance Eq (Value m) where
+    (==) (Value v) (Value w)             = v == w
+    (==) (Data c vs) (Data d ws)         = c == d && vs == ws
+    (==) (PrimFun f _ _) (PrimFun g _ _) = f == g
+    (==) _ _                             = False
+
 constructor :: (MonadReader (ValueEnv m) m) => Name -> Int -> Value m
 constructor name 0 = Data name []
 constructor name n = Closure v val mempty

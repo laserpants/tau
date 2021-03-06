@@ -12,6 +12,7 @@ import Data.Text (Text)
 import Data.Text.Prettyprint.Doc
 import Data.Tuple.Extra (both)
 import Tau.Comp.Type.Inference
+import Tau.Eval.Core
 import Tau.Lang.Core
 import Tau.Lang.Expr
 import Tau.Lang.Type
@@ -51,6 +52,13 @@ instance Parens (Expr t p q r) where
         ECon _ _ [] -> False
         ECon{}      -> True
         _           -> False
+
+instance Parens (Value m) where
+    needsParens = \case
+        Value lit -> False
+        Data _ [] -> False
+        Data{}    -> True
+        _         -> False
 
 addParens :: (Parens p) => p -> Doc a -> Doc a
 addParens el doc = if needsParens el then parens doc else doc
@@ -280,4 +288,19 @@ prettyLet_ keyword p e1 e2 =
             ])
         ])
 
+instance Pretty (Value m) where
+    pretty = \case
+        Value lit ->
+            pretty lit
 
+        Data con args ->
+            foldl conArg (pretty con) args
+
+        PrimFun name _ _ ->
+            "@" <> pretty name
+
+        Closure name _ _ ->
+            "<<function>>"
+
+--valueArg = undefined
+--valueArg out el = out <+> addParens el (pretty el)
