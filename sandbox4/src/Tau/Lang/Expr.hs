@@ -118,7 +118,7 @@ deriveEq1   ''Binding
 
 --data ExprF t p q r a n o
 
-data ExprF t p q r a
+data ExprF t p q r n o a
     = EVar t Name             -- ^ Variable
     | ECon t Name [a]         -- ^ Data constructor
     | ELit t Literal          -- ^ Literal value
@@ -128,8 +128,8 @@ data ExprF t p q r a
     | ELam t r a              -- ^ Lambda abstraction
     | EIf  t a a a            -- ^ If-clause
     | EPat t [a] [Clause p a] -- ^ Match and fun expressions
-    | EOp1 t (Op1 t) a        -- ^ Unary operator
-    | EOp2 t (Op2 t) a a      -- ^ Unary operator
+    | EOp1 t n a              -- ^ Unary operator
+    | EOp2 t o a a            -- ^ Unary operator
     | EDot t Name a           -- ^ Dot operator
     | ERec t (FieldSet t a)   -- ^ Records
     | ETup t [a]              -- ^ Tuples
@@ -142,7 +142,7 @@ deriveShow1 ''ExprF
 deriveEq1   ''ExprF
 
 -- | Expression language tagged term tree
-type Expr t p q r = Fix (ExprF t p q r)
+type Expr t p q r n o = Fix (ExprF t p q r n o)
 
 literalName :: Literal -> Name
 literalName = \case
@@ -238,7 +238,7 @@ lookupField name (FieldSet fields) = lookup name fields
         | n == name = Just (t, val)
         | otherwise = lookup name fs 
 
-exprTag :: Expr t p q r -> t
+exprTag :: Expr t p q r n o -> t
 exprTag = project >>> \case
     EVar t _       -> t
     ECon t _ _     -> t
@@ -255,7 +255,7 @@ exprTag = project >>> \case
     ERec t _       -> t
     ETup t _       -> t
 
-setExprTag :: t -> Expr t p q r -> Expr t p q r
+setExprTag :: t -> Expr t p q r n o -> Expr t p q r n o
 setExprTag t = project >>> \case
     EVar _ a       -> varExpr t a
     ECon _ a b     -> conExpr t a b
@@ -330,93 +330,94 @@ patternVars = cata $ \case
     PLit _ _             -> []
     PAny _               -> []
 
-type Ast t = Expr t (Pattern t) (Binding (Pattern t)) [Pattern t]
+type Ast t n o = Expr t (Pattern t) (Binding (Pattern t)) [Pattern t] n o
 
-mapTagsM :: (Monad m) => (s -> m t) -> Ast s -> m (Ast t)
-mapTagsM f = cata $ \case
+mapTagsM :: (Monad m) => (s -> m t) -> Ast s n o -> m (Ast t n o)
+mapTagsM = undefined
+--mapTagsM f = cata $ \case
+--
+--    EVar t a -> 
+--        varExpr <$> f t <*> pure a
+--    ECon t a b -> 
+--        conExpr <$> f t <*> pure a <*> sequence b
+--    ELit t a -> 
+--        litExpr <$> f t <*> pure a
+--    EApp t a -> 
+--        appExpr <$> f t <*> sequence a
+--    ELet t (BLet p) a b -> 
+--        letExpr <$> f t <*> (BLet <$> mapPatternTags f p) <*> a <*> b
+--    ELet t (BFun g ps) a b -> 
+--        letExpr <$> f t <*> (BFun g <$> traverse (mapPatternTags f) ps) <*> a <*> b
+--    EFix t n a b -> 
+--        fixExpr <$> f t <*> pure n <*> a <*> b
+--    ELam t p a -> 
+--        lamExpr <$> f t <*> traverse (mapPatternTags f) p <*> a
+--    EIf  t a b c -> 
+--        ifExpr  <$> f t <*> a <*> b <*> c
+----    EOp1 t o a -> 
+----        op1Expr <$> f t <*> mapOp1Tags f o <*> a
+----    EOp2 t o a b -> 
+----        op2Expr <$> f t <*> mapOp2Tags f o <*> a <*> b
+--    EDot t a b -> 
+--        dotExpr <$> f t <*> pure a <*> b
+--    ETup t a -> 
+--        tupExpr <$> f t <*> sequence a 
+--    EPat t a cs -> do
+--        clauses <- traverse (mapClauseTags f) cs
+--        patExpr <$> f t <*> sequence a <*> traverse sequence clauses
+--    ERec t (FieldSet fs) -> do
+--        fields <- traverse (mapFieldTags f) fs
+--        recExpr <$> f t <*> sequence (FieldSet fields)
+--  where
+----    mapOp1Tags :: (Monad m) => (s -> m t) -> Op1 s -> m (Op1 t)
+----    mapOp1Tags f = \case
+----        ONeg   t -> ONeg   <$> f t
+----        ONot   t -> ONot   <$> f t
+----
+----    mapOp2Tags :: (Monad m) => (s -> m t) -> Op2 s -> m (Op2 t)
+----    mapOp2Tags f = \case
+----        OEq    t -> OEq    <$> f t 
+----        ONEq   t -> ONEq   <$> f t
+----        OAnd   t -> OAnd   <$> f t
+----        OOr    t -> OOr    <$> f t
+----        OAdd   t -> OAdd   <$> f t
+----        OSub   t -> OSub   <$> f t
+----        OMul   t -> OMul   <$> f t
+----        ODiv   t -> ODiv   <$> f t
+----        OPow   t -> OPow   <$> f t
+----        OLt    t -> OLt    <$> f t
+----        OGt    t -> OGt    <$> f t
+----        OLtE   t -> OLtE   <$> f t
+----        OGtE   t -> OGtE   <$> f t
+----        OLArr  t -> OLArr  <$> f t
+----        ORArr  t -> ORArr  <$> f t
+----        OFPipe t -> OFPipe <$> f t
+----        OBPipe t -> OBPipe <$> f t
+--
+--    mapPatternTags :: (Monad m) => (s -> m t) -> Pattern s -> m (Pattern t)
+--    mapPatternTags f = cata $ \case
+--        PVar t a            -> varPat <$> f t <*> pure a
+--        PCon t a b          -> conPat <$> f t <*> pure a <*> sequence b
+--        PLit t a            -> litPat <$> f t <*> pure a
+--        PAny t              -> anyPat <$> f t 
+--        PAs  t a b          -> asPat  <$> f t <*> pure a <*> b
+--        POr  t a b          -> orPat  <$> f t <*> a <*> b
+--        PRec t (FieldSet fs) -> do
+--            fields <- traverse (mapFieldTags f) fs
+--            recPat <$> f t <*> sequence (FieldSet fields)
+--
+--    mapClauseTags 
+--      :: (Monad m) 
+--      => (s -> m t) 
+--      -> Clause (Pattern s) a 
+--      -> m (Clause (Pattern t) a)
+--    mapClauseTags f (Clause p a b) = 
+--        Clause <$> traverse (mapPatternTags f) p <*> pure a <*> pure b
+--
+--    mapFieldTags :: (Monad m) => (s -> m t) -> Field s a -> m (Field t a)
+--    mapFieldTags f (Field t a b) = Field <$> f t <*> pure a <*> pure b
 
-    EVar t a -> 
-        varExpr <$> f t <*> pure a
-    ECon t a b -> 
-        conExpr <$> f t <*> pure a <*> sequence b
-    ELit t a -> 
-        litExpr <$> f t <*> pure a
-    EApp t a -> 
-        appExpr <$> f t <*> sequence a
-    ELet t (BLet p) a b -> 
-        letExpr <$> f t <*> (BLet <$> mapPatternTags f p) <*> a <*> b
-    ELet t (BFun g ps) a b -> 
-        letExpr <$> f t <*> (BFun g <$> traverse (mapPatternTags f) ps) <*> a <*> b
-    EFix t n a b -> 
-        fixExpr <$> f t <*> pure n <*> a <*> b
-    ELam t p a -> 
-        lamExpr <$> f t <*> traverse (mapPatternTags f) p <*> a
-    EIf  t a b c -> 
-        ifExpr  <$> f t <*> a <*> b <*> c
-    EOp1 t o a -> 
-        op1Expr <$> f t <*> mapOp1Tags f o <*> a
-    EOp2 t o a b -> 
-        op2Expr <$> f t <*> mapOp2Tags f o <*> a <*> b
-    EDot t a b -> 
-        dotExpr <$> f t <*> pure a <*> b
-    ETup t a -> 
-        tupExpr <$> f t <*> sequence a 
-    EPat t a cs -> do
-        clauses <- traverse (mapClauseTags f) cs
-        patExpr <$> f t <*> sequence a <*> traverse sequence clauses
-    ERec t (FieldSet fs) -> do
-        fields <- traverse (mapFieldTags f) fs
-        recExpr <$> f t <*> sequence (FieldSet fields)
-  where
-    mapOp1Tags :: (Monad m) => (s -> m t) -> Op1 s -> m (Op1 t)
-    mapOp1Tags f = \case
-        ONeg   t -> ONeg   <$> f t
-        ONot   t -> ONot   <$> f t
-
-    mapOp2Tags :: (Monad m) => (s -> m t) -> Op2 s -> m (Op2 t)
-    mapOp2Tags f = \case
-        OEq    t -> OEq    <$> f t 
-        ONEq   t -> ONEq   <$> f t
-        OAnd   t -> OAnd   <$> f t
-        OOr    t -> OOr    <$> f t
-        OAdd   t -> OAdd   <$> f t
-        OSub   t -> OSub   <$> f t
-        OMul   t -> OMul   <$> f t
-        ODiv   t -> ODiv   <$> f t
-        OPow   t -> OPow   <$> f t
-        OLt    t -> OLt    <$> f t
-        OGt    t -> OGt    <$> f t
-        OLtE   t -> OLtE   <$> f t
-        OGtE   t -> OGtE   <$> f t
-        OLArr  t -> OLArr  <$> f t
-        ORArr  t -> ORArr  <$> f t
-        OFPipe t -> OFPipe <$> f t
-        OBPipe t -> OBPipe <$> f t
-
-    mapPatternTags :: (Monad m) => (s -> m t) -> Pattern s -> m (Pattern t)
-    mapPatternTags f = cata $ \case
-        PVar t a            -> varPat <$> f t <*> pure a
-        PCon t a b          -> conPat <$> f t <*> pure a <*> sequence b
-        PLit t a            -> litPat <$> f t <*> pure a
-        PAny t              -> anyPat <$> f t 
-        PAs  t a b          -> asPat  <$> f t <*> pure a <*> b
-        POr  t a b          -> orPat  <$> f t <*> a <*> b
-        PRec t (FieldSet fs) -> do
-            fields <- traverse (mapFieldTags f) fs
-            recPat <$> f t <*> sequence (FieldSet fields)
-
-    mapClauseTags 
-      :: (Monad m) 
-      => (s -> m t) 
-      -> Clause (Pattern s) a 
-      -> m (Clause (Pattern t) a)
-    mapClauseTags f (Clause p a b) = 
-        Clause <$> traverse (mapPatternTags f) p <*> pure a <*> pure b
-
-    mapFieldTags :: (Monad m) => (s -> m t) -> Field s a -> m (Field t a)
-    mapFieldTags f (Field t a b) = Field <$> f t <*> pure a <*> pure b
-
-mapTags :: (s -> t) -> Ast s -> Ast t
+mapTags :: (s -> t) -> Ast s n o -> Ast t n o
 mapTags f = runIdentity . mapTagsM (pure . f)
 
 varPat :: t -> Name -> Pattern t
@@ -443,44 +444,44 @@ tupPat = embed2 PTup
 anyPat :: t -> Pattern t
 anyPat = embed1 PAny
 
-varExpr :: t -> Name -> Expr t p q r
+varExpr :: t -> Name -> Expr t p q r n o
 varExpr = embed2 EVar
 
-conExpr :: t -> Name -> [Expr t p q r] -> Expr t p q r
+conExpr :: t -> Name -> [Expr t p q r n o] -> Expr t p q r n o
 conExpr = embed3 ECon
 
-litExpr :: t -> Literal -> Expr t p q r
+litExpr :: t -> Literal -> Expr t p q r n o
 litExpr = embed2 ELit
 
-appExpr :: t -> [Expr t p q r] -> Expr t p q r
+appExpr :: t -> [Expr t p q r n o] -> Expr t p q r n o
 appExpr = embed2 EApp
 
-letExpr :: t -> q -> Expr t p q r -> Expr t p q r -> Expr t p q r
+letExpr :: t -> q -> Expr t p q r n o -> Expr t p q r n o -> Expr t p q r n o
 letExpr = embed4 ELet
 
-fixExpr :: t -> Name -> Expr t p q r -> Expr t p q r -> Expr t p q r
+fixExpr :: t -> Name -> Expr t p q r n o -> Expr t p q r n o -> Expr t p q r n o
 fixExpr = embed4 EFix
 
-lamExpr :: t -> r -> Expr t p q r -> Expr t p q r
+lamExpr :: t -> r -> Expr t p q r n o -> Expr t p q r n o
 lamExpr = embed3 ELam
 
-ifExpr :: t -> Expr t p q r -> Expr t p q r -> Expr t p q r -> Expr t p q r
+ifExpr :: t -> Expr t p q r n o -> Expr t p q r n o -> Expr t p q r n o -> Expr t p q r n o
 ifExpr = embed4 EIf
 
-patExpr :: t -> [Expr t p q r] -> [Clause p (Expr t p q r)] -> Expr t p q r
+patExpr :: t -> [Expr t p q r n o] -> [Clause p (Expr t p q r n o)] -> Expr t p q r n o
 patExpr = embed3 EPat
 
-op1Expr :: t -> Op1 t -> Expr t p q r -> Expr t p q r
+op1Expr :: t -> n -> Expr t p q r n o -> Expr t p q r n o
 op1Expr = embed3 EOp1
 
-op2Expr :: t -> Op2 t -> Expr t p q r -> Expr t p q r -> Expr t p q r
+op2Expr :: t -> o -> Expr t p q r n o -> Expr t p q r n o -> Expr t p q r n o
 op2Expr = embed4 EOp2
 
-dotExpr :: t -> Name -> Expr t p q r -> Expr t p q r
+dotExpr :: t -> Name -> Expr t p q r n o -> Expr t p q r n o
 dotExpr = embed3 EDot
 
-recExpr :: t -> FieldSet t (Expr t p q r) -> Expr t p q r
+recExpr :: t -> FieldSet t (Expr t p q r n o) -> Expr t p q r n o
 recExpr = embed2 ERec
 
-tupExpr :: t -> [Expr t p q r] -> Expr t p q r
+tupExpr :: t -> [Expr t p q r n o] -> Expr t p q r n o
 tupExpr = embed2 ETup

@@ -17,7 +17,7 @@ import Tau.Lang.Type
 import Tau.Util
 import qualified Data.Text as Text
 
-prettyAst :: (Pretty t, Show t) => Ast t -> Tree (Doc a)
+prettyAst :: (Pretty t, Show t, Pretty n, Pretty o) => Ast t n o -> Tree (Doc a)
 prettyAst = para $ \case
 
     EPat t [] eqs -> 
@@ -57,14 +57,14 @@ prettyAst = para $ \case
         EFix t name e1 e2 -> 
             Node ("fix" <+> pretty name) [prefix "=" e1, Node "in" [e2]]
 
-        EOp1 t (ONot _) a -> 
-            Node "not" [a]
-
-        EOp1 t (ONeg _) a -> 
-            Node "negate" [a]
-
-        EOp2 t op a b ->
-            Node ("(" <> pretty (op2Symbol op) <> ")" <+> colon <+> pretty t) [a, b]
+--        EOp1 t (ONot _) a -> 
+--            Node "not" [a]
+--
+--        EOp1 t (ONeg _) a -> 
+--            Node "negate" [a]
+--
+--        EOp2 t op a b ->
+--            Node ("(" <> pretty (op2Symbol op) <> ")" <+> colon <+> pretty t) [a, b]
 
         ETup t elems -> 
             Node (pretty (tupleCon (length elems))) elems
@@ -75,13 +75,13 @@ prettyAst = para $ \case
         ELam t pats e1 -> 
             Node (foldl patternDoc "λ" pats <+> colon <+> pretty t) [prefix "=>" e1]
 
-exprDoc :: (Pretty t, Pretty p, Pretty q) => Doc a -> Expr t p q r -> Doc a
+exprDoc :: (Pretty t, Pretty p, Pretty q, Pretty n, Pretty o) => Doc a -> Expr t p q r n o -> Doc a
 exprDoc out expr = out <+> parens (pretty expr <+> colon <+> pretty (exprTag expr))
 
 patternDoc :: (Pretty t) => Doc a -> Pattern t -> Doc a
 patternDoc out pat = out <+> parens (pretty pat <+> colon <+> pretty (patternTag pat))
 
-prettyClauseTree :: (Pretty t, Show t) => Clause (Pattern t) (Ast t) -> [Tree (Doc a)]
+prettyClauseTree :: (Pretty t, Show t, Pretty n, Pretty o) => Clause (Pattern t) (Ast t n o) -> [Tree (Doc a)]
 prettyClauseTree (Clause ps exs e) =
     [Node (foldl patternDoc "─┬" ps) (whens <> [prefix "=>" (prettyAst e)])]
   where
@@ -89,7 +89,7 @@ prettyClauseTree (Clause ps exs e) =
       | null exs  = []
       | otherwise = [Node "when" (prettyAst <$> exs)]
 
-prettyFieldTree :: (Pretty t) => Field t (Ast t, Tree (Doc a)) -> Tree (Doc a)
+prettyFieldTree :: (Pretty t, Pretty n, Pretty o) => Field t (Ast t n o, Tree (Doc a)) -> Tree (Doc a)
 prettyFieldTree (Field t name (val, _)) = 
     Node (pretty name <+> equals <+> pretty val <+> colon <+> pretty t) []
 

@@ -19,7 +19,7 @@ import Test.Hspec
 import Utils
 import qualified Tau.Util.Env as Env
 
-classEnv :: ClassEnv (Ast NodeInfo)
+classEnv :: ClassEnv (Ast NodeInfo (Op1 NodeInfo) (Op2 NodeInfo))
 classEnv = Env.fromList 
     [ ( "Num"
       , ( []

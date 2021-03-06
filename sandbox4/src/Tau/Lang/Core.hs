@@ -39,8 +39,5 @@ cLam = embed2 CLam
 cIf :: Core -> Core -> Core -> Core
 cIf = embed3 CIf
 
---cPat :: Core -> [Clause Name Core] -> Core
---cPat = embed2 CPat
-
 cPat :: Core -> [([Name], Core)] -> Core
 cPat = embed2 CPat

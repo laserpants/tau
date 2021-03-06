@@ -11,6 +11,7 @@ import Data.Maybe (fromJust, fromMaybe)
 import Data.Text (Text)
 import Data.Text.Prettyprint.Doc
 import Data.Tuple.Extra (both)
+import Tau.Comp.Core
 import Tau.Comp.Type.Inference
 import Tau.Eval.Core
 import Tau.Lang.Core
@@ -47,7 +48,7 @@ instance Parens (Pattern t) where
         POr{}       -> True
         _           -> False
 
-instance Parens (Expr t p q r) where
+instance Parens (Expr t p q r n o) where
     needsParens = project >>> \case
         ECon _ _ [] -> False
         ECon{}      -> True
@@ -99,20 +100,6 @@ leftmostCon = cata $ \case
     TCon _ con -> Just con
     TApp a _   -> a
     _          -> Nothing
-
--- TODO: move?
-isTupleCon :: Name -> Bool
-isTupleCon con = Just True == (allCommas <$> stripped con)
-  where
-    allCommas = Text.all (== ',')
-    stripped  = Text.stripSuffix ")" <=< Text.stripPrefix "("
-
--- TODO: move?
-isRecordCon :: Name -> Bool
-isRecordCon con = ("{", "}") == fstLst con
-  where
-    fstLst ""  = ("", "")
-    fstLst con = both Text.singleton (Text.head con, Text.last con)
 
 unfoldApp :: Type -> [Type]
 unfoldApp = para alg
@@ -184,7 +171,7 @@ instance (Pretty t) => Pretty (Binding (Pattern t)) where
     pretty (BLet p)    = pretty p
     pretty (BFun f ps) = foldl conArg (pretty f) ps
 
-instance (Pretty p, Pretty q) => Pretty (Expr t p q r) where
+instance (Pretty p, Pretty q, Pretty n, Pretty o) => Pretty (Expr t p q r n o) where
     pretty = para $ \case
         EVar _ var            -> pretty var
         ELit _ lit            -> pretty lit
@@ -205,11 +192,11 @@ instance (Pretty p, Pretty q) => Pretty (Expr t p q r) where
 
 -- | Pretty printer for let expressions
 prettyLet
-  :: (Pretty p, Pretty q, Pretty l)
+  :: (Pretty p, Pretty q, Pretty l, Pretty n, Pretty o)
   => Doc a
   -> l
-  -> (Expr t p q r, Doc a)
-  -> (Expr t p q r, Doc a)
+  -> (Expr t p q r n o, Doc a)
+  -> (Expr t p q r n o, Doc a)
   -> Doc a
 prettyLet keyword p e1 e =
     group (vsep
@@ -222,6 +209,9 @@ prettyLet keyword p e1 e =
   where
     expr = pretty (fst e1)
     body = pretty (fst e)
+
+instance Pretty (Op1 t) where
+    pretty = undefined
 
 instance Pretty (Op2 t) where
     pretty = pretty . op2Symbol

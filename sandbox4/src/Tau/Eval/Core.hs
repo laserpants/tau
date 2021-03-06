@@ -140,11 +140,6 @@ evalApp fun arg = fun >>= \case
         val <- arg
         evalPrim name fun (val:args)
 
---evalPat 
---  :: (MonadFail m, MonadReader (ValueEnv m) m)
---  => [Clause Name (m (Value m))]
---  -> Value m
---  -> m (Value m)
 evalPat 
   :: (MonadFail m, MonadReader (ValueEnv m) m)
   => [([Name], m (Value m))]
@@ -153,21 +148,8 @@ evalPat
 evalPat [] _ = fail "Runtime error (evalMatch)"
 evalPat ((p:ps, e):eqs) val =
     case val of
-        Data con args | p == con -> local (Env.inserts (zip ps args)) e
-        _                        -> evalPat eqs val
+        Data con args | p == con -> 
+            local (Env.inserts (zip ps args)) e
 
---evalPat (Clause (p:ps) exs e:eqs) val =
---    case val of
---        Data con args | p == con -> do
---            let pairs = zip ps args
---            conds <- traverse (local (Env.inserts pairs) >=> toBool) exs 
---            if and conds
---                then local (Env.inserts pairs) e
---                else next
---        _ -> 
---            next
---  where 
---    next = evalPat eqs val
---
---    toBool (Value (LBool b)) = pure b
---    toBool _ = fail "Runtime error (toBool)"
+        _ -> 
+            evalPat eqs val
