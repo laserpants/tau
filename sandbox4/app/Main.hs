@@ -13,20 +13,22 @@ import Control.Monad.Supply
 import Control.Monad.Writer
 import Data.Function ((&))
 import Data.List (nub)
-import Data.Void
 import Data.Map.Strict (Map)
 import Data.Maybe
 import Data.Set.Monad (Set)
 import Data.Text (Text)
 import Data.Tree.View (showTree)
 import Data.Tuple.Extra (both)
+import Data.Void
 import Tau.Comp.Core
 import Tau.Comp.Type.Inference
 import Tau.Comp.Type.Substitution (Substitution, apply)
 import Tau.Comp.Type.Unification
 import Tau.Eval.Core
+import Tau.Eval.Repl
 import Tau.Lang.Core
 import Tau.Lang.Expr
+import Tau.Lang.Parser
 import Tau.Lang.Pretty.Ast
 import Tau.Lang.Type
 import Tau.Util
