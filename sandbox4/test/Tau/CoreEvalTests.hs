@@ -21,19 +21,19 @@ testValueEnv = Env.fromList
 
 failEval :: Core -> SpecWith ()
 failEval expr =
-    describe ("The expression " <> prettyString expr) $
+    describe ("The expression\n" <> prettyString expr) $
         it "✗ fails to evaluate" $
             isNothing (evalExpr expr testValueEnv)
 
 succeedEval :: Core -> Value Eval -> SpecWith ()
 succeedEval expr val =
-    describe ("The expression " <> prettyString expr) $
+    describe ("The expression\n" <> prettyString expr) $
         it ("✔ evaluates to the value " <> prettyString val) $
             evalExpr expr testValueEnv == Just val
 
 succeedEvalToFunction :: Core -> SpecWith ()
 succeedEvalToFunction expr =
-    describe ("The expression " <> prettyString expr) $
+    describe ("The expression\n" <> prettyString expr) $
         it "✔ evaluates to a function"
             (Just True == (isClosure <$> evalExpr expr testValueEnv))
   where

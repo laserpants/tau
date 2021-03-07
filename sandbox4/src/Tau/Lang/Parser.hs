@@ -149,6 +149,59 @@ listCons :: Expr () p q r n o -> Expr () p q r n o -> Expr () p q r n o
 listCons hd tl = conExpr () "(::)" [hd, tl]
 
 -- ============================================================================
--- == 
+-- == Kinds
 -- ============================================================================
+
+kind :: Parser Kind
+kind = makeExprParser parser [[ InfixR (kArr <$ symbol "->") ]] 
+  where
+    parser = parens kind <|> (symbol "*" $> kTyp)
+
+-- ============================================================================
+-- == Literals
+-- ============================================================================
+
+unit :: Parser Literal
+unit = symbol "()" $> LUnit
+
+bool :: Parser Literal
+bool = true <|> false
+  where
+    true  = keyword "True"  $> LBool True
+    false = keyword "False" $> LBool False
+
+integral :: Parser Literal
+integral = do
+    n <- lexeme Lexer.decimal
+    pure $ if n > maxInt || n < minInt
+        then LInteger n
+        else LInt (fromIntegral n)
+  where
+    maxInt = fromIntegral (maxBound :: Int)
+    minInt = fromIntegral (minBound :: Int)
+
+float :: Parser Literal
+float = LFloat <$> lexeme Lexer.float
+
+number :: Parser Literal
+number = try float <|> integral
+
+charLit :: Parser Literal
+charLit = LChar <$> surroundedBy (symbol "'") printChar
+
+stringLit :: Parser Literal
+stringLit = lexeme (LString . pack <$> chars) where
+    chars = char '\"' *> manyTill Lexer.charLiteral (char '\"')
+
+literal :: Parser Literal
+literal = bool
+    <|> number
+    <|> charLit
+    <|> stringLit
+
+-- ============================================================================
+-- == Expressions
+-- ============================================================================
+
+
 
