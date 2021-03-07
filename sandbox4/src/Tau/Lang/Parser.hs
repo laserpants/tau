@@ -27,4 +27,120 @@ type ParseError = ParseErrorBundle Text Void
 
 type Parser = Parsec Void Text
 
+lexeme :: Parser a -> Parser a
+lexeme = Lexer.lexeme spaces
+
+symbol :: Text -> Parser Text
+symbol = Lexer.symbol spaces
+
+spaces :: Parser ()
+spaces = Lexer.space
+    space1
+    (Lexer.skipLineComment "--")
+    (Lexer.skipBlockComment "{-" "-}")
+
+parens :: Parser a -> Parser a
+parens = between (symbol "(") (symbol ")")
+
+brackets :: Parser a -> Parser a
+brackets = between (symbol "[") (symbol "]")
+
+surroundedBy :: Parser Text -> Parser a -> Parser a
+surroundedBy p = between p p
+
+validChar :: Parser Char
+validChar = alphaNumChar <|> char '_'
+
+withInitial :: Parser Char -> Parser Text
+withInitial pchar = pack <$> ((:) <$> pchar <*> many validChar)
+
+keyword :: Text -> Parser ()
+keyword tok =
+    Megaparsec.string tok
+        *> notFollowedBy alphaNumChar
+        *> spaces
+
+reserved :: [Text]
+reserved =
+    [ "let"
+    , "fix"
+    , "in"
+    , "if"
+    , "then"
+    , "else"
+    , "match"
+    , "with"
+    , "when"
+    , "as"
+    , "or"
+    , "fun"
+    , "not"
+    , "forall"
+    , "True"
+    , "False"
+    , "List"
+    , "Void"
+    , "Unit"
+    ]
+
+word :: Parser Text -> Parser Text
+word parser = lexeme $ try $ do
+    var <- parser
+    if var `elem` reserved
+        then fail ("Reserved keyword " <> unpack var)
+        else pure var
+
+name :: Parser Text
+name = word (withInitial (lowerChar <|> char '_'))
+
+constructor_ :: Parser Name
+constructor_ = word (withInitial upperChar)
+
+-- ============================================================================
+-- == Operators
+-- ============================================================================
+
+operator :: [[Operator Parser (Expr () p q r (Op1 ()) (Op2 ()))]]
+operator = 
+    [
+      -- 8
+      [ InfixR (op2Expr () (OPow ()) <$ symbol "^")
+      ]
+      -- 7
+    , [ InfixL (op2Expr () (OMul ()) <$ symbol "*")
+      , InfixL (op2Expr () (ODiv ()) <$ try (symbol "/" <* notFollowedBy (symbol "=")))
+      ]
+      -- 6
+    , [ InfixL (op2Expr () (OAdd ()) <$ symbol "+")
+      , InfixL (op2Expr () (OSub ()) <$ symbol "-")
+      ]
+--      -- 5
+--    , [ InfixR (cons <$ symbol "::")
+--      ]
+--      -- 4
+--    , [ InfixN (eqOp  () <$ symbol "==")
+--      , InfixN (nEqOp () <$ symbol "/=")
+--      , InfixN (ltOp  () <$ try (symbol "<" <* notFollowedBy (symbol "=")))
+--      , InfixN (gtOp  () <$ try (symbol ">" <* notFollowedBy (symbol "=")))
+--      , InfixN (ltEOp () <$ symbol "<=")
+--      , InfixN (gtEOp () <$ symbol ">=")
+--      ]
+--      -- 3
+--    , [ InfixR (andOp () <$ symbol "&&")
+--      ]
+--      -- 2
+--    , [ InfixR (orOp  () <$ symbol "||")
+--      , Prefix (notOp () <$ (keyword "not" *> spaces))
+--      ]
+--      -- 1
+--    , [ InfixR (lArrOp () <$ symbol "<<")
+--      , InfixR (rArrOp () <$ symbol ">>")
+--      , InfixL (fPipeOp () <$ symbol "|>")
+--      , InfixR (bPipeOp () <$ symbol "<|")
+--      ]
+--      -- 0
+--    , [
+--      ]
+    ]
+
 
