@@ -362,8 +362,35 @@ testExpr23 = appExpr () [letExpr () (BFun "f" [varPat () "x"]) (varExpr () "lenS
 testExpr24 :: Expr () (Pattern ()) (Binding (Pattern ())) [Pattern ()] (Op1 ()) (Op2 ())
 testExpr24 = appExpr () [lamExpr () [varPat () "x"] (appExpr () [varExpr () "show", conExpr () "(,)" [varExpr () "x", varExpr () "x"]]), litExpr () (LInt 11)]
 
+testExpr25 :: Expr () (Pattern ()) (Binding (Pattern ())) [Pattern ()] (Op1 ()) (Op2 ())
+testExpr25 = appExpr () [patExpr () [] [
+      Clause [ conPat () "(::)" [varPat () "z", varPat () "zs"]
+             , varPat () "y" ] 
+             [ op2Expr () (OGt ()) (varExpr () "z") (litExpr () (LInt 2)), op2Expr () (OGt ()) (varExpr () "y") (litExpr () (LInt 2))] 
+             (litExpr () (LString "one")) 
+    , Clause [ anyPat () 
+             , anyPat () ] 
+             [] 
+             (litExpr () (LString "two")) 
+    ], conExpr () "(::)" [litExpr () (LInt 3), conExpr () "[]" []], litExpr () (LInt 4)]
+
+testExpr26 :: Expr () (Pattern ()) (Binding (Pattern ())) [Pattern ()] (Op1 ()) (Op2 ())
+testExpr26 = appExpr () [patExpr () [] [
+      Clause [ conPat () "(::)" [varPat () "z", varPat () "zs"]
+             , varPat () "y" ] 
+             [ op2Expr () (OGt ()) (varExpr () "z") (litExpr () (LInt 2)), op2Expr () (OGt ()) (varExpr () "y") (litExpr () (LInt 2))] 
+             (litExpr () (LString "one")) 
+    , Clause [ anyPat () 
+             , anyPat () ] 
+             [] 
+             (litExpr () (LString "two")) 
+    ], conExpr () "(::)" [litExpr () (LInt 1), conExpr () "[]" []], litExpr () (LInt 4)]
+
+
+
+
 testX = 
-    case runTest testExpr7 of 
+    case runTest testExpr26 of 
         Left e -> error e
         Right (r, q , c, z) -> do
             putStrLn (showTree (nodesToString (prettyAst r)))
@@ -518,6 +545,12 @@ classEnv = Env.fromList
           --, Instance [] tBool (recExpr (NodeInfo (tApp (tCon (kArr kTyp kTyp) "Show") tBool) [])  (fieldSet [Field (NodeInfo (tBool `tArr` tString) []) "show" (varExpr (NodeInfo (tBool `tArr` tString) []) "@showBool")]))
 --          , Instance [InClass "Show" (tVar kTyp "a")] (tList (tVar kTyp "a")) (recExpr (NodeInfo (tApp (tCon (kArr kTyp kTyp) "Show") (tList (tVar kTyp "a"))) []) (fieldSet [Field (NodeInfo ((tList (tVar kTyp "a")) `tArr` tString) []) "show" foo11]))
           , Instance [InClass "Show" (tVar kTyp "a"), InClass "Show" (tVar kTyp "b")] (tPair (tVar kTyp "a") (tVar kTyp "b")) (recExpr (NodeInfo (tApp (tCon (kArr kTyp kTyp) "Show") (tPair (tVar kTyp "a") (tVar kTyp "b"))) []) (fieldSet [Field (NodeInfo (tPair (tVar kTyp "a") (tVar kTyp "b") `tArr` tString) []) "show" showPair_]))
+          ]
+        )
+      )
+    , ( "Ord"
+      , ( []
+        , [ Instance [] tInt (recExpr (NodeInfo (tApp (tCon (kArr kTyp kTyp) "Ord") tInt) []) (fieldSet [Field (NodeInfo (tInt `tArr` tInt `tArr` tBool) []) "(>)" (varExpr (NodeInfo (tInt `tArr` tInt `tArr` tBool) []) "@Int.(>)")]))
           ]
         )
       )

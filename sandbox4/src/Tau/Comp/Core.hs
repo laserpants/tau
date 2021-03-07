@@ -207,7 +207,7 @@ compilePatterns
 compilePatterns us qs = matchAlgo us qs (varExpr (tvar "FAIL") "FAIL")
 
 andExpr :: (TypeTag t) => Expr t p q r n o -> Expr t p q r n o -> Expr t p q r n o
-andExpr x y = appExpr tbool [varExpr (tarr tbool (tarr tbool tbool)) "(&&)", x, y]
+andExpr x y = appExpr tbool [varExpr (tarr tbool (tarr tbool tbool)) "@(&&)", x, y]
 
 matchAlgo
   :: (TypeTag t, MonadSupply Name m)
