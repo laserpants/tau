@@ -4,6 +4,7 @@ module Tau.Lang.Parser where
 
 import Control.Monad (when, void)
 import Control.Monad.Combinators.Expr
+import Data.Foldable
 import Data.Functor (($>))
 import Data.List (sortOn, nub)
 import Data.Map.Strict (Map)
@@ -209,6 +210,95 @@ literal = bool
 -- ============================================================================
 
 pattern_ :: Parser (Pattern ())
-pattern_ = undefined
+pattern_ = do
+    tok <- some patternToken
+    case tok of
+        [p] -> pure p
+        (Fix (PCon () con _):args) -> 
+            pure (conPat () con args)
 
+patternToken :: Parser (Pattern ())
+patternToken = makeExprParser patternExpr
+    [ [ InfixR (patternListCons <$ symbol "::") 
+      ] ]
+
+patternExpr :: Parser (Pattern ())
+patternExpr = varPattern
+    <|> conPattern
+    <|> litPattern
+    <|> tuplePattern
+    <|> recordPattern
+    <|> parens pattern_
+
+varPattern :: Parser (Pattern ())
+varPattern = varPat () <$> name
+
+conPattern :: Parser (Pattern ())
+conPattern = do
+    con <- constructor_
+    pure (conPat () con [])
+
+litPattern :: Parser (Pattern ())
+litPattern = litPat () <$> literal
+
+tuplePattern :: Parser (Pattern ())
+tuplePattern = do
+    elems <- components pattern_
+    pure $ case elems of
+        [p] -> p
+        []  -> litPat () LUnit
+        _   -> tupPat () elems
+
+recordPattern :: Parser (Pattern ())
+recordPattern = recPat () <$> fields "=" pattern_
+
+patternListCons :: Pattern () -> Pattern () -> Pattern ()
+patternListCons hd tl = conPat () "(::)" [hd, tl]
+
+-- ============================================================================
+-- == Combinators for lists and tuples
+-- ============================================================================
+
+commaSep :: Parser a -> Parser [a]
+commaSep parser = parser `sepBy` symbol ","
+
+elements :: Parser a -> Parser [a]
+elements = brackets . commaSep 
+
+components :: Parser a -> Parser [a]
+components = parens . commaSep 
+
+--list_ :: Parser (PatternExpr ())
+--list_ = do
+--    elems <- elements expr
+--    pure (foldr cons (conExpr () "[]" []) elems)
+--
+--tuple :: Parser (PatternExpr ())
+--tuple parser = do
+--    elems <- components parser
+--    pure $ case elems of
+--        [e] -> e
+--        []  -> litExpr () LUnit
+--        _   -> conExpr () (tupleCon (length elems)) elems
+
+-- ============================================================================
+-- == Record combinators
+-- ============================================================================
+
+--record :: Parser (PatternExpr ())
+--record = recExpr () <$> fields "=" expr
+
+fields :: Text -> Parser a -> Parser (FieldSet () a)
+fields sym parser = do 
+    fs <- uncurry (Field ()) <$$> fieldPairs sym parser
+    pure (fieldSet fs)
+
+fieldPairs :: Text -> Parser a -> Parser [(Name, a)]
+fieldPairs sym parser = do
+    pairs <- symbol "{" *> (sortOn fst <$> field `sepBy1` symbol ",") <* symbol "}"
+    when (hasDups (fst <$> pairs)) (fail "Duplicate field name in record")
+    pure pairs
+  where
+    hasDups names = length names /= length (nub names)
+    field = (,) <$> name <*> (symbol sym *> parser)
 

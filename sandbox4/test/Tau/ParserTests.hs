@@ -131,3 +131,29 @@ testParser = do
         "()"
         LUnit
 
+    -- Patterns
+
+    succeedParse pattern_ "a pattern"
+        "Some X"
+        (conPat () "Some" [conPat () "X" []])
+
+    succeedParse pattern_ "a pattern"
+        "5"
+        (litPat () (LInt 5))
+
+    succeedParse pattern_ "a pattern"
+        "Some (Some X)"
+        (conPat () "Some" [conPat () "Some" [conPat () "X" []]])
+
+    succeedParse pattern_ "a pattern"
+        "x :: xs"
+        (conPat () "(::)" [varPat () "x", varPat () "xs"])
+
+    succeedParse pattern_ "a pattern"
+        "(x, y)"
+        (tupPat () [varPat () "x", varPat () "y"])
+
+    succeedParse pattern_ "a pattern"
+        "{ a = x }"
+        (recPat () (fieldSet [Field () "a" (varPat () "x")]))
+
