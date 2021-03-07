@@ -60,6 +60,22 @@ testTypeUnification = do
         (tList _a)
         (tList tInt)
         
+    succeedUnifyTypes
+        (tList _a)
+        (tList _b)
+
+    failUnifyTypes
+        (tList _a)
+        (tPair _a _b)
+
+    succeedUnifyTypes
+        (tPair _a _a)
+        (tPair _a _b)
+
+    failUnifyTypes
+        (tPair _a _a)
+        (tPair tInt tBool)
+
     failUnifyTypes
         (tList _a)
         tInt
