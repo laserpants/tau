@@ -103,8 +103,12 @@ constructor_ = word (withInitial upperChar)
 operator :: [[Operator Parser (Expr () p q r (Op1 ()) (Op2 ()))]]
 operator = 
     [
+      -- 9
+      [ InfixR (op2Expr () (OLArr ()) <$ symbol "<<")
+      , InfixL (op2Expr () (ORArr ()) <$ symbol ">>")
+      ]
       -- 8
-      [ InfixR (op2Expr () (OPow ()) <$ symbol "^")
+    , [ InfixR (op2Expr () (OPow ()) <$ symbol "^")
       ]
       -- 7
     , [ InfixL (op2Expr () (OMul ()) <$ symbol "*")
@@ -114,33 +118,37 @@ operator =
     , [ InfixL (op2Expr () (OAdd ()) <$ symbol "+")
       , InfixL (op2Expr () (OSub ()) <$ symbol "-")
       ]
---      -- 5
---    , [ InfixR (cons <$ symbol "::")
---      ]
---      -- 4
---    , [ InfixN (eqOp  () <$ symbol "==")
---      , InfixN (nEqOp () <$ symbol "/=")
---      , InfixN (ltOp  () <$ try (symbol "<" <* notFollowedBy (symbol "=")))
---      , InfixN (gtOp  () <$ try (symbol ">" <* notFollowedBy (symbol "=")))
---      , InfixN (ltEOp () <$ symbol "<=")
---      , InfixN (gtEOp () <$ symbol ">=")
---      ]
---      -- 3
---    , [ InfixR (andOp () <$ symbol "&&")
---      ]
---      -- 2
---    , [ InfixR (orOp  () <$ symbol "||")
---      , Prefix (notOp () <$ (keyword "not" *> spaces))
---      ]
---      -- 1
---    , [ InfixR (lArrOp () <$ symbol "<<")
---      , InfixR (rArrOp () <$ symbol ">>")
---      , InfixL (fPipeOp () <$ symbol "|>")
---      , InfixR (bPipeOp () <$ symbol "<|")
---      ]
---      -- 0
---    , [
---      ]
+      -- 5
+    , [ InfixR (listCons <$ symbol "::")
+      ]
+      -- 4
+    , [ InfixN (op2Expr () (OEq ()) <$ symbol "==")
+      , InfixN (op2Expr () (ONEq ()) <$ symbol "/=")
+      , InfixN (op2Expr () (OLt ()) <$ try (symbol "<" <* notFollowedBy (symbol "=")))
+      , InfixN (op2Expr () (OGt ()) <$ try (symbol ">" <* notFollowedBy (symbol "=")))
+      , InfixN (op2Expr () (OLtE ()) <$ symbol "<=")
+      , InfixN (op2Expr () (OGtE ()) <$ symbol ">=")
+      ]
+      -- 3
+    , [ InfixR (op2Expr () (OAnd ()) <$ symbol "&&")
+      ]
+      -- 2
+    , [ InfixR (op2Expr () (OOr ()) <$ symbol "||")
+      , Prefix (op1Expr () (ONot ()) <$ (keyword "not" *> spaces))
+      ]
+      -- 1
+    , [ 
+      ]
+      -- 0
+    , [ InfixL (op2Expr () (OFPipe ()) <$ symbol "|>")
+      , InfixR (op2Expr () (OBPipe ()) <$ symbol "<|")
+      ]
     ]
 
+listCons :: Expr () p q r n o -> Expr () p q r n o -> Expr () p q r n o
+listCons hd tl = conExpr () "(::)" [hd, tl]
+
+-- ============================================================================
+-- == 
+-- ============================================================================
 
