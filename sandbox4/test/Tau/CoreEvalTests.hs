@@ -61,3 +61,12 @@ testCoreEval = do
         (cLet "id" (cLam "x" (cVar "x")) (cLet "x" (cApp [cVar "(,)", cVar "id", cLit (LInt 4)]) (cApp [cVar "@Int.(+)", cApp [cApp [cVar "first", cVar "x"], cApp [cVar "second", cVar "x"]], cLit (LInt 1)])))       
         (Value (LInt 5))
 
+    succeedEval
+        (cIf (cLit (LBool True)) (cLit (LInt 1)) (cLit (LInt 2)))
+        (Value (LInt 1))
+
+    succeedEval
+        (cIf (cLit (LBool False)) (cLit (LInt 1)) (cLit (LInt 2)))
+        (Value (LInt 2))
+
+

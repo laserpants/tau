@@ -363,7 +363,7 @@ testExpr24 :: Expr () (Pattern ()) (Binding (Pattern ())) [Pattern ()] (Op1 ()) 
 testExpr24 = appExpr () [lamExpr () [varPat () "x"] (appExpr () [varExpr () "show", conExpr () "(,)" [varExpr () "x", varExpr () "x"]]), litExpr () (LInt 11)]
 
 testX = 
-    case runTest testExpr21 of 
+    case runTest testExpr7 of 
         Left e -> error e
         Right (r, q , c, z) -> do
             putStrLn (showTree (nodesToString (prettyAst r)))

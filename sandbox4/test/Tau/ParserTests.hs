@@ -37,6 +37,8 @@ parseWith parser = runParser parser ""
 testParser :: SpecWith ()
 testParser = do
 
+    -- Identifiers 
+
     succeedParse name "an identifier"
         "yeah" 
         "yeah"
@@ -54,6 +56,11 @@ testParser = do
     failParse name "an identifier"
         "" 
 
+    failParse name "an identifier"
+        "let" 
+
+    -- Constructors
+
     succeedParse constructor_ "a constructor" 
         "Hello" 
         "Hello"
@@ -61,6 +68,11 @@ testParser = do
     failParse constructor_ "a constructor" 
         "hello"
     
+    failParse constructor_ "a constructor" 
+        "False"
+
+    -- Kinds
+
     succeedParse kind "a kind"
         "* -> * -> *"
         (kArr kTyp (kArr kTyp kTyp))
@@ -72,6 +84,8 @@ testParser = do
     succeedParse kind "a kind"
         "(* -> *) -> *"
         (kArr (kArr kTyp kTyp) kTyp)
+
+    -- Literals
 
     succeedParse charLit "a Char"
         "'x'"
@@ -112,3 +126,8 @@ testParser = do
     succeedParse stringLit "a String"
         "\"\""
         (LString "")
+
+    succeedParse unit "a Unit value"
+        "()"
+        LUnit
+

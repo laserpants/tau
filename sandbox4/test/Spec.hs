@@ -1,3 +1,4 @@
+import Tau.CompilerTests
 import Tau.CoreEvalTests
 import Tau.ParserTests
 import Tau.PatternAnomaliesTests
@@ -15,3 +16,4 @@ main =
         describe "\nPattern anomalies\n" testPatternAnomalies
         describe "\nCore evaluation\n" testCoreEval
         describe "\nParser\n" testParser
+        describe "\nCompiler\n" testCompiler
