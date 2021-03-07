@@ -143,7 +143,9 @@ import qualified Tau.Util.Env as Env
 --
 ---- TODO
 
-testTypeInference = undefined
+testTypeInference :: SpecWith ()
+testTypeInference = 
+    pure ()
 
 --testTypeInference :: SpecWith ()
 --testTypeInference = do
