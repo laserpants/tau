@@ -374,7 +374,7 @@ runTest expr = do
     ((ast, ast2), (sub, _)) <- runInfer classEnv typeEnv (do
         ast <- infer expr
         sub <- gets fst
-        let ast1 = applySubToAst sub ast
+        let ast1 = astApply sub ast
         foo <- evalStateT (compileClasses (desugarOperators ast1)) [] 
         pure (ast1 :: Ast NodeInfo (Op1 NodeInfo) (Op2 NodeInfo), foo)
         )
@@ -388,8 +388,8 @@ runTest expr = do
 
 
 
-applySubToAst :: Substitution -> Ast NodeInfo (Op1 NodeInfo) (Op2 NodeInfo) -> Ast NodeInfo (Op1 NodeInfo) (Op2 NodeInfo) 
-applySubToAst sub = mapTags (apply sub :: NodeInfo -> NodeInfo)
+astApply :: Substitution -> Ast NodeInfo (Op1 NodeInfo) (Op2 NodeInfo) -> Ast NodeInfo (Op1 NodeInfo) (Op2 NodeInfo) 
+astApply sub = mapTags (apply sub :: NodeInfo -> NodeInfo)
 
 extractType :: Ast NodeInfo Void Void -> Ast Type Void Void
 extractType = (mapTags :: (NodeInfo -> Type) -> Ast NodeInfo Void Void -> Ast Type Void Void) nodeType
@@ -401,12 +401,13 @@ compileExpr2
 compileExpr2 e = do
     ast <- infer e
     sub <- gets fst
-    let ast2 = applySubToAst sub ast
+    let ast2 = astApply sub ast
     ast4 <- evalStateT (compileClasses (desugarOperators ast2)) []
-    cc <- expandFunPats (extractType ast4) -- (mapTags nodeType ast4)
-    dd <- unrollLets cc
-    ee <- simplify dd
-    toCore ee
+    compileExpr (extractType ast4)
+--    cc <- expandFunPats (extractType ast4) -- (mapTags nodeType ast4)
+--    dd <- unrollLets cc
+--    ee <- simplify dd
+--    toCore ee
 
 --astVars :: (Free t) => Ast t n o -> [Name]
 --astVars = nub . cata alg 
