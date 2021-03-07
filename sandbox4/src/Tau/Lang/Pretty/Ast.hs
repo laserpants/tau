@@ -57,14 +57,11 @@ prettyAst = para $ \case
         EFix t name e1 e2 -> 
             Node ("fix" <+> pretty name) [prefix "=" e1, Node "in" [e2]]
 
---        EOp1 t (ONot _) a -> 
---            Node "not" [a]
---
---        EOp1 t (ONeg _) a -> 
---            Node "negate" [a]
---
---        EOp2 t op a b ->
---            Node ("(" <> pretty (op2Symbol op) <> ")" <+> colon <+> pretty t) [a, b]
+        EOp1 t op a ->
+            Node (pretty op <+> colon <+> pretty t) [a]
+
+        EOp2 t op a b ->
+            Node ("(" <> pretty op <> ")" <+> colon <+> pretty t) [a, b]
 
         ETup t elems -> 
             Node (pretty (tupleCon (length elems))) elems

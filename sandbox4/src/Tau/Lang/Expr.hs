@@ -115,9 +115,6 @@ deriveShow1 ''Binding
 deriveEq1   ''Binding
 
 -- | Base functor for Expr
-
---data ExprF t p q r a n o
-
 data ExprF t p q r n o a
     = EVar t Name             -- ^ Variable
     | ECon t Name [a]         -- ^ Data constructor
@@ -332,92 +329,109 @@ patternVars = cata $ \case
 
 type Ast t n o = Expr t (Pattern t) (Binding (Pattern t)) [Pattern t] n o
 
-mapTagsM :: (Monad m) => (s -> m t) -> Ast s n o -> m (Ast t n o)
-mapTagsM = undefined
---mapTagsM f = cata $ \case
---
---    EVar t a -> 
---        varExpr <$> f t <*> pure a
---    ECon t a b -> 
---        conExpr <$> f t <*> pure a <*> sequence b
---    ELit t a -> 
---        litExpr <$> f t <*> pure a
---    EApp t a -> 
---        appExpr <$> f t <*> sequence a
---    ELet t (BLet p) a b -> 
---        letExpr <$> f t <*> (BLet <$> mapPatternTags f p) <*> a <*> b
---    ELet t (BFun g ps) a b -> 
---        letExpr <$> f t <*> (BFun g <$> traverse (mapPatternTags f) ps) <*> a <*> b
---    EFix t n a b -> 
---        fixExpr <$> f t <*> pure n <*> a <*> b
---    ELam t p a -> 
---        lamExpr <$> f t <*> traverse (mapPatternTags f) p <*> a
---    EIf  t a b c -> 
---        ifExpr  <$> f t <*> a <*> b <*> c
-----    EOp1 t o a -> 
-----        op1Expr <$> f t <*> mapOp1Tags f o <*> a
-----    EOp2 t o a b -> 
-----        op2Expr <$> f t <*> mapOp2Tags f o <*> a <*> b
---    EDot t a b -> 
---        dotExpr <$> f t <*> pure a <*> b
---    ETup t a -> 
---        tupExpr <$> f t <*> sequence a 
---    EPat t a cs -> do
---        clauses <- traverse (mapClauseTags f) cs
---        patExpr <$> f t <*> sequence a <*> traverse sequence clauses
---    ERec t (FieldSet fs) -> do
---        fields <- traverse (mapFieldTags f) fs
---        recExpr <$> f t <*> sequence (FieldSet fields)
---  where
-----    mapOp1Tags :: (Monad m) => (s -> m t) -> Op1 s -> m (Op1 t)
-----    mapOp1Tags f = \case
-----        ONeg   t -> ONeg   <$> f t
-----        ONot   t -> ONot   <$> f t
-----
-----    mapOp2Tags :: (Monad m) => (s -> m t) -> Op2 s -> m (Op2 t)
-----    mapOp2Tags f = \case
-----        OEq    t -> OEq    <$> f t 
-----        ONEq   t -> ONEq   <$> f t
-----        OAnd   t -> OAnd   <$> f t
-----        OOr    t -> OOr    <$> f t
-----        OAdd   t -> OAdd   <$> f t
-----        OSub   t -> OSub   <$> f t
-----        OMul   t -> OMul   <$> f t
-----        ODiv   t -> ODiv   <$> f t
-----        OPow   t -> OPow   <$> f t
-----        OLt    t -> OLt    <$> f t
-----        OGt    t -> OGt    <$> f t
-----        OLtE   t -> OLtE   <$> f t
-----        OGtE   t -> OGtE   <$> f t
-----        OLArr  t -> OLArr  <$> f t
-----        ORArr  t -> ORArr  <$> f t
-----        OFPipe t -> OFPipe <$> f t
-----        OBPipe t -> OBPipe <$> f t
---
---    mapPatternTags :: (Monad m) => (s -> m t) -> Pattern s -> m (Pattern t)
---    mapPatternTags f = cata $ \case
---        PVar t a            -> varPat <$> f t <*> pure a
---        PCon t a b          -> conPat <$> f t <*> pure a <*> sequence b
---        PLit t a            -> litPat <$> f t <*> pure a
---        PAny t              -> anyPat <$> f t 
---        PAs  t a b          -> asPat  <$> f t <*> pure a <*> b
---        POr  t a b          -> orPat  <$> f t <*> a <*> b
---        PRec t (FieldSet fs) -> do
---            fields <- traverse (mapFieldTags f) fs
---            recPat <$> f t <*> sequence (FieldSet fields)
---
---    mapClauseTags 
---      :: (Monad m) 
---      => (s -> m t) 
---      -> Clause (Pattern s) a 
---      -> m (Clause (Pattern t) a)
---    mapClauseTags f (Clause p a b) = 
---        Clause <$> traverse (mapPatternTags f) p <*> pure a <*> pure b
---
---    mapFieldTags :: (Monad m) => (s -> m t) -> Field s a -> m (Field t a)
---    mapFieldTags f (Field t a b) = Field <$> f t <*> pure a <*> pure b
+class MapT s t a b where
+    mapTagsM :: (Monad m) => (s -> m t) -> a -> m b
 
-mapTags :: (s -> t) -> Ast s n o -> Ast t n o
+instance (MapT s t a b) => MapT s t [a] [b] where
+    mapTagsM = traverse . mapTagsM 
+
+instance 
+    ( MapT s t a b
+    , MapT s t c d
+    , MapT s t e f
+    , MapT s t g h
+    , MapT s t i j
+    ) => MapT s t (Expr s a c e g i) (Expr t b d f h j) 
+  where
+    mapTagsM f = cata $ \case
+        EVar t a -> 
+            varExpr <$> f t <*> pure a
+        ECon t a b -> 
+            conExpr <$> f t <*> pure a <*> sequence b
+        ELit t a -> 
+            litExpr <$> f t <*> pure a
+        EApp t a -> 
+            appExpr <$> f t <*> sequence a
+        ELet t c a b -> 
+            letExpr <$> f t <*> mapTagsM f c <*> a <*> b
+        EFix t n a b -> 
+            fixExpr <$> f t <*> pure n <*> a <*> b
+        ELam t p a -> 
+            lamExpr <$> f t <*> mapTagsM f p <*> a
+        EIf t a b c -> 
+            ifExpr  <$> f t <*> a <*> b <*> c
+        EOp1 t o a -> 
+            op1Expr <$> f t <*> mapTagsM f o <*> a
+        EOp2 t o a b -> 
+            op2Expr <$> f t <*> mapTagsM f o <*> a <*> b
+        EDot t a b -> 
+            dotExpr <$> f t <*> pure a <*> b
+        ETup t a -> 
+            tupExpr <$> f t <*> sequence a 
+        EPat t a cs -> do
+            clauses <- traverse sequence cs 
+            patExpr <$> f t <*> sequence a <*> traverse (mapTagsM f) clauses
+        ERec t (FieldSet fs) -> do
+            fields <- traverse sequence fs
+            recExpr <$> f t <*> (FieldSet <$> traverse (mapTagsM f) fields)
+
+instance MapT s t (Pattern s) (Pattern t) where
+    mapTagsM f = cata $ \case
+        PVar t a -> 
+            varPat <$> f t <*> pure a
+        PCon t a b -> 
+            conPat <$> f t <*> pure a <*> sequence b
+        PLit t a -> 
+            litPat <$> f t <*> pure a
+        PAny t -> 
+            anyPat <$> f t 
+        PAs t a b -> 
+            asPat  <$> f t <*> pure a <*> b
+        POr t a b -> 
+            orPat  <$> f t <*> a <*> b
+        PRec t (FieldSet fs) -> do
+            fields <- traverse sequence fs
+            recPat <$> f t <*> (FieldSet <$> traverse (mapTagsM f) fields)
+
+instance MapT s t (Binding (Pattern s)) (Binding (Pattern t)) where
+    mapTagsM f = \case
+        BLet p      -> BLet <$> mapTagsM f p
+        BFun fun ps -> BFun fun <$> traverse (mapTagsM f) ps
+
+instance (MapT s t p q) => MapT s t (Clause p a) (Clause q a) where
+    mapTagsM f (Clause p a b) = 
+        Clause <$> mapTagsM f p <*> pure a <*> pure b
+
+instance MapT s t (Op1 s) (Op1 t) where
+    mapTagsM f = \case
+        ONeg   t -> ONeg   <$> f t
+        ONot   t -> ONot   <$> f t
+
+instance MapT s t (Op2 s) (Op2 t) where
+    mapTagsM f = \case
+        OEq    t -> OEq    <$> f t 
+        ONEq   t -> ONEq   <$> f t
+        OAnd   t -> OAnd   <$> f t
+        OOr    t -> OOr    <$> f t
+        OAdd   t -> OAdd   <$> f t
+        OSub   t -> OSub   <$> f t
+        OMul   t -> OMul   <$> f t
+        ODiv   t -> ODiv   <$> f t
+        OPow   t -> OPow   <$> f t
+        OLt    t -> OLt    <$> f t
+        OGt    t -> OGt    <$> f t
+        OLtE   t -> OLtE   <$> f t
+        OGtE   t -> OGtE   <$> f t
+        OLArr  t -> OLArr  <$> f t
+        ORArr  t -> ORArr  <$> f t
+        OFPipe t -> OFPipe <$> f t
+        OBPipe t -> OBPipe <$> f t
+
+instance MapT s t (Field s a) (Field t a) where
+    mapTagsM f (Field t a b) = 
+        Field <$> f t <*> pure a <*> pure b
+
+mapTags :: (MapT s t a b) => (s -> t) -> a -> b
 mapTags f = runIdentity . mapTagsM (pure . f)
 
 varPat :: t -> Name -> Pattern t

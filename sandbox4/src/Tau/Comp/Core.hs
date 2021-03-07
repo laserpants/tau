@@ -405,7 +405,7 @@ desugarOperators = cata $ \case
     prefix2 op = varExpr (op2Tag op) ("(" <> op2Symbol op <> ")")
 
 compileClasses 
-  :: (MonadError String m, MonadSupply Name m, MonadReader (ClassEnv (Ast NodeInfo Void Void), TypeEnv) m)
+  :: (MonadError String m, MonadSupply Name m, MonadReader (ClassEnv (Ast NodeInfo (Op1 NodeInfo) (Op2 NodeInfo)), TypeEnv) m)
   => Ast (NodeInfoT Type) Void Void
   -> StateT [(Name, Type)] m (Ast (NodeInfoT Type) Void Void) 
 compileClasses expr = 
@@ -433,7 +433,7 @@ collect :: (MonadState [(Name, Type)] m) => m [(Name, Type)]
 collect = nub <$> acquireState
 
 applyDicts
-  :: (MonadError String m, MonadSupply Name m, MonadReader (ClassEnv (Ast NodeInfo Void Void), TypeEnv) m)
+  :: (MonadError String m, MonadSupply Name m, MonadReader (ClassEnv (Ast NodeInfo (Op1 NodeInfo) (Op2 NodeInfo)), TypeEnv) m)
   => Predicate
   -> Ast (NodeInfoT Type) Void Void
   -> StateT [(Name, Type)] m (Ast (NodeInfoT Type) Void Void)
@@ -455,7 +455,7 @@ applyDicts (InClass name ty) expr
 
                 -- TODO: super-classes???
 
-                dict <- compileClasses instanceDict
+                dict <- compileClasses (desugarOperators instanceDict)
 
                 let def = appExpr (exprTag expr) 
                             [ setExprTag (NodeInfo (typeOf dict `tArr` typeOf expr) []) expr

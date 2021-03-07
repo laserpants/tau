@@ -5,6 +5,7 @@
 {-# LANGUAGE OverloadedStrings     #-}
 {-# LANGUAGE RecordWildCards       #-}
 {-# LANGUAGE StrictData            #-}
+{-# LANGUAGE UndecidableInstances  #-}
 module Tau.Comp.Type.Inference where
 
 import Control.Arrow ((>>>), (***))
@@ -18,6 +19,7 @@ import Data.Maybe (fromMaybe, maybeToList, fromJust)
 import Data.Set.Monad (Set)
 import Data.Text (Text)
 import Data.Tuple.Extra (first, second)
+import Data.Void
 import Tau.Comp.Type.Substitution
 import Tau.Comp.Type.Unification
 import Tau.Lang.Expr
@@ -58,6 +60,18 @@ instance (Typed t) => Typed (Op1 t) where
 
 instance (Typed t) => Typed (Op2 t) where
     typeOf = typeOf . op2Tag
+
+instance MapT NodeInfo t Void Void where
+    mapTagsM = const pure
+
+--instance MapT t t (NodeInfoT t) (NodeInfoT t) where
+--    mapTagsM f (NodeInfo t ps) = NodeInfo <$> f t <*> pure ps
+
+instance 
+    ( MapT NodeInfo NodeInfo n n
+    , MapT NodeInfo NodeInfo o o 
+    ) => Substitutable (Ast NodeInfo n o) Type 
+  where apply sub = mapTags (apply sub :: NodeInfo -> NodeInfo)
 
 infer 
   :: ( MonadSupply Name m
@@ -423,7 +437,7 @@ propagateClasses ty ps =
         sequence_ [propagateClasses t (Set.singleton a) | InClass a t <- preds]
 
 lookupClassInstance 
-  :: (MonadPlus m, MonadError String m) 
+  :: (MapT NodeInfo NodeInfo n n, MapT NodeInfo NodeInfo o o, MonadPlus m, MonadError String m) 
   => Name 
   -> Type 
   -> ClassEnv (Ast NodeInfo n o) 
@@ -436,6 +450,6 @@ lookupClassInstance name ty env = do
     applyToInstance Instance{..} sub = 
           Instance { predicates   = apply sub predicates
                    , instanceType = apply sub instanceType
-                   , instanceDict = mapTags (apply sub) instanceDict }
+                   , instanceDict = apply sub instanceDict }
     tryMatch inst = 
         applyToInstance inst <$> match (instanceType inst) ty

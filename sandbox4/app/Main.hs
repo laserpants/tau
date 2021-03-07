@@ -107,35 +107,35 @@ import qualified Tau.Util.Env as Env
 --    Just c -> do
 --        traceShowM c
 --        evalExpr c evalEnv
---
---evalEnv = Env.fromList 
---    [ ("(::)"    , constructor "(::)" 2)  
---    , ("[]"      , constructor "[]"   0)  
---    , ("Some"    , constructor "Some" 1)  
---    , ("None"    , constructor "None" 0)  
---    , ("{show}"  , constructor "{show}" 1)  
---    , ("{(*),(+),(-)}" , constructor "{(*),(+),(-)}" 3)  
---    , ("(,)"     , constructor "(,)" 2)  
---    , ("show"    , fromJust (evalExpr show_ mempty))
---    , ("lenShow" , fromJust (evalExpr lenShow mempty))
---    , ("first"   , fromJust (runEval (eval fst_) mempty))
---    , ("second"  , fromJust (runEval (eval snd_) mempty))
---    , ("(+)"     , fromJust (evalExpr plus__ mempty))
---    ]
---  where
---    lenShow = fromJust (evalSupply (compileExpr foo3) (numSupply "$"))
---    show_   = fromJust (evalSupply (compileExpr foo4) (numSupply "$"))
---    plus__  = fromJust (evalSupply (compileExpr foo5) (numSupply "$"))
---    foo3 = lamExpr () [varPat () "d"] (lamExpr () [varPat () "x"] (appExpr () [varExpr () "@String.length", appExpr () [varExpr () "show", varExpr () "d", varExpr () "x"]]))
---    foo4 = lamExpr () [varPat () "d"] (patExpr () [varExpr () "d"] [ Clause [recPat () (fieldSet [Field () "show" (varPat () "show")])] [] (varExpr () "show") ])
---    foo5 = lamExpr () [varPat () "d"] (patExpr () [varExpr () "d"] [ Clause [recPat () (fieldSet 
---              [ Field () "(+)" (varPat () "x"), Field () "(*)" (anyPat ()), Field () "(-)" (anyPat ()) ])] [] (varExpr () "x") ])
---    fst_ = fromJust (evalSupply (compileExpr foo24) (numSupply "$"))
---    snd_ = fromJust (evalSupply (compileExpr foo25) (numSupply "$"))
---    foo24 = lamExpr () [varPat () "p"] (patExpr () [varExpr () "p"] [Clause [conPat () "(,)" [varPat () "a", anyPat ()]] [] (varExpr () "a")])
---    foo25 = lamExpr () [varPat () "p"] (patExpr () [varExpr () "p"] [Clause [conPat () "(,)" [varPat () "zz", varPat () "b"]] [] (varExpr () "b")])
--- 
---
+
+evalEnv = Env.fromList 
+    [ ("(::)"    , constructor "(::)" 2)  
+    , ("[]"      , constructor "[]"   0)  
+    , ("Some"    , constructor "Some" 1)  
+    , ("None"    , constructor "None" 0)  
+    , ("{show}"  , constructor "{show}" 1)  
+    , ("{(*),(+),(-)}" , constructor "{(*),(+),(-)}" 3)  
+    , ("(,)"     , constructor "(,)" 2)  
+    , ("show"    , fromJust (evalExpr show_ mempty))
+    , ("lenShow" , fromJust (evalExpr lenShow mempty))
+    , ("first"   , fromJust (runEval (eval fst_) mempty))
+    , ("second"  , fromJust (runEval (eval snd_) mempty))
+    , ("(+)"     , fromJust (evalExpr plus__ mempty))
+    ]
+  where
+    lenShow = fromJust (evalSupply (compileExpr foo3) (numSupply "$"))
+    show_   = fromJust (evalSupply (compileExpr foo4) (numSupply "$"))
+    plus__  = fromJust (evalSupply (compileExpr foo5) (numSupply "$"))
+    foo3 = lamExpr () [varPat () "d"] (lamExpr () [varPat () "x"] (appExpr () [varExpr () "@String.length", appExpr () [varExpr () "show", varExpr () "d", varExpr () "x"]]))
+    foo4 = lamExpr () [varPat () "d"] (patExpr () [varExpr () "d"] [ Clause [recPat () (fieldSet [Field () "show" (varPat () "show")])] [] (varExpr () "show") ])
+    foo5 = lamExpr () [varPat () "d"] (patExpr () [varExpr () "d"] [ Clause [recPat () (fieldSet 
+              [ Field () "(+)" (varPat () "x"), Field () "(*)" (anyPat ()), Field () "(-)" (anyPat ()) ])] [] (varExpr () "x") ])
+    fst_ = fromJust (evalSupply (compileExpr foo24) (numSupply "$"))
+    snd_ = fromJust (evalSupply (compileExpr foo25) (numSupply "$"))
+    foo24 = lamExpr () [varPat () "p"] (patExpr () [varExpr () "p"] [Clause [conPat () "(,)" [varPat () "a", anyPat ()]] [] (varExpr () "a")])
+    foo25 = lamExpr () [varPat () "p"] (patExpr () [varExpr () "p"] [Clause [conPat () "(,)" [varPat () "zz", varPat () "b"]] [] (varExpr () "b")])
+ 
+
 ---- fix f = fun | 0 => 1 | n => n * f (n - 1) in f 5
 --test4 = evalSupply (compileExpr e) (numSupply "$")
 --  where 
@@ -170,15 +170,15 @@ import qualified Tau.Util.Env as Env
 --
 --
 --type Infer a = StateT (Substitution, Context) (ReaderT (ClassEnv a, TypeEnv) (SupplyT Name (ExceptT String Maybe))) a 
---
-----runInfer :: ClassEnv a -> TypeEnv -> Infer a -> Either String (a, (Substitution, Context))
---runInfer e1 e2 = 
---    flip runStateT (mempty, mempty)
---        >>> flip runReaderT (e1, e2)
---        >>> flip evalSupplyT (numSupply "a")
---        >>> runExceptT
---        >>> fromMaybe (Left "error")
---
+
+runInfer :: ClassEnv c -> TypeEnv -> StateT (Substitution, Context) (ReaderT (ClassEnv c, TypeEnv) (SupplyT Name (ExceptT String Maybe))) a -> Either String (a, (Substitution, Context))
+runInfer e1 e2 = 
+    flip runStateT (mempty, mempty)
+        >>> flip runReaderT (e1, e2)
+        >>> flip evalSupplyT (numSupply "a")
+        >>> runExceptT
+        >>> fromMaybe (Left "error")
+
 --test6 =
 --    runInfer classEnv typeEnv f
 --  where
@@ -303,123 +303,111 @@ import qualified Tau.Util.Env as Env
 --        , conExpr () "Some" [litExpr () (LInt 5)]
 --        , conExpr () "(::)" [litExpr () (LInt 3), conExpr () "[]" []]
 --        ]
---
---
---test10a = do
---    --let Right (r, q) = runTest testExpr3
---    --let Right (r, q) = runTest testExpr3
---    case runTest testExpr2 of
---    --case runTest testExpr21 of
---        Left e -> error e
---        Right (r, q , c, z) -> do
---            putStrLn (showTree (nodesToString (prettyAst r)))
---            putStrLn (showTree (nodesToString (prettyAst q)))
---            putStrLn (showTree (nodesToString (prettyCore c)))
---            putStrLn (show z)
-----        Right (r, q) -> do
-----            putStrLn (showTree (nodesToString (prettyAst r)))
-----            putStrLn (showTree (nodesToString (prettyAst q)))
---  where
---    testExpr2 = letExpr () (BLet (varPat () "f")) (varExpr () "lenShow") (varExpr () "f")
---    testExpr3 = letExpr () (BLet (varPat () "f")) (varExpr () "lenShow") (appExpr () [varExpr () "f", litExpr () (LInt 5)])
---    testExpr4 = lamExpr () [varPat () "x"] (appExpr () [varExpr () "lenShow", varExpr () "x"])
---    testExpr5 = lamExpr () [varPat () "x"] (letExpr () (BLet (varPat () "f")) (varExpr () "lenShow") (appExpr () [varExpr () "f", varExpr () "x"]))
---    testExpr6 = letExpr () (BLet (varPat () "f")) (varExpr () "lenShow") (lamExpr () [varPat () "x"] (appExpr () [varExpr () "f", varExpr () "x"]))
---    testExpr7 = appExpr () [varExpr () "lenShow", litExpr () (LInt 12345)]
---    testExpr8 = lamExpr () [varPat () "x"] (appExpr () [varExpr () "f", varExpr () "x"])
---    testExpr9 = letExpr () (BLet (varPat () "f")) (varExpr () "lenShow") (varExpr () "f")
---
---    -- let f x = lenShow in f ()
---    testExpr10 = letExpr () (BFun "f" [varPat () "x"]) (varExpr () "lenShow") (appExpr () [varExpr () "f", litExpr () LUnit])
---
---    -- let p = (5, 1) in show p
---    testExpr11 = letExpr () (BLet (varPat () "p")) (conExpr () "(,)" [litExpr () (LInt 5), litExpr () (LInt 1)]) (appExpr () [varExpr () "show", varExpr () "p"])
---
---    -- \x => show (x, x)
---    testExpr12 = lamExpr () [varPat () "x"] (appExpr () [varExpr () "show", conExpr () "(,)" [varExpr () "x", varExpr () "x"]])
---
---    --testExpr21 = op2Expr () OAdd (litExpr () (LFloat 3.1)) (litExpr () (LFloat 4.1)) 
---    testExpr21 = op2Expr () (OAdd ()) (litExpr () (LInt 3)) (litExpr () (LInt 4)) 
---
---    testExpr22 = appExpr () [patExpr () [] [
---          Clause [ conPat () "(::)" [litPat () (LInt 2), varPat () "z"]
---                 , varPat () "y" ] [] (litExpr () (LString "one")) 
---        , Clause [ varPat () "x"       
---                 , litPat () (LInt 4) ] [] (litExpr () (LString "two")) 
---        , Clause [ conPat () "(::)" [anyPat (), anyPat ()]
---                 , varPat () "x" ] [] (litExpr () (LString "three"))
---        ], conExpr () "(::)" [litExpr () (LInt 3), conExpr () "[]" []], litExpr () (LInt 4)]
---
---    testExpr23 = appExpr () [letExpr () (BFun "f" [varPat () "x"]) (varExpr () "lenShow") (appExpr () [varExpr () "f", litExpr () LUnit]), litExpr () (LInt 873)] 
---
---    testExpr24 = appExpr () [lamExpr () [varPat () "x"] (appExpr () [varExpr () "show", conExpr () "(,)" [varExpr () "x", varExpr () "x"]]), litExpr () (LInt 11)]
---
---    --runTest :: Expr t (Pattern t) (Binding (Pattern t)) [Pattern t] (Op1 t) (Op2 t) -> m (Ast NodeInfo Void Void)
---    runTest expr = do
---        --runInfer classEnv typeEnv (infer expr)
---        --traceShowM "=="
---        ((ast, ast2), (sub, x)) <- runInfer classEnv typeEnv (do
---            ast <- infer expr
---            sub <- gets fst
---            let ast' = mapTags (apply sub) ast
---
---            --foo <- undefined (evalSupplyT (evalStateT (compileClasses ast') []) [])
---            ----mapTagsM generalizeType ast'
---            --traceShowM (astVars ast')
---            foo <- evalStateT (compileClasses (desugarOperators ast')) [] 
---
---            pure (ast' :: Ast NodeInfo (Op1 NodeInfo) (Op2 NodeInfo), foo)
---            )
---
---
---
---        let (c, z) = case evalSupply (compileExpr (mapTags nodeType ast2)) (numSupply "$") of
---                  Just c -> do
---                      --debugLog (showTree (nodesToString (prettyCore c)))
---                      (c, evalExpr c evalEnv)
---                  Nothing -> error "==fail=="
---
-----        let z = case evalSupply (compileExpr (mapTags nodeType ast2)) (numSupply "$") of
-----                  Just c -> do
-----                      traceShowM c
-----                      evalExpr c evalEnv
-----                  Nothing -> error "==fail=="
---
-----        traceShowM z
---
---        pure (ast, ast2, c, z)
-----        mapM_ traceShowM (Map.toList (getSub sub))
-----        traceShowM x
-------        pure ast
-----        let ast' = mapTags (apply sub) ast
-------        let ast'' = runInfer mempty mempty (mapTagsM foo ast')
-----        pure (ast, ast'')
---
-----generalizeType (NodeInfo t ps) = do
-----    s <- generalize t
-----    pure (NodeInfo s ps)
---
-----boop ast =
-----    undefined
-----  where
-----    fs = zoop ast
---
-----compileExpr2
-----  :: (MonadState (Substitution, Context) m, MonadError String m, MonadSupply Name m, MonadReader (ClassEnv (Ast NodeInfo (Op1 NodeInfo) (Op2 NodeInfo)), TypeEnv) m)
-----  => Expr t (Pattern t) (Binding (Pattern t)) [Pattern t] n o
-----  -> m Core
---compileExpr2 e = do
---    ast <- infer e
---    sub <- gets fst
---    undefined
-----    let ast' = mapTags (apply sub) ast
-----    bb <- evalStateT (compileClasses (desugarOperators ast')) []
-----    cc <- expandFunPats (mapTags nodeType bb)
-----    dd <- unrollLets cc
-----    ee <- simplify dd
-----    toCore ee
---
---
+
+testExpr2 :: Expr () (Pattern ()) (Binding (Pattern ())) [Pattern ()] (Op1 ()) (Op2 ())
+testExpr2 = letExpr () (BLet (varPat () "f")) (varExpr () "lenShow") (varExpr () "f")
+
+testExpr3 :: Expr () (Pattern ()) (Binding (Pattern ())) [Pattern ()] (Op1 ()) (Op2 ())
+testExpr3 = letExpr () (BLet (varPat () "f")) (varExpr () "lenShow") (appExpr () [varExpr () "f", litExpr () (LInt 5)])
+
+testExpr4 :: Expr () (Pattern ()) (Binding (Pattern ())) [Pattern ()] (Op1 ()) (Op2 ())
+testExpr4 = lamExpr () [varPat () "x"] (appExpr () [varExpr () "lenShow", varExpr () "x"])
+
+testExpr5 :: Expr () (Pattern ()) (Binding (Pattern ())) [Pattern ()] (Op1 ()) (Op2 ())
+testExpr5 = lamExpr () [varPat () "x"] (letExpr () (BLet (varPat () "f")) (varExpr () "lenShow") (appExpr () [varExpr () "f", varExpr () "x"]))
+
+testExpr6 :: Expr () (Pattern ()) (Binding (Pattern ())) [Pattern ()] (Op1 ()) (Op2 ())
+testExpr6 = letExpr () (BLet (varPat () "f")) (varExpr () "lenShow") (lamExpr () [varPat () "x"] (appExpr () [varExpr () "f", varExpr () "x"]))
+
+testExpr7 :: Expr () (Pattern ()) (Binding (Pattern ())) [Pattern ()] (Op1 ()) (Op2 ())
+testExpr7 = appExpr () [varExpr () "lenShow", litExpr () (LInt 12345)]
+
+testExpr8 :: Expr () (Pattern ()) (Binding (Pattern ())) [Pattern ()] (Op1 ()) (Op2 ())
+testExpr8 = lamExpr () [varPat () "x"] (appExpr () [varExpr () "f", varExpr () "x"])
+
+testExpr9 :: Expr () (Pattern ()) (Binding (Pattern ())) [Pattern ()] (Op1 ()) (Op2 ())
+testExpr9 = letExpr () (BLet (varPat () "f")) (varExpr () "lenShow") (varExpr () "f")
+
+-- let f x = lenShow in f ()
+testExpr10 :: Expr () (Pattern ()) (Binding (Pattern ())) [Pattern ()] (Op1 ()) (Op2 ())
+testExpr10 = letExpr () (BFun "f" [varPat () "x"]) (varExpr () "lenShow") (appExpr () [varExpr () "f", litExpr () LUnit])
+
+-- let p = (5, 1) in show p
+testExpr11 :: Expr () (Pattern ()) (Binding (Pattern ())) [Pattern ()] (Op1 ()) (Op2 ())
+testExpr11 = letExpr () (BLet (varPat () "p")) (conExpr () "(,)" [litExpr () (LInt 5), litExpr () (LInt 1)]) (appExpr () [varExpr () "show", varExpr () "p"])
+
+-- \x => show (x, x)
+testExpr12 :: Expr () (Pattern ()) (Binding (Pattern ())) [Pattern ()] (Op1 ()) (Op2 ())
+testExpr12 = lamExpr () [varPat () "x"] (appExpr () [varExpr () "show", conExpr () "(,)" [varExpr () "x", varExpr () "x"]])
+
+--testExpr21 = op2Expr () OAdd (litExpr () (LFloat 3.1)) (litExpr () (LFloat 4.1)) 
+testExpr21 :: Expr () (Pattern ()) (Binding (Pattern ())) [Pattern ()] (Op1 ()) (Op2 ())
+testExpr21 = op2Expr () (OAdd ()) (litExpr () (LInt 3)) (litExpr () (LInt 4)) 
+
+testExpr22 :: Expr () (Pattern ()) (Binding (Pattern ())) [Pattern ()] (Op1 ()) (Op2 ())
+testExpr22 = appExpr () [patExpr () [] [
+      Clause [ conPat () "(::)" [litPat () (LInt 2), varPat () "z"]
+             , varPat () "y" ] [] (litExpr () (LString "one")) 
+    , Clause [ varPat () "x"       
+             , litPat () (LInt 4) ] [] (litExpr () (LString "two")) 
+    , Clause [ conPat () "(::)" [anyPat (), anyPat ()]
+             , varPat () "x" ] [] (litExpr () (LString "three"))
+    ], conExpr () "(::)" [litExpr () (LInt 3), conExpr () "[]" []], litExpr () (LInt 4)]
+
+testExpr23 :: Expr () (Pattern ()) (Binding (Pattern ())) [Pattern ()] (Op1 ()) (Op2 ())
+testExpr23 = appExpr () [letExpr () (BFun "f" [varPat () "x"]) (varExpr () "lenShow") (appExpr () [varExpr () "f", litExpr () LUnit]), litExpr () (LInt 873)] 
+
+testExpr24 :: Expr () (Pattern ()) (Binding (Pattern ())) [Pattern ()] (Op1 ()) (Op2 ())
+testExpr24 = appExpr () [lamExpr () [varPat () "x"] (appExpr () [varExpr () "show", conExpr () "(,)" [varExpr () "x", varExpr () "x"]]), litExpr () (LInt 11)]
+
+testX = 
+    case runTest testExpr21 of 
+        Left e -> error e
+        Right (r, q , c, z) -> do
+            putStrLn (showTree (nodesToString (prettyAst r)))
+            putStrLn (showTree (nodesToString (prettyAst q)))
+            putStrLn (showTree (nodesToString (prettyCore c)))
+            putStrLn (show z)
+
+--runTest :: Expr t (Pattern t) (Binding (Pattern t)) [Pattern t] (Op1 t) (Op2 t) -> m (Ast NodeInfo Void Void)
+runTest expr = do
+    ((ast, ast2), (sub, _)) <- runInfer classEnv typeEnv (do
+        ast <- infer expr
+        sub <- gets fst
+        let ast1 = applySubToAst sub ast
+        foo <- evalStateT (compileClasses (desugarOperators ast1)) [] 
+        pure (ast1 :: Ast NodeInfo (Op1 NodeInfo) (Op2 NodeInfo), foo)
+        )
+
+    let (c, z) = 
+            case evalSupply (compileExpr (extractType ast2)) (numSupply "$") of
+                Just c -> (c, evalExpr c evalEnv)
+                Nothing -> error "==fail=="
+
+    pure (ast, ast2, c, z)
+
+
+
+applySubToAst :: Substitution -> Ast NodeInfo (Op1 NodeInfo) (Op2 NodeInfo) -> Ast NodeInfo (Op1 NodeInfo) (Op2 NodeInfo) 
+applySubToAst sub = mapTags (apply sub :: NodeInfo -> NodeInfo)
+
+extractType :: Ast NodeInfo Void Void -> Ast Type Void Void
+extractType = (mapTags :: (NodeInfo -> Type) -> Ast NodeInfo Void Void -> Ast Type Void Void) nodeType
+
+compileExpr2
+  :: (MonadState (Substitution, Context) m, MonadError String m, MonadSupply Name m, MonadReader (ClassEnv (Ast NodeInfo (Op1 NodeInfo) (Op2 NodeInfo)), TypeEnv) m)
+  => Expr t (Pattern t) (Binding (Pattern t)) [Pattern t] (Op1 t) (Op2 t)
+  -> m Core
+compileExpr2 e = do
+    ast <- infer e
+    sub <- gets fst
+    let ast2 = applySubToAst sub ast
+    ast4 <- evalStateT (compileClasses (desugarOperators ast2)) []
+    cc <- expandFunPats (extractType ast4) -- (mapTags nodeType ast4)
+    dd <- unrollLets cc
+    ee <- simplify dd
+    toCore ee
+
 --astVars :: (Free t) => Ast t n o -> [Name]
 --astVars = nub . cata alg 
 --  where 
@@ -505,364 +493,58 @@ import qualified Tau.Util.Env as Env
 
 main = print "Hello"
 
---classEnv :: ClassEnv (Ast NodeInfo (Op1 NodeInfo) (Op2 NodeInfo))
---classEnv = Env.fromList 
---    [ ( "Num"
---      , ( []
---        , [ Instance [] tInt (recExpr (NodeInfo (tApp (tCon (kArr kTyp kTyp) "Num") tInt) []) (fieldSet [
---              Field (NodeInfo (tInt `tArr` tInt `tArr` tInt) []) "(+)" (varExpr (NodeInfo (tInt `tArr` tInt `tArr` tInt) []) "@Int.(+)")
---              , Field (NodeInfo (tInt `tArr` tInt `tArr` tInt) []) "(*)" (varExpr (NodeInfo (tInt `tArr` tInt `tArr` tInt) []) "@Int.(*)")
---              , Field (NodeInfo (tInt `tArr` tInt `tArr` tInt) []) "(-)" (varExpr (NodeInfo (tInt `tArr` tInt `tArr` tInt) []) "@Int.(-)")
---            ]))
-----              [ Field (NodeInfo (tInt `tArr` tInt `tArr` tInt) []) "(+)" (varExpr (NodeInfo (tInt `tArr` tInt `tArr` tInt) []) "@(+)Int")
-----              , Field (NodeInfo (tInt `tArr` tInt `tArr` tInt) []) "(*)" (varExpr (NodeInfo (tInt `tArr` tInt `tArr` tInt) []) "@(*)Int")
-----              , Field (NodeInfo (tInt `tArr` tInt `tArr` tInt) []) "(-)" (varExpr (NodeInfo (tInt `tArr` tInt `tArr` tInt) []) "@(-)Int")
-----              ])
---          ] 
---        )
---      )
---    , ( "Show"
---      , ( []
---        , [ Instance [] tInt (recExpr (NodeInfo (tApp (tCon (kArr kTyp kTyp) "Show") tInt) []) (fieldSet [Field (NodeInfo (tInt `tArr` tString) []) "show" (varExpr (NodeInfo (tInt `tArr` tString) []) "@Int.show")]))
---          --, Instance [] tBool (recExpr (NodeInfo (tApp (tCon (kArr kTyp kTyp) "Show") tBool) [])  (fieldSet [Field (NodeInfo (tBool `tArr` tString) []) "show" (varExpr (NodeInfo (tBool `tArr` tString) []) "@showBool")]))
-----          , Instance [InClass "Show" (tVar kTyp "a")] (tList (tVar kTyp "a")) (recExpr (NodeInfo (tApp (tCon (kArr kTyp kTyp) "Show") (tList (tVar kTyp "a"))) []) (fieldSet [Field (NodeInfo ((tList (tVar kTyp "a")) `tArr` tString) []) "show" foo11]))
---          , Instance [InClass "Show" (tVar kTyp "a"), InClass "Show" (tVar kTyp "b")] (tPair (tVar kTyp "a") (tVar kTyp "b")) (recExpr (NodeInfo (tApp (tCon (kArr kTyp kTyp) "Show") (tPair (tVar kTyp "a") (tVar kTyp "b"))) []) (fieldSet [Field (NodeInfo (tPair (tVar kTyp "a") (tVar kTyp "b") `tArr` tString) []) "show" showPair_]))
---          ]
---        )
---      )
---    ]
---  where
---    foo11 = varExpr (NodeInfo ((tList (tVar kTyp "a")) `tArr` tString) [InClass "Show" (tVar kTyp "a")]) "showList"
---    showPair_ = lamExpr (NodeInfo (tPair (tVar kTyp "a") (tVar kTyp "b") `tArr` tString) []) [varPat (NodeInfo (tPair (tVar kTyp "a") (tVar kTyp "b")) []) "p"] (appExpr (NodeInfo tString []) [varExpr (NodeInfo (tString `tArr` tString `tArr` tString `tArr` tString) []) "@strconcat3", appExpr (NodeInfo tString []) [varExpr (NodeInfo (tVar kTyp "a" `tArr` tString) [InClass "Show" (tVar kTyp "a")]) "show", (appExpr (NodeInfo (tVar kTyp "a") []) [varExpr (NodeInfo (tPair (tVar kTyp "a") (tVar kTyp "b") `tArr` tVar kTyp "a") []) "first", varExpr (NodeInfo (tPair (tVar kTyp "a") (tVar kTyp "b")) []) "p"])], litExpr (NodeInfo tString []) (LString ","), appExpr (NodeInfo tString []) [varExpr (NodeInfo (tVar kTyp "b" `tArr` tString) [InClass "Show" (tVar kTyp "b")]) "show", appExpr (NodeInfo (tVar kTyp "b") []) [varExpr (NodeInfo (tPair (tVar kTyp "a") (tVar kTyp "b") `tArr` tVar kTyp "b") []) "second", varExpr (NodeInfo (tPair (tVar kTyp "a") (tVar kTyp "b")) []) "p"]]])
---
---typeEnv = Env.fromList 
---    [ ( "(==)" , Forall [kTyp] [InClass "Eq" 0] (tGen 0 `tArr` tGen 0 `tArr` upgrade tBool) )
---    , ( "(+)"  , Forall [kTyp] [InClass "Num" 0] (tGen 0 `tArr` tGen 0 `tArr` tGen 0) )
---    , ( "(-)"  , Forall [kTyp] [InClass "Num" 0] (tGen 0 `tArr` tGen 0 `tArr` tGen 0) )
---    , ( "(*)"  , Forall [kTyp] [InClass "Num" 0] (tGen 0 `tArr` tGen 0 `tArr` tGen 0) )
---    , ( "show" , Forall [kTyp] [InClass "Show" 0] (tGen 0 `tArr` tString) )
---    , ( "add"  , Forall [kTyp] [InClass "Num" 0] (tGen 0 `tArr` tGen 0 `tArr` tGen 0) )
---    , ( "(,)"  , Forall [kTyp, kTyp] [] (tGen 0 `tArr` tGen 1 `tArr` (tApp (tApp (tCon (kArr kTyp (kArr kTyp kTyp)) "(,)") (tGen 0)) (tGen 1))))
---    , ( "first" , Forall [kTyp, kTyp] [] (tPair (tGen 0) (tGen 1) `tArr` (tGen 0)))
---    , ( "second" , Forall [kTyp, kTyp] [] (tPair (tGen 0) (tGen 1) `tArr` (tGen 1)))
---    , ( "(::)"  , Forall [kTyp] [] (tGen 0 `tArr` tList (tGen 0) `tArr` tList (tGen 0)) )
-----    , ( "Nil"    , Forall [kTyp] [] (tList (tGen 0)) )
-----    , ( "Cons"  , Forall [kTyp] [] (tGen 0 `tArr` tList (tGen 0) `tArr` tList (tGen 0)) )
---    , ( "[]"    , Forall [kTyp] [] (tList (tGen 0)) )
---    , ( "length" , Forall [kTyp] [] (tList (tGen 0) `tArr` tInt) )
---    , ( "None"   , Forall [kTyp] [] (tApp (tCon kFun "Option") (tGen 0)) )
---    , ( "Some"   , Forall [kTyp] [] (tGen 0 `tArr` tApp (tCon kFun "Option") (tGen 0)) )
---
---    , ( "@Int.(+)" , Forall [] [] (tInt `tArr` tInt `tArr` tInt) )
---    , ( "@Int.(-)" , Forall [] [] (tInt `tArr` tInt `tArr` tInt) )
---    , ( "@Int.(*)" , Forall [] [] (tInt `tArr` tInt `tArr` tInt) )
---
---    , ( "lenShow"  , Forall [kTyp, kTyp] [InClass "Show" 0] (tGen 0 `tArr` upgrade tInt) ) 
---    ]
---
---
-----normalize :: Context -> Type -> Scheme
-----normalize ctx ty = 
-----    runInfer mempty mempty (generalize ty)
-----    Forall [] 
-----  where
-----    updateVar v = Map.findWithDefault v v maps
-----    --maps :: Map Name (Name, Kind)
-----    sub = fromList (ork <$> (typeVars ty `zip` letters))
-----    ork ((n, k), v) = (n, tVar k v)
---
-----normalizeAst :: Ast 
---
---
-----xs = 5 : (4 : (11 : []))
-----
-----add1 (x:_) xs = (x + 1) : xs
-----
-----mapp f (x:_) xs = f x : xs
-----
-----len (_:_) n  = 1 + n
-----
-------a1 = f [1,2,3,4,5] (f [2,3,4,5] (f [3,4,5] (f [4,5] (f [5] (f [] [])))))
-----
-----unrollCons :: t -> ([a] -> t -> t) -> [a] -> t
-----unrollCons a f (x:xs) = f (x:xs) (unrollCons a f xs)
-----unrollCons a _ _      = a
-----
-----example1 = unrollCons [] (\(x:_) acc -> x+1 : acc) 
-----
-----example2 = unrollCons 0 (\(_:_) n -> n + 1)  
-----
-----example22 = unrollCons2 $ \xs n ->
-----    case (n, xs) of
-----        (_     , []) -> 0
-----        (Just m, _ ) -> m + 1
-----
-------unrollCons2 :: ([a] -> t -> t) -> [a] -> t
-----unrollCons2 f (x:xs) = f (x:xs) (Just (unrollCons2 f xs))
-----unrollCons2 f xs     = f xs Nothing
-----
-------example3 = baz [] (mapp (+2)) xs
-----
-----data Tree = Leaf Int | Tree Tree Tree
-----
-----example4 = unrollTree 0 (\Tree a b acc -> )
-----
-----unrollTree f (Tree a b) = f (Tree a b) (unrollTree f a)
-----
-------add11 b a =
-------    case a of
-------        (x:_) -> x + 1:b 
-------        []    -> []
-------
-------len11 b a =
-------    case a of
-------        (_:_) -> 1+b
-------        []    -> 0
-------
-------baz2 f (x:xs) = f (baz2 f xs) (x:xs) 
-------baz2 f []     = f (baz2 f []) []
---
---
---
---
---
---
---runExhaustive :: [[Pattern t]] -> Bool
---runExhaustive ps = runReader (exhaustive ps) myConstrEnv 
---  where
---    myConstrEnv :: ConstructorEnv
---    myConstrEnv = constructorEnv
---        [ ("Nil"      , ["Nil", "Cons"])
---        , ("Cons"     , ["Nil", "Cons"])
---        , ("Some"     , ["Some", "None"])
---        , ("None"     , ["Some", "None"])
---        , ("Succ"     , ["Succ", "Zero"])
---        , ("Zero"     , ["Succ", "Zero"])
---        , ("Ok"       , ["Ok", "Fail"])
---        , ("Fail"     , ["Ok", "Fail"])
---        ]
---
---
---
------- True
-----test123 = runExhaustive [[]]
-----
------- True
-----test124 = runExhaustive 
-----    [ [litPat () (LBool True)]
-----    , [litPat () (LBool False)]
-----    ]
-----
------- False
-----test125 = runExhaustive 
-----    [ [litPat () (LBool True)]
-----    ]
-----
------- True
-----test126 = runExhaustive 
-----    [ [conPat () "Cons" [varPat () "x", conPat () "Cons" [varPat () "y", varPat () "ys"]]]
-----    , [conPat () "Nil" []]
-----    , [conPat () "Cons" [varPat () "z", varPat () "zs"]]
-----    ]
-----
------- False
-----test127 = runExhaustive 
-----    [ [conPat () "Cons" [varPat () "x", conPat () "Cons" [varPat () "y", varPat () "ys"]]]
-----    , [conPat () "Cons" [varPat () "z", varPat () "zs"]]
-----    ]
-----
------- False
-----test128 = runExhaustive 
-----    [ [conPat () "Cons" [varPat () "x", conPat () "Cons" [varPat () "y", varPat () "ys"]]]
-----    , [conPat () "Cons" [varPat () "z", varPat () "zs"]]
-----    , [conPat () "Cons" [anyPat (), anyPat ()]]
-----    ]
-----
------- True
-----test129 = runExhaustive 
-----    [ [conPat () "Cons" [varPat () "x", conPat () "Cons" [varPat () "y", varPat () "ys"]]]
-----    , [conPat () "Cons" [varPat () "z", varPat () "zs"]]
-----    , [conPat () "Cons" [anyPat (), anyPat ()]]
-----    , [conPat () "Nil" []]
-----    ]
-----
-----
------- True
-----test130 = runExhaustive 
-----    [ [conPat () "Cons" [varPat () "x", conPat () "Cons" [varPat () "y", varPat () "ys"]]]
-----    , [conPat () "Nil" []]
-----    , [conPat () "Cons" [varPat () "z", conPat () "Nil" []]]
-----    ]
-----
------- False
-----test131 = runExhaustive 
-----    [ [conPat () "Cons" [varPat () "x", conPat () "Cons" [varPat () "y", varPat () "ys"]]]
-----    , [conPat () "Nil" []]
-----    ]
-----
------- False
-----test132 = runExhaustive 
-----    [ [conPat () "Nil" []]
-----    ]
-----
------- True
-----test133 = runExhaustive 
-----    [ [anyPat ()]
-----    ]
-----
------- True
-----test134 = runExhaustive 
-----    [ [conPat () "Cons" [varPat () "x", varPat () "ys"]]
-----    , [conPat () "Nil" []]
-----    ]
-----
------- True
-----test135 = runExhaustive 
-----    [ [conPat () "Cons" [varPat () "x", varPat () "ys"]]
-----    , [varPat () "x"]
-----    ]
-----
-----
------- True
-----test136 = runExhaustive 
-----    [ [litPat () (LInt 5)]
-----    , [varPat () "x"]
-----    ]
-----
------- False
-----test137 = runExhaustive 
-----    [ [litPat () (LInt 5)]
-----    , [litPat () (LInt 4)]
-----    ]
-----
------- True
-----test138 = runExhaustive 
-----    [ [litPat () (LInt 5), litPat () (LInt 5)]
-----    , [varPat () "x", varPat () "y"]
-----    ]
-----
------- False
-----test139 = runExhaustive 
-----    [ [litPat () (LInt 5), litPat () (LInt 5)]
-----    , [varPat () "x", litPat () (LInt 0)]
-----    ]
-----
-----
------- True
-----test140 = runExhaustive 
-----    [ [litPat () (LBool True)]
-----    , [litPat () (LBool False)]
-----    ]
-----
-----
------- True
-----test141 = runExhaustive 
-----    [ [litPat () (LBool True)]
-----    , [anyPat ()]
-----    ]
-----
-----
------- False
-----test142 = runExhaustive 
-----    [ [litPat () (LBool True)]
-----    ]
-----
-----
------- True
-----test143 = runExhaustive 
-----    [ [litPat () LUnit]
-----    ]
-----
-----
------- False
-----test144 = runExhaustive 
-----    [ [litPat () (LString "x")]
-----    , [litPat () (LString "y")]
-----    ]
-----
------- True
-----test146 = runExhaustive 
-----    [ [litPat () (LString "x")]
-----    , [litPat () (LString "y")]
-----    , [anyPat ()]
-----    ]
-----
-----
------- False
-----test147 = runExhaustive 
-----    [ [tupPat () [litPat () (LInt 1), litPat () (LInt 2)]]
-----    ]
-----
-----
------- True
-----test148 = runExhaustive 
-----    [ [tupPat () [anyPat (), anyPat ()]]
-----    ]
-----
-----
-----
------- True
-----test149 = runExhaustive 
-----    [ [tupPat () [litPat () (LInt 1), litPat () (LInt 2)]]
-----    , [tupPat () [anyPat (), anyPat ()]]
-----    ]
-----
------- False
-----test150 = runExhaustive 
-----    [ [tupPat () [conPat () "Cons" [varPat () "x", varPat () "xs"], litPat () (LInt 2)]]
-----    , [tupPat () [conPat () "Nil" [], anyPat ()]]
-----    ]
-----
-----
------- True
-----test151 = runExhaustive 
-----    [ [tupPat () [conPat () "Cons" [varPat () "x", varPat () "xs"], litPat () (LBool True)]]
-----    , [tupPat () [conPat () "Cons" [varPat () "x", varPat () "xs"], litPat () (LBool False)]]
-----    , [tupPat () [conPat () "Nil" [], anyPat ()]]
-----    ]
-----
------- False
-----test152 = runExhaustive 
-----    [ [tupPat () [conPat () "Cons" [varPat () "x", varPat () "xs"], litPat () (LBool True)]]
-----    , [tupPat () [conPat () "Cons" [litPat () (LInt 3), varPat () "xs"], litPat () (LBool False)]]
-----    , [tupPat () [conPat () "Nil" [], anyPat ()]]
-----    ]
-----
-----
-------    nonExhaustivePatterns
-------        [ $(parsePattern "{ x = 3, y = 4 }")
-------        , $(parsePattern "{ x = 6, y = 7 }")
-------        ]
-------
-------    exhaustivePatterns
-------        [ $(parsePattern "{ x = 3, y = 4 }")
-------        , $(parsePattern "{ x = 6, y = 7 }")
-------        , $(parsePattern "{ x = _, y = 7 }")
-------        , $(parsePattern "{ x = x, y = _ }")
-------        ]
-------
-------    exhaustivePatterns
-------        [ $(parsePattern "{ x = _ }")
-------        ]
-------
-------    exhaustivePatterns
-------        [ $(parsePattern "{ x = _, y = a }")
-------        ]
-------
-------    exhaustivePatterns
-------        [ $(parsePattern "{ a = x }")
-------        ]
-------
-------    exhaustivePatterns
-------        [ $(parsePattern "{ x = 3, y = { a = 3 } }")
-------        , $(parsePattern "{ x = 6, y = { a = 4 } }")
-------        , $(parsePattern "{ x = _, y = { a = 5 } }")
-------        , $(parsePattern "{ x = x, y = { a = _ } }")
-------        ]
-------
-------    nonExhaustivePatterns
-------        [ $(parsePattern "{ x = 3, y = { a = 3 } }")
-------        , $(parsePattern "{ x = 6, y = { a = 4 } }")
-------        , $(parsePattern "{ x = _, y = { a = 5 } }")
-------        , $(parsePattern "{ x = x, y = { a = 6 } }")
-------        ]
+classEnv :: ClassEnv (Ast NodeInfo (Op1 NodeInfo) (Op2 NodeInfo))
+classEnv = Env.fromList 
+    [ ( "Num"
+      , ( []
+        , [ Instance [] tInt (recExpr (NodeInfo (tApp (tCon (kArr kTyp kTyp) "Num") tInt) []) (fieldSet [
+              Field (NodeInfo (tInt `tArr` tInt `tArr` tInt) []) "(+)" (varExpr (NodeInfo (tInt `tArr` tInt `tArr` tInt) []) "@Int.(+)")
+              , Field (NodeInfo (tInt `tArr` tInt `tArr` tInt) []) "(*)" (varExpr (NodeInfo (tInt `tArr` tInt `tArr` tInt) []) "@Int.(*)")
+              , Field (NodeInfo (tInt `tArr` tInt `tArr` tInt) []) "(-)" (varExpr (NodeInfo (tInt `tArr` tInt `tArr` tInt) []) "@Int.(-)")
+            ]))
+--              [ Field (NodeInfo (tInt `tArr` tInt `tArr` tInt) []) "(+)" (varExpr (NodeInfo (tInt `tArr` tInt `tArr` tInt) []) "@(+)Int")
+--              , Field (NodeInfo (tInt `tArr` tInt `tArr` tInt) []) "(*)" (varExpr (NodeInfo (tInt `tArr` tInt `tArr` tInt) []) "@(*)Int")
+--              , Field (NodeInfo (tInt `tArr` tInt `tArr` tInt) []) "(-)" (varExpr (NodeInfo (tInt `tArr` tInt `tArr` tInt) []) "@(-)Int")
+--              ])
+          ] 
+        )
+      )
+    , ( "Show"
+      , ( []
+        , [ Instance [] tInt (recExpr (NodeInfo (tApp (tCon (kArr kTyp kTyp) "Show") tInt) []) (fieldSet [Field (NodeInfo (tInt `tArr` tString) []) "show" (varExpr (NodeInfo (tInt `tArr` tString) []) "@Int.show")]))
+          --, Instance [] tBool (recExpr (NodeInfo (tApp (tCon (kArr kTyp kTyp) "Show") tBool) [])  (fieldSet [Field (NodeInfo (tBool `tArr` tString) []) "show" (varExpr (NodeInfo (tBool `tArr` tString) []) "@showBool")]))
+--          , Instance [InClass "Show" (tVar kTyp "a")] (tList (tVar kTyp "a")) (recExpr (NodeInfo (tApp (tCon (kArr kTyp kTyp) "Show") (tList (tVar kTyp "a"))) []) (fieldSet [Field (NodeInfo ((tList (tVar kTyp "a")) `tArr` tString) []) "show" foo11]))
+          , Instance [InClass "Show" (tVar kTyp "a"), InClass "Show" (tVar kTyp "b")] (tPair (tVar kTyp "a") (tVar kTyp "b")) (recExpr (NodeInfo (tApp (tCon (kArr kTyp kTyp) "Show") (tPair (tVar kTyp "a") (tVar kTyp "b"))) []) (fieldSet [Field (NodeInfo (tPair (tVar kTyp "a") (tVar kTyp "b") `tArr` tString) []) "show" showPair_]))
+          ]
+        )
+      )
+    ]
+  where
+    foo11 = varExpr (NodeInfo ((tList (tVar kTyp "a")) `tArr` tString) [InClass "Show" (tVar kTyp "a")]) "showList"
+    showPair_ = lamExpr (NodeInfo (tPair (tVar kTyp "a") (tVar kTyp "b") `tArr` tString) []) [varPat (NodeInfo (tPair (tVar kTyp "a") (tVar kTyp "b")) []) "p"] (appExpr (NodeInfo tString []) [varExpr (NodeInfo (tString `tArr` tString `tArr` tString `tArr` tString) []) "@strconcat3", appExpr (NodeInfo tString []) [varExpr (NodeInfo (tVar kTyp "a" `tArr` tString) [InClass "Show" (tVar kTyp "a")]) "show", (appExpr (NodeInfo (tVar kTyp "a") []) [varExpr (NodeInfo (tPair (tVar kTyp "a") (tVar kTyp "b") `tArr` tVar kTyp "a") []) "first", varExpr (NodeInfo (tPair (tVar kTyp "a") (tVar kTyp "b")) []) "p"])], litExpr (NodeInfo tString []) (LString ","), appExpr (NodeInfo tString []) [varExpr (NodeInfo (tVar kTyp "b" `tArr` tString) [InClass "Show" (tVar kTyp "b")]) "show", appExpr (NodeInfo (tVar kTyp "b") []) [varExpr (NodeInfo (tPair (tVar kTyp "a") (tVar kTyp "b") `tArr` tVar kTyp "b") []) "second", varExpr (NodeInfo (tPair (tVar kTyp "a") (tVar kTyp "b")) []) "p"]]])
+
+typeEnv = Env.fromList 
+    [ ( "(==)" , Forall [kTyp] [InClass "Eq" 0] (tGen 0 `tArr` tGen 0 `tArr` upgrade tBool) )
+    , ( "(+)"  , Forall [kTyp] [InClass "Num" 0] (tGen 0 `tArr` tGen 0 `tArr` tGen 0) )
+    , ( "(-)"  , Forall [kTyp] [InClass "Num" 0] (tGen 0 `tArr` tGen 0 `tArr` tGen 0) )
+    , ( "(*)"  , Forall [kTyp] [InClass "Num" 0] (tGen 0 `tArr` tGen 0 `tArr` tGen 0) )
+    , ( "show" , Forall [kTyp] [InClass "Show" 0] (tGen 0 `tArr` tString) )
+    , ( "add"  , Forall [kTyp] [InClass "Num" 0] (tGen 0 `tArr` tGen 0 `tArr` tGen 0) )
+    , ( "(,)"  , Forall [kTyp, kTyp] [] (tGen 0 `tArr` tGen 1 `tArr` (tApp (tApp (tCon (kArr kTyp (kArr kTyp kTyp)) "(,)") (tGen 0)) (tGen 1))))
+    , ( "first" , Forall [kTyp, kTyp] [] (tPair (tGen 0) (tGen 1) `tArr` (tGen 0)))
+    , ( "second" , Forall [kTyp, kTyp] [] (tPair (tGen 0) (tGen 1) `tArr` (tGen 1)))
+    , ( "(::)"  , Forall [kTyp] [] (tGen 0 `tArr` tList (tGen 0) `tArr` tList (tGen 0)) )
+--    , ( "Nil"    , Forall [kTyp] [] (tList (tGen 0)) )
+--    , ( "Cons"  , Forall [kTyp] [] (tGen 0 `tArr` tList (tGen 0) `tArr` tList (tGen 0)) )
+    , ( "[]"    , Forall [kTyp] [] (tList (tGen 0)) )
+    , ( "length" , Forall [kTyp] [] (tList (tGen 0) `tArr` tInt) )
+    , ( "None"   , Forall [kTyp] [] (tApp (tCon kFun "Option") (tGen 0)) )
+    , ( "Some"   , Forall [kTyp] [] (tGen 0 `tArr` tApp (tCon kFun "Option") (tGen 0)) )
+
+    , ( "@Int.(+)" , Forall [] [] (tInt `tArr` tInt `tArr` tInt) )
+    , ( "@Int.(-)" , Forall [] [] (tInt `tArr` tInt `tArr` tInt) )
+    , ( "@Int.(*)" , Forall [] [] (tInt `tArr` tInt `tArr` tInt) )
+
+    , ( "lenShow"  , Forall [kTyp, kTyp] [InClass "Show" 0] (tGen 0 `tArr` upgrade tInt) ) 
+    ]
+
