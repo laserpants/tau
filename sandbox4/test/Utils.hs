@@ -11,7 +11,7 @@ prettyString :: (Pretty p) => p -> String
 prettyString = unpack . renderDoc . pretty
 
 prettyParString :: (Parens p, Pretty p) => p -> String
-prettyParString a = unpack (renderDoc (addParens a (pretty a)))
+prettyParString a = unpack (renderDoc (addParens a))
 
 _a :: Type
 _a = tVar kTyp "a"

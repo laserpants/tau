@@ -63,8 +63,10 @@ instance Parens (Value m) where
         Data{}      -> True
         _           -> False
 
-addParens :: (Parens p) => p -> Doc a -> Doc a
-addParens el doc = if needsParens el then parens doc else doc
+addParens :: (Pretty p, Parens p) => p -> Doc a
+addParens inp = if needsParens inp then parens doc else doc
+  where
+    doc = pretty inp
 
 instance Pretty Literal where
     pretty = \case
@@ -87,12 +89,12 @@ instance Pretty Type where
                     ns = recordFieldNames con
                  in prettyRecord colon (fieldSet (uncurry (Field ()) <$> zip ns (pretty <$> ts)))
             | otherwise ->
-                doc1 <+> addParens t2 doc2
+                doc1 <+> addParens t2 
           where
             con = leftmostCon t1
 
-        TArr (t1, doc1) (_, doc2) -> 
-            addParens t1 doc1 <+> "->" <+> doc2
+        TArr (t1, _) (_, doc2) -> 
+            addParens t1 <+> "->" <+> doc2
 
         TCon _ name -> pretty name
         TVar _ name -> pretty name
@@ -151,7 +153,7 @@ instance Pretty Kind where
     pretty = para $ \case
         KTyp -> "*"
         KCls -> "#"
-        KArr (k1, doc1) (_, doc2) -> addParens k1 doc1 <+> "->" <+> doc2
+        KArr (k1, _) (_, doc2) -> addParens k1 <+> "->" <+> doc2
 
 instance Pretty (Pattern t) where
     pretty = para $ \case
@@ -167,7 +169,7 @@ instance Pretty (Pattern t) where
         PAny _                -> "_"
 
 conArg :: (Parens p, Pretty p) => Doc a -> p -> Doc a
-conArg out el = out <+> addParens el (pretty el)
+conArg out el = out <+> addParens el 
 
 instance (Pretty t) => Pretty (Binding (Pattern t)) where
     pretty (BLet p)    = pretty p
