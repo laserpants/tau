@@ -486,7 +486,7 @@ constructorEnv :: [(Name, [Name])] -> ConstructorEnv
 constructorEnv = Env.fromList . (Set.fromList <$$>)
 
 headCons :: [[Pattern t]] -> [(Name, [Pattern t])]
-headCons = (fun =<<) 
+headCons = (>>= fun) 
   where
     fun :: [Pattern t] -> [(Name, [Pattern t])]
     fun [] = error "Implementation error (headCons)"
