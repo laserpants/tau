@@ -104,8 +104,11 @@ constructor_ = word (withInitial upperChar)
 operator :: [[Operator Parser (Expr () p q r (Op1 ()) (Op2 ()))]]
 operator = 
     [
+      -- [ InfixR (dotOperator <$ symbol ".")
+      [ dotOperator
+      ]
       -- 9
-      [ InfixR (op2Expr () (OLArr ()) <$ symbol "<<")
+    , [ InfixR (op2Expr () (OLArr ()) <$ symbol "<<")
       , InfixL (op2Expr () (ORArr ()) <$ symbol ">>")
       ]
       -- 8
@@ -148,6 +151,19 @@ operator =
 
 listCons :: Expr () p q r n o -> Expr () p q r n o -> Expr () p q r n o
 listCons hd tl = conExpr () "(::)" [hd, tl]
+
+-- TODO
+dotOperator :: Operator Parser (Expr () p q r (Op1 ()) (Op2 ()))
+dotOperator = do
+    undefined
+--    InfixN foo
+--  f <- op
+--  y <- p
+--  let r = f x y
+--  pInfixL op p r <|> return r
+
+foo :: Parser (Expr () p q r (Op1 ()) (Op2 ()))
+foo = symbol "." $> undefined
 
 -- ============================================================================
 -- == Kinds
