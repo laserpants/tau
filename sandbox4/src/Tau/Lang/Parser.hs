@@ -77,11 +77,6 @@ reserved =
     , "fun"
     , "not"
     , "forall"
-    , "True"
-    , "False"
-    , "List"
-    , "Void"
-    , "Unit"
     ]
 
 word :: Parser Text -> Parser Text
@@ -210,9 +205,46 @@ literal = bool
 
 
 -- ============================================================================
--- == Tyepes
+-- == Types
 -- ============================================================================
 
+type_ :: Parser (TypeT a)
+type_ = makeExprParser parser [[ InfixR (tArr <$ symbol "->") ]]
+  where
+    parser :: Parser (TypeT a)
+    parser = do
+        tok <- some typeExpr
+        case tok of
+            [t]    -> pure t
+            (t:ts) -> foldlM fun t ts
+
+    fun :: TypeT a -> TypeT a -> Parser (TypeT a)
+    fun (Fix (TVar kind var)) t = do
+        pure (tApp (tVar (kArr kTyp kind) var) t)
+    fun (Fix (TCon kind con)) t = do
+        pure (tApp (tCon (kArr kTyp kind) con) t)
+      where
+        Just k = kindOf t
+
+typeExpr :: Parser (TypeT a)
+typeExpr = tVar kTyp <$> name
+    <|> tCon kTyp <$> constructor_
+    <|> tupleType
+    <|> recordType
+    <|> parens type_
+
+tupleType :: Parser (TypeT a)
+tupleType = do
+    elems <- components type_
+    case elems of
+        [t] -> pure t
+        []  -> fail "Not a type"
+        _   -> pure (tTuple elems)
+
+recordType :: Parser (TypeT a)
+recordType = do
+    (keys, vals) <- unzip <$> fieldPairs ":" type_
+    pure (tRecord keys vals)
 
 -- ============================================================================
 -- == Kinds
@@ -228,26 +260,20 @@ kind = makeExprParser parser [[ InfixR (kArr <$ symbol "->") ]]
 -- ============================================================================
 
 pattern_ :: Parser (Pattern ())
-pattern_ = do
-    tok <- some patternToken
-    case tok of
-        [p] -> pure p
-        (Fix (PCon () con _):args) -> 
-            pure (conPat () con args)
-        _ -> fail "Not a valid pattern"
-
-patternToken :: Parser (Pattern ())
-patternToken = makeExprParser patternExpr
+pattern_ = makeExprParser parser
     [ [ InfixR (patternListCons <$ symbol "::") ]
     , [ Postfix asPattern ]
     , [ InfixN (orPat () <$ symbol "or") ]
     ]
-
-asPattern :: Parser (Pattern () -> Pattern ())
-asPattern = keyword "as" >> asPat () <$> name
-
-patternListCons :: Pattern () -> Pattern () -> Pattern ()
-patternListCons hd tl = conPat () "(::)" [hd, tl]
+  where
+    parser :: Parser (Pattern ())
+    parser = do
+        tok <- some patternExpr
+        case tok of
+            [p] -> pure p
+            (Fix (PCon () con _):args) -> 
+                pure (conPat () con args)
+            _ -> fail "Not a valid pattern"
 
 patternExpr :: Parser (Pattern ())
 patternExpr = varPattern
@@ -257,6 +283,43 @@ patternExpr = varPattern
     <|> recordPattern
     <|> wildcardPattern
     <|> parens pattern_
+
+asPattern :: Parser (Pattern () -> Pattern ())
+asPattern = keyword "as" >> asPat () <$> name
+
+patternListCons :: Pattern () -> Pattern () -> Pattern ()
+patternListCons hd tl = conPat () "(::)" [hd, tl]
+
+--pattern_ :: Parser (Pattern ())
+--pattern_ = do
+--    tok <- some patternToken
+--    case tok of
+--        [p] -> pure p
+--        (Fix (PCon () con _):args) -> 
+--            pure (conPat () con args)
+--        _ -> fail "Not a valid pattern"
+--
+--patternToken :: Parser (Pattern ())
+--patternToken = makeExprParser patternExpr
+--    [ [ InfixR (patternListCons <$ symbol "::") ]
+--    , [ Postfix asPattern ]
+--    , [ InfixN (orPat () <$ symbol "or") ]
+--    ]
+--
+--asPattern :: Parser (Pattern () -> Pattern ())
+--asPattern = keyword "as" >> asPat () <$> name
+--
+--patternListCons :: Pattern () -> Pattern () -> Pattern ()
+--patternListCons hd tl = conPat () "(::)" [hd, tl]
+--
+--patternExpr :: Parser (Pattern ())
+--patternExpr = varPattern
+--    <|> conPattern
+--    <|> litPattern
+--    <|> tuplePattern
+--    <|> recordPattern
+--    <|> wildcardPattern
+--    <|> parens pattern_
 
 varPattern :: Parser (Pattern ())
 varPattern = varPat () <$> name

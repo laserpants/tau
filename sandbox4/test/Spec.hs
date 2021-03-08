@@ -2,6 +2,7 @@ import Tau.CompilerTests
 import Tau.CoreEvalTests
 import Tau.ParserTests
 import Tau.PatternAnomaliesTests
+import Tau.PrettyPrinterTests
 import Tau.TypeInferenceTests
 import Tau.TypeSubstitutionTests
 import Tau.TypeUnificationTests
@@ -17,3 +18,4 @@ main =
         describe "\nCore evaluation\n" testCoreEval
         describe "\nParser\n" testParser
         describe "\nCompiler\n" testCompiler
+        describe "\nPretty printer\n" testPrettyPrinter

@@ -67,9 +67,6 @@ testParser = do
 
     failParse constructor_ "a constructor" 
         "hello"
-    
-    failParse constructor_ "a constructor" 
-        "False"
 
     -- Kinds
 
@@ -164,3 +161,29 @@ testParser = do
     succeedParse pattern_ "a pattern"
         "(1, x) as pair"
         (asPat () "pair" (tupPat () [litPat () (LInt 1), varPat () "x"])) 
+
+    -- Types
+
+    succeedParse type_ "a type"
+        "Int"
+        (tInt :: Type)
+
+    succeedParse type_ "a type"
+        "List Int"
+        (tApp (tCon (kArr kTyp kTyp) "List") tInt :: Type)
+
+    succeedParse type_ "a type"
+        "List (List Int)"
+        (tApp (tCon (kArr kTyp kTyp) "List") (tApp (tCon (kArr kTyp kTyp) "List") tInt) :: Type)
+
+    succeedParse type_ "a type"
+        "List a"
+        (tApp (tCon (kArr kTyp kTyp) "List") (tVar kTyp "a") :: Type)
+
+    succeedParse type_ "a type"
+        "m a"
+        (tApp (tVar (kArr kTyp kTyp) "m") (tVar kTyp "a") :: Type)
+
+    succeedParse type_ "a type"
+        "List Int -> a"
+        (tApp (tCon (kArr kTyp kTyp) "List") tInt `tArr` tVar kTyp "a" :: Type)
