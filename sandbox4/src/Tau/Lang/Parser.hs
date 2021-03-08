@@ -2,7 +2,7 @@
 {-# LANGUAGE OverloadedStrings #-}
 module Tau.Lang.Parser where
 
-import Control.Monad (when, void)
+import Control.Monad
 import Control.Monad.Combinators.Expr
 import Data.Foldable
 import Data.Functor (($>))
@@ -23,6 +23,7 @@ import qualified Data.Text as Text
 import qualified Tau.Comp.Type.Substitution as Sub
 import qualified Text.Megaparsec.Char as Megaparsec
 import qualified Text.Megaparsec.Char.Lexer as Lexer
+import Control.Monad.Combinators.Expr
 
 type ParseError = ParseErrorBundle Text Void
 
@@ -104,8 +105,7 @@ constructor_ = word (withInitial upperChar)
 operator :: [[Operator Parser (Expr () p q r (Op1 ()) (Op2 ()))]]
 operator = 
     [
-      -- [ InfixR (dotOperator <$ symbol ".")
-      [ dotOperator
+      [ Postfix dotOperator
       ]
       -- 9
     , [ InfixR (op2Expr () (OLArr ()) <$ symbol "<<")
@@ -149,30 +149,19 @@ operator =
       ]
     ]
 
+dotOperator :: Parser (Expr () p q r n o -> Expr () p q r n o)
+dotOperator = do
+    names <- some (symbol "." *> name)
+    pure (\e -> foldl' (flip (dotExpr ())) e names)
+
 listCons :: Expr () p q r n o -> Expr () p q r n o -> Expr () p q r n o
 listCons hd tl = conExpr () "(::)" [hd, tl]
 
--- TODO
-dotOperator :: Operator Parser (Expr () p q r (Op1 ()) (Op2 ()))
-dotOperator = do
-    undefined
---    InfixN foo
---  f <- op
---  y <- p
---  let r = f x y
---  pInfixL op p r <|> return r
-
-foo :: Parser (Expr () p q r (Op1 ()) (Op2 ()))
-foo = symbol "." $> undefined
-
--- ============================================================================
--- == Kinds
--- ============================================================================
-
-kind :: Parser Kind
-kind = makeExprParser parser [[ InfixR (kArr <$ symbol "->") ]] 
-  where
-    parser = parens kind <|> (symbol "*" $> kTyp)
+--testP = makeExprParser xxx1 operator
+--
+--xxx1 = do
+--    keyword "foo" 
+--    pure (varExpr () "foo")
 
 -- ============================================================================
 -- == Literals
@@ -222,6 +211,20 @@ literal = bool
 
 
 -- ============================================================================
+-- == Tyepes
+-- ============================================================================
+
+
+-- ============================================================================
+-- == Kinds
+-- ============================================================================
+
+kind :: Parser Kind
+kind = makeExprParser parser [[ InfixR (kArr <$ symbol "->") ]] 
+  where
+    parser = parens kind <|> (symbol "*" $> kTyp)
+
+-- ============================================================================
 -- == Patterns
 -- ============================================================================
 
@@ -242,6 +245,7 @@ patternToken = makeExprParser patternExpr
     , [ InfixR (orPat () <$ symbol "or") ]
     ]
 
+-- TODO: Make postfix 
 asPattern :: Pattern () -> Pattern () -> Pattern ()
 asPattern pat name = 
     case project name of
