@@ -157,3 +157,10 @@ testParser = do
         "{ a = x }"
         (recPat () (fieldSet [Field () "a" (varPat () "x")]))
 
+    succeedParse pattern_ "a pattern"
+        "(1, x) or (x, 1)"
+        (orPat () (tupPat () [litPat () (LInt 1), varPat () "x"]) (tupPat () [varPat () "x", litPat () (LInt 1)])) 
+
+    succeedParse pattern_ "a pattern"
+        "(1, x) as pair"
+        (asPat () "pair" (tupPat () [litPat () (LInt 1), varPat () "x"])) 

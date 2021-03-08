@@ -216,11 +216,24 @@ pattern_ = do
         [p] -> pure p
         (Fix (PCon () con _):args) -> 
             pure (conPat () con args)
+        _ -> fail "Not a valid pattern"
 
 patternToken :: Parser (Pattern ())
 patternToken = makeExprParser patternExpr
-    [ [ InfixR (patternListCons <$ symbol "::") 
-      ] ]
+    [
+      [ InfixR (patternListCons <$ symbol "::") ]
+    , [ InfixR (asPattern <$ symbol "as") ]
+    , [ InfixR (orPat () <$ symbol "or") ]
+    ]
+
+asPattern :: Pattern () -> Pattern () -> Pattern ()
+asPattern pat name = 
+    case project name of
+        PVar () v -> asPat () v pat
+        _         -> error "Hmm"       -- TODO
+
+patternListCons :: Pattern () -> Pattern () -> Pattern ()
+patternListCons hd tl = conPat () "(::)" [hd, tl]
 
 patternExpr :: Parser (Pattern ())
 patternExpr = varPattern
@@ -228,6 +241,7 @@ patternExpr = varPattern
     <|> litPattern
     <|> tuplePattern
     <|> recordPattern
+    <|> wildcardPattern
     <|> parens pattern_
 
 varPattern :: Parser (Pattern ())
@@ -252,8 +266,8 @@ tuplePattern = do
 recordPattern :: Parser (Pattern ())
 recordPattern = recPat () <$> fields "=" pattern_
 
-patternListCons :: Pattern () -> Pattern () -> Pattern ()
-patternListCons hd tl = conPat () "(::)" [hd, tl]
+wildcardPattern :: Parser (Pattern ())
+wildcardPattern = symbol "_" $> anyPat ()
 
 -- ============================================================================
 -- == Combinators for lists and tuples
