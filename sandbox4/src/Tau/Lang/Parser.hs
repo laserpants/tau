@@ -23,7 +23,6 @@ import qualified Data.Text as Text
 import qualified Tau.Comp.Type.Substitution as Sub
 import qualified Text.Megaparsec.Char as Megaparsec
 import qualified Text.Megaparsec.Char.Lexer as Lexer
-import Control.Monad.Combinators.Expr
 
 type ParseError = ParseErrorBundle Text Void
 
@@ -239,18 +238,13 @@ pattern_ = do
 
 patternToken :: Parser (Pattern ())
 patternToken = makeExprParser patternExpr
-    [
-      [ InfixR (patternListCons <$ symbol "::") ]
-    , [ InfixR (asPattern <$ symbol "as") ]
-    , [ InfixR (orPat () <$ symbol "or") ]
+    [ [ InfixR (patternListCons <$ symbol "::") ]
+    , [ Postfix asPattern ]
+    , [ InfixN (orPat () <$ symbol "or") ]
     ]
 
--- TODO: Make postfix 
-asPattern :: Pattern () -> Pattern () -> Pattern ()
-asPattern pat name = 
-    case project name of
-        PVar () v -> asPat () v pat
-        _         -> error "Hmm"       -- TODO
+asPattern :: Parser (Pattern () -> Pattern ())
+asPattern = keyword "as" >> asPat () <$> name
 
 patternListCons :: Pattern () -> Pattern () -> Pattern ()
 patternListCons hd tl = conPat () "(::)" [hd, tl]
