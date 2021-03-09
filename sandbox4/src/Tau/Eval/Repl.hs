@@ -113,7 +113,9 @@ replCommand input =
             putStrIO "Parse"
             putStrIO (unpack (prettyPrint expr))
 
-            let ast = runInfer2 classEnv2 typeEnv2 (typed expr)
+            liftIO $ runInfer2 classEnv2 typeEnv2 (typed expr)
+
+            --putStrIO (show ast)
             --putStrIO (show ast)
             pure ()
 
@@ -122,8 +124,10 @@ typed e = do
     ast <- infer e
     sub <- gets fst
     let ast2 = astApply sub ast
-    traceShowM (showTree (nodesToString (prettyAst ast2)))
-    pure ast2
+    liftIO $ putStrLn (showTree (nodesToString (prettyAst ast2)))
+    ast4 <- evalStateT (compileClasses (desugarOperators ast2)) []
+    liftIO $ putStrLn (showTree (nodesToString (prettyAst ast4)))
+    compileExpr (extractType ast4)
     --let ast2 = astApply sub ast
     --evalStateT (compileClasses (desugarOperators ast2)) []
 
@@ -131,11 +135,15 @@ classEnv2 = Env.fromList []
 
 typeEnv2 = Env.fromList []
 
-runInfer2 :: ClassEnv c -> TypeEnv -> StateT (Substitution, Context) (ReaderT (ClassEnv c, TypeEnv) (SupplyT Name (ExceptT String Maybe))) a -> Either String (a, (Substitution, Context))
+--runInfer2 :: ClassEnv c -> TypeEnv -> StateT (Substitution, Context) (ReaderT (ClassEnv c, TypeEnv) (SupplyT Name (ExceptT String (MaybeT IO)))) a -> x -- Either String (a, (Substitution, Context))
+runInfer2 :: ClassEnv c -> TypeEnv -> StateT (Substitution, Context) (ReaderT (ClassEnv c, TypeEnv) (SupplyT Name (ExceptT String (MaybeT IO)))) a -> IO (Either String (a, (Substitution, Context)))
 runInfer2 e1 e2 = 
     flip runStateT (mempty, mempty)
         >>> flip runReaderT (e1, e2)
         >>> flip evalSupplyT (numSupply "a")
         >>> runExceptT
-        >>> fromMaybe (Left "error")
+        -- >>> fromMaybe (Left "error")
+        >>> runMaybeT -- (Left "error")
+        >>> fmap (fromMaybe (Left "error"))
+
 

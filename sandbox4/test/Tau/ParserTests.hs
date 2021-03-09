@@ -309,3 +309,23 @@ testParser = do
         succeedParse expr "an expression"
             "(fun x :: xs => x) [1,2,3]"
             (appExpr () [patExpr () [] [Clause [conPat () "(::)" [varPat () "x", varPat () "xs"]] [] (varExpr () "x")], conExpr () "(::)" [litExpr () (LInt 1), conExpr () "(::)" [litExpr () (LInt 2), conExpr () "(::)" [litExpr () (LInt 3), conExpr () "[]" []]]]])
+
+    --  Operators
+
+    describe "\noperators\n" $ do
+
+        succeedParse expr "an expression"
+            "x + y"
+            (op2Expr () (OAdd ()) (varExpr () "x") (varExpr () "y"))
+
+        succeedParse expr "an expression"
+            "xs.length"
+            (dotExpr () "length" (varExpr () "xs"))
+
+        succeedParse expr "an expression"
+            "xs.length.toString"
+            (dotExpr () "toString" (dotExpr () "length" (varExpr () "xs")))
+
+--        succeedParse expr "an expression"
+--            "xs.map (\x => x + 1)"
+
