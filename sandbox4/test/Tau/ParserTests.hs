@@ -20,12 +20,12 @@ succeedParse parser what input expect =
         it ("✔ succeeds to parse to " <> unpack what) $
             isRight result
 
-        it ("✔ and gives the expected result: " <> prettyString expect) $
+        it ("✔ and it is the expected result: " <> prettyString expect) $
             Right expect == result
 
 failParse :: Parser p -> Text -> Text -> SpecWith ()
 failParse parser what input = 
-    describe (unpack input) $ do
+    describe (if "" == input then "\"\"" else unpack input) $ do
         let result = parseWith parser input
 
         it ("✗ fails to parse to " <> unpack what) $

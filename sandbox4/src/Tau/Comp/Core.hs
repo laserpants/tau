@@ -56,7 +56,7 @@ compileExpr
   => Expr t (Pattern t) (Binding (Pattern t)) [Pattern t] Void Void
   -> m Core
 compileExpr =
-    expandFunPats
+    expandFunPatterns
     >=> unrollLets
     >=> simplify
     >=> toCore
@@ -66,7 +66,7 @@ compileExpr =
 --  => Expr t (Pattern t) (Binding (Pattern t)) [Pattern t] Void Void
 --  -> m Core
 --compileExpr e = do
---    a <- expandFunPats e
+--    a <- expandFunPatterns e
 --    traceShowM (pretty a)
 --    traceShowM "1-------------------------------"
 --    b <- unrollLets a
@@ -80,11 +80,11 @@ compileExpr =
 --    traceShowM "4-------------------------------"
 --    pure d
 
-expandFunPats
+expandFunPatterns
   :: (MonadSupply Name m)
   => Expr t (Pattern t) q [Pattern t] Void Void
   -> m (Expr t (Pattern t) q [Pattern t] Void Void)
-expandFunPats = cata $ \case
+expandFunPatterns = cata $ \case
 
     EPat t [] exs@(Clause ps _ e:_) -> do
         (_, exprs, pats) <- patternInfo varPat ps
@@ -163,13 +163,13 @@ desugarPatterns
   :: (TypeTag t, MonadSupply Name m)
   => [Clause (Pattern t) (Expr t p q r n o)]
   -> m [Clause (Pattern t) (Expr t p q r n o)]
-desugarPatterns = expandLitPats . expandOrPats
+desugarPatterns = expandLitPatterns . expandOrPatterns
 
-expandLitPats
+expandLitPatterns
   :: (TypeTag t, MonadSupply Name m)
   => [Clause (Pattern t) (Expr t p q r n o)]
   -> m [Clause (Pattern t) (Expr t p q r n o)]
-expandLitPats = traverse expandClause
+expandLitPatterns = traverse expandClause
   where
     expandClause (Clause ps exs e) = do
         (qs, exs1) <- runWriterT (traverse expand1 ps)
@@ -187,8 +187,8 @@ expandLitPats = traverse expandClause
         p ->
             embed <$> sequence p
 
-expandOrPats :: [Clause (Pattern t) a] -> [Clause (Pattern t) a]
-expandOrPats = concatMap $ \(Clause ps exs e) ->
+expandOrPatterns :: [Clause (Pattern t) a] -> [Clause (Pattern t) a]
+expandOrPatterns = concatMap $ \(Clause ps exs e) ->
     [Clause qs exs e | qs <- traverse fork ps]
   where
     fork :: Pattern t -> [Pattern t]
