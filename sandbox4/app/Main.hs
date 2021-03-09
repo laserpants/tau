@@ -417,12 +417,6 @@ runTest expr = do
 
 
 
-astApply :: Substitution -> Ast NodeInfo (Op1 NodeInfo) (Op2 NodeInfo) -> Ast NodeInfo (Op1 NodeInfo) (Op2 NodeInfo) 
-astApply sub = mapTags (apply sub :: NodeInfo -> NodeInfo)
-
-extractType :: Ast NodeInfo Void Void -> Ast Type Void Void
-extractType = (mapTags :: (NodeInfo -> Type) -> Ast NodeInfo Void Void -> Ast Type Void Void) nodeType
-
 compileExpr2
   :: (MonadState (Substitution, Context) m, MonadError String m, MonadSupply Name m, MonadReader (ClassEnv (Ast NodeInfo (Op1 NodeInfo) (Op2 NodeInfo)), TypeEnv) m)
   => Expr t (Pattern t) (Binding (Pattern t)) [Pattern t] (Op1 t) (Op2 t)

@@ -23,6 +23,7 @@ import Data.Set.Monad (Set)
 import Data.Tuple.Extra (both, thd3)
 import Data.Void
 import Tau.Comp.Type.Inference
+import Tau.Comp.Type.Substitution hiding (null)
 import Tau.Lang.Core
 import Tau.Lang.Expr
 import Tau.Lang.Type
@@ -648,3 +649,13 @@ isRecordCon con = ("{", "}") == fstLst con
 exhaustive :: (MonadReader ConstructorEnv m) => [[Pattern t]] -> m Bool
 exhaustive []         = pure False
 exhaustive pss@(ps:_) = not <$> useful pss (anyPat . patternTag <$> ps)
+
+
+
+
+astApply :: Substitution -> Ast NodeInfo (Op1 NodeInfo) (Op2 NodeInfo) -> Ast NodeInfo (Op1 NodeInfo) (Op2 NodeInfo) 
+astApply sub = mapTags (apply sub :: NodeInfo -> NodeInfo)
+
+extractType :: Ast NodeInfo Void Void -> Ast Type Void Void
+extractType = (mapTags :: (NodeInfo -> Type) -> Ast NodeInfo Void Void -> Ast Type Void Void) nodeType
+
