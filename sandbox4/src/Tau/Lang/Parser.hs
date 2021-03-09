@@ -99,8 +99,6 @@ constructor_ = word (withInitial upperChar)
 operator :: [[Operator Parser (Expr () p q r (Op1 ()) (Op2 ()))]]
 operator = 
     [
---      [ Postfix dotOperator
---      ]
       -- 9
       [ InfixR (op2Expr () (OLArr ()) <$ symbol "<<")
       , InfixL (op2Expr () (ORArr ()) <$ symbol ">>")
