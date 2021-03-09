@@ -145,7 +145,7 @@ evalPat
   => [([Name], m (Value m))]
   -> Value m
   -> m (Value m)
-evalPat [] _ = fail "Runtime error (evalMatch)"
+evalPat [] _ = fail "Runtime error (evalPat)"
 evalPat ((p:ps, e):eqs) val =
     case val of
         Data con args | p == con -> 
