@@ -386,11 +386,14 @@ testExpr26 = appExpr () [patExpr () [] [
              (litExpr () (LString "two")) 
     ], conExpr () "(::)" [litExpr () (LInt 1), conExpr () "[]" []], litExpr () (LInt 4)]
 
-
-
+-- let map f xs = fix mu = fun [] => [] | x :: xs => f x :: mu xs in mu xs
+testExpr27 :: Expr () (Pattern ()) (Binding (Pattern ())) [Pattern ()] (Op1 ()) (Op2 ())
+testExpr27 = -- fixExpr () "map" (patExpr () [] [Clause [conPat () "(::)" [varPat () "x", varPat () "xs"]] [] (conExpr () "(::)" [undefined, appExpr () [varExpr () "map", varExpr () "f", varExpr () "xs"]]), Clause [conPat () "[]" []] [] (conExpr () "[]" [])]) 
+    (letExpr () (BFun "map" [varPat () "f", varPat () "xs"]) (fixExpr () "mu" (patExpr () [] [Clause [conPat () "(::)" [varPat () "x", varPat () "xs"]] [] (conExpr () "(::)" [appExpr () [varExpr () "f", varExpr () "x"], appExpr () [varExpr () "mu", varExpr () "xs"]]), Clause [conPat () "[]" []] [] (conExpr () "[]" [])]) (appExpr () [varExpr () "mu", varExpr () "xs"]))
+          (letExpr () (BLet (varPat () "xs")) (conExpr () "(::)" [litExpr () (LInt 1), conExpr () "(::)" [litExpr () (LInt 2), conExpr () "(::)" [litExpr () (LInt 3), conExpr () "[]" []]]]) (dotExpr () (varExpr () "xs") (appExpr () [varExpr () "map", lamExpr () [varPat () "x"] (op2Expr () (OAdd ()) (varExpr () "x") (litExpr () (LInt 1)))]))))
 
 testX = 
-    case runTest testExpr26 of 
+    case runTest testExpr27 of 
         Left e -> error e
         Right (r, q , c, z) -> do
             putStrLn (showTree (nodesToString (prettyAst r)))

@@ -190,7 +190,7 @@ instance (Pretty p, Pretty q, Pretty n, Pretty o) => Pretty (Expr t p q r n o) w
         EPat _ _ _            -> "TODO:epat"
         EOp1 _ op a           -> "TODO:eop1"
         EOp2 _ op a b         -> "TODO:" <+> pretty op <+> snd a <+> snd b
-        EDot _ name e1        -> snd e1 <> dot <> pretty name
+        EDot _ e1 e2          -> snd e1 <> dot <> snd e2
         ERec _ _              -> "TODO:erec"
         ETup _ _              -> "TODO:etup"
 

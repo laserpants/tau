@@ -109,7 +109,7 @@ unrollLets = cata $ \case
     ELam t pat e1    -> lamExpr t pat <$> e1
     EIf  t e1 e2 e3  -> ifExpr  t <$> e1 <*> e2 <*> e3
     EPat t eqs exs   -> patExpr t <$> sequence eqs <*> traverse sequence exs
-    EDot t name e1   -> dotExpr t name <$> e1
+    EDot t e1 e2     -> dotExpr t <$> e1 <*> e2
     ERec t fields    -> recExpr t <$> sequence fields
     ETup t exs       -> tupExpr t <$> sequence exs
 
@@ -133,7 +133,7 @@ simplify = cata $ \case
     EApp t exs       -> appExpr t <$> sequence exs
     EFix t var e1 e2 -> fixExpr t var <$> e1 <*> e2
     EIf  t e1 e2 e3  -> ifExpr  t <$> e1 <*> e2 <*> e3
-    EDot t name e1   -> dotExpr t name <$> e1
+    EDot t e1 e2     -> dotExpr t <$> e1 <*> e2
     ERec t fields    -> recExpr t <$> sequence fields
     ETup t exs       -> tupExpr t <$> sequence exs
 
@@ -357,7 +357,7 @@ toCore = cata $ \case
     ELet _ var e1 e2 -> cLet var <$> e1 <*> e2
     EFix _ var e1 e2 -> cLet var <$> e1 <*> e2
     ELam _ var e1    -> cLam var <$> e1
-    EDot _ name e1   -> sequenceExs [pure (cVar name), e1]
+    EDot _ e1 e2     -> sequenceExs [e2, e1]
 
     ERec _ (FieldSet fields) -> do
         exprs <- traverse fieldValue fields

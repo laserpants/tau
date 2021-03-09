@@ -181,11 +181,23 @@ infer = cata $ \expr -> do
             unifyTyped (typeOf a `tArr` typeOf b `tArr` newTy) (typeOf top)
             pure (op2Expr (NodeInfo newTy ps) top a b)
 
-        EDot _ name expr1 -> do          
-            e1 <- expr1
-            (ty, ps) <- lookupScheme name >>= instantiate
-            unifyTyped (typeOf e1 `tArr` newTy) ty
-            pure (dotExpr (NodeInfo newTy ps) name e1)
+--        EDot _ name expr1 -> do          
+--            e1 <- expr1
+--            (ty, ps) <- lookupScheme name >>= instantiate
+--            unifyTyped (typeOf e1 `tArr` newTy) ty
+--            pure (dotExpr (NodeInfo newTy ps) name e1)
+
+        EDot _ expr1 expr2 -> do          
+            e1 <- expr1 
+            e2 <- expr2 
+            unifyTyped e2 (tArr (typeOf e1) newTy)
+            pure (dotExpr (NodeInfo newTy []) e1 e2)
+
+            --d<- expr1
+            --e1 <- expr1
+            --(ty, ps) <- lookupScheme name >>= instantiate
+            --unifyTyped (typeOf e1 `tArr` newTy) ty
+            --pure (dotExpr (NodeInfo newTy ps) name e1)
 
         ERec _ fields -> do
             let (_, ns, fs) = unzip3 (fieldList fields)

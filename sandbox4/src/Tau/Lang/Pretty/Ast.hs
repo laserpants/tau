@@ -27,8 +27,8 @@ prettyAst = para $ \case
         Node (foldl exprDoc "match" (fst <$> exs) <+> "with") 
              (prettyClauseTree =<< fst <$$> eqs)
 
-    EDot t name (a, _) -> 
-        Node (pretty a <> dot <> pretty name <+> colon <+> pretty t) []
+    EDot t (a, _) (b, _) -> 
+        Node ((pretty a <> dot <> pretty b) <+> colon <+> pretty t) []
 
     ERec t (FieldSet fields) -> 
         Node (pretty (recordCon (fieldName <$> fields)) <+> colon <+> pretty t) 

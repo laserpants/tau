@@ -127,7 +127,7 @@ data ExprF t p q r n o a
     | EPat t [a] [Clause p a] -- ^ Match and fun expressions
     | EOp1 t n a              -- ^ Unary operator
     | EOp2 t o a a            -- ^ Unary operator
-    | EDot t Name a           -- ^ Dot operator
+    | EDot t a a              -- ^ Dot operator
     | ERec t (FieldSet t a)   -- ^ Records
     | ETup t [a]              -- ^ Tuples
 --  | EAnn Scheme a           -- ^ Type-annotated expression
@@ -365,7 +365,7 @@ instance
         EOp2 t o a b -> 
             op2Expr <$> f t <*> mapTagsM f o <*> a <*> b
         EDot t a b -> 
-            dotExpr <$> f t <*> pure a <*> b
+            dotExpr <$> f t <*> a <*> b
         ETup t a -> 
             tupExpr <$> f t <*> sequence a 
         EPat t a cs -> do
@@ -491,7 +491,7 @@ op1Expr = embed3 EOp1
 op2Expr :: t -> o -> Expr t p q r n o -> Expr t p q r n o -> Expr t p q r n o
 op2Expr = embed4 EOp2
 
-dotExpr :: t -> Name -> Expr t p q r n o -> Expr t p q r n o
+dotExpr :: t -> Expr t p q r n o -> Expr t p q r n o -> Expr t p q r n o
 dotExpr = embed3 EDot
 
 recExpr :: t -> FieldSet t (Expr t p q r n o) -> Expr t p q r n o

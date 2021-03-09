@@ -99,10 +99,10 @@ constructor_ = word (withInitial upperChar)
 operator :: [[Operator Parser (Expr () p q r (Op1 ()) (Op2 ()))]]
 operator = 
     [
-      [ Postfix dotOperator
-      ]
+--      [ Postfix dotOperator
+--      ]
       -- 9
-    , [ InfixR (op2Expr () (OLArr ()) <$ symbol "<<")
+      [ InfixR (op2Expr () (OLArr ()) <$ symbol "<<")
       , InfixL (op2Expr () (ORArr ()) <$ symbol ">>")
       ]
       -- 8
@@ -141,12 +141,15 @@ operator =
     , [ InfixL (op2Expr () (OFPipe ()) <$ symbol "|>")
       , InfixR (op2Expr () (OBPipe ()) <$ symbol "<|")
       ]
+      -- -1
+    , [ InfixL (dotExpr () <$ symbol ".")
+      ]
     ]
 
-dotOperator :: Parser (Expr () p q r n o -> Expr () p q r n o)
-dotOperator = do
-    names <- some (symbol "." *> name)
-    pure (\e -> foldl' (flip (dotExpr ())) e names)
+--dotOperator :: Parser (Expr () p q r n o -> Expr () p q r n o)
+--dotOperator = do
+--    names <- some (symbol "." *> name)
+--    pure (\e -> foldl' (flip (dotExpr ())) e names)
 
 listCons :: Expr () p q r n o -> Expr () p q r n o -> Expr () p q r n o
 listCons hd tl = conExpr () "(::)" [hd, tl]
@@ -219,7 +222,7 @@ expr = makeExprParser parser operator
 exprToken :: Parser LangExpr
 exprToken = ifClause 
     <|> letBinding
---    <|> fixBinding
+    <|> fixBinding
     <|> matchWith
     <|> funExpr
     <|> lambda
@@ -294,6 +297,14 @@ binding = try funBinding <|> normalBinding
 
     normalBinding = do
         BLet <$> pattern_
+
+fixBinding :: Parser LangExpr
+fixBinding = do
+    keyword "fix"
+    bind <- name
+    term <- symbol  "="  *> expr
+    body <- keyword "in" *> expr
+    pure (fixExpr () bind term body)
 
 letBinding :: Parser LangExpr
 letBinding = do
@@ -389,10 +400,16 @@ patternExpr = wildcardPattern
     <|> varPattern
     <|> conPattern
     <|> litPattern
+    <|> listPattern
     <|> tuplePattern
     <|> recordPattern
     <|> wildcardPattern
     <|> parens pattern_
+
+listPattern :: Parser (Pattern ())
+listPattern = do
+    elems <- elements pattern_
+    pure (foldr patternListCons (conPat () "[]" []) elems)
 
 asPattern :: Parser (Pattern () -> Pattern ())
 asPattern = keyword "as" >> asPat () <$> name

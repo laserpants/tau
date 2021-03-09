@@ -147,6 +147,14 @@ testParser = do
         (litPat () (LInt 5))
 
     succeedParse pattern_ "a pattern"
+        "[]"
+        (conPat () "[]" [])
+
+    succeedParse pattern_ "a pattern"
+        "[1, x]"
+        (conPat () "(::)" [litPat () (LInt 1), conPat () "(::)" [varPat () "x", conPat () "[]" []]])
+
+    succeedParse pattern_ "a pattern"
         "Some (Some X)"
         (conPat () "Some" [conPat () "Some" [conPat () "X" []]])
 
@@ -296,6 +304,8 @@ testParser = do
             "(\\xs => match xs with | (x :: xs) => x) [1,2,3]"
             (appExpr () [lamExpr () [varPat () "xs"] (patExpr () [varExpr () "xs"] [Clause [conPat () "(::)" [varPat () "x", varPat () "xs"]] [] (varExpr () "x")]), conExpr () "(::)" [litExpr () (LInt 1), conExpr () "(::)" [litExpr () (LInt 2), conExpr () "(::)" [litExpr () (LInt 3), conExpr () "[]" []]]]])
 
+    --  Mixed expressions
+
     describe "\nmixed expressions\n" $ do
 
         succeedParse expr "an expression"
@@ -310,6 +320,24 @@ testParser = do
             "(fun x :: xs => x) [1,2,3]"
             (appExpr () [patExpr () [] [Clause [conPat () "(::)" [varPat () "x", varPat () "xs"]] [] (varExpr () "x")], conExpr () "(::)" [litExpr () (LInt 1), conExpr () "(::)" [litExpr () (LInt 2), conExpr () "(::)" [litExpr () (LInt 3), conExpr () "[]" []]]]])
 
+        succeedParse expr "an expression"
+            "fun [] => [] | y :: ys => f y :: mu ys"
+            (patExpr () [] [Clause [conPat () "[]" []] [] (conExpr () "[]" []), Clause [conPat () "(::)" [varPat () "y", varPat () "ys"]] [] (conExpr () "(::)" [appExpr () [varExpr () "f", varExpr () "y"], appExpr () [varExpr () "mu", varExpr () "ys"]])])
+
+        succeedParse expr "an expression"
+            "fix mu = fun [] => [] | y :: ys => f y :: mu ys in mu xs"
+            (fixExpr () "mu" (patExpr () [] 
+                [ Clause [conPat () "[]" []] [] (conExpr () "[]" [])
+                , Clause [conPat () "(::)" [varPat () "y", varPat () "ys"]] [] (conExpr () "(::)" [appExpr () [varExpr () "f", varExpr () "y"], appExpr () [varExpr () "mu", varExpr () "ys"]])
+                ]) (appExpr () [varExpr () "mu", varExpr () "xs"]))
+
+        succeedParse expr "an expression"
+            "let map f xs = fix mu = fun [] => [] | y :: ys => f y :: mu ys in mu xs in let xs = [1, 2, 3] in xs.map (\\x => x + 1)"
+            (letExpr () (BFun "map" [varPat () "f", varPat () "xs"]) (fixExpr () "mu" (patExpr () [] 
+                [ Clause [conPat () "[]" []] [] (conExpr () "[]" [])
+                , Clause [conPat () "(::)" [varPat () "y", varPat () "ys"]] [] (conExpr () "(::)" [appExpr () [varExpr () "f", varExpr () "y"], appExpr () [varExpr () "mu", varExpr () "ys"]])
+                ]) (appExpr () [varExpr () "mu", varExpr () "xs"])) (letExpr () (BLet (varPat () "xs")) (conExpr () "(::)" [litExpr () (LInt 1), conExpr () "(::)" [litExpr () (LInt 2), conExpr () "(::)" [litExpr () (LInt 3), conExpr () "[]" []]]]) (dotExpr () (varExpr () "xs") (appExpr () [varExpr () "map", lamExpr () [varPat () "x"] (op2Expr () (OAdd ()) (varExpr () "x") (litExpr () (LInt 1)))]))))
+
     --  Operators
 
     describe "\noperators\n" $ do
@@ -320,12 +348,13 @@ testParser = do
 
         succeedParse expr "an expression"
             "xs.length"
-            (dotExpr () "length" (varExpr () "xs"))
+            (dotExpr () (varExpr () "xs") (varExpr () "length"))
 
         succeedParse expr "an expression"
             "xs.length.toString"
-            (dotExpr () "toString" (dotExpr () "length" (varExpr () "xs")))
+            (dotExpr () (dotExpr () (varExpr () "xs") (varExpr () "length")) (varExpr () "toString"))
 
---        succeedParse expr "an expression"
---            "xs.map (\x => x + 1)"
+        succeedParse expr "an expression"
+            "xs.map (\\x => x + 1)"
+            (dotExpr () (varExpr () "xs") (appExpr () [varExpr () "map", lamExpr () [varPat () "x"] (op2Expr () (OAdd ()) (varExpr () "x") (litExpr () (LInt 1)))]))
 
