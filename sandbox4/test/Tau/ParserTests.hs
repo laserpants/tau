@@ -325,14 +325,14 @@ testParser = do
             (patExpr () [] [Clause [conPat () "[]" []] [] (conExpr () "[]" []), Clause [conPat () "(::)" [varPat () "y", varPat () "ys"]] [] (conExpr () "(::)" [appExpr () [varExpr () "f", varExpr () "y"], appExpr () [varExpr () "mu", varExpr () "ys"]])])
 
         succeedParse expr "an expression"
-            "fix mu = fun [] => [] | y :: ys => f y :: mu ys in mu xs"
+            "letfix mu = fun [] => [] | y :: ys => f y :: mu ys in mu xs"
             (fixExpr () "mu" (patExpr () [] 
                 [ Clause [conPat () "[]" []] [] (conExpr () "[]" [])
                 , Clause [conPat () "(::)" [varPat () "y", varPat () "ys"]] [] (conExpr () "(::)" [appExpr () [varExpr () "f", varExpr () "y"], appExpr () [varExpr () "mu", varExpr () "ys"]])
                 ]) (appExpr () [varExpr () "mu", varExpr () "xs"]))
 
         succeedParse expr "an expression"
-            "let map f xs = fix mu = fun [] => [] | y :: ys => f y :: mu ys in mu xs in let xs = [1, 2, 3] in xs.map (\\x => x + 1)"
+            "let map f xs = letfix mu = fun [] => [] | y :: ys => f y :: mu ys in mu xs in let xs = [1, 2, 3] in xs.map (\\x => x + 1)"
             (letExpr () (BFun "map" [varPat () "f", varPat () "xs"]) (fixExpr () "mu" (patExpr () [] 
                 [ Clause [conPat () "[]" []] [] (conExpr () "[]" [])
                 , Clause [conPat () "(::)" [varPat () "y", varPat () "ys"]] [] (conExpr () "(::)" [appExpr () [varExpr () "f", varExpr () "y"], appExpr () [varExpr () "mu", varExpr () "ys"]])

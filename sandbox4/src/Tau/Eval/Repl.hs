@@ -113,13 +113,26 @@ replCommand input =
             putStrIO "Parse"
             putStrIO (unpack (prettyPrint expr))
 
-            liftIO $ runInfer2 classEnv2 typeEnv2 (typed expr)
+            a <- liftIO $ runInfer2 classEnv2 typeEnv2 (typed expr)
+            case a of
+                Left e ->
+                    putStrIO e
+                Right (r, _) ->
+                    putStrIO (unpack (prettyPrint r))
 
             --putStrIO (show ast)
             --putStrIO (show ast)
             pure ()
 
 
+typed
+  :: ( MonadError String m
+     , MonadIO m
+     , MonadState (Substitution, Context) m
+     , MonadReader (ClassEnv (Ast NodeInfo (Op1 NodeInfo) (Op2 NodeInfo)), TypeEnv) m
+     , MonadSupply Name m ) 
+  => Ast t (Op1 t) (Op2 t) 
+  -> m (Maybe (Value Eval))
 typed e = do
     ast <- infer e
     sub <- gets fst
@@ -127,13 +140,104 @@ typed e = do
     liftIO $ putStrLn (showTree (nodesToString (prettyAst ast2)))
     ast4 <- evalStateT (compileClasses (desugarOperators ast2)) []
     liftIO $ putStrLn (showTree (nodesToString (prettyAst ast4)))
-    compileExpr (extractType ast4)
+    case evalSupply (compileExpr (extractType ast4)) (numSupply "$") of
+        Just c -> 
+            pure (evalExpr c evalEnv2)
+        Nothing -> 
+            throwError "==fail=="
+
     --let ast2 = astApply sub ast
     --evalStateT (compileClasses (desugarOperators ast2)) []
 
-classEnv2 = Env.fromList []
 
-typeEnv2 = Env.fromList []
+classEnv2 :: ClassEnv (Ast NodeInfo (Op1 NodeInfo) (Op2 NodeInfo))
+classEnv2 = Env.fromList 
+    [ ( "Num"
+      , ( []
+        , [ Instance [] tInt (recExpr (NodeInfo (tApp (tCon (kArr kTyp kTyp) "Num") tInt) []) (fieldSet [
+              Field (NodeInfo (tInt `tArr` tInt `tArr` tInt) []) "(+)" (varExpr (NodeInfo (tInt `tArr` tInt `tArr` tInt) []) "@Int.(+)")
+              , Field (NodeInfo (tInt `tArr` tInt `tArr` tInt) []) "(*)" (varExpr (NodeInfo (tInt `tArr` tInt `tArr` tInt) []) "@Int.(*)")
+              , Field (NodeInfo (tInt `tArr` tInt `tArr` tInt) []) "(-)" (varExpr (NodeInfo (tInt `tArr` tInt `tArr` tInt) []) "@Int.(-)")
+            ]))
+--              [ Field (NodeInfo (tInt `tArr` tInt `tArr` tInt) []) "(+)" (varExpr (NodeInfo (tInt `tArr` tInt `tArr` tInt) []) "@(+)Int")
+--              , Field (NodeInfo (tInt `tArr` tInt `tArr` tInt) []) "(*)" (varExpr (NodeInfo (tInt `tArr` tInt `tArr` tInt) []) "@(*)Int")
+--              , Field (NodeInfo (tInt `tArr` tInt `tArr` tInt) []) "(-)" (varExpr (NodeInfo (tInt `tArr` tInt `tArr` tInt) []) "@(-)Int")
+--              ])
+          ] 
+        )
+      )
+    , ( "Show"
+      , ( []
+        , [ Instance [] tInt (recExpr (NodeInfo (tApp (tCon (kArr kTyp kTyp) "Show") tInt) []) (fieldSet [Field (NodeInfo (tInt `tArr` tString) []) "show" (varExpr (NodeInfo (tInt `tArr` tString) []) "@Int.show")]))
+          --, Instance [] tBool (recExpr (NodeInfo (tApp (tCon (kArr kTyp kTyp) "Show") tBool) [])  (fieldSet [Field (NodeInfo (tBool `tArr` tString) []) "show" (varExpr (NodeInfo (tBool `tArr` tString) []) "@showBool")]))
+--          , Instance [InClass "Show" (tVar kTyp "a")] (tList (tVar kTyp "a")) (recExpr (NodeInfo (tApp (tCon (kArr kTyp kTyp) "Show") (tList (tVar kTyp "a"))) []) (fieldSet [Field (NodeInfo ((tList (tVar kTyp "a")) `tArr` tString) []) "show" foo11]))
+          , Instance [InClass "Show" (tVar kTyp "a"), InClass "Show" (tVar kTyp "b")] (tPair (tVar kTyp "a") (tVar kTyp "b")) (recExpr (NodeInfo (tApp (tCon (kArr kTyp kTyp) "Show") (tPair (tVar kTyp "a") (tVar kTyp "b"))) []) (fieldSet [Field (NodeInfo (tPair (tVar kTyp "a") (tVar kTyp "b") `tArr` tString) []) "show" showPair_]))
+          ]
+        )
+      )
+    , ( "Ord"
+      , ( []
+        , [ Instance [] tInt (recExpr (NodeInfo (tApp (tCon (kArr kTyp kTyp) "Ord") tInt) []) (fieldSet [Field (NodeInfo (tInt `tArr` tInt `tArr` tBool) []) "(>)" (varExpr (NodeInfo (tInt `tArr` tInt `tArr` tBool) []) "@Int.(>)")]))
+          ]
+        )
+      )
+    ]
+  where
+    foo11 = varExpr (NodeInfo ((tList (tVar kTyp "a")) `tArr` tString) [InClass "Show" (tVar kTyp "a")]) "showList"
+    showPair_ = lamExpr (NodeInfo (tPair (tVar kTyp "a") (tVar kTyp "b") `tArr` tString) []) [varPat (NodeInfo (tPair (tVar kTyp "a") (tVar kTyp "b")) []) "p"] (appExpr (NodeInfo tString []) [varExpr (NodeInfo (tString `tArr` tString `tArr` tString `tArr` tString) []) "@strconcat3", appExpr (NodeInfo tString []) [varExpr (NodeInfo (tVar kTyp "a" `tArr` tString) [InClass "Show" (tVar kTyp "a")]) "show", (appExpr (NodeInfo (tVar kTyp "a") []) [varExpr (NodeInfo (tPair (tVar kTyp "a") (tVar kTyp "b") `tArr` tVar kTyp "a") []) "first", varExpr (NodeInfo (tPair (tVar kTyp "a") (tVar kTyp "b")) []) "p"])], litExpr (NodeInfo tString []) (LString ","), appExpr (NodeInfo tString []) [varExpr (NodeInfo (tVar kTyp "b" `tArr` tString) [InClass "Show" (tVar kTyp "b")]) "show", appExpr (NodeInfo (tVar kTyp "b") []) [varExpr (NodeInfo (tPair (tVar kTyp "a") (tVar kTyp "b") `tArr` tVar kTyp "b") []) "second", varExpr (NodeInfo (tPair (tVar kTyp "a") (tVar kTyp "b")) []) "p"]]])
+
+typeEnv2 = Env.fromList 
+    [ ( "(==)" , Forall [kTyp] [InClass "Eq" 0] (tGen 0 `tArr` tGen 0 `tArr` upgrade tBool) )
+    , ( "(+)"  , Forall [kTyp] [InClass "Num" 0] (tGen 0 `tArr` tGen 0 `tArr` tGen 0) )
+    , ( "(-)"  , Forall [kTyp] [InClass "Num" 0] (tGen 0 `tArr` tGen 0 `tArr` tGen 0) )
+    , ( "(*)"  , Forall [kTyp] [InClass "Num" 0] (tGen 0 `tArr` tGen 0 `tArr` tGen 0) )
+    , ( "show" , Forall [kTyp] [InClass "Show" 0] (tGen 0 `tArr` tString) )
+    , ( "add"  , Forall [kTyp] [InClass "Num" 0] (tGen 0 `tArr` tGen 0 `tArr` tGen 0) )
+    , ( "(,)"  , Forall [kTyp, kTyp] [] (tGen 0 `tArr` tGen 1 `tArr` (tApp (tApp (tCon (kArr kTyp (kArr kTyp kTyp)) "(,)") (tGen 0)) (tGen 1))))
+    , ( "first" , Forall [kTyp, kTyp] [] (tPair (tGen 0) (tGen 1) `tArr` (tGen 0)))
+    , ( "second" , Forall [kTyp, kTyp] [] (tPair (tGen 0) (tGen 1) `tArr` (tGen 1)))
+    , ( "(::)"  , Forall [kTyp] [] (tGen 0 `tArr` tList (tGen 0) `tArr` tList (tGen 0)) )
+--    , ( "Nil"    , Forall [kTyp] [] (tList (tGen 0)) )
+--    , ( "Cons"  , Forall [kTyp] [] (tGen 0 `tArr` tList (tGen 0) `tArr` tList (tGen 0)) )
+    , ( "[]"    , Forall [kTyp] [] (tList (tGen 0)) )
+    , ( "length" , Forall [kTyp] [] (tList (tGen 0) `tArr` tInt) )
+    , ( "None"   , Forall [kTyp] [] (tApp (tCon kFun "Option") (tGen 0)) )
+    , ( "Some"   , Forall [kTyp] [] (tGen 0 `tArr` tApp (tCon kFun "Option") (tGen 0)) )
+
+    , ( "@Int.(+)" , Forall [] [] (tInt `tArr` tInt `tArr` tInt) )
+    , ( "@Int.(-)" , Forall [] [] (tInt `tArr` tInt `tArr` tInt) )
+    , ( "@Int.(*)" , Forall [] [] (tInt `tArr` tInt `tArr` tInt) )
+
+    , ( "lenShow"  , Forall [kTyp, kTyp] [InClass "Show" 0] (tGen 0 `tArr` upgrade tInt) ) 
+    ]
+
+evalEnv2 = Env.fromList 
+    [ ("(::)"    , constructor "(::)" 2)  
+    , ("[]"      , constructor "[]"   0)  
+    , ("Some"    , constructor "Some" 1)  
+    , ("None"    , constructor "None" 0)  
+    , ("{show}"  , constructor "{show}" 1)  
+    , ("{(*),(+),(-)}" , constructor "{(*),(+),(-)}" 3)  
+    , ("(,)"     , constructor "(,)" 2)  
+    , ("show"    , fromJust (evalExpr show_ mempty))
+    , ("lenShow" , fromJust (evalExpr lenShow mempty))
+    , ("first"   , fromJust (runEval (eval fst_) mempty))
+    , ("second"  , fromJust (runEval (eval snd_) mempty))
+    , ("(+)"     , fromJust (evalExpr plus__ mempty))
+    ]
+  where
+    lenShow = fromJust (evalSupply (compileExpr foo3) (numSupply "$"))
+    show_   = fromJust (evalSupply (compileExpr foo4) (numSupply "$"))
+    plus__  = fromJust (evalSupply (compileExpr foo5) (numSupply "$"))
+    foo3 = lamExpr () [varPat () "d"] (lamExpr () [varPat () "x"] (appExpr () [varExpr () "@String.length", appExpr () [varExpr () "show", varExpr () "d", varExpr () "x"]]))
+    foo4 = lamExpr () [varPat () "d"] (patExpr () [varExpr () "d"] [ Clause [recPat () (fieldSet [Field () "show" (varPat () "show")])] [] (varExpr () "show") ])
+    foo5 = lamExpr () [varPat () "d"] (patExpr () [varExpr () "d"] [ Clause [recPat () (fieldSet 
+              [ Field () "(+)" (varPat () "x"), Field () "(*)" (anyPat ()), Field () "(-)" (anyPat ()) ])] [] (varExpr () "x") ])
+    fst_ = fromJust (evalSupply (compileExpr foo24) (numSupply "$"))
+    snd_ = fromJust (evalSupply (compileExpr foo25) (numSupply "$"))
+    foo24 = lamExpr () [varPat () "p"] (patExpr () [varExpr () "p"] [Clause [conPat () "(,)" [varPat () "a", anyPat ()]] [] (varExpr () "a")])
+    foo25 = lamExpr () [varPat () "p"] (patExpr () [varExpr () "p"] [Clause [conPat () "(,)" [varPat () "zz", varPat () "b"]] [] (varExpr () "b")])
+ 
 
 --runInfer2 :: ClassEnv c -> TypeEnv -> StateT (Substitution, Context) (ReaderT (ClassEnv c, TypeEnv) (SupplyT Name (ExceptT String (MaybeT IO)))) a -> x -- Either String (a, (Substitution, Context))
 runInfer2 :: ClassEnv c -> TypeEnv -> StateT (Substitution, Context) (ReaderT (ClassEnv c, TypeEnv) (SupplyT Name (ExceptT String (MaybeT IO)))) a -> IO (Either String (a, (Substitution, Context)))
@@ -142,8 +246,7 @@ runInfer2 e1 e2 =
         >>> flip runReaderT (e1, e2)
         >>> flip evalSupplyT (numSupply "a")
         >>> runExceptT
-        -- >>> fromMaybe (Left "error")
-        >>> runMaybeT -- (Left "error")
+        >>> runMaybeT 
         >>> fmap (fromMaybe (Left "error"))
 
 

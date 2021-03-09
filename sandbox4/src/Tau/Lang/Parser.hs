@@ -64,7 +64,7 @@ keyword tok =
 reserved :: [Text]
 reserved =
     [ "let"
-    , "fix"
+    , "letfix"
     , "in"
     , "if"
     , "then"
@@ -141,7 +141,7 @@ operator =
     , [ InfixL (op2Expr () (OFPipe ()) <$ symbol "|>")
       , InfixR (op2Expr () (OBPipe ()) <$ symbol "<|")
       ]
-      -- -1
+      -- (-1)
     , [ InfixL (dotExpr () <$ symbol ".")
       ]
     ]
@@ -221,8 +221,8 @@ expr = makeExprParser parser operator
 
 exprToken :: Parser LangExpr
 exprToken = ifClause 
-    <|> letBinding
     <|> fixBinding
+    <|> letBinding
     <|> matchWith
     <|> funExpr
     <|> lambda
@@ -248,7 +248,7 @@ tupleExpr = do
 recordExpr :: Parser LangExpr
 recordExpr = recExpr () <$> fields "=" expr
 
--- TODO: Use lambda symbol ?
+-- TODO: Allow lambda symbol ?
 funExpr :: Parser LangExpr
 funExpr = do
     keyword "fun" 
@@ -300,7 +300,7 @@ binding = try funBinding <|> normalBinding
 
 fixBinding :: Parser LangExpr
 fixBinding = do
-    keyword "fix"
+    keyword "letfix"
     bind <- name
     term <- symbol  "="  *> expr
     body <- keyword "in" *> expr
