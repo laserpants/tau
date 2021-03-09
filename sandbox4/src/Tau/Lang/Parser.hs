@@ -212,9 +212,9 @@ expr = makeExprParser parser operator
     parser = do
         tok <- some exprToken
         case tok of
-            [e]    -> pure e
-            (e:es) -> pure (foldl (\a b -> appExpr () [a, b]) e es)
-            _ -> fail "Not a valid expression"
+            [e] -> pure e
+            []  -> fail "Not a valid expression"
+            es  -> pure (appExpr () es)
 
 exprToken :: Parser LangExpr
 exprToken = ifClause 

@@ -209,6 +209,10 @@ testParser = do
             (letExpr () (BFun "f" [conPat () "Some" [varPat () "x"], varPat () "y"]) (varExpr () "z") (varExpr () "a"))
 
         succeedParse expr "an expression"
+            "let f y (Some x) = z in a"
+            (letExpr () (BFun "f" [varPat () "y", conPat () "Some" [varPat () "x"]]) (varExpr () "z") (varExpr () "a"))
+
+        succeedParse expr "an expression"
             "let f (Some x as someX) y = z in a"
             (letExpr () (BFun "f" [asPat () "someX" (conPat () "Some" [varPat () "x"]), varPat () "y"]) (varExpr () "z") (varExpr () "a"))
 
@@ -248,7 +252,7 @@ testParser = do
                 [ Clause [conPat () "(::)" [varPat () "y", varPat () "ys"]] [op2Expr () (OGt ()) (varExpr () "y") (litExpr () (LInt 5))] (litExpr () (LBool True)) 
                 , Clause [anyPat ()] [] (litExpr () (LBool False)) ])
 
-    describe "\nlist\n" $ do
+    describe "\nlists\n" $ do
 
         succeedParse expr "an expression"
             "[]"
@@ -262,9 +266,46 @@ testParser = do
             "[1,2,3]"
             (conExpr () "(::)" [litExpr () (LInt 1), conExpr () "(::)" [litExpr () (LInt 2), conExpr () "(::)" [litExpr () (LInt 3), conExpr () "[]" []]]])
 
+    describe "\ntuples\n" $ do
+
+        succeedParse expr "an expression"
+            "(1, 2)"
+            (tupExpr () [litExpr () (LInt 1), litExpr () (LInt 2)])
+
+    describe "\nrecords\n" $ do
+
+        succeedParse expr "an expression"
+            "{ name = \"Sun Ra\", style = \"Avant Garde\" }"
+            (recExpr () (fieldSet [ Field () "name" (litExpr () (LString "Sun Ra")), Field () "style" (litExpr () (LString "Avant Garde"))]))
+
+        succeedParse expr "an expression"
+            "{ user = { id = 1, name = \"Alfred Hitchcock\" } }"
+            (recExpr () (fieldSet [ Field () "user" (recExpr () (fieldSet [ Field () "id" (litExpr () (LInt 1)), Field () "name" (litExpr () (LString "Alfred Hitchcock")) ])) ]))
+
     describe "\nfunction application\n" $ do
+
+        succeedParse expr "an expression"
+            "a b c"
+            (appExpr () [varExpr () "a", varExpr () "b", varExpr () "c"])
+
+        succeedParse expr "an expression"
+            "a (b c)"
+            (appExpr () [varExpr () "a", appExpr () [varExpr () "b", varExpr () "c"]])
 
         succeedParse expr "an expression"
             "(\\xs => match xs with | (x :: xs) => x) [1,2,3]"
             (appExpr () [lamExpr () [varPat () "xs"] (patExpr () [varExpr () "xs"] [Clause [conPat () "(::)" [varPat () "x", varPat () "xs"]] [] (varExpr () "x")]), conExpr () "(::)" [litExpr () (LInt 1), conExpr () "(::)" [litExpr () (LInt 2), conExpr () "(::)" [litExpr () (LInt 3), conExpr () "[]" []]]]])
 
+    describe "\nmixed expressions\n" $ do
+
+        succeedParse expr "an expression"
+            "(fun | (x :: xs) => x) [1,2,3]"
+            (appExpr () [patExpr () [] [Clause [conPat () "(::)" [varPat () "x", varPat () "xs"]] [] (varExpr () "x")], conExpr () "(::)" [litExpr () (LInt 1), conExpr () "(::)" [litExpr () (LInt 2), conExpr () "(::)" [litExpr () (LInt 3), conExpr () "[]" []]]]])
+
+        succeedParse expr "an expression"
+            "(fun (x :: xs) => x) [1,2,3]"
+            (appExpr () [patExpr () [] [Clause [conPat () "(::)" [varPat () "x", varPat () "xs"]] [] (varExpr () "x")], conExpr () "(::)" [litExpr () (LInt 1), conExpr () "(::)" [litExpr () (LInt 2), conExpr () "(::)" [litExpr () (LInt 3), conExpr () "[]" []]]]])
+
+        succeedParse expr "an expression"
+            "(fun x :: xs => x) [1,2,3]"
+            (appExpr () [patExpr () [] [Clause [conPat () "(::)" [varPat () "x", varPat () "xs"]] [] (varExpr () "x")], conExpr () "(::)" [litExpr () (LInt 1), conExpr () "(::)" [litExpr () (LInt 2), conExpr () "(::)" [litExpr () (LInt 3), conExpr () "[]" []]]]])
