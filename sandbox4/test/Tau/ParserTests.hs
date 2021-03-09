@@ -131,6 +131,14 @@ testParser = do
     -- Patterns
 
     succeedParse pattern_ "a pattern"
+        "_"
+        (anyPat ())
+
+    succeedParse pattern_ "a pattern"
+        "x"
+        (varPat () "x")
+
+    succeedParse pattern_ "a pattern"
         "Some X"
         (conPat () "Some" [conPat () "X" []])
 
@@ -219,4 +227,24 @@ testParser = do
         succeedParse expr "an expression"
             "3.14"
             (litExpr () (LFloat 3.14))
+
+    describe "\nmatch expressions\n" $ do
+
+        succeedParse expr "an expression"
+            "match xs with | (y :: ys) => y"
+            (patExpr () [varExpr () "xs"] [Clause [conPat () "(::)" [varPat () "y", varPat () "ys"]] [] (varExpr () "y")])
+
+        succeedParse expr "an expression"
+            "match xs with | (5 :: ys) => True"
+            (patExpr () [varExpr () "xs"] [Clause [conPat () "(::)" [litPat () (LInt 5), varPat () "ys"]] [] (litExpr () (LBool True))])
+
+        succeedParse expr "an expression"
+            "match xs with | (y :: ys) when y > 5 => True"
+            (patExpr () [varExpr () "xs"] [Clause [conPat () "(::)" [varPat () "y", varPat () "ys"]] [op2Expr () (OGt ()) (varExpr () "y") (litExpr () (LInt 5))] (litExpr () (LBool True))])
+
+        succeedParse expr "an expression"
+            "match xs with | (y :: ys) when y > 5 => True | _ => False"
+            (patExpr () [varExpr () "xs"] 
+                [ Clause [conPat () "(::)" [varPat () "y", varPat () "ys"]] [op2Expr () (OGt ()) (varExpr () "y") (litExpr () (LInt 5))] (litExpr () (LBool True)) 
+                , Clause [anyPat ()] [] (litExpr () (LBool False)) ])
 

@@ -220,14 +220,57 @@ exprToken :: Parser LangExpr
 exprToken = ifClause 
     <|> letBinding
 --    <|> fixBinding
---    <|> matchWith
---    <|> funExpr
+    <|> matchWith
+    <|> funExpr
     <|> lambda
     <|> literalExpr
---    <|> list_
---    <|> record
---    <|> tuple
+    <|> listExpr
+    <|> recordExpr
+    <|> tupleExpr
     <|> identifier
+
+listExpr :: Parser LangExpr
+listExpr = do
+    elems <- elements expr
+    pure (foldr listCons (conExpr () "[]" []) elems)
+
+tupleExpr :: Parser LangExpr
+tupleExpr = do
+    elems <- components expr
+    pure $ case elems of
+        [e] -> e
+        []  -> litExpr () LUnit
+        _   -> tupExpr () elems
+
+recordExpr :: Parser LangExpr
+recordExpr = recExpr () <$> fields "=" expr
+
+-- TODO: Use lambda symbol ?
+funExpr :: Parser LangExpr
+funExpr = do
+    keyword "fun" 
+    patExpr () [] <$> ((:) <$> clause (void (optional pipe)) <*> many (clause pipe))
+
+matchWith :: Parser LangExpr
+matchWith = do
+    term <- keyword "match" *> expr
+    patExpr () [term] <$> ((:) <$> clause with <*> many (clause pipe))
+
+with :: Parser ()
+with = void (keyword "with" *> optional pipe)
+
+pipe :: Parser ()
+pipe = void (symbol "|")
+
+clause :: Parser () -> Parser (Clause (Pattern ()) LangExpr)
+clause sym = do 
+    pats <- sym *> some pattern_
+    cond <- fromMaybe [] <$> optional whens
+    term <- symbol "=>" *> expr
+    pure (Clause pats cond term)
+
+whens :: Parser [LangExpr]
+whens = keyword "when" *> (pure <$> expr)
 
 lambda :: Parser LangExpr
 lambda = do
@@ -342,7 +385,8 @@ pattern_ = makeExprParser parser
             _ -> fail "Not a valid pattern"
 
 patternExpr :: Parser (Pattern ())
-patternExpr = varPattern
+patternExpr = wildcardPattern 
+    <|> varPattern
     <|> conPattern
     <|> litPattern
     <|> tuplePattern
