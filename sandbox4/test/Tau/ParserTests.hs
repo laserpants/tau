@@ -187,3 +187,36 @@ testParser = do
     succeedParse type_ "a type"
         "List Int -> a"
         (tApp (tCon (kArr kTyp kTyp) "List") tInt `tArr` tVar kTyp "a" :: Type)
+
+    --  Expressions
+
+    describe "\nlet expressions\n" $ do
+
+        succeedParse expr "an expression"
+            "let f x y = z in a"
+            (letExpr () (BFun "f" [varPat () "x", varPat () "y"]) (varExpr () "z") (varExpr () "a"))
+
+        succeedParse expr "an expression"
+            "let f (Some x) y = z in a"
+            (letExpr () (BFun "f" [conPat () "Some" [varPat () "x"], varPat () "y"]) (varExpr () "z") (varExpr () "a"))
+
+        succeedParse expr "an expression"
+            "let f (Some x as someX) y = z in a"
+            (letExpr () (BFun "f" [asPat () "someX" (conPat () "Some" [varPat () "x"]), varPat () "y"]) (varExpr () "z") (varExpr () "a"))
+
+        succeedParse expr "an expression"
+            "let x = z in a"
+            (letExpr () (BLet (varPat () "x")) (varExpr () "z") (varExpr () "a"))
+
+    describe "\nlambdas\n" $ do
+
+        succeedParse expr "an expression"
+            "\\f x => f x"
+            (lamExpr () [varPat () "f", varPat () "x"] (appExpr () [varExpr () "f", varExpr () "x"]))
+
+    describe "\nliterals\n" $ do
+
+        succeedParse expr "an expression"
+            "3.14"
+            (litExpr () (LFloat 3.14))
+

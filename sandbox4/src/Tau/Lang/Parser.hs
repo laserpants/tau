@@ -203,6 +203,72 @@ literal = bool
 -- == Expressions
 -- ============================================================================
 
+type LangExpr = Expr () (Pattern ()) (Binding (Pattern ())) [Pattern ()] (Op1 ()) (Op2 ())
+
+expr :: Parser LangExpr
+expr = makeExprParser parser operator
+  where
+    parser :: Parser LangExpr
+    parser = do
+        tok <- some exprToken
+        case tok of
+            [e]    -> pure e
+            (e:es) -> pure (foldl (\a b -> appExpr () [a, b]) e es)
+            _ -> fail "Not a valid expression"
+
+exprToken :: Parser LangExpr
+exprToken = ifClause 
+    <|> letBinding
+--    <|> fixBinding
+--    <|> matchWith
+--    <|> funExpr
+    <|> lambda
+    <|> literalExpr
+--    <|> list_
+--    <|> record
+--    <|> tuple
+    <|> identifier
+
+lambda :: Parser LangExpr
+lambda = do
+    void (symbol "\\")
+    pats <- some patternExpr
+    body <- symbol "=>" *> expr
+    pure (lamExpr () pats body)
+
+identifier :: Parser LangExpr
+identifier = varExpr () <$> word (withInitial letterChar)
+
+binding :: Parser (Binding (Pattern ()))
+binding = try funBinding <|> normalBinding
+  where
+    funBinding = do
+        fun <- name
+        tok <- some patternExpr
+        case tok of
+            [] -> fail "Expected function arguments"
+            ps -> pure (BFun fun ps)
+
+    normalBinding = do
+        BLet <$> pattern_
+
+letBinding :: Parser LangExpr
+letBinding = do
+    keyword "let"
+    bind <- binding
+    term <- symbol  "="  *> expr
+    body <- keyword "in" *> expr
+    pure (letExpr () bind term body)
+
+ifClause :: Parser LangExpr
+ifClause = do
+    cond  <- keyword "if"   *> expr
+    true  <- keyword "then" *> expr
+    false <- keyword "else" *> expr
+    pure (ifExpr () cond true false)
+
+literalExpr :: Parser LangExpr
+literalExpr = litExpr () <$> literal
 
 -- ============================================================================
 -- == Types
