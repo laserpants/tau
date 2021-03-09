@@ -248,3 +248,23 @@ testParser = do
                 [ Clause [conPat () "(::)" [varPat () "y", varPat () "ys"]] [op2Expr () (OGt ()) (varExpr () "y") (litExpr () (LInt 5))] (litExpr () (LBool True)) 
                 , Clause [anyPat ()] [] (litExpr () (LBool False)) ])
 
+    describe "\nlist\n" $ do
+
+        succeedParse expr "an expression"
+            "[]"
+            (conExpr () "[]" [])
+
+        succeedParse expr "an expression"
+            "1 :: 2 :: 3 :: []"
+            (conExpr () "(::)" [litExpr () (LInt 1), conExpr () "(::)" [litExpr () (LInt 2), conExpr () "(::)" [litExpr () (LInt 3), conExpr () "[]" []]]])
+
+        succeedParse expr "an expression"
+            "[1,2,3]"
+            (conExpr () "(::)" [litExpr () (LInt 1), conExpr () "(::)" [litExpr () (LInt 2), conExpr () "(::)" [litExpr () (LInt 3), conExpr () "[]" []]]])
+
+    describe "\nfunction application\n" $ do
+
+        succeedParse expr "an expression"
+            "(\\xs => match xs with | (x :: xs) => x) [1,2,3]"
+            (appExpr () [lamExpr () [varPat () "xs"] (patExpr () [varExpr () "xs"] [Clause [conPat () "(::)" [varPat () "x", varPat () "xs"]] [] (varExpr () "x")]), conExpr () "(::)" [litExpr () (LInt 1), conExpr () "(::)" [litExpr () (LInt 2), conExpr () "(::)" [litExpr () (LInt 3), conExpr () "[]" []]]]])
+
