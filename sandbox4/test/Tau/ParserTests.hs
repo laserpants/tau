@@ -28,7 +28,7 @@ failParse parser what input =
     describe (if "" == input then "\"\"" else unpack input) $ do
         let result = parseWith parser input
 
-        it ("✗ fails to parse to " <> unpack what) $
+        it ("✗ fails to parse to " <> unpack what <> "\n") $
             isLeft result
 
 parseWith :: Parser p -> Text -> Either ParseError p
@@ -84,47 +84,47 @@ testParser = do
 
     -- Literals
 
-    succeedParse charLit "a Char"
+    succeedParse charLit "a Char literal"
         "'x'"
         (LChar 'x')
 
-    failParse charLit "a Char"
+    failParse charLit "a Char literal"
         "x"
 
-    succeedParse bool "a Bool"
+    succeedParse bool "a Bool literal"
         "True"
         (LBool True)
 
-    succeedParse bool "a Bool"
+    succeedParse bool "a Bool literal"
         "False"
         (LBool False)
 
-    failParse bool "a Bool"
+    failParse bool "a Bool literal"
         "false"
 
-    failParse bool "a Bool"
+    failParse bool "a Bool literal"
         "Falsetto"
 
-    succeedParse float "a Float"
+    succeedParse float "a Float literal"
         "3.14"
         (LFloat 3.14)
 
-    succeedParse integral "an Int"
+    succeedParse integral "an Int literal"
         "3"
         (LInt 3)
 
-    succeedParse stringLit "a String"
+    succeedParse stringLit "a String literal"
         "\"pasta\""
         (LString "pasta")
 
-    failParse stringLit "a String"
+    failParse stringLit "a String literal"
         "pasta\""
 
-    succeedParse stringLit "a String"
+    succeedParse stringLit "a String literal"
         "\"\""
         (LString "")
 
-    succeedParse unit "a Unit value"
+    succeedParse unit "a Unit literal"
         "()"
         LUnit
 
@@ -440,3 +440,9 @@ testParser = do
             "xs.map (\\x => x + 1)"
             (dotExpr () (varExpr () "xs") (appExpr () [varExpr () "map", lamExpr () [varPat () "x"] (op2Expr () (OAdd ()) (varExpr () "x") (litExpr () (LInt 1)))]))
 
+        succeedParse expr "an expression"
+            "x > y"
+            (op2Expr () (OGt ()) (varExpr () "x") (varExpr () "y")) 
+
+        failParse expr "an expression"
+            "(x > y > z)"
