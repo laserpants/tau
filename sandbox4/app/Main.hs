@@ -603,3 +603,62 @@ typeEnv = Env.fromList
     , ( "lenShow"  , Forall [kTyp, kTyp] [InClass "Show" 0] (tGen 0 `tArr` upgrade tInt) ) 
     ]
 
+
+data N = Z | S N
+
+data L = H | C Int L
+
+
+recN f s Z = s
+recN f s (S a) = recN f (f (S a) s) a 
+
+recN_ f s Z = s
+recN_ f s (S a) = recN_ f (f s) a 
+
+test992 = recN (\_ (_, x:xs) -> (Just x, xs)) (Nothing, [1,2,3,4,5,6,7]) (S (S (S (S Z)))) 
+
+--nth n xs =
+--  reduce Succ on 0
+--    | (_, x :: xs) => (Some x, xs)
+--    | (_, _)       => (None, ????)
+
+--test992b = rec (\_ (_, x:xs) -> (Just x, xs)) (S (S (S (S Z)))) (Nothing, [1,2])
+
+test993 = recN go 0 (S (S (S (S Z)))) 
+  where
+    go _ s = s + 1
+
+fromNat = recN_ go 0 where go s = s + 1
+
+-- length = 
+--   reduce Cons init 0 
+--     | s => s + 1
+
+-- length = 
+--   reduce Cons init 0 
+--     | s => s + 1
+
+-- length = rec Cons 
+
+
+recC f H s = s
+recC f (C n a) s = recC f a (f n (C n a) s)
+
+test994 = recC (\_ _ s -> s + 1) (C 0 (C 1 (C 2 H))) 0
+
+
+--test994 = recursive C 0 | _ _ s => s + 1
+
+test995 = recC (\x _ s y -> s (x:y)) (C 0 (C 1 (C 2 H))) id []
+
+
+testmap f = recC (\x _ s y -> s (f x:y)) (C 0 (C 1 (C 2 H))) id []
+
+
+testfact = recN go 1 (S (S (S (S (S Z)))))
+  where
+    go x a = fromNat x * a
+
+-- fact = 
+--   reduce Succ init 1 | a => fromNat elem * a
+

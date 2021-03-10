@@ -218,7 +218,7 @@ testParser = do
 
     --  Expressions
 
-    describe "\nlet expressions\n" $ do
+    describe "\nLet expressions\n" $ do
 
         succeedParse expr "an expression"
             "let f x y = z in a"
@@ -240,19 +240,19 @@ testParser = do
             "let x = z in a"
             (letExpr () (BLet (varPat () "x")) (varExpr () "z") (varExpr () "a"))
 
-    describe "\nlambdas\n" $ do
+    describe "\nLambdas\n" $ do
 
         succeedParse expr "an expression"
             "\\f x => f x"
             (lamExpr () [varPat () "f", varPat () "x"] (appExpr () [varExpr () "f", varExpr () "x"]))
 
-    describe "\nliterals\n" $ do
+    describe "\nLiterals\n" $ do
 
         succeedParse expr "an expression"
             "3.14"
             (litExpr () (LFloat 3.14))
 
-    describe "\nmatch expressions\n" $ do
+    describe "\nMatch expressions\n" $ do
 
         succeedParse expr "an expression"
             "match xs with | (y :: ys) => y"
@@ -272,7 +272,7 @@ testParser = do
                 [ Clause [conPat () "(::)" [varPat () "y", varPat () "ys"]] [op2Expr () (OGt ()) (varExpr () "y") (litExpr () (LInt 5))] (litExpr () (LBool True)) 
                 , Clause [anyPat ()] [] (litExpr () (LBool False)) ])
 
-    describe "\nlists\n" $ do
+    describe "\nLists\n" $ do
 
         succeedParse expr "an expression"
             "[]"
@@ -286,13 +286,13 @@ testParser = do
             "[1,2,3]"
             (conExpr () "(::)" [litExpr () (LInt 1), conExpr () "(::)" [litExpr () (LInt 2), conExpr () "(::)" [litExpr () (LInt 3), conExpr () "[]" []]]])
 
-    describe "\ntuples\n" $ do
+    describe "\nTuples\n" $ do
 
         succeedParse expr "an expression"
             "(1, 2)"
             (tupExpr () [litExpr () (LInt 1), litExpr () (LInt 2)])
 
-    describe "\nrecords\n" $ do
+    describe "\nRecords\n" $ do
 
         succeedParse expr "an expression"
             "{ name = \"Sun Ra\", style = \"Avant Garde\" }"
@@ -302,7 +302,7 @@ testParser = do
             "{ user = { id = 1, name = \"Alfred Hitchcock\" } }"
             (recExpr () (fieldSet [ Field () "user" (recExpr () (fieldSet [ Field () "id" (litExpr () (LInt 1)), Field () "name" (litExpr () (LString "Alfred Hitchcock")) ])) ]))
 
-    describe "\nfunction application\n" $ do
+    describe "\nFunction application\n" $ do
 
         succeedParse expr "an expression"
             "a b c"
@@ -318,7 +318,7 @@ testParser = do
 
     --  Mixed expressions
 
-    describe "\nmixed expressions\n" $ do
+    describe "\nMixed expressions\n" $ do
 
         succeedParse expr "an expression"
             "(fun | (x :: xs) => x) [1,2,3]"
@@ -352,7 +352,7 @@ testParser = do
 
     --  Operators
 
-    describe "\noperators\n" $ do
+    describe "\nOperators\n" $ do
 
         succeedParse expr "an expression"
             "x + y"

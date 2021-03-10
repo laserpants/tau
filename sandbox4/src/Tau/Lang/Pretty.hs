@@ -25,15 +25,15 @@ class Parens t where
 
 instance Parens Type where
     needsParens = project >>> \case
-        TApp t1 t2 
-            | Just True == (isTupleCon <$> con)  -> False
-            | Just True == (isRecordCon <$> con) -> False
-            | needsParens t1 -> False
-            -- TODO: ???
---            | isCon t1                           -> False
-          where
-            con = leftmostCon t1
-        TApp{} -> True
+        TApp t1 t2 -> True
+--            | Just True == (isTupleCon <$> con)  -> False
+--            | Just True == (isRecordCon <$> con) -> False
+----            | needsParens t1 -> False
+--            -- TODO: ???
+----            | isCon t1                           -> False
+--          where
+--            con = leftmostCon t1
+--        TApp{} -> True
         TArr{} -> True
         _      -> False
 
@@ -89,15 +89,36 @@ instance Pretty Type where
                     ns = recordFieldNames con
                  in prettyRecord colon (fieldSet (uncurry (Field ()) <$> zip ns (pretty <$> ts)))
             | otherwise ->
-                doc1 <+> addParens t2 
+                doc1 <+> addParens t2
           where
             con = leftmostCon t1
 
-        TArr (t1, _) (_, doc2) -> 
-            addParens t1 <+> "->" <+> doc2
+        TArr (t1, doc1) (t2, doc2) -> 
+            doc1 <+> "->" <+> doc2
 
         TCon _ name -> pretty name
         TVar _ name -> pretty name
+
+--    pretty = para $ \case
+--
+--        TApp (t1, doc1) (t2, doc2)
+--            | Just True == (isTupleCon <$> con) ->
+--                let (_:ts) = unfoldApp (tApp t1 t2)
+--                 in parens (commaSep (pretty <$> ts))
+--            | Just True == (isRecordCon <$> con) ->
+--                let (Fix (TCon _ con):ts) = unfoldApp (tApp t1 t2)
+--                    ns = recordFieldNames con
+--                 in prettyRecord colon (fieldSet (uncurry (Field ()) <$> zip ns (pretty <$> ts)))
+--            | otherwise ->
+--                doc1 <+> addParens t2 
+--          where
+--            con = leftmostCon t1
+--
+--        TArr (t1, _) (_, doc2) -> 
+--            addParens t1 <+> "->" <+> doc2
+--
+--        TCon _ name -> pretty name
+--        TVar _ name -> pretty name
 
 leftmostCon :: Type -> Maybe Name
 leftmostCon = cata $ \case

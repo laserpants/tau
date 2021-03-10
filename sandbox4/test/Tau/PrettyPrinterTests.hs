@@ -15,7 +15,7 @@ prettyPrintsTo :: (Pretty p) => p -> Text -> SpecWith ()
 prettyPrintsTo input expect = 
     describe (unpack (prettyPrint input)) $ do
 
-        it ("✔ matches " <> unpack expect) $
+        it ("✔ matches the expected output " <> unpack expect) $
             prettyPrint input == expect
 
 testPrettyPrinter :: SpecWith ()
@@ -23,21 +23,49 @@ testPrettyPrinter = do
 
     -- Types
 
-    prettyPrintsTo
-        (tInt :: Type)
-        "Int"
+    describe "\nTypes\n" $ do
 
-    prettyPrintsTo
-        (tApp (tCon (kArr kTyp kTyp) "List") tInt :: Type)
-        "List Int"
+        prettyPrintsTo
+            (tInt :: Type)
+            "Int"
 
-    prettyPrintsTo
-        (tApp (tCon (kArr kTyp kTyp) "List") tInt `tArr` tVar kTyp "a" :: Type)
-        "List Int -> a"
+        prettyPrintsTo
+            (tApp (tCon (kArr kTyp kTyp) "List") tInt :: Type)
+            "List Int"
+
+        prettyPrintsTo
+            (tApp (tCon (kArr kTyp kTyp) "List") tInt `tArr` tVar kTyp "a" :: Type)
+            "List Int -> a"
+            
+        prettyPrintsTo
+            (tApp (tVar (kArr kTyp kTyp) "m") (tApp (tVar (kArr kTyp kTyp) "m") (tVar kTyp "a")) :: Type)
+            "m (m a)"
+
+        prettyPrintsTo
+            ((tApp (tCon (kArr kTyp kTyp) "List") (tApp (tCon (kArr kTyp kTyp) "List") tInt) `tArr` tVar kTyp "a") :: Type)
+            "List (List Int) -> a"
+
+        prettyPrintsTo
+            ((tApp (tCon (kArr kTyp kTyp) "List") (tApp (tCon (kArr kTyp kTyp) "List") tInt) `tArr` tVar kTyp "a" `tArr` tVar kTyp "b") :: Type)
+            "List (List Int) -> a -> b"
+
+        prettyPrintsTo
+            (tVar kTyp "a" `tArr` tApp (tCon (kArr kTyp kTyp) "List") (tApp (tCon (kArr kTyp kTyp) "List") tInt) :: Type)
+            "a -> List (List Int)"
+
+        prettyPrintsTo
+            (tApp (tApp (tCon (kArr kTyp kTyp) "(,)") tInt) tInt :: Type)
+            "(Int, Int)"
+
+        prettyPrintsTo
+            (((tApp (tApp (tCon (kArr kTyp kTyp) "(,)") tInt) tInt :: Type) `tArr` tVar kTyp "a") :: Type)
+            "(Int, Int) -> a"
 
     -- Tuples
 
-    prettyPrintsTo
-        (tupExpr () [varExpr () "x", litExpr () (LInt 5)] :: Expr () (Pattern ()) [Pattern ()] r (Op1 ()) (Op2 ()))
-        "(x, 5)"
+    describe "\nTuples\n" $ do
+
+        prettyPrintsTo
+            (tupExpr () [varExpr () "x", litExpr () (LInt 5)] :: Expr () (Pattern ()) [Pattern ()] r (Op1 ()) (Op2 ()))
+            "(x, 5)"
 
