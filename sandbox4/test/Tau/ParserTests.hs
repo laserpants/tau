@@ -364,6 +364,12 @@ testParser = do
             "x + y + z"
             (op2Expr () (OAdd ()) (op2Expr () (OAdd ()) (varExpr () "x") (varExpr () "y")) (varExpr () "z"))
 
+        -- Operator precedence
+
+        succeedParse expr "an expression"
+            "x * y + z"
+            (op2Expr () (OAdd ()) (op2Expr () (OMul ()) (varExpr () "x") (varExpr () "y")) (varExpr () "z"))
+
         succeedParse expr "an expression"
             "xs.length"
             (dotExpr () (varExpr () "xs") (varExpr () "length"))
