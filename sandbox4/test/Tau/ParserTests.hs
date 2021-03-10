@@ -358,6 +358,12 @@ testParser = do
             "x + y"
             (op2Expr () (OAdd ()) (varExpr () "x") (varExpr () "y"))
 
+        -- Addition associativity
+
+        succeedParse expr "an expression"
+            "x + y + z"
+            (op2Expr () (OAdd ()) (op2Expr () (OAdd ()) (varExpr () "x") (varExpr () "y")) (varExpr () "z"))
+
         succeedParse expr "an expression"
             "xs.length"
             (dotExpr () (varExpr () "xs") (varExpr () "length"))
