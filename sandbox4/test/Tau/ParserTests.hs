@@ -20,7 +20,7 @@ succeedParse parser what input expect =
         it ("✔ succeeds to parse to " <> unpack what) $
             isRight result
 
-        it ("✔ and it is the expected result: " <> prettyString expect) $
+        it ("✔ and it is the expected result: " <> prettyString expect <> "\n") $
             Right expect == result
 
 failParse :: Parser p -> Text -> Text -> SpecWith ()
@@ -316,6 +316,16 @@ testParser = do
             "(\\xs => match xs with | (x :: xs) => x) [1,2,3]"
             (appExpr () [lamExpr () [varPat () "xs"] (patExpr () [varExpr () "xs"] [Clause [conPat () "(::)" [varPat () "x", varPat () "xs"]] [] (varExpr () "x")]), conExpr () "(::)" [litExpr () (LInt 1), conExpr () "(::)" [litExpr () (LInt 2), conExpr () "(::)" [litExpr () (LInt 3), conExpr () "[]" []]]]])
 
+    describe "\nConstructors\n" $ do
+
+        succeedParse expr "an expression"
+            "Some x"
+            (conExpr () "Some" [varExpr () "x"])
+            
+        succeedParse expr "an expression"
+            "None"
+            (conExpr () "None" [])
+
     --  Mixed expressions
 
     describe "\nMixed expressions\n" $ do
@@ -361,6 +371,42 @@ testParser = do
         succeedParse expr "an expression"
             "let first (a, b) = a in (5, ()).first"
             (letExpr () (BFun "first" [tupPat () [varPat () "a", varPat () "b"]]) (varExpr () "a") (dotExpr () (tupExpr () [litExpr () (LInt 5), litExpr () LUnit]) (varExpr () "first")))
+
+        succeedParse expr "an expression"
+            "f a (b.length)"
+            (appExpr () [varExpr () "f", varExpr () "a", dotExpr () (varExpr () "b") (varExpr () "length")])
+
+        succeedParse expr "an expression"
+            "f a b.length"
+            (appExpr () [varExpr () "f", varExpr () "a", dotExpr () (varExpr () "b") (varExpr () "length")])
+
+        succeedParse expr "an expression"
+            "withDefault 0 [1,2,3].head"
+            (appExpr () [varExpr () "withDefault", litExpr () (LInt 0), dotExpr () (conExpr () "(::)" [litExpr () (LInt 1), conExpr () "(::)" [litExpr () (LInt 2), conExpr () "(::)" [litExpr () (LInt 3), conExpr () "[]" []]]]) (varExpr () "head")])
+
+        -- let withDefault(default) = fun 
+        --   | None       => default
+        --   | Some value => value 
+        -- in 
+        --   let head = fun 
+        --     | []     => None 
+        --     | x :: _ => Some x 
+        --   in 
+        --     withDefault 0 [1,2,3].head"
+
+        succeedParse expr "an expression"
+            "let withDefault default = fun None => default | Some value => value in let head = fun [] => None | x :: _ => Some x in withDefault 0 [1,2,3].head"
+            (letExpr () (BFun "withDefault" [varPat () "default"]) (patExpr () [] [Clause [conPat () "None" []] [] (varExpr () "default"), Clause [conPat () "Some" [varPat () "value"]] [] (varExpr () "value")])
+                (letExpr () (BLet (varPat () "head")) (patExpr () [] [Clause [conPat () "[]" []] [] (conExpr () "None" []), Clause [conPat () "(::)" [varPat () "x", anyPat ()]] [] (conExpr () "Some" [varExpr () "x"])])
+                    (appExpr () [varExpr () "withDefault", litExpr () (LInt 0), dotExpr () (conExpr () "(::)" [litExpr () (LInt 1), conExpr () "(::)" [litExpr () (LInt 2), conExpr () "(::)" [litExpr () (LInt 3), conExpr () "[]" []]]]) (varExpr () "head")])))
+
+        -- let withDefault(default) = \None => default | Some value => value 
+        -- in 
+        --   let head = fun 
+        --     | []     => None 
+        --     | x :: _ => Some x 
+        --   in 
+        --     withDefault 0 [1,2,3].head"
 
     --  Operators
 

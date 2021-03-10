@@ -96,11 +96,12 @@ constructor_ = word (withInitial upperChar)
 -- == Operators
 -- ============================================================================
 
-operator :: [[Operator Parser (Expr () p q r (Op1 ()) (Op2 ()))]]
+operator :: [[Operator Parser (Expr () (Pattern ()) (Binding (Pattern ())) [Pattern ()] (Op1 ()) (Op2 ()))]]
 operator = 
     [
       -- 10
-      [ InfixL (dotExpr () <$ symbol ".")
+      [ Postfix dotSuffix
+      , InfixL (app <$ spaces)
       ]
       -- 9
     , [ InfixR (op2Expr () (OLArr ()) <$ symbol "<<")
@@ -144,19 +145,15 @@ operator =
       ]
     ]
 
---dotOperator :: Parser (Expr () p q r n o -> Expr () p q r n o)
---dotOperator = do
---    names <- some (symbol "." *> name)
---    pure (\e -> foldl' (flip (dotExpr ())) e names)
+app :: Expr () p q r n o -> Expr () p q r n o -> Expr () p q r n o
+app e f =  
+    case project e of
+        ECon _ con as -> conExpr () con (as <> [f])
+        EApp _ es     -> appExpr () (es <> [f])
+        _             -> appExpr () [e, f]
 
 listCons :: Expr () p q r n o -> Expr () p q r n o -> Expr () p q r n o
 listCons hd tl = conExpr () "(::)" [hd, tl]
-
---testP = makeExprParser xxx1 operator
---
---xxx1 = do
---    keyword "foo" 
---    pure (varExpr () "foo")
 
 -- ============================================================================
 -- == Literals
@@ -206,16 +203,27 @@ literal = bool
 
 type LangExpr = Expr () (Pattern ()) (Binding (Pattern ())) [Pattern ()] (Op1 ()) (Op2 ())
 
+dotSuffix :: Parser (LangExpr -> LangExpr)
+dotSuffix = do
+    item <- symbol "." *> expr
+    pure $ \e -> 
+        case project item of
+            EDot () f g -> dotExpr () (dotExpr () e f) g
+            _           -> dotExpr () e item
+
 expr :: Parser LangExpr
-expr = makeExprParser parser operator
-  where
-    parser :: Parser LangExpr
-    parser = do
-        tok <- some exprToken
-        case tok of
-            [e] -> pure e
-            []  -> fail "Not a valid expression"
-            es  -> pure (appExpr () es)
+expr = makeExprParser exprToken operator
+
+--expr :: Parser LangExpr
+--expr = makeExprParser parser operator
+--  where
+--    parser :: Parser LangExpr
+--    parser = do
+--        tok <- some exprToken
+--        case tok of
+--            [e] -> pure e
+--            []  -> fail "Not a valid expression"
+--            es  -> pure (appExpr () es)
 
 exprToken :: Parser LangExpr
 exprToken = ifClause 
@@ -228,7 +236,10 @@ exprToken = ifClause
     <|> listExpr
     <|> recordExpr
     <|> tupleExpr
-    <|> identifier
+--    <|> identifier
+    <|> (varExpr () <$> name)
+    <|> (conExpr () <$> constructor_ <*> pure [])
+    <|> parens expr
 
 listExpr :: Parser LangExpr
 listExpr = do
@@ -280,8 +291,8 @@ lambda = do
     body <- symbol "=>" *> expr
     pure (lamExpr () pats body)
 
-identifier :: Parser LangExpr
-identifier = varExpr () <$> word (withInitial letterChar)
+--identifier :: Parser LangExpr
+--identifier = varExpr () <$> word (withInitial letterChar)
 
 binding :: Parser (Binding (Pattern ()))
 binding = try funBinding <|> normalBinding
