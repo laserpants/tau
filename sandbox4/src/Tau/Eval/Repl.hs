@@ -136,7 +136,8 @@ typed e = do
     ast4 <- evalStateT (compileClasses (desugarOperators ast2)) []
     liftIO $ putStrLn (showTree (nodesToString (prettyAst ast4)))
     case evalSupply (compileExpr (extractType ast4)) (numSupply "$") of
-        Just c -> 
+        Just c -> do
+            liftIO $ putStrLn (showTree (nodesToString (prettyCore c)))
             pure (evalExpr c evalEnv2)
         Nothing -> 
             throwError "==fail=="
