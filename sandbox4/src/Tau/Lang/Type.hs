@@ -195,6 +195,9 @@ kTyp = embed KTyp
 kArr :: Kind -> Kind -> Kind
 kArr = embed2 KArr
 
+kCls :: Kind
+kCls = embed KCls
+
 infixr 1 `kArr`
 
 kFun :: Kind
