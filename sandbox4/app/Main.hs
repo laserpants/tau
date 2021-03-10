@@ -618,7 +618,7 @@ recN_ f s (S a) = recN_ f (f s) a
 test992 = recN (\_ (_, x:xs) -> (Just x, xs)) (Nothing, [1,2,3,4,5,6,7]) (S (S (S (S Z)))) 
 
 --nth n xs =
---  reduce Succ on 0
+--  reduce Succ init 0
 --    | (_, x :: xs) => (Some x, xs)
 --    | (_, _)       => (None, ????)
 
@@ -661,4 +661,5 @@ testfact = recN go 1 (S (S (S (S (S Z)))))
 
 -- fact = 
 --   reduce Succ init 1 | a => fromNat elem * a
+
 

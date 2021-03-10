@@ -392,6 +392,8 @@ instance MapT s t (Pattern s) (Pattern t) where
         PRec t (FieldSet fs) -> do
             fields <- traverse sequence fs
             recPat <$> f t <*> (FieldSet <$> traverse (mapTagsM f) fields)
+        PTup t elems ->
+            tupPat <$> f t <*> sequence elems
 
 instance MapT s t (Prep s) (Prep t) where
     mapTagsM f = \case

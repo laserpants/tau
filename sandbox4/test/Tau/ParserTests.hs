@@ -351,8 +351,16 @@ testParser = do
                 ]) (appExpr () [varExpr () "mu", varExpr () "xs"])) (letExpr () (BLet (varPat () "xs")) (conExpr () "(::)" [litExpr () (LInt 1), conExpr () "(::)" [litExpr () (LInt 2), conExpr () "(::)" [litExpr () (LInt 3), conExpr () "[]" []]]]) (dotExpr () (varExpr () "xs") (appExpr () [varExpr () "map", lamExpr () [varPat () "x"] (op2Expr () (OAdd ()) (varExpr () "x") (litExpr () (LInt 1)))]))))
 
         succeedParse expr "an expression"
+            "letfix len = fun [] => 0 | x :: xs => 1 + len xs in [].len"
+            (fixExpr () "len" (patExpr () [] [Clause [conPat () "[]" []] [] (litExpr () (LInt 0)), Clause [conPat () "(::)" [varPat () "x", varPat () "xs"]] [] (op2Expr () (OAdd ()) (litExpr () (LInt 1)) (appExpr () [varExpr () "len", varExpr () "xs"]))]) (dotExpr () (conExpr () "[]" []) (varExpr () "len")))
+
+        succeedParse expr "an expression"
             "letfix len = fun [] => 0 | x :: xs => 1 + len xs in [1,2,3,4,5].len"
-            (fixExpr () "len" (patExpr () [] [Clause [conPat () "[]" []] [] (litExpr () (LInt 0)), Clause [conPat () "(::)" [varPat () "x", varPat () "xs"]] [] (op2Expr () (OAdd ()) (litExpr () (LInt 1)) (appExpr () [varExpr () "len", varExpr () "xs"]))]) (dotExpr () (conExpr () "(::)" [litExpr () (LInt 1), (conExpr () "(::)" [litExpr () (LInt 2), (conExpr () "(::)" [litExpr () (LInt 3), (conExpr () "(::)" [litExpr () (LInt 4), (conExpr () "(::)" [litExpr () (LInt 5), conExpr () "[]" []])])])])]) (varExpr () "len")))
+            (fixExpr () "len" (patExpr () [] [Clause [conPat () "[]" []] [] (litExpr () (LInt 0)), Clause [conPat () "(::)" [varPat () "x", varPat () "xs"]] [] (op2Expr () (OAdd ()) (litExpr () (LInt 1)) (appExpr () [varExpr () "len", varExpr () "xs"]))]) (dotExpr () (conExpr () "(::)" [litExpr () (LInt 1), conExpr () "(::)" [litExpr () (LInt 2), conExpr () "(::)" [litExpr () (LInt 3), conExpr () "(::)" [litExpr () (LInt 4), conExpr () "(::)" [litExpr () (LInt 5), conExpr () "[]" []]]]]]) (varExpr () "len")))
+
+        succeedParse expr "an expression"
+            "let first (a, b) = a in (5, ()).first"
+            (letExpr () (BFun "first" [tupPat () [varPat () "a", varPat () "b"]]) (varExpr () "a") (dotExpr () (tupExpr () [litExpr () (LInt 5), litExpr () LUnit]) (varExpr () "first")))
 
     --  Operators
 
