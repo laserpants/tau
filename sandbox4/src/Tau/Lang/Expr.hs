@@ -393,6 +393,10 @@ instance MapT s t (Pattern s) (Pattern t) where
             fields <- traverse sequence fs
             recPat <$> f t <*> (FieldSet <$> traverse (mapTagsM f) fields)
 
+instance MapT s t (Prep s) (Prep t) where
+    mapTagsM f = \case
+        RCon t con ps -> RCon <$> f t <*> pure con <*> pure ps
+
 instance MapT s t (Binding (Pattern s)) (Binding (Pattern t)) where
     mapTagsM f = \case
         BLet p      -> BLet <$> mapTagsM f p

@@ -392,12 +392,34 @@ testExpr27 = -- fixExpr () "map" (patExpr () [] [Clause [conPat () "(::)" [varPa
     (letExpr () (BFun "map" [varPat () "f", varPat () "xs"]) (fixExpr () "mu" (patExpr () [] [Clause [conPat () "(::)" [varPat () "x", varPat () "xs"]] [] (conExpr () "(::)" [appExpr () [varExpr () "f", varExpr () "x"], appExpr () [varExpr () "mu", varExpr () "xs"]]), Clause [conPat () "[]" []] [] (conExpr () "[]" [])]) (appExpr () [varExpr () "mu", varExpr () "xs"]))
           (letExpr () (BLet (varPat () "xs")) (conExpr () "(::)" [litExpr () (LInt 1), conExpr () "(::)" [litExpr () (LInt 2), conExpr () "(::)" [litExpr () (LInt 3), conExpr () "[]" []]]]) (dotExpr () (varExpr () "xs") (appExpr () [varExpr () "map", lamExpr () [varPat () "x"] (op2Expr () (OAdd ()) (varExpr () "x") (litExpr () (LInt 1)))]))))
 
+testExpr28 :: Expr () (Pattern ()) (Binding (Pattern ())) [Pattern ()] (Op1 ()) (Op2 ())
+testExpr28 = appExpr () [patExpr () [] [Clause [conPat () "(::)" [anyPat (), anyPat ()]] [] (litExpr () (LBool True)), Clause [anyPat ()] [] (litExpr () (LBool False))], conExpr () "(::)" [litExpr () (LInt 1), conExpr () "[]" []]]
+
+-- (fun | _ :: _ => True | _ => False) []
+testExpr29 :: Expr () (Pattern ()) (Binding (Pattern ())) [Pattern ()] (Op1 ()) (Op2 ())
+testExpr29 = appExpr () [patExpr () [] [Clause [conPat () "(::)" [anyPat (), anyPat ()]] [] (litExpr () (LBool True)), Clause [anyPat ()] [] (litExpr () (LBool False))], conExpr () "[]" []]
+
+testExpr30 :: Expr () (Pattern ()) (Binding (Pattern ())) [Pattern ()] (Op1 ()) (Op2 ())
+testExpr30 = patExpr () [] [Clause [conPat () "(::)" [anyPat (), anyPat ()]] [] (litExpr () (LBool True)), Clause [varPat () "x"] [] (litExpr () (LBool False))]
+
+testExpr31 = evalSupply (compilePatterns [varExpr () "x"] 
+    [ Clause [conPat () "(::)" [anyPat (), anyPat ()]] [] (litExpr () (LBool True))
+    , Clause [varPat () "a"] [] (litExpr () (LBool False))
+--    , Clause [varPat () "a"] [] ((varExpr () "a"))
+    ]) (nameSupply "$")
+
+testExpr32 = evalSupply (compilePatterns [varExpr () "x"] 
+    [ Clause [conPat () "(::)" [anyPat (), anyPat ()]] [] (litExpr () (LBool True))
+    , Clause [conPat () "[]" []] [] (litExpr () (LBool False))
+    ]) (nameSupply "$")
+
 testX = 
-    case runTest testExpr27 of 
+    case runTest testExpr29 of 
         Left e -> error e
         Right (r, q , c, z) -> do
             putStrLn (showTree (nodesToString (prettyAst r)))
             putStrLn (showTree (nodesToString (prettyAst q)))
+            putStrLn "Core :"
             putStrLn (showTree (nodesToString (prettyCore c)))
             putStrLn (show z)
 

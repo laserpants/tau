@@ -168,6 +168,9 @@ instance Pretty (Pattern t) where
         POr  _ p1 p2          -> pretty (fst p1) <+> "or" <+> pretty (fst p2)
         PAny _                -> "_"
 
+instance Pretty (Prep t) where
+    pretty (RCon _ con ps) = pretty con <+> hsep (pretty <$> ps)
+
 conArg :: (Parens p, Pretty p) => Doc a -> p -> Doc a
 conArg out el = out <+> addParens el 
 
@@ -192,7 +195,7 @@ instance (Pretty p, Pretty q, Pretty n, Pretty o) => Pretty (Expr t p q r n o) w
         EOp2 _ op a b         -> "TODO:" <+> pretty op <+> snd a <+> snd b
         EDot _ e1 e2          -> snd e1 <> dot <> snd e2
         ERec _ _              -> "TODO:erec"
-        ETup _ _              -> "TODO:etup"
+        ETup _ elems          -> prettyTuple (snd <$> elems)
 
 -- | Pretty printer for let expressions
 prettyLet

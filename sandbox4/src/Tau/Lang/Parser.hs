@@ -379,9 +379,10 @@ kind = makeExprParser parser [[ InfixR (kArr <$ symbol "->") ]]
 
 pattern_ :: Parser (Pattern ())
 pattern_ = makeExprParser parser
-    [ [ InfixR (patternListCons <$ symbol "::") ]
+    [ 
+      [ InfixR (orPat () <$ symbol "or") ]
+    , [ InfixR (patternListCons <$ symbol "::") ]
     , [ Postfix asPattern ]
-    , [ InfixN (orPat () <$ symbol "or") ]
     ]
   where
     parser :: Parser (Pattern ())

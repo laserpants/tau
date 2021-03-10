@@ -120,11 +120,6 @@ replCommand input =
                 Right (r, _) ->
                     putStrIO (unpack (prettyPrint r))
 
-            --putStrIO (show ast)
-            --putStrIO (show ast)
-            pure ()
-
-
 typed
   :: ( MonadError String m
      , MonadIO m

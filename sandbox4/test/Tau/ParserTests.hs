@@ -178,6 +178,18 @@ testParser = do
         "(1, x) as pair"
         (asPat () "pair" (tupPat () [litPat () (LInt 1), varPat () "x"])) 
 
+    succeedParse pattern_ "a pattern"
+        "1 or 2 or 3"
+        (orPat () (litPat () (LInt 1)) (orPat () (litPat () (LInt 2)) (litPat () (LInt 3))))
+
+    succeedParse pattern_ "a pattern"
+        "1 or 2 :: xs"
+        (conPat () "(::)" [orPat () (litPat () (LInt 1)) (litPat () (LInt 2)), varPat () "xs"])
+
+    succeedParse pattern_ "a pattern"
+        "1 or 2 or 3 :: xs"
+        (conPat () "(::)" [orPat () (litPat () (LInt 1)) (orPat () (litPat () (LInt 2)) (litPat () (LInt 3))), varPat () "xs"])
+
     -- Types
 
     succeedParse type_ "a type"

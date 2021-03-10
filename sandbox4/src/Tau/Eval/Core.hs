@@ -146,10 +146,11 @@ evalPat
   -> Value m
   -> m (Value m)
 evalPat [] _ = fail "Runtime error (evalPat)"
+evalPat ((["$_"], e):_) _ = e
 evalPat ((p:ps, e):eqs) val =
     case val of
-        Data con args | p == con -> 
+        Data con args | p == con ->
             local (Env.inserts (zip ps args)) e
 
-        _ -> 
+        _ ->
             evalPat eqs val

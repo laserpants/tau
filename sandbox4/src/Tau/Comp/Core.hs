@@ -33,7 +33,9 @@ import qualified Data.Set.Monad as Set
 import qualified Data.Text as Text
 import qualified Tau.Util.Env as Env
 
-class TypeTag t where
+--class TypeTag t where
+--class (Eq t, Show t) => TypeTag t where
+class (Eq t) => TypeTag t where
     tvar  :: Name -> t
     tarr  :: t -> t -> t
     tapp  :: t -> t -> t
@@ -62,13 +64,13 @@ compileExpr =
     >=> toCore
 
 --compileExpr
---  :: (TypeTag t, MonadSupply Name m)
+--  :: (Pretty (Expr t (Prep t) Name Name Void Void), TypeTag t, MonadSupply Name m)
 --  => Expr t (Pattern t) (Binding (Pattern t)) [Pattern t] Void Void
 --  -> m Core
 --compileExpr e = do
 --    a <- expandFunPatterns e
---    traceShowM (pretty a)
---    traceShowM "1-------------------------------"
+--    --traceShowM (pretty a)
+--    --traceShowM "1-------------------------------"
 --    b <- unrollLets a
 --    traceShowM b
 --    traceShowM "2-------------------------------"
@@ -142,20 +144,20 @@ simplify = cata $ \case
     ELet t (Fix (PVar _ var)) e1 e2 ->
         letExpr t var <$> e1 <*> e2
 
-    ELet t pat e1 e2 -> do
+    ELet _ pat e1 e2 -> do
         expr <- e1
         body <- e2
         exs <- desugarPatterns [Clause [pat] [] body]
         compilePatterns [expr] exs
 
-    ELam t ps e1 -> do
+    ELam _ ps e1 -> do
         (vars, exprs, _) <- patternInfo varPat ps
         body <- e1
         expr <- desugarPatterns [Clause ps [] body] >>= compilePatterns exprs
         let toLam v t e = lamExpr (tarr t (exprTag e)) v e
         pure (foldr (uncurry toLam) expr vars)
 
-    EPat t eqs exs -> do
+    EPat _ eqs exs -> do
         exs1 <- traverse sequence exs
         join (compilePatterns <$> sequence eqs <*> desugarPatterns exs1)
 
@@ -233,13 +235,24 @@ matchAlgo (u:us) qs c =
 
         [Constructor eqs@(Clause _ _ e:_)] -> do
             qs' <- traverse (toSimpleMatch c) (consGroups eqs)
-            pure (patExpr (exprTag e) [u] qs')
+            pure $ case qs' <> [Clause [RCon (exprTag u) "$_" []] [] c | not (isError c)] of
+                []   -> c
+                qs'' -> patExpr (exprTag e) [u] qs''
+
+            --case qs' <> [Clause [RCon undefined "$_" []] [] c | Just "FAIL" /= getVar c] of
+            --    [] -> error "Baz"
+            --    _  -> pure (patExpr (exprTag e) [u] qs')
 
           where
             toSimpleMatch c ConsGroup{..} = do
                 (_, vars, pats) <- patternInfo (const id) consPatterns
                 expr <- matchAlgo (vars <> us) consClauses c
                 pure (Clause [RCon consType consName pats] [] expr)
+
+            isError :: Expr t p q r n o -> Bool
+            isError = cata $ \case
+                EVar _ var | "FAIL" == var -> True
+                _                          -> False
 
         mixed -> do
             foldrM (matchAlgo (u:us)) c (clauses <$> mixed)
@@ -367,7 +380,7 @@ toCore = cata $ \case
         exprs <- sequence exs
         pure (cApp (cVar (tupleCon (length exs)):exprs))
 
-    EPat _ eqs exs   -> do
+    EPat _ eqs exs -> do
         cs <- sequence eqs
         case cs of
             [expr] -> cPat expr <$> traverse desugarClause exs
@@ -658,4 +671,7 @@ astApply sub = mapTags (apply sub :: NodeInfo -> NodeInfo)
 
 extractType :: Ast NodeInfo Void Void -> Ast Type Void Void
 extractType = (mapTags :: (NodeInfo -> Type) -> Ast NodeInfo Void Void -> Ast Type Void Void) nodeType
+
+--toUnitType :: Expr t (Prep t) Name Name Void Void -> Expr () (Prep ()) Name Name Void Void
+--toUnitType = mapTags (const ())
 

@@ -2,6 +2,7 @@ import Tau.CompilerTests
 import Tau.CoreEvalTests
 import Tau.ParserTests
 import Tau.PatternAnomaliesTests
+import Tau.PatternCompilerTests
 import Tau.PrettyPrinterTests
 import Tau.SubstitutionTests
 import Tau.TypeInferenceTests
@@ -16,6 +17,7 @@ main =
         describe "\nType inference\n" testTypeInference
         describe "\nType substitution\n" testTypeSubstitution
         describe "\nPattern anomalies\n" testPatternAnomalies
+        describe "\nPattern compiler\n" testPatternCompiler
         describe "\nCore evaluation\n" testCoreEval
         describe "\nParser\n" testParser
         describe "\nCompiler\n" testCompiler
