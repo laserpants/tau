@@ -35,7 +35,7 @@ import qualified Tau.Util.Env as Env
 
 --class TypeTag t where
 --class (Eq t, Show t) => TypeTag t where
-class (Show t, Eq t) => TypeTag t where
+class (Eq t) => TypeTag t where
     tvar  :: Name -> t
     tarr  :: t -> t -> t
     tapp  :: t -> t -> t
@@ -149,27 +149,26 @@ simplify = cata $ \case
     ELet _ pat e1 e2 -> do
         expr <- e1
         body <- e2
-        exs <- desugarPatterns [Clause [pat] [] body]
+        exs <- expandPatterns [Clause [pat] [] body]
         compilePatterns [expr] exs
 
     ELam _ ps e1 -> do
         (vars, exprs, _) <- patternInfo varPat ps
         body <- e1
-        expr <- desugarPatterns [Clause ps [] body] >>= compilePatterns exprs
+        expr <- expandPatterns [Clause ps [] body] >>= compilePatterns exprs
         let toLam v t e = lamExpr (tarr t (exprTag e)) v e
         pure (foldr (uncurry toLam) expr vars)
 
     EPat _ eqs exs -> do
         exs1 <- traverse sequence exs
-        p <- desugarPatterns exs1
-        join (compilePatterns <$> sequence eqs <*> desugarPatterns exs1)
+        p <- expandPatterns exs1
+        join (compilePatterns <$> sequence eqs <*> expandPatterns exs1)
 
--- TODO: expandPatterns??
-desugarPatterns
+expandPatterns
   :: (TypeTag t, MonadSupply Name m)
   => [Clause (Pattern t) (Expr t p q r n o)]
   -> m [Clause (Pattern t) (Expr t p q r n o)]
-desugarPatterns = expandLitPatterns . expandOrPatterns
+expandPatterns = expandLitPatterns . expandOrPatterns
 
 expandLitPatterns
   :: (TypeTag t, MonadSupply Name m)
@@ -228,7 +227,7 @@ andExpr a b = appExpr tbool [varExpr (tarr tbool (tarr tbool tbool)) "@(&&)", a,
 -- In this stage ...
 --
 --   - ...
---   - List patterns [1, 2, 3] (so called, list literals) are trasnlated to 1 :: 2 :: 3 :: []
+--   - List patterns [1, 2, 3] (so called list literals) are translated to 1 :: 2 :: 3 :: []
 --
 matchAlgo
   :: (TypeTag t, MonadSupply Name m)
@@ -262,7 +261,7 @@ matchAlgo (u:us) qs c =
                 Clause ps exs e
 
         [Constructor eqs@(Clause _ _ e:_)] -> do
-            qs' <- traverse (toSimpleMatch c) (consGroups eqs)
+            qs' <- traverse (toSimpleMatch c) (consGroups u eqs)
             pure $ case qs' <> [Clause [RCon (exprTag u) "$_" []] [] c | not (isError c)] of
                 []   -> c
                 qs'' -> patExpr (exprTag e) [u] qs''
@@ -292,8 +291,8 @@ data ConsGroup t n o = ConsGroup
     , consClauses  :: [Clause (Pattern t) (Expr t (Prep t) Name Name n o)]
     } deriving (Show, Eq)
 
-consGroups :: (Show t) => [Clause (Pattern t) (Expr t (Prep t) Name Name n o)] -> [ConsGroup t n o]
-consGroups cs = concatMap grp (groupSortOn fst (info <$> cs))
+consGroups :: Expr t (Prep t) Name Name n o -> [Clause (Pattern t) (Expr t (Prep t) Name Name n o)] -> [ConsGroup t n o]
+consGroups u cs = concatMap grp (groupSortOn fst (info <$> cs))
   where
     grp all@((con, (t, ps, _)):_) =
         [ConsGroup con t ps (thd3 . snd <$> all)]
@@ -303,10 +302,11 @@ consGroups cs = concatMap grp (groupSortOn fst (info <$> cs))
             PCon t con ps ->
                 (con, (t, ps, Clause (ps <> qs) exs e))
 
-            PAs _ _ q ->
-                info (Clause (q:qs) exs e)
-                --(con, (t, ps, Clause (ps <> qs) exs e))
+            PAs _ as q ->
+                info (Clause (q:qs) exs (substitute as u e))
 
+--                --(con, (t, ps, Clause (ps <> qs) exs e))
+--
             --xx ->
             --    traceShow xx $ error "#"
 
@@ -362,9 +362,9 @@ patternInfo con pats = do
 
 substitute
   :: Name
-  -> Expr t (Prep t) Name Name Void Void
-  -> Expr t (Prep t) Name Name Void Void
-  -> Expr t (Prep t) Name Name Void Void
+  -> Expr t (Prep t) Name Name n o
+  -> Expr t (Prep t) Name Name n o
+  -> Expr t (Prep t) Name Name n o
 substitute name subst = para $ \case
     ELet t pat (_, e1) e2 -> letExpr t pat e1 e2'
       where
@@ -392,11 +392,10 @@ substitute name subst = para $ \case
         e -> embed e
 
 sequenceExs :: (Monad m) => [m Core] -> m Core
-sequenceExs exs = do
-    xs <- sequence exs
-    case xs of
-        [e] -> pure e
-        _   -> pure (cApp xs)
+sequenceExs = (fun <$>) . sequence where 
+    fun = \case 
+        [e] -> e
+        xs  -> cApp xs
 
 toCore :: (MonadSupply Name m) => Expr t (Prep t) Name Name Void Void -> m Core
 toCore = cata $ \case
@@ -461,6 +460,10 @@ desugarLists :: Expr t p q r n o -> Expr t p q r n o
 desugarLists = cata $ \case
     ELst t exs -> foldr (listConsExpr t) (conExpr t "[]" []) exs
     e          -> embed e
+
+-- ============================================================================
+-- Type classes
+-- ============================================================================
 
 compileClasses 
   :: (MonadError String m, MonadSupply Name m, MonadReader (ClassEnv (Ast NodeInfo (Op1 NodeInfo) (Op2 NodeInfo)), TypeEnv) m)
