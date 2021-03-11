@@ -241,9 +241,7 @@ exprToken = ifClause
     <|> parens expr
 
 listExpr :: Parser LangExpr
-listExpr = do
-    elems <- elements expr
-    pure (foldr listCons (conExpr () "[]" []) elems)
+listExpr = lstExpr () <$> elements expr
 
 tupleExpr :: Parser LangExpr
 tupleExpr = do
@@ -420,9 +418,7 @@ patternExpr = wildcardPattern
     <|> parens pattern_
 
 listPattern :: Parser (Pattern ())
-listPattern = do
-    elems <- elements pattern_
-    pure (foldr patternListCons (conPat () "[]" []) elems)
+listPattern = lstPat () <$> elements pattern_
 
 asPattern :: Parser (Pattern () -> Pattern ())
 asPattern = keyword "as" >> asPat () <$> name

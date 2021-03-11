@@ -55,7 +55,7 @@ data PatternF t a
     | PLit t Literal          -- ^ Literal pattern
     | PRec t (FieldSet t a)   -- ^ Record pattern
     | PTup t [a]              -- ^ Tuple pattern
---    | PLst t [a]              -- ^ List pattern
+    | PLst t [a]              -- ^ List pattern
     | PAs  t Name a           -- ^ As pattern
     | POr  t a a              -- ^ Or pattern
     | PAny t                  -- ^ Wildcard pattern
@@ -131,7 +131,7 @@ data ExprF t p q r n o a
     | EDot t a a              -- ^ Dot operator
     | ERec t (FieldSet t a)   -- ^ Records
     | ETup t [a]              -- ^ Tuples
---    | ELst t [a]              -- ^ List literal
+    | ELst t [a]              -- ^ List literal
 --  | EAnn Scheme a           -- ^ Type-annotated expression
     deriving (Functor, Foldable, Traversable)
 
@@ -253,6 +253,7 @@ exprTag = project >>> \case
     EDot t _ _     -> t
     ERec t _       -> t
     ETup t _       -> t
+    ELst t _       -> t
 
 setExprTag :: t -> Expr t p q r n o -> Expr t p q r n o
 setExprTag t = project >>> \case
@@ -270,6 +271,7 @@ setExprTag t = project >>> \case
     EDot _ a b     -> dotExpr t a b
     ERec _ a       -> recExpr t a
     ETup _ a       -> tupExpr t a
+    ELst _ a       -> lstExpr t a
 
 patternTag :: Pattern t -> t
 patternTag = project >>> \case
@@ -278,6 +280,7 @@ patternTag = project >>> \case
     PLit t _       -> t
     PRec t _       -> t
     PTup t _       -> t
+    PLst t _       -> t
     PAny t         -> t
     PAs  t _ _     -> t
     POr  t _ _     -> t
@@ -289,6 +292,7 @@ setPatternTag t = project >>> \case
     PLit _ a       -> litPat t a
     PRec _ s       -> recPat t s
     PTup _ a       -> tupPat t a
+    PLst _ a       -> lstPat t a
     PAny _         -> anyPat t
     PAs  _ a b     -> asPat t a b
     POr  _ a b     -> orPat t a b
@@ -324,6 +328,7 @@ patternVars = cata $ \case
     PCon _ _ rs          -> concat rs
     PRec _ (FieldSet fs) -> fieldValue =<< fs
     PTup _ elems         -> concat elems
+    PLst _ elems         -> concat elems
     POr  _ a b           -> a <> b
     PAs  _ _ a           -> a
     PLit _ _             -> []
@@ -376,6 +381,8 @@ instance
         ERec t (FieldSet fs) -> do
             fields <- traverse sequence fs
             recExpr <$> f t <*> (FieldSet <$> traverse (mapTagsM f) fields)
+        ELst t a ->
+            lstExpr <$> f t <*> sequence a 
 
 instance MapT s t (Pattern s) (Pattern t) where
     mapTagsM f = cata $ \case
@@ -396,6 +403,8 @@ instance MapT s t (Pattern s) (Pattern t) where
             recPat <$> f t <*> (FieldSet <$> traverse (mapTagsM f) fields)
         PTup t elems ->
             tupPat <$> f t <*> sequence elems
+        PLst t elems ->
+            lstPat <$> f t <*> sequence elems
 
 instance MapT s t (Prep s) (Prep t) where
     mapTagsM f = \case
@@ -463,6 +472,9 @@ recPat = embed2 PRec
 tupPat :: t -> [Pattern t] -> Pattern t
 tupPat = embed2 PTup
 
+lstPat :: t -> [Pattern t] -> Pattern t
+lstPat = embed2 PLst
+
 anyPat :: t -> Pattern t
 anyPat = embed1 PAny
 
@@ -507,3 +519,6 @@ recExpr = embed2 ERec
 
 tupExpr :: t -> [Expr t p q r n o] -> Expr t p q r n o
 tupExpr = embed2 ETup
+
+lstExpr :: t -> [Expr t p q r n o] -> Expr t p q r n o
+lstExpr = embed2 ELst
