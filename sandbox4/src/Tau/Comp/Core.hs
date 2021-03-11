@@ -35,7 +35,7 @@ import qualified Tau.Util.Env as Env
 
 --class TypeTag t where
 --class (Eq t, Show t) => TypeTag t where
-class (Eq t) => TypeTag t where
+class (Show t, Eq t) => TypeTag t where
     tvar  :: Name -> t
     tarr  :: t -> t -> t
     tapp  :: t -> t -> t
@@ -70,11 +70,12 @@ compileExpr =
 --  -> m Core
 --compileExpr e = do
 --    a <- expandFunPatterns e
+--    let aa = desugarLists a
 --    --traceShowM (pretty a)
 --    --traceShowM "1-------------------------------"
---    b <- unrollLets a
+--    b <- unrollLets aa
 --    traceShowM b
---    traceShowM "2-------------------------------"
+--    traceShowM "2-*-----------------------------"
 --    c <- simplify b
 --    traceShowM c
 --    traceShowM "3-------------------------------"
@@ -160,8 +161,10 @@ simplify = cata $ \case
 
     EPat _ eqs exs -> do
         exs1 <- traverse sequence exs
+        p <- desugarPatterns exs1
         join (compilePatterns <$> sequence eqs <*> desugarPatterns exs1)
 
+-- TODO: expandPatterns??
 desugarPatterns
   :: (TypeTag t, MonadSupply Name m)
   => [Clause (Pattern t) (Expr t p q r n o)]
@@ -194,11 +197,13 @@ expandOrPatterns :: [Clause (Pattern t) a] -> [Clause (Pattern t) a]
 expandOrPatterns = concatMap $ \(Clause ps exs e) ->
     [Clause qs exs e | qs <- traverse fork ps]
   where
+    -- TODO: cata??
     fork :: Pattern t -> [Pattern t]
     fork = project >>> \case
         PCon t con ps  -> conPat t con <$> traverse fork ps
         PTup t ps      -> tupPat t <$> traverse fork ps
         PRec t fields  -> recPat t <$> traverse fork fields
+        PLst t ps      -> lstPat t <$> traverse fork ps
         PAs  t name a  -> asPat t name <$> fork a
         POr  _ a b     -> fork a <> fork b -- need to be the same set ????
         p              -> [embed p]
@@ -211,9 +216,14 @@ compilePatterns
 compilePatterns us qs = matchAlgo us qs (varExpr (tvar "FAIL") "FAIL")
 
 andExpr :: (TypeTag t) => Expr t p q r n o -> Expr t p q r n o -> Expr t p q r n o
-andExpr x y = appExpr tbool [varExpr (tarr tbool (tarr tbool tbool)) "@(&&)", x, y]
+andExpr a b = appExpr tbool [varExpr (tarr tbool (tarr tbool tbool)) "@(&&)", a, b]
 
--- | based on the algorithm described in ...
+-- | based on similar algorithms described in ...
+--
+-- References:
+--
+--   - Augustsson L. (1985) Compiling pattern matching.
+--   - Peyton Jones, Simon & Lester, David. (2000). Implementing functional languages: a tutorial. 
 --
 -- In this stage ...
 --
@@ -232,11 +242,21 @@ matchAlgo [] (Clause [] exs e:qs) c =
     ifExpr (exprTag c) (foldr1 andExpr exs) e <$> matchAlgo [] qs c
 matchAlgo (u:us) qs c =
     case clauseGroups qs of
-        [Variable eqs] -> do
+        [Variable eqs] ->
             matchAlgo us (runSubst <$> eqs) c
           where
-            runSubst c@(Clause (Fix (PVar t name):ps) exs e) =
+            runSubst (Clause (Fix (PVar t name):ps) exs e) =
                 substitute name u <$> Clause ps exs e
+
+            runSubst (Clause (Fix (PAs _ as (Fix (PVar t name))):ps) exs e) = 
+                substitute name u . substitute as (varExpr t name) <$> Clause ps exs e
+
+            runSubst (Clause (Fix (PAs _ as (Fix (PAny t))):ps) exs e) = 
+                substitute as u <$> Clause ps exs e
+
+--            runSubst (Clause (Fix (PAs _ as (Fix PLit{})):ps) exs e) = 
+--                error "!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!"
+
             -- The remaining case is for wildcard and literal patterns
             runSubst (Clause (Fix _:ps) exs e) =
                 Clause ps exs e
@@ -272,7 +292,7 @@ data ConsGroup t n o = ConsGroup
     , consClauses  :: [Clause (Pattern t) (Expr t (Prep t) Name Name n o)]
     } deriving (Show, Eq)
 
-consGroups :: [Clause (Pattern t) (Expr t (Prep t) Name Name n o)] -> [ConsGroup t n o]
+consGroups :: (Show t) => [Clause (Pattern t) (Expr t (Prep t) Name Name n o)] -> [ConsGroup t n o]
 consGroups cs = concatMap grp (groupSortOn fst (info <$> cs))
   where
     grp all@((con, (t, ps, _)):_) =
@@ -282,6 +302,13 @@ consGroups cs = concatMap grp (groupSortOn fst (info <$> cs))
         case project (desugarPattern p) of
             PCon t con ps ->
                 (con, (t, ps, Clause (ps <> qs) exs e))
+
+            PAs _ _ q ->
+                info (Clause (q:qs) exs e)
+                --(con, (t, ps, Clause (ps <> qs) exs e))
+
+            --xx ->
+            --    traceShow xx $ error "#"
 
 desugarPattern :: Pattern t -> Pattern t
 desugarPattern = cata $ \case

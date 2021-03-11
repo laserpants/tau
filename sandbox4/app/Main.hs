@@ -413,8 +413,28 @@ testExpr32 = evalSupply (compilePatterns [varExpr () "x"]
     , Clause [conPat () "[]" []] [] (litExpr () (LBool False))
     ]) (nameSupply "$")
 
+
+testExpr33 :: Expr () (Pattern ()) (Binding (Pattern ())) [Pattern ()] (Op1 ()) (Op2 ())
+testExpr33 = 
+    patExpr () [litExpr () (LInt 2)]
+        [ Clause [ asPat () "x" (orPat () (litPat () (LInt 1)) (litPat () (LInt 2))) ] [] (varExpr () "x") ]
+
+testExpr34 :: Expr () (Pattern ()) (Binding (Pattern ())) [Pattern ()] (Op1 ()) (Op2 ())
+testExpr34 = 
+    patExpr () [litExpr () (LInt 1)]
+        [ Clause [ asPat () "x" (litPat () (LInt 1)) ] [] (varExpr () "x") 
+        , Clause [ asPat () "x" (litPat () (LInt 2)) ] [] (varExpr () "x") ]
+
+testExpr35 :: Expr () (Pattern ()) (Binding (Pattern ())) [Pattern ()] (Op1 ()) (Op2 ())
+testExpr35 = 
+    patExpr () [litExpr () (LInt 1)] [ Clause [ asPat () "x" (litPat () (LInt 1)) ] [] (varExpr () "x") ]
+
+testExpr36 :: Expr () (Pattern ()) (Binding (Pattern ())) [Pattern ()] (Op1 ()) (Op2 ())
+testExpr36 =
+    patExpr () [] [Clause [lstPat () [orPat () (litPat () (LInt 1)) (litPat () (LInt 2))]] [] (litExpr () (LInt 1))]
+
 testX = 
-    case runTest testExpr29 of 
+    case runTest testExpr33 of 
         Left e -> error e
         Right (r, q , c, z) -> do
             putStrLn (showTree (nodesToString (prettyAst r)))

@@ -263,28 +263,33 @@ inferPattern = cata $ \pat -> do
             pure (varPat (NodeInfo newTy []) var)
 
         PCon _ con ps -> do
-            (ty, qs) <- lift (lookupScheme con >>= instantiate)
+            (ty, qs) <- lookupScheme con >>= instantiate
             trs <- sequence ps
-            lift (unifyTyped ty (foldr tArr newTy (typeOf <$> trs)))
+            unifyTyped ty (foldr tArr newTy (typeOf <$> trs))
             pure (conPat (NodeInfo newTy qs) con trs)
 
         PLit _ lit -> do
-            ty <- lift (inferLiteral lit)
+            ty <- inferLiteral lit
             pure (litPat (NodeInfo ty []) lit)
 
         PRec _ fieldSet -> do
             let (_, ns, fs) = unzip3 (fieldList fieldSet)
             ps <- sequence fs
             let tfs = zipWith (\n p -> Field (patternTag p) n p) ns ps
-            lift (unifyTyped newTy (tRecord ns (typeOf <$> ps)))
+            unifyTyped newTy (tRecord ns (typeOf <$> ps))
             pure (recPat (NodeInfo newTy []) (FieldSet tfs))
 
         PTup _ elems -> do
             ps <- sequence elems
+            unifyTyped newTy (tTuple (typeOf <$> ps))
             pure (tupPat (NodeInfo newTy []) ps)
 
         PLst _ elems -> do
             ps <- sequence elems
+            t1 <- case ps of
+                []    -> newTVar kTyp
+                (p:_) -> pure (typeOf p)
+            unifyTyped newTy (tList t1)
             pure (lstPat (NodeInfo newTy []) ps)
 
         PAs  _ name pat -> do
@@ -294,8 +299,8 @@ inferPattern = cata $ \pat -> do
         POr  _ pat1 pat2 -> do
             p1 <- pat1
             p2 <- pat2
-            lift (unifyTyped newTy p1)
-            lift (unifyTyped newTy p2)
+            unifyTyped newTy p1
+            unifyTyped newTy p2
             pure (orPat (NodeInfo newTy []) p1 p2)
 
         PAny _ ->
