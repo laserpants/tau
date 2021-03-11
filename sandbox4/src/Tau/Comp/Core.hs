@@ -59,6 +59,7 @@ compileExpr
   -> m Core
 compileExpr =
     expandFunPatterns
+    >=> pure . desugarLists
     >=> unrollLets
     >=> simplify
     >=> toCore
@@ -281,6 +282,8 @@ desugarPattern = cata $ \case
         conPat t (recordCon (fieldName <$> fields)) (fieldValue <$> fields)
     PTup t elems ->
         conPat t (tupleCon (length elems)) elems
+    PLst t elems ->
+        foldr (patternCons t) (conPat t "[]" []) elems
     p ->
         embed p
 
@@ -299,6 +302,7 @@ labeledClause eq@(Clause (p:_) _ _) = f p where
         PCon{}    -> Constructor eq
         PTup{}    -> Constructor eq
         PRec{}    -> Constructor eq
+        PLst{}    -> Constructor eq
         PVar{}    -> Variable eq
         PAny{}    -> Variable eq
         PLit{}    -> Variable eq
@@ -412,11 +416,17 @@ desugarOperators = cata $ \case
     EDot t name e1   -> dotExpr t name e1
     ERec t fields    -> recExpr t fields
     ETup t exs       -> tupExpr t exs
+    ELst t exs       -> lstExpr t exs
 
   where
     prefix1 (ONeg t) = varExpr t "negate"
     prefix1 (ONot t) = varExpr t "not"
     prefix2 op = varExpr (op2Tag op) ("(" <> op2Symbol op <> ")")
+
+desugarLists :: Expr t p q r n o -> Expr t p q r n o
+desugarLists = cata $ \case
+    ELst t exs -> foldr (listCons t) (conExpr t "[]" []) exs
+    e          -> embed e
 
 compileClasses 
   :: (MonadError String m, MonadSupply Name m, MonadReader (ClassEnv (Ast NodeInfo (Op1 NodeInfo) (Op2 NodeInfo)), TypeEnv) m)
@@ -545,6 +555,7 @@ defaultMatrix = (fun =<<)
             PCon{}    -> []
             PRec{}    -> []
             PTup{}    -> []
+            PLst{}    -> []
             PLit{}    -> []
             PAs _ _ q -> fun (q:ps)
             POr _ a b -> fun (a:ps) <> fun (b:ps)
@@ -568,6 +579,11 @@ specialized name ts = concatMap rec
             PTup t elems -> do
                 -- TODO: DRY
                 let q = conPat t (tupleCon (length elems)) elems
+                rec (q:ps)
+
+            PLst t elems -> do
+                -- TODO: DRY
+                let q = foldr (patternCons t) (conPat t "[]" []) elems
                 rec (q:ps)
 
             PAs _ _ q ->
@@ -597,6 +613,10 @@ getA = project >>> \case
     PTup t elems ->
         -- TODO: DRY
         getA (conPat t (tupleCon (length elems)) elems)
+
+    PLst t elems ->
+        -- TODO: DRY
+        getA (foldr (patternCons t) (conPat t "[]" []) elems)
 
     PAs _ _ a -> 
         getA a

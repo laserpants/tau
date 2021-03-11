@@ -34,6 +34,9 @@ prettyAst = para $ \case
         Node (pretty (recordCon (fieldName <$> fields)) <+> colon <+> pretty t) 
              (prettyFieldTree <$> fields)
 
+    ELst t elems ->
+        Node (prettyList_ (pretty . fst <$> elems) <+> colon <+> pretty t) []
+
     a -> case snd <$> a of
 
         EVar t var -> 

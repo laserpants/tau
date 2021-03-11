@@ -185,6 +185,7 @@ instance Pretty (Pattern t) where
         PLit _ lit            -> pretty lit
         PRec _ fields         -> prettyRecord equals (snd <$> fields)
         PTup _ elems          -> prettyTuple (snd <$> elems)
+        PLst _ elems          -> prettyList_ (snd <$> elems)
         PAs  _ name p         -> pretty (fst p) <+> "as" <+> pretty name
         POr  _ p1 p2          -> pretty (fst p1) <+> "or" <+> pretty (fst p2)
         PAny _                -> "_"
@@ -217,6 +218,7 @@ instance (Pretty p, Pretty q, Pretty n, Pretty o) => Pretty (Expr t p q r n o) w
         EDot _ e1 e2          -> snd e1 <> dot <> snd e2
         ERec _ _              -> "TODO:erec"
         ETup _ elems          -> prettyTuple (snd <$> elems)
+        ELst _ elems          -> prettyList_ (snd <$> elems)
 
 -- | Pretty printer for let expressions
 prettyLet
@@ -272,6 +274,8 @@ prettyRecord sep fset
 prettyTuple :: [Doc a] -> Doc a
 prettyTuple = parens . commaSep
 
+prettyList_ :: [Doc a] -> Doc a
+prettyList_ = brackets . commaSep
 
 instance Pretty Core where
     pretty = para $ \case

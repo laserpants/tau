@@ -46,8 +46,8 @@ instance Substitutable NodeInfo Type where
 instance (Free t) => Free (NodeInfoT t) where
     free = free . nodeType
 
-instance Typed NodeInfo where
-    typeOf = nodeType
+instance (Typed t) => Typed (NodeInfoT t) where
+    typeOf = typeOf . nodeType
 
 instance (Typed t) => Typed (Ast t n o) where
     typeOf = typeOf . exprTag
@@ -211,6 +211,14 @@ infer = cata $ \expr -> do
             unifyTyped newTy (tTuple (typeOf <$> tes))
             pure (tupExpr (NodeInfo newTy []) tes)
 
+        ELst _ elems -> do
+            tes <- sequence elems
+            t1 <- case tes of
+                []    -> newTVar kTyp
+                (e:_) -> pure (typeOf e)
+            unifyTyped newTy (tList t1)
+            pure (lstExpr (NodeInfo newTy []) tes)
+
         -- EAnn Scheme a           
 
 inferLiteral :: (Monad m) => Literal -> m Type
@@ -274,6 +282,10 @@ inferPattern = cata $ \pat -> do
         PTup _ elems -> do
             ps <- sequence elems
             pure (tupPat (NodeInfo newTy []) ps)
+
+        PLst _ elems -> do
+            ps <- sequence elems
+            pure (lstPat (NodeInfo newTy []) ps)
 
         PAs  _ name pat -> do
             tell [(name, newTy)]

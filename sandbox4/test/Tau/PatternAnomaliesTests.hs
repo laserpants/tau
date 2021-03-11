@@ -165,6 +165,8 @@ testPatternAnomalies = do
         , [anyPat ()]
         ]
 
+    -- Tuple patterns
+
     nonExhaustivePatterns
         [ [tupPat () [litPat () (LInt 1), litPat () (LInt 2)]]
         ]
@@ -201,6 +203,8 @@ testPatternAnomalies = do
         , [tupPat () [conPat () "Nil" [], anyPat ()]]
         , [anyPat ()]
         ]
+
+    -- Record patterns
 
     nonExhaustivePatterns
         [ [recPat () (fieldSet [Field () "x" (litPat () (LInt 3)), Field () "y" (litPat () (LInt 4))])]
@@ -272,6 +276,21 @@ testPatternAnomalies = do
                   [ Field () "a" (litPat () (LInt 6))
                   ]))
               ])]
+        ]
+
+    -- List patterns
+
+    nonExhaustivePatterns
+        [ [lstPat () [litPat () (LInt 1), litPat () (LInt 2)]]
+        ]
+
+    nonExhaustivePatterns
+        [ [lstPat () [varPat () "x", litPat () (LInt 2)]]
+        ]
+
+    exhaustivePatterns
+        [ [lstPat () [varPat () "x", litPat () (LInt 2)]]
+        , [anyPat ()]
         ]
 
     -- Or-patterns

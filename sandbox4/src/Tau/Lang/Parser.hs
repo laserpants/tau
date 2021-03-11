@@ -119,7 +119,7 @@ operator =
       , InfixL (op2Expr () (OSub ()) <$ symbol "-")
       ]
       -- 5
-    , [ InfixR (listCons <$ symbol "::")
+    , [ InfixR (listCons () <$ symbol "::")
       ]
       -- 4
     , [ InfixN (op2Expr () (OEq ()) <$ symbol "==")
@@ -151,9 +151,6 @@ app e f =
         ECon _ con as -> conExpr () con (as <> [f])
         EApp _ es     -> appExpr () (es <> [f])
         _             -> appExpr () [e, f]
-
-listCons :: Expr () p q r n o -> Expr () p q r n o -> Expr () p q r n o
-listCons hd tl = conExpr () "(::)" [hd, tl]
 
 -- ============================================================================
 -- == Literals
@@ -393,7 +390,7 @@ pattern_ :: Parser (Pattern ())
 pattern_ = makeExprParser parser
     [ 
       [ InfixR (orPat () <$ symbol "or") ]
-    , [ InfixR (patternListCons <$ symbol "::") ]
+    , [ InfixR (patternCons () <$ symbol "::") ]
     , [ Postfix asPattern ]
     ]
   where
@@ -423,9 +420,6 @@ listPattern = lstPat () <$> elements pattern_
 asPattern :: Parser (Pattern () -> Pattern ())
 asPattern = keyword "as" >> asPat () <$> name
 
-patternListCons :: Pattern () -> Pattern () -> Pattern ()
-patternListCons hd tl = conPat () "(::)" [hd, tl]
-
 --pattern_ :: Parser (Pattern ())
 --pattern_ = do
 --    tok <- some patternToken
@@ -437,7 +431,7 @@ patternListCons hd tl = conPat () "(::)" [hd, tl]
 --
 --patternToken :: Parser (Pattern ())
 --patternToken = makeExprParser patternExpr
---    [ [ InfixR (patternListCons <$ symbol "::") ]
+--    [ [ InfixR (patternCons <$ symbol "::") ]
 --    , [ Postfix asPattern ]
 --    , [ InfixN (orPat () <$ symbol "or") ]
 --    ]
@@ -445,8 +439,8 @@ patternListCons hd tl = conPat () "(::)" [hd, tl]
 --asPattern :: Parser (Pattern () -> Pattern ())
 --asPattern = keyword "as" >> asPat () <$> name
 --
---patternListCons :: Pattern () -> Pattern () -> Pattern ()
---patternListCons hd tl = conPat () "(::)" [hd, tl]
+--patternCons :: Pattern () -> Pattern () -> Pattern ()
+--patternCons hd tl = conPat () "(::)" [hd, tl]
 --
 --patternExpr :: Parser (Pattern ())
 --patternExpr = varPattern
