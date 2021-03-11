@@ -55,6 +55,7 @@ data PatternF t a
     | PLit t Literal          -- ^ Literal pattern
     | PRec t (FieldSet t a)   -- ^ Record pattern
     | PTup t [a]              -- ^ Tuple pattern
+--    | PLst t [a]              -- ^ List pattern
     | PAs  t Name a           -- ^ As pattern
     | POr  t a a              -- ^ Or pattern
     | PAny t                  -- ^ Wildcard pattern
@@ -130,6 +131,7 @@ data ExprF t p q r n o a
     | EDot t a a              -- ^ Dot operator
     | ERec t (FieldSet t a)   -- ^ Records
     | ETup t [a]              -- ^ Tuples
+--    | ELst t [a]              -- ^ List literal
 --  | EAnn Scheme a           -- ^ Type-annotated expression
     deriving (Functor, Foldable, Traversable)
 
