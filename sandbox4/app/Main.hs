@@ -635,8 +635,9 @@ fromNat = recN_ go 0 where go s = s + 1
 --     | s => s + 1
 
 -- length = 
---   reduce Cons init 0 
---     | s => s + 1
+--   Cons.reduce 
+--     = 0 
+--     | s => s + 1 
 
 -- length = rec Cons 
 

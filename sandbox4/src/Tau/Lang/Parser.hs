@@ -260,6 +260,7 @@ recordExpr = recExpr () <$> fields "=" expr
 -- TODO: Allow lambda symbol ?
 funExpr :: Parser LangExpr
 funExpr = do
+    -- void (symbol "\\") <|> keyword "fun" 
     keyword "fun" 
     patExpr () [] <$> ((:) <$> clause (void (optional pipe)) <*> many (clause pipe))
 
