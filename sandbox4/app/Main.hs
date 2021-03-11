@@ -664,3 +664,4 @@ testfact = recN go 1 (S (S (S (S (S Z)))))
 --   reduce Succ init 1 | a => fromNat elem * a
 
 
+-- type Nat = Zero | Succ Nat

@@ -230,13 +230,12 @@ exprToken = ifClause
     <|> fixBinding
     <|> letBinding
     <|> matchWith
-    <|> funExpr
     <|> lambda
+    <|> funExpr
     <|> literalExpr
     <|> listExpr
     <|> recordExpr
     <|> tupleExpr
---    <|> identifier
     <|> (varExpr () <$> name)
     <|> (conExpr () <$> constructor_ <*> pure [])
     <|> parens expr
@@ -257,12 +256,22 @@ tupleExpr = do
 recordExpr :: Parser LangExpr
 recordExpr = recExpr () <$> fields "=" expr
 
--- TODO: Allow lambda symbol ?
 funExpr :: Parser LangExpr
 funExpr = do
-    -- void (symbol "\\") <|> keyword "fun" 
     keyword "fun" 
-    patExpr () [] <$> ((:) <$> clause (void (optional pipe)) <*> many (clause pipe))
+    patExpr () [] <$> clauses_
+
+lambda :: Parser LangExpr
+lambda = do
+    void (symbol "\\")
+    try simple <|> patExpr () [] <$> clauses_
+  where
+    simple = do
+        pats <- some patternExpr <* symbol "=>" 
+        lamExpr () pats <$> expr <* notFollowedBy (symbol "|")
+        
+clauses_ :: Parser [Clause (Pattern ()) LangExpr]
+clauses_ = (:) <$> clause (void (optional pipe)) <*> many (clause pipe)
 
 matchWith :: Parser LangExpr
 matchWith = do
@@ -284,13 +293,6 @@ clause sym = do
 
 whens :: Parser [LangExpr]
 whens = keyword "when" *> (pure <$> expr)
-
-lambda :: Parser LangExpr
-lambda = do
-    void (symbol "\\")
-    pats <- some patternExpr
-    body <- symbol "=>" *> expr
-    pure (lamExpr () pats body)
 
 --identifier :: Parser LangExpr
 --identifier = varExpr () <$> word (withInitial letterChar)

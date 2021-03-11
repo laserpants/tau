@@ -408,6 +408,12 @@ testParser = do
         --   in 
         --     withDefault 0 [1,2,3].head"
 
+        succeedParse expr "an expression"
+            "let withDefault default = \\None => default | Some value => value in let head = \\[] => None | x :: _ => Some x in withDefault 0 [1,2,3].head"
+            (letExpr () (BFun "withDefault" [varPat () "default"]) (patExpr () [] [Clause [conPat () "None" []] [] (varExpr () "default"), Clause [conPat () "Some" [varPat () "value"]] [] (varExpr () "value")])
+                (letExpr () (BLet (varPat () "head")) (patExpr () [] [Clause [conPat () "[]" []] [] (conExpr () "None" []), Clause [conPat () "(::)" [varPat () "x", anyPat ()]] [] (conExpr () "Some" [varExpr () "x"])])
+                    (appExpr () [varExpr () "withDefault", litExpr () (LInt 0), dotExpr () (conExpr () "(::)" [litExpr () (LInt 1), conExpr () "(::)" [litExpr () (LInt 2), conExpr () "(::)" [litExpr () (LInt 3), conExpr () "[]" []]]]) (varExpr () "head")])))
+
     --  Operators
 
     describe "\nOperators\n" $ do
