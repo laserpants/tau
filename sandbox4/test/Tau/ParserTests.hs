@@ -276,15 +276,15 @@ testParser = do
 
         succeedParse expr "an expression"
             "[]"
-            (conExpr () "[]" [])
+            (lstExpr () [])
 
         succeedParse expr "an expression"
             "1 :: 2 :: 3 :: []"
-            (conExpr () "(::)" [litExpr () (LInt 1), conExpr () "(::)" [litExpr () (LInt 2), conExpr () "(::)" [litExpr () (LInt 3), conExpr () "[]" []]]])
+            (conExpr () "(::)" [litExpr () (LInt 1), conExpr () "(::)" [litExpr () (LInt 2), conExpr () "(::)" [litExpr () (LInt 3), lstExpr () []]]])
 
         succeedParse expr "an expression"
             "[1,2,3]"
-            (conExpr () "(::)" [litExpr () (LInt 1), conExpr () "(::)" [litExpr () (LInt 2), conExpr () "(::)" [litExpr () (LInt 3), conExpr () "[]" []]]])
+            (lstExpr () [litExpr () (LInt 1), litExpr () (LInt 2), litExpr () (LInt 3)])
 
     describe "\nTuples\n" $ do
 
@@ -314,7 +314,7 @@ testParser = do
 
         succeedParse expr "an expression"
             "(\\xs => match xs with | (x :: xs) => x) [1,2,3]"
-            (appExpr () [lamExpr () [varPat () "xs"] (patExpr () [varExpr () "xs"] [Clause [conPat () "(::)" [varPat () "x", varPat () "xs"]] [] (varExpr () "x")]), conExpr () "(::)" [litExpr () (LInt 1), conExpr () "(::)" [litExpr () (LInt 2), conExpr () "(::)" [litExpr () (LInt 3), conExpr () "[]" []]]]])
+            (appExpr () [lamExpr () [varPat () "xs"] (patExpr () [varExpr () "xs"] [Clause [conPat () "(::)" [varPat () "x", varPat () "xs"]] [] (varExpr () "x")]), lstExpr () [litExpr () (LInt 1), litExpr () (LInt 2), litExpr () (LInt 3)]])
 
     describe "\nConstructors\n" $ do
 
@@ -332,41 +332,41 @@ testParser = do
 
         succeedParse expr "an expression"
             "(fun | (x :: xs) => x) [1,2,3]"
-            (appExpr () [patExpr () [] [Clause [conPat () "(::)" [varPat () "x", varPat () "xs"]] [] (varExpr () "x")], conExpr () "(::)" [litExpr () (LInt 1), conExpr () "(::)" [litExpr () (LInt 2), conExpr () "(::)" [litExpr () (LInt 3), conExpr () "[]" []]]]])
+            (appExpr () [patExpr () [] [Clause [conPat () "(::)" [varPat () "x", varPat () "xs"]] [] (varExpr () "x")], lstExpr () [litExpr () (LInt 1), litExpr () (LInt 2), litExpr () (LInt 3)]])
 
         succeedParse expr "an expression"
             "(fun (x :: xs) => x) [1,2,3]"
-            (appExpr () [patExpr () [] [Clause [conPat () "(::)" [varPat () "x", varPat () "xs"]] [] (varExpr () "x")], conExpr () "(::)" [litExpr () (LInt 1), conExpr () "(::)" [litExpr () (LInt 2), conExpr () "(::)" [litExpr () (LInt 3), conExpr () "[]" []]]]])
+            (appExpr () [patExpr () [] [Clause [conPat () "(::)" [varPat () "x", varPat () "xs"]] [] (varExpr () "x")], lstExpr () [litExpr () (LInt 1), litExpr () (LInt 2), litExpr () (LInt 3)]])
 
         succeedParse expr "an expression"
             "(fun x :: xs => x) [1,2,3]"
-            (appExpr () [patExpr () [] [Clause [conPat () "(::)" [varPat () "x", varPat () "xs"]] [] (varExpr () "x")], conExpr () "(::)" [litExpr () (LInt 1), conExpr () "(::)" [litExpr () (LInt 2), conExpr () "(::)" [litExpr () (LInt 3), conExpr () "[]" []]]]])
+            (appExpr () [patExpr () [] [Clause [conPat () "(::)" [varPat () "x", varPat () "xs"]] [] (varExpr () "x")], lstExpr () [litExpr () (LInt 1), litExpr () (LInt 2), litExpr () (LInt 3)]])
 
         succeedParse expr "an expression"
             "fun [] => [] | y :: ys => f y :: mu ys"
-            (patExpr () [] [Clause [conPat () "[]" []] [] (conExpr () "[]" []), Clause [conPat () "(::)" [varPat () "y", varPat () "ys"]] [] (conExpr () "(::)" [appExpr () [varExpr () "f", varExpr () "y"], appExpr () [varExpr () "mu", varExpr () "ys"]])])
+            (patExpr () [] [Clause [conPat () "[]" []] [] (lstExpr () []), Clause [conPat () "(::)" [varPat () "y", varPat () "ys"]] [] (conExpr () "(::)" [appExpr () [varExpr () "f", varExpr () "y"], appExpr () [varExpr () "mu", varExpr () "ys"]])])
 
         succeedParse expr "an expression"
             "letfix mu = fun [] => [] | y :: ys => f y :: mu ys in mu xs"
             (fixExpr () "mu" (patExpr () [] 
-                [ Clause [conPat () "[]" []] [] (conExpr () "[]" [])
+                [ Clause [conPat () "[]" []] [] (lstExpr () [])
                 , Clause [conPat () "(::)" [varPat () "y", varPat () "ys"]] [] (conExpr () "(::)" [appExpr () [varExpr () "f", varExpr () "y"], appExpr () [varExpr () "mu", varExpr () "ys"]])
                 ]) (appExpr () [varExpr () "mu", varExpr () "xs"]))
 
         succeedParse expr "an expression"
             "let map f xs = letfix mu = fun [] => [] | y :: ys => f y :: mu ys in mu xs in let xs = [1, 2, 3] in xs.map (\\x => x + 1)"
             (letExpr () (BFun "map" [varPat () "f", varPat () "xs"]) (fixExpr () "mu" (patExpr () [] 
-                [ Clause [conPat () "[]" []] [] (conExpr () "[]" [])
+                [ Clause [conPat () "[]" []] [] (lstExpr () [])
                 , Clause [conPat () "(::)" [varPat () "y", varPat () "ys"]] [] (conExpr () "(::)" [appExpr () [varExpr () "f", varExpr () "y"], appExpr () [varExpr () "mu", varExpr () "ys"]])
-                ]) (appExpr () [varExpr () "mu", varExpr () "xs"])) (letExpr () (BLet (varPat () "xs")) (conExpr () "(::)" [litExpr () (LInt 1), conExpr () "(::)" [litExpr () (LInt 2), conExpr () "(::)" [litExpr () (LInt 3), conExpr () "[]" []]]]) (dotExpr () (varExpr () "xs") (appExpr () [varExpr () "map", lamExpr () [varPat () "x"] (op2Expr () (OAdd ()) (varExpr () "x") (litExpr () (LInt 1)))]))))
+                ]) (appExpr () [varExpr () "mu", varExpr () "xs"])) (letExpr () (BLet (varPat () "xs")) (conExpr () "(::)" [litExpr () (LInt 1), conExpr () "(::)" [litExpr () (LInt 2), conExpr () "(::)" [litExpr () (LInt 3), lstExpr () []]]]) (dotExpr () (varExpr () "xs") (appExpr () [varExpr () "map", lamExpr () [varPat () "x"] (op2Expr () (OAdd ()) (varExpr () "x") (litExpr () (LInt 1)))]))))
 
         succeedParse expr "an expression"
             "letfix len = fun [] => 0 | x :: xs => 1 + len xs in [].len"
-            (fixExpr () "len" (patExpr () [] [Clause [conPat () "[]" []] [] (litExpr () (LInt 0)), Clause [conPat () "(::)" [varPat () "x", varPat () "xs"]] [] (op2Expr () (OAdd ()) (litExpr () (LInt 1)) (appExpr () [varExpr () "len", varExpr () "xs"]))]) (dotExpr () (conExpr () "[]" []) (varExpr () "len")))
+            (fixExpr () "len" (patExpr () [] [Clause [conPat () "[]" []] [] (litExpr () (LInt 0)), Clause [conPat () "(::)" [varPat () "x", varPat () "xs"]] [] (op2Expr () (OAdd ()) (litExpr () (LInt 1)) (appExpr () [varExpr () "len", varExpr () "xs"]))]) (dotExpr () (lstExpr () []) (varExpr () "len")))
 
         succeedParse expr "an expression"
             "letfix len = fun [] => 0 | x :: xs => 1 + len xs in [1,2,3,4,5].len"
-            (fixExpr () "len" (patExpr () [] [Clause [conPat () "[]" []] [] (litExpr () (LInt 0)), Clause [conPat () "(::)" [varPat () "x", varPat () "xs"]] [] (op2Expr () (OAdd ()) (litExpr () (LInt 1)) (appExpr () [varExpr () "len", varExpr () "xs"]))]) (dotExpr () (conExpr () "(::)" [litExpr () (LInt 1), conExpr () "(::)" [litExpr () (LInt 2), conExpr () "(::)" [litExpr () (LInt 3), conExpr () "(::)" [litExpr () (LInt 4), conExpr () "(::)" [litExpr () (LInt 5), conExpr () "[]" []]]]]]) (varExpr () "len")))
+            (fixExpr () "len" (patExpr () [] [Clause [conPat () "[]" []] [] (litExpr () (LInt 0)), Clause [conPat () "(::)" [varPat () "x", varPat () "xs"]] [] (op2Expr () (OAdd ()) (litExpr () (LInt 1)) (appExpr () [varExpr () "len", varExpr () "xs"]))]) (dotExpr () (conExpr () "(::)" [litExpr () (LInt 1), conExpr () "(::)" [litExpr () (LInt 2), conExpr () "(::)" [litExpr () (LInt 3), conExpr () "(::)" [litExpr () (LInt 4), conExpr () "(::)" [litExpr () (LInt 5), lstExpr () []]]]]]) (varExpr () "len")))
 
         succeedParse expr "an expression"
             "let first (a, b) = a in (5, ()).first"
@@ -382,7 +382,7 @@ testParser = do
 
         succeedParse expr "an expression"
             "withDefault 0 [1,2,3].head"
-            (appExpr () [varExpr () "withDefault", litExpr () (LInt 0), dotExpr () (conExpr () "(::)" [litExpr () (LInt 1), conExpr () "(::)" [litExpr () (LInt 2), conExpr () "(::)" [litExpr () (LInt 3), conExpr () "[]" []]]]) (varExpr () "head")])
+            (appExpr () [varExpr () "withDefault", litExpr () (LInt 0), dotExpr () (conExpr () "(::)" [litExpr () (LInt 1), conExpr () "(::)" [litExpr () (LInt 2), conExpr () "(::)" [litExpr () (LInt 3), lstExpr () []]]]) (varExpr () "head")])
 
         -- let withDefault(default) = fun 
         --   | None       => default
@@ -398,7 +398,7 @@ testParser = do
             "let withDefault default = fun None => default | Some value => value in let head = fun [] => None | x :: _ => Some x in withDefault 0 [1,2,3].head"
             (letExpr () (BFun "withDefault" [varPat () "default"]) (patExpr () [] [Clause [conPat () "None" []] [] (varExpr () "default"), Clause [conPat () "Some" [varPat () "value"]] [] (varExpr () "value")])
                 (letExpr () (BLet (varPat () "head")) (patExpr () [] [Clause [conPat () "[]" []] [] (conExpr () "None" []), Clause [conPat () "(::)" [varPat () "x", anyPat ()]] [] (conExpr () "Some" [varExpr () "x"])])
-                    (appExpr () [varExpr () "withDefault", litExpr () (LInt 0), dotExpr () (conExpr () "(::)" [litExpr () (LInt 1), conExpr () "(::)" [litExpr () (LInt 2), conExpr () "(::)" [litExpr () (LInt 3), conExpr () "[]" []]]]) (varExpr () "head")])))
+                    (appExpr () [varExpr () "withDefault", litExpr () (LInt 0), dotExpr () (conExpr () "(::)" [litExpr () (LInt 1), conExpr () "(::)" [litExpr () (LInt 2), conExpr () "(::)" [litExpr () (LInt 3), lstExpr () []]]]) (varExpr () "head")])))
 
         -- let withDefault(default) = \None => default | Some value => value 
         -- in 
@@ -412,7 +412,7 @@ testParser = do
             "let withDefault default = \\None => default | Some value => value in let head = \\[] => None | x :: _ => Some x in withDefault 0 [1,2,3].head"
             (letExpr () (BFun "withDefault" [varPat () "default"]) (patExpr () [] [Clause [conPat () "None" []] [] (varExpr () "default"), Clause [conPat () "Some" [varPat () "value"]] [] (varExpr () "value")])
                 (letExpr () (BLet (varPat () "head")) (patExpr () [] [Clause [conPat () "[]" []] [] (conExpr () "None" []), Clause [conPat () "(::)" [varPat () "x", anyPat ()]] [] (conExpr () "Some" [varExpr () "x"])])
-                    (appExpr () [varExpr () "withDefault", litExpr () (LInt 0), dotExpr () (conExpr () "(::)" [litExpr () (LInt 1), conExpr () "(::)" [litExpr () (LInt 2), conExpr () "(::)" [litExpr () (LInt 3), conExpr () "[]" []]]]) (varExpr () "head")])))
+                    (appExpr () [varExpr () "withDefault", litExpr () (LInt 0), dotExpr () (conExpr () "(::)" [litExpr () (LInt 1), conExpr () "(::)" [litExpr () (LInt 2), conExpr () "(::)" [litExpr () (LInt 3), lstExpr () []]]]) (varExpr () "head")])))
 
     --  Operators
 

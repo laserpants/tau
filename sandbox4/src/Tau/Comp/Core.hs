@@ -213,6 +213,13 @@ compilePatterns us qs = matchAlgo us qs (varExpr (tvar "FAIL") "FAIL")
 andExpr :: (TypeTag t) => Expr t p q r n o -> Expr t p q r n o -> Expr t p q r n o
 andExpr x y = appExpr tbool [varExpr (tarr tbool (tarr tbool tbool)) "@(&&)", x, y]
 
+-- | based on the algorithm described in ...
+--
+-- In this stage ...
+--
+--   - ...
+--   - List patterns [1, 2, 3] (so called, list literals) are trasnlated to 1 :: 2 :: 3 :: []
+--
 matchAlgo
   :: (TypeTag t, MonadSupply Name m)
   => [Expr t (Prep t) Name Name Void Void]
@@ -283,7 +290,7 @@ desugarPattern = cata $ \case
     PTup t elems ->
         conPat t (tupleCon (length elems)) elems
     PLst t elems ->
-        foldr (patternCons t) (conPat t "[]" []) elems
+        foldr (listConsPat t) (conPat t "[]" []) elems
     p ->
         embed p
 
@@ -425,7 +432,7 @@ desugarOperators = cata $ \case
 
 desugarLists :: Expr t p q r n o -> Expr t p q r n o
 desugarLists = cata $ \case
-    ELst t exs -> foldr (listCons t) (conExpr t "[]" []) exs
+    ELst t exs -> foldr (listConsExpr t) (conExpr t "[]" []) exs
     e          -> embed e
 
 compileClasses 
@@ -528,6 +535,9 @@ headCons = (>>= fun)
             PTup t elems ->
                 fun (conPat t (tupleCon (length elems)) elems:ps)
 
+            PLst t elems ->
+                fun (foldr (listConsPat t) (conPat t "[]" []) elems:ps)
+
             PAs _ _ q -> 
                 fun (q:ps)
 
@@ -583,7 +593,7 @@ specialized name ts = concatMap rec
 
             PLst t elems -> do
                 -- TODO: DRY
-                let q = foldr (patternCons t) (conPat t "[]" []) elems
+                let q = foldr (listConsPat t) (conPat t "[]" []) elems
                 rec (q:ps)
 
             PAs _ _ q ->
@@ -616,7 +626,7 @@ getA = project >>> \case
 
     PLst t elems ->
         -- TODO: DRY
-        getA (foldr (patternCons t) (conPat t "[]" []) elems)
+        getA (foldr (listConsPat t) (conPat t "[]" []) elems)
 
     PAs _ _ a -> 
         getA a

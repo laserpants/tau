@@ -525,8 +525,8 @@ lstExpr = embed2 ELst
 
 -- List cons constructors
 
-listCons :: t -> Expr t p q r n o -> Expr t p q r n o -> Expr t p q r n o
-listCons t hd tl = conExpr t "(::)" [hd, tl]
+listConsExpr :: t -> Expr t p q r n o -> Expr t p q r n o -> Expr t p q r n o
+listConsExpr t hd tl = conExpr t "(::)" [hd, tl]
 
-patternCons :: t -> Pattern t -> Pattern t -> Pattern t
-patternCons t hd tl = conPat t "(::)" [hd, tl]
+listConsPat :: t -> Pattern t -> Pattern t -> Pattern t
+listConsPat t hd tl = conPat t "(::)" [hd, tl]

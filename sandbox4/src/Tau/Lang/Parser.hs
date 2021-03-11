@@ -119,7 +119,7 @@ operator =
       , InfixL (op2Expr () (OSub ()) <$ symbol "-")
       ]
       -- 5
-    , [ InfixR (listCons () <$ symbol "::")
+    , [ InfixR (listConsExpr () <$ symbol "::")
       ]
       -- 4
     , [ InfixN (op2Expr () (OEq ()) <$ symbol "==")
@@ -390,7 +390,7 @@ pattern_ :: Parser (Pattern ())
 pattern_ = makeExprParser parser
     [ 
       [ InfixR (orPat () <$ symbol "or") ]
-    , [ InfixR (patternCons () <$ symbol "::") ]
+    , [ InfixR (listConsPat () <$ symbol "::") ]
     , [ Postfix asPattern ]
     ]
   where
@@ -431,7 +431,7 @@ asPattern = keyword "as" >> asPat () <$> name
 --
 --patternToken :: Parser (Pattern ())
 --patternToken = makeExprParser patternExpr
---    [ [ InfixR (patternCons <$ symbol "::") ]
+--    [ [ InfixR (listConsPat <$ symbol "::") ]
 --    , [ Postfix asPattern ]
 --    , [ InfixN (orPat () <$ symbol "or") ]
 --    ]
@@ -439,8 +439,8 @@ asPattern = keyword "as" >> asPat () <$> name
 --asPattern :: Parser (Pattern () -> Pattern ())
 --asPattern = keyword "as" >> asPat () <$> name
 --
---patternCons :: Pattern () -> Pattern () -> Pattern ()
---patternCons hd tl = conPat () "(::)" [hd, tl]
+--listConsPat :: Pattern () -> Pattern () -> Pattern ()
+--listConsPat hd tl = conPat () "(::)" [hd, tl]
 --
 --patternExpr :: Parser (Pattern ())
 --patternExpr = varPattern
