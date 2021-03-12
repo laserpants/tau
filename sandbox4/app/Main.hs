@@ -436,6 +436,15 @@ testExpr34 =
         [ Clause [ asPat () "x" (litPat () (LInt 1)) ] [] (varExpr () "x") 
         , Clause [ asPat () "x" (litPat () (LInt 2)) ] [] (varExpr () "x") ]
 
+testExpr34b :: Expr () (Pattern ()) (Binding (Pattern ())) [Pattern ()] (Op1 ()) (Op2 ())
+testExpr34b = 
+    lamExpr () [varPat () "z"] (patExpr () [varExpr () "z"]
+        [ Clause [ asPat () "x" (litPat () (LInt 1)) ] [] (varExpr () "x") 
+        , Clause [ asPat () "x" (litPat () (LInt 2)) ] [] (varExpr () "x") 
+        , Clause [ anyPat () ] [] (litExpr () (LInt 100)) 
+        ])
+
+
 testExpr35 :: Expr () (Pattern ()) (Binding (Pattern ())) [Pattern ()] (Op1 ()) (Op2 ())
 testExpr35 = 
     patExpr () [litExpr () (LInt 1)] [ Clause [ asPat () "x" (litPat () (LInt 1)) ] [] (varExpr () "x") ]
@@ -449,7 +458,7 @@ testExpr37 =
     appExpr () [varExpr () "(>=)", litExpr () (LInt 5), litExpr () (LInt 5)]
 
 testX = 
-    case runTest testExpr33 of 
+    case runTest testExpr34b of 
         Left e -> error e
         Right (r, q , c, z) -> do
             putStrLn (showTree (nodesToString (prettyAst r)))

@@ -63,6 +63,7 @@ compileExpr =
     >=> unrollLets
     >=> simplify
     >=> toCore
+    >=> optimizeCore
 
 --compileExpr
 --  :: (Pretty (Expr t (Prep t) Name Name Void Void), TypeTag t, MonadSupply Name m)
@@ -417,6 +418,18 @@ toCore = cata $ \case
         (,) (con:ps) <$> e
     desugarClause _ =
         error "Implementation error"
+
+optimizeCore :: (MonadSupply Name m) => Core -> m Core
+optimizeCore = cata $ \case
+
+    CIf e1 e2 e3 -> do
+        a <- project <$> e2
+        b <- project <$> e3
+        if a == b || CVar "FAIL" == b
+            then e2
+            else cIf <$> e1 <*> e2 <*> e3
+
+    e -> embed <$> sequence e
 
 desugarOperators :: Expr t p q r (Op1 t) (Op2 t) -> Expr t p q r Void Void
 desugarOperators = cata $ \case

@@ -15,7 +15,8 @@ import Data.Void
 import Tau.Comp.Type.Substitution
 import Tau.Lang.Expr
 import Tau.Lang.Type
-import Tau.Util (Name, Fix(..), embed, project, cata, to, (<$$>), traceShowM)
+--import Tau.Util (Name, Fix(..), embed, project, cata, to, (<$$>), traceShowM)
+import Tau.Util hiding (parens, pipe, brackets)
 import Text.Megaparsec hiding (ParseError)
 import Text.Megaparsec.Char
 import qualified Data.Map.Strict as Map
@@ -96,12 +97,20 @@ constructor_ = word (withInitial upperChar)
 -- == Operators
 -- ============================================================================
 
+--dot1 a b = do
+--    traceShow a
+--      $ traceShow b
+--        $ dotExpr () a b
+
 operator :: [[Operator Parser (Expr () (Pattern ()) (Binding (Pattern ())) [Pattern ()] (Op1 ()) (Op2 ()))]]
 operator = 
     [
+--      [ Postfix dotSuffix
+      [ InfixL (dotExpr () <$ symbol ".")
+      --[ InfixL (dot1 <$ symbol ".")
+      ]
       -- 10
-      [ Postfix dotSuffix
-      , InfixL (app <$ spaces)
+    , [ InfixL (app <$ spaces)
       ]
       -- 9
     , [ InfixR (op2Expr () (OLArr ()) <$ symbol "<<")
@@ -145,9 +154,10 @@ operator =
       ]
     ]
 
-app :: Expr () p q r n o -> Expr () p q r n o -> Expr () p q r n o
+app :: (Show p, Show q, Show r, Show n, Show o) => Expr () p q r n o -> Expr () p q r n o -> Expr () p q r n o
 app e f =  
     case project e of
+        EDot _ a b    -> dotExpr () a (app b f)
         ECon _ con as -> conExpr () con (as <> [f])
         EApp _ es     -> appExpr () (es <> [f])
         _             -> appExpr () [e, f]

@@ -155,6 +155,10 @@ testParser = do
         (lstPat () [litPat () (LInt 1), varPat () "x"])
 
     succeedParse pattern_ "a pattern"
+        "[[x]]"
+        (lstPat () [lstPat () [varPat () "x"]])
+
+    succeedParse pattern_ "a pattern"
         "Some (Some X)"
         (conPat () "Some" [conPat () "Some" [conPat () "X" []]])
 
@@ -246,6 +250,10 @@ testParser = do
             "\\f x => f x"
             (lamExpr () [varPat () "f", varPat () "x"] (appExpr () [varExpr () "f", varExpr () "x"]))
 
+        succeedParse expr "an expression"
+            "\\f x => [x]"
+            (lamExpr () [varPat () "f", varPat () "x"] (lstExpr () [varExpr () "x"]))
+
     describe "\nLiterals\n" $ do
 
         succeedParse expr "an expression"
@@ -286,11 +294,19 @@ testParser = do
             "[1,2,3]"
             (lstExpr () [litExpr () (LInt 1), litExpr () (LInt 2), litExpr () (LInt 3)])
 
+        succeedParse expr "an expression"
+            "[()]"
+            (lstExpr () [litExpr () LUnit])
+
     describe "\nTuples\n" $ do
 
         succeedParse expr "an expression"
             "(1, 2)"
             (tupExpr () [litExpr () (LInt 1), litExpr () (LInt 2)])
+
+        succeedParse expr "an expression"
+            "([1], 2)"
+            (tupExpr () [lstExpr () [litExpr () (LInt 1)], litExpr () (LInt 2)])
 
     describe "\nRecords\n" $ do
 
@@ -373,12 +389,20 @@ testParser = do
             (letExpr () (BFun "first" [tupPat () [varPat () "a", varPat () "b"]]) (varExpr () "a") (dotExpr () (tupExpr () [litExpr () (LInt 5), litExpr () LUnit]) (varExpr () "first")))
 
         succeedParse expr "an expression"
-            "f a (b.length)"
+            "f a b.length"
             (appExpr () [varExpr () "f", varExpr () "a", dotExpr () (varExpr () "b") (varExpr () "length")])
 
         succeedParse expr "an expression"
-            "f a b.length"
-            (appExpr () [varExpr () "f", varExpr () "a", dotExpr () (varExpr () "b") (varExpr () "length")])
+            "f a.length b"
+            (appExpr () [varExpr () "f", dotExpr () (varExpr () "a") (varExpr () "length"), varExpr () "b"])
+
+        succeedParse expr "an expression"
+            "f a.length b c"
+            (appExpr () [varExpr () "f", dotExpr () (varExpr () "a") (varExpr () "length"), varExpr () "b", varExpr () "c"])
+
+        succeedParse expr "an expression"
+            "f xs.length.toString b c"
+            (appExpr () [varExpr () "f", dotExpr () (dotExpr () (varExpr () "xs") (varExpr () "length")) (varExpr () "toString"), varExpr () "b", varExpr () "c"])
 
         succeedParse expr "an expression"
             "withDefault 0 [1,2,3].head"
