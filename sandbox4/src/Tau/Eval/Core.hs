@@ -146,7 +146,8 @@ evalPat
   -> Value m
   -> m (Value m)
 evalPat [] _ = fail "Runtime error (evalPat)"
-evalPat ((["$_"], e):_) _ = e
+--evalPat ((["$_"], e):_) _ = e
+evalPat [(["$_"], e)] _ = e
 evalPat ((p:ps, e):eqs) val =
     case val of
         Data con args | p == con ->

@@ -161,7 +161,6 @@ simplify = cata $ \case
 
     EPat _ eqs exs -> do
         exs1 <- traverse sequence exs
-        p <- expandPatterns exs1
         join (compilePatterns <$> sequence eqs <*> expandPatterns exs1)
 
 expandPatterns
@@ -204,7 +203,7 @@ expandOrPatterns = concatMap $ \(Clause ps exs e) ->
         PRec t fields  -> recPat t <$> traverse fork fields
         PLst t ps      -> lstPat t <$> traverse fork ps
         PAs  t name a  -> asPat t name <$> fork a
-        POr  _ a b     -> fork a <> fork b -- need to be the same set ????
+        POr  _ a b     -> fork a <> fork b
         p              -> [embed p]
 
 compilePatterns
@@ -253,8 +252,8 @@ matchAlgo (u:us) qs c =
             runSubst (Clause (Fix (PAs _ as (Fix (PAny t))):ps) exs e) = 
                 substitute as u <$> Clause ps exs e
 
---            runSubst (Clause (Fix (PAs _ as (Fix PLit{})):ps) exs e) = 
---                error "!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!"
+            runSubst (Clause (Fix (PAs _ _ (Fix PLit{})):_) _ _) = 
+                error "Implementation error"
 
             -- The remaining case is for wildcard and literal patterns
             runSubst (Clause (Fix _:ps) exs e) =
@@ -265,10 +264,6 @@ matchAlgo (u:us) qs c =
             pure $ case qs' <> [Clause [RCon (exprTag u) "$_" []] [] c | not (isError c)] of
                 []   -> c
                 qs'' -> patExpr (exprTag e) [u] qs''
-
-            --case qs' <> [Clause [RCon undefined "$_" []] [] c | Just "FAIL" /= getVar c] of
-            --    [] -> error "Baz"
-            --    _  -> pure (patExpr (exprTag e) [u] qs')
 
           where
             toSimpleMatch c ConsGroup{..} = do
@@ -734,4 +729,3 @@ extractType = (mapTags :: (NodeInfo -> Type) -> Ast NodeInfo Void Void -> Ast Ty
 
 --toUnitType :: Expr t (Prep t) Name Name Void Void -> Expr () (Prep ()) Name Name Void Void
 --toUnitType = mapTags (const ())
-

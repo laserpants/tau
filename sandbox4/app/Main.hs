@@ -434,7 +434,7 @@ testExpr36 =
     patExpr () [] [Clause [lstPat () [orPat () (litPat () (LInt 1)) (litPat () (LInt 2))]] [] (litExpr () (LInt 1))]
 
 testX = 
-    case runTest testExpr33 of 
+    case runTest testExpr7 of 
         Left e -> error e
         Right (r, q , c, z) -> do
             putStrLn (showTree (nodesToString (prettyAst r)))
