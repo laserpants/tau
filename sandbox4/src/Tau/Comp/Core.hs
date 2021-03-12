@@ -727,7 +727,24 @@ clausesAreExhaustive = exhaustive . concatMap toMatrix where
     toMatrix (Clause ps [] _) = [ps]
     toMatrix _                = []
 
-
+checkExhaustive :: (MonadReader ConstructorEnv m) => Ast t (Op1 t) (Op2 t) -> m Bool
+checkExhaustive = cata $ \case
+    ECon _ _ exprs           -> andM exprs
+    EApp _ exprs             -> andM exprs
+    ELet _ (BLet p) e1 e2    -> exhaustive [[p]] &&^ e1 &&^ e2
+    ELet _ (BFun f ps) e1 e2 -> exhaustive [ps] &&^ e1 &&^ e2
+    EFix _ _ e1 e2           -> e1 &&^ e2
+    ELam _ ps e1             -> exhaustive [ps] &&^ e1
+    EIf _ cond tr fl         -> cond &&^ tr &&^ fl
+    EPat _ exs eqs           -> andM exs &&^ clausesAreExhaustive eqs
+    EOp1 _ _ a               -> a
+    EOp2 _ _ a b             -> a &&^ b
+    EDot _ a b               -> a &&^ b
+    ERec _ (FieldSet fields) -> andM (fieldValue <$> fields)
+    ETup _ elems             -> andM elems
+    ELst _ elems             -> andM elems
+    --  | EAnn s a 
+    _                        -> pure True
 
 astApply :: Substitution -> Ast NodeInfo (Op1 NodeInfo) (Op2 NodeInfo) -> Ast NodeInfo (Op1 NodeInfo) (Op2 NodeInfo) 
 astApply sub = mapTags (apply sub :: NodeInfo -> NodeInfo)
