@@ -67,3 +67,32 @@ withDefault default = \None => default | Some value => value
 
 (\[4] as x => [5] | _ => [100]) [43]
 
+x = 3
+  where
+    y = 4 and
+    z = 5 and
+    a = b
+
+
+headOrZero : List Int -> Int
+headOrZero xs = xs.head ? 0
+  where
+    head = 
+      fun 
+        | []     => None 
+        | x :: _ => Some x 
+  and
+    withDefault default = 
+      fun 
+        | None       => default 
+        | Some value => value 
+
+
+headOrZero : List Int -> Int
+headOrZero xs = xs.head ? 0
+  where
+    head []       = None 
+    head (x :: _) = Some x 
+  and
+    withDefault default = 
+      \(Some value) => value | None => default 
