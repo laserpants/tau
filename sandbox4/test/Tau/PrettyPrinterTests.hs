@@ -69,3 +69,4 @@ testPrettyPrinter = do
             (tupExpr () [varExpr () "x", litExpr () (LInt 5)] :: Expr () (Pattern ()) [Pattern ()] r (Op1 ()) (Op2 ()))
             "(x, 5)"
 
+    -- Pattern clauses

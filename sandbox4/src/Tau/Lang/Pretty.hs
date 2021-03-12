@@ -277,6 +277,17 @@ prettyTuple = parens . commaSep
 prettyList_ :: [Doc a] -> Doc a
 prettyList_ = brackets . commaSep
 
+instance (Pretty e) => Pretty (Clause (Pattern t) e) where
+    pretty (Clause ps exs e) = 
+        patternSeq ps <+> whens (pretty <$> exs) <> "=>" <+> pretty e
+      where
+        whens [] = ""
+        whens es = "when" <+> foldl1 (\e s -> hsep [e, "&&", s]) es <> " "
+
+patternSeq :: (Parens p, Pretty p) => [p] -> Doc a
+patternSeq []     = ""
+patternSeq (p:ps) = foldl conArg (pretty p) ps
+
 instance Pretty Core where
     pretty = para $ \case
         CVar var ->

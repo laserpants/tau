@@ -657,6 +657,12 @@ getA = project >>> \case
     _ -> 
         AAny
 
+-- |
+--
+-- References:
+--
+--   - http://moscova.inria.fr/~maranget/papers/warn/ 
+--
 useful :: (MonadReader ConstructorEnv m) => [[Pattern t]] -> [Pattern t] -> m Bool
 useful [] _   = pure True   -- Zero rows (0x0 matrix)
 useful (p1:_) qs 
@@ -695,7 +701,10 @@ useful pss (q:qs) =
         , ("#Integer",  [])
         , ("#Float",    [])
         , ("#Char",     [])
-        , ("#String",   []) ]
+        , ("#String",   []) 
+        , ("[]",        ["[]", "(::)"]) 
+        , ("(::)",      ["[]", "(::)"]) 
+        ]
 
 isTupleCon :: Name -> Bool
 isTupleCon con = Just True == (allCommas <$> stripped con)
@@ -713,6 +722,10 @@ exhaustive :: (MonadReader ConstructorEnv m) => [[Pattern t]] -> m Bool
 exhaustive []         = pure False
 exhaustive pss@(ps:_) = not <$> useful pss (anyPat . patternTag <$> ps)
 
+clausesAreExhaustive :: (MonadReader ConstructorEnv m) => [Clause (Pattern t) a] -> m Bool
+clausesAreExhaustive = exhaustive . concatMap toMatrix where
+    toMatrix (Clause ps [] _) = [ps]
+    toMatrix _                = []
 
 
 
