@@ -300,11 +300,6 @@ consGroups u cs = concatMap grp (groupSortOn fst (info <$> cs))
             PAs _ as q ->
                 info (Clause (q:qs) exs (substitute as u e))
 
---                --(con, (t, ps, Clause (ps <> qs) exs e))
---
-            --xx ->
-            --    traceShow xx $ error "#"
-
 desugarPattern :: Pattern t -> Pattern t
 desugarPattern = cata $ \case
     PRec t (FieldSet fields) ->
@@ -569,7 +564,7 @@ headCons = (>>= fun)
             POr _ a b -> 
                 fun (a:ps) <> fun (b:ps)
 
-            _  -> 
+            _ -> 
                 []
 
     prim (LBool True)  = "#True"

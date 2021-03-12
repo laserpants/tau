@@ -22,19 +22,19 @@ testValueEnv = Env.fromList
 failEval :: Core -> SpecWith ()
 failEval expr =
     describe ("The expression\n" <> prettyString expr) $
-        it "✗ fails to evaluate" $
+        it "✗ fails to evaluate\n" $
             isNothing (evalExpr expr testValueEnv)
 
 succeedEval :: Core -> Value Eval -> SpecWith ()
 succeedEval expr val =
     describe ("The expression\n" <> prettyString expr) $
-        it ("✔ evaluates to the value " <> prettyString val) $
+        it ("✔ evaluates to the value " <> prettyString val <> "\n") $
             evalExpr expr testValueEnv == Just val
 
 succeedEvalToFunction :: Core -> SpecWith ()
 succeedEvalToFunction expr =
     describe ("The expression\n" <> prettyString expr) $
-        it "✔ evaluates to a function"
+        it "✔ evaluates to a function\n"
             (Just True == (isClosure <$> evalExpr expr testValueEnv))
   where
     isClosure Closure{} = True
@@ -68,5 +68,3 @@ testCoreEval = do
     succeedEval
         (cIf (cLit (LBool False)) (cLit (LInt 1)) (cLit (LInt 2)))
         (Value (LInt 2))
-
-
