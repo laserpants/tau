@@ -120,7 +120,8 @@ infer = cata $ \expr -> do
             e1 <- local (second (Env.inserts (toScheme <$$> vs))) expr1
             t1 <- newTVar kTyp
             unifyTyped t1 (foldr tArr (typeOf e1) (typeOf <$> tps))
-            e2 <- local (second (Env.insert f (toScheme t1))) expr2
+            t <- generalize t1
+            e2 <- local (second (Env.insert f t)) expr2
             unifyTyped newTy e2
             pure (letExpr (NodeInfo newTy []) (BFun f tps) e1 e2)
 

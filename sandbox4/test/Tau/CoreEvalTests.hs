@@ -12,6 +12,8 @@ import qualified Tau.Util.Env as Env
 testValueEnv :: ValueEnv Eval
 testValueEnv = Env.fromList
     [ ("(,)"     , constructor "(,)" 2)  
+    , ("[]"      , constructor "[]" 0)  
+    , ("(::)"    , constructor "(::)" 2)  
     , ("first"   , fromJust (evalExpr first_ mempty))
     , ("second"  , fromJust (evalExpr second_ mempty))
     ]
@@ -68,3 +70,7 @@ testCoreEval = do
     succeedEval
         (cIf (cLit (LBool False)) (cLit (LInt 1)) (cLit (LInt 2)))
         (Value (LInt 2))
+
+    succeedEval
+        (cApp [cLam "x" (cPat (cVar "x") [(["[]"], cLit (LInt 0)), (["(::)", "y", "ys"], cVar "y")]), cApp [cVar "(::)", cLit (LInt 5), cApp [cVar "[]"]]])
+        (Value (LInt 5))

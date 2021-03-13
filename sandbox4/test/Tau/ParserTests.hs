@@ -143,6 +143,18 @@ testParser = do
         (conPat () "Some" [conPat () "X" []])
 
     succeedParse pattern_ "a pattern"
+        "A B C"
+        (conPat () "A" [conPat () "B" [], conPat () "C" []])
+
+    succeedParse pattern_ "a pattern"
+        "A b c"
+        (conPat () "A" [varPat () "b", varPat () "c"])
+
+    succeedParse pattern_ "a pattern"
+        "A (B C) D"
+        (conPat () "A" [conPat () "B" [conPat () "C" []], conPat () "D" []])
+
+    succeedParse pattern_ "a pattern"
         "5"
         (litPat () (LInt 5))
 
@@ -196,29 +208,43 @@ testParser = do
 
     -- Types
 
-    succeedParse type_ "a type"
-        "Int"
-        (tInt :: Type)
+    describe "\nTypes\n" $ do
 
-    succeedParse type_ "a type"
-        "List Int"
-        (tApp (tCon (kArr kTyp kTyp) "List") tInt :: Type)
+        succeedParse type_ "a type"
+            "Int"
+            (tInt :: Type)
 
-    succeedParse type_ "a type"
-        "List (List Int)"
-        (tApp (tCon (kArr kTyp kTyp) "List") (tApp (tCon (kArr kTyp kTyp) "List") tInt) :: Type)
+        succeedParse type_ "a type"
+            "List Int"
+            (tApp (tCon (kArr kTyp kTyp) "List") tInt :: Type)
 
-    succeedParse type_ "a type"
-        "List a"
-        (tApp (tCon (kArr kTyp kTyp) "List") (tVar kTyp "a") :: Type)
+        succeedParse type_ "a type"
+            "List (List Int)"
+            (tApp (tCon (kArr kTyp kTyp) "List") (tApp (tCon (kArr kTyp kTyp) "List") tInt) :: Type)
 
-    succeedParse type_ "a type"
-        "m a"
-        (tApp (tVar (kArr kTyp kTyp) "m") (tVar kTyp "a") :: Type)
+        succeedParse type_ "a type"
+            "List a"
+            (tApp (tCon (kArr kTyp kTyp) "List") (tVar kTyp "a") :: Type)
 
-    succeedParse type_ "a type"
-        "List Int -> a"
-        (tApp (tCon (kArr kTyp kTyp) "List") tInt `tArr` tVar kTyp "a" :: Type)
+        succeedParse type_ "a type"
+            "m a"
+            (tApp (tVar (kArr kTyp kTyp) "m") (tVar kTyp "a") :: Type)
+
+        succeedParse type_ "a type"
+            "List Int -> a"
+            (tApp (tCon (kArr kTyp kTyp) "List") tInt `tArr` tVar kTyp "a" :: Type)
+
+        succeedParse type_ "an expression"
+            "A B C"
+            (tApp (tApp (tCon (kArr kTyp (kArr kTyp kTyp)) "A") (tCon kTyp "B")) (tCon kTyp "C") :: Type)
+
+        succeedParse type_ "an expression"
+            "A b c"
+            (tApp (tApp (tCon (kArr kTyp (kArr kTyp kTyp)) "A") (tVar kTyp "b")) (tVar kTyp "c") :: Type)
+
+        succeedParse type_ "an exprssion"
+            "A (B C) D"
+            (tApp (tApp (tCon (kArr kTyp (kArr kTyp kTyp)) "A") (tApp (tCon (kArr kTyp kTyp) "B") (tCon kTyp "C"))) (tCon kTyp "D") :: Type)
 
     --  Expressions
 
@@ -342,6 +368,18 @@ testParser = do
             "None"
             (conExpr () "None" [])
 
+        succeedParse expr "an expression"
+            "A B C"
+            (conExpr () "A" [conExpr () "B" [], conExpr () "C" []])
+
+        succeedParse expr "an expression"
+            "A b c"
+            (conExpr () "A" [varExpr () "b", varExpr () "c"])
+
+        succeedParse expr "an exprssion"
+            "A (B C) D"
+            (conExpr () "A" [conExpr () "B" [conExpr () "C" []], conExpr () "D" []])
+
     --  Mixed expressions
 
     describe "\nMixed expressions\n" $ do
@@ -388,24 +426,24 @@ testParser = do
             "let first (a, b) = a in (5, ()).first"
             (letExpr () (BFun "first" [tupPat () [varPat () "a", varPat () "b"]]) (varExpr () "a") (dotExpr () (tupExpr () [litExpr () (LInt 5), litExpr () LUnit]) (varExpr () "first")))
 
-        succeedParse expr "an expression"
-            "f a b.length"
-            (appExpr () [varExpr () "f", varExpr () "a", dotExpr () (varExpr () "b") (varExpr () "length")])
+--        succeedParse expr "an expression"
+--            "f a b.length"
+--            (appExpr () [varExpr () "f", varExpr () "a", dotExpr () (varExpr () "b") (varExpr () "length")])
+--
+--        succeedParse expr "an expression"
+--            "f a.length b"
+--            (appExpr () [varExpr () "f", dotExpr () (varExpr () "a") (varExpr () "length"), varExpr () "b"])
+--
+--        succeedParse expr "an expression"
+--            "f a.length b c"
+--            (appExpr () [varExpr () "f", dotExpr () (varExpr () "a") (varExpr () "length"), varExpr () "b", varExpr () "c"])
+--
+--        succeedParse expr "an expression"
+--            "f xs.length.toString b c"
+--            (appExpr () [varExpr () "f", dotExpr () (dotExpr () (varExpr () "xs") (varExpr () "length")) (varExpr () "toString"), varExpr () "b", varExpr () "c"])
 
         succeedParse expr "an expression"
-            "f a.length b"
-            (appExpr () [varExpr () "f", dotExpr () (varExpr () "a") (varExpr () "length"), varExpr () "b"])
-
-        succeedParse expr "an expression"
-            "f a.length b c"
-            (appExpr () [varExpr () "f", dotExpr () (varExpr () "a") (varExpr () "length"), varExpr () "b", varExpr () "c"])
-
-        succeedParse expr "an expression"
-            "f xs.length.toString b c"
-            (appExpr () [varExpr () "f", dotExpr () (dotExpr () (varExpr () "xs") (varExpr () "length")) (varExpr () "toString"), varExpr () "b", varExpr () "c"])
-
-        succeedParse expr "an expression"
-            "withDefault 0 [1,2,3].head"
+            "withDefault 0 ([1,2,3].head)"
             (appExpr () [varExpr () "withDefault", litExpr () (LInt 0), dotExpr () (lstExpr () [litExpr () (LInt 1), litExpr () (LInt 2), litExpr () (LInt 3)]) (varExpr () "head")])
 
         -- let withDefault(default) = fun 
@@ -419,7 +457,7 @@ testParser = do
         --     withDefault 0 [1,2,3].head"
 
         succeedParse expr "an expression"
-            "let withDefault default = fun None => default | Some value => value in let head = fun [] => None | x :: _ => Some x in withDefault 0 [1,2,3].head"
+            "let withDefault default = fun None => default | Some value => value in let head = fun [] => None | x :: _ => Some x in withDefault 0 ([1,2,3].head)"
             (letExpr () (BFun "withDefault" [varPat () "default"]) (patExpr () [] [Clause [conPat () "None" []] [] (varExpr () "default"), Clause [conPat () "Some" [varPat () "value"]] [] (varExpr () "value")])
                 (letExpr () (BLet (varPat () "head")) (patExpr () [] [Clause [lstPat () []] [] (conExpr () "None" []), Clause [conPat () "(::)" [varPat () "x", anyPat ()]] [] (conExpr () "Some" [varExpr () "x"])])
                     (appExpr () [varExpr () "withDefault", litExpr () (LInt 0), dotExpr () (lstExpr () [litExpr () (LInt 1), litExpr () (LInt 2), litExpr () (LInt 3)]) (varExpr () "head")])))
@@ -433,7 +471,7 @@ testParser = do
         --     withDefault 0 [1,2,3].head"
 
         succeedParse expr "an expression"
-            "let withDefault default = \\None => default | Some value => value in let head = \\[] => None | x :: _ => Some x in withDefault 0 [1,2,3].head"
+            "let withDefault default = \\None => default | Some value => value in let head = \\[] => None | x :: _ => Some x in withDefault 0 ([1,2,3].head)"
             (letExpr () (BFun "withDefault" [varPat () "default"]) (patExpr () [] [Clause [conPat () "None" []] [] (varExpr () "default"), Clause [conPat () "Some" [varPat () "value"]] [] (varExpr () "value")])
                 (letExpr () (BLet (varPat () "head")) (patExpr () [] [Clause [lstPat () []] [] (conExpr () "None" []), Clause [conPat () "(::)" [varPat () "x", anyPat ()]] [] (conExpr () "Some" [varExpr () "x"])])
                     (appExpr () [varExpr () "withDefault", litExpr () (LInt 0), dotExpr () (lstExpr () [litExpr () (LInt 1), litExpr () (LInt 2), litExpr () (LInt 3)]) (varExpr () "head")])))

@@ -458,7 +458,7 @@ testExpr37 =
     appExpr () [varExpr () "(>=)", litExpr () (LInt 5), litExpr () (LInt 5)]
 
 testX = 
-    case runTest testExpr34b of 
+    case runTest testExpr29 of 
         Left e -> error e
         Right (r, q , c, z) -> do
             putStrLn (showTree (nodesToString (prettyAst r)))

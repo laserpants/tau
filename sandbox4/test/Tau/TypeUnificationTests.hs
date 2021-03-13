@@ -16,7 +16,7 @@ failUnifyTypes :: Type -> Type -> SpecWith ()
 failUnifyTypes t1 t2 = do
     let result = unify t1 t2
     describe (testDescription t1 t2) $
-        it "✗ fails to unify" $
+        it "✗ fails to unify\n" $
             isLeft result
 
 succeedUnifyTypes :: Type -> Type -> SpecWith ()
@@ -26,7 +26,7 @@ succeedUnifyTypes t1 t2 = do
         it "✔ yields a substitution" $
             isRight result
 
-        it "✔ and it unifies the two types" $ do
+        it "✔ and it unifies the two types\n" $ do
             let Right sub = result
             apply sub t1 == apply sub t2
 

@@ -2,6 +2,7 @@
 {-# LANGUAGE OverloadedStrings #-}
 module Tau.Lang.Parser where
 
+import Control.Arrow ((>>>))
 import Control.Monad
 import Control.Monad.Combinators.Expr
 import Data.Foldable
@@ -14,6 +15,7 @@ import Data.Tuple.Extra (first)
 import Data.Void
 import Tau.Comp.Type.Substitution
 import Tau.Lang.Expr
+import Tau.Lang.Prog
 import Tau.Lang.Type
 --import Tau.Util (Name, Fix(..), embed, project, cata, to, (<$$>), traceShowM)
 import Tau.Util hiding (parens, pipe, brackets)
@@ -346,22 +348,18 @@ literalExpr = litExpr () <$> literal
 -- ============================================================================
 
 type_ :: Parser (TypeT a)
-type_ = makeExprParser parser [[ InfixR (tArr <$ symbol "->") ]]
-  where
-    parser :: Parser (TypeT a)
+type_ = makeExprParser parser [[ InfixR (tArr <$ symbol "->") ]] where
     parser = do
-        tok <- some typeExpr
-        case tok of
-            [t]    -> pure t
-            (t:ts) -> foldlM fun t ts
+        ts <- some typeExpr
+        let kind = foldr1 kArr (fromJust . kindOf <$> ts)
+        pure (setKind kind (foldl1 tApp ts))
 
-    fun :: TypeT a -> TypeT a -> Parser (TypeT a)
-    fun (Fix (TVar kind var)) t = do
-        pure (tApp (tVar (kArr kTyp kind) var) t)
-    fun (Fix (TCon kind con)) t = do
-        pure (tApp (tCon (kArr kTyp kind) con) t)
-      where
-        Just k = kindOf t
+setKind :: Kind -> TypeT a -> TypeT a
+setKind k = project >>> \case
+    TApp t1 t2 -> tApp (setKind k t1) t2
+    TVar _ var -> tVar k var
+    TCon _ con -> tCon k con
+    t          -> embed t
 
 typeExpr :: Parser (TypeT a)
 typeExpr = tVar kTyp <$> name
@@ -538,3 +536,20 @@ fieldPairs sym parser = do
     hasDups names = length names /= length (nub names)
     field = (,) <$> name <*> (symbol sym *> parser)
 
+-- ============================================================================
+-- == Algebraic data types
+-- ============================================================================
+
+datatype :: Parser Datatype
+datatype = do
+    keyword "type"
+    tcon  <- constructor_
+    tvars <- many name <* symbol "="
+    prods <- prod `sepBy` symbol "|"
+    pure (Sum tcon tvars prods)
+
+prod :: Parser Product
+prod = do
+    data_ <- constructor_
+    types <- many typeExpr
+    pure (Prod data_ types)
