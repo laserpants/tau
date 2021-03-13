@@ -110,8 +110,8 @@ operator =
       --[ InfixL (dot1 <$ symbol ".")
       ]
       -- 10
-    , [ InfixL (app <$ spaces)
-      ]
+--    , [ InfixL (app <$ spaces)
+--      ]
       -- 9
     , [ InfixR (op2Expr () (OLArr ()) <$ symbol "<<")
       , InfixL (op2Expr () (ORArr ()) <$ symbol ">>")
@@ -157,7 +157,7 @@ operator =
 app :: (Show p, Show q, Show r, Show n, Show o) => Expr () p q r n o -> Expr () p q r n o -> Expr () p q r n o
 app e f =  
     case project e of
-        EDot _ a b    -> dotExpr () a (app b f)
+--        EDot _ a b    -> dotExpr () a (app b f)
         ECon _ con as -> conExpr () con (as <> [f])
         EApp _ es     -> appExpr () (es <> [f])
         _             -> appExpr () [e, f]
@@ -210,27 +210,27 @@ literal = bool
 
 type LangExpr = Expr () (Pattern ()) (Binding (Pattern ())) [Pattern ()] (Op1 ()) (Op2 ())
 
-dotSuffix :: Parser (LangExpr -> LangExpr)
-dotSuffix = do
-    item <- symbol "." *> expr
-    pure $ \e -> 
-        case project item of
-            EDot () f g -> dotExpr () (dotExpr () e f) g
-            _           -> dotExpr () e item
-
-expr :: Parser LangExpr
-expr = makeExprParser exprToken operator
+--dotSuffix :: Parser (LangExpr -> LangExpr)
+--dotSuffix = do
+--    item <- symbol "." *> expr
+--    pure $ \e -> 
+--        case project item of
+--            EDot () f g -> dotExpr () (dotExpr () e f) g
+--            _           -> dotExpr () e item
 
 --expr :: Parser LangExpr
---expr = makeExprParser parser operator
---  where
---    parser :: Parser LangExpr
---    parser = do
---        tok <- some exprToken
---        case tok of
---            [e] -> pure e
---            []  -> fail "Not a valid expression"
---            es  -> pure (appExpr () es)
+--expr = makeExprParser exprToken operator
+--
+expr :: Parser LangExpr
+expr = makeExprParser parser operator
+  where
+    parser :: Parser LangExpr
+    parser = do
+        tok <- some exprToken
+        case tok of
+            [e] -> pure e
+            []  -> fail "Not a valid expression"
+            es  -> pure (foldl1 app es) -- pure (appExpr () es)
 
 exprToken :: Parser LangExpr
 exprToken = ifClause 
