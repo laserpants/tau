@@ -217,12 +217,12 @@ compilePatterns us qs = matchAlgo us qs (varExpr (tvar "FAIL") "FAIL")
 andExpr :: (TypeTag t) => Expr t p q r n o -> Expr t p q r n o -> Expr t p q r n o
 andExpr a b = appExpr tbool [varExpr (tarr tbool (tarr tbool tbool)) "@(&&)", a, b]
 
--- | based on similar algorithms described in ...
+-- | based on the pattern matching compilers described in [1] and [2] ...
 --
 -- References:
 --
---   - Augustsson L. (1985) Compiling pattern matching.
---   - Peyton Jones, Simon & Lester, David. (2000). Implementing functional languages: a tutorial. 
+--   - [1] Augustsson L. (1985) Compiling pattern matching.
+--   - [2] Peyton Jones, Simon & Lester, David. (2000). Implementing functional languages: a tutorial. 
 --
 -- In this stage ...
 --
