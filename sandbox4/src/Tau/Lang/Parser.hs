@@ -201,7 +201,8 @@ stringLit = lexeme (LString . pack <$> chars) where
     chars = char '\"' *> manyTill Lexer.charLiteral (char '\"')
 
 literal :: Parser Literal
-literal = bool
+literal = unit
+    <|> bool
     <|> number
     <|> charLit
     <|> stringLit
@@ -424,7 +425,6 @@ patternExpr = wildcardPattern
     <|> listPattern
     <|> tuplePattern
     <|> recordPattern
-    <|> wildcardPattern
     <|> parens pattern_
 
 listPattern :: Parser (Pattern ())

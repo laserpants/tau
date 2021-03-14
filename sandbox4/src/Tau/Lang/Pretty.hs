@@ -63,6 +63,19 @@ instance Parens (Value m) where
         Data{}      -> True
         _           -> False
 
+instance Parens Core where
+    needsParens = project >>> \case
+        --_                   -> True
+        --CApp (Fix CApp{}:_) -> True
+--        CApp (Fix CApp{}:_) -> True
+--        CApp (Fix CLam{}:_) -> True
+--        CApp (Fix CPat{}:_) -> True
+        CApp [_] -> False
+        CApp{}   -> True
+        CPat{}   -> True
+        CLam{}   -> True
+        _        -> False
+
 addParens :: (Pretty p, Parens p) => p -> Doc a
 addParens inp = if needsParens inp then parens doc else doc
   where
@@ -240,6 +253,13 @@ prettyLet keyword p e1 e =
     expr = pretty (fst e1)
     body = pretty (fst e)
 
+prettyIf c e1 e2 =
+    group (nest 2 (vsep [if_, then_, else_]))
+  where
+    if_   = "if"   <+> pretty c
+    then_ = "then" <+> pretty e1
+    else_ = "else" <+> pretty e2
+
 instance Pretty (Op1 t) where
     pretty = undefined
 
@@ -278,7 +298,7 @@ prettyList_ :: [Doc a] -> Doc a
 prettyList_ = brackets . commaSep
 
 instance (Pretty e) => Pretty (Clause (Pattern t) e) where
-    pretty (Clause ps exs e) = 
+    pretty (Clause ps exs e) =
         patternSeq ps <+> whens (pretty <$> exs) <> "=>" <+> pretty e
       where
         whens [] = ""
@@ -294,16 +314,21 @@ instance Pretty Core where
             pretty var
         CLit lit ->
             pretty lit
-        CApp exprs -> 
-            "TODO:CApp"
+        CApp es -> 
+            foldl conArg "" (fst <$> es)
         CLet var e1 e2 ->
             prettyLet_ "let" var (snd e1) (snd e2)
         CLam var e1 ->
             prettyLam_ (pretty var) e1
         CIf cond tr fl ->
-            "TODO:CIf"
+            prettyIf (fst cond) (fst tr) (fst fl)
         CPat e1 cs ->
-            "match" <+> pretty (fst e1) <+> "with" <+> "TODO"
+            group (nest 2 (vsep 
+                [ "match" <+> pretty (fst e1) <+> "with"
+                , flatAlt (vsep (foo . snd <$> cs)) (hsep (foo . snd <$> cs))
+                ]))
+      where
+        foo (cs, e) = pipe <+> pretty cs <+> "=>" <+> e
 
 --prettyLet_
 --  :: (Pretty p, Pretty q, Pretty l)
@@ -333,12 +358,9 @@ instance Pretty (Value m) where
     pretty = \case
         Value lit ->
             pretty lit
-
         Data con args ->
             foldl conArg (pretty con) args
-
         PrimFun name _ _ ->
             "@" <> pretty name
-
         Closure name _ _ ->
             "<<function>>"
