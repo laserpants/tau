@@ -96,3 +96,16 @@ headOrZero xs = xs.head ? 0
   and
     withDefault default = 
       \(Some value) => value | None => default 
+
+
+# -- keyword        let, if, where, type, etc.
+# -- literal
+# --    integers
+# --    float
+# --    ()
+# -- name           x, _foo, hello, etc.
+# -- constructor    List, Cons, etc.
+# -- symbol         *, +, <>, =, ==, etc
+# -- newline
+# -- space
+# -- comment
