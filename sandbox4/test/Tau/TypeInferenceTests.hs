@@ -15,6 +15,7 @@ import Tau.Comp.Type.Inference
 import Tau.Comp.Type.Substitution
 import Tau.Lang.Expr
 import Tau.Lang.Parser
+import Tau.Lang.Prog
 import Tau.Lang.Type
 import Tau.Util
 import Tau.Util.Env (Env(..))
@@ -36,8 +37,11 @@ testClassEnv = Env.fromList
         )
       )
     , ( "Ord"
-      , ( []
-        , [ Instance [] tInt (recExpr (NodeInfo (tApp (tCon (kArr kTyp kTyp) "Ord") tInt) []) (fieldSet [Field (NodeInfo (tInt `tArr` tInt `tArr` tBool) []) "(>)" (varExpr (NodeInfo (tInt `tArr` tInt `tArr` tBool) []) "@Int.(>)")]))
+      , ( ["Eq"]
+        , [ Instance [] tInt (recExpr (NodeInfo (tApp (tCon (kArr kTyp kTyp) "Ord") tInt) []) (fieldSet 
+            [ Field (NodeInfo (tInt `tArr` tInt `tArr` tBool) []) "(>)" (varExpr (NodeInfo (tInt `tArr` tInt `tArr` tBool) []) "@Int.(>)")
+            , Field (NodeInfo (tInt `tArr` tInt `tArr` tBool) []) "(<)" (varExpr (NodeInfo (tInt `tArr` tInt `tArr` tBool) []) "@Int.(<)")
+            ]))
           ]
         )
       )
@@ -94,7 +98,7 @@ runInfer = runInferState
     >>> runInferError
     >>> runInferMaybe
 
-runTest :: LangExpr -> Either String Type
+runTest :: ProgExpr -> Either String Type
 runTest expr = do
     (ast, (sub, _)) <- runInfer (infer expr)
     pure (typeOf (apply sub (exprTag ast)))
@@ -105,13 +109,13 @@ normalize ty = apply sub ty
     sub = Sub.fromList (zipWith fun (typeVars ty) letters)
     fun (v, k) a = (v, tVar k a :: Type)
 
-succeedInferType :: LangExpr -> Type -> SpecWith ()
+succeedInferType :: ProgExpr -> Type -> SpecWith ()
 succeedInferType expr expected =
     describe ("The expression : " <> prettyString expr) $
         it ("✔ has type " <> prettyString expected <> "\n") $
             (normalize <$> runTest expr) == Right expected
 
-failInferTypeWithError :: LangExpr -> String -> SpecWith ()
+failInferTypeWithError :: ProgExpr -> String -> SpecWith ()
 failInferTypeWithError expr err = 
     describe ("The expression : " <> prettyString expr) $
         it ("✗ fails with error " <> show err <> "\n") $

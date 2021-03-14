@@ -1,6 +1,7 @@
 {-# LANGUAGE StrictData #-}
 module Tau.Lang.Prog where
 
+import Tau.Lang.Expr
 import Tau.Lang.Type
 import Tau.Util
 
@@ -12,7 +13,13 @@ data Product = Prod Name [Type]
 data Datatype = Sum Name [Name] [Product]
     deriving (Show, Eq)
 
-data Definition = Def Name
+type ProgExpr = Expr () (Pattern ()) 
+                        (Binding (Pattern ())) 
+                        [Pattern ()] 
+                        (Op1 ()) 
+                        (Op2 ())
+
+data Definition = Def Name ProgExpr
     deriving (Show, Eq)
 
 data Module = Module 

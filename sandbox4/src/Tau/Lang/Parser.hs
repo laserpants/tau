@@ -211,9 +211,8 @@ literal = unit
 -- == Expressions
 -- ============================================================================
 
-type LangExpr = Expr () (Pattern ()) (Binding (Pattern ())) [Pattern ()] (Op1 ()) (Op2 ())
 
---dotSuffix :: Parser (LangExpr -> LangExpr)
+--dotSuffix :: Parser (ProgExpr -> ProgExpr)
 --dotSuffix = do
 --    item <- symbol "." *> expr
 --    pure $ \e -> 
@@ -221,13 +220,13 @@ type LangExpr = Expr () (Pattern ()) (Binding (Pattern ())) [Pattern ()] (Op1 ()
 --            EDot () f g -> dotExpr () (dotExpr () e f) g
 --            _           -> dotExpr () e item
 
---expr :: Parser LangExpr
+--expr :: Parser ProgExpr
 --expr = makeExprParser exprToken operator
---
-expr :: Parser LangExpr
+
+expr :: Parser ProgExpr
 expr = makeExprParser parser operator
   where
-    parser :: Parser LangExpr
+    parser :: Parser ProgExpr
     parser = do
         tok <- some exprToken
         case tok of
@@ -235,14 +234,14 @@ expr = makeExprParser parser operator
             []  -> fail "Not a valid expression"
             es  -> pure (foldl1 app es) -- pure (appExpr () es)
 
-exprToken :: Parser LangExpr
+exprToken :: Parser ProgExpr
 exprToken = ifClause 
     <|> fixBinding
     <|> letBinding
     <|> matchWith
     <|> lambda
     <|> funExpr
-    <|> literalExpr
+    <|> litExpr () <$> literal
     <|> listExpr
     <|> recordExpr
     <|> tupleExpr
@@ -250,10 +249,10 @@ exprToken = ifClause
     <|> (conExpr () <$> constructor_ <*> pure [])
     <|> parens expr
 
-listExpr :: Parser LangExpr
+listExpr :: Parser ProgExpr
 listExpr = lstExpr () <$> elements expr
 
-tupleExpr :: Parser LangExpr
+tupleExpr :: Parser ProgExpr
 tupleExpr = do
     elems <- components expr
     pure $ case elems of
@@ -261,15 +260,15 @@ tupleExpr = do
         []  -> litExpr () LUnit
         _   -> tupExpr () elems
 
-recordExpr :: Parser LangExpr
+recordExpr :: Parser ProgExpr
 recordExpr = recExpr () <$> fields "=" expr
 
-funExpr :: Parser LangExpr
+funExpr :: Parser ProgExpr
 funExpr = do
     keyword "fun" 
     patExpr () [] <$> clauses_
 
-lambda :: Parser LangExpr
+lambda :: Parser ProgExpr
 lambda = do
     void (symbol "\\")
     try simple <|> patExpr () [] <$> clauses_
@@ -278,10 +277,10 @@ lambda = do
         pats <- some patternExpr <* symbol "=>" 
         lamExpr () pats <$> expr <* notFollowedBy (symbol "|")
         
-clauses_ :: Parser [Clause (Pattern ()) LangExpr]
+clauses_ :: Parser [Clause (Pattern ()) ProgExpr]
 clauses_ = (:) <$> clause (void (optional pipe)) <*> many (clause pipe)
 
-matchWith :: Parser LangExpr
+matchWith :: Parser ProgExpr
 matchWith = do
     term <- keyword "match" *> expr
     patExpr () [term] <$> ((:) <$> clause with <*> many (clause pipe))
@@ -292,17 +291,17 @@ with = void (keyword "with" *> optional pipe)
 pipe :: Parser ()
 pipe = void (symbol "|")
 
-clause :: Parser () -> Parser (Clause (Pattern ()) LangExpr)
+clause :: Parser () -> Parser (Clause (Pattern ()) ProgExpr)
 clause sym = do 
     pats <- sym *> some pattern_
     cond <- fromMaybe [] <$> optional whens
     term <- symbol "=>" *> expr
     pure (Clause pats cond term)
 
-whens :: Parser [LangExpr]
+whens :: Parser [ProgExpr]
 whens = keyword "when" *> (pure <$> expr)
 
---identifier :: Parser LangExpr
+--identifier :: Parser ProgExpr
 --identifier = varExpr () <$> word (withInitial letterChar)
 
 binding :: Parser (Binding (Pattern ()))
@@ -318,7 +317,7 @@ binding = try funBinding <|> normalBinding
     normalBinding = do
         BLet <$> pattern_
 
-fixBinding :: Parser LangExpr
+fixBinding :: Parser ProgExpr
 fixBinding = do
     keyword "letfix"
     bind <- name
@@ -326,7 +325,7 @@ fixBinding = do
     body <- keyword "in" *> expr
     pure (fixExpr () bind term body)
 
-letBinding :: Parser LangExpr
+letBinding :: Parser ProgExpr
 letBinding = do
     keyword "let"
     bind <- binding
@@ -334,15 +333,15 @@ letBinding = do
     body <- keyword "in" *> expr
     pure (letExpr () bind term body)
 
-ifClause :: Parser LangExpr
+ifClause :: Parser ProgExpr
 ifClause = do
     cond  <- keyword "if"   *> expr
     true  <- keyword "then" *> expr
     false <- keyword "else" *> expr
     pure (ifExpr () cond true false)
 
-literalExpr :: Parser LangExpr
-literalExpr = litExpr () <$> literal
+--literalExpr :: Parser ProgExpr
+--literalExpr = litExpr () <$> literal
 
 -- ============================================================================
 -- == Types
