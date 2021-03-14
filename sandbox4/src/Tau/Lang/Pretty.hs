@@ -43,7 +43,7 @@ instance Parens Kind where
         KArr{} -> True
         _      -> False
 
-instance Parens (Pattern t) where
+instance Parens (Pattern t f) where
     needsParens = project >>> \case
         PCon _ _ [] -> False
         PCon{}      -> True
@@ -190,7 +190,7 @@ instance Pretty Kind where
         KCls -> "#"
         KArr (k1, _) (_, doc2) -> addParens k1 <+> "->" <+> doc2
 
-instance Pretty (Pattern t) where
+instance Pretty (Pattern t f) where
     pretty = para $ \case
         PVar _ var            -> pretty var
         PCon _ "(::)" [x, xs] -> pretty (fst x) <+> "::" <+> pretty (fst xs)
@@ -210,7 +210,7 @@ instance Pretty (Prep t) where
 conArg :: (Parens p, Pretty p) => Doc a -> p -> Doc a
 conArg out el = out <+> addParens el 
 
-instance (Pretty t) => Pretty (Binding (Pattern t)) where
+instance (Pretty t) => Pretty (Binding (Pattern t f)) where
     pretty (BLet p)    = pretty p
     pretty (BFun f ps) = foldl conArg (pretty f) ps
 
@@ -298,7 +298,7 @@ prettyTuple = parens . commaSep
 prettyList_ :: [Doc a] -> Doc a
 prettyList_ = brackets . commaSep
 
-instance (Pretty e) => Pretty (Clause (Pattern t) e) where
+instance (Pretty e) => Pretty (Clause (Pattern t f) e) where
     pretty (Clause ps exs e) =
         patternSeq ps <+> whens (pretty <$> exs) <> "=>" <+> pretty e
       where

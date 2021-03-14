@@ -26,7 +26,7 @@ import qualified Tau.Comp.Type.Substitution as Sub
 import qualified Tau.Util.Env as Env
 
 type InferState  = StateT (Substitution, Context)
-type InferReader = ReaderT (ClassEnv (Ast NodeInfo (Op1 NodeInfo) (Op2 NodeInfo)), TypeEnv)
+type InferReader = ReaderT (ClassEnv (Ast NodeInfo (Op1 NodeInfo) (Op2 NodeInfo) ()), TypeEnv)
 type InferSupply = SupplyT Name
 type InferError  = ExceptT String
 

@@ -15,7 +15,7 @@ import Test.Hspec
 import Utils
 
 type TestExpr   = Expr () (Prep ()) Name Name Void Void
-type TestClause = Clause (Pattern ()) TestExpr
+type TestClause = Clause (Pattern () ()) TestExpr
 
 succeedCompileAndEvalTo :: [TestClause] -> [Core] -> Value Eval -> SpecWith ()
 succeedCompileAndEvalTo cs c val = do

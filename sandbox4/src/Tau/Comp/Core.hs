@@ -55,7 +55,7 @@ instance TypeTag Type where
 
 compileExpr
   :: (TypeTag t, MonadSupply Name m)
-  => Expr t (Pattern t) (Binding (Pattern t)) [Pattern t] Void Void
+  => Expr t (Pattern t f) (Binding (Pattern t f)) [Pattern t f] Void Void
   -> m Core
 compileExpr =
     expandFunPatterns
@@ -87,8 +87,8 @@ compileExpr =
 
 expandFunPatterns
   :: (MonadSupply Name m)
-  => Expr t (Pattern t) q [Pattern t] Void Void
-  -> m (Expr t (Pattern t) q [Pattern t] Void Void)
+  => Expr t (Pattern t f) q [Pattern t f] Void Void
+  -> m (Expr t (Pattern t f) q [Pattern t f] Void Void)
 expandFunPatterns = cata $ \case
 
     EPat t [] exs@(Clause ps _ e:_) -> do
@@ -102,8 +102,8 @@ expandFunPatterns = cata $ \case
 
 unrollLets
   :: (TypeTag t, MonadSupply Name m)
-  => Expr t p (Binding (Pattern t)) [Pattern t] Void Void
-  -> m (Expr t p (Pattern t) [Pattern t] Void Void)
+  => Expr t p (Binding (Pattern t f)) [Pattern t f] Void Void
+  -> m (Expr t p (Pattern t f) [Pattern t f] Void Void)
 unrollLets = cata $ \case
 
     EVar t var       -> pure (varExpr t var)
@@ -129,7 +129,7 @@ unrollLets = cata $ \case
 
 simplify
   :: (TypeTag t, MonadSupply Name m)
-  => Expr t (Pattern t) (Pattern t) [Pattern t] Void Void
+  => Expr t (Pattern t f) (Pattern t f) [Pattern t f] Void Void
   -> m (Expr t (Prep t) Name Name Void Void)
 simplify = cata $ \case
     EVar t var       -> pure (varExpr t var)
@@ -166,14 +166,16 @@ simplify = cata $ \case
 
 expandPatterns
   :: (TypeTag t, MonadSupply Name m)
-  => [Clause (Pattern t) (Expr t p q r n o)]
-  -> m [Clause (Pattern t) (Expr t p q r n o)]
-expandPatterns = expandLitPatterns . expandOrPatterns
+  => [Clause (Pattern t f) (Expr t p q r n o)]
+  -> m [Clause (Pattern t PatternsExpanded) (Expr t p q r n o)]
+expandPatterns = (toExpanded <$$>) . expandLitPatterns . expandOrPatterns 
+  where
+    toExpanded (Clause ps exs e) = Clause (patternsExpanded <$> ps) exs e
 
 expandLitPatterns
   :: (TypeTag t, MonadSupply Name m)
-  => [Clause (Pattern t) (Expr t p q r n o)]
-  -> m [Clause (Pattern t) (Expr t p q r n o)]
+  => [Clause (Pattern t f) (Expr t p q r n o)]
+  -> m [Clause (Pattern t f) (Expr t p q r n o)]
 expandLitPatterns = traverse expandClause
   where
     expandClause (Clause ps exs e) = do
@@ -192,12 +194,12 @@ expandLitPatterns = traverse expandClause
         p ->
             embed <$> sequence p
 
-expandOrPatterns :: [Clause (Pattern t) a] -> [Clause (Pattern t) a]
+expandOrPatterns :: [Clause (Pattern t f) a] -> [Clause (Pattern t f) a]
 expandOrPatterns = concatMap $ \(Clause ps exs e) ->
     [Clause qs exs e | qs <- traverse fork ps]
   where
     -- TODO: cata??
-    fork :: Pattern t -> [Pattern t]
+    fork :: Pattern t f -> [Pattern t f]
     fork = project >>> \case
         PCon t con ps  -> conPat t con <$> traverse fork ps
         PTup t ps      -> tupPat t <$> traverse fork ps
@@ -210,7 +212,7 @@ expandOrPatterns = concatMap $ \(Clause ps exs e) ->
 compilePatterns
   :: (TypeTag t, MonadSupply Name m)
   => [Expr t (Prep t) Name Name Void Void]
-  -> [Clause (Pattern t) (Expr t (Prep t) Name Name Void Void)]
+  -> [Clause (Pattern t PatternsExpanded) (Expr t (Prep t) Name Name Void Void)]
   -> m (Expr t (Prep t) Name Name Void Void)
 compilePatterns us qs = matchAlgo us qs (varExpr (tvar "FAIL") "FAIL")
 
@@ -232,7 +234,7 @@ andExpr a b = appExpr tbool [varExpr (tarr tbool (tarr tbool tbool)) "@(&&)", a,
 matchAlgo
   :: (TypeTag t, MonadSupply Name m)
   => [Expr t (Prep t) Name Name Void Void]
-  -> [Clause (Pattern t) (Expr t (Prep t) Name Name Void Void)]
+  -> [Clause (Pattern t PatternsExpanded) (Expr t (Prep t) Name Name Void Void)]
   -> Expr t (Prep t) Name Name Void Void
   -> m (Expr t (Prep t) Name Name Void Void)
 matchAlgo [] []                   c = pure c
@@ -253,8 +255,8 @@ matchAlgo (u:us) qs c =
             runSubst (Clause (Fix (PAs _ as (Fix (PAny t))):ps) exs e) = 
                 substitute as u <$> Clause ps exs e
 
-            runSubst (Clause (Fix (PAs _ _ (Fix PLit{})):_) _ _) = 
-                error "Implementation error"
+--            runSubst (Clause (Fix (PAs _ _ (Fix PLit{})):_) _ _) = 
+--                error "Implementation error"
 
             -- The remaining case is for wildcard and literal patterns
             runSubst (Clause (Fix _:ps) exs e) =
@@ -280,14 +282,14 @@ matchAlgo (u:us) qs c =
         mixed -> do
             foldrM (matchAlgo (u:us)) c (clauses <$> mixed)
 
-data ConsGroup t n o = ConsGroup 
+data ConsGroup t n o f = ConsGroup 
     { consName     :: Name
     , consType     :: t
-    , consPatterns :: [Pattern t]
-    , consClauses  :: [Clause (Pattern t) (Expr t (Prep t) Name Name n o)]
+    , consPatterns :: [Pattern t f]
+    , consClauses  :: [Clause (Pattern t f) (Expr t (Prep t) Name Name n o)]
     } deriving (Show, Eq)
 
-consGroups :: Expr t (Prep t) Name Name n o -> [Clause (Pattern t) (Expr t (Prep t) Name Name n o)] -> [ConsGroup t n o]
+consGroups :: Expr t (Prep t) Name Name n o -> [Clause (Pattern t f) (Expr t (Prep t) Name Name n o)] -> [ConsGroup t n o f]
 consGroups u cs = concatMap grp (groupSortOn fst (info <$> cs))
   where
     grp all@((con, (t, ps, _)):_) =
@@ -301,7 +303,7 @@ consGroups u cs = concatMap grp (groupSortOn fst (info <$> cs))
             PAs _ as q ->
                 info (Clause (q:qs) exs (substitute as u e))
 
-desugarPattern :: Pattern t -> Pattern t
+desugarPattern :: Pattern t f -> Pattern t f
 desugarPattern = cata $ \case
     PRec t (FieldSet fields) ->
         conPat t (recordCon (fieldName <$> fields)) (fieldValue <$> fields)
@@ -319,7 +321,7 @@ clauses :: Labeled a -> a
 clauses (Constructor eqs) = eqs
 clauses (Variable    eqs) = eqs
 
-labeledClause :: Clause (Pattern t) a -> Labeled (Clause (Pattern t) a)
+labeledClause :: Clause (Pattern t f) a -> Labeled (Clause (Pattern t f) a)
 labeledClause eq@(Clause (p:_) _ _) = f p where
     f = project >>> \case
         POr{}     -> error "Implementation error"
@@ -332,7 +334,7 @@ labeledClause eq@(Clause (p:_) _ _) = f p where
         PAny{}    -> Variable eq
         PLit{}    -> Variable eq
 
-clauseGroups :: [Clause (Pattern t) a] -> [Labeled [Clause (Pattern t) a]]
+clauseGroups :: [Clause (Pattern t f) a] -> [Labeled [Clause (Pattern t f) a]]
 clauseGroups = cata alg . fmap labeledClause where
     alg Nil = []
     alg (Cons (Constructor e) (Constructor es:ts)) = Constructor (e:es):ts
@@ -343,7 +345,7 @@ clauseGroups = cata alg . fmap labeledClause where
 patternInfo
   :: (MonadSupply Name m)
   => (t -> Name -> a)
-  -> [Pattern t]
+  -> [Pattern t f]
   -> m ([(Name, t)], [Expr t p q r n o], [a])
 patternInfo con pats = do
     vars <- supplies (length pats)
@@ -469,9 +471,9 @@ desugarLists = cata $ \case
 -- ============================================================================
 
 compileClasses 
-  :: (MonadError String m, MonadSupply Name m, MonadReader (ClassEnv (Ast NodeInfo (Op1 NodeInfo) (Op2 NodeInfo)), TypeEnv) m)
-  => Ast (NodeInfoT Type) Void Void
-  -> StateT [(Name, Type)] m (Ast (NodeInfoT Type) Void Void) 
+  :: (MonadError String m, MonadSupply Name m, MonadReader (ClassEnv (Ast NodeInfo (Op1 NodeInfo) (Op2 NodeInfo) f), TypeEnv) m)
+  => Ast (NodeInfoT Type) Void Void f
+  -> StateT [(Name, Type)] m (Ast (NodeInfoT Type) Void Void f) 
 compileClasses expr = 
     insertDictArgs <$> run expr <*> collect
   where
@@ -488,7 +490,7 @@ compileClasses expr =
         e -> 
             embed <$> sequence e
 
-insertDictArgs :: Ast NodeInfo Void Void -> [(Name, Type)] -> Ast NodeInfo Void Void
+insertDictArgs :: Ast NodeInfo Void Void f -> [(Name, Type)] -> Ast NodeInfo Void Void f
 insertDictArgs expr = foldr fun expr
   where
     fun (a, b) = lamExpr (NodeInfo (tArr b (typeOf expr)) []) [varPat (NodeInfo b []) a] 
@@ -497,10 +499,10 @@ collect :: (MonadState [(Name, Type)] m) => m [(Name, Type)]
 collect = nub <$> acquireState
 
 applyDicts
-  :: (MonadError String m, MonadSupply Name m, MonadReader (ClassEnv (Ast NodeInfo (Op1 NodeInfo) (Op2 NodeInfo)), TypeEnv) m)
+  :: (MonadError String m, MonadSupply Name m, MonadReader (ClassEnv (Ast NodeInfo (Op1 NodeInfo) (Op2 NodeInfo) f), TypeEnv) m)
   => Predicate
-  -> Ast (NodeInfoT Type) Void Void
-  -> StateT [(Name, Type)] m (Ast (NodeInfoT Type) Void Void)
+  -> Ast (NodeInfoT Type) Void Void f
+  -> StateT [(Name, Type)] m (Ast (NodeInfoT Type) Void Void f)
 applyDicts (InClass name ty) expr 
 
     | isVar ty = do
@@ -549,10 +551,10 @@ type ConstructorEnv = Env (Set Name)
 constructorEnv :: [(Name, [Name])] -> ConstructorEnv
 constructorEnv = Env.fromList . (Set.fromList <$$>)
 
-headCons :: [[Pattern t]] -> [(Name, [Pattern t])]
+headCons :: [[Pattern t f]] -> [(Name, [Pattern t f])]
 headCons = (>>= fun) 
   where
-    fun :: [Pattern t] -> [(Name, [Pattern t])]
+    fun :: [Pattern t f] -> [(Name, [Pattern t f])]
     fun [] = error "Implementation error (headCons)"
     fun (p:ps) = 
         case project p of
@@ -589,10 +591,10 @@ headCons = (>>= fun)
     prim LChar{}       = "#Char"
     prim LString{}     = "#String"
 
-defaultMatrix :: [[Pattern t]] -> [[Pattern t]]
+defaultMatrix :: [[Pattern t f]] -> [[Pattern t f]]
 defaultMatrix = (fun =<<)
   where 
-    fun :: [Pattern t] -> [[Pattern t]]
+    fun :: [Pattern t f] -> [[Pattern t f]]
     fun (p:ps) =
         case project p of
             PCon{}    -> []
@@ -601,10 +603,10 @@ defaultMatrix = (fun =<<)
             PLst{}    -> []
             PLit{}    -> []
             PAs _ _ q -> fun (q:ps)
-            POr _ a b -> fun (a:ps) <> fun (b:ps)
+            POr _ q r -> fun (q:ps) <> fun (r:ps)
             _         -> [ps]
 
-specialized :: Name -> [t] -> [[Pattern t]] -> [[Pattern t]]
+specialized :: Name -> [t] -> [[Pattern t f]] -> [[Pattern t f]]
 specialized name ts = concatMap rec 
   where
     rec [] = error "Implementation error (specialized)"
@@ -639,12 +641,12 @@ specialized name ts = concatMap rec
                 [(anyPat <$> ts) <> ps]
 
 -- TODO: rename
-data AType t 
-    = ACon Name [Pattern t] 
-    | AOr (Pattern t) (Pattern t) 
+data AType t f
+    = ACon Name [Pattern t f] 
+    | AOr (Pattern t f) (Pattern t f) 
     | AAny
 
-getA :: Pattern t -> AType t
+getA :: Pattern t f -> AType t f
 getA = project >>> \case
     PCon _ con rs -> 
         ACon con rs
@@ -676,7 +678,7 @@ getA = project >>> \case
 --
 --   - http://moscova.inria.fr/~maranget/papers/warn/ 
 --
-useful :: (MonadReader ConstructorEnv m) => [[Pattern t]] -> [Pattern t] -> m Bool
+useful :: (MonadReader ConstructorEnv m) => [[Pattern t f]] -> [Pattern t f] -> m Bool
 useful [] _   = pure True   -- Zero rows (0x0 matrix)
 useful (p1:_) qs 
     | null p1 = pure False  -- One or more rows but no columns
@@ -731,16 +733,16 @@ isRecordCon con = ("{", "}") == fstLst con
     fstLst ""  = ("", "")
     fstLst con = both Text.singleton (Text.head con, Text.last con)
 
-exhaustive :: (MonadReader ConstructorEnv m) => [[Pattern t]] -> m Bool
+exhaustive :: (MonadReader ConstructorEnv m) => [[Pattern t f]] -> m Bool
 exhaustive []         = pure False
 exhaustive pss@(ps:_) = not <$> useful pss (anyPat . patternTag <$> ps)
 
-clausesAreExhaustive :: (MonadReader ConstructorEnv m) => [Clause (Pattern t) a] -> m Bool
+clausesAreExhaustive :: (MonadReader ConstructorEnv m) => [Clause (Pattern t f) a] -> m Bool
 clausesAreExhaustive = exhaustive . concatMap toMatrix where
     toMatrix (Clause ps [] _) = [ps]
     toMatrix _                = []
 
-checkExhaustive :: (MonadReader ConstructorEnv m) => Ast t (Op1 t) (Op2 t) -> m Bool
+checkExhaustive :: (MonadReader ConstructorEnv m) => Ast t (Op1 t) (Op2 t) f -> m Bool
 checkExhaustive = cata $ \case
     ECon _ _ exprs           -> andM exprs
     EApp _ exprs             -> andM exprs
@@ -759,11 +761,11 @@ checkExhaustive = cata $ \case
     --  | EAnn s a 
     _                        -> pure True
 
-astApply :: Substitution -> Ast NodeInfo (Op1 NodeInfo) (Op2 NodeInfo) -> Ast NodeInfo (Op1 NodeInfo) (Op2 NodeInfo) 
+astApply :: Substitution -> Ast NodeInfo (Op1 NodeInfo) (Op2 NodeInfo) f -> Ast NodeInfo (Op1 NodeInfo) (Op2 NodeInfo) f
 astApply sub = mapTags (apply sub :: NodeInfo -> NodeInfo)
 
-extractType :: Ast NodeInfo Void Void -> Ast Type Void Void
-extractType = (mapTags :: (NodeInfo -> Type) -> Ast NodeInfo Void Void -> Ast Type Void Void) nodeType
+extractType :: Ast NodeInfo Void Void f -> Ast Type Void Void f
+extractType = (mapTags :: (NodeInfo -> Type) -> Ast NodeInfo Void Void f -> Ast Type Void Void f) nodeType
 
 --toUnitType :: Expr t (Prep t) Name Name Void Void -> Expr () (Prep ()) Name Name Void Void
 --toUnitType = mapTags (const ())

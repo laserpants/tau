@@ -49,10 +49,10 @@ instance (Free t) => Free (NodeInfoT t) where
 instance (Typed t) => Typed (NodeInfoT t) where
     typeOf = typeOf . nodeType
 
-instance (Typed t) => Typed (Ast t n o) where
+instance (Typed t) => Typed (Ast t n o f) where
     typeOf = typeOf . exprTag
 
-instance (Typed t) => Typed (Pattern t) where
+instance (Typed t) => Typed (Pattern t f) where
     typeOf = typeOf . patternTag
 
 instance (Typed t) => Typed (Op1 t) where
@@ -70,16 +70,16 @@ instance MapT NodeInfo t Void Void where
 instance 
     ( MapT NodeInfo NodeInfo n n
     , MapT NodeInfo NodeInfo o o 
-    ) => Substitutable (Ast NodeInfo n o) Type 
+    ) => Substitutable (Ast NodeInfo n o f) Type 
   where apply sub = mapTags (apply sub :: NodeInfo -> NodeInfo)
 
 infer 
   :: ( MonadSupply Name m
-     , MonadReader (ClassEnv (Ast NodeInfo (Op1 NodeInfo) (Op2 NodeInfo)), TypeEnv) m
+     , MonadReader (ClassEnv (Ast NodeInfo (Op1 NodeInfo) (Op2 NodeInfo) f), TypeEnv) m
      , MonadState (Substitution, Context) m
      , MonadError String m )
-  => Ast t (Op1 t) (Op2 t)
-  -> m (Ast NodeInfo (Op1 NodeInfo) (Op2 NodeInfo))
+  => Ast t (Op1 t) (Op2 t) f
+  -> m (Ast NodeInfo (Op1 NodeInfo) (Op2 NodeInfo) f)
 infer = cata $ \expr -> do
     newTy <- newTVar kTyp
     case expr of
@@ -234,13 +234,13 @@ inferLiteral = pure . \case
 
 inferClause
   :: ( MonadSupply Name m
-     , MonadReader (ClassEnv (Ast NodeInfo (Op1 NodeInfo) (Op2 NodeInfo)), TypeEnv) m
+     , MonadReader (ClassEnv (Ast NodeInfo (Op1 NodeInfo) (Op2 NodeInfo) f), TypeEnv) m
      , MonadState (Substitution, Context) m
      , MonadError String m ) 
   => Type
   -> [Type]
-  -> Clause (Pattern t) (m (Ast NodeInfo n o))
-  -> m (Clause (Pattern NodeInfo) (Ast NodeInfo n o))
+  -> Clause (Pattern t f) (m (Ast NodeInfo n o f))
+  -> m (Clause (Pattern NodeInfo f) (Ast NodeInfo n o f))
 inferClause ty types clause@(Clause ps _ _) = do
     (tps, vs) <- runWriterT (traverse inferPattern ps)
     let Clause _ exs e = local (second (Env.inserts (toScheme <$$> vs))) <$> clause
@@ -251,11 +251,11 @@ inferClause ty types clause@(Clause ps _ _) = do
 
 inferPattern
   :: ( MonadSupply Name m
-     , MonadReader (ClassEnv (Ast NodeInfo (Op1 NodeInfo) (Op2 NodeInfo)), TypeEnv) m
+     , MonadReader (ClassEnv (Ast NodeInfo (Op1 NodeInfo) (Op2 NodeInfo) f), TypeEnv) m
      , MonadState (Substitution, Context) m
      , MonadError String m ) 
-  => Pattern t 
-  -> WriterT [(Name, Type)] m (Pattern NodeInfo)
+  => Pattern t f 
+  -> WriterT [(Name, Type)] m (Pattern NodeInfo f)
 inferPattern = cata $ \pat -> do
     newTy <- newTVar kTyp
     case pat of
@@ -309,7 +309,7 @@ inferPattern = cata $ \pat -> do
 
 opType
   :: ( MonadSupply Name m
-     , MonadReader (ClassEnv (Ast NodeInfo n o), TypeEnv) m
+     , MonadReader (ClassEnv (Ast NodeInfo n o f), TypeEnv) m
      , MonadState (Substitution, Context) m
      , MonadError String m ) 
   => (NodeInfo -> a)
@@ -321,7 +321,7 @@ opType op scheme = do
 
 inferOp1Type 
   :: ( MonadSupply Name m
-     , MonadReader (ClassEnv (Ast NodeInfo n o), TypeEnv) m
+     , MonadReader (ClassEnv (Ast NodeInfo n o f), TypeEnv) m
      , MonadState (Substitution, Context) m
      , MonadError String m ) 
   => Op1 t
@@ -332,7 +332,7 @@ inferOp1Type = \case
 
 inferOp2Type 
   :: ( MonadSupply Name m
-     , MonadReader (ClassEnv (Ast NodeInfo n o), TypeEnv) m
+     , MonadReader (ClassEnv (Ast NodeInfo n o f), TypeEnv) m
      , MonadState (Substitution, Context) m
      , MonadError String m ) 
   => Op2 t
@@ -431,7 +431,7 @@ unified t1 t2 = do
 
 unifyTyped 
   :: ( MonadSupply Name m
-     , MonadReader (ClassEnv (Ast NodeInfo (Op1 NodeInfo) (Op2 NodeInfo)), TypeEnv) m
+     , MonadReader (ClassEnv (Ast NodeInfo (Op1 NodeInfo) (Op2 NodeInfo) f), TypeEnv) m
      , MonadState (Substitution, Context) m
      , MonadError String m
      , Typed t
@@ -450,7 +450,7 @@ unifyTyped v1 v2 = do
 
 propagateClasses 
   :: ( MonadSupply Name m
-     , MonadReader (ClassEnv (Ast NodeInfo (Op1 NodeInfo) (Op2 NodeInfo)), TypeEnv) m
+     , MonadReader (ClassEnv (Ast NodeInfo (Op1 NodeInfo) (Op2 NodeInfo) f), TypeEnv) m
      , MonadState (Substitution, Context) m
      , MonadError String m )
   => Type 
@@ -470,8 +470,8 @@ lookupClassInstance
   :: (MapT NodeInfo NodeInfo n n, MapT NodeInfo NodeInfo o o, MonadPlus m, MonadError String m) 
   => Name 
   -> Type 
-  -> ClassEnv (Ast NodeInfo n o) 
-  -> m ([Name], Instance (Ast NodeInfo n o))
+  -> ClassEnv (Ast NodeInfo n o f) 
+  -> m ([Name], Instance (Ast NodeInfo n o f))
 lookupClassInstance name ty env = do
     (sups, insts) <- liftMaybe ("No class " <> Text.unpack name) (Env.lookup name env)
     inst <- catchError (msum [tryMatch i | i <- insts]) (const (throwError "Missing class instance"))

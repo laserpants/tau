@@ -49,7 +49,7 @@ deriveShow1 ''FieldSet
 deriveEq1   ''FieldSet
 
 -- | Base functor for Pattern
-data PatternF t a
+data PatternF t f a 
     = PVar t Name             -- ^ Variable pattern
     | PCon t Name [a]         -- ^ Constuctor pattern
     | PLit t Literal          -- ^ Literal pattern
@@ -65,7 +65,7 @@ deriveShow1 ''PatternF
 deriveEq1   ''PatternF
 
 -- | Patterns
-type Pattern t = Fix (PatternF t)
+type Pattern t f = Fix (PatternF t f)
 
 -- | Simple patterns
 data Prep t
@@ -114,6 +114,10 @@ data Binding p
 
 deriveShow1 ''Binding
 deriveEq1   ''Binding
+
+-- TODO
+-- data ListsDesugared
+-- data NoFunPats
 
 -- | Base functor for Expr
 data ExprF t p q r n o a
@@ -273,7 +277,7 @@ setExprTag t = project >>> \case
     ETup _ a       -> tupExpr t a
     ELst _ a       -> lstExpr t a
 
-patternTag :: Pattern t -> t
+patternTag :: Pattern t f -> t
 patternTag = project >>> \case
     PVar t _       -> t
     PCon t _ _     -> t
@@ -285,7 +289,7 @@ patternTag = project >>> \case
     PAs  t _ _     -> t
     POr  t _ _     -> t
 
-setPatternTag :: t -> Pattern t -> Pattern t
+setPatternTag :: t -> Pattern t f -> Pattern t f
 setPatternTag t = project >>> \case
     PVar _ a       -> varPat t a
     PCon _ a b     -> conPat t a b
@@ -296,6 +300,29 @@ setPatternTag t = project >>> \case
     PAny _         -> anyPat t
     PAs  _ a b     -> asPat t a b
     POr  _ a b     -> orPat t a b
+
+data PatternsExpanded
+data PatternsDesugared -- TODO
+
+patternsExpanded :: Pattern t f -> Pattern t PatternsExpanded
+patternsExpanded = cata $ \case
+    PVar t a       -> varPat t a
+    PCon t a b     -> conPat t a b
+    PRec t s       -> recPat t s
+    PTup t a       -> tupPat t a
+    PLst t a       -> lstPat t a
+    PAny t         -> anyPat t
+    PAs  t a b     -> asPat t a b
+    _              -> error "Implementation error"
+
+-- TODO
+--patternsDesugared :: Pattern t PatternsExpanded g -> Pattern t PatternsExpanded PatternsDesugared
+--patternsDesugared = cata $ \case
+--    PVar t a       -> varPat t a
+--    PCon t a b     -> conPat t a b
+--    PAny t         -> anyPat t
+--    PAs  t a b     -> asPat t a b
+--    _              -> error "Implementation error"
 
 op1Tag :: Op1 t -> t
 op1Tag = \case
@@ -322,7 +349,7 @@ op2Tag = \case
     OFPipe t -> t
     OBPipe t -> t
 
-patternVars :: Pattern t -> [(Name, t)]
+patternVars :: Pattern t f -> [(Name, t)]
 patternVars = cata $ \case
     PVar t var           -> [(var, t)]
     PCon _ _ rs          -> concat rs
@@ -334,7 +361,7 @@ patternVars = cata $ \case
     PLit _ _             -> []
     PAny _               -> []
 
-type Ast t n o = Expr t (Pattern t) (Binding (Pattern t)) [Pattern t] n o
+type Ast t n o f = Expr t (Pattern t f) (Binding (Pattern t f)) [Pattern t f] n o
 
 class MapT s t a b where
     mapTagsM :: (Monad m) => (s -> m t) -> a -> m b
@@ -384,7 +411,7 @@ instance
         ELst t a ->
             lstExpr <$> f t <*> sequence a 
 
-instance MapT s t (Pattern s) (Pattern t) where
+instance MapT s t (Pattern s f) (Pattern t f) where
     mapTagsM f = cata $ \case
         PVar t a -> 
             varPat <$> f t <*> pure a
@@ -410,7 +437,7 @@ instance MapT s t (Prep s) (Prep t) where
     mapTagsM f = \case
         RCon t con ps -> RCon <$> f t <*> pure con <*> pure ps
 
-instance MapT s t (Binding (Pattern s)) (Binding (Pattern t)) where
+instance MapT s t (Binding (Pattern s f)) (Binding (Pattern t f)) where
     mapTagsM f = \case
         BLet p      -> BLet <$> mapTagsM f p
         BFun fun ps -> BFun fun <$> traverse (mapTagsM f) ps
@@ -451,31 +478,31 @@ instance MapT s t (Field s a) (Field t a) where
 mapTags :: (MapT s t a b) => (s -> t) -> a -> b
 mapTags f = runIdentity . mapTagsM (pure . f)
 
-varPat :: t -> Name -> Pattern t
+varPat :: t -> Name -> Pattern t f
 varPat = embed2 PVar
 
-conPat :: t -> Name -> [Pattern t] -> Pattern t
+conPat :: t -> Name -> [Pattern t f] -> Pattern t f
 conPat = embed3 PCon
 
-asPat :: t -> Name -> Pattern t -> Pattern t
+asPat :: t -> Name -> Pattern t f -> Pattern t f
 asPat = embed3 PAs
 
-orPat :: t -> Pattern t -> Pattern t -> Pattern t
+orPat :: t -> Pattern t f -> Pattern t f -> Pattern t f
 orPat = embed3 POr
 
-litPat :: t -> Literal -> Pattern t
+litPat :: t -> Literal -> Pattern t f
 litPat = embed2 PLit
 
-recPat :: t -> FieldSet t (Pattern t) -> Pattern t
+recPat :: t -> FieldSet t (Pattern t f) -> Pattern t f
 recPat = embed2 PRec
 
-tupPat :: t -> [Pattern t] -> Pattern t
+tupPat :: t -> [Pattern t f] -> Pattern t f
 tupPat = embed2 PTup
 
-lstPat :: t -> [Pattern t] -> Pattern t
+lstPat :: t -> [Pattern t f] -> Pattern t f
 lstPat = embed2 PLst
 
-anyPat :: t -> Pattern t
+anyPat :: t -> Pattern t f
 anyPat = embed1 PAny
 
 varExpr :: t -> Name -> Expr t p q r n o
@@ -528,5 +555,5 @@ lstExpr = embed2 ELst
 listConsExpr :: t -> Expr t p q r n o -> Expr t p q r n o -> Expr t p q r n o
 listConsExpr t hd tl = conExpr t "(::)" [hd, tl]
 
-listConsPat :: t -> Pattern t -> Pattern t -> Pattern t
+listConsPat :: t -> Pattern t f -> Pattern t f -> Pattern t f
 listConsPat t hd tl = conPat t "(::)" [hd, tl]

@@ -17,7 +17,7 @@ import Tau.Lang.Type
 import Tau.Util
 import qualified Data.Text as Text
 
-prettyAst :: (Pretty t, Show t, Pretty n, Pretty o) => Ast t n o -> Tree (Doc a)
+prettyAst :: (Pretty t, Show t, Pretty n, Pretty o) => Ast t n o f -> Tree (Doc a)
 prettyAst = para $ \case
 
     EPat t [] eqs -> 
@@ -78,10 +78,10 @@ prettyAst = para $ \case
 exprDoc :: (Pretty t, Pretty p, Pretty q, Pretty n, Pretty o) => Doc a -> Expr t p q r n o -> Doc a
 exprDoc out expr = out <+> parens (pretty expr <+> colon <+> pretty (exprTag expr))
 
-patternDoc :: (Pretty t) => Doc a -> Pattern t -> Doc a
+patternDoc :: (Pretty t) => Doc a -> Pattern t f -> Doc a
 patternDoc out pat = out <+> parens (pretty pat <+> colon <+> pretty (patternTag pat))
 
-prettyClauseTree :: (Pretty t, Show t, Pretty n, Pretty o) => Clause (Pattern t) (Ast t n o) -> [Tree (Doc a)]
+prettyClauseTree :: (Pretty t, Show t, Pretty n, Pretty o) => Clause (Pattern t f) (Ast t n o f) -> [Tree (Doc a)]
 prettyClauseTree (Clause ps exs e) =
     [Node (foldl patternDoc "─┬" ps) (whens <> [prefix "=>" (prettyAst e)])]
   where
@@ -89,7 +89,7 @@ prettyClauseTree (Clause ps exs e) =
       | null exs  = []
       | otherwise = [Node "when" (prettyAst <$> exs)]
 
-prettyFieldTree :: (Pretty t, Pretty n, Pretty o) => Field t (Ast t n o, Tree (Doc a)) -> Tree (Doc a)
+prettyFieldTree :: (Pretty t, Pretty n, Pretty o) => Field t (Ast t n o f, Tree (Doc a)) -> Tree (Doc a)
 prettyFieldTree (Field t name (val, _)) = 
     Node (pretty name <+> equals <+> pretty val <+> colon <+> pretty t) []
 

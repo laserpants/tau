@@ -124,9 +124,9 @@ typed
   :: ( MonadError String m
      , MonadIO m
      , MonadState (Substitution, Context) m
-     , MonadReader (ClassEnv (Ast NodeInfo (Op1 NodeInfo) (Op2 NodeInfo)), TypeEnv) m
+     , MonadReader (ClassEnv (Ast NodeInfo (Op1 NodeInfo) (Op2 NodeInfo) f), TypeEnv) m
      , MonadSupply Name m ) 
-  => Ast t (Op1 t) (Op2 t) 
+  => Ast t (Op1 t) (Op2 t) f
   -> m (Maybe (Value Eval))
 typed e = do
     ast <- infer e
@@ -146,7 +146,7 @@ typed e = do
     --evalStateT (compileClasses (desugarOperators ast2)) []
 
 
-classEnv2 :: ClassEnv (Ast NodeInfo (Op1 NodeInfo) (Op2 NodeInfo))
+classEnv2 :: ClassEnv (Ast NodeInfo (Op1 NodeInfo) (Op2 NodeInfo) f)
 classEnv2 = Env.fromList 
     [ ( "Num"
       , ( []

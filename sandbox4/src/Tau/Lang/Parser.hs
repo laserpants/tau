@@ -111,7 +111,7 @@ constructor_ = word (withInitial upperChar)
 --      $ traceShow b
 --        $ dotExpr () a b
 
-operator :: [[Operator Parser (Expr () (Pattern ()) (Binding (Pattern ())) [Pattern ()] (Op1 ()) (Op2 ()))]]
+operator :: [[Operator Parser (Expr () (Pattern () ()) (Binding (Pattern () ())) [Pattern () ()] (Op1 ()) (Op2 ()))]]
 operator = 
     [
 --      [ Postfix dotSuffix
@@ -284,7 +284,7 @@ lambda = do
         pats <- some patternExpr <* symbol "=>" 
         lamExpr () pats <$> expr <* notFollowedBy (symbol "|")
         
-clauses_ :: Parser [Clause (Pattern ()) ProgExpr]
+clauses_ :: Parser [Clause (Pattern () ()) ProgExpr]
 clauses_ = (:) <$> clause (void (optional pipe)) <*> many (clause pipe)
 
 matchWith :: Parser ProgExpr
@@ -298,7 +298,7 @@ with = void (keyword "with" *> optional pipe)
 pipe :: Parser ()
 pipe = void (symbol "|")
 
-clause :: Parser () -> Parser (Clause (Pattern ()) ProgExpr)
+clause :: Parser () -> Parser (Clause (Pattern () ()) ProgExpr)
 clause sym = do 
     pat <- sym *> pattern_
     cond <- fromMaybe [] <$> optional whens
@@ -317,7 +317,7 @@ whens = keyword "when" *> (pure <$> expr)
 --identifier :: Parser ProgExpr
 --identifier = varExpr () <$> word (withInitial letterChar)
 
-binding :: Parser (Binding (Pattern ()))
+binding :: Parser (Binding (Pattern () ()))
 binding = try funBinding <|> normalBinding
   where
     funBinding = do
@@ -407,7 +407,7 @@ kind = makeExprParser parser [[ InfixR (kArr <$ symbol "->") ]]
 -- == Patterns
 -- ============================================================================
 
-pattern_ :: Parser (Pattern ())
+pattern_ :: Parser (Pattern () ())
 pattern_ = makeExprParser parser
 --    [ 
 --      [ InfixR (orPat () <$ symbol "or") ]
@@ -420,7 +420,7 @@ pattern_ = makeExprParser parser
     , [ InfixR (listConsPat () <$ symbol "::") ]
     ]
   where
-    parser :: Parser (Pattern ())
+    parser :: Parser (Pattern () ())
     parser = do
         tok <- some patternExpr
         case tok of
@@ -429,7 +429,7 @@ pattern_ = makeExprParser parser
                 pure (conPat () con args)
             _ -> fail "Not a valid pattern"
 
-patternExpr :: Parser (Pattern ())
+patternExpr :: Parser (Pattern () ())
 patternExpr = wildcardPattern 
     <|> varPattern
     <|> conPattern
@@ -439,10 +439,10 @@ patternExpr = wildcardPattern
     <|> recordPattern
     <|> parens pattern_
 
-listPattern :: Parser (Pattern ())
+listPattern :: Parser (Pattern () ())
 listPattern = lstPat () <$> elements pattern_
 
-asPattern :: Parser (Pattern () -> Pattern ())
+asPattern :: Parser (Pattern () () -> Pattern () ())
 asPattern = keyword "as" >> asPat () <$> name
 
 --pattern_ :: Parser (Pattern ())
@@ -476,18 +476,18 @@ asPattern = keyword "as" >> asPat () <$> name
 --    <|> wildcardPattern
 --    <|> parens pattern_
 
-varPattern :: Parser (Pattern ())
+varPattern :: Parser (Pattern () ())
 varPattern = varPat () <$> name
 
-conPattern :: Parser (Pattern ())
+conPattern :: Parser (Pattern () ())
 conPattern = do
     con <- constructor_
     pure (conPat () con [])
 
-litPattern :: Parser (Pattern ())
+litPattern :: Parser (Pattern () ())
 litPattern = litPat () <$> literal
 
-tuplePattern :: Parser (Pattern ())
+tuplePattern :: Parser (Pattern () ())
 tuplePattern = do
     elems <- components pattern_
     pure $ case elems of
@@ -495,10 +495,10 @@ tuplePattern = do
         []  -> litPat () LUnit
         _   -> tupPat () elems
 
-recordPattern :: Parser (Pattern ())
+recordPattern :: Parser (Pattern () ())
 recordPattern = recPat () <$> fields "=" pattern_
 
-wildcardPattern :: Parser (Pattern ())
+wildcardPattern :: Parser (Pattern () ())
 wildcardPattern = symbol "_" $> anyPat ()
 
 -- ============================================================================

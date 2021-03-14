@@ -13,13 +13,13 @@ data Product = Prod Name [Type]
 data Datatype = Sum Name [Name] [Product]
     deriving (Show, Eq)
 
-type ProgExpr = Expr () (Pattern ()) 
-                        (Binding (Pattern ())) 
-                        [Pattern ()] 
+type ProgExpr = Expr () (Pattern () ()) 
+                        (Binding (Pattern () ())) 
+                        [Pattern () ()] 
                         (Op1 ()) 
                         (Op2 ())
 
-data Definition = Def Name [Clause (Pattern ()) ProgExpr]
+data Definition = Def Name [Clause (Pattern () ()) ProgExpr]
     deriving (Show, Eq)
 
 data Module = Module 

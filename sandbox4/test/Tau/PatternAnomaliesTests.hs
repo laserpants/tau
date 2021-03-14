@@ -14,7 +14,7 @@ import Test.Hspec
 import Utils
 import qualified Data.Text as Text
 
-type PatternClause = Clause (Pattern ()) (Ast () (Op1 ()) (Op2 ()))
+type PatternClause = Clause (Pattern () ()) (Ast () (Op1 ()) (Op2 ()) ())
 
 testConstrEnv :: ConstructorEnv
 testConstrEnv = constructorEnv
@@ -33,11 +33,11 @@ class IsExhaustive a where
     isExhaustive :: (MonadReader ConstructorEnv m) => a -> m Bool
     description  :: a -> String
 
-instance IsExhaustive [[Pattern t]] where
+instance IsExhaustive [[Pattern t f]] where
     isExhaustive = exhaustive
     description  = \pss -> "The patterns " <> concatMap (\ps -> "\n    | " <> showDoc (patternSeq ps)) pss
 
-instance (Pretty a) => IsExhaustive [Clause (Pattern t) a] where
+instance (Pretty a) => IsExhaustive [Clause (Pattern t f) a] where
     isExhaustive = clausesAreExhaustive
     description  = \cs -> "The clauses " <> concatMap (\c -> "\n    | " <> showDoc (pretty c)) cs
 
@@ -69,7 +69,7 @@ testPatternAnomalies = do
     describe "\nPatterns\n" $ do
  
         testExhaustive
-            [ [] :: [Pattern t] ]
+            [ [] :: [Pattern t f] ]
 
         testExhaustive
             [ [litPat () (LBool True)]

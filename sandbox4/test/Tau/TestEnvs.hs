@@ -22,7 +22,7 @@ testValueEnv = Env.fromList
     first_  = cLam "p" (cPat (cVar "p") [(["(,)", "a", "b"], cVar "a")])
     second_ = cLam "p" (cPat (cVar "p") [(["(,)", "a", "b"], cVar "b")])
 
-testClassEnv :: ClassEnv (Ast NodeInfo (Op1 NodeInfo) (Op2 NodeInfo))
+testClassEnv :: ClassEnv (Ast NodeInfo (Op1 NodeInfo) (Op2 NodeInfo) f)
 testClassEnv = Env.fromList
     [ ( "Num"
       , ( []
