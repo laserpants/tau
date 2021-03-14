@@ -116,7 +116,7 @@ deriveShow1 ''Binding
 deriveEq1   ''Binding
 
 -- TODO
--- data ListsDesugared
+-- data NoListSugar
 -- data NoFunPats
 
 -- | Base functor for Expr

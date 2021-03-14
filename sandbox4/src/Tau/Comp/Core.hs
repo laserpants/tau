@@ -255,9 +255,6 @@ matchAlgo (u:us) qs c =
             runSubst (Clause (Fix (PAs _ as (Fix (PAny t))):ps) exs e) = 
                 substitute as u <$> Clause ps exs e
 
---            runSubst (Clause (Fix (PAs _ _ (Fix PLit{})):_) _ _) = 
---                error "Implementation error"
-
             -- The remaining case is for wildcard and literal patterns
             runSubst (Clause (Fix _:ps) exs e) =
                 Clause ps exs e
