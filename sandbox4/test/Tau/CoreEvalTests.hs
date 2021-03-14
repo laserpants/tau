@@ -1,25 +1,13 @@
 {-# LANGUAGE OverloadedStrings #-}
 module Tau.CoreEvalTests where
 
-import Data.Maybe (fromJust, isNothing)
+import Data.Maybe (isNothing)
+import Tau.Eval.Core
 import Tau.Lang.Core
 import Tau.Lang.Expr
-import Tau.Eval.Core
+import Tau.TestEnvs
 import Test.Hspec
 import Utils
-import qualified Tau.Util.Env as Env
-
-testValueEnv :: ValueEnv Eval
-testValueEnv = Env.fromList
-    [ ("(,)"     , constructor "(,)" 2)  
-    , ("[]"      , constructor "[]" 0)  
-    , ("(::)"    , constructor "(::)" 2)  
-    , ("first"   , fromJust (evalExpr first_ mempty))
-    , ("second"  , fromJust (evalExpr second_ mempty))
-    ]
-  where
-    first_  = cLam "p" (cPat (cVar "p") [(["(,)", "a", "b"], cVar "a")])
-    second_ = cLam "p" (cPat (cVar "p") [(["(,)", "a", "b"], cVar "b")])
 
 failEval :: Core -> SpecWith ()
 failEval expr =
