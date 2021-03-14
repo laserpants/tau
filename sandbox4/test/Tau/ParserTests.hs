@@ -523,8 +523,15 @@ testParser = do
 
     --  Top-level definitions
 
---    describe "\nTop-level definitions\n" $ do
---
+    describe "\nTop-level definitions\n" $ do
+
+        succeedParse definition "a top-level definition"
+            "fn x y = x + y"
+            (Def "fn" [Clause [varPat () "x", varPat () "y"] [] (op2Expr () (OAdd ()) (varExpr () "x") (varExpr () "y"))])
+
 --        succeedParse definition "a top-level definition"
---            "fn x y = x + y"
---            (Def "fn" [Clause [varPat () "x", varPat () "y"] [] (op2Expr () (OAdd ()) (varExpr () "x") (varExpr () "y"))])
+--            "fn x y = x + y\nfn _ _ = 100"
+--            (Def "fn" 
+--                [ Clause [varPat () "x", varPat () "y"] [] (op2Expr () (OAdd ()) (varExpr () "x") (varExpr () "y"))
+--                , Clause [anyPat (), anyPat ()] [] (litExpr () (LInt 100))
+--                ])

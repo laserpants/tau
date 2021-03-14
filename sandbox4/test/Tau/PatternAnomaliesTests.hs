@@ -8,6 +8,7 @@ import Data.Text.Prettyprint.Doc
 import Tau.Comp.Core
 import Tau.Lang.Expr
 import Tau.Lang.Pretty
+import Tau.Lang.Prog
 import Tau.Util
 import Test.Hspec
 import Utils
@@ -52,22 +53,28 @@ nonExhaustivePatterns patterns =
 
 -- Clauses
 
---isExhaustive :: [[Pattern t]] -> Bool
+isExhaustive2 :: [Clause (Pattern t) a] -> Bool
 isExhaustive2 = flip runReader testConstrEnv . clausesAreExhaustive
 
---clauseDescription :: [[Pattern t]] -> String
+clauseDescription :: (Pretty a) => [Clause (Pattern t) a] -> String
 clauseDescription cs =
     "The clauses " <> concatMap (\c -> "\n    | " <> Text.unpack (renderDoc (pretty c))) cs
 
---exhaustivePatterns :: [[Pattern t]] -> SpecWith ()
+exhaustiveClauses :: (Pretty a) => [Clause (Pattern t) a] -> SpecWith ()
 exhaustiveClauses clauses =
     describe (clauseDescription clauses) $ 
         it ("✔ " <> " are exhaustive\n") (isExhaustive2 clauses)
 
---nonExhaustiveClauses :: [[Pattern t]] -> SpecWith ()
+nonExhaustiveClauses :: (Pretty a) => [Clause (Pattern t) a] -> SpecWith ()
 nonExhaustiveClauses clauses =
     describe (clauseDescription clauses) $ 
         it ("✗ " <> " are not exhaustive\n") (not (isExhaustive2 clauses))
+
+-- Expressions
+
+exhaustiveExpr :: ProgExpr -> SpecWith ()
+exhaustiveExpr expr =
+    undefined
 
 --
 
@@ -461,3 +468,10 @@ testPatternAnomalies = do
               , Clause [conPat () "Nil" []] [] (litExpr () (LBool True))
               , Clause [conPat () "Cons" [varPat () "z", conPat () "Nil" []]] [] (litExpr () (LBool True))
               ] :: [PatternClause] )
+
+    -- Expressions
+
+    describe "\nExpressions\n" $ do
+
+        exhaustiveExpr undefined
+

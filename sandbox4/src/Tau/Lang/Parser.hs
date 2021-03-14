@@ -37,9 +37,16 @@ lexeme = Lexer.lexeme spaces
 symbol :: Text -> Parser Text
 symbol = Lexer.symbol spaces
 
+--foo = do
+--    newline
+--    void (Megaparsec.char ' ')
+--    void (Megaparsec.char ' ')
+--    pure ()
+
 spaces :: Parser ()
 spaces = Lexer.space
     space1
+    --(void Megaparsec.tab <|> void (Megaparsec.char ' ') <|> foo) --  <|> void tab)
     (Lexer.skipLineComment "--")
     (Lexer.skipBlockComment "{-" "-}")
 
@@ -278,12 +285,12 @@ lambda = do
         lamExpr () pats <$> expr <* notFollowedBy (symbol "|")
         
 clauses_ :: Parser [Clause (Pattern ()) ProgExpr]
-clauses_ = (:) <$> clause (void (optional pipe)) (void (symbol "=>")) <*> many (clause pipe (void (symbol "=>")))
+clauses_ = (:) <$> clause (void (optional pipe)) <*> many (clause pipe)
 
 matchWith :: Parser ProgExpr
 matchWith = do
     term <- keyword "match" *> expr
-    patExpr () [term] <$> ((:) <$> clause with (void (symbol "=>")) <*> many (clause pipe (void (symbol "=>"))))
+    patExpr () [term] <$> ((:) <$> clause with <*> many (clause pipe))
 
 with :: Parser ()
 with = void (keyword "with" *> optional pipe)
@@ -291,11 +298,12 @@ with = void (keyword "with" *> optional pipe)
 pipe :: Parser ()
 pipe = void (symbol "|")
 
-clause :: Parser () -> Parser () -> Parser (Clause (Pattern ()) ProgExpr)
-clause sym sym2 = do 
+clause :: Parser () -> Parser (Clause (Pattern ()) ProgExpr)
+clause sym = do 
     pat <- sym *> pattern_
     cond <- fromMaybe [] <$> optional whens
-    term <- sym2 *> expr
+    symbol "=>" 
+    term <- expr
     pure (Clause [pat] cond term)
 
 --    pats <- sym *> some pattern_
@@ -562,12 +570,32 @@ prod = do
 -- == Top-level definition
 -- ============================================================================
 
+-- fn 4 = 4 
+-- fn x = 8
+--   print abc 
+
+
+--bazoo = do
+--    fun <- name
+--    tok <- many patternExpr
+--    symbol "="
+
+
+
+-- someFunction x y = x + y 
+-- someFunction _ _ = 100
+
 definition :: Parser Definition
 definition = do
-    ls@((fun, _):_) <- some line
+    ls@((fun, _):_) <- line `sepBy1` newline
     pure (Def fun (snd <$> ls))
   where
     line = do
         fun <- name
-        c <- clause (void (return ())) (void (symbol "=")) -- (pure ())
-        pure (fun, c) -- ps, body) -- (Def fun ps body)
+        tok <- some patternExpr
+
+        cond <- fromMaybe [] <$> optional whens
+        symbol "="
+        term <- expr
+
+        pure (fun, Clause tok cond term) -- ps, body) -- (Def fun ps body)
