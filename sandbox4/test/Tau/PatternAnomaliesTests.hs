@@ -1,6 +1,6 @@
-{-# LANGUAGE OverloadedStrings #-}
 {-# LANGUAGE FlexibleContexts  #-}
 {-# LANGUAGE FlexibleInstances #-}
+{-# LANGUAGE OverloadedStrings #-}
 module Tau.PatternAnomaliesTests where
 
 import Control.Monad.Reader
@@ -26,186 +26,169 @@ testConstrEnv = constructorEnv
     , ("Zero"     , ["Succ", "Zero"])
     , ("Ok"       , ["Ok", "Fail"])
     , ("Fail"     , ["Ok", "Fail"])
+    , ("Mono"     , ["Mono"])
     ]
 
--- Patterns
+class IsExhaustive a where
+    isExhaustive :: (MonadReader ConstructorEnv m) => a -> m Bool
+    description  :: a -> String
 
-isExhaustive :: [[Pattern t]] -> Bool
-isExhaustive = flip runReader testConstrEnv . exhaustive
+instance IsExhaustive [[Pattern t]] where
+    isExhaustive = exhaustive
+    description  = \pss -> "The patterns " <> concatMap (\ps -> "\n    | " <> showDoc (patternSeq ps)) pss
 
-patternDescription :: [[Pattern t]] -> String
-patternDescription pss =
-    "The patterns " <> concatMap (\ps -> "\n    | " <> Text.unpack (renderDoc (patternSeq ps))) pss
+instance (Pretty a) => IsExhaustive [Clause (Pattern t) a] where
+    isExhaustive = clausesAreExhaustive
+    description  = \cs -> "The clauses " <> concatMap (\c -> "\n    | " <> showDoc (pretty c)) cs
 
---patternSeq :: [Pattern t] -> Doc a
---patternSeq []     = ""
---patternSeq (p:ps) = foldl conArg (pretty p) ps
+instance IsExhaustive ProgExpr where
+    isExhaustive = checkExhaustive
+    description  = \e -> "All patterns in the expression " <> showDoc (pretty e)
 
-exhaustivePatterns :: [[Pattern t]] -> SpecWith ()
-exhaustivePatterns patterns =
-    describe (patternDescription patterns) $ 
-        it ("✔ " <> " are exhaustive\n") (isExhaustive patterns)
+showDoc :: Doc a -> String
+showDoc = Text.unpack . renderDoc 
 
-nonExhaustivePatterns :: [[Pattern t]] -> SpecWith ()
-nonExhaustivePatterns patterns =
-    describe (patternDescription patterns) $ 
-        it ("✗ " <> " are not exhaustive\n") (not (isExhaustive patterns))
+runIsExhaustive :: (IsExhaustive a) => a -> Bool
+runIsExhaustive = flip runReader testConstrEnv . isExhaustive
 
--- Clauses
+testExhaustive :: (IsExhaustive a) => a -> SpecWith ()
+testExhaustive item = do
+    describe (description item) $
+        it ("✔ " <> " are exhaustive\n") (runIsExhaustive item)
 
-isExhaustive2 :: [Clause (Pattern t) a] -> Bool
-isExhaustive2 = flip runReader testConstrEnv . clausesAreExhaustive
-
-clauseDescription :: (Pretty a) => [Clause (Pattern t) a] -> String
-clauseDescription cs =
-    "The clauses " <> concatMap (\c -> "\n    | " <> Text.unpack (renderDoc (pretty c))) cs
-
-exhaustiveClauses :: (Pretty a) => [Clause (Pattern t) a] -> SpecWith ()
-exhaustiveClauses clauses =
-    describe (clauseDescription clauses) $ 
-        it ("✔ " <> " are exhaustive\n") (isExhaustive2 clauses)
-
-nonExhaustiveClauses :: (Pretty a) => [Clause (Pattern t) a] -> SpecWith ()
-nonExhaustiveClauses clauses =
-    describe (clauseDescription clauses) $ 
-        it ("✗ " <> " are not exhaustive\n") (not (isExhaustive2 clauses))
-
--- Expressions
-
-exhaustiveExpr :: ProgExpr -> SpecWith ()
-exhaustiveExpr expr =
-    undefined
-
---
+testNonExhaustive :: (IsExhaustive a) => a -> SpecWith ()
+testNonExhaustive item =
+    describe (description item) $ 
+        it ("✗ " <> " are not exhaustive\n") (not (runIsExhaustive item))
 
 testPatternAnomalies :: SpecWith ()
 testPatternAnomalies = do
 
     -- Patterns
-
+ 
     describe "\nPatterns\n" $ do
+ 
+        testExhaustive
+            [ [] :: [Pattern t] ]
 
-        exhaustivePatterns
-            [ [] ]
-
-        exhaustivePatterns
+        testExhaustive
             [ [litPat () (LBool True)]
             , [litPat () (LBool False)]
             ]
 
-        nonExhaustivePatterns
+        testNonExhaustive
             [ [litPat () (LBool True)]
             ]
 
-        exhaustivePatterns
+        testExhaustive
             [ [conPat () "Cons" [varPat () "x", conPat () "Cons" [varPat () "y", varPat () "ys"]]]
             , [conPat () "Nil" []]
             , [conPat () "Cons" [varPat () "z", varPat () "zs"]]
             ]
 
-        nonExhaustivePatterns
+        testNonExhaustive
             [ [conPat () "Cons" [varPat () "x", conPat () "Cons" [varPat () "y", varPat () "ys"]]]
             , [conPat () "Cons" [varPat () "z", varPat () "zs"]]
             ]
 
-        nonExhaustivePatterns
+        testNonExhaustive
             [ [conPat () "Cons" [varPat () "x", conPat () "Cons" [varPat () "y", varPat () "ys"]]]
             , [conPat () "Cons" [varPat () "z", varPat () "zs"]]
             , [conPat () "Cons" [anyPat (), anyPat ()]]
             ]
 
-        exhaustivePatterns
+        testExhaustive
             [ [conPat () "Cons" [varPat () "x", conPat () "Cons" [varPat () "y", varPat () "ys"]]]
             , [conPat () "Cons" [varPat () "z", varPat () "zs"]]
             , [conPat () "Cons" [anyPat (), anyPat ()]]
             , [conPat () "Nil" []]
             ]
 
-        exhaustivePatterns
+        testExhaustive
             [ [conPat () "Cons" [varPat () "x", conPat () "Cons" [varPat () "y", varPat () "ys"]]]
             , [conPat () "Nil" []]
             , [conPat () "Cons" [varPat () "z", conPat () "Nil" []]]
             ]
 
-        nonExhaustivePatterns
+        testNonExhaustive
             [ [conPat () "Cons" [varPat () "x", conPat () "Cons" [varPat () "y", varPat () "ys"]]]
             , [conPat () "Nil" []]
             ]
 
-        nonExhaustivePatterns
+        testNonExhaustive
             [ [conPat () "Nil" []]
             ]
 
-        exhaustivePatterns
+        testExhaustive
             [ [anyPat ()]
             ]
 
-        exhaustivePatterns
+        testExhaustive
             [ [conPat () "Cons" [varPat () "x", varPat () "ys"]]
             , [conPat () "Nil" []]
             ]
 
-        exhaustivePatterns
+        testExhaustive
             [ [conPat () "Cons" [varPat () "x", varPat () "ys"]]
             , [varPat () "x"]
             ]
 
-        exhaustivePatterns
+        testExhaustive
             [ [litPat () (LInt 5)]
             , [varPat () "x"]
             ]
 
-        nonExhaustivePatterns
+        testNonExhaustive
             [ [litPat () (LInt 5)]
             , [litPat () (LInt 4)]
             ]
 
-        exhaustivePatterns
+        testExhaustive
             [ [litPat () (LInt 5), litPat () (LInt 5)]
             , [varPat () "x", varPat () "y"]
             ]
 
-        nonExhaustivePatterns
+        testNonExhaustive
             [ [litPat () (LInt 5), litPat () (LInt 5)]
             , [varPat () "x", litPat () (LInt 0)]
             ]
 
-        exhaustivePatterns
+        testExhaustive
             [ [litPat () (LBool True)]
             , [litPat () (LBool False)]
             ]
 
-        exhaustivePatterns
+        testExhaustive
             [ [litPat () (LBool True)]
             , [anyPat ()]
             ]
 
-        nonExhaustivePatterns
+        testNonExhaustive
             [ [litPat () (LBool True)]
             ]
 
-        exhaustivePatterns
+        testExhaustive
             [ [litPat () LUnit]
             ]
 
-        exhaustivePatterns
+        testExhaustive
             [ [litPat () LUnit, litPat () LUnit]
             ]
 
-        exhaustivePatterns
+        testExhaustive
             [ [litPat () LUnit, anyPat ()]
             ]
 
-        nonExhaustivePatterns
+        testNonExhaustive
             [ [litPat () LUnit, litPat () (LInt 3)]
             ]
 
-        nonExhaustivePatterns
+        testNonExhaustive
             [ [litPat () (LString "x")]
             , [litPat () (LString "y")]
             ]
 
-        exhaustivePatterns
+        testExhaustive
             [ [litPat () (LString "x")]
             , [litPat () (LString "y")]
             , [anyPat ()]
@@ -213,37 +196,37 @@ testPatternAnomalies = do
 
         -- Tuple patterns
 
-        nonExhaustivePatterns
+        testNonExhaustive
             [ [tupPat () [litPat () (LInt 1), litPat () (LInt 2)]]
             ]
 
-        exhaustivePatterns
+        testExhaustive
             [ [tupPat () [anyPat (), anyPat ()]]
             ]
 
-        exhaustivePatterns
+        testExhaustive
             [ [tupPat () [litPat () (LInt 1), litPat () (LInt 2)]]
             , [tupPat () [anyPat (), anyPat ()]]
             ]
 
-        nonExhaustivePatterns
+        testNonExhaustive
             [ [tupPat () [conPat () "Cons" [varPat () "x", varPat () "xs"], litPat () (LInt 2)]]
             , [tupPat () [conPat () "Nil" [], anyPat ()]]
             ]
 
-        exhaustivePatterns
+        testExhaustive
             [ [tupPat () [conPat () "Cons" [varPat () "x", varPat () "xs"], litPat () (LBool True)]]
             , [tupPat () [conPat () "Cons" [varPat () "x", varPat () "xs"], litPat () (LBool False)]]
             , [tupPat () [conPat () "Nil" [], anyPat ()]]
             ]
 
-        nonExhaustivePatterns
+        testNonExhaustive
             [ [tupPat () [conPat () "Cons" [varPat () "x", varPat () "xs"], litPat () (LBool True)]]
             , [tupPat () [conPat () "Cons" [litPat () (LInt 3), varPat () "xs"], litPat () (LBool False)]]
             , [tupPat () [conPat () "Nil" [], anyPat ()]]
             ]
 
-        exhaustivePatterns
+        testExhaustive
             [ [tupPat () [conPat () "Cons" [varPat () "x", varPat () "xs"], litPat () (LBool True)]]
             , [tupPat () [conPat () "Cons" [litPat () (LInt 3), varPat () "xs"], litPat () (LBool False)]]
             , [tupPat () [conPat () "Nil" [], anyPat ()]]
@@ -252,25 +235,25 @@ testPatternAnomalies = do
 
         -- Record patterns
 
-        nonExhaustivePatterns
+        testNonExhaustive
             [ [recPat () (fieldSet [Field () "x" (litPat () (LInt 3)), Field () "y" (litPat () (LInt 4))])]
             , [recPat () (fieldSet [Field () "x" (litPat () (LInt 6)), Field () "y" (litPat () (LInt 7))])]
             ]
 
-        exhaustivePatterns
+        testExhaustive
             [ [recPat () (fieldSet [Field () "x" (litPat () (LInt 3)), Field () "y" (litPat () (LInt 4))])]
             , [recPat () (fieldSet [Field () "x" (litPat () (LInt 6)), Field () "y" (litPat () (LInt 7))])]
             , [recPat () (fieldSet [Field () "x" (anyPat ()), Field () "y" (litPat () (LInt 7))])]
             , [recPat () (fieldSet [Field () "x" (varPat () "x"), Field () "y" (anyPat ())])]
             ]
 
-        exhaustivePatterns
+        testExhaustive
             [ [recPat () (fieldSet [Field () "x" (anyPat ())])] ]
 
-        exhaustivePatterns
+        testExhaustive
             [ [recPat () (fieldSet [Field () "x" (anyPat ()), Field () "y" (varPat () "a")])] ]
 
-        exhaustivePatterns
+        testExhaustive
             [ [recPat () (fieldSet 
                   [ Field () "x" (litPat () (LInt 3))
                   , Field () "y" (recPat () (fieldSet 
@@ -297,7 +280,7 @@ testPatternAnomalies = do
                   ])]
             ]
 
-        nonExhaustivePatterns
+        testNonExhaustive
             [ [recPat () (fieldSet 
                   [ Field () "x" (litPat () (LInt 3))
                   , Field () "y" (recPat () (fieldSet 
@@ -328,34 +311,34 @@ testPatternAnomalies = do
 
         describe "\nList patterns\n" $ do
 
-            nonExhaustivePatterns
+            testNonExhaustive
                 [ [lstPat () [litPat () (LInt 1), litPat () (LInt 2)]]
                 ]
 
-            nonExhaustivePatterns
+            testNonExhaustive
                 [ [lstPat () [varPat () "x", litPat () (LInt 2)]]
                 ]
 
-            exhaustivePatterns
+            testExhaustive
                 [ [lstPat () [varPat () "x", litPat () (LInt 2)]]
                 , [anyPat ()]
                 ]
 
-            nonExhaustivePatterns
+            testNonExhaustive
                 [ [lstPat () [varPat () "x", varPat () "y"]]
                 ]
 
-            exhaustivePatterns
+            testExhaustive
                 [ [conPat () "[]" []]
                 , [conPat () "(::)" [varPat () "x", varPat () "xs"]]
                 ]
 
-            exhaustivePatterns
+            testExhaustive
                 [ [lstPat () []]
                 , [conPat () "(::)" [varPat () "x", varPat () "xs"]]
                 ]
 
-            exhaustivePatterns
+            testExhaustive
                 [ [lstPat () []]
                 , [lstPat () [varPat () "x"]]
                 , [lstPat () [varPat () "x", varPat () "y"]]
@@ -366,11 +349,11 @@ testPatternAnomalies = do
 
         describe "\nOr-patterns\n" $ do
 
-            nonExhaustivePatterns
+            testNonExhaustive
                 [ [litPat () (LBool False)]
                 ]
 
-            exhaustivePatterns
+            testExhaustive
                 [ [orPat () (litPat () (LBool False)) (litPat () (LBool True))]
                 ]
 
@@ -378,16 +361,16 @@ testPatternAnomalies = do
 
         describe "\nAs-patterns\n" $ do
 
-            exhaustivePatterns
+            testExhaustive
                 [ [asPat () "cons" (conPat () "Cons" [varPat () "x", varPat () "ys"])]
                 , [conPat () "Nil" []]
                 ]
 
-            nonExhaustivePatterns
+            testNonExhaustive
                 [ [asPat () "cons" (conPat () "Cons" [varPat () "x", varPat () "ys"])]
                 ]
 
-            exhaustivePatterns
+            testExhaustive
                 [ [asPat () "foo" (anyPat ())]
                 ]
 
@@ -395,11 +378,11 @@ testPatternAnomalies = do
 
         describe "\nCombined patterns\n" $ do
 
-            nonExhaustivePatterns
+            testNonExhaustive
                 [ [asPat () "x" (orPat () (litPat () (LInt 1)) (litPat () (LInt 2)))]
                 ]
 
-            exhaustivePatterns
+            testExhaustive
                 [ [asPat () "x" (orPat () (litPat () (LInt 1)) (litPat () (LInt 2)))]
                 , [anyPat ()]
                 ]
@@ -408,61 +391,61 @@ testPatternAnomalies = do
 
     describe "\nClauses\n" $ do
 
-        exhaustiveClauses
+        testExhaustive
             ( [ Clause [conPat () "(::)" [anyPat (), anyPat ()]] [] (litExpr () (LBool True))
               , Clause [varPat () "a"] [] (litExpr () (LBool False))
               ] :: [PatternClause] )
 
-        nonExhaustiveClauses
+        testNonExhaustive
             ( [ Clause [conPat () "(::)" [anyPat (), anyPat ()]] [] (litExpr () (LBool True))
               ] :: [PatternClause] )
 
-        nonExhaustiveClauses
+        testNonExhaustive
             ( [ Clause [varPat () "x"] [varExpr () "pIsTrue"] (litExpr () (LBool True))
               ] :: [PatternClause] )
 
-        exhaustiveClauses
+        testExhaustive
             ( [ Clause [varPat () "x"] [varExpr () "pIsTrue"] (litExpr () (LBool True))
               , Clause [varPat () "x"] [] (litExpr () (LBool True))
               ] :: [PatternClause] )
 
-        exhaustiveClauses
+        testExhaustive
             ( [ Clause [litPat () (LString "x")] [] (litExpr () (LBool True))
               , Clause [litPat () (LString "y")] [] (litExpr () (LBool True))
               , Clause [anyPat ()] [] (litExpr () (LBool True))
               ] :: [PatternClause] )
 
-        nonExhaustiveClauses
+        testNonExhaustive
             ( [ Clause [litPat () (LString "x")] [] (litExpr () (LBool True))
               , Clause [litPat () (LString "y")] [] (litExpr () (LBool True))
               , Clause [anyPat ()] [varExpr () "pIsTrue"] (litExpr () (LBool True))
               ] :: [PatternClause] )
 
-        exhaustiveClauses
+        testExhaustive
             ( [ Clause [litPat () (LString "x")] [] (litExpr () (LBool True))
               , Clause [litPat () (LString "y")] [varExpr () "pIsTrue"] (litExpr () (LBool True))
               , Clause [anyPat ()] [] (litExpr () (LBool True))
               ] :: [PatternClause] )
 
-        exhaustiveClauses
+        testExhaustive
             ( [ Clause [litPat () (LString "x")] [] (litExpr () (LBool True))
               , Clause [anyPat ()] [varExpr () "pIsTrue"] (litExpr () (LBool True))
               , Clause [varPat () "x"] [] (litExpr () (LBool True))
               ] :: [PatternClause] )
 
-        exhaustiveClauses
+        testExhaustive
             ( [ Clause [conPat () "Cons" [varPat () "x", conPat () "Cons" [varPat () "y", varPat () "ys"]]] [] (litExpr () (LBool True))
               , Clause [conPat () "Nil" []] [] (litExpr () (LBool True))
               , Clause [conPat () "Cons" [varPat () "z", conPat () "Nil" []]] [] (litExpr () (LBool True))
               ] :: [PatternClause] )
 
-        nonExhaustiveClauses
+        testNonExhaustive
             ( [ Clause [conPat () "Cons" [varPat () "x", conPat () "Cons" [varPat () "y", varPat () "ys"]]] [] (litExpr () (LBool True))
               , Clause [conPat () "Nil" []] [varExpr () "aEqualsB"] (litExpr () (LBool True))
               , Clause [conPat () "Cons" [varPat () "z", conPat () "Nil" []]] [] (litExpr () (LBool True))
               ] :: [PatternClause] )
 
-        exhaustiveClauses
+        testExhaustive
             ( [ Clause [conPat () "Cons" [varPat () "x", conPat () "Cons" [varPat () "y", varPat () "ys"]]] [] (litExpr () (LBool True))
               , Clause [conPat () "Nil" []] [varExpr () "aEqualsB"] (litExpr () (LBool True))
               , Clause [conPat () "Nil" []] [] (litExpr () (LBool True))
@@ -473,5 +456,23 @@ testPatternAnomalies = do
 
     describe "\nExpressions\n" $ do
 
-        exhaustiveExpr undefined
+        testExhaustive 
+            (letExpr () (BLet (varPat () "y")) (litExpr () (LInt 5)) (varExpr () "z") :: ProgExpr)
 
+        testExhaustive 
+            (letExpr () (BLet (conPat () "Mono" [varPat () "y"])) (conExpr () "Mono" [litExpr () (LInt 5)]) (varExpr () "y") :: ProgExpr)
+
+        testExhaustive 
+            (letExpr () (BLet (tupPat () [varPat () "x", varPat () "y"])) (tupExpr () [litExpr () (LInt 1), litExpr () (LInt 2)]) (varExpr () "y") :: ProgExpr)
+
+        testNonExhaustive 
+            (letExpr () (BLet (tupPat () [varPat () "x", litPat () (LInt 3)])) (tupExpr () [litExpr () (LInt 1), litExpr () (LInt 2)]) (varExpr () "y") :: ProgExpr)
+
+        testNonExhaustive 
+            (letExpr () (BLet (conPat () "Some" [varPat () "y"])) (conExpr () "Some" [litExpr () (LInt 5)]) (varExpr () "y") :: ProgExpr)
+
+        testNonExhaustive 
+            (lamExpr () [conPat () "Some" [varPat () "y"]] (varExpr () "y") :: ProgExpr)
+
+        testExhaustive 
+            (lamExpr () [conPat () "Mono" [varPat () "y"]] (varExpr () "y") :: ProgExpr)
