@@ -476,3 +476,11 @@ testPatternAnomalies = do
 
         testExhaustive 
             (lamExpr () [conPat () "Mono" [varPat () "y"]] (varExpr () "y") :: ProgExpr)
+
+        testNonExhaustive
+            (lamExpr () [conPat () "Mono" [varPat () "x", varPat () "y"]] (
+                patExpr () [varExpr () "x", varExpr () "y"] 
+                    [ Clause [conPat () "Cons" [varPat () "x", conPat () "Cons" [varPat () "y", varPat () "ys"]]] [] (litExpr () (LBool True))
+                    , Clause [conPat () "Nil" []] [varExpr () "aEqualsB"] (litExpr () (LBool True))
+                    , Clause [conPat () "Cons" [varPat () "z", conPat () "Nil" []]] [] (litExpr () (LBool True))
+                    ]) :: ProgExpr)
