@@ -7,6 +7,7 @@ import Data.Text.Prettyprint.Doc (Pretty)
 import Tau.Lang.Expr
 import Tau.Lang.Parser
 import Tau.Lang.Pretty
+import Tau.Lang.Prog
 import Tau.Lang.Type
 import Test.Hspec
 import Text.Megaparsec hiding (ParseError)
@@ -39,34 +40,38 @@ testParser = do
 
     -- Identifiers 
 
-    succeedParse name "an identifier"
-        "yeah" 
-        "yeah"
+    describe "\nIdentifiers\n" $ do
 
-    succeedParse name "an identifier"
-        "_yeah" 
-        "_yeah"
+        succeedParse name "an identifier"
+            "yeah" 
+            "yeah"
 
-    failParse name "an identifier"
-        "Nay" 
+        succeedParse name "an identifier"
+            "_yeah" 
+            "_yeah"
 
-    failParse name "an identifier"
-        "*foo" 
+        failParse name "an identifier"
+            "Nay" 
 
-    failParse name "an identifier"
-        "" 
+        failParse name "an identifier"
+            "*foo" 
 
-    failParse name "an identifier"
-        "let" 
+        failParse name "an identifier"
+            "" 
+
+        failParse name "an identifier"
+            "let" 
 
     -- Constructors
 
-    succeedParse constructor_ "a constructor" 
-        "Hello" 
-        "Hello"
+    describe "\nConstructors\n" $ do
 
-    failParse constructor_ "a constructor" 
-        "hello"
+        succeedParse constructor_ "a constructor" 
+            "Hello" 
+            "Hello"
+
+        failParse constructor_ "a constructor" 
+            "hello"
 
     -- Kinds
 
@@ -514,3 +519,12 @@ testParser = do
 
         failParse expr "an expression"
             "(x > y > z)"
+
+
+    --  Top-level definitions
+
+--    describe "\nTop-level definitions\n" $ do
+--
+--        succeedParse definition "a top-level definition"
+--            "fn x y = x + y"
+--            (Def "fn" [Clause [varPat () "x", varPat () "y"] [] (op2Expr () (OAdd ()) (varExpr () "x") (varExpr () "y"))])

@@ -15,6 +15,7 @@ import Tau.Comp.Core
 import Tau.Comp.Type.Inference
 import Tau.Eval.Core
 import Tau.Lang.Core
+import Tau.Lang.Prog
 import Tau.Lang.Expr
 import Tau.Lang.Type
 import Tau.Util
@@ -364,3 +365,8 @@ instance Pretty (Value m) where
             "@" <> pretty name
         Closure name _ _ ->
             "<<function>>"
+
+instance Pretty Definition where
+    pretty (Def name cs) = vsep (fun <$> cs) -- foldl conArg (pretty name) ps <+> "=" <+> pretty expr
+      where
+        fun c = pretty name <+> pretty c

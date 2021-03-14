@@ -19,7 +19,7 @@ type ProgExpr = Expr () (Pattern ())
                         (Op1 ()) 
                         (Op2 ())
 
-data Definition = Def Name ProgExpr
+data Definition = Def Name [Clause (Pattern ()) ProgExpr]
     deriving (Show, Eq)
 
 data Module = Module 

@@ -278,12 +278,12 @@ lambda = do
         lamExpr () pats <$> expr <* notFollowedBy (symbol "|")
         
 clauses_ :: Parser [Clause (Pattern ()) ProgExpr]
-clauses_ = (:) <$> clause (void (optional pipe)) <*> many (clause pipe)
+clauses_ = (:) <$> clause (void (optional pipe)) (void (symbol "=>")) <*> many (clause pipe (void (symbol "=>")))
 
 matchWith :: Parser ProgExpr
 matchWith = do
     term <- keyword "match" *> expr
-    patExpr () [term] <$> ((:) <$> clause with <*> many (clause pipe))
+    patExpr () [term] <$> ((:) <$> clause with (void (symbol "=>")) <*> many (clause pipe (void (symbol "=>"))))
 
 with :: Parser ()
 with = void (keyword "with" *> optional pipe)
@@ -291,12 +291,17 @@ with = void (keyword "with" *> optional pipe)
 pipe :: Parser ()
 pipe = void (symbol "|")
 
-clause :: Parser () -> Parser (Clause (Pattern ()) ProgExpr)
-clause sym = do 
-    pats <- sym *> some pattern_
+clause :: Parser () -> Parser () -> Parser (Clause (Pattern ()) ProgExpr)
+clause sym sym2 = do 
+    pat <- sym *> pattern_
     cond <- fromMaybe [] <$> optional whens
-    term <- symbol "=>" *> expr
-    pure (Clause pats cond term)
+    term <- sym2 *> expr
+    pure (Clause [pat] cond term)
+
+--    pats <- sym *> some pattern_
+--    cond <- fromMaybe [] <$> optional whens
+--    term <- sym2 *> expr
+--    pure (Clause pats cond term)
 
 whens :: Parser [ProgExpr]
 whens = keyword "when" *> (pure <$> expr)
@@ -552,3 +557,17 @@ prod = do
     data_ <- constructor_
     types <- many typeExpr
     pure (Prod data_ types)
+
+-- ============================================================================
+-- == Top-level definition
+-- ============================================================================
+
+definition :: Parser Definition
+definition = do
+    ls@((fun, _):_) <- some line
+    pure (Def fun (snd <$> ls))
+  where
+    line = do
+        fun <- name
+        c <- clause (void (return ())) (void (symbol "=")) -- (pure ())
+        pure (fun, c) -- ps, body) -- (Def fun ps body)
