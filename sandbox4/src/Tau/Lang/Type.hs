@@ -11,7 +11,7 @@ import Control.Arrow (second, (<<<), (>>>))
 import Control.Comonad.Cofree
 import Control.Monad.Supply
 import Data.Functor.Foldable
-import Data.List (nub)
+import Data.List (nub, sortOn)
 import Data.Set.Monad (Set)
 import Data.Void
 import Tau.Util
@@ -250,10 +250,16 @@ tListCon = tCon kFun "List"
 tList :: TypeT a -> TypeT a
 tList = tApp tListCon
 
-tRecord :: [Name] -> [TypeT a] -> TypeT a
-tRecord names = foldl tApp (tCon kind (recordCon names))
+tRecord :: [(Name, TypeT a)] -> TypeT a
+tRecord pairs = foldl tApp (tCon kind (recordCon ns)) ts
   where
-    kind = foldr kArr kTyp (replicate (length names) kTyp)
+    (ns, ts) = unzip (sortOn fst pairs)
+    kind = foldr kArr kTyp (replicate (length pairs) kTyp)
+
+--tRecord :: [Name] -> [TypeT a] -> TypeT a
+--tRecord names = foldl tApp (tCon kind (recordCon names))
+--  where
+--    kind = foldr kArr kTyp (replicate (length names) kTyp)
 
 tTuple :: [TypeT a] -> TypeT a
 tTuple types = foldl tApp (tCon kind (tupleCon (length types))) types

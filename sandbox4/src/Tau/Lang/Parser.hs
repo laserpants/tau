@@ -360,7 +360,8 @@ ifClause = do
 -- == Types
 -- ============================================================================
 
-type_ :: Parser (TypeT a)
+--type_ :: Parser (TypeT a)
+type_ :: Parser Type
 type_ = makeExprParser parser [[ InfixR (tArr <$ symbol "->") ]] where
     parser = do
         ts <- some typeExpr
@@ -374,14 +375,16 @@ setKind k = project >>> \case
     TCon _ con -> tCon k con
     t          -> embed t
 
-typeExpr :: Parser (TypeT a)
+--typeExpr :: Parser (TypeT a)
+typeExpr :: Parser Type
 typeExpr = tVar kTyp <$> name
     <|> tCon kTyp <$> constructor_
     <|> tupleType
     <|> recordType
     <|> parens type_
 
-tupleType :: Parser (TypeT a)
+--tupleType :: Parser (TypeT a)
+tupleType :: Parser Type
 tupleType = do
     elems <- components type_
     case elems of
@@ -389,10 +392,9 @@ tupleType = do
         []  -> fail "Not a type"
         _   -> pure (tTuple elems)
 
-recordType :: Parser (TypeT a)
-recordType = do
-    (keys, vals) <- unzip <$> fieldPairs ":" type_
-    pure (tRecord keys vals)
+--recordType :: Parser (TypeT a)
+recordType :: Parser Type
+recordType = tRecord <$> fieldPairs ":" type_
 
 -- ============================================================================
 -- == Kinds

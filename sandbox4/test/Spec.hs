@@ -7,6 +7,7 @@ import Tau.PrettyPrinterTests
 import Tau.SubstitutionTests
 import Tau.TypeInferenceTests
 import Tau.TypeSubstitutionTests
+import Tau.TypeTests
 import Tau.TypeUnificationTests
 import Test.Hspec
 
@@ -23,3 +24,4 @@ main =
         describe "\nCompiler\n" testCompiler
         describe "\nPretty printer\n" testPrettyPrinter
         describe "\nTerm substitution\n" testTermSubtitution
+        describe "\nTypes\n" testTypes

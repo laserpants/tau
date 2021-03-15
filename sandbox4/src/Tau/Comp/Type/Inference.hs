@@ -120,8 +120,8 @@ infer = cata $ \expr -> do
             e1 <- local (second (Env.inserts (toScheme <$$> vs))) expr1
             t1 <- newTVar kTyp
             unifyTyped t1 (foldr tArr (typeOf e1) (typeOf <$> tps))
-            t <- generalize t1
-            e2 <- local (second (Env.insert f t)) expr2
+            scheme <- generalize t1
+            e2 <- local (second (Env.insert f scheme)) expr2
             unifyTyped newTy e2
             pure (letExpr (NodeInfo newTy []) (BFun f tps) e1 e2)
 
@@ -204,7 +204,7 @@ infer = cata $ \expr -> do
             let (_, ns, fs) = unzip3 (fieldList fields)
                 info Field{..} = Field{ fieldTag = NodeInfo (typeOf fieldValue) [], .. }
             es <- sequence fs
-            unifyTyped newTy (tRecord ns (typeOf <$> es))
+            unifyTyped newTy (tRecord (zip ns (typeOf <$> es)))
             pure (recExpr (NodeInfo newTy []) (FieldSet (zipWith (info <$$> Field ()) ns es))) 
 
         ETup _ elems -> do
@@ -277,7 +277,7 @@ inferPattern = cata $ \pat -> do
             let (_, ns, fs) = unzip3 (fieldList fieldSet)
             ps <- sequence fs
             let tfs = zipWith (\n p -> Field (patternTag p) n p) ns ps
-            unifyTyped newTy (tRecord ns (typeOf <$> ps))
+            unifyTyped newTy (tRecord (zip ns (typeOf <$> ps)))
             pure (recPat (NodeInfo newTy []) (FieldSet tfs))
 
         PTup _ elems -> do
