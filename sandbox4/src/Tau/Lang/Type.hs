@@ -203,6 +203,9 @@ infixr 1 `kArr`
 kFun :: Kind
 kFun = kTyp `kArr` kTyp
 
+kFun2 :: Kind
+kFun2 = kTyp `kArr` kTyp `kArr` kTyp
+
 tVar :: Kind -> Name -> TypeT a
 tVar = embed2 TVar
 
@@ -255,11 +258,6 @@ tRecord pairs = foldl tApp (tCon kind (recordCon ns)) ts
   where
     (ns, ts) = unzip (sortOn fst pairs)
     kind = foldr kArr kTyp (replicate (length pairs) kTyp)
-
---tRecord :: [Name] -> [TypeT a] -> TypeT a
---tRecord names = foldl tApp (tCon kind (recordCon names))
---  where
---    kind = foldr kArr kTyp (replicate (length names) kTyp)
 
 tTuple :: [TypeT a] -> TypeT a
 tTuple types = foldl tApp (tCon kind (tupleCon (length types))) types
