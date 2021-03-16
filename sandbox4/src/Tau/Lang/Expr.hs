@@ -84,6 +84,10 @@ deriveEq1   ''Clause
 data Op1 t
     = ONeg t                  -- ^ Unary negation
     | ONot t                  -- ^ Logical NOT
+
+    -- TODO:
+    -- xor
+
     deriving (Show, Eq)
 
 -- | Binary operators
@@ -105,6 +109,12 @@ data Op2 t
     | ORArr t                 -- ^ Reverse function composition
     | OFPipe t                -- ^ Forward pipe operator
     | OBPipe t                -- ^ Reverse pipe operator
+
+    -- TODO:
+    -- integer division (//)
+    -- modulo (%)
+    -- string concatenation (++)
+
     deriving (Show, Eq)
 
 -- | Let name-bindings

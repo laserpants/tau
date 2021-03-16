@@ -45,17 +45,17 @@ instance Eq (Value m) where
     (==) (PrimFun f _ _) (PrimFun g _ _) = f == g
     (==) _ _                             = False
 
-constructor :: (MonadReader (ValueEnv m) m) => Name -> Int -> Value m
-constructor name 0 = Data name []
-constructor name n = Closure v val mempty
-  where
-    vars@(v:vs) = 
-        take n (nameSupply "%")
-    val = (ini & foldr (\fun -> asks . Closure fun)) vs
-    ini = do
-        Env env <- ask
-        let args = fmap (env Map.!) vars
-        pure (Data name args)
+--constructor :: (MonadReader (ValueEnv m) m) => Name -> Int -> Value m
+--constructor name 0 = Data name []
+--constructor name n = Closure v val mempty
+--  where
+--    vars@(v:vs) = 
+--        take n (nameSupply "%")
+--    val = (ini & foldr (\fun -> asks . Closure fun)) vs
+--    ini = do
+--        Env env <- ask
+--        let args = fmap (env Map.!) vars
+--        pure (Data name args)
 
 newtype Eval a = Eval { unEval :: ReaderT (ValueEnv Eval) Maybe a } deriving
     ( Functor

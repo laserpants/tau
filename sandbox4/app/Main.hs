@@ -114,20 +114,20 @@ import qualified Tau.Util.Env as Env
 --        evalExpr c evalEnv
 
 evalEnv = Env.fromList 
-    [ ("(::)"    , constructor "(::)" 2)  
-    , ("[]"      , constructor "[]"   0)  
-    , ("Some"    , constructor "Some" 1)  
-    , ("None"    , constructor "None" 0)  
-    , ("{show}"  , constructor "{show}" 1)  
-    , ("{(*),(+),(-)}" , constructor "{(*),(+),(-)}" 3)  
-    , ("(,)"     , constructor "(,)" 2)  
-    , ("show"    , fromJust (evalExpr show_ mempty))
+--    [ ("(::)"    , constructor "(::)" 2)  
+--    , ("[]"      , constructor "[]"   0)  
+--    , ("Some"    , constructor "Some" 1)  
+--    , ("None"    , constructor "None" 0)  
+--    , ("{show}"  , constructor "{show}" 1)  
+--    , ("{(*),(+),(-)}" , constructor "{(*),(+),(-)}" 3)  
+--    , ("(,)"     , constructor "(,)" 2)  
+    [ ("show"    , fromJust (evalExpr show_ mempty))
     , ("lenShow" , fromJust (evalExpr lenShow mempty))
     , ("first"   , fromJust (runEval (eval fst_) mempty))
     , ("second"  , fromJust (runEval (eval snd_) mempty))
     , ("(+)"     , fromJust (evalExpr plus__ mempty))
-    , ("Z"       , constructor "Z" 0)  
-    , ("S"       , constructor "S" 1)  
+--    , ("Z"       , constructor "Z" 0)  
+--    , ("S"       , constructor "S" 1)  
     ]
   where
     lenShow = fromJust (evalSupply (compileExpr foo3) (numSupply "$"))
