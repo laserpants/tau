@@ -10,7 +10,7 @@ import Control.Monad.Extra
 import Control.Monad.Reader
 import Control.Monad.State
 import Control.Monad.Supply 
-import Control.Monad.Writer
+import Control.Monad.Writer hiding (Sum)
 import Data.Function ((&))
 import Data.List (nub)
 import Data.Map.Strict (Map)
@@ -21,6 +21,7 @@ import Data.Tree.View (showTree)
 import Data.Tuple.Extra (both)
 import Data.Void
 import Tau.Comp.Core
+import Tau.Comp.Prog
 import Tau.Comp.Type.Inference
 import Tau.Comp.Type.Substitution (Substitution, apply)
 import Tau.Comp.Type.Unification
@@ -29,7 +30,9 @@ import Tau.Eval.Repl
 import Tau.Lang.Core
 import Tau.Lang.Expr
 import Tau.Lang.Parser
+import Tau.Lang.Parser2
 import Tau.Lang.Pretty.Ast
+import Tau.Lang.Prog
 import Tau.Lang.Type
 import Tau.Util
 import Tau.Util.Env (Env(..))
@@ -123,6 +126,8 @@ evalEnv = Env.fromList
     , ("first"   , fromJust (runEval (eval fst_) mempty))
     , ("second"  , fromJust (runEval (eval snd_) mempty))
     , ("(+)"     , fromJust (evalExpr plus__ mempty))
+    , ("Z"       , constructor "Z" 0)  
+    , ("S"       , constructor "S" 1)  
     ]
   where
     lenShow = fromJust (evalSupply (compileExpr foo3) (numSupply "$"))
@@ -457,13 +462,131 @@ testExpr37 :: Expr () (Pattern () ()) (Binding (Pattern () ())) [Pattern () ()] 
 testExpr37 =
     appExpr () [varExpr () "(>=)", litExpr () (LInt 5), litExpr () (LInt 5)]
 
+testExpr38 :: Expr () (Pattern () ()) (Binding (Pattern () ())) [Pattern () ()] (Op1 ()) (Op2 ())
+testExpr38 =
+    fixExpr () "fixS" (lamExpr () [varPat () "f", varPat () "s"] (patExpr () [] 
+        [ Clause [conPat () "Z" []] [] (varExpr () "s")
+        , Clause [asPat () "nat" (conPat () "S" [varPat () "n"])] [] (appExpr () [varExpr () "fixS", varExpr () "f", appExpr () [varExpr () "f", varExpr () "nat", varExpr () "s"], varExpr () "n"])
+        ])) (varExpr () "fixS")
+
+testExpr39 :: Expr () (Pattern () ()) (Binding (Pattern () ())) [Pattern () ()] (Op1 ()) (Op2 ())
+testExpr39 =
+    letExpr () (BLet (varPat () "x")) (conExpr () "S" [conExpr () "S" [conExpr () "S" [conExpr () "Z" []]]])
+        (fixExpr () "fixS" (lamExpr () [varPat () "f", varPat () "s"] (patExpr () [] 
+            [ Clause [conPat () "Z" []] [] (varExpr () "s")
+            , Clause [asPat () "nat" (conPat () "S" [varPat () "n"])] [] (appExpr () [varExpr () "fixS", varExpr () "f", appExpr () [varExpr () "f", varExpr () "nat", varExpr () "s"], varExpr () "n"])
+            ])) (appExpr () [varExpr () "fixS", lamExpr () [anyPat (), varPat () "z"] (op2Expr () (OAdd ()) (varExpr () "z") (litExpr () (LInt 1))), litExpr () (LInt 0), varExpr () "x"]))
+
+testExpr40 :: Expr () (Pattern () ()) (Binding (Pattern () ())) [Pattern () ()] (Op1 ()) (Op2 ())
+testExpr40 =
+    letExpr () (BLet (varPat () "x")) (conExpr () "S" [conExpr () "S" [conExpr () "S" [conExpr () "Z" []]]])
+        (fixExpr () "fixS" (lamExpr () [varPat () "f", varPat () "s"] (patExpr () [] 
+            [ Clause [conPat () "Z" []] [] (varExpr () "s")
+            , Clause [asPat () "nat" (conPat () "S" [varPat () "n"])] [] (appExpr () [varExpr () "fixS", varExpr () "f", appExpr () [varExpr () "f", varExpr () "nat", varExpr () "s"], varExpr () "n"])
+            ])) (appExpr () [varExpr () "fixS", lamExpr () [varPat () "x", varPat () "a"] (undefined), litExpr () (LInt 0), varExpr () "x"]))
+
+testModule41 =
+    Module
+      { moduleName = "Test"
+      , moduleTypes = 
+          [ Sum "Nat" [] 
+              [ Prod "Z" []
+              , Prod "S" [ typ "Nat" ] 
+              ] 
+          ]
+      , moduleDefs = 
+          [ Def "foldS" 
+              [ Clause [] [] undefined ] 
+              []
+          , Def "foldCons" 
+              [ Clause [] [] undefined ] 
+              []
+          , Def "toNat" 
+              [ Clause [] [] undefined ] 
+              []
+          , Def "fromNat" 
+              [ Clause [] [] undefined ] 
+              []
+          , Def "factorial" 
+              [ Clause [] [] undefined ] 
+              []
+          , Def "id" 
+              [ Clause [varPat () "x"] [] (varExpr () "x") ] 
+              []
+          , Def "withDefault" 
+              [ Clause [] [] undefined ] 
+              [ Def "notZero"
+                  []
+                  []
+              , Def "baz"
+                  []
+                  []
+              ]
+          , Def "map" 
+              [ Clause [] [] undefined ] 
+              []
+          , Def "myList" 
+              [ Clause [] [] undefined ] 
+              []
+          , Def "main" 
+              [ Clause [] [] undefined ] 
+              []
+          ]
+      , moduleClasses = 
+          []
+      , moduleInstances = 
+          []
+      }
+
+testModule42 =
+    Module
+      { moduleName = "Test"
+      , moduleTypes = 
+          [ Sum "Nat" [] 
+              [ Prod "Z" []
+              , Prod "S" [ typ "Nat" ] 
+              ] 
+          , Sum "List" ["a"] 
+              [ Prod "Nil" []
+              , Prod "Cons" [ tVar kTyp "a", tList (tVar kTyp "a") ] 
+              ] 
+          ]
+      , moduleDefs = 
+          [ Def "id" 
+              [ Clause [varPat () "x"] [] (varExpr () "x") ] 
+              []
+          , Def "myFun" 
+              [ Clause [varPat () "n"] [] (conExpr () "S" [varExpr () "n"]) ] 
+              []
+          ]
+      , moduleClasses = 
+          []
+      , moduleInstances = 
+          []
+      }
+
+testType43 =
+    runInfer classEnv typeEnv (generalize (tVar kTyp "a" `tArr` tList (tVar kTyp "a") `tArr` tList (tVar kTyp "a")))
+
+testType44 = Sum "List" ["a"] 
+              [ Prod "Nil" []
+              , Prod "Cons" [ tVar kTyp "a", tList (tVar kTyp "a") ] 
+              ] 
+
+testType45 = Sum "List" [] 
+              [ Prod "Nil" []
+              , Prod "Cons" [ tVar kTyp "a", tList (tVar kTyp "a") ] 
+              ] 
+
+
+
 testX = 
-    case runTest testExpr29 of 
+    case runTest testExpr39 of 
         Left e -> error e
         Right (r, q , c, z) -> do
             putStrLn (showTree (nodesToString (prettyAst r)))
             putStrLn (showTree (nodesToString (prettyAst q)))
-            putStrLn "Core :"
+            putStrLn "Core ::"
             putStrLn (showTree (nodesToString (prettyCore c)))
             putStrLn (show z)
 
@@ -658,6 +781,9 @@ typeEnv = Env.fromList
     , ( "@Int.(*)" , Forall [] [] (tInt `tArr` tInt `tArr` tInt) )
 
     , ( "lenShow"  , Forall [kTyp, kTyp] [InClass "Show" 0] (tGen 0 `tArr` tInt) ) 
+
+    , ( "Z"  , Forall [] [] (tCon kTyp "Nat") ) 
+    , ( "S"  , Forall [] [] (tCon kTyp "Nat" `tArr` tCon kTyp "Nat") ) 
     ]
 
 

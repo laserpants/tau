@@ -1,0 +1,79 @@
+module Test
+
+type Nat
+  = Z
+  | S Nat
+
+-- @foldS
+
+foldS = 
+  letfix mu = 
+    \f s => 
+      fun
+        | Z => s
+        | (S n) as m => mu f (f m s) n
+
+foldCons =
+  letfix mu =
+    \f s =>
+      fun
+        | [] => s
+        | (x :: xs) as ys => mu f (f ys s) xs
+
+toNat : Int -> Nat
+toNat = ???
+
+fromNat : Nat -> Int
+fromNat = ???
+
+factorial : Nat -> Nat
+factorial n = foldS mu (S Z) 
+  where
+    mu x s = x * s
+
+id : a -> a
+id x = x
+
+withDefault : a -> Some a -> a
+withDefault default None = default
+withDefault _ (Some value) = value
+  where
+    notZero 0 = False
+    notZero _ = True
+  and
+    baz = 2
+
+map : List a -> List a
+map = foldCons mu id
+
+myList : List Int
+myList = [1, 2, 3, 4]
+
+main = myList.map (factorial << toNat)
+
+
+
+----
+
+
+module Test
+
+type Nat = Z | S Nat
+
+foldS = letfix mu = \f s => fun | Z => s | (S n) as m => mu f (f m s) n
+
+foldCons = letfix mu = \f s => fun | [] => s | (x :: xs) as ys => mu f (f ys s) xs
+
+toNat : Int -> Nat
+toNat = ???
+
+factorial : Nat -> Nat
+factorial n = foldS mu (S Z) where mu x s = x * s
+
+map : List a -> List a
+map = foldCons mu ???
+
+myList : List Int
+myList = [1, 2, 3, 4]
+
+main = myList.map (factorial << toNat)

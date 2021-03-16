@@ -367,6 +367,6 @@ instance Pretty (Value m) where
             "<<function>>"
 
 instance Pretty Definition where
-    pretty (Def name cs) = vsep (fun <$> cs) -- foldl conArg (pretty name) ps <+> "=" <+> pretty expr
+    pretty (Def name cs _) = vsep (fun <$> cs) -- foldl conArg (pretty name) ps <+> "=" <+> pretty expr
       where
         fun c = pretty name <+> pretty c

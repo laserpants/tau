@@ -17,7 +17,6 @@ import Tau.Comp.Type.Substitution
 import Tau.Lang.Expr
 import Tau.Lang.Prog
 import Tau.Lang.Type
---import Tau.Util (Name, Fix(..), embed, project, cata, to, (<$$>), traceShowM)
 import Tau.Util hiding (parens, pipe, brackets)
 import Text.Megaparsec hiding (ParseError)
 import Text.Megaparsec.Char
@@ -37,18 +36,20 @@ lexeme = Lexer.lexeme spaces
 symbol :: Text -> Parser Text
 symbol = Lexer.symbol spaces
 
---foo = do
---    newline
---    void (Megaparsec.char ' ')
---    void (Megaparsec.char ' ')
---    pure ()
+indent2 :: Parser ()
+indent2 = newline *> char ' ' *> char ' ' $> ()
 
 spaces :: Parser ()
 spaces = Lexer.space
-    space1
-    --(void Megaparsec.tab <|> void (Megaparsec.char ' ') <|> foo) --  <|> void tab)
+    (void (char ' ' <|> char '\t') <|> try indent2)
     (Lexer.skipLineComment "--")
     (Lexer.skipBlockComment "{-" "-}")
+
+--spaces_ :: Parser ()
+--spaces_ = Lexer.space
+--    space1
+--    (Lexer.skipLineComment "--")
+--    (Lexer.skipBlockComment "{-" "-}")
 
 parens :: Parser a -> Parser a
 parens = between (symbol "(") (symbol ")")
@@ -301,18 +302,18 @@ pipe = void (symbol "|")
 clause :: Parser () -> Parser (Clause (Pattern () ()) ProgExpr)
 clause sym = do 
     pat <- sym *> pattern_
-    cond <- fromMaybe [] <$> optional whens
+    cond <- fromMaybe [] <$> optional when_
     symbol "=>" 
     term <- expr
     pure (Clause [pat] cond term)
 
 --    pats <- sym *> some pattern_
---    cond <- fromMaybe [] <$> optional whens
+--    cond <- fromMaybe [] <$> optional when_
 --    term <- sym2 *> expr
 --    pure (Clause pats cond term)
 
-whens :: Parser [ProgExpr]
-whens = keyword "when" *> (pure <$> expr)
+when_ :: Parser [ProgExpr]
+when_ = keyword "when" *> (pure <$> expr)
 
 --identifier :: Parser ProgExpr
 --identifier = varExpr () <$> word (withInitial letterChar)
@@ -576,28 +577,23 @@ prod = do
 -- fn x = 8
 --   print abc 
 
-
---bazoo = do
---    fun <- name
---    tok <- many patternExpr
---    symbol "="
-
-
-
--- someFunction x y = x + y 
--- someFunction _ _ = 100
+-- fn x y =
+--   x + y where
+--     mu = f x
+--   and
+--     nu = g x
+--
+--
 
 definition :: Parser Definition
 definition = do
     ls@((fun, _):_) <- line `sepBy1` newline
-    pure (Def fun (snd <$> ls))
+    pure (Def fun (snd <$> ls) [])
   where
     line = do
         fun <- name
-        tok <- some patternExpr
-
-        cond <- fromMaybe [] <$> optional whens
+        tok <- many patternExpr
+        cond <- fromMaybe [] <$> optional when_
         symbol "="
         term <- expr
-
         pure (fun, Clause tok cond term) -- ps, body) -- (Def fun ps body)

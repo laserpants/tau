@@ -4,6 +4,7 @@ import Tau.ParserTests
 import Tau.PatternAnomaliesTests
 import Tau.PatternCompilerTests
 import Tau.PrettyPrinterTests
+import Tau.ProgTranslTests
 import Tau.SubstitutionTests
 import Tau.TypeInferenceTests
 import Tau.TypeSubstitutionTests
@@ -25,3 +26,4 @@ main =
         describe "\nPretty printer\n" testPrettyPrinter
         describe "\nTerm substitution\n" testTermSubtitution
         describe "\nTypes\n" testTypes
+        describe "\nProgram translation\n" testProgTransl

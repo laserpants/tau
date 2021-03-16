@@ -28,6 +28,7 @@ import Tau.Eval.Core
 import Tau.Eval.Prim
 import Tau.Lang.Expr
 import Tau.Lang.Parser
+import Tau.Lang.Prog
 import Tau.Lang.Pretty
 import Tau.Lang.Pretty.Ast
 import Tau.Lang.Type
@@ -138,6 +139,8 @@ typed e = do
     case evalSupply (compileExpr (extractType ast4)) (numSupply "$") of
         Just c -> do
             liftIO $ putStrLn (showTree (nodesToString (prettyCore c)))
+            traceShowM c
+            traceShowM (evalExpr c evalEnv2)
             pure (evalExpr c evalEnv2)
         Nothing -> 
             throwError "==fail=="
@@ -208,18 +211,20 @@ typeEnv2 = Env.fromList
     ]
 
 evalEnv2 = Env.fromList 
-    [ ("(::)"    , constructor "(::)" 2)  
-    , ("[]"      , constructor "[]"   0)  
-    , ("Some"    , constructor "Some" 1)  
-    , ("None"    , constructor "None" 0)  
-    , ("{show}"  , constructor "{show}" 1)  
-    , ("{(*),(+),(-)}" , constructor "{(*),(+),(-)}" 3)  
-    , ("(,)"     , constructor "(,)" 2)  
-    , ("show"    , fromJust (evalExpr show_ mempty))
+    [ -- ("(::)"    , constructor "(::)" 2)  
+    -- , -- ("[]"      , constructor "[]"   0)  
+    -- , -- ("Some"    , constructor "Some" 1)  
+    -- , -- ("None"    , constructor "None" 0)  
+    -- , -- ("{show}"  , constructor "{show}" 1)  
+    -- , -- ("{(*),(+),(-)}" , constructor "{(*),(+),(-)}" 3)  
+    -- , -- ("(,)"     , constructor "(,)" 2)  
+      ("show"    , fromJust (evalExpr show_ mempty))
     , ("lenShow" , fromJust (evalExpr lenShow mempty))
     , ("first"   , fromJust (runEval (eval fst_) mempty))
     , ("second"  , fromJust (runEval (eval snd_) mempty))
     , ("(+)"     , fromJust (evalExpr plus__ mempty))
+--    , ("Z"       , constructor "Z" 0)
+--    , ("S"       , constructor "S" 1)
     ]
   where
     lenShow = fromJust (evalSupply (compileExpr foo3) (numSupply "$"))

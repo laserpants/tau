@@ -69,16 +69,6 @@ type PolyPredicate = PredicateT Int
 data Scheme = Forall [Kind] [PolyPredicate] PolyType
     deriving (Show, Eq)
 
--- | Type class
-type Class a = ([Name], [Instance a])
-
--- | Type class instance
-data Instance a = Instance
-    { predicates   :: [Predicate]
-    , instanceType :: Type
-    , instanceDict :: a
-    } deriving (Show, Eq)
-
 class Typed a where
     typeOf :: a -> Type
 
@@ -179,8 +169,6 @@ typeVars = nub . cata alg where
         TArr t1 t2 -> t1 <> t2
         TApp t1 t2 -> t1 <> t2
         _          -> []
-
-type ClassEnv a = Env (Class a)
 
 type TypeEnv = Env Scheme
 

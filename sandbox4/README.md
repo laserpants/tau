@@ -74,6 +74,8 @@ x = 3
     a = b
 
 
+fun = (\Some x when x > 100 => x + 1 | _ => 0) (Some 105)
+
 headOrZero : List Int -> Int
 headOrZero xs = xs.head ? 0
   where
@@ -109,3 +111,4 @@ headOrZero xs = xs.head ? 0
 # -- newline
 # -- space
 # -- comment
+

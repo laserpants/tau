@@ -7,6 +7,8 @@ module Tau.Eval.Core where
 
 import Control.Monad.Reader
 import Data.Function ((&))
+import Data.Char
+import Data.Tuple.Extra (first, second)
 import Tau.Comp.Core
 import Tau.Eval.Prim
 import Tau.Lang.Core
@@ -106,10 +108,21 @@ evalVar var =
                     traceShowM ("No primitive function " <> Text.unpack prim)
                     fail ("No primitive function " <> Text.unpack prim)
 
-        Nothing -> do
-            env <- ask
-            unless (Env.isMember var env) (traceShowM ("Unbound identifier " <> var))
-            maybe (fail "Unbound identifier") pure (Env.lookup var env)
+        _ | isConstructor var -> pure (Data var [])
+          | otherwise -> do
+              env <- ask
+              unless (Env.isMember var env) (traceShowM ("Unbound identifier " <> var))
+              maybe (fail "Unbound identifier") pure (Env.lookup var env)
+
+-- TODO
+isConstructor :: Name -> Bool
+isConstructor var
+    | isLower init = False
+    | '_' == init  = False
+    | '$' == init  = False
+    | otherwise    = True
+  where
+    init = Text.head var
 
 evalPrim 
   :: (MonadFail m, MonadReader (ValueEnv m) m)
@@ -140,13 +153,16 @@ evalApp fun arg = fun >>= \case
         val <- arg
         evalPrim name fun (val:args)
 
+    Data con args -> do
+        a <- arg
+        pure (Data con (args <> [a]))
+
 evalPat 
   :: (MonadFail m, MonadReader (ValueEnv m) m)
   => [([Name], m (Value m))]
   -> Value m
   -> m (Value m)
 evalPat [] _ = fail "Runtime error (evalPat)"
---evalPat ((["$_"], e):_) _ = e
 evalPat [(["$_"], e)] _ = e
 evalPat ((p:ps, e):eqs) val =
     case val of
@@ -155,3 +171,108 @@ evalPat ((p:ps, e):eqs) val =
 
         _ ->
             evalPat eqs val
+
+--evalPat ((["$_"], e):_) _ = e
+
+--
+--
+--
+--
+
+--newtype Eval2 a = Eval2 { unEval2 :: ReaderT (ValueEnv Eval2, Env Core) Maybe a } deriving
+--    ( Functor
+--    , Applicative
+--    , Monad
+--    , MonadFail
+--    , MonadReader (ValueEnv Eval2, Env Core) )
+--
+--runEval2 :: Eval2 a -> (ValueEnv Eval2, Env Core) -> Maybe a
+--runEval2 = runReaderT . unEval2
+--
+--evalExpr2 :: Core -> (ValueEnv Eval2, Env Core) -> Maybe (Value Eval2)
+--evalExpr2 = runEval2 . eval2
+--
+--eval2 :: (MonadFail m, MonadReader (ValueEnv m, Env Core) m) => Core -> m (Value m)
+--eval2 = cata $ \case
+--    CVar var ->
+--        evalVar2 var
+--
+--    CLit lit ->
+--        pure (Value lit)
+--
+--    CApp exs ->
+--        foldl1 evalApp2 exs
+--
+--    CLet var e1 e2 -> do
+--        val <- e1
+--        local (first (Env.insert var val)) e2 
+--
+--    CLam var e1 -> 
+--        asks (Closure var e1 . fst)
+--
+--    CIf e1 e2 e3 -> do
+--        Value (LBool isTrue) <- e1
+--        if isTrue then e2 else e3
+--
+--    CPat expr fields ->
+--        expr >>= evalPat2 fields
+--
+--evalVar2 :: (MonadFail m, MonadReader (ValueEnv m, Env Core) m) => Name -> m (Value m)
+--evalVar2 var = 
+--    case Text.stripPrefix "@" var of
+--        Just prim ->
+--            case Env.lookup prim primEnv of
+--                Just fun -> evalPrim2 prim fun []
+--                Nothing  -> do
+--                    traceShowM ("No primitive function " <> Text.unpack prim)
+--                    fail ("No primitive function " <> Text.unpack prim)
+--
+--        Nothing -> do
+--            env <- asks snd
+--            case Env.lookup var env of
+--                Nothing   -> traceShow ("Unbound identifier " <> var) (fail "Unbound identifier")
+--                Just expr -> eval2 expr
+--
+--evalPrim2
+--  :: (MonadFail m, MonadReader (ValueEnv m, Env Core) m)
+--  => Name 
+--  -> Fun 
+--  -> [Value m] 
+--  -> m (Value m)
+--evalPrim2 name fun args
+--    | arity fun == length args = 
+--        Value . applyFun fun <$> traverse literal (reverse args)
+--    | otherwise = 
+--        pure (PrimFun name fun args)
+--  where
+--    literal (Value lit) = pure lit
+--    literal _ = fail "Runtime error (evalPrim)"
+--
+--evalApp2
+--  :: (MonadFail m, MonadReader (ValueEnv m, Env Core) m)
+--  => m (Value m)
+--  -> m (Value m)
+--  -> m (Value m)
+--evalApp2 fun arg = fun >>= \case
+--    Closure var body closure -> do
+--        val <- arg
+--        local (first (Env.insert var val closure <>)) body
+--
+--    PrimFun name fun args -> do
+--        val <- arg
+--        evalPrim2 name fun (val:args)
+--
+--evalPat2
+--  :: (MonadFail m, MonadReader (ValueEnv m, Env Core) m)
+--  => [([Name], m (Value m))]
+--  -> Value m
+--  -> m (Value m)
+--evalPat2 [] _ = fail "Runtime error (evalPat)"
+--evalPat2 [(["$_"], e)] _ = e
+--evalPat2 ((p:ps, e):eqs) val =
+--    case val of
+--        Data con args | p == con ->
+--            local (first (Env.inserts (zip ps args))) e
+--
+--        _ ->
+--            evalPat2 eqs val

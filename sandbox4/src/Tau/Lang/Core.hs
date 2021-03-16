@@ -41,3 +41,8 @@ cIf = embed3 CIf
 
 cPat :: Core -> [([Name], Core)] -> Core
 cPat = embed2 CPat
+
+--cConstructor :: Int -> Name -> Core
+--cConstructor n con = foldr cLam (cApp (cVar con:(cVar <$> vars))) vars
+--  where
+--    vars = take n (("$" <>) <$> letters)

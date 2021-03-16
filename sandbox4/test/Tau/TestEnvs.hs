@@ -7,20 +7,43 @@ import Tau.Comp.Type.Inference
 import Tau.Eval.Core
 import Tau.Lang.Core
 import Tau.Lang.Expr
+import Tau.Lang.Prog
 import Tau.Lang.Type
+import Tau.Util.Env (Env(..))
+import qualified Data.Map.Strict as Map
 import qualified Tau.Util.Env as Env
 
-testValueEnv :: ValueEnv Eval
-testValueEnv = Env.fromList
-    [ ("(,)"     , constructor "(,)" 2)  
-    , ("[]"      , constructor "[]" 0)  
-    , ("(::)"    , constructor "(::)" 2)  
-    , ("first"   , fromJust (evalExpr first_ mempty))
-    , ("second"  , fromJust (evalExpr second_ mempty))
+-- TODO
+testConstructorEnv :: ConstructorEnv
+testConstructorEnv = constructorEnv
+    [ ("Some"     , ["Some", "None"])
+    , ("None"     , ["Some", "None"])
+    , ("[]"       , ["[]", "(::)"])
+    , ("(::)"     , ["[]", "(::)"])
+    , ("(,)"      , ["(,)"])
     ]
-  where
-    first_  = cLam "p" (cPat (cVar "p") [(["(,)", "a", "b"], cVar "a")])
-    second_ = cLam "p" (cPat (cVar "p") [(["(,)", "a", "b"], cVar "b")])
+
+testExprEnv = Env.fromList
+    [ ("first"   , cLam "p" (cPat (cVar "p") [(["(,)", "a", "b"], cVar "a")]))
+    , ("second"  , cLam "p" (cPat (cVar "p") [(["(,)", "a", "b"], cVar "b")]))
+    ]
+
+testValueEnv = Env.map (fromJust . (`evalExpr` mempty)) testExprEnv
+--    Env (Map.foldrWithKey (\k v e -> Map.insert k (fromJust (evalExpr v e)) e) mempty m)
+--  where
+--    Env m = testExprEnv
+
+
+--testValueEnv = Env.fromList
+----    [ ("(,)"     , constructor "(,)" 2)  
+----    , ("[]"      , constructor "[]" 0)  
+----    , ("(::)"    , constructor "(::)" 2)  
+--    [ ("first"   , fromJust (evalExpr first_ mempty))
+--    , ("second"  , fromJust (evalExpr second_ mempty))
+--    ]
+--  where
+--    first_  = cLam "p" (cPat (cVar "p") [(["(,)", "a", "b"], cVar "a")])
+--    second_ = cLam "p" (cPat (cVar "p") [(["(,)", "a", "b"], cVar "b")])
 
 testClassEnv :: ClassEnv (Ast NodeInfo (Op1 NodeInfo) (Op2 NodeInfo) f)
 testClassEnv = Env.fromList

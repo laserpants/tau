@@ -21,10 +21,11 @@ data Literal
     | LBool Bool              -- ^ Booleans
     | LInt Int                -- ^ Bounded machine integers (32 or 64 bit)
     | LInteger Integer        -- ^ Arbitrary precision integers (bigint)
+--    | LNat Integer
     | LFloat Double           -- ^ Floating point numbers
     | LChar Char              -- ^ Chars
     | LString Text            -- ^ Strings
-    deriving (Show, Eq)
+    deriving (Show, Eq, Ord)
 
 -- | Record fields
 data Field t a = Field

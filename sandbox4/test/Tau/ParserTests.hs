@@ -15,7 +15,7 @@ import Utils
 
 succeedParse :: (Eq p, Pretty p) => Parser p -> Text -> Text -> p -> SpecWith ()
 succeedParse parser what input expect = 
-    describe (unpack input) $ do
+    describe ("\n" <> unpack input <> "\n") $ do
         let result = parseWith parser input
 
         it ("✔ succeeds to parse to " <> unpack what) $
@@ -26,7 +26,7 @@ succeedParse parser what input expect =
 
 failParse :: Parser p -> Text -> Text -> SpecWith ()
 failParse parser what input = 
-    describe (if "" == input then "\"\"" else unpack input) $ do
+    describe (if "" == input then "\"\"" else "\n" <> unpack input <> "\n") $ do
         let result = parseWith parser input
 
         it ("✗ fails to parse to " <> unpack what <> "\n") $
@@ -527,11 +527,42 @@ testParser = do
 
         succeedParse definition "a top-level definition"
             "fn x y = x + y"
-            (Def "fn" [Clause [varPat () "x", varPat () "y"] [] (op2Expr () (OAdd ()) (varExpr () "x") (varExpr () "y"))])
+            (Def "fn" [Clause [varPat () "x", varPat () "y"] [] (op2Expr () (OAdd ()) (varExpr () "x") (varExpr () "y"))] [])
 
---        succeedParse definition "a top-level definition"
---            "fn x y = x + y\nfn _ _ = 100"
---            (Def "fn" 
---                [ Clause [varPat () "x", varPat () "y"] [] (op2Expr () (OAdd ()) (varExpr () "x") (varExpr () "y"))
---                , Clause [anyPat (), anyPat ()] [] (litExpr () (LInt 100))
---                ])
+        succeedParse definition "a top-level definition"
+            "fn x y = x + y\nfn _ _ = 100"
+            (Def "fn" 
+                [ Clause [varPat () "x", varPat () "y"] [] (op2Expr () (OAdd ()) (varExpr () "x") (varExpr () "y"))
+                , Clause [anyPat (), anyPat ()] [] (litExpr () (LInt 100))
+                ] [])
+
+        succeedParse definition "a top-level definition"
+            "fn x y (Some z) = x + y\nfn _ _ _ = 100"
+            (Def "fn" 
+                [ Clause [varPat () "x", varPat () "y", conPat () "Some" [varPat () "z"]] [] (op2Expr () (OAdd ()) (varExpr () "x") (varExpr () "y"))
+                , Clause [anyPat (), anyPat (), anyPat ()] [] (litExpr () (LInt 100))
+                ] [])
+
+        succeedParse definition "a top-level definition"
+            "number = 5"
+            (Def "number" [Clause [] [] (litExpr () (LInt 5))] [])
+
+        succeedParse definition "a top-level definition"
+            "fn x =\n  x + 1"
+            (Def "fn" [Clause [varPat () "x"] [] (op2Expr () (OAdd ()) (varExpr () "x") (litExpr () (LInt 1)))] [])
+
+        succeedParse definition "a top-level definition"
+            "fn x\n  = x + 1"
+            (Def "fn" [Clause [varPat () "x"] [] (op2Expr () (OAdd ()) (varExpr () "x") (litExpr () (LInt 1)))] [])
+
+        succeedParse definition "a top-level definition"
+            "fn x when x > 3 = 5"
+            (Def "fn" [Clause [varPat () "x"] [op2Expr () (OGt ()) (varExpr () "x") (litExpr () (LInt 3))] (litExpr () (LInt 5))] [])
+
+        succeedParse definition "a top-level definition"
+            "fn x when x > 3 = 5\nfn _ = 6"
+            (Def "fn" 
+                [ Clause [varPat () "x"] [op2Expr () (OGt ()) (varExpr () "x") (litExpr () (LInt 3))] (litExpr () (LInt 5))
+                , Clause [anyPat ()] [] (litExpr () (LInt 6))
+                ] [])
+

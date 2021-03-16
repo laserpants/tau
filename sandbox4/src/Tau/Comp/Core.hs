@@ -26,6 +26,7 @@ import Tau.Comp.Type.Inference
 import Tau.Comp.Type.Substitution hiding (null)
 import Tau.Lang.Core
 import Tau.Lang.Expr
+import Tau.Lang.Prog
 import Tau.Lang.Type
 import Tau.Util
 import Tau.Util.Env (Env(..))
