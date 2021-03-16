@@ -578,6 +578,7 @@ testType45 = Sum "List" []
               , Prod "Cons" [ tVar kTyp "a", tList (tVar kTyp "a") ] 
               ] 
 
+testDef46 = Def "id" [ Clause [varPat () "x"] [] (varExpr () "x") ] []
 
 
 testX = 

@@ -22,8 +22,8 @@ import Data.Tuple.Extra (first, second)
 import Data.Void
 import Tau.Comp.Type.Substitution
 import Tau.Comp.Type.Unification
-import Tau.Lang.Prog
 import Tau.Lang.Expr
+import Tau.Lang.Prog
 import Tau.Lang.Type
 import Tau.Util
 import Tau.Util.Env (Env(..))

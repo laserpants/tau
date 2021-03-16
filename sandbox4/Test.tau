@@ -31,14 +31,14 @@ factorial n = foldS mu (S Z)
   where
     mu x s = x * s
 
-id : a -> a
+id : forall. a -> a
 id x = x
 
 withDefault : a -> Some a -> a
-withDefault default None = default
+withDefault default None = default ;
 withDefault _ (Some value) = value
   where
-    notZero 0 = False
+    notZero 0 = False ;
     notZero _ = True
   and
     baz = 2

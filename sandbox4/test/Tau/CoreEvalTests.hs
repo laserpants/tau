@@ -40,6 +40,14 @@ testCoreEval = do
     failEval
         (cVar "hello")
 
+    succeedEval
+        (cVar "Hello")
+        (Data "Hello" [])
+
+    succeedEval
+        (cVar "[]")
+        (Data "[]" [])
+
     succeedEvalToFunction
         (cLam "a" (cLam "b" (cVar "a")))
 
