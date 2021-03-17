@@ -102,12 +102,12 @@ suffix (Node label forest) txt = Node (label <+> pretty txt) forest
 nodesToString :: Tree (Doc a) -> Tree String
 nodesToString = fmap (Text.unpack . renderDoc)
 
-prettyCore :: Core -> Tree (Doc a)
-prettyCore = para $ \case
+prettyCoreTree :: Core -> Tree (Doc a)
+prettyCoreTree = para $ \case
 
     CPat (expr, _) eqs ->
         Node ("match" <+> pretty expr <+> "with") 
-            (prettyClauseTree_ =<< fst <$$> eqs)
+            (patternClause =<< fst <$$> eqs)
 
     a -> case snd <$> a of
 
@@ -128,10 +128,10 @@ prettyCore = para $ \case
 
         CIf cond tr fl -> 
             Node "if" [cond, prefix "then" tr, prefix "else" fl]
-
-prettyClauseTree_ :: ([Name], Core) -> [Tree (Doc a)]
-prettyClauseTree_ (ps, e) =
-    [Node (hsep (pretty <$> "─┬" : ps)) [prefix "=>" (prettyCore e)]]
+  where
+    patternClause :: ([Name], Core) -> [Tree (Doc a)]
+    patternClause (ps, e) = 
+        [Node (hsep (pretty <$> "─┬" : ps)) [prefix "=>" (prettyCoreTree e)]]
 
 --prettyClauseTree_ :: Clause Name Core -> [Tree (Doc a)]
 --prettyClauseTree_ (Clause ps exs e) =

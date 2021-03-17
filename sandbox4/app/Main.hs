@@ -588,7 +588,7 @@ testX =
             putStrLn (showTree (nodesToString (prettyAst r)))
             putStrLn (showTree (nodesToString (prettyAst q)))
             putStrLn "Core ::"
-            putStrLn (showTree (nodesToString (prettyCore c)))
+            putStrLn (showTree (nodesToString (prettyCoreTree c)))
             putStrLn (show z)
 
 --runTest :: Expr t (Pattern t) (Binding (Pattern t)) [Pattern t] (Op1 t) (Op2 t) -> m (Ast NodeInfo Void Void)
@@ -707,6 +707,9 @@ compileExpr2 e = do
 --
 --
 --
+
+class ToString a where
+    toString :: (Show a) => a -> String
 
 main = print "Hello"
 

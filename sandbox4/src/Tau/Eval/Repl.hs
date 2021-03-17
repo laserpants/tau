@@ -138,7 +138,7 @@ typed e = do
     liftIO $ putStrLn (showTree (nodesToString (prettyAst ast4)))
     case evalSupply (compileExpr (extractType ast4)) (numSupply "$") of
         Just c -> do
-            liftIO $ putStrLn (showTree (nodesToString (prettyCore c)))
+            liftIO $ putStrLn (showTree (nodesToString (prettyCoreTree c)))
             traceShowM c
             traceShowM (evalExpr c evalEnv2)
             pure (evalExpr c evalEnv2)

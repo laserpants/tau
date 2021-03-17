@@ -39,7 +39,18 @@ data Instance a = Instance
     , instanceDict :: a
     } deriving (Show, Eq)
 
+
+-- ???
+data ClassDef a = ClassDef
+    { xpredicates   :: [Predicate]
+    , xinstanceType :: a
+    , xinstanceDict :: [(Name, Type)] 
+    } deriving (Show, Eq)
+
+--data ClassDef = ClassDef Name Name [(Name, Type)]
+
 -- | Type class
+-- TODO: rename to ClassInfo?
 type Class a = ([Name], [Instance a])
 
 type ClassEnv a = Env (Class a)
