@@ -1,6 +1,6 @@
 {-# LANGUAGE DeriveTraversable     #-}
-{-# LANGUAGE FlexibleContexts      #-}
 {-# LANGUAGE EmptyDataDeriving     #-}
+{-# LANGUAGE FlexibleContexts      #-}
 {-# LANGUAGE FlexibleInstances     #-}
 {-# LANGUAGE LambdaCase            #-}
 {-# LANGUAGE MultiParamTypeClasses #-}
@@ -23,7 +23,6 @@ data Prim
     | TBool Bool              -- ^ Booleans
     | TInt Int                -- ^ Bounded machine integers (32 or 64 bit)
     | TInteger Integer        -- ^ Arbitrary precision integers (bigint)
---    | TNat Integer            -- ^ Peano arithmetic natural numbers 
     | TFloat Float            -- ^ Single precision Floating point numbers 
     | TDouble Double          -- ^ Double precision Floating point numbers
     | TChar Char              -- ^ Chars
@@ -129,12 +128,8 @@ data Binding p
 deriveShow1 ''Binding
 deriveEq1   ''Binding
 
--- TODO
--- data NoListSugar
--- data NoFunPats
-
 -- | Base functor for Expr
-data ExprF t p q r n o a
+data ExprF t p q r n o a 
     = EVar t Name             -- ^ Variable
     | ECon t Name [a]         -- ^ Data constructor
     | ELit t Prim             -- ^ Literal value
@@ -158,6 +153,12 @@ deriveEq    ''ExprF
 deriveShow1 ''ExprF
 deriveEq1   ''ExprF
 
+data NoListSugar
+    deriving (Show, Eq)
+
+data NoFunPats
+    deriving (Show, Eq)
+
 -- | Expression language tagged term tree
 type Expr t p q r n o = Fix (ExprF t p q r n o)
 
@@ -168,7 +169,6 @@ literalName = \case
     (TBool    _) -> "Bool"
     (TInt     _) -> "Int"
     (TInteger _) -> "Integer"
---    (TNat     _) -> "Nat"
     (TFloat   _) -> "Float"
     (TDouble  _) -> "Double"
     (TChar    _) -> "Char"
