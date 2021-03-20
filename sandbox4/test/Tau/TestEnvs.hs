@@ -45,28 +45,71 @@ testValueEnv = Env.map (fromJust . (`evalExpr` mempty)) testExprEnv
 --    first_  = cLam "p" (cPat (cVar "p") [(["(,)", "a", "b"], cVar "a")])
 --    second_ = cLam "p" (cPat (cVar "p") [(["(,)", "a", "b"], cVar "b")])
 
-testClassEnv :: ClassEnv (Ast NodeInfo (Op1 NodeInfo) (Op2 NodeInfo) f)
+--testClassEnv :: ClassEnv (Ast NodeInfo (Op1 NodeInfo) (Op2 NodeInfo) f)
+testClassEnv :: ClassEnv f
 testClassEnv = Env.fromList
     [ ( "Num"
-      , ( []
-        , [ Instance [] tInt (recExpr (NodeInfo (tApp (tCon (kArr kTyp kTyp) "Num") tInt) []) (fieldSet 
-            [ Field (NodeInfo (tInt `tArr` tInt `tArr` tInt) []) "(+)" (varExpr (NodeInfo (tInt `tArr` tInt `tArr` tInt) []) "@Int.(+)")
-            , Field (NodeInfo (tInt `tArr` tInt `tArr` tInt) []) "(*)" (varExpr (NodeInfo (tInt `tArr` tInt `tArr` tInt) []) "@Int.(*)")
-            , Field (NodeInfo (tInt `tArr` tInt `tArr` tInt) []) "(-)" (varExpr (NodeInfo (tInt `tArr` tInt `tArr` tInt) []) "@Int.(-)")
-            ]))
-          ] 
+      , ( ( []
+          , InClass "Num" "a"
+          , [ ("(+)", tVar kTyp "a" `tArr` tVar kTyp "a" `tArr` tVar kTyp "a")
+            , ("(*)", tVar kTyp "a" `tArr` tVar kTyp "a" `tArr` tVar kTyp "a")
+            , ("(-)", tVar kTyp "a" `tArr` tVar kTyp "a" `tArr` tVar kTyp "a") 
+            ]
+          )
+          -- Instances
+        , [ ( []
+            , InClass "Num" tInt
+            , [ ("(+)", varExpr (NodeInfo (tInt `tArr` tInt `tArr` tInt) []) "@Int.(+)")
+              , ("(*)", varExpr (NodeInfo (tInt `tArr` tInt `tArr` tInt) []) "@Int.(*)")
+              , ("(-)", varExpr (NodeInfo (tInt `tArr` tInt `tArr` tInt) []) "@Int.(-)")
+              ]
+            )
+          ]
         )
       )
     , ( "Ord"
-      , ( ["Eq"]
-        , [ Instance [] tInt (recExpr (NodeInfo (tApp (tCon (kArr kTyp kTyp) "Ord") tInt) []) (fieldSet 
-            [ Field (NodeInfo (tInt `tArr` tInt `tArr` tBool) []) "(>)" (varExpr (NodeInfo (tInt `tArr` tInt `tArr` tBool) []) "@Int.(>)")
-            , Field (NodeInfo (tInt `tArr` tInt `tArr` tBool) []) "(<)" (varExpr (NodeInfo (tInt `tArr` tInt `tArr` tBool) []) "@Int.(<)")
-            ]))
+      , ( ( [ InClass "Eq" "a" ]
+          , InClass "Ord" "a"
+          , [ ("(>)", tVar kTyp "a" `tArr` tVar kTyp "a" `tArr` tBool)
+            , ("(<)", tVar kTyp "a" `tArr` tVar kTyp "a" `tArr` tBool) 
+            ]
+          )
+          -- Instances
+        , [ ( []
+            , InClass "Ord" tInt
+            , [ ("(>)", varExpr (NodeInfo (tInt `tArr` tInt `tArr` tBool) []) "@Int.(>)")
+              , ("(<)", varExpr (NodeInfo (tInt `tArr` tInt `tArr` tBool) []) "@Int.(<)")
+              ]
+            )
           ]
         )
       )
     ]
+
+--    [ ( "Num"
+--      , ( []
+--        , "a"
+--        , []
+--        , [ Instance [] tInt (recExpr (NodeInfo (tApp (tCon (kArr kTyp kTyp) "Num") tInt) []) (fieldSet 
+--            [ Field (NodeInfo (tInt `tArr` tInt `tArr` tInt) []) "(+)" (varExpr (NodeInfo (tInt `tArr` tInt `tArr` tInt) []) "@Int.(+)")
+--            , Field (NodeInfo (tInt `tArr` tInt `tArr` tInt) []) "(*)" (varExpr (NodeInfo (tInt `tArr` tInt `tArr` tInt) []) "@Int.(*)")
+--            , Field (NodeInfo (tInt `tArr` tInt `tArr` tInt) []) "(-)" (varExpr (NodeInfo (tInt `tArr` tInt `tArr` tInt) []) "@Int.(-)")
+--            ]))
+--          ] 
+--        )
+--      )
+--    , ( "Ord"
+--      , ( ["Eq"]
+--        , "a"
+--        , []
+--        , [ Instance [] tInt (recExpr (NodeInfo (tApp (tCon (kArr kTyp kTyp) "Ord") tInt) []) (fieldSet 
+--            [ Field (NodeInfo (tInt `tArr` tInt `tArr` tBool) []) "(>)" (varExpr (NodeInfo (tInt `tArr` tInt `tArr` tBool) []) "@Int.(>)")
+--            , Field (NodeInfo (tInt `tArr` tInt `tArr` tBool) []) "(<)" (varExpr (NodeInfo (tInt `tArr` tInt `tArr` tBool) []) "@Int.(<)")
+--            ]))
+--          ]
+--        )
+--      )
+--    ]
 
 testTypeEnv :: TypeEnv
 testTypeEnv = Env.fromList

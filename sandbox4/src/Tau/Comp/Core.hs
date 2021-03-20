@@ -469,7 +469,8 @@ desugarLists = cata $ \case
 -- ============================================================================
 
 compileClasses 
-  :: (MonadError String m, MonadSupply Name m, MonadReader (ClassEnv (Ast NodeInfo (Op1 NodeInfo) (Op2 NodeInfo) f), TypeEnv) m)
+--  :: (MonadError String m, MonadSupply Name m, MonadReader (ClassEnv (Ast NodeInfo (Op1 NodeInfo) (Op2 NodeInfo) f), TypeEnv) m)
+  :: (MonadError String m, MonadSupply Name m, MonadReader (ClassEnv f, TypeEnv) m)
   => Ast (NodeInfoT Type) Void Void f
   -> StateT [(Name, Type)] m (Ast (NodeInfoT Type) Void Void f) 
 compileClasses expr = 
@@ -497,7 +498,8 @@ collect :: (MonadState [(Name, Type)] m) => m [(Name, Type)]
 collect = nub <$> acquireState
 
 applyDicts
-  :: (MonadError String m, MonadSupply Name m, MonadReader (ClassEnv (Ast NodeInfo (Op1 NodeInfo) (Op2 NodeInfo) f), TypeEnv) m)
+--  :: (MonadError String m, MonadSupply Name m, MonadReader (ClassEnv (Ast NodeInfo (Op1 NodeInfo) (Op2 NodeInfo) f), TypeEnv) m)
+  :: (MonadError String m, MonadSupply Name m, MonadReader (ClassEnv f, TypeEnv) m)
   => Predicate
   -> Ast (NodeInfoT Type) Void Void f
   -> StateT [(Name, Type)] m (Ast (NodeInfoT Type) Void Void f)
@@ -515,11 +517,14 @@ applyDicts (InClass name ty) expr
         env <- asks fst
         case lookupClassInstance name ty env of
             Left e -> throwError e
-            Right (_ , Instance{..}) -> do
+            Right (_, (_, _, methods)) -> do
 
                 -- TODO: super-classes???
 
-                dict <- compileClasses (desugarOperators instanceDict)
+                xxx <- traverse blob methods
+                let yy = fieldSet xxx
+                    ttt = tRecord (typeOf <$$> methods)
+                    dict = recExpr (NodeInfo ttt []) yy
 
                 let def = appExpr (exprTag expr) 
                             [ setExprTag (NodeInfo (typeOf dict `tArr` typeOf expr) []) expr
@@ -530,6 +535,29 @@ applyDicts (InClass name ty) expr
                         maybe def snd (lookupField var fields)
                     _ -> 
                         def
+
+
+
+--            Right (_ , Instance{..}) -> do
+--
+--                -- TODO: super-classes???
+--
+--                dict <- compileClasses (desugarOperators instanceDict)
+--
+--                let def = appExpr (exprTag expr) 
+--                            [ setExprTag (NodeInfo (typeOf dict `tArr` typeOf expr) []) expr
+--                            , dict ]
+--
+--                pure $ case (project expr, project dict) of
+--                    (EVar _ var, ERec _ fields) -> 
+--                        maybe def snd (lookupField var fields)
+--                    _ -> 
+--                        def
+
+--blob :: (Name, ProgExpr) -> m (Name, (Ast (NodeInfoT Type) Void Void f))
+blob (a, b) = do
+    foo <- compileClasses (desugarOperators b)
+    pure (Field (exprTag foo) a foo)
                         
 setNodeType :: Type -> NodeInfo -> NodeInfo
 setNodeType ty info = info{ nodeType = ty }

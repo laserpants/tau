@@ -187,7 +187,7 @@ instance (Pretty t) => Pretty (NodeInfoT t) where
 instance Pretty Kind where
     pretty = para $ \case
         KTyp -> "*"
-        KCls -> "#"
+--        KCls -> "#"
         KArr (k1, _) (_, doc2) -> addParens k1 <+> "->" <+> doc2
 
 instance Pretty (Pattern t f) where

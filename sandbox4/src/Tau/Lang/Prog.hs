@@ -20,11 +20,6 @@ data Product = Prod Name [Type]
 data Datatype = Sum Name [Name] [Product]
     deriving (Show, Eq)
 
---xx = Sum "List" ["a"] 
---    [ Prod "Cons" [tVar kTyp "a", tList (tVar kTyp "a")]
---    , Prod "Nil"  []
---    ]
-
 -- | Top-level definition
 data Definition = Def 
     { defName    :: Name 
@@ -32,33 +27,42 @@ data Definition = Def
     , defLocal   :: [Definition]
     } deriving (Show, Eq)
 
--- | Type class instance
-data Instance a = Instance
-    { predicates   :: [Predicate]
-    , instanceType :: Type
-    , instanceDict :: a
-    } deriving (Show, Eq)
+-- ClassInfo
+type ClassInfo p a = ([PredicateT p], PredicateT p, [(Name, a)])
+
+--type ClassDef = ([PredicateT Name], PredicateT Name, [(Name, Type)])
+--type ClassDef = ClassInfo Name Type
+
+---- | Type class instance
+--data Instance a = Instance
+--    { predicates   :: [Predicate]
+--    , instanceType :: Type
+--    , instanceDict :: a
+--    } deriving (Show, Eq)
+
+--type Instance2 = ([Predicate], Predicate, [(Name, ProgExpr)])
+--type Instance2 = ClassInfo Type ProgExpr
+
+--data Instance2 = Instance2
+--    { predicates2   :: [Predicate]
+--    , instanceType2 :: Type
+--    , instanceMethods :: [(Name, ProgExpr)]
+--    } deriving (Show, Eq)
 
 
--- ???
-data ClassDef a = ClassDef
-    { xpredicates   :: [Predicate]
-    , xinstanceType :: a
-    , xinstanceDict :: [(Name, Type)] 
-    } deriving (Show, Eq)
+--type ClassInfo a = ([Name], [(Name, Type)], [Instance a])
+    -- superClasses
+    -- classMethods
+    -- classInstances
 
---data ClassDef = ClassDef Name Name [(Name, Type)]
+--type ClassEnv a = Env (ClassInfo a)
+--type ClassEnv a = Env ([Name], Name, [(Name, Type)], [Instance a])
 
--- | Type class
--- TODO: rename to ClassInfo?
-type Class a = ([Name], [Instance a])
-
-type ClassEnv a = Env (Class a)
 
 data Module = Module 
     { moduleName      :: Name
     , moduleTypes     :: [Datatype]
     , moduleDefs      :: [Definition]
-    , moduleClasses   :: [Class ProgExpr]
-    , moduleInstances :: [Instance ProgExpr]
+    , moduleClasses   :: [ClassInfo Name Type]
+    , moduleInstances :: [ClassInfo Type ProgExpr]
     } deriving (Show, Eq)

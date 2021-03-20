@@ -1,6 +1,7 @@
 {-# LANGUAGE FlexibleContexts  #-}
 {-# LANGUAGE OverloadedStrings #-}
 {-# LANGUAGE RecordWildCards   #-}
+{-# LANGUAGE TupleSections     #-}
 {-# LANGUAGE StrictData        #-}
 module Tau.Comp.Prog where
 
@@ -12,7 +13,7 @@ import Control.Monad.Supply
 import Control.Monad.Trans.Maybe
 import Control.Monad.Writer hiding (Sum, Product)
 import Data.Foldable hiding (null)
-import Data.List ((\\), nub)
+import Data.List ((\\), nub, delete)
 import Data.Maybe (fromJust, fromMaybe)
 import Data.Set.Monad (Set)
 import Data.Void
@@ -43,7 +44,7 @@ data ProgEnv = ProgEnv
     { progTypeEnv   :: TypeEnv
     , progExprEnv   :: Env Core
     , progCtorEnv   :: ConstructorEnv
-    , progClassEnv  :: ClassEnv TypedAst
+    , progClassEnv  :: ClassEnv () -- TypedAst
     , progInternals :: Env Internals
     } deriving (Show, Eq)
 
@@ -58,6 +59,10 @@ modifyExprEnv f = modify (\ProgEnv{..} -> ProgEnv{ progExprEnv = f progExprEnv, 
 
 modifyTypeEnv :: (MonadState ProgEnv m) => (TypeEnv -> TypeEnv) -> m ()
 modifyTypeEnv f = modify (\ProgEnv{..} -> ProgEnv{ progTypeEnv = f progTypeEnv, .. })
+
+--modifyClassEnv :: (MonadState ProgEnv m) => (ClassEnv TypedAst -> ClassEnv TypedAst) -> m ()
+modifyClassEnv :: (MonadState ProgEnv m) => (ClassEnv () -> ClassEnv ()) -> m ()
+modifyClassEnv f = modify (\ProgEnv{..} -> ProgEnv{ progClassEnv = f progClassEnv, .. })
 
 modifyInternals :: (MonadState ProgEnv m) => (Env Internals -> Env Internals) -> m ()
 modifyInternals f = modify (\ProgEnv{..} -> ProgEnv{ progInternals = f progInternals, .. })
@@ -84,7 +89,7 @@ compileType (Sum name vars prods) = do
         unless (null missing) (error ("One or more type variables are missing in the type: " <> show missing))
 
         ProgEnv{..} <- get
-        case runInfer3 mempty progTypeEnv (generalize (foldr tArr ty ts)) of
+        case runInfer3 mempty mempty progTypeEnv (generalize (foldr tArr ty ts)) of
             Left err -> 
                 error "TODO"
             Right (scheme, (sub, _)) 
@@ -104,12 +109,13 @@ ttt con ts = setKind (foldr1 kArr (kTyp:ks)) (foldl1 tApp (tCon kTyp con:ts))
 -- TODO: DRY
 
 type InferState  = StateT (Substitution, Context)
-type InferReader = ReaderT (ClassEnv TypedAst, TypeEnv)
+type InferReader = ReaderT (ClassEnv (), TypeEnv)
+--type InferReader = ReaderT (ClassEnv TypedAst, TypeEnv)
 type InferSupply = SupplyT Name
 type InferError  = ExceptT String
 
-runInferState :: StateT (Substitution, Context) m a -> m (a, (Substitution, Context))
-runInferState = flip runStateT mempty
+runInferState :: Context -> StateT (Substitution, Context) m a -> m (a, (Substitution, Context))
+runInferState ctx = flip runStateT (mempty, ctx)
 
 runInferReader :: a -> b -> ReaderT (a, b) m r -> m r
 runInferReader a b = flip runReaderT (a, b)
@@ -126,7 +132,8 @@ runInferMaybe = fromMaybe (Left "error")
 type InferStack = InferState (InferReader (InferSupply (InferError Maybe)))
 
 --runInfer :: InferStack a -> Either String (a, (Substitution, Context))
-runInfer3 classEnv typeEnv = runInferState
+runInfer3 ctx classEnv typeEnv = 
+    runInferState ctx
     >>> runInferReader classEnv typeEnv
     >>> runInferSupply
     >>> runInferError
@@ -142,7 +149,7 @@ compileDefinition Def{..} = do
     -- TODO: Compile local definitions
 
     ProgEnv{..} <- get
-    case runInfer3 progClassEnv progTypeEnv steps of
+    case runInfer3 mempty progClassEnv progTypeEnv steps of
         Left err ->
             error "TODO"
         Right ((ast, scheme, code), (_, ctx)) -> do
@@ -160,16 +167,47 @@ compileDefinition Def{..} = do
     steps = do
       ast <- infer (patExpr () [] defClauses)
       sub <- gets fst
-      let ast1 = astApply sub ast
-      scheme <- generalize (typeOf ast1)
-      code <- evalStateT (compileClasses (desugarOperators ast1)) [] 
-      pure (ast1, scheme, code)
+      let expr = astApply sub ast
+      scheme <- generalize (typeOf expr)
+      code <- evalStateT (compileClasses (desugarOperators expr)) [] 
+      pure (expr, scheme, code)
 
-compileClass :: (MonadState ProgEnv m) => Class ProgExpr -> m ()
-compileClass class_ = undefined
+compileClass :: (MonadState ProgEnv m) => ClassInfo Name Type -> m ()
+compileClass info@(super, InClass name var, methods) = do
 
-compileInstance :: (MonadState ProgEnv m) => Instance ProgExpr -> m ()
-compileInstance = undefined
+    -- TODO: check if class already exists
+
+    ProgEnv{..} <- get
+
+    -- Update type environment
+    let classEnv = Env.fromList [(var, Set.singleton name)]
+    case runInfer3 classEnv mempty progTypeEnv (traverse foo methods) of
+        Left err ->
+            error "TODO"
+        Right (types, _) ->
+            modifyTypeEnv (flip (foldr (uncurry Env.insert)) types)
+
+    -- Update expression environment
+    let fields = fst <$> methods
+        baz f = 
+            let 
+            -- Field () field (varPat () "e")])
+                fields_ = Field () f (varPat () "$e"):[Field () g (anyPat ()) | g <- delete f fields]
+                expr = patExpr () [] [ Clause [recPat () (fieldSet fields_)] [] (varExpr () "$e") ]
+                core = fromJust (evalSupply (compileExpr expr) (numSupply "$")) -- TODO: DRY
+             in Env.insert f core -- (patExpr () [] [ Clause [recPat () (fieldSet [] [] (varExpr () "$e"))] [] (varExpr () "$e") ])
+
+    modifyExprEnv (flip (foldr baz) fields)
+
+    -- Update class environment
+    modifyClassEnv (Env.insert name (info, []))
+
+--foo :: (Name, Type) -> m (Name, Scheme)
+foo (name, ty) = (name ,) <$> generalize ty
+
+compileInstance :: (MonadState ProgEnv m) => ClassInfo Type ProgExpr -> m ()
+compileInstance (ps, InClass name ty, methods) = do
+    undefined
 
 compileModule :: (MonadState ProgEnv m) => Module -> m ()
 compileModule = undefined

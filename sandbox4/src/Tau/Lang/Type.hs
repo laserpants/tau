@@ -23,7 +23,7 @@ import qualified Tau.Util.Env as Env
 data KindF a
     = KTyp                    -- ^ A concrete type (kind of value-types)
     | KArr a a                -- ^ Type constructor
-    | KCls                    -- ^ A type class constraint
+--    | KCls                    -- ^ A type class constraint
     deriving (Show, Eq, Ord, Functor, Foldable, Traversable)
 
 deriveShow1 ''KindF
@@ -68,6 +68,12 @@ type PolyPredicate = PredicateT Int
 -- | Polymorphic type schemes
 data Scheme = Forall [Kind] [PolyPredicate] PolyType
     deriving (Show, Eq)
+
+predicateName :: PredicateT a -> Name
+predicateName (InClass n _) = n
+
+predicateType :: PredicateT a -> a
+predicateType (InClass _ t) = t
 
 class Typed a where
     typeOf :: a -> Type
@@ -183,8 +189,8 @@ kTyp = embed KTyp
 kArr :: Kind -> Kind -> Kind
 kArr = embed2 KArr
 
-kCls :: Kind
-kCls = embed KCls
+--kCls :: Kind
+--kCls = embed KCls
 
 infixr 1 `kArr`
 

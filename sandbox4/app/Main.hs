@@ -178,7 +178,7 @@ evalEnv = Env.fromList
 --
 --type Infer a = StateT (Substitution, Context) (ReaderT (ClassEnv a, TypeEnv) (SupplyT Name (ExceptT String Maybe))) a 
 
-runInfer :: ClassEnv c -> TypeEnv -> StateT (Substitution, Context) (ReaderT (ClassEnv c, TypeEnv) (SupplyT Name (ExceptT String Maybe))) a -> Either String (a, (Substitution, Context))
+runInfer :: ClassEnv f -> TypeEnv -> StateT (Substitution, Context) (ReaderT (ClassEnv f, TypeEnv) (SupplyT Name (ExceptT String Maybe))) a -> Either String (a, (Substitution, Context))
 runInfer e1 e2 = 
     flip runStateT (mempty, mempty)
         >>> flip runReaderT (e1, e2)
@@ -580,6 +580,38 @@ testType45 = Sum "List" []
 
 testDef46 = Def "id" [ Clause [varPat () "x"] [] (varExpr () "x") ] []
 
+--testTypeClassDef47 = 
+--    ( [InClass "Show" (tVar kTyp "a")]
+--    , "ToString"
+--    , tVar kTyp "a"
+--    , [("toString", tVar kTyp "a" `tArr` tString)]
+--    )
+
+--xx = 
+--    ( InClass "Show" "a"
+--    , InClass "ToString" "a"
+--    , [("toString", tVar kTyp "a" `tArr` tString)]
+--    )
+--
+--yy = 
+--    ( InClass "Show" tInt
+--    , InClass "ToString" tInt
+--    , [("toString", varExpr () "@Int.show")]
+--    )
+
+--testTypeClassDef47 :: ClassDef
+testTypeClassDef47 = 
+    ( [InClass "Show" "a"]
+    , InClass "ToString" "a"
+    , [("toString", tVar kTyp "a" `tArr` tString)]
+    )
+
+--testInstance48 :: Instance2
+testInstance48 = 
+    ( []
+    , InClass "ToString" tInt
+    , [("toString", varExpr () "@Int.show")]
+    )
 
 testX = 
     case runTest testExpr39 of 
@@ -611,7 +643,7 @@ runTest expr = do
 
 
 compileExpr2
-  :: (MonadState (Substitution, Context) m, MonadError String m, MonadSupply Name m, MonadReader (ClassEnv (Ast NodeInfo (Op1 NodeInfo) (Op2 NodeInfo) f), TypeEnv) m)
+  :: (MonadState (Substitution, Context) m, MonadError String m, MonadSupply Name m, MonadReader (ClassEnv f, TypeEnv) m)
   => Expr t (Pattern t f) (Binding (Pattern t f)) [Pattern t f] (Op1 t) (Op2 t)
   -> m Core
 compileExpr2 e = do
@@ -708,52 +740,118 @@ compileExpr2 e = do
 --
 --
 
-class ToString a where
-    toString :: (Show a) => a -> String
-
 main = print "Hello"
 
-classEnv :: ClassEnv (Ast NodeInfo (Op1 NodeInfo) (Op2 NodeInfo) f)
+--classEnv :: ClassEnv (Ast NodeInfo (Op1 NodeInfo) (Op2 NodeInfo) f)
 classEnv = Env.fromList 
     [ ( "Num"
-      , ( []
-        , [ Instance [] tInt (recExpr (NodeInfo (tApp (tCon (kArr kTyp kTyp) "Num") tInt) []) (fieldSet [
-              Field (NodeInfo (tInt `tArr` tInt `tArr` tInt) []) "(+)" (varExpr (NodeInfo (tInt `tArr` tInt `tArr` tInt) []) "@Int.(+)")
-              , Field (NodeInfo (tInt `tArr` tInt `tArr` tInt) []) "(*)" (varExpr (NodeInfo (tInt `tArr` tInt `tArr` tInt) []) "@Int.(*)")
-              , Field (NodeInfo (tInt `tArr` tInt `tArr` tInt) []) "(-)" (varExpr (NodeInfo (tInt `tArr` tInt `tArr` tInt) []) "@Int.(-)")
-            ]))
---              [ Field (NodeInfo (tInt `tArr` tInt `tArr` tInt) []) "(+)" (varExpr (NodeInfo (tInt `tArr` tInt `tArr` tInt) []) "@(+)Int")
---              , Field (NodeInfo (tInt `tArr` tInt `tArr` tInt) []) "(*)" (varExpr (NodeInfo (tInt `tArr` tInt `tArr` tInt) []) "@(*)Int")
---              , Field (NodeInfo (tInt `tArr` tInt `tArr` tInt) []) "(-)" (varExpr (NodeInfo (tInt `tArr` tInt `tArr` tInt) []) "@(-)Int")
---              ])
-          ] 
+      , ( ( []
+          , InClass "Num" "a"
+          , [ ("(+)", tVar kTyp "a" `tArr` tVar kTyp "a" `tArr` tVar kTyp "a")
+            , ("(*)", tVar kTyp "a" `tArr` tVar kTyp "a" `tArr` tVar kTyp "a")
+            , ("(-)", tVar kTyp "a" `tArr` tVar kTyp "a" `tArr` tVar kTyp "a") 
+            ]
+          )
+          -- Instances
+        , [ ( []
+            , InClass "Num" tInt
+            , [ ("(+)", varExpr (NodeInfo (tInt `tArr` tInt `tArr` tInt) []) "@Int.(+)")
+              , ("(*)", varExpr (NodeInfo (tInt `tArr` tInt `tArr` tInt) []) "@Int.(*)")
+              , ("(-)", varExpr (NodeInfo (tInt `tArr` tInt `tArr` tInt) []) "@Int.(-)")
+              ]
+            )
+          ]
         )
       )
     , ( "Show"
-      , ( []
-        , [ Instance [] tInt (recExpr (NodeInfo (tApp (tCon (kArr kTyp kTyp) "Show") tInt) []) (fieldSet [Field (NodeInfo (tInt `tArr` tString) []) "show" (varExpr (NodeInfo (tInt `tArr` tString) []) "@Int.show")]))
-          --, Instance [] tBool (recExpr (NodeInfo (tApp (tCon (kArr kTyp kTyp) "Show") tBool) [])  (fieldSet [Field (NodeInfo (tBool `tArr` tString) []) "show" (varExpr (NodeInfo (tBool `tArr` tString) []) "@showBool")]))
---          , Instance [InClass "Show" (tVar kTyp "a")] (tList (tVar kTyp "a")) (recExpr (NodeInfo (tApp (tCon (kArr kTyp kTyp) "Show") (tList (tVar kTyp "a"))) []) (fieldSet [Field (NodeInfo ((tList (tVar kTyp "a")) `tArr` tString) []) "show" foo11]))
-          , Instance [InClass "Show" (tVar kTyp "a"), InClass "Show" (tVar kTyp "b")] (tPair (tVar kTyp "a") (tVar kTyp "b")) (recExpr (NodeInfo (tApp (tCon (kArr kTyp kTyp) "Show") (tPair (tVar kTyp "a") (tVar kTyp "b"))) []) (fieldSet [Field (NodeInfo (tPair (tVar kTyp "a") (tVar kTyp "b") `tArr` tString) []) "show" showPair_]))
+      , ( ( []
+          , InClass "Show" "a"
+          , [ ("show", tVar kTyp "a" `tArr` tString) ]
+          )
+          -- Instances
+        , [
           ]
         )
       )
     , ( "Eq"
-      , ( [""]
---        , [ Instance [] tInt (recExpr (NodeInfo (tApp (tCon (kArr kTyp kTyp) "Eq") tInt) []) (fieldSet [ Field (NodeInfo (tInt `tArr` tInt `tArr` tBool) []) "(==)" (varExpr (NodeInfo (tInt `tArr` tInt `tArr` tBool) []) "@Int.(==)") ] ))
-        , [ ]
+      , ( ( []
+          , InClass "Eq" "a"
+          , [ ("(==)", tVar kTyp "a" `tArr` tVar kTyp "a" `tArr` tBool) ]
+          )
+          -- Instances
+        , [ ( []
+            , InClass "Eq" tInt
+            , [ ("(==)", varExpr (NodeInfo (tInt `tArr` tInt `tArr` tBool) []) "@Int.(==)")
+              ]
+            )
+          ]
         )
       )
     , ( "Ord"
-      , ( ["Eq"]
-        , [ Instance [] tInt (recExpr (NodeInfo (tApp (tCon (kArr kTyp kTyp) "Ord") tInt) []) (fieldSet 
-              [ Field (NodeInfo (tInt `tArr` tInt `tArr` tBool) []) "(>)" (varExpr (NodeInfo (tInt `tArr` tInt `tArr` tBool) []) "@Int.(>)") 
-              , Field (NodeInfo (tInt `tArr` tInt `tArr` tBool) []) "(>=)" gte_
-              ] ))
+      , ( ( [ InClass "Eq" "a" ]
+          , InClass "Ord" "a"
+          , [ ("(>)", tVar kTyp "a" `tArr` tVar kTyp "a" `tArr` tBool)
+            , ("(<)", tVar kTyp "a" `tArr` tVar kTyp "a" `tArr` tBool) 
+            ]
+          )
+          -- Instances
+        , [ ( []
+            , InClass "Ord" tInt
+            , [ ("(>)", varExpr (NodeInfo (tInt `tArr` tInt `tArr` tBool) []) "@Int.(>)")
+              , ("(<)", varExpr (NodeInfo (tInt `tArr` tInt `tArr` tBool) []) "@Int.(<)")
+              ]
+            )
           ]
         )
       )
     ]
+--    [ ( "Num"
+--      , ( []
+--        , "a"
+--        , []
+--        , [ Instance [] tInt (recExpr (NodeInfo (tApp (tCon (kArr kTyp kTyp) "Num") tInt) []) (fieldSet [
+--              Field (NodeInfo (tInt `tArr` tInt `tArr` tInt) []) "(+)" (varExpr (NodeInfo (tInt `tArr` tInt `tArr` tInt) []) "@Int.(+)")
+--              , Field (NodeInfo (tInt `tArr` tInt `tArr` tInt) []) "(*)" (varExpr (NodeInfo (tInt `tArr` tInt `tArr` tInt) []) "@Int.(*)")
+--              , Field (NodeInfo (tInt `tArr` tInt `tArr` tInt) []) "(-)" (varExpr (NodeInfo (tInt `tArr` tInt `tArr` tInt) []) "@Int.(-)")
+--            ]))
+----              [ Field (NodeInfo (tInt `tArr` tInt `tArr` tInt) []) "(+)" (varExpr (NodeInfo (tInt `tArr` tInt `tArr` tInt) []) "@(+)Int")
+----              , Field (NodeInfo (tInt `tArr` tInt `tArr` tInt) []) "(*)" (varExpr (NodeInfo (tInt `tArr` tInt `tArr` tInt) []) "@(*)Int")
+----              , Field (NodeInfo (tInt `tArr` tInt `tArr` tInt) []) "(-)" (varExpr (NodeInfo (tInt `tArr` tInt `tArr` tInt) []) "@(-)Int")
+----              ])
+--          ] 
+--        )
+--      )
+--    , ( "Show"
+--      , ( []
+--        , "a"
+--        , []
+--        , [ Instance [] tInt (recExpr (NodeInfo (tApp (tCon (kArr kTyp kTyp) "Show") tInt) []) (fieldSet [Field (NodeInfo (tInt `tArr` tString) []) "show" (varExpr (NodeInfo (tInt `tArr` tString) []) "@Int.show")]))
+--          --, Instance [] tBool (recExpr (NodeInfo (tApp (tCon (kArr kTyp kTyp) "Show") tBool) [])  (fieldSet [Field (NodeInfo (tBool `tArr` tString) []) "show" (varExpr (NodeInfo (tBool `tArr` tString) []) "@showBool")]))
+----          , Instance [InClass "Show" (tVar kTyp "a")] (tList (tVar kTyp "a")) (recExpr (NodeInfo (tApp (tCon (kArr kTyp kTyp) "Show") (tList (tVar kTyp "a"))) []) (fieldSet [Field (NodeInfo ((tList (tVar kTyp "a")) `tArr` tString) []) "show" foo11]))
+--          , Instance [InClass "Show" (tVar kTyp "a"), InClass "Show" (tVar kTyp "b")] (tPair (tVar kTyp "a") (tVar kTyp "b")) (recExpr (NodeInfo (tApp (tCon (kArr kTyp kTyp) "Show") (tPair (tVar kTyp "a") (tVar kTyp "b"))) []) (fieldSet [Field (NodeInfo (tPair (tVar kTyp "a") (tVar kTyp "b") `tArr` tString) []) "show" showPair_]))
+--          ]
+--        )
+--      )
+--    , ( "Eq"
+--      , ( []
+--        , "a"
+--        , []
+----        , [ Instance [] tInt (recExpr (NodeInfo (tApp (tCon (kArr kTyp kTyp) "Eq") tInt) []) (fieldSet [ Field (NodeInfo (tInt `tArr` tInt `tArr` tBool) []) "(==)" (varExpr (NodeInfo (tInt `tArr` tInt `tArr` tBool) []) "@Int.(==)") ] ))
+--        , [ ]
+--        )
+--      )
+--    , ( "Ord"
+--      , ( ["Eq"]
+--        , "a"
+--        , []
+--        , [ Instance [] tInt (recExpr (NodeInfo (tApp (tCon (kArr kTyp kTyp) "Ord") tInt) []) (fieldSet 
+--              [ Field (NodeInfo (tInt `tArr` tInt `tArr` tBool) []) "(>)" (varExpr (NodeInfo (tInt `tArr` tInt `tArr` tBool) []) "@Int.(>)") 
+--              , Field (NodeInfo (tInt `tArr` tInt `tArr` tBool) []) "(>=)" gte_
+--              ] ))
+--          ]
+--        )
+--      )
+--    ]
   where
     gte_ = lamExpr (NodeInfo (tInt `tArr` tInt `tArr` tBool) []) [varPat (NodeInfo tInt []) "a", varPat (NodeInfo tInt []) "b"] 
               (appExpr (NodeInfo tBool []) [varExpr (NodeInfo (tInt `tArr` tInt `tArr` tBool) [InClass "Eq" tInt]) "(==)", varExpr (NodeInfo tInt []) "a", varExpr (NodeInfo tInt []) "b"])
