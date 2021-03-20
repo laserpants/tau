@@ -1,43 +1,47 @@
 # (づ｡◕‿‿◕｡)づ
 
+## Index
+
+- Language overview
+  - Features
+  - Basic types
+    - Primitive types
+    - Functions
+    - Lists
+    - Tuples
+    - Algebraic data types
+      - Option types
+      - Results
+    - Records
+  - Syntax
+    - Program layout
+      - Keywords `where`, `and`, and `or`
+    - Control structures: `if`, `let`, etc.
+    - Pattern matching with `match` and `fun`
+    - Anonymous (lambda) functions 
+    - Dot-syntax
+    - Operators
+    - Type annotations
+  - Patterns
+    - Variable, literal and constructor patterns
+    - Lists
+    - Tuples
+    - Records
+    - As-patterns
+    - Or-patterns
+    - Wildcard patterns
+    - `when`-guards
+  - Polymorphism and type classes
+    - Built-in classes
+  - Recursion
+- Roadmap
+
 ## Language overview
-
-- Features
-- Basic types
-  - Primitive types
-  - Functions
-  - Lists
-  - Tuples
-  - Option types
-  - Results
-  - Records
-  - Algebraic data types
-- Syntax
-  - Program layout
-    - Keywords `where`, `and`, and `or`
-  - Control structures: `if`, `let`, etc.
-  - Pattern matching with `match` and `fun`
-  - Anonymous (lambda) functions 
-  - Dot-syntax
-  - Operators
-
-- Patterns
-  - Variable, literal and constructor patterns
-  - Lists
-  - Tuples
-  - Records
-  - As-patterns
-  - Or-patterns
-  - Wildcard patterns
-  - `when`-guards
-- Polymorphism and type classes
-  - Built-in classes
-- Recursion
 
 ### Features
 
-  - Purely functional
-  - Haskell-like syntax but strict semantics
+  - Purely functional, strict semantics
+  - Haskell-like syntax 
   - No partial functions
   - No explicit recursion
   - Type classes (single-parameter only)
@@ -62,7 +66,7 @@
 #### Functions
 
 Function types have the form `a -> b`, where `a` is the type of the argument, and `b` is the return value's type.
-The arrow operator is right-associative. [Currying](https://en.wikipedia.org/wiki/Currying#Definition) allows naturally for the formation of functions of more than one argument, so `a -> b -> c` is a function of two arguments.
+The arrow operator is right-associative. [Currying](https://en.wikipedia.org/wiki/Currying#Definition) naturally allows for the formation of functions of more than one argument, so `a -> b -> c` is a function of two arguments.
 Some examples of function types are `Int -> Int`, `Int -> List Int -> List Int`, and `(Int -> Int) -> Int -> Bool`.
 
 #### Option types
