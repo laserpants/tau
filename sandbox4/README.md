@@ -1,5 +1,84 @@
+# (づ｡◕‿‿◕｡)づ
 
- (づ｡◕‿‿◕｡)づ
+## Language overview
+
+- Features
+- Basic types
+  - Primitive types
+  - Functions
+  - Lists
+  - Tuples
+  - Option types
+  - Results
+  - Records
+  - Algebraic data types
+- Syntax
+  - Program layout
+    - Keywords `where`, `and`, and `or`
+  - Control structures: `if`, `let`, etc.
+  - Pattern matching with `match` and `fun`
+  - Anonymous (lambda) functions 
+  - Dot-syntax
+  - Operators
+
+- Patterns
+  - Variable, literal and constructor patterns
+  - Lists
+  - Tuples
+  - Records
+  - As-patterns
+  - Or-patterns
+  - Wildcard patterns
+  - `when`-guards
+- Polymorphism and type classes
+  - Built-in classes
+- Recursion
+
+### Features
+
+  - Purely functional
+  - Haskell-like syntax but strict semantics
+  - No partial functions
+  - No explicit recursion
+  - Type classes (single-parameter only)
+
+### Basic types
+
+#### Primitive types
+
+| Type      | Values                                                                                                        | Explanation                                 |
+|-----------|---------------------------------------------------------------------------------------------------------------|---------------------------------------------|
+| * `Void`    | No values                                                                                                     | The uninhabited type                        |
+| `Unit`    | `()`                                                                                                          | Type type with exactly one value. (1 in the [algebra of types](https://codewords.recurse.com/issues/three/algebra-and-calculus-of-algebraic-data-types).) |
+| `Bool`    | `True`, `False`                                                                                               |                                             |
+| `Int`     | `minBound`, &hellip;, `-1`, `0`, `1`, `2`, &hellip;, `maxBound`                                               | Bounded machine integers (32 or 64 bit)     |
+| `Integer` | &hellip;, `-1`, `0`, `1`, `2`, &hellip;                                                                       | Arbitrary precision integers (bigints)      |
+| * `Nat`     | `0`, `1`, `2`, &hellip;, or `Zero`, `Succ Zero`, `Succ (Succ Zero)`, &hellip;                               | Natural numbers (Peano arithmetic)          |
+| `Float`   | &hellip;, `6.2831855`, &hellip;                                                                               | Floating point numbers                      |
+| * `Double`  | &hellip;, `6.283185307179586`, &hellip;                                                                     | Double precision floating point numbers     |
+| `Char`    | `'a'`, `'b'`, &hellip;                                                                                        |                                             |
+| `String`  | &hellip;, `"bork bork bork"`, &hellip;, `"klingon"`, &hellip;                                                 |                                             |
+
+#### Functions
+
+Function types have the form `a -> b`, where `a` is the type of the argument, and `b` is the return value's type.
+The arrow operator is right-associative. [Currying](https://en.wikipedia.org/wiki/Currying#Definition) allows naturally for the formation of functions of more than one argument, so `a -> b -> c` is a function of two arguments.
+Some examples of function types are `Int -> Int`, `Int -> List Int -> List Int`, and `(Int -> Int) -> Int -> Bool`.
+
+#### Option types
+
+```
+head : forall a. List a -> Option a
+head (x :: _) = Some x
+head _        = None
+```
+
+```
+headOr : forall a. a -> List a -> a
+headOr rep xs = head xs ? rep
+```
+
+<!--
 
 % modulo operator
 // (integer div)
@@ -99,6 +178,14 @@ headOrZero xs = xs.head ? 0
     withDefault default = 
       \(Some value) => value | None => default 
 
+fun (x :: _) 
+  when x > 100 = 5 and
+  when x < 50  = 3 and
+  otherwise    = 1
+
+fun (x :: _) = 100 
+fun _        = 200
+
 
 # -- keyword        let, if, where, type, etc.
 # -- literal
@@ -112,3 +199,4 @@ headOrZero xs = xs.head ? 0
 # -- space
 # -- comment
 
+-->

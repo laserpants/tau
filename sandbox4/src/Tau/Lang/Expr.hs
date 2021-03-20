@@ -16,13 +16,16 @@ import Data.Types.Injective
 import Tau.Util
 
 -- | Language primitives
+-- -- TODO: rename to Prim
 data Literal
     = LUnit                   -- ^ Unit value
+--    | LVoid
     | LBool Bool              -- ^ Booleans
     | LInt Int                -- ^ Bounded machine integers (32 or 64 bit)
     | LInteger Integer        -- ^ Arbitrary precision integers (bigint)
 --    | LNat Integer
-    | LFloat Double           -- ^ Floating point numbers
+    | LFloat Double           -- ^ Floating point numbers TODO:: change to Float type
+--    | LDouble Double
     | LChar Char              -- ^ Chars
     | LString Text            -- ^ Strings
     deriving (Show, Eq, Ord)
