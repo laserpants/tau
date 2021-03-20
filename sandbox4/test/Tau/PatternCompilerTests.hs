@@ -15,7 +15,7 @@ import Test.Hspec
 import Utils
 
 type TestExpr   = Expr () (Prep ()) Name Name Void Void
-type TestClause = Clause (Pattern () ()) TestExpr
+type TestClause = Clause (Pattern () () PatternsDesugared) TestExpr
 
 succeedCompileAndEvalTo :: [TestClause] -> [Core] -> Value Eval -> SpecWith ()
 succeedCompileAndEvalTo cs c val = do
@@ -36,45 +36,45 @@ testPatternCompiler :: SpecWith ()
 testPatternCompiler = do
 
     succeedCompileAndEvalTo1
-        ( [ Clause [conPat () "(::)" [anyPat (), anyPat ()]] [] (litExpr () (LBool True))
-          , Clause [varPat () "a"] [] (litExpr () (LBool False))
+        ( [ Clause [conPat () "(::)" [anyPat (), anyPat ()]] [] (litExpr () (TBool True))
+          , Clause [varPat () "a"] [] (litExpr () (TBool False))
           ]
-        , cApp [cVar "(::)", cLit (LInt 1), cApp [cVar "[]"]]
-        , Value (LBool True)
+        , cApp [cVar "(::)", cLit (TInt 1), cApp [cVar "[]"]]
+        , Value (TBool True)
         )
 
     succeedCompileAndEvalTo1
-        ( [ Clause [conPat () "(::)" [anyPat (), anyPat ()]] [] (litExpr () (LBool True))
-          , Clause [varPat () "a"] [] (litExpr () (LBool False))
+        ( [ Clause [conPat () "(::)" [anyPat (), anyPat ()]] [] (litExpr () (TBool True))
+          , Clause [varPat () "a"] [] (litExpr () (TBool False))
           ]
         , cApp [cVar "[]"]
-        , Value (LBool False)
+        , Value (TBool False)
         )
 
     succeedCompileAndEvalTo1
-        ( [ Clause [litPat () (LBool True)] [] (litExpr () (LInt 1))
-          , Clause [litPat () (LBool False)] [] (litExpr () (LInt 0))
+        ( [ Clause [litPat () (TBool True)] [] (litExpr () (TInt 1))
+          , Clause [litPat () (TBool False)] [] (litExpr () (TInt 0))
           ]
-        , cLit (LBool False)
-        , Value (LInt 0)
+        , cLit (TBool False)
+        , Value (TInt 0)
         )
 
     succeedCompileAndEvalTo2
-        ( [ Clause [litPat () (LBool True), litPat () (LBool True)] [] (litExpr () (LInt 1))
-          , Clause [litPat () (LBool False), litPat () (LBool False)] [] (litExpr () (LInt 0))
-          , Clause [anyPat (), anyPat ()] [] (litExpr () (LInt (-1)))
+        ( [ Clause [litPat () (TBool True), litPat () (TBool True)] [] (litExpr () (TInt 1))
+          , Clause [litPat () (TBool False), litPat () (TBool False)] [] (litExpr () (TInt 0))
+          , Clause [anyPat (), anyPat ()] [] (litExpr () (TInt (-1)))
           ]
-        , cLit (LBool True)
-        , cLit (LBool True)
-        , Value (LInt 1)
+        , cLit (TBool True)
+        , cLit (TBool True)
+        , Value (TInt 1)
         )
 
     succeedCompileAndEvalTo2
-        ( [ Clause [litPat () (LBool True), litPat () (LBool True)] [] (litExpr () (LInt 1))
-          , Clause [litPat () (LBool False), litPat () (LBool False)] [] (litExpr () (LInt 0))
-          , Clause [anyPat (), anyPat ()] [] (litExpr () (LInt (-1)))
+        ( [ Clause [litPat () (TBool True), litPat () (TBool True)] [] (litExpr () (TInt 1))
+          , Clause [litPat () (TBool False), litPat () (TBool False)] [] (litExpr () (TInt 0))
+          , Clause [anyPat (), anyPat ()] [] (litExpr () (TInt (-1)))
           ]
-        , cLit (LBool True)
-        , cLit (LBool False)
-        , Value (LInt (-1))
+        , cLit (TBool True)
+        , cLit (TBool False)
+        , Value (TInt (-1))
         )

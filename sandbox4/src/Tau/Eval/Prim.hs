@@ -11,71 +11,77 @@ import Tau.Util.Env (Env)
 import qualified Data.Text as Text
 import qualified Tau.Util.Env as Env
 
-class Prim a where
-    toLiteral :: a -> Literal
-    primitive :: Literal -> a
+class PrimType a where
+    toPrim   :: a -> Prim
+    fromPrim :: Prim -> a
 
-instance Prim Int where
-    toLiteral = LInt
-    primitive = \case
-        LInt lit -> lit
+instance PrimType Int where
+    toPrim = TInt
+    fromPrim = \case
+        TInt lit -> lit
         _        -> 0
 
-instance Prim Integer where
-    toLiteral = LInteger
-    primitive = \case
-        LInteger lit -> lit
+instance PrimType Integer where
+    toPrim = TInteger
+    fromPrim = \case
+        TInteger lit -> lit
         _            -> 0
 
-instance Prim Double where
-    toLiteral = LFloat
-    primitive = \case
-        LFloat lit -> lit
+instance PrimType Float where
+    toPrim = TFloat
+    fromPrim = \case
+        TFloat lit -> lit
         _          -> 0
 
-instance Prim Text where
-    toLiteral = LString 
-    primitive = \case
-        LString lit -> lit
+instance PrimType Double where
+    toPrim = TDouble
+    fromPrim = \case
+        TDouble lit -> lit
+        _           -> 0
+
+instance PrimType Text where
+    toPrim = TString 
+    fromPrim = \case
+        TString lit -> lit
         _           -> Text.pack ""
 
-instance Prim Char where
-    toLiteral = LChar
-    primitive = \case
-        LChar lit -> lit
+instance PrimType Char where
+    toPrim = TChar
+    fromPrim = \case
+        TChar lit -> lit
         _         -> ' '
 
-instance Prim () where
-    toLiteral = const LUnit
-    primitive = const ()
+instance PrimType () where
+    toPrim = const TUnit
+    fromPrim = const ()
 
-instance Prim Bool where
-    toLiteral = LBool
-    primitive = \case
-        LBool lit -> lit
+instance PrimType Bool where
+    toPrim = TBool
+    fromPrim = \case
+        TBool lit -> lit
         _         -> False
 
-fun1 :: (Prim a, Prim b) => (a -> b) -> Fun 
-fun1 f = Fun1 (\a -> let b = f (primitive a) in toLiteral b)
+fun1 :: (PrimType a, PrimType b) => (a -> b) -> Fun 
+fun1 f = Fun1 (\a -> let b = f (fromPrim a) in toPrim b)
 
-fun2 :: (Prim a, Prim b, Prim c) => (a -> b -> c) -> Fun 
-fun2 f = Fun2 (\a b -> let c = f (primitive a) (primitive b) in toLiteral c)
+fun2 :: (PrimType a, PrimType b, PrimType c) => (a -> b -> c) -> Fun 
+fun2 f = Fun2 (\a b -> let c = f (fromPrim a) (fromPrim b) in toPrim c)
 
-fun3 :: (Prim a, Prim b, Prim c, Prim d) => (a -> b -> c -> d) -> Fun 
-fun3 f = Fun3 (\a b c -> let d = f (primitive a) (primitive b) (primitive c) in toLiteral d)
+fun3 :: (PrimType a, PrimType b, PrimType c, PrimType d) => (a -> b -> c -> d) -> Fun 
+fun3 f = Fun3 (\a b c -> let d = f (fromPrim a) (fromPrim b) (fromPrim c) in toPrim d)
 
-fun4 :: (Prim a, Prim b, Prim c, Prim d, Prim e) => (a -> b -> c -> d -> e) -> Fun 
-fun4 f = Fun4 (\a b c d -> let e = f (primitive a) (primitive b) (primitive c) (primitive d) in toLiteral e)
+fun4 :: (PrimType a, PrimType b, PrimType c, PrimType d, PrimType e) => (a -> b -> c -> d -> e) -> Fun 
+fun4 f = Fun4 (\a b c d -> let e = f (fromPrim a) (fromPrim b) (fromPrim c) (fromPrim d) in toPrim e)
 
-fun5 :: (Prim a, Prim b, Prim c, Prim d, Prim e, Prim f) => (a -> b -> c -> d -> e -> f) -> Fun 
-fun5 f = Fun5 (\a b c d e -> let g = f (primitive a) (primitive b) (primitive c) (primitive d) (primitive e) in toLiteral g)
+fun5 :: (PrimType a, PrimType b, PrimType c, PrimType d, PrimType e, PrimType f) => (a -> b -> c -> d -> e -> f) -> Fun 
+fun5 f = Fun5 (\a b c d e -> let g = f (fromPrim a) (fromPrim b) (fromPrim c) (fromPrim d) (fromPrim e) in toPrim g)
 
 data Fun 
-    = Fun1 (Literal -> Literal)
-    | Fun2 (Literal -> Literal -> Literal)
-    | Fun3 (Literal -> Literal -> Literal -> Literal)
-    | Fun4 (Literal -> Literal -> Literal -> Literal -> Literal)
-    | Fun5 (Literal -> Literal -> Literal -> Literal -> Literal -> Literal)
+    = Fun1 (Prim -> Prim)
+    | Fun2 (Prim -> Prim -> Prim)
+    | Fun3 (Prim -> Prim -> Prim -> Prim)
+    | Fun4 (Prim -> Prim -> Prim -> Prim -> Prim)
+    | Fun5 (Prim -> Prim -> Prim -> Prim -> Prim -> Prim)
 
 arity :: Fun -> Int
 arity = \case
@@ -85,7 +91,7 @@ arity = \case
     Fun4 _ -> 4
     Fun5 _ -> 5
 
-applyFun :: Fun -> [Literal] -> Literal
+applyFun :: Fun -> [Prim] -> Prim
 applyFun fun args =
     case fun of
         Fun1 f -> f (head args)

@@ -6,9 +6,9 @@ import Tau.Lang.Type
 import Tau.Util
 import Tau.Util.Env (Env(..))
 
-type ProgExpr = Expr () (Pattern () ()) 
-                        (Binding (Pattern () ())) 
-                        [Pattern () ()] 
+type ProgExpr = Expr () (Pattern () () ()) 
+                        (Binding (Pattern () () ())) 
+                        [Pattern () () ()] 
                         (Op1 ()) 
                         (Op2 ())
 
@@ -23,7 +23,7 @@ data Datatype = Sum Name [Name] [Product]
 -- | Top-level definition
 data Definition = Def 
     { defName    :: Name 
-    , defClauses :: [Clause (Pattern () ()) ProgExpr] 
+    , defClauses :: [Clause (Pattern () () ()) ProgExpr] 
     , defLocal   :: [Definition]
     } deriving (Show, Eq)
 

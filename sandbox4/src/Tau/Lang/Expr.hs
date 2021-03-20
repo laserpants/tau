@@ -1,5 +1,6 @@
 {-# LANGUAGE DeriveTraversable     #-}
 {-# LANGUAGE FlexibleContexts      #-}
+{-# LANGUAGE EmptyDataDeriving     #-}
 {-# LANGUAGE FlexibleInstances     #-}
 {-# LANGUAGE LambdaCase            #-}
 {-# LANGUAGE MultiParamTypeClasses #-}
@@ -16,18 +17,17 @@ import Data.Types.Injective
 import Tau.Util
 
 -- | Language primitives
--- -- TODO: rename to Prim
-data Literal
-    = LUnit                   -- ^ Unit value
---    | LVoid
-    | LBool Bool              -- ^ Booleans
-    | LInt Int                -- ^ Bounded machine integers (32 or 64 bit)
-    | LInteger Integer        -- ^ Arbitrary precision integers (bigint)
---    | LNat Integer
-    | LFloat Double           -- ^ Floating point numbers TODO:: change to Float type
---    | LDouble Double
-    | LChar Char              -- ^ Chars
-    | LString Text            -- ^ Strings
+data Prim
+    = TVoid
+    | TUnit                   -- ^ Unit value
+    | TBool Bool              -- ^ Booleans
+    | TInt Int                -- ^ Bounded machine integers (32 or 64 bit)
+    | TInteger Integer        -- ^ Arbitrary precision integers (bigint)
+--    | TNat Integer            -- ^ Peano arithmetic natural numbers 
+    | TFloat Float            -- ^ Single precision Floating point numbers 
+    | TDouble Double          -- ^ Double precision Floating point numbers
+    | TChar Char              -- ^ Chars
+    | TString Text            -- ^ Strings
     deriving (Show, Eq, Ord)
 
 -- | Record fields
@@ -53,10 +53,10 @@ deriveShow1 ''FieldSet
 deriveEq1   ''FieldSet
 
 -- | Base functor for Pattern
-data PatternF t f a 
+data PatternF t f g a 
     = PVar t Name             -- ^ Variable pattern
     | PCon t Name [a]         -- ^ Constuctor pattern
-    | PLit t Literal          -- ^ Literal pattern
+    | PLit t Prim             -- ^ Literal pattern
     | PRec t (FieldSet t a)   -- ^ Record pattern
     | PTup t [a]              -- ^ Tuple pattern
     | PLst t [a]              -- ^ List pattern
@@ -69,7 +69,7 @@ deriveShow1 ''PatternF
 deriveEq1   ''PatternF
 
 -- | Patterns
-type Pattern t f = Fix (PatternF t f)
+type Pattern t f g = Fix (PatternF t f g)
 
 -- | Simple patterns
 data Prep t
@@ -137,7 +137,7 @@ deriveEq1   ''Binding
 data ExprF t p q r n o a
     = EVar t Name             -- ^ Variable
     | ECon t Name [a]         -- ^ Data constructor
-    | ELit t Literal          -- ^ Literal value
+    | ELit t Prim             -- ^ Literal value
     | EApp t [a]              -- ^ Function application
     | ELet t q a a            -- ^ Let expression
     | EFix t Name a a         -- ^ Recursive let
@@ -161,15 +161,18 @@ deriveEq1   ''ExprF
 -- | Expression language tagged term tree
 type Expr t p q r n o = Fix (ExprF t p q r n o)
 
-literalName :: Literal -> Name
+literalName :: Prim -> Name
 literalName = \case
-    LUnit        -> "Unit"
-    (LBool    _) -> "Bool"
-    (LInt     _) -> "Int"
-    (LInteger _) -> "Integer"
-    (LFloat   _) -> "Float"
-    (LChar    _) -> "Char"
-    (LString  _) -> "String"
+    TVoid        -> "Void"
+    TUnit        -> "Unit"
+    (TBool    _) -> "Bool"
+    (TInt     _) -> "Int"
+    (TInteger _) -> "Integer"
+--    (TNat     _) -> "Nat"
+    (TFloat   _) -> "Float"
+    (TDouble  _) -> "Double"
+    (TChar    _) -> "Char"
+    (TString  _) -> "String"
 
 -- | Return the precedence of a binary operator
 opPrecedence :: Op2 t -> Int
@@ -291,7 +294,7 @@ setExprTag t = project >>> \case
     ETup _ a       -> tupExpr t a
     ELst _ a       -> lstExpr t a
 
-patternTag :: Pattern t f -> t
+patternTag :: Pattern t f g -> t
 patternTag = project >>> \case
     PVar t _       -> t
     PCon t _ _     -> t
@@ -303,7 +306,7 @@ patternTag = project >>> \case
     PAs  t _ _     -> t
     POr  t _ _     -> t
 
-setPatternTag :: t -> Pattern t f -> Pattern t f
+setPatternTag :: t -> Pattern t f g -> Pattern t f g
 setPatternTag t = project >>> \case
     PVar _ a       -> varPat t a
     PCon _ a b     -> conPat t a b
@@ -315,10 +318,13 @@ setPatternTag t = project >>> \case
     PAs  _ a b     -> asPat t a b
     POr  _ a b     -> orPat t a b
 
-data PatternsExpanded
-data PatternsDesugared -- TODO
+data PatternsExpanded 
+    deriving (Show, Eq)
 
-patternsExpanded :: Pattern t f -> Pattern t PatternsExpanded
+data PatternsDesugared 
+    deriving (Show, Eq)
+
+patternsExpanded :: Pattern t f g -> Pattern t PatternsExpanded g
 patternsExpanded = cata $ \case
     PVar t a       -> varPat t a
     PCon t a b     -> conPat t a b
@@ -329,14 +335,16 @@ patternsExpanded = cata $ \case
     PAs  t a b     -> asPat t a b
     _              -> error "Implementation error"
 
--- TODO
---patternsDesugared :: Pattern t PatternsExpanded g -> Pattern t PatternsExpanded PatternsDesugared
---patternsDesugared = cata $ \case
---    PVar t a       -> varPat t a
---    PCon t a b     -> conPat t a b
---    PAny t         -> anyPat t
---    PAs  t a b     -> asPat t a b
---    _              -> error "Implementation error"
+patternsDesugared :: Pattern t f g -> Pattern t f PatternsDesugared
+patternsDesugared = cata $ \case
+    PVar t a       -> varPat t a
+    PCon t a b     -> conPat t a b
+    PAny t         -> anyPat t
+    PAs  t a b     -> asPat t a b
+    _              -> error "Implementation error"
+
+clauseDesugared :: Clause (Pattern t f g) a -> Clause (Pattern t f PatternsDesugared) a
+clauseDesugared (Clause ps ex e) = Clause (patternsDesugared <$> ps) ex e
 
 op1Tag :: Op1 t -> t
 op1Tag = \case
@@ -363,7 +371,7 @@ op2Tag = \case
     OFPipe t -> t
     OBPipe t -> t
 
-patternVars :: Pattern t f -> [(Name, t)]
+patternVars :: Pattern t f g -> [(Name, t)]
 patternVars = cata $ \case
     PVar t var           -> [(var, t)]
     PCon _ _ rs          -> concat rs
@@ -375,7 +383,7 @@ patternVars = cata $ \case
     PLit _ _             -> []
     PAny _               -> []
 
-type Ast t n o f = Expr t (Pattern t f) (Binding (Pattern t f)) [Pattern t f] n o
+type Ast t n o f g = Expr t (Pattern t f g) (Binding (Pattern t f g)) [Pattern t f g] n o
 
 class MapT s t a b where
     mapTagsM :: (Monad m) => (s -> m t) -> a -> m b
@@ -425,7 +433,7 @@ instance
         ELst t a ->
             lstExpr <$> f t <*> sequence a 
 
-instance MapT s t (Pattern s f) (Pattern t f) where
+instance MapT s t (Pattern s f g) (Pattern t f g) where
     mapTagsM f = cata $ \case
         PVar t a -> 
             varPat <$> f t <*> pure a
@@ -451,7 +459,7 @@ instance MapT s t (Prep s) (Prep t) where
     mapTagsM f = \case
         RCon t con ps -> RCon <$> f t <*> pure con <*> pure ps
 
-instance MapT s t (Binding (Pattern s f)) (Binding (Pattern t f)) where
+instance MapT s t (Binding (Pattern s f g)) (Binding (Pattern t f g)) where
     mapTagsM f = \case
         BLet p      -> BLet <$> mapTagsM f p
         BFun fun ps -> BFun fun <$> traverse (mapTagsM f) ps
@@ -492,31 +500,31 @@ instance MapT s t (Field s a) (Field t a) where
 mapTags :: (MapT s t a b) => (s -> t) -> a -> b
 mapTags f = runIdentity . mapTagsM (pure . f)
 
-varPat :: t -> Name -> Pattern t f
+varPat :: t -> Name -> Pattern t f g
 varPat = embed2 PVar
 
-conPat :: t -> Name -> [Pattern t f] -> Pattern t f
+conPat :: t -> Name -> [Pattern t f g] -> Pattern t f g
 conPat = embed3 PCon
 
-asPat :: t -> Name -> Pattern t f -> Pattern t f
+asPat :: t -> Name -> Pattern t f g -> Pattern t f g
 asPat = embed3 PAs
 
-orPat :: t -> Pattern t f -> Pattern t f -> Pattern t f
+orPat :: t -> Pattern t f g -> Pattern t f g -> Pattern t f g
 orPat = embed3 POr
 
-litPat :: t -> Literal -> Pattern t f
+litPat :: t -> Prim -> Pattern t f g
 litPat = embed2 PLit
 
-recPat :: t -> FieldSet t (Pattern t f) -> Pattern t f
+recPat :: t -> FieldSet t (Pattern t f g) -> Pattern t f g
 recPat = embed2 PRec
 
-tupPat :: t -> [Pattern t f] -> Pattern t f
+tupPat :: t -> [Pattern t f g] -> Pattern t f g
 tupPat = embed2 PTup
 
-lstPat :: t -> [Pattern t f] -> Pattern t f
+lstPat :: t -> [Pattern t f g] -> Pattern t f g
 lstPat = embed2 PLst
 
-anyPat :: t -> Pattern t f
+anyPat :: t -> Pattern t f g
 anyPat = embed1 PAny
 
 varExpr :: t -> Name -> Expr t p q r n o
@@ -525,7 +533,7 @@ varExpr = embed2 EVar
 conExpr :: t -> Name -> [Expr t p q r n o] -> Expr t p q r n o
 conExpr = embed3 ECon
 
-litExpr :: t -> Literal -> Expr t p q r n o
+litExpr :: t -> Prim -> Expr t p q r n o
 litExpr = embed2 ELit
 
 appExpr :: t -> [Expr t p q r n o] -> Expr t p q r n o
@@ -569,5 +577,5 @@ lstExpr = embed2 ELst
 listConsExpr :: t -> Expr t p q r n o -> Expr t p q r n o -> Expr t p q r n o
 listConsExpr t hd tl = conExpr t "(::)" [hd, tl]
 
-listConsPat :: t -> Pattern t f -> Pattern t f -> Pattern t f
+listConsPat :: t -> Pattern t f g -> Pattern t f g -> Pattern t f g
 listConsPat t hd tl = conPat t "(::)" [hd, tl]

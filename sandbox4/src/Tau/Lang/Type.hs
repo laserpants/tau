@@ -220,6 +220,9 @@ tApp = embed2 TApp
 typ :: Name -> TypeT a
 typ = tCon kTyp
 
+tVoid :: TypeT a
+tVoid = typ "Void"
+
 tUnit :: TypeT a
 tUnit = typ "Unit"
 
@@ -232,8 +235,14 @@ tInt = typ "Int"
 tInteger :: TypeT a
 tInteger = typ "Integer"
 
+--tNat :: TypeT a
+--tNat = typ "Nat"
+
 tFloat :: TypeT a
 tFloat = typ "Float"
+
+tDouble :: TypeT a
+tDouble = typ "Double"
 
 tString :: TypeT a
 tString = typ "String"

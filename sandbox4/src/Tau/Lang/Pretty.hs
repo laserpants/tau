@@ -43,7 +43,7 @@ instance Parens Kind where
         KArr{} -> True
         _      -> False
 
-instance Parens (Pattern t f) where
+instance Parens (Pattern t f g) where
     needsParens = project >>> \case
         PCon _ _ [] -> False
         PCon{}      -> True
@@ -82,15 +82,17 @@ addParens inp = if needsParens inp then parens doc else doc
   where
     doc = pretty inp
 
-instance Pretty Literal where
+instance Pretty Prim where
     pretty = \case
-        LUnit      -> parens mempty
-        LBool b    -> pretty b
-        LInt n     -> pretty n
-        LInteger n -> pretty n
-        LFloat f   -> pretty f
-        LChar c    -> squotes (pretty c)
-        LString s  -> dquotes (pretty s)
+        TUnit      -> parens mempty
+        TBool b    -> pretty b
+        TInt n     -> pretty n
+        TInteger n -> pretty n
+--        TNat n     -> pretty n
+        TFloat f   -> pretty f
+        TDouble d  -> pretty d
+        TChar c    -> squotes (pretty c)
+        TString s  -> dquotes (pretty s)
 
 instance Pretty Type where
     pretty = para $ \case
@@ -190,7 +192,7 @@ instance Pretty Kind where
 --        KCls -> "#"
         KArr (k1, _) (_, doc2) -> addParens k1 <+> "->" <+> doc2
 
-instance Pretty (Pattern t f) where
+instance Pretty (Pattern t f g) where
     pretty = para $ \case
         PVar _ var            -> pretty var
         PCon _ "(::)" [x, xs] -> pretty (fst x) <+> "::" <+> pretty (fst xs)
@@ -210,7 +212,7 @@ instance Pretty (Prep t) where
 conArg :: (Parens p, Pretty p) => Doc a -> p -> Doc a
 conArg out el = out <+> addParens el 
 
-instance (Pretty t) => Pretty (Binding (Pattern t f)) where
+instance (Pretty t) => Pretty (Binding (Pattern t f g)) where
     pretty (BLet p)    = pretty p
     pretty (BFun f ps) = foldl conArg (pretty f) ps
 
@@ -298,7 +300,7 @@ prettyTuple = parens . commaSep
 prettyList_ :: [Doc a] -> Doc a
 prettyList_ = brackets . commaSep
 
-instance (Pretty e) => Pretty (Clause (Pattern t f) e) where
+instance (Pretty e) => Pretty (Clause (Pattern t f g) e) where
     pretty (Clause ps exs e) =
         patternSeq ps <+> whens (pretty <$> exs) <> "=>" <+> pretty e
       where

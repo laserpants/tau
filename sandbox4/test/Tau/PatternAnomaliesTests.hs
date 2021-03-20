@@ -14,7 +14,7 @@ import Test.Hspec
 import Utils
 import qualified Data.Text as Text
 
-type PatternClause = Clause (Pattern () ()) (Ast () (Op1 ()) (Op2 ()) ())
+type PatternClause = Clause (Pattern () () ()) (Ast () (Op1 ()) (Op2 ()) () ())
 
 testConstrEnv :: ConstructorEnv
 testConstrEnv = constructorEnv
@@ -33,11 +33,11 @@ class IsExhaustive a where
     isExhaustive :: (MonadReader ConstructorEnv m) => a -> m Bool
     description  :: a -> String
 
-instance IsExhaustive [[Pattern t f]] where
+instance IsExhaustive [[Pattern t f g]] where
     isExhaustive = exhaustive
     description  = \pss -> "The patterns " <> concatMap (\ps -> "\n    | " <> showDoc (patternSeq ps)) pss
 
-instance (Pretty a) => IsExhaustive [Clause (Pattern t f) a] where
+instance (Pretty a) => IsExhaustive [Clause (Pattern t f g) a] where
     isExhaustive = clausesAreExhaustive
     description  = \cs -> "The clauses " <> concatMap (\c -> "\n    | " <> showDoc (pretty c)) cs
 
@@ -69,15 +69,15 @@ testPatternAnomalies = do
     describe "\nPatterns\n" $ do
  
         testExhaustive
-            [ [] :: [Pattern t f] ]
+            [ [] :: [Pattern t f g] ]
 
         testExhaustive
-            [ [litPat () (LBool True)]
-            , [litPat () (LBool False)]
+            [ [litPat () (TBool True)]
+            , [litPat () (TBool False)]
             ]
 
         testNonExhaustive
-            [ [litPat () (LBool True)]
+            [ [litPat () (TBool True)]
             ]
 
         testExhaustive
@@ -134,70 +134,70 @@ testPatternAnomalies = do
             ]
 
         testExhaustive
-            [ [litPat () (LInt 5)]
+            [ [litPat () (TInt 5)]
             , [varPat () "x"]
             ]
 
         testNonExhaustive
-            [ [litPat () (LInt 5)]
-            , [litPat () (LInt 4)]
+            [ [litPat () (TInt 5)]
+            , [litPat () (TInt 4)]
             ]
 
         testExhaustive
-            [ [litPat () (LInt 5), litPat () (LInt 5)]
+            [ [litPat () (TInt 5), litPat () (TInt 5)]
             , [varPat () "x", varPat () "y"]
             ]
 
         testNonExhaustive
-            [ [litPat () (LInt 5), litPat () (LInt 5)]
-            , [varPat () "x", litPat () (LInt 0)]
+            [ [litPat () (TInt 5), litPat () (TInt 5)]
+            , [varPat () "x", litPat () (TInt 0)]
             ]
 
         testExhaustive
-            [ [litPat () (LBool True)]
-            , [litPat () (LBool False)]
+            [ [litPat () (TBool True)]
+            , [litPat () (TBool False)]
             ]
 
         testExhaustive
-            [ [litPat () (LBool True)]
+            [ [litPat () (TBool True)]
             , [anyPat ()]
             ]
 
         testNonExhaustive
-            [ [litPat () (LBool True)]
+            [ [litPat () (TBool True)]
             ]
 
         testExhaustive
-            [ [litPat () LUnit]
+            [ [litPat () TUnit]
             ]
 
         testExhaustive
-            [ [litPat () LUnit, litPat () LUnit]
+            [ [litPat () TUnit, litPat () TUnit]
             ]
 
         testExhaustive
-            [ [litPat () LUnit, anyPat ()]
+            [ [litPat () TUnit, anyPat ()]
             ]
 
         testNonExhaustive
-            [ [litPat () LUnit, litPat () (LInt 3)]
+            [ [litPat () TUnit, litPat () (TInt 3)]
             ]
 
         testNonExhaustive
-            [ [litPat () (LString "x")]
-            , [litPat () (LString "y")]
+            [ [litPat () (TString "x")]
+            , [litPat () (TString "y")]
             ]
 
         testExhaustive
-            [ [litPat () (LString "x")]
-            , [litPat () (LString "y")]
+            [ [litPat () (TString "x")]
+            , [litPat () (TString "y")]
             , [anyPat ()]
             ]
 
         -- Tuple patterns
 
         testNonExhaustive
-            [ [tupPat () [litPat () (LInt 1), litPat () (LInt 2)]]
+            [ [tupPat () [litPat () (TInt 1), litPat () (TInt 2)]]
             ]
 
         testExhaustive
@@ -205,30 +205,30 @@ testPatternAnomalies = do
             ]
 
         testExhaustive
-            [ [tupPat () [litPat () (LInt 1), litPat () (LInt 2)]]
+            [ [tupPat () [litPat () (TInt 1), litPat () (TInt 2)]]
             , [tupPat () [anyPat (), anyPat ()]]
             ]
 
         testNonExhaustive
-            [ [tupPat () [conPat () "Cons" [varPat () "x", varPat () "xs"], litPat () (LInt 2)]]
+            [ [tupPat () [conPat () "Cons" [varPat () "x", varPat () "xs"], litPat () (TInt 2)]]
             , [tupPat () [conPat () "Nil" [], anyPat ()]]
             ]
 
         testExhaustive
-            [ [tupPat () [conPat () "Cons" [varPat () "x", varPat () "xs"], litPat () (LBool True)]]
-            , [tupPat () [conPat () "Cons" [varPat () "x", varPat () "xs"], litPat () (LBool False)]]
+            [ [tupPat () [conPat () "Cons" [varPat () "x", varPat () "xs"], litPat () (TBool True)]]
+            , [tupPat () [conPat () "Cons" [varPat () "x", varPat () "xs"], litPat () (TBool False)]]
             , [tupPat () [conPat () "Nil" [], anyPat ()]]
             ]
 
         testNonExhaustive
-            [ [tupPat () [conPat () "Cons" [varPat () "x", varPat () "xs"], litPat () (LBool True)]]
-            , [tupPat () [conPat () "Cons" [litPat () (LInt 3), varPat () "xs"], litPat () (LBool False)]]
+            [ [tupPat () [conPat () "Cons" [varPat () "x", varPat () "xs"], litPat () (TBool True)]]
+            , [tupPat () [conPat () "Cons" [litPat () (TInt 3), varPat () "xs"], litPat () (TBool False)]]
             , [tupPat () [conPat () "Nil" [], anyPat ()]]
             ]
 
         testExhaustive
-            [ [tupPat () [conPat () "Cons" [varPat () "x", varPat () "xs"], litPat () (LBool True)]]
-            , [tupPat () [conPat () "Cons" [litPat () (LInt 3), varPat () "xs"], litPat () (LBool False)]]
+            [ [tupPat () [conPat () "Cons" [varPat () "x", varPat () "xs"], litPat () (TBool True)]]
+            , [tupPat () [conPat () "Cons" [litPat () (TInt 3), varPat () "xs"], litPat () (TBool False)]]
             , [tupPat () [conPat () "Nil" [], anyPat ()]]
             , [anyPat ()]
             ]
@@ -236,14 +236,14 @@ testPatternAnomalies = do
         -- Record patterns
 
         testNonExhaustive
-            [ [recPat () (fieldSet [Field () "x" (litPat () (LInt 3)), Field () "y" (litPat () (LInt 4))])]
-            , [recPat () (fieldSet [Field () "x" (litPat () (LInt 6)), Field () "y" (litPat () (LInt 7))])]
+            [ [recPat () (fieldSet [Field () "x" (litPat () (TInt 3)), Field () "y" (litPat () (TInt 4))])]
+            , [recPat () (fieldSet [Field () "x" (litPat () (TInt 6)), Field () "y" (litPat () (TInt 7))])]
             ]
 
         testExhaustive
-            [ [recPat () (fieldSet [Field () "x" (litPat () (LInt 3)), Field () "y" (litPat () (LInt 4))])]
-            , [recPat () (fieldSet [Field () "x" (litPat () (LInt 6)), Field () "y" (litPat () (LInt 7))])]
-            , [recPat () (fieldSet [Field () "x" (anyPat ()), Field () "y" (litPat () (LInt 7))])]
+            [ [recPat () (fieldSet [Field () "x" (litPat () (TInt 3)), Field () "y" (litPat () (TInt 4))])]
+            , [recPat () (fieldSet [Field () "x" (litPat () (TInt 6)), Field () "y" (litPat () (TInt 7))])]
+            , [recPat () (fieldSet [Field () "x" (anyPat ()), Field () "y" (litPat () (TInt 7))])]
             , [recPat () (fieldSet [Field () "x" (varPat () "x"), Field () "y" (anyPat ())])]
             ]
 
@@ -255,21 +255,21 @@ testPatternAnomalies = do
 
         testExhaustive
             [ [recPat () (fieldSet 
-                  [ Field () "x" (litPat () (LInt 3))
+                  [ Field () "x" (litPat () (TInt 3))
                   , Field () "y" (recPat () (fieldSet 
-                      [ Field () "a" (litPat () (LInt 3))
+                      [ Field () "a" (litPat () (TInt 3))
                       ]))
                   ])]
             , [recPat () (fieldSet 
-                  [ Field () "x" (litPat () (LInt 6))
+                  [ Field () "x" (litPat () (TInt 6))
                   , Field () "y" (recPat () (fieldSet 
-                      [ Field () "a" (litPat () (LInt 4))
+                      [ Field () "a" (litPat () (TInt 4))
                       ]))
                   ])]
             , [recPat () (fieldSet 
                   [ Field () "x" (anyPat ())
                   , Field () "y" (recPat () (fieldSet 
-                      [ Field () "a" (litPat () (LInt 5))
+                      [ Field () "a" (litPat () (TInt 5))
                       ]))
                   ])]
             , [recPat () (fieldSet 
@@ -282,27 +282,27 @@ testPatternAnomalies = do
 
         testNonExhaustive
             [ [recPat () (fieldSet 
-                  [ Field () "x" (litPat () (LInt 3))
+                  [ Field () "x" (litPat () (TInt 3))
                   , Field () "y" (recPat () (fieldSet 
-                      [ Field () "a" (litPat () (LInt 3))
+                      [ Field () "a" (litPat () (TInt 3))
                       ]))
                   ])]
             , [recPat () (fieldSet 
-                  [ Field () "x" (litPat () (LInt 6))
+                  [ Field () "x" (litPat () (TInt 6))
                   , Field () "y" (recPat () (fieldSet 
-                      [ Field () "a" (litPat () (LInt 4))
+                      [ Field () "a" (litPat () (TInt 4))
                       ]))
                   ])]
             , [recPat () (fieldSet 
                   [ Field () "x" (anyPat ())
                   , Field () "y" (recPat () (fieldSet 
-                      [ Field () "a" (litPat () (LInt 5))
+                      [ Field () "a" (litPat () (TInt 5))
                       ]))
                   ])]
             , [recPat () (fieldSet 
                   [ Field () "x" (varPat () "x")
                   , Field () "y" (recPat () (fieldSet 
-                      [ Field () "a" (litPat () (LInt 6))
+                      [ Field () "a" (litPat () (TInt 6))
                       ]))
                   ])]
             ]
@@ -312,15 +312,15 @@ testPatternAnomalies = do
         describe "\nList patterns\n" $ do
 
             testNonExhaustive
-                [ [lstPat () [litPat () (LInt 1), litPat () (LInt 2)]]
+                [ [lstPat () [litPat () (TInt 1), litPat () (TInt 2)]]
                 ]
 
             testNonExhaustive
-                [ [lstPat () [varPat () "x", litPat () (LInt 2)]]
+                [ [lstPat () [varPat () "x", litPat () (TInt 2)]]
                 ]
 
             testExhaustive
-                [ [lstPat () [varPat () "x", litPat () (LInt 2)]]
+                [ [lstPat () [varPat () "x", litPat () (TInt 2)]]
                 , [anyPat ()]
                 ]
 
@@ -350,11 +350,11 @@ testPatternAnomalies = do
         describe "\nOr-patterns\n" $ do
 
             testNonExhaustive
-                [ [litPat () (LBool False)]
+                [ [litPat () (TBool False)]
                 ]
 
             testExhaustive
-                [ [orPat () (litPat () (LBool False)) (litPat () (LBool True))]
+                [ [orPat () (litPat () (TBool False)) (litPat () (TBool True))]
                 ]
 
         -- As-patterns
@@ -379,11 +379,11 @@ testPatternAnomalies = do
         describe "\nCombined patterns\n" $ do
 
             testNonExhaustive
-                [ [asPat () "x" (orPat () (litPat () (LInt 1)) (litPat () (LInt 2)))]
+                [ [asPat () "x" (orPat () (litPat () (TInt 1)) (litPat () (TInt 2)))]
                 ]
 
             testExhaustive
-                [ [asPat () "x" (orPat () (litPat () (LInt 1)) (litPat () (LInt 2)))]
+                [ [asPat () "x" (orPat () (litPat () (TInt 1)) (litPat () (TInt 2)))]
                 , [anyPat ()]
                 ]
 
@@ -392,64 +392,64 @@ testPatternAnomalies = do
     describe "\nClauses\n" $ do
 
         testExhaustive
-            ( [ Clause [conPat () "(::)" [anyPat (), anyPat ()]] [] (litExpr () (LBool True))
-              , Clause [varPat () "a"] [] (litExpr () (LBool False))
+            ( [ Clause [conPat () "(::)" [anyPat (), anyPat ()]] [] (litExpr () (TBool True))
+              , Clause [varPat () "a"] [] (litExpr () (TBool False))
               ] :: [PatternClause] )
 
         testNonExhaustive
-            ( [ Clause [conPat () "(::)" [anyPat (), anyPat ()]] [] (litExpr () (LBool True))
+            ( [ Clause [conPat () "(::)" [anyPat (), anyPat ()]] [] (litExpr () (TBool True))
               ] :: [PatternClause] )
 
         testNonExhaustive
-            ( [ Clause [varPat () "x"] [varExpr () "pIsTrue"] (litExpr () (LBool True))
+            ( [ Clause [varPat () "x"] [varExpr () "pIsTrue"] (litExpr () (TBool True))
               ] :: [PatternClause] )
 
         testExhaustive
-            ( [ Clause [varPat () "x"] [varExpr () "pIsTrue"] (litExpr () (LBool True))
-              , Clause [varPat () "x"] [] (litExpr () (LBool True))
+            ( [ Clause [varPat () "x"] [varExpr () "pIsTrue"] (litExpr () (TBool True))
+              , Clause [varPat () "x"] [] (litExpr () (TBool True))
               ] :: [PatternClause] )
 
         testExhaustive
-            ( [ Clause [litPat () (LString "x")] [] (litExpr () (LBool True))
-              , Clause [litPat () (LString "y")] [] (litExpr () (LBool True))
-              , Clause [anyPat ()] [] (litExpr () (LBool True))
+            ( [ Clause [litPat () (TString "x")] [] (litExpr () (TBool True))
+              , Clause [litPat () (TString "y")] [] (litExpr () (TBool True))
+              , Clause [anyPat ()] [] (litExpr () (TBool True))
               ] :: [PatternClause] )
 
         testNonExhaustive
-            ( [ Clause [litPat () (LString "x")] [] (litExpr () (LBool True))
-              , Clause [litPat () (LString "y")] [] (litExpr () (LBool True))
-              , Clause [anyPat ()] [varExpr () "pIsTrue"] (litExpr () (LBool True))
+            ( [ Clause [litPat () (TString "x")] [] (litExpr () (TBool True))
+              , Clause [litPat () (TString "y")] [] (litExpr () (TBool True))
+              , Clause [anyPat ()] [varExpr () "pIsTrue"] (litExpr () (TBool True))
               ] :: [PatternClause] )
 
         testExhaustive
-            ( [ Clause [litPat () (LString "x")] [] (litExpr () (LBool True))
-              , Clause [litPat () (LString "y")] [varExpr () "pIsTrue"] (litExpr () (LBool True))
-              , Clause [anyPat ()] [] (litExpr () (LBool True))
+            ( [ Clause [litPat () (TString "x")] [] (litExpr () (TBool True))
+              , Clause [litPat () (TString "y")] [varExpr () "pIsTrue"] (litExpr () (TBool True))
+              , Clause [anyPat ()] [] (litExpr () (TBool True))
               ] :: [PatternClause] )
 
         testExhaustive
-            ( [ Clause [litPat () (LString "x")] [] (litExpr () (LBool True))
-              , Clause [anyPat ()] [varExpr () "pIsTrue"] (litExpr () (LBool True))
-              , Clause [varPat () "x"] [] (litExpr () (LBool True))
+            ( [ Clause [litPat () (TString "x")] [] (litExpr () (TBool True))
+              , Clause [anyPat ()] [varExpr () "pIsTrue"] (litExpr () (TBool True))
+              , Clause [varPat () "x"] [] (litExpr () (TBool True))
               ] :: [PatternClause] )
 
         testExhaustive
-            ( [ Clause [conPat () "Cons" [varPat () "x", conPat () "Cons" [varPat () "y", varPat () "ys"]]] [] (litExpr () (LBool True))
-              , Clause [conPat () "Nil" []] [] (litExpr () (LBool True))
-              , Clause [conPat () "Cons" [varPat () "z", conPat () "Nil" []]] [] (litExpr () (LBool True))
+            ( [ Clause [conPat () "Cons" [varPat () "x", conPat () "Cons" [varPat () "y", varPat () "ys"]]] [] (litExpr () (TBool True))
+              , Clause [conPat () "Nil" []] [] (litExpr () (TBool True))
+              , Clause [conPat () "Cons" [varPat () "z", conPat () "Nil" []]] [] (litExpr () (TBool True))
               ] :: [PatternClause] )
 
         testNonExhaustive
-            ( [ Clause [conPat () "Cons" [varPat () "x", conPat () "Cons" [varPat () "y", varPat () "ys"]]] [] (litExpr () (LBool True))
-              , Clause [conPat () "Nil" []] [varExpr () "aEqualsB"] (litExpr () (LBool True))
-              , Clause [conPat () "Cons" [varPat () "z", conPat () "Nil" []]] [] (litExpr () (LBool True))
+            ( [ Clause [conPat () "Cons" [varPat () "x", conPat () "Cons" [varPat () "y", varPat () "ys"]]] [] (litExpr () (TBool True))
+              , Clause [conPat () "Nil" []] [varExpr () "aEqualsB"] (litExpr () (TBool True))
+              , Clause [conPat () "Cons" [varPat () "z", conPat () "Nil" []]] [] (litExpr () (TBool True))
               ] :: [PatternClause] )
 
         testExhaustive
-            ( [ Clause [conPat () "Cons" [varPat () "x", conPat () "Cons" [varPat () "y", varPat () "ys"]]] [] (litExpr () (LBool True))
-              , Clause [conPat () "Nil" []] [varExpr () "aEqualsB"] (litExpr () (LBool True))
-              , Clause [conPat () "Nil" []] [] (litExpr () (LBool True))
-              , Clause [conPat () "Cons" [varPat () "z", conPat () "Nil" []]] [] (litExpr () (LBool True))
+            ( [ Clause [conPat () "Cons" [varPat () "x", conPat () "Cons" [varPat () "y", varPat () "ys"]]] [] (litExpr () (TBool True))
+              , Clause [conPat () "Nil" []] [varExpr () "aEqualsB"] (litExpr () (TBool True))
+              , Clause [conPat () "Nil" []] [] (litExpr () (TBool True))
+              , Clause [conPat () "Cons" [varPat () "z", conPat () "Nil" []]] [] (litExpr () (TBool True))
               ] :: [PatternClause] )
 
     -- Expressions
@@ -457,19 +457,19 @@ testPatternAnomalies = do
     describe "\nExpressions\n" $ do
 
         testExhaustive 
-            (letExpr () (BLet (varPat () "y")) (litExpr () (LInt 5)) (varExpr () "z") :: ProgExpr)
+            (letExpr () (BLet (varPat () "y")) (litExpr () (TInt 5)) (varExpr () "z") :: ProgExpr)
 
         testExhaustive 
-            (letExpr () (BLet (conPat () "Mono" [varPat () "y"])) (conExpr () "Mono" [litExpr () (LInt 5)]) (varExpr () "y") :: ProgExpr)
+            (letExpr () (BLet (conPat () "Mono" [varPat () "y"])) (conExpr () "Mono" [litExpr () (TInt 5)]) (varExpr () "y") :: ProgExpr)
 
         testExhaustive 
-            (letExpr () (BLet (tupPat () [varPat () "x", varPat () "y"])) (tupExpr () [litExpr () (LInt 1), litExpr () (LInt 2)]) (varExpr () "y") :: ProgExpr)
+            (letExpr () (BLet (tupPat () [varPat () "x", varPat () "y"])) (tupExpr () [litExpr () (TInt 1), litExpr () (TInt 2)]) (varExpr () "y") :: ProgExpr)
 
         testNonExhaustive 
-            (letExpr () (BLet (tupPat () [varPat () "x", litPat () (LInt 3)])) (tupExpr () [litExpr () (LInt 1), litExpr () (LInt 2)]) (varExpr () "y") :: ProgExpr)
+            (letExpr () (BLet (tupPat () [varPat () "x", litPat () (TInt 3)])) (tupExpr () [litExpr () (TInt 1), litExpr () (TInt 2)]) (varExpr () "y") :: ProgExpr)
 
         testNonExhaustive 
-            (letExpr () (BLet (conPat () "Some" [varPat () "y"])) (conExpr () "Some" [litExpr () (LInt 5)]) (varExpr () "y") :: ProgExpr)
+            (letExpr () (BLet (conPat () "Some" [varPat () "y"])) (conExpr () "Some" [litExpr () (TInt 5)]) (varExpr () "y") :: ProgExpr)
 
         testNonExhaustive 
             (lamExpr () [conPat () "Some" [varPat () "y"]] (varExpr () "y") :: ProgExpr)
@@ -480,7 +480,7 @@ testPatternAnomalies = do
         testNonExhaustive
             (lamExpr () [conPat () "Mono" [varPat () "x", varPat () "y"]] (
                 patExpr () [varExpr () "x", varExpr () "y"] 
-                    [ Clause [conPat () "Cons" [varPat () "x", conPat () "Cons" [varPat () "y", varPat () "ys"]]] [] (litExpr () (LBool True))
-                    , Clause [conPat () "Nil" []] [varExpr () "aEqualsB"] (litExpr () (LBool True))
-                    , Clause [conPat () "Cons" [varPat () "z", conPat () "Nil" []]] [] (litExpr () (LBool True))
+                    [ Clause [conPat () "Cons" [varPat () "x", conPat () "Cons" [varPat () "y", varPat () "ys"]]] [] (litExpr () (TBool True))
+                    , Clause [conPat () "Nil" []] [varExpr () "aEqualsB"] (litExpr () (TBool True))
+                    , Clause [conPat () "Cons" [varPat () "z", conPat () "Nil" []]] [] (litExpr () (TBool True))
                     ]) :: ProgExpr)

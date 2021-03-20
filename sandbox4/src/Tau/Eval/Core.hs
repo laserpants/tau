@@ -24,7 +24,7 @@ type ValueEnv m = Env (Value m)
 -- | An expression evaluates to a literal value, a fully applied data
 -- constructor, a primitive function, or a closure.
 data Value m
-    = Value Literal
+    = Value Prim
     | Data Name [Value m]
     | PrimFun Name Fun [Value m]
     | Closure Name (m (Value m)) ~(ValueEnv m)
@@ -92,7 +92,7 @@ eval = cata $ \case
         asks (Closure var e1)
 
     CIf e1 e2 e3 -> do
-        Value (LBool isTrue) <- e1
+        Value (TBool isTrue) <- e1
         if isTrue then e2 else e3
 
     CPat expr fields ->

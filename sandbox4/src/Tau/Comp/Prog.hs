@@ -33,18 +33,18 @@ import qualified Data.Set.Monad as Set
 import qualified Data.Text as Text
 import qualified Tau.Util.Env as Env
 
-type TypedAst = Ast NodeInfo (Op1 NodeInfo) (Op2 NodeInfo) ()
+type TypedAst = Ast NodeInfo (Op1 NodeInfo) (Op2 NodeInfo) () ()
 
 type Internals = 
     ( TypedAst
-    , Ast Type Void Void ()
+    , Ast Type Void Void () ()
     , Context )
 
 data ProgEnv = ProgEnv
     { progTypeEnv   :: TypeEnv
     , progExprEnv   :: Env Core
     , progCtorEnv   :: ConstructorEnv
-    , progClassEnv  :: ClassEnv () -- TypedAst
+    , progClassEnv  :: ClassEnv () () -- TypedAst
     , progInternals :: Env Internals
     } deriving (Show, Eq)
 
@@ -61,7 +61,7 @@ modifyTypeEnv :: (MonadState ProgEnv m) => (TypeEnv -> TypeEnv) -> m ()
 modifyTypeEnv f = modify (\ProgEnv{..} -> ProgEnv{ progTypeEnv = f progTypeEnv, .. })
 
 --modifyClassEnv :: (MonadState ProgEnv m) => (ClassEnv TypedAst -> ClassEnv TypedAst) -> m ()
-modifyClassEnv :: (MonadState ProgEnv m) => (ClassEnv () -> ClassEnv ()) -> m ()
+modifyClassEnv :: (MonadState ProgEnv m) => (ClassEnv () () -> ClassEnv () ()) -> m ()
 modifyClassEnv f = modify (\ProgEnv{..} -> ProgEnv{ progClassEnv = f progClassEnv, .. })
 
 modifyInternals :: (MonadState ProgEnv m) => (Env Internals -> Env Internals) -> m ()
@@ -109,7 +109,7 @@ ttt con ts = setKind (foldr1 kArr (kTyp:ks)) (foldl1 tApp (tCon kTyp con:ts))
 -- TODO: DRY
 
 type InferState  = StateT (Substitution, Context)
-type InferReader = ReaderT (ClassEnv (), TypeEnv)
+type InferReader = ReaderT (ClassEnv () (), TypeEnv)
 --type InferReader = ReaderT (ClassEnv TypedAst, TypeEnv)
 type InferSupply = SupplyT Name
 type InferError  = ExceptT String

@@ -8,7 +8,7 @@ import Tau.Util
 
 data CoreF a
     = CVar Name                 -- ^ Variable
-    | CLit Literal              -- ^ Literal value
+    | CLit Prim                 -- ^ Prim value
     | CApp [a]                  -- ^ Function application
     | CLet Name a a             -- ^ Let expression
     | CLam Name a               -- ^ Lambda abstraction
@@ -24,7 +24,7 @@ type Core = Fix CoreF
 cVar :: Name -> Core
 cVar = embed1 CVar
 
-cLit :: Literal -> Core
+cLit :: Prim -> Core
 cLit = embed1 CLit
 
 cApp :: [Core] -> Core

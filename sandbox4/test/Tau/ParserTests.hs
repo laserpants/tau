@@ -91,18 +91,18 @@ testParser = do
 
     succeedParse charLit "a Char literal"
         "'x'"
-        (LChar 'x')
+        (TChar 'x')
 
     failParse charLit "a Char literal"
         "x"
 
     succeedParse bool "a Bool literal"
         "True"
-        (LBool True)
+        (TBool True)
 
     succeedParse bool "a Bool literal"
         "False"
-        (LBool False)
+        (TBool False)
 
     failParse bool "a Bool literal"
         "false"
@@ -112,26 +112,26 @@ testParser = do
 
     succeedParse float "a Float literal"
         "3.14"
-        (LFloat 3.14)
+        (TFloat 3.14)
 
     succeedParse integral "an Int literal"
         "3"
-        (LInt 3)
+        (TInt 3)
 
     succeedParse stringLit "a String literal"
         "\"pasta\""
-        (LString "pasta")
+        (TString "pasta")
 
     failParse stringLit "a String literal"
         "pasta\""
 
     succeedParse stringLit "a String literal"
         "\"\""
-        (LString "")
+        (TString "")
 
     succeedParse unit "a Unit literal"
         "()"
-        LUnit
+        TUnit
 
     -- Patterns
 
@@ -161,7 +161,7 @@ testParser = do
 
     succeedParse pattern_ "a pattern"
         "5"
-        (litPat () (LInt 5))
+        (litPat () (TInt 5))
 
     succeedParse pattern_ "a pattern"
         "[]"
@@ -169,7 +169,7 @@ testParser = do
 
     succeedParse pattern_ "a pattern"
         "[1, x]"
-        (lstPat () [litPat () (LInt 1), varPat () "x"])
+        (lstPat () [litPat () (TInt 1), varPat () "x"])
 
     succeedParse pattern_ "a pattern"
         "[[x]]"
@@ -193,23 +193,23 @@ testParser = do
 
     succeedParse pattern_ "a pattern"
         "(1, x) or (x, 1)"
-        (orPat () (tupPat () [litPat () (LInt 1), varPat () "x"]) (tupPat () [varPat () "x", litPat () (LInt 1)])) 
+        (orPat () (tupPat () [litPat () (TInt 1), varPat () "x"]) (tupPat () [varPat () "x", litPat () (TInt 1)])) 
 
     succeedParse pattern_ "a pattern"
         "(1, x) as pair"
-        (asPat () "pair" (tupPat () [litPat () (LInt 1), varPat () "x"])) 
+        (asPat () "pair" (tupPat () [litPat () (TInt 1), varPat () "x"])) 
 
     succeedParse pattern_ "a pattern"
         "1 or 2 or 3"
-        (orPat () (litPat () (LInt 1)) (orPat () (litPat () (LInt 2)) (litPat () (LInt 3))))
+        (orPat () (litPat () (TInt 1)) (orPat () (litPat () (TInt 2)) (litPat () (TInt 3))))
 
     succeedParse pattern_ "a pattern"
         "1 or 2 :: xs"
-        (conPat () "(::)" [orPat () (litPat () (LInt 1)) (litPat () (LInt 2)), varPat () "xs"])
+        (conPat () "(::)" [orPat () (litPat () (TInt 1)) (litPat () (TInt 2)), varPat () "xs"])
 
     succeedParse pattern_ "a pattern"
         "1 or 2 or 3 :: xs"
-        (conPat () "(::)" [orPat () (litPat () (LInt 1)) (orPat () (litPat () (LInt 2)) (litPat () (LInt 3))), varPat () "xs"])
+        (conPat () "(::)" [orPat () (litPat () (TInt 1)) (orPat () (litPat () (TInt 2)) (litPat () (TInt 3))), varPat () "xs"])
 
     -- Types
 
@@ -289,7 +289,7 @@ testParser = do
 
         succeedParse expr "an expression"
             "3.14"
-            (litExpr () (LFloat 3.14))
+            (litExpr () (TFloat 3.14))
 
     describe "\nMatch expressions\n" $ do
 
@@ -299,17 +299,17 @@ testParser = do
 
         succeedParse expr "an expression"
             "match xs with | (5 :: ys) => True"
-            (patExpr () [varExpr () "xs"] [Clause [conPat () "(::)" [litPat () (LInt 5), varPat () "ys"]] [] (litExpr () (LBool True))])
+            (patExpr () [varExpr () "xs"] [Clause [conPat () "(::)" [litPat () (TInt 5), varPat () "ys"]] [] (litExpr () (TBool True))])
 
         succeedParse expr "an expression"
             "match xs with | (y :: ys) when y > 5 => True"
-            (patExpr () [varExpr () "xs"] [Clause [conPat () "(::)" [varPat () "y", varPat () "ys"]] [op2Expr () (OGt ()) (varExpr () "y") (litExpr () (LInt 5))] (litExpr () (LBool True))])
+            (patExpr () [varExpr () "xs"] [Clause [conPat () "(::)" [varPat () "y", varPat () "ys"]] [op2Expr () (OGt ()) (varExpr () "y") (litExpr () (TInt 5))] (litExpr () (TBool True))])
 
         succeedParse expr "an expression"
             "match xs with | (y :: ys) when y > 5 => True | _ => False"
             (patExpr () [varExpr () "xs"] 
-                [ Clause [conPat () "(::)" [varPat () "y", varPat () "ys"]] [op2Expr () (OGt ()) (varExpr () "y") (litExpr () (LInt 5))] (litExpr () (LBool True)) 
-                , Clause [anyPat ()] [] (litExpr () (LBool False)) ])
+                [ Clause [conPat () "(::)" [varPat () "y", varPat () "ys"]] [op2Expr () (OGt ()) (varExpr () "y") (litExpr () (TInt 5))] (litExpr () (TBool True)) 
+                , Clause [anyPat ()] [] (litExpr () (TBool False)) ])
 
     describe "\nLists\n" $ do
 
@@ -319,35 +319,35 @@ testParser = do
 
         succeedParse expr "an expression"
             "1 :: 2 :: 3 :: []"
-            (conExpr () "(::)" [litExpr () (LInt 1), conExpr () "(::)" [litExpr () (LInt 2), conExpr () "(::)" [litExpr () (LInt 3), lstExpr () []]]])
+            (conExpr () "(::)" [litExpr () (TInt 1), conExpr () "(::)" [litExpr () (TInt 2), conExpr () "(::)" [litExpr () (TInt 3), lstExpr () []]]])
 
         succeedParse expr "an expression"
             "[1,2,3]"
-            (lstExpr () [litExpr () (LInt 1), litExpr () (LInt 2), litExpr () (LInt 3)])
+            (lstExpr () [litExpr () (TInt 1), litExpr () (TInt 2), litExpr () (TInt 3)])
 
         succeedParse expr "an expression"
             "[()]"
-            (lstExpr () [litExpr () LUnit])
+            (lstExpr () [litExpr () TUnit])
 
     describe "\nTuples\n" $ do
 
         succeedParse expr "an expression"
             "(1, 2)"
-            (tupExpr () [litExpr () (LInt 1), litExpr () (LInt 2)])
+            (tupExpr () [litExpr () (TInt 1), litExpr () (TInt 2)])
 
         succeedParse expr "an expression"
             "([1], 2)"
-            (tupExpr () [lstExpr () [litExpr () (LInt 1)], litExpr () (LInt 2)])
+            (tupExpr () [lstExpr () [litExpr () (TInt 1)], litExpr () (TInt 2)])
 
     describe "\nRecords\n" $ do
 
         succeedParse expr "an expression"
             "{ name = \"Sun Ra\", style = \"Avant Garde\" }"
-            (recExpr () (fieldSet [ Field () "name" (litExpr () (LString "Sun Ra")), Field () "style" (litExpr () (LString "Avant Garde"))]))
+            (recExpr () (fieldSet [ Field () "name" (litExpr () (TString "Sun Ra")), Field () "style" (litExpr () (TString "Avant Garde"))]))
 
         succeedParse expr "an expression"
             "{ user = { id = 1, name = \"Alfred Hitchcock\" } }"
-            (recExpr () (fieldSet [ Field () "user" (recExpr () (fieldSet [ Field () "id" (litExpr () (LInt 1)), Field () "name" (litExpr () (LString "Alfred Hitchcock")) ])) ]))
+            (recExpr () (fieldSet [ Field () "user" (recExpr () (fieldSet [ Field () "id" (litExpr () (TInt 1)), Field () "name" (litExpr () (TString "Alfred Hitchcock")) ])) ]))
 
     describe "\nFunction application\n" $ do
 
@@ -361,7 +361,7 @@ testParser = do
 
         succeedParse expr "an expression"
             "(\\xs => match xs with | (x :: xs) => x) [1,2,3]"
-            (appExpr () [lamExpr () [varPat () "xs"] (patExpr () [varExpr () "xs"] [Clause [conPat () "(::)" [varPat () "x", varPat () "xs"]] [] (varExpr () "x")]), lstExpr () [litExpr () (LInt 1), litExpr () (LInt 2), litExpr () (LInt 3)]])
+            (appExpr () [lamExpr () [varPat () "xs"] (patExpr () [varExpr () "xs"] [Clause [conPat () "(::)" [varPat () "x", varPat () "xs"]] [] (varExpr () "x")]), lstExpr () [litExpr () (TInt 1), litExpr () (TInt 2), litExpr () (TInt 3)]])
 
     describe "\nConstructors\n" $ do
 
@@ -391,15 +391,15 @@ testParser = do
 
         succeedParse expr "an expression"
             "(fun | (x :: xs) => x) [1,2,3]"
-            (appExpr () [patExpr () [] [Clause [conPat () "(::)" [varPat () "x", varPat () "xs"]] [] (varExpr () "x")], lstExpr () [litExpr () (LInt 1), litExpr () (LInt 2), litExpr () (LInt 3)]])
+            (appExpr () [patExpr () [] [Clause [conPat () "(::)" [varPat () "x", varPat () "xs"]] [] (varExpr () "x")], lstExpr () [litExpr () (TInt 1), litExpr () (TInt 2), litExpr () (TInt 3)]])
 
         succeedParse expr "an expression"
             "(fun (x :: xs) => x) [1,2,3]"
-            (appExpr () [patExpr () [] [Clause [conPat () "(::)" [varPat () "x", varPat () "xs"]] [] (varExpr () "x")], lstExpr () [litExpr () (LInt 1), litExpr () (LInt 2), litExpr () (LInt 3)]])
+            (appExpr () [patExpr () [] [Clause [conPat () "(::)" [varPat () "x", varPat () "xs"]] [] (varExpr () "x")], lstExpr () [litExpr () (TInt 1), litExpr () (TInt 2), litExpr () (TInt 3)]])
 
         succeedParse expr "an expression"
             "(fun x :: xs => x) [1,2,3]"
-            (appExpr () [patExpr () [] [Clause [conPat () "(::)" [varPat () "x", varPat () "xs"]] [] (varExpr () "x")], lstExpr () [litExpr () (LInt 1), litExpr () (LInt 2), litExpr () (LInt 3)]])
+            (appExpr () [patExpr () [] [Clause [conPat () "(::)" [varPat () "x", varPat () "xs"]] [] (varExpr () "x")], lstExpr () [litExpr () (TInt 1), litExpr () (TInt 2), litExpr () (TInt 3)]])
 
         succeedParse expr "an expression"
             "fun [] => [] | y :: ys => f y :: mu ys"
@@ -417,19 +417,19 @@ testParser = do
             (letExpr () (BFun "map" [varPat () "f", varPat () "xs"]) (fixExpr () "mu" (patExpr () [] 
                 [ Clause [lstPat () []] [] (lstExpr () [])
                 , Clause [conPat () "(::)" [varPat () "y", varPat () "ys"]] [] (conExpr () "(::)" [appExpr () [varExpr () "f", varExpr () "y"], appExpr () [varExpr () "mu", varExpr () "ys"]])
-                ]) (appExpr () [varExpr () "mu", varExpr () "xs"])) (letExpr () (BLet (varPat () "xs")) (lstExpr () [litExpr () (LInt 1), litExpr () (LInt 2), litExpr () (LInt 3)]) (dotExpr () (varExpr () "xs") (appExpr () [varExpr () "map", lamExpr () [varPat () "x"] (op2Expr () (OAdd ()) (varExpr () "x") (litExpr () (LInt 1)))]))))
+                ]) (appExpr () [varExpr () "mu", varExpr () "xs"])) (letExpr () (BLet (varPat () "xs")) (lstExpr () [litExpr () (TInt 1), litExpr () (TInt 2), litExpr () (TInt 3)]) (dotExpr () (varExpr () "xs") (appExpr () [varExpr () "map", lamExpr () [varPat () "x"] (op2Expr () (OAdd ()) (varExpr () "x") (litExpr () (TInt 1)))]))))
 
         succeedParse expr "an expression"
             "letfix len = fun [] => 0 | x :: xs => 1 + len xs in [].len"
-            (fixExpr () "len" (patExpr () [] [Clause [lstPat () []] [] (litExpr () (LInt 0)), Clause [conPat () "(::)" [varPat () "x", varPat () "xs"]] [] (op2Expr () (OAdd ()) (litExpr () (LInt 1)) (appExpr () [varExpr () "len", varExpr () "xs"]))]) (dotExpr () (lstExpr () []) (varExpr () "len")))
+            (fixExpr () "len" (patExpr () [] [Clause [lstPat () []] [] (litExpr () (TInt 0)), Clause [conPat () "(::)" [varPat () "x", varPat () "xs"]] [] (op2Expr () (OAdd ()) (litExpr () (TInt 1)) (appExpr () [varExpr () "len", varExpr () "xs"]))]) (dotExpr () (lstExpr () []) (varExpr () "len")))
 
         succeedParse expr "an expression"
             "letfix len = fun [] => 0 | x :: xs => 1 + len xs in [1,2,3,4,5].len"
-            (fixExpr () "len" (patExpr () [] [Clause [lstPat () []] [] (litExpr () (LInt 0)), Clause [conPat () "(::)" [varPat () "x", varPat () "xs"]] [] (op2Expr () (OAdd ()) (litExpr () (LInt 1)) (appExpr () [varExpr () "len", varExpr () "xs"]))]) (dotExpr () (lstExpr () [litExpr () (LInt 1), litExpr () (LInt 2), litExpr () (LInt 3), litExpr () (LInt 4), litExpr () (LInt 5)]) (varExpr () "len")))
+            (fixExpr () "len" (patExpr () [] [Clause [lstPat () []] [] (litExpr () (TInt 0)), Clause [conPat () "(::)" [varPat () "x", varPat () "xs"]] [] (op2Expr () (OAdd ()) (litExpr () (TInt 1)) (appExpr () [varExpr () "len", varExpr () "xs"]))]) (dotExpr () (lstExpr () [litExpr () (TInt 1), litExpr () (TInt 2), litExpr () (TInt 3), litExpr () (TInt 4), litExpr () (TInt 5)]) (varExpr () "len")))
 
         succeedParse expr "an expression"
             "let first (a, b) = a in (5, ()).first"
-            (letExpr () (BFun "first" [tupPat () [varPat () "a", varPat () "b"]]) (varExpr () "a") (dotExpr () (tupExpr () [litExpr () (LInt 5), litExpr () LUnit]) (varExpr () "first")))
+            (letExpr () (BFun "first" [tupPat () [varPat () "a", varPat () "b"]]) (varExpr () "a") (dotExpr () (tupExpr () [litExpr () (TInt 5), litExpr () TUnit]) (varExpr () "first")))
 
 --        succeedParse expr "an expression"
 --            "f a b.length"
@@ -449,7 +449,7 @@ testParser = do
 
         succeedParse expr "an expression"
             "withDefault 0 ([1,2,3].head)"
-            (appExpr () [varExpr () "withDefault", litExpr () (LInt 0), dotExpr () (lstExpr () [litExpr () (LInt 1), litExpr () (LInt 2), litExpr () (LInt 3)]) (varExpr () "head")])
+            (appExpr () [varExpr () "withDefault", litExpr () (TInt 0), dotExpr () (lstExpr () [litExpr () (TInt 1), litExpr () (TInt 2), litExpr () (TInt 3)]) (varExpr () "head")])
 
         -- let withDefault(default) = fun 
         --   | None       => default
@@ -465,7 +465,7 @@ testParser = do
             "let withDefault default = fun None => default | Some value => value in let head = fun [] => None | x :: _ => Some x in withDefault 0 ([1,2,3].head)"
             (letExpr () (BFun "withDefault" [varPat () "default"]) (patExpr () [] [Clause [conPat () "None" []] [] (varExpr () "default"), Clause [conPat () "Some" [varPat () "value"]] [] (varExpr () "value")])
                 (letExpr () (BLet (varPat () "head")) (patExpr () [] [Clause [lstPat () []] [] (conExpr () "None" []), Clause [conPat () "(::)" [varPat () "x", anyPat ()]] [] (conExpr () "Some" [varExpr () "x"])])
-                    (appExpr () [varExpr () "withDefault", litExpr () (LInt 0), dotExpr () (lstExpr () [litExpr () (LInt 1), litExpr () (LInt 2), litExpr () (LInt 3)]) (varExpr () "head")])))
+                    (appExpr () [varExpr () "withDefault", litExpr () (TInt 0), dotExpr () (lstExpr () [litExpr () (TInt 1), litExpr () (TInt 2), litExpr () (TInt 3)]) (varExpr () "head")])))
 
         -- let withDefault(default) = \None => default | Some value => value 
         -- in 
@@ -479,7 +479,7 @@ testParser = do
             "let withDefault default = \\None => default | Some value => value in let head = \\[] => None | x :: _ => Some x in withDefault 0 ([1,2,3].head)"
             (letExpr () (BFun "withDefault" [varPat () "default"]) (patExpr () [] [Clause [conPat () "None" []] [] (varExpr () "default"), Clause [conPat () "Some" [varPat () "value"]] [] (varExpr () "value")])
                 (letExpr () (BLet (varPat () "head")) (patExpr () [] [Clause [lstPat () []] [] (conExpr () "None" []), Clause [conPat () "(::)" [varPat () "x", anyPat ()]] [] (conExpr () "Some" [varExpr () "x"])])
-                    (appExpr () [varExpr () "withDefault", litExpr () (LInt 0), dotExpr () (lstExpr () [litExpr () (LInt 1), litExpr () (LInt 2), litExpr () (LInt 3)]) (varExpr () "head")])))
+                    (appExpr () [varExpr () "withDefault", litExpr () (TInt 0), dotExpr () (lstExpr () [litExpr () (TInt 1), litExpr () (TInt 2), litExpr () (TInt 3)]) (varExpr () "head")])))
 
     --  Operators
 
@@ -511,7 +511,7 @@ testParser = do
 
         succeedParse expr "an expression"
             "xs.map (\\x => x + 1)"
-            (dotExpr () (varExpr () "xs") (appExpr () [varExpr () "map", lamExpr () [varPat () "x"] (op2Expr () (OAdd ()) (varExpr () "x") (litExpr () (LInt 1)))]))
+            (dotExpr () (varExpr () "xs") (appExpr () [varExpr () "map", lamExpr () [varPat () "x"] (op2Expr () (OAdd ()) (varExpr () "x") (litExpr () (TInt 1)))]))
 
         succeedParse expr "an expression"
             "x > y"
@@ -533,36 +533,36 @@ testParser = do
             "fn x y = x + y\nfn _ _ = 100"
             (Def "fn" 
                 [ Clause [varPat () "x", varPat () "y"] [] (op2Expr () (OAdd ()) (varExpr () "x") (varExpr () "y"))
-                , Clause [anyPat (), anyPat ()] [] (litExpr () (LInt 100))
+                , Clause [anyPat (), anyPat ()] [] (litExpr () (TInt 100))
                 ] [])
 
         succeedParse definition "a top-level definition"
             "fn x y (Some z) = x + y\nfn _ _ _ = 100"
             (Def "fn" 
                 [ Clause [varPat () "x", varPat () "y", conPat () "Some" [varPat () "z"]] [] (op2Expr () (OAdd ()) (varExpr () "x") (varExpr () "y"))
-                , Clause [anyPat (), anyPat (), anyPat ()] [] (litExpr () (LInt 100))
+                , Clause [anyPat (), anyPat (), anyPat ()] [] (litExpr () (TInt 100))
                 ] [])
 
         succeedParse definition "a top-level definition"
             "number = 5"
-            (Def "number" [Clause [] [] (litExpr () (LInt 5))] [])
+            (Def "number" [Clause [] [] (litExpr () (TInt 5))] [])
 
         succeedParse definition "a top-level definition"
             "fn x =\n  x + 1"
-            (Def "fn" [Clause [varPat () "x"] [] (op2Expr () (OAdd ()) (varExpr () "x") (litExpr () (LInt 1)))] [])
+            (Def "fn" [Clause [varPat () "x"] [] (op2Expr () (OAdd ()) (varExpr () "x") (litExpr () (TInt 1)))] [])
 
         succeedParse definition "a top-level definition"
             "fn x\n  = x + 1"
-            (Def "fn" [Clause [varPat () "x"] [] (op2Expr () (OAdd ()) (varExpr () "x") (litExpr () (LInt 1)))] [])
+            (Def "fn" [Clause [varPat () "x"] [] (op2Expr () (OAdd ()) (varExpr () "x") (litExpr () (TInt 1)))] [])
 
         succeedParse definition "a top-level definition"
             "fn x when x > 3 = 5"
-            (Def "fn" [Clause [varPat () "x"] [op2Expr () (OGt ()) (varExpr () "x") (litExpr () (LInt 3))] (litExpr () (LInt 5))] [])
+            (Def "fn" [Clause [varPat () "x"] [op2Expr () (OGt ()) (varExpr () "x") (litExpr () (TInt 3))] (litExpr () (TInt 5))] [])
 
         succeedParse definition "a top-level definition"
             "fn x when x > 3 = 5\nfn _ = 6"
             (Def "fn" 
-                [ Clause [varPat () "x"] [op2Expr () (OGt ()) (varExpr () "x") (litExpr () (LInt 3))] (litExpr () (LInt 5))
-                , Clause [anyPat ()] [] (litExpr () (LInt 6))
+                [ Clause [varPat () "x"] [op2Expr () (OGt ()) (varExpr () "x") (litExpr () (TInt 3))] (litExpr () (TInt 5))
+                , Clause [anyPat ()] [] (litExpr () (TInt 6))
                 ] [])
 

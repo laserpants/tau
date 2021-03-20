@@ -7,10 +7,11 @@
   - Basic types
     - Primitive types
     - Functions
+    - Natural numbers (Peano arithmetic)
     - Lists
     - Tuples
     - Algebraic data types
-      - Option types
+      - `Option` type constructor
       - Results
     - Records
   - Syntax
@@ -27,20 +28,26 @@
     - Lists
     - Tuples
     - Records
-    - As-patterns
-    - Or-patterns
+    - `as`-patterns
+    - `or`-patterns
     - Wildcard patterns
     - `when`-guards
   - Polymorphism and type classes
     - Built-in classes
   - Recursion
 - Roadmap
+- Wish list
+- Contribute
+  - Code of conduct
+  - Bugs and issues
+  - Feature requests
+- License
 
 ## Language overview
 
 ### Features
 
-  - Purely functional, strict semantics
+  - [Purely functional](https://en.wikipedia.org/wiki/Purely_functional_programming), strict semantics
   - Haskell-like syntax 
   - No partial functions
   - No explicit recursion
@@ -52,16 +59,19 @@
 
 | Type      | Values                                                                                                        | Explanation                                 |
 |-----------|---------------------------------------------------------------------------------------------------------------|---------------------------------------------|
-| * `Void`    | No values                                                                                                     | The uninhabited type                        |
+| `Void`    | No values                                                                                                     | The uninhabited type                        |
 | `Unit`    | `()`                                                                                                          | Type type with exactly one value. (1 in the [algebra of types](https://codewords.recurse.com/issues/three/algebra-and-calculus-of-algebraic-data-types).) |
 | `Bool`    | `True`, `False`                                                                                               |                                             |
 | `Int`     | `minBound`, &hellip;, `-1`, `0`, `1`, `2`, &hellip;, `maxBound`                                               | Bounded machine integers (32 or 64 bit)     |
 | `Integer` | &hellip;, `-1`, `0`, `1`, `2`, &hellip;                                                                       | Arbitrary precision integers (bigints)      |
-| * `Nat`     | `0`, `1`, `2`, &hellip;, or `Zero`, `Succ Zero`, `Succ (Succ Zero)`, &hellip;                               | Natural numbers (Peano arithmetic)          |
-| `Float`   | &hellip;, `6.2831855`, &hellip;                                                                               | Floating point numbers                      |
-| * `Double`  | &hellip;, `6.283185307179586`, &hellip;                                                                     | Double precision floating point numbers     |
+| `Float`   | &hellip;, `6.2831855`, &hellip;                                                                               | Single precision floating point numbers     |
+| `Double`  | &hellip;, `6.283185307179586`, &hellip;                                                                       | Double precision floating point numbers     |
 | `Char`    | `'a'`, `'b'`, &hellip;                                                                                        |                                             |
 | `String`  | &hellip;, `"bork bork bork"`, &hellip;, `"klingon"`, &hellip;                                                 |                                             |
+
+<!--
+| * `Nat`     | `0`, `1`, `2`, &hellip;, or `Zero`, `Succ Zero`, `Succ (Succ Zero)`, &hellip;                               | Natural numbers (Peano arithmetic)          |
+-->
 
 #### Functions
 
@@ -183,8 +193,8 @@ headOrZero xs = xs.head ? 0
       \(Some value) => value | None => default 
 
 fun (x :: _) 
-  when x > 100 = 5 and
-  when x < 50  = 3 and
+  when x > 100 = 5 
+  when x < 50  = 3 
   otherwise    = 1
 
 fun (x :: _) = 100 

@@ -112,7 +112,7 @@ constructor_ = word (withInitial upperChar)
 --      $ traceShow b
 --        $ dotExpr () a b
 
-operator :: [[Operator Parser (Expr () (Pattern () ()) (Binding (Pattern () ())) [Pattern () ()] (Op1 ()) (Op2 ()))]]
+operator :: [[Operator Parser (Expr () (Pattern () () ()) (Binding (Pattern () () ())) [Pattern () () ()] (Op1 ()) (Op2 ()))]]
 operator = 
     [
 --      [ Postfix dotSuffix
@@ -173,42 +173,42 @@ app e f =
         _             -> appExpr () [e, f]
 
 -- ============================================================================
--- == Literals
+-- == Prims
 -- ============================================================================
 
-unit :: Parser Literal
-unit = symbol "()" $> LUnit
+unit :: Parser Prim
+unit = symbol "()" $> TUnit
 
-bool :: Parser Literal
+bool :: Parser Prim
 bool = true <|> false
   where
-    true  = keyword "True"  $> LBool True
-    false = keyword "False" $> LBool False
+    true  = keyword "True"  $> TBool True
+    false = keyword "False" $> TBool False
 
-integral :: Parser Literal
+integral :: Parser Prim
 integral = do
     n <- lexeme Lexer.decimal
     pure $ if n > maxInt || n < minInt
-        then LInteger n
-        else LInt (fromIntegral n)
+        then TInteger n
+        else TInt (fromIntegral n)
   where
     maxInt = fromIntegral (maxBound :: Int)
     minInt = fromIntegral (minBound :: Int)
 
-float :: Parser Literal
-float = LFloat <$> lexeme Lexer.float
+float :: Parser Prim
+float = TFloat <$> lexeme Lexer.float
 
-number :: Parser Literal
+number :: Parser Prim
 number = try float <|> integral
 
-charLit :: Parser Literal
-charLit = LChar <$> surroundedBy (symbol "'") printChar
+charLit :: Parser Prim
+charLit = TChar <$> surroundedBy (symbol "'") printChar
 
-stringLit :: Parser Literal
-stringLit = lexeme (LString . pack <$> chars) where
+stringLit :: Parser Prim
+stringLit = lexeme (TString . pack <$> chars) where
     chars = char '\"' *> manyTill Lexer.charLiteral (char '\"')
 
-literal :: Parser Literal
+literal :: Parser Prim
 literal = unit
     <|> bool
     <|> number
@@ -265,7 +265,7 @@ tupleExpr = do
     elems <- components expr
     pure $ case elems of
         [e] -> e
-        []  -> litExpr () LUnit
+        []  -> litExpr () TUnit
         _   -> tupExpr () elems
 
 recordExpr :: Parser ProgExpr
@@ -285,7 +285,7 @@ lambda = do
         pats <- some patternExpr <* symbol "=>" 
         lamExpr () pats <$> expr <* notFollowedBy (symbol "|")
         
-clauses_ :: Parser [Clause (Pattern () ()) ProgExpr]
+clauses_ :: Parser [Clause (Pattern () () ()) ProgExpr]
 clauses_ = (:) <$> clause (void (optional pipe)) <*> many (clause pipe)
 
 matchWith :: Parser ProgExpr
@@ -299,7 +299,7 @@ with = void (keyword "with" *> optional pipe)
 pipe :: Parser ()
 pipe = void (symbol "|")
 
-clause :: Parser () -> Parser (Clause (Pattern () ()) ProgExpr)
+clause :: Parser () -> Parser (Clause (Pattern () () ()) ProgExpr)
 clause sym = do 
     pat <- sym *> pattern_
     cond <- fromMaybe [] <$> optional when_
@@ -318,7 +318,7 @@ when_ = keyword "when" *> (pure <$> expr)
 --identifier :: Parser ProgExpr
 --identifier = varExpr () <$> word (withInitial letterChar)
 
-binding :: Parser (Binding (Pattern () ()))
+binding :: Parser (Binding (Pattern () () ()))
 binding = try funBinding <|> normalBinding
   where
     funBinding = do
@@ -410,7 +410,7 @@ kind = makeExprParser parser [[ InfixR (kArr <$ symbol "->") ]]
 -- == Patterns
 -- ============================================================================
 
-pattern_ :: Parser (Pattern () ())
+pattern_ :: Parser (Pattern () () ())
 pattern_ = makeExprParser parser
 --    [ 
 --      [ InfixR (orPat () <$ symbol "or") ]
@@ -423,7 +423,7 @@ pattern_ = makeExprParser parser
     , [ InfixR (listConsPat () <$ symbol "::") ]
     ]
   where
-    parser :: Parser (Pattern () ())
+    parser :: Parser (Pattern () () ())
     parser = do
         tok <- some patternExpr
         case tok of
@@ -432,7 +432,7 @@ pattern_ = makeExprParser parser
                 pure (conPat () con args)
             _ -> fail "Not a valid pattern"
 
-patternExpr :: Parser (Pattern () ())
+patternExpr :: Parser (Pattern () () ())
 patternExpr = wildcardPattern 
     <|> varPattern
     <|> conPattern
@@ -442,10 +442,10 @@ patternExpr = wildcardPattern
     <|> recordPattern
     <|> parens pattern_
 
-listPattern :: Parser (Pattern () ())
+listPattern :: Parser (Pattern () () ())
 listPattern = lstPat () <$> elements pattern_
 
-asPattern :: Parser (Pattern () () -> Pattern () ())
+asPattern :: Parser (Pattern () () () -> Pattern () () ())
 asPattern = keyword "as" >> asPat () <$> name
 
 --pattern_ :: Parser (Pattern ())
@@ -479,29 +479,29 @@ asPattern = keyword "as" >> asPat () <$> name
 --    <|> wildcardPattern
 --    <|> parens pattern_
 
-varPattern :: Parser (Pattern () ())
+varPattern :: Parser (Pattern () () ())
 varPattern = varPat () <$> name
 
-conPattern :: Parser (Pattern () ())
+conPattern :: Parser (Pattern () () ())
 conPattern = do
     con <- constructor_
     pure (conPat () con [])
 
-litPattern :: Parser (Pattern () ())
+litPattern :: Parser (Pattern () () ())
 litPattern = litPat () <$> literal
 
-tuplePattern :: Parser (Pattern () ())
+tuplePattern :: Parser (Pattern () () ())
 tuplePattern = do
     elems <- components pattern_
     pure $ case elems of
         [p] -> p
-        []  -> litPat () LUnit
+        []  -> litPat () TUnit
         _   -> tupPat () elems
 
-recordPattern :: Parser (Pattern () ())
+recordPattern :: Parser (Pattern () () ())
 recordPattern = recPat () <$> fields "=" pattern_
 
-wildcardPattern :: Parser (Pattern () ())
+wildcardPattern :: Parser (Pattern () () ())
 wildcardPattern = symbol "_" $> anyPat ()
 
 -- ============================================================================
@@ -527,7 +527,7 @@ components = parens . commaSep
 --    elems <- components parser
 --    pure $ case elems of
 --        [e] -> e
---        []  -> litExpr () LUnit
+--        []  -> litExpr () TUnit
 --        _   -> conExpr () (tupleCon (length elems)) elems
 
 -- ============================================================================

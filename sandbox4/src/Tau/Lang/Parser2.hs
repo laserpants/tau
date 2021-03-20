@@ -24,7 +24,7 @@ data Symbol
 
 data Tok
     = TKeyword Keyword
-    | TLiteral Literal
+    | TPrim Prim
     | TName Name
     | TConstructor Name
     | TSymbol Symbol

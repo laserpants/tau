@@ -66,7 +66,7 @@ testPrettyPrinter = do
     describe "\nTuples\n" $ do
 
         prettyPrintsTo
-            (tupExpr () [varExpr () "x", litExpr () (LInt 5)] :: Expr () (Pattern () ()) [Pattern () ()] r (Op1 ()) (Op2 ()))
+            (tupExpr () [varExpr () "x", litExpr () (TInt 5)] :: Expr () (Pattern () () ()) [Pattern () () ()] r (Op1 ()) (Op2 ()))
             "(x, 5)"
 
     -- Pattern clauses

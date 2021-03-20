@@ -34,8 +34,8 @@ testCoreEval :: SpecWith ()
 testCoreEval = do
 
     succeedEval
-        (cApp [cLam "a" (cLam "b" (cVar "a")), cLit (LInt 5), cLit LUnit])
-        (Value (LInt 5))
+        (cApp [cLam "a" (cLam "b" (cVar "a")), cLit (TInt 5), cLit TUnit])
+        (Value (TInt 5))
 
     failEval
         (cVar "hello")
@@ -52,25 +52,25 @@ testCoreEval = do
         (cLam "a" (cLam "b" (cVar "a")))
 
     succeedEval
-        (cLet "plus" (cLam "a" (cLam "b" (cApp [cVar "@Int.(+)", cVar "a", cVar "b"]))) (cLet "plus5" (cApp [cVar "plus", cLit (LInt 5)]) (cLet "id" (cLam "x" (cVar "x")) (cApp [cApp [cVar "id", cVar "plus5"], cApp [cVar "id", cLit (LInt 3)]]))))
-        (Value (LInt 8))
+        (cLet "plus" (cLam "a" (cLam "b" (cApp [cVar "@Int.(+)", cVar "a", cVar "b"]))) (cLet "plus5" (cApp [cVar "plus", cLit (TInt 5)]) (cLet "id" (cLam "x" (cVar "x")) (cApp [cApp [cVar "id", cVar "plus5"], cApp [cVar "id", cLit (TInt 3)]]))))
+        (Value (TInt 8))
 
     succeedEval
-        (cApp [cLam "x" (cApp [cVar "@Int.(+)", cVar "x", cLit (LInt 1)]), cLit (LInt 1)])
-        (Value (LInt 2))
+        (cApp [cLam "x" (cApp [cVar "@Int.(+)", cVar "x", cLit (TInt 1)]), cLit (TInt 1)])
+        (Value (TInt 2))
 
     succeedEval
-        (cLet "id" (cLam "x" (cVar "x")) (cLet "x" (cApp [cVar "(,)", cVar "id", cLit (LInt 4)]) (cApp [cVar "@Int.(+)", cApp [cApp [cVar "first", cVar "x"], cApp [cVar "second", cVar "x"]], cLit (LInt 1)])))       
-        (Value (LInt 5))
+        (cLet "id" (cLam "x" (cVar "x")) (cLet "x" (cApp [cVar "(,)", cVar "id", cLit (TInt 4)]) (cApp [cVar "@Int.(+)", cApp [cApp [cVar "first", cVar "x"], cApp [cVar "second", cVar "x"]], cLit (TInt 1)])))       
+        (Value (TInt 5))
 
     succeedEval
-        (cIf (cLit (LBool True)) (cLit (LInt 1)) (cLit (LInt 2)))
-        (Value (LInt 1))
+        (cIf (cLit (TBool True)) (cLit (TInt 1)) (cLit (TInt 2)))
+        (Value (TInt 1))
 
     succeedEval
-        (cIf (cLit (LBool False)) (cLit (LInt 1)) (cLit (LInt 2)))
-        (Value (LInt 2))
+        (cIf (cLit (TBool False)) (cLit (TInt 1)) (cLit (TInt 2)))
+        (Value (TInt 2))
 
     succeedEval
-        (cApp [cLam "x" (cPat (cVar "x") [(["[]"], cLit (LInt 0)), (["(::)", "y", "ys"], cVar "y")]), cApp [cVar "(::)", cLit (LInt 5), cApp [cVar "[]"]]])
-        (Value (LInt 5))
+        (cApp [cLam "x" (cPat (cVar "x") [(["[]"], cLit (TInt 0)), (["(::)", "y", "ys"], cVar "y")]), cApp [cVar "(::)", cLit (TInt 5), cApp [cVar "[]"]]])
+        (Value (TInt 5))
