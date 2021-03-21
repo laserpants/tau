@@ -26,7 +26,7 @@ import qualified Tau.Comp.Type.Substitution as Sub
 import qualified Tau.Util.Env as Env
 
 type InferState  = StateT (Substitution, Context)
-type InferReader c d = ReaderT (ClassEnv () () c d, TypeEnv)
+type InferReader = ReaderT (ClassEnv () () () (), TypeEnv)
 type InferSupply = SupplyT Name
 type InferError  = ExceptT String
 
@@ -45,7 +45,7 @@ runInferError = runExceptT
 runInferMaybe :: Maybe (Either String a) -> Either String a
 runInferMaybe = fromMaybe (Left "error")
 
-type InferStack c d = InferState (InferReader c d (InferSupply (InferError Maybe)))
+type InferStack c d = InferState (InferReader (InferSupply (InferError Maybe)))
 
 runInfer :: InferStack c d a -> Either String (a, (Substitution, Context))
 runInfer = runInferState

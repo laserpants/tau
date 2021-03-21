@@ -107,7 +107,7 @@ ttt con ts = setKind (foldr1 kArr (kTyp:ks)) (foldl1 tApp (tCon kTyp con:ts))
 -- TODO: DRY
 
 type InferState  = StateT (Substitution, Context)
-type InferReader c d = ReaderT (ClassEnv () () c d, TypeEnv)
+type InferReader = ReaderT (ClassEnv () () () (), TypeEnv)
 type InferSupply = SupplyT Name
 type InferError  = ExceptT String
 
@@ -126,9 +126,9 @@ runInferError = runExceptT
 runInferMaybe :: Maybe (Either String a) -> Either String a
 runInferMaybe = fromMaybe (Left "error")
 
-type InferStack c d = InferState (InferReader c d (InferSupply (InferError Maybe)))
+type InferStack c d = InferState (InferReader (InferSupply (InferError Maybe)))
 
---runInfer :: InferStack a -> Either String (a, (Substitution, Context))
+runInfer3 :: Context -> ClassEnv () () () () -> TypeEnv -> InferStack c d a -> Either String (a, (Substitution, Context))
 runInfer3 ctx classEnv typeEnv = 
     runInferState ctx
     >>> runInferReader classEnv typeEnv
