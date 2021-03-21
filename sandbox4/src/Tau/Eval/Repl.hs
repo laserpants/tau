@@ -128,7 +128,7 @@ typed
      , MonadState (Substitution, Context) m
      , MonadReader (ClassEnv, TypeEnv) m
      , MonadSupply Name m ) 
-  => Ast t (Op1 t) (Op2 t) () () () ()
+  => Ast t (Op1 t) (Op2 t)
   -> m (Maybe (Value Eval))
 typed e = do
     ast <- infer e

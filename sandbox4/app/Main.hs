@@ -634,7 +634,7 @@ runTest expr = do
         sub <- gets fst
         let ast1 = astApply sub ast
         foo <- evalStateT (compileClasses (desugarOperators ast1)) [] 
-        pure (ast1 :: Ast NodeInfo (Op1 NodeInfo) (Op2 NodeInfo) () () () (), foo)
+        pure (ast1 :: Ast NodeInfo (Op1 NodeInfo) (Op2 NodeInfo), foo)
         )
 
     let (c, z) = 
@@ -647,8 +647,8 @@ runTest expr = do
 
 
 compileExpr2
-  :: (MonadState (Substitution, Context) m, MonadError String m, MonadSupply Name m, MonadReader (ClassEnv () () () (), TypeEnv) m)
-  => Ast t (Op1 t) (Op2 t) () () () ()
+  :: (MonadState (Substitution, Context) m, MonadError String m, MonadSupply Name m, MonadReader (ClassEnv, TypeEnv) m)
+  => Ast t (Op1 t) (Op2 t)
   -> m Core
 compileExpr2 e = do
     ast <- infer e

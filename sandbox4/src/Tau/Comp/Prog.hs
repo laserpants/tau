@@ -33,11 +33,11 @@ import qualified Data.Set.Monad as Set
 import qualified Data.Text as Text
 import qualified Tau.Util.Env as Env
 
-type TypedAst = Ast NodeInfo (Op1 NodeInfo) (Op2 NodeInfo) () () () ()
+type TypedAst = Ast NodeInfo (Op1 NodeInfo) (Op2 NodeInfo)
 
 type Internals = 
     ( TypedAst 
-    , Ast Type Void Void () () () ()
+    , Ast Type Void Void
     , Context )
 
 data ProgEnv = ProgEnv

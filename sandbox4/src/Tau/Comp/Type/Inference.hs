@@ -42,7 +42,7 @@ type NodeInfo = NodeInfoT Type
 -- TODO: move
 type ClassEnv = Env 
     ( ClassInfo Name Type
-    , [ClassInfo Type (Ast NodeInfo (Op1 NodeInfo) (Op2 NodeInfo) () () () ())] )
+    , [ClassInfo Type (Ast NodeInfo (Op1 NodeInfo) (Op2 NodeInfo))] )
 
 instance Substitutable NodeInfo Type where
     apply sub NodeInfo{..} = NodeInfo
@@ -55,7 +55,7 @@ instance (Free t) => Free (NodeInfoT t) where
 instance (Typed t) => Typed (NodeInfoT t) where
     typeOf = typeOf . nodeType
 
-instance (Typed t) => Typed (Ast t n o f g c d) where
+instance (Typed t) => Typed (Ast t n o) where
     typeOf = typeOf . exprTag
 
 instance (Typed t) => Typed (Pattern t f g) where
@@ -76,7 +76,7 @@ instance MapT NodeInfo t Void Void where
 instance 
     ( MapT NodeInfo NodeInfo n n
     , MapT NodeInfo NodeInfo o o 
-    ) => Substitutable (Ast NodeInfo n o f g c d) Type 
+    ) => Substitutable (Ast NodeInfo n o) Type 
   where apply sub = mapTags (apply sub :: NodeInfo -> NodeInfo)
 
 infer 
@@ -84,8 +84,8 @@ infer
      , MonadReader (ClassEnv, TypeEnv) m
      , MonadState (Substitution, Context) m
      , MonadError String m )
-  => Ast t (Op1 t) (Op2 t) f g c d
-  -> m (Ast NodeInfo (Op1 NodeInfo) (Op2 NodeInfo) f g c d)
+  => Ast t (Op1 t) (Op2 t)
+  -> m (Ast NodeInfo (Op1 NodeInfo) (Op2 NodeInfo))
 infer = cata $ \expr -> do
     newTy <- newTVar kTyp
     case expr of
@@ -243,14 +243,11 @@ inferPrim = pure . \case
 
 inferClause
   :: ( MonadSupply Name m
-     --, MonadReader (ClassEnv (Ast NodeInfo (Op1 NodeInfo) (Op2 NodeInfo) f), TypeEnv) m
      , MonadReader (ClassEnv, TypeEnv) m
      , MonadState (Substitution, Context) m
      , MonadError String m ) 
-  => Type
-  -> [Type]
-  -> Clause (Pattern t f g) (m (Ast NodeInfo n o f g c d))
-  -> m (Clause (Pattern NodeInfo f g) (Ast NodeInfo n o f g c d))
+  => Type -> [Type] -> Clause (Pattern t f g) (m (Ast NodeInfo n o))
+  -> m (Clause (Pattern NodeInfo f g) (Ast NodeInfo n o))
 inferClause ty types clause@(Clause ps _ _) = do
     (tps, vs) <- runWriterT (traverse inferPattern ps)
     let Clause _ exs e = local (second (Env.inserts (toScheme <$$> vs))) <$> clause
@@ -500,7 +497,7 @@ lookupClassInstance
   => Name 
   -> Type 
   -> ClassEnv
-  -> m ([Name], ClassInfo Type (Ast NodeInfo (Op1 NodeInfo) (Op2 NodeInfo) () () () ()))
+  -> m ([Name], ClassInfo Type (Ast NodeInfo (Op1 NodeInfo) (Op2 NodeInfo)))
 lookupClassInstance name ty env = do
     ((sups, _, _), insts) <- liftMaybe ("No class " <> Text.unpack name) (Env.lookup name env)
     inst <- catchError (msum [tryMatch i | i <- insts]) (const (throwError "Missing class instance"))

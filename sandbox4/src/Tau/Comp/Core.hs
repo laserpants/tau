@@ -542,8 +542,8 @@ desugarLists = cata $ \case
 
 compileClasses 
   :: (MonadError String m, MonadSupply Name m, MonadReader (ClassEnv, TypeEnv) m)
-  => Ast (NodeInfoT Type) Void Void () () () ()
-  -> StateT [(Name, Type)] m (Ast (NodeInfoT Type) Void Void () () () ()) 
+  => Ast (NodeInfoT Type) Void Void
+  -> StateT [(Name, Type)] m (Ast (NodeInfoT Type) Void Void) 
 compileClasses expr = 
     insertDictArgs <$> run expr <*> collect
   where
@@ -560,7 +560,7 @@ compileClasses expr =
         e -> 
             embed <$> sequence e
 
-insertDictArgs :: Ast NodeInfo Void Void f g c d -> [(Name, Type)] -> Ast NodeInfo Void Void f g c d
+insertDictArgs :: Ast NodeInfo Void Void -> [(Name, Type)] -> Ast NodeInfo Void Void
 insertDictArgs expr = foldr fun expr
   where
     fun (a, b) = lamExpr (NodeInfo (tArr b (typeOf expr)) []) [varPat (NodeInfo b []) a] 
@@ -571,8 +571,8 @@ collect = nub <$> acquireState
 applyDicts
   :: (MonadError String m, MonadSupply Name m, MonadReader (ClassEnv, TypeEnv) m)
   => Predicate
-  -> Ast (NodeInfoT Type) Void Void () () () ()
-  -> StateT [(Name, Type)] m (Ast (NodeInfoT Type) Void Void () () () ())
+  -> Ast (NodeInfoT Type) Void Void
+  -> StateT [(Name, Type)] m (Ast (NodeInfoT Type) Void Void)
 applyDicts (InClass name ty) expr 
 
     | isVar ty = do
@@ -841,7 +841,7 @@ clausesAreExhaustive = exhaustive . concatMap toMatrix where
     toMatrix (Clause ps [] _) = [ps]
     toMatrix _                = []
 
-checkExhaustive :: (MonadReader ConstructorEnv m) => Ast t (Op1 t) (Op2 t) f g c d -> m Bool
+checkExhaustive :: (MonadReader ConstructorEnv m) => Ast t (Op1 t) (Op2 t) -> m Bool
 checkExhaustive = cata $ \case
     ECon _ _ exprs           -> andM exprs
     EApp _ exprs             -> andM exprs
@@ -860,11 +860,11 @@ checkExhaustive = cata $ \case
     --  | EAnn s a 
     _                        -> pure True
 
-astApply :: Substitution -> Ast NodeInfo (Op1 NodeInfo) (Op2 NodeInfo) f g c d -> Ast NodeInfo (Op1 NodeInfo) (Op2 NodeInfo) f g c d
+astApply :: Substitution -> Ast NodeInfo (Op1 NodeInfo) (Op2 NodeInfo) -> Ast NodeInfo (Op1 NodeInfo) (Op2 NodeInfo)
 astApply sub = mapTags (apply sub :: NodeInfo -> NodeInfo)
 
-extractType :: Ast NodeInfo Void Void f g c d -> Ast Type Void Void f g c d
-extractType = (mapTags :: (NodeInfo -> Type) -> Ast NodeInfo Void Void f g c d -> Ast Type Void Void f g c d) nodeType
+extractType :: Ast NodeInfo Void Void -> Ast Type Void Void
+extractType = (mapTags :: (NodeInfo -> Type) -> Ast NodeInfo Void Void -> Ast Type Void Void) nodeType
 
 --toUnitType :: Expr t (Prep t) Name Name Void Void -> Expr () (Prep ()) Name Name Void Void
 --toUnitType = mapTags (const ())
