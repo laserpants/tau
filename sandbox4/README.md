@@ -2,21 +2,21 @@
 
 ## Index
 
-- Language overview
-  - Features
-  - Basic types
-    - Primitive types
-    - Functions
+- [Language overview](#language-overview)
+  - [Features](#features)
+  - [Basic types](#basic-types)
+    - [Primitive types](#primitive-types)
+    - [Functions](#functions)
     - Natural numbers (Peano arithmetic)
     - Lists
     - Tuples
     - Algebraic data types
-      - `Option` type constructor
-      - Results
+      - `Option`
+      - `Result`
     - Records
   - Syntax
     - Program layout
-      - Keywords `where`, `and`, and `or`
+      - Keywords `where`, and `and`
     - Control structures: `if`, `let`, etc.
     - Pattern matching with `match` and `fun`
     - Anonymous (lambda) functions 
@@ -36,7 +36,7 @@
     - Built-in classes
   - Recursion
 - Roadmap
-- Wish list
+- Wishlist
 - Contribute
   - Code of conduct
   - Bugs and issues
