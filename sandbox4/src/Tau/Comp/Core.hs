@@ -426,9 +426,8 @@ toCore = cata $ \case
         exprs <- sequence exs
         pure (cApp (cVar (tupleCon (length exs)):exprs))
 
-    EPat _ eqs exs -> do
-        cs <- sequence eqs
-        case cs of
+    EPat _ eqs exs -> 
+        sequence eqs >>= \case
             [expr] -> cPat expr <$> traverse desugarClause exs
             _      -> error "Implementation error"
   where

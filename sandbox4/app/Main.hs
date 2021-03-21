@@ -126,6 +126,7 @@ evalEnv = Env.fromList
     , ("first"   , fromJust (runEval (eval fst_) mempty))
     , ("second"  , fromJust (runEval (eval snd_) mempty))
     , ("(+)"     , fromJust (evalExpr plus__ mempty))
+    , ("(?)"     , fromJust (evalExpr opt__ mempty))
 --    , ("Z"       , constructor "Z" 0)  
 --    , ("S"       , constructor "S" 1)  
     ]
@@ -133,6 +134,7 @@ evalEnv = Env.fromList
     lenShow = fromJust (evalSupply (compileExpr foo3) (numSupply "$"))
     show_   = fromJust (evalSupply (compileExpr foo4) (numSupply "$"))
     plus__  = fromJust (evalSupply (compileExpr foo5) (numSupply "$"))
+    opt__   = fromJust (evalSupply (compileExpr foo6) (numSupply "$"))
     foo3 = lamExpr () [varPat () "d"] (lamExpr () [varPat () "x"] (appExpr () [varExpr () "@String.length", appExpr () [varExpr () "show", varExpr () "d", varExpr () "x"]]))
     foo4 = lamExpr () [varPat () "d"] (patExpr () [varExpr () "d"] [ Clause [recPat () (fieldSet [Field () "show" (varPat () "show")])] [] (varExpr () "show") ])
     foo5 = lamExpr () [varPat () "d"] (patExpr () [varExpr () "d"] [ Clause [recPat () (fieldSet 
@@ -141,6 +143,7 @@ evalEnv = Env.fromList
     snd_ = fromJust (evalSupply (compileExpr foo25) (numSupply "$"))
     foo24 = lamExpr () [varPat () "p"] (patExpr () [varExpr () "p"] [Clause [conPat () "(,)" [varPat () "a", anyPat ()]] [] (varExpr () "a")])
     foo25 = lamExpr () [varPat () "p"] (patExpr () [varExpr () "p"] [Clause [conPat () "(,)" [varPat () "zz", varPat () "b"]] [] (varExpr () "b")])
+    foo6 = lamExpr () [varPat () "a", varPat () "b"] (patExpr () [varExpr () "a"] [ Clause [conPat () "Some" [varPat () "x"]] [] (varExpr () "x"), Clause [anyPat ()] [] (varExpr () "b")])
  
 
 ---- fix f = fun | 0 => 1 | n => n * f (n - 1) in f 5

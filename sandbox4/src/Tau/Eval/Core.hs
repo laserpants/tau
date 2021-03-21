@@ -108,11 +108,14 @@ evalVar var =
                     traceShowM ("No primitive function " <> Text.unpack prim)
                     fail ("No primitive function " <> Text.unpack prim)
 
-        _ | isConstructor var -> pure (Data var [])
-          | otherwise -> do
-              env <- ask
-              unless (Env.isMember var env) (traceShowM ("Unbound identifier " <> var))
-              maybe (fail "Unbound identifier") pure (Env.lookup var env)
+        _ -> 
+            asks (Env.lookup var) >>= \case
+                Just value -> 
+                    pure value
+                Nothing -> 
+                    if isConstructor var 
+                        then pure (Data var []) 
+                        else fail "Unbound identifier"
 
 -- TODO
 isConstructor :: Name -> Bool

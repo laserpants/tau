@@ -111,6 +111,7 @@ data Op2 t
     | ORArr t                 -- ^ Reverse function composition
     | OFPipe t                -- ^ Forward pipe operator
     | OBPipe t                -- ^ Reverse pipe operator
+    | OOpt t                 
 
     -- TODO:
     -- integer division (//)
@@ -153,11 +154,11 @@ deriveEq    ''ExprF
 deriveShow1 ''ExprF
 deriveEq1   ''ExprF
 
-data NoListSugar
-    deriving (Show, Eq)
-
-data NoFunPats
-    deriving (Show, Eq)
+--data NoListSugar
+--    deriving (Show, Eq)
+--
+--data NoFunPats
+--    deriving (Show, Eq)
 
 -- | Expression language tagged term tree
 type Expr t p q r n o = Fix (ExprF t p q r n o)
@@ -194,6 +195,7 @@ opPrecedence = \case
     ORArr  _ -> 9
     OFPipe _ -> 0
     OBPipe _ -> 0
+    OOpt   _ -> 3
 
 -- | Operator associativity
 data Assoc
@@ -222,6 +224,7 @@ opAssoc = \case
     OLArr  _ -> AssocR
     OFPipe _ -> AssocL
     OBPipe _ -> AssocR
+    OOpt   _ -> AssocN
 
 -- | Return the symbolic representation of a binary operator
 op2Symbol :: Op2 t -> Name
@@ -243,6 +246,7 @@ op2Symbol = \case
     ORArr  _ -> ">>"
     OFPipe _ -> "|>"
     OBPipe _ -> "<|"
+    OOpt   _ -> "?"
 
 fieldSet :: [Field t a] -> FieldSet t a
 fieldSet fields = FieldSet (to <$> sortOn fieldName fields)
@@ -370,6 +374,7 @@ op2Tag = \case
     ORArr  t -> t
     OFPipe t -> t
     OBPipe t -> t
+    OOpt   t -> t
 
 patternVars :: Pattern t f g -> [(Name, t)]
 patternVars = cata $ \case
@@ -492,6 +497,7 @@ instance MapT s t (Op2 s) (Op2 t) where
         ORArr  t -> ORArr  <$> f t
         OFPipe t -> OFPipe <$> f t
         OBPipe t -> OBPipe <$> f t
+        OOpt   t -> OOpt   <$> f t
 
 instance MapT s t (Field s a) (Field t a) where
     mapTagsM f (Field t a b) = 

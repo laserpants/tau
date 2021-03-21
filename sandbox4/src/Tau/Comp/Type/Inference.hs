@@ -364,6 +364,7 @@ inferOp2Type = \case
     OGt  _ -> opType OGt  (Forall [kTyp] [InClass "Ord" 0] (tGen 0 `tArr` tGen 0 `tArr` tBool))
     OLtE _ -> opType OLtE (Forall [kTyp] [InClass "Ord" 0] (tGen 0 `tArr` tGen 0 `tArr` tBool))
     OGtE _ -> opType OGtE (Forall [kTyp] [InClass "Ord" 0] (tGen 0 `tArr` tGen 0 `tArr` tBool))
+    OOpt _ -> opType OOpt (Forall [kTyp] [] (tApp (tCon kFun "Option") (tGen 0) `tArr` tGen 0 `tArr` tGen 0))
 --    ODiv _ ->
 --    OPow _ ->
 --    OLArr _ ->

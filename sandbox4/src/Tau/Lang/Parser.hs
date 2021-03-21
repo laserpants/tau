@@ -150,6 +150,7 @@ operator =
       ]
       -- 3
     , [ InfixR (op2Expr () (OAnd ()) <$ symbol "&&")
+      , InfixN (op2Expr () (OOpt ()) <$ symbol "?")
       ]
       -- 2
     , [ InfixR (op2Expr () (OOr ()) <$ symbol "||")
