@@ -44,7 +44,7 @@ data ProgEnv = ProgEnv
     { progTypeEnv   :: TypeEnv
     , progExprEnv   :: Env Core
     , progCtorEnv   :: ConstructorEnv
-    , progClassEnv  :: ClassEnv () () () ()
+    , progClassEnv  :: ClassEnv 
     , progInternals :: Env Internals
     } deriving (Show, Eq)
 
@@ -60,7 +60,7 @@ modifyExprEnv f = modify (\ProgEnv{..} -> ProgEnv{ progExprEnv = f progExprEnv, 
 modifyTypeEnv :: (MonadState ProgEnv m) => (TypeEnv -> TypeEnv) -> m ()
 modifyTypeEnv f = modify (\ProgEnv{..} -> ProgEnv{ progTypeEnv = f progTypeEnv, .. })
 
-modifyClassEnv :: (MonadState ProgEnv m) => (ClassEnv () () () () -> ClassEnv () () () ()) -> m ()
+modifyClassEnv :: (MonadState ProgEnv m) => (ClassEnv -> ClassEnv) -> m ()
 modifyClassEnv f = modify (\ProgEnv{..} -> ProgEnv{ progClassEnv = f progClassEnv, .. })
 
 modifyInternals :: (MonadState ProgEnv m) => (Env Internals -> Env Internals) -> m ()
@@ -107,7 +107,7 @@ ttt con ts = setKind (foldr1 kArr (kTyp:ks)) (foldl1 tApp (tCon kTyp con:ts))
 -- TODO: DRY
 
 type InferState  = StateT (Substitution, Context)
-type InferReader = ReaderT (ClassEnv () () () (), TypeEnv)
+type InferReader = ReaderT (ClassEnv, TypeEnv)
 type InferSupply = SupplyT Name
 type InferError  = ExceptT String
 
@@ -128,7 +128,7 @@ runInferMaybe = fromMaybe (Left "error")
 
 type InferStack c d = InferState (InferReader (InferSupply (InferError Maybe)))
 
-runInfer3 :: Context -> ClassEnv () () () () -> TypeEnv -> InferStack c d a -> Either String (a, (Substitution, Context))
+runInfer3 :: Context -> ClassEnv -> TypeEnv -> InferStack c d a -> Either String (a, (Substitution, Context))
 runInfer3 ctx classEnv typeEnv = 
     runInferState ctx
     >>> runInferReader classEnv typeEnv

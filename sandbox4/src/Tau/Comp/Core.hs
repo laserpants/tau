@@ -541,7 +541,7 @@ desugarLists = cata $ \case
 -- ============================================================================
 
 compileClasses 
-  :: (MonadError String m, MonadSupply Name m, MonadReader (ClassEnv () () () (), TypeEnv) m)
+  :: (MonadError String m, MonadSupply Name m, MonadReader (ClassEnv, TypeEnv) m)
   => Ast (NodeInfoT Type) Void Void () () () ()
   -> StateT [(Name, Type)] m (Ast (NodeInfoT Type) Void Void () () () ()) 
 compileClasses expr = 
@@ -569,7 +569,7 @@ collect :: (MonadState [(Name, Type)] m) => m [(Name, Type)]
 collect = nub <$> acquireState
 
 applyDicts
-  :: (MonadError String m, MonadSupply Name m, MonadReader (ClassEnv () () () (), TypeEnv) m)
+  :: (MonadError String m, MonadSupply Name m, MonadReader (ClassEnv, TypeEnv) m)
   => Predicate
   -> Ast (NodeInfoT Type) Void Void () () () ()
   -> StateT [(Name, Type)] m (Ast (NodeInfoT Type) Void Void () () () ())
