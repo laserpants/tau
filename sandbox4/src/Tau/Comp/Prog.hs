@@ -33,19 +33,19 @@ import qualified Data.Set.Monad as Set
 import qualified Data.Text as Text
 import qualified Tau.Util.Env as Env
 
-type TypedAst c d = Ast NodeInfo (Op1 NodeInfo) (Op2 NodeInfo) () () c d
+type TypedAst = Ast NodeInfo (Op1 NodeInfo) (Op2 NodeInfo) () () () ()
 
-type Internals c d = 
-    ( TypedAst c d
-    , Ast Type Void Void () () c d
+type Internals = 
+    ( TypedAst 
+    , Ast Type Void Void () () () ()
     , Context )
 
 data ProgEnv c d = ProgEnv
     { progTypeEnv   :: TypeEnv
     , progExprEnv   :: Env Core
     , progCtorEnv   :: ConstructorEnv
-    , progClassEnv  :: ClassEnv () () c d
-    , progInternals :: Env (Internals c d)
+    , progClassEnv  :: ClassEnv () () () ()
+    , progInternals :: Env Internals
     } deriving (Show, Eq)
 
 emptyProgEnv :: ProgEnv c d
@@ -60,14 +60,12 @@ modifyExprEnv f = modify (\ProgEnv{..} -> ProgEnv{ progExprEnv = f progExprEnv, 
 modifyTypeEnv :: (MonadState (ProgEnv c d) m) => (TypeEnv -> TypeEnv) -> m ()
 modifyTypeEnv f = modify (\ProgEnv{..} -> ProgEnv{ progTypeEnv = f progTypeEnv, .. })
 
---modifyClassEnv :: (MonadState ProgEnv m) => (ClassEnv TypedAst -> ClassEnv TypedAst) -> m ()
-modifyClassEnv :: (MonadState (ProgEnv c d) m) => (ClassEnv () () c d -> ClassEnv () () c d) -> m ()
+modifyClassEnv :: (MonadState (ProgEnv c d) m) => (ClassEnv () () () () -> ClassEnv () () () ()) -> m ()
 modifyClassEnv f = modify (\ProgEnv{..} -> ProgEnv{ progClassEnv = f progClassEnv, .. })
 
-modifyInternals :: (MonadState (ProgEnv c d) m) => (Env (Internals c d) -> Env (Internals c d)) -> m ()
+modifyInternals :: (MonadState (ProgEnv c d) m) => (Env Internals -> Env Internals) -> m ()
 modifyInternals f = modify (\ProgEnv{..} -> ProgEnv{ progInternals = f progInternals, .. })
 
---compileType :: (MonadError String m, MonadState ProgEnv m) => Datatype -> m ()
 compileType :: (MonadState (ProgEnv c d) m) => Datatype -> m ()
 compileType (Sum name vars prods) = do
 
