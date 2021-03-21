@@ -541,9 +541,9 @@ desugarLists = cata $ \case
 -- ============================================================================
 
 compileClasses 
-  :: (MonadError String m, MonadSupply Name m, MonadReader (ClassEnv f g c d, TypeEnv) m)
-  => Ast (NodeInfoT Type) Void Void f g c d
-  -> StateT [(Name, Type)] m (Ast (NodeInfoT Type) Void Void f g c d) 
+  :: (MonadError String m, MonadSupply Name m, MonadReader (ClassEnv f g () (), TypeEnv) m)
+  => Ast (NodeInfoT Type) Void Void f g () ()
+  -> StateT [(Name, Type)] m (Ast (NodeInfoT Type) Void Void f g () ()) 
 compileClasses expr = 
     insertDictArgs <$> run expr <*> collect
   where
@@ -569,10 +569,10 @@ collect :: (MonadState [(Name, Type)] m) => m [(Name, Type)]
 collect = nub <$> acquireState
 
 applyDicts
-  :: (MonadError String m, MonadSupply Name m, MonadReader (ClassEnv f g c d, TypeEnv) m)
+  :: (MonadError String m, MonadSupply Name m, MonadReader (ClassEnv f g () (), TypeEnv) m)
   => Predicate
-  -> Ast (NodeInfoT Type) Void Void f g c d
-  -> StateT [(Name, Type)] m (Ast (NodeInfoT Type) Void Void f g c d)
+  -> Ast (NodeInfoT Type) Void Void f g () ()
+  -> StateT [(Name, Type)] m (Ast (NodeInfoT Type) Void Void f g () ())
 applyDicts (InClass name ty) expr 
 
     | isVar ty = do

@@ -126,10 +126,9 @@ typed
   :: ( MonadError String m
      , MonadIO m
      , MonadState (Substitution, Context) m
-     --, MonadReader (ClassEnv (Ast NodeInfo (Op1 NodeInfo) (Op2 NodeInfo) f), TypeEnv) m
-     , MonadReader (ClassEnv f g c d, TypeEnv) m
+     , MonadReader (ClassEnv f g () (), TypeEnv) m
      , MonadSupply Name m ) 
-  => Ast t (Op1 t) (Op2 t) f g c d
+  => Ast t (Op1 t) (Op2 t) f g () ()
   -> m (Maybe (Value Eval))
 typed e = do
     ast <- infer e

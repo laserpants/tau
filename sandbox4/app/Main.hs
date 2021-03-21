@@ -647,8 +647,8 @@ runTest expr = do
 
 
 compileExpr2
-  :: (MonadState (Substitution, Context) m, MonadError String m, MonadSupply Name m, MonadReader (ClassEnv f g c d, TypeEnv) m)
-  => Expr t (Pattern t f g) (Binding (Pattern t f g)) [Pattern t f g] (Op1 t) (Op2 t) c d
+  :: (MonadState (Substitution, Context) m, MonadError String m, MonadSupply Name m, MonadReader (ClassEnv f g () (), TypeEnv) m)
+  => Expr t (Pattern t f g) (Binding (Pattern t f g)) [Pattern t f g] (Op1 t) (Op2 t) () ()
   -> m Core
 compileExpr2 e = do
     ast <- infer e

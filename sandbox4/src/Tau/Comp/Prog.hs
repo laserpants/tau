@@ -40,7 +40,7 @@ type Internals =
     , Ast Type Void Void () () () ()
     , Context )
 
-data ProgEnv c d = ProgEnv
+data ProgEnv = ProgEnv
     { progTypeEnv   :: TypeEnv
     , progExprEnv   :: Env Core
     , progCtorEnv   :: ConstructorEnv
@@ -48,25 +48,25 @@ data ProgEnv c d = ProgEnv
     , progInternals :: Env Internals
     } deriving (Show, Eq)
 
-emptyProgEnv :: ProgEnv c d
+emptyProgEnv :: ProgEnv
 emptyProgEnv = ProgEnv mempty mempty mempty mempty mempty
 
-modifyCtorEnv :: (MonadState (ProgEnv c d) m) => (ConstructorEnv -> ConstructorEnv) -> m ()
+modifyCtorEnv :: (MonadState ProgEnv m) => (ConstructorEnv -> ConstructorEnv) -> m ()
 modifyCtorEnv f = modify (\ProgEnv{..} -> ProgEnv{ progCtorEnv = f progCtorEnv, .. })
 
-modifyExprEnv :: (MonadState (ProgEnv c d) m) => (Env Core -> Env Core) -> m ()
+modifyExprEnv :: (MonadState ProgEnv m) => (Env Core -> Env Core) -> m ()
 modifyExprEnv f = modify (\ProgEnv{..} -> ProgEnv{ progExprEnv = f progExprEnv, .. })
 
-modifyTypeEnv :: (MonadState (ProgEnv c d) m) => (TypeEnv -> TypeEnv) -> m ()
+modifyTypeEnv :: (MonadState ProgEnv m) => (TypeEnv -> TypeEnv) -> m ()
 modifyTypeEnv f = modify (\ProgEnv{..} -> ProgEnv{ progTypeEnv = f progTypeEnv, .. })
 
-modifyClassEnv :: (MonadState (ProgEnv c d) m) => (ClassEnv () () () () -> ClassEnv () () () ()) -> m ()
+modifyClassEnv :: (MonadState ProgEnv m) => (ClassEnv () () () () -> ClassEnv () () () ()) -> m ()
 modifyClassEnv f = modify (\ProgEnv{..} -> ProgEnv{ progClassEnv = f progClassEnv, .. })
 
-modifyInternals :: (MonadState (ProgEnv c d) m) => (Env Internals -> Env Internals) -> m ()
+modifyInternals :: (MonadState ProgEnv m) => (Env Internals -> Env Internals) -> m ()
 modifyInternals f = modify (\ProgEnv{..} -> ProgEnv{ progInternals = f progInternals, .. })
 
-compileType :: (MonadState (ProgEnv c d) m) => Datatype -> m ()
+compileType :: (MonadState ProgEnv m) => Datatype -> m ()
 compileType (Sum name vars prods) = do
 
     -- Update constructor environment
@@ -78,7 +78,7 @@ compileType (Sum name vars prods) = do
   where
     ctors = Set.fromList ((\(Prod con _) -> con) <$> prods)
 
-    insertCtorType :: (MonadState (ProgEnv c d) m) => Product -> m ()
+    insertCtorType :: (MonadState ProgEnv m) => Product -> m ()
     insertCtorType (Prod con ts) = do 
 
         let ty = ttt name (tVar kTyp <$> vars)
@@ -139,8 +139,8 @@ runInfer3 ctx classEnv typeEnv =
 ---
 
 --compileDefinition :: (MonadError String m, MonadState ProgEnv m) => Definition -> m ()
---compileDefinition :: (MonadState (ProgEnv c d) m) => Definition -> m ()
-compileDefinition :: (MonadState (ProgEnv () ()) m) => Definition -> m ()
+--compileDefinition :: (MonadState ProgEnv m) => Definition -> m ()
+compileDefinition :: (MonadState ProgEnv m) => Definition -> m ()
 compileDefinition Def{..} = do
     -- TODO: Check if patterns are exhaustive
 
@@ -170,7 +170,7 @@ compileDefinition Def{..} = do
       code <- evalStateT (compileClasses (desugarOperators expr)) [] 
       pure (expr, scheme, code)
 
-compileClass :: (MonadState (ProgEnv c d) m) => ClassInfo Name Type -> m ()
+compileClass :: (MonadState ProgEnv m) => ClassInfo Name Type -> m ()
 compileClass info@(super, InClass name var, methods) = do
 
     -- TODO: check if class already exists
@@ -203,11 +203,11 @@ compileClass info@(super, InClass name var, methods) = do
 --foo :: (Name, Type) -> m (Name, Scheme)
 foo (name, ty) = (name ,) <$> generalize ty
 
-compileInstance :: (MonadState (ProgEnv c d) m) => ClassInfo Type ProgExpr -> m ()
+compileInstance :: (MonadState ProgEnv m) => ClassInfo Type ProgExpr -> m ()
 compileInstance (ps, InClass name ty, methods) = do
     undefined
 
-compileModule :: (MonadState (ProgEnv c d) m) => Module -> m ()
+compileModule :: (MonadState ProgEnv m) => Module -> m ()
 compileModule = undefined
 
 --    insertConstructor :: Product -> Env Core -> Env Core
