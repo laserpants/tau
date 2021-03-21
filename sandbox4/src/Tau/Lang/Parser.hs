@@ -83,6 +83,8 @@ reserved =
     , "match"
     , "with"
     , "when"
+    , "where"
+    , "otherwise"
     , "as"
     , "or"
     , "fun"

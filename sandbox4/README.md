@@ -38,6 +38,7 @@
     - Built-in classes
   - Recursion
     - Rationale
+- Compiler
 - Roadmap
 - Wishlist
 - Contribute
@@ -126,6 +127,7 @@ headOr rep xs = head xs ? rep
 #### Built-in classes
 ### Recursion
 #### Rationale
+## Compiler
 ## Roadmap
 ## Wishlist
 ## Contribute
