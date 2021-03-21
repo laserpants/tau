@@ -1,3 +1,4 @@
+{-# LANGUAGE EmptyDataDeriving    #-}
 {-# LANGUAGE FlexibleContexts     #-}
 {-# LANGUAGE FlexibleInstances    #-}
 {-# LANGUAGE LambdaCase           #-}
@@ -53,6 +54,12 @@ instance TypeTag Type where
     tarr  = tArr
     tapp  = tApp
     tbool = tBool
+
+data PatternsExpanded 
+    deriving (Show, Eq)
+
+data PatternsDesugared 
+    deriving (Show, Eq)
 
 compileExpr
   :: (TypeTag t, MonadSupply Name m)
@@ -176,7 +183,18 @@ expandPatterns
   -> m [Clause (Pattern t PatternsExpanded g) (Expr t p q r n o)]
 expandPatterns = (toExpanded <$$>) . expandLitPatterns . expandOrPatterns 
   where
-    toExpanded (Clause ps exs e) = Clause (patternsExpanded <$> ps) exs e
+    toExpanded (Clause ps exs e) = 
+        Clause (patternsExpanded <$> ps) exs e
+
+    patternsExpanded = cata $ \case
+        PVar t a       -> varPat t a
+        PCon t a b     -> conPat t a b
+        PRec t s       -> recPat t s
+        PTup t a       -> tupPat t a
+        PLst t a       -> lstPat t a
+        PAny t         -> anyPat t
+        PAs  t a b     -> asPat t a b
+        _              -> error "Implementation error"
 
 expandLitPatterns
   :: (TypeTag t, MonadSupply Name m)
@@ -318,6 +336,16 @@ consGroups u cs = concatMap grp (groupSortOn fst (info <$> cs))
 
             PAs _ as q ->
                 info (Clause (q:qs) exs (substitute as u e))
+
+    patternsDesugared = cata $ \case
+        PVar t a       -> varPat t a
+        PCon t a b     -> conPat t a b
+        PAny t         -> anyPat t
+        PAs  t a b     -> asPat t a b
+        _              -> error "Implementation error"
+
+    clauseDesugared (Clause ps ex e) = 
+        Clause (patternsDesugared <$> ps) ex e
 
 desugarPattern :: Pattern t f g -> Pattern t f g
 desugarPattern = cata $ \case
@@ -486,7 +514,6 @@ desugarLists = cata $ \case
 -- ============================================================================
 
 compileClasses 
---  :: (MonadError String m, MonadSupply Name m, MonadReader (ClassEnv (Ast NodeInfo (Op1 NodeInfo) (Op2 NodeInfo) f), TypeEnv) m)
   :: (MonadError String m, MonadSupply Name m, MonadReader (ClassEnv f g, TypeEnv) m)
   => Ast (NodeInfoT Type) Void Void f g
   -> StateT [(Name, Type)] m (Ast (NodeInfoT Type) Void Void f g) 
@@ -515,7 +542,6 @@ collect :: (MonadState [(Name, Type)] m) => m [(Name, Type)]
 collect = nub <$> acquireState
 
 applyDicts
---  :: (MonadError String m, MonadSupply Name m, MonadReader (ClassEnv (Ast NodeInfo (Op1 NodeInfo) (Op2 NodeInfo) f), TypeEnv) m)
   :: (MonadError String m, MonadSupply Name m, MonadReader (ClassEnv f g, TypeEnv) m)
   => Predicate
   -> Ast (NodeInfoT Type) Void Void f g
@@ -630,7 +656,6 @@ headCons = (>>= fun)
     prim TUnit         = "#()"
     prim TInt{}        = "#Int"
     prim TInteger{}    = "#Integer"
---    prim TNat{}        = "#Nat"
     prim TFloat{}      = "#Float"
     prim TDouble{}     = "#Double"
     prim TChar{}       = "#Char"

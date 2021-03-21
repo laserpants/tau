@@ -1,5 +1,4 @@
 {-# LANGUAGE DeriveTraversable     #-}
-{-# LANGUAGE EmptyDataDeriving     #-}
 {-# LANGUAGE FlexibleContexts      #-}
 {-# LANGUAGE FlexibleInstances     #-}
 {-# LANGUAGE LambdaCase            #-}
@@ -321,34 +320,6 @@ setPatternTag t = project >>> \case
     PAny _         -> anyPat t
     PAs  _ a b     -> asPat t a b
     POr  _ a b     -> orPat t a b
-
-data PatternsExpanded 
-    deriving (Show, Eq)
-
-data PatternsDesugared 
-    deriving (Show, Eq)
-
-patternsExpanded :: Pattern t f g -> Pattern t PatternsExpanded g
-patternsExpanded = cata $ \case
-    PVar t a       -> varPat t a
-    PCon t a b     -> conPat t a b
-    PRec t s       -> recPat t s
-    PTup t a       -> tupPat t a
-    PLst t a       -> lstPat t a
-    PAny t         -> anyPat t
-    PAs  t a b     -> asPat t a b
-    _              -> error "Implementation error"
-
-patternsDesugared :: Pattern t f g -> Pattern t f PatternsDesugared
-patternsDesugared = cata $ \case
-    PVar t a       -> varPat t a
-    PCon t a b     -> conPat t a b
-    PAny t         -> anyPat t
-    PAs  t a b     -> asPat t a b
-    _              -> error "Implementation error"
-
-clauseDesugared :: Clause (Pattern t f g) a -> Clause (Pattern t f PatternsDesugared) a
-clauseDesugared (Clause ps ex e) = Clause (patternsDesugared <$> ps) ex e
 
 op1Tag :: Op1 t -> t
 op1Tag = \case
