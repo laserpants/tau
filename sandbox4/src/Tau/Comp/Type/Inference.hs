@@ -70,9 +70,6 @@ instance (Typed t) => Typed (Op2 t) where
 instance MapT NodeInfo t Void Void where
     mapTagsM = const pure
 
---instance MapT t t (NodeInfoT t) (NodeInfoT t) where
---    mapTagsM f (NodeInfo t ps) = NodeInfo <$> f t <*> pure ps
-
 instance 
     ( MapT NodeInfo NodeInfo n n
     , MapT NodeInfo NodeInfo o o 
@@ -235,7 +232,6 @@ inferPrim = pure . \case
     TBool{}    -> tBool
     TInt{}     -> tInt
     TInteger{} -> tInteger
---    TNat{}     -> tNat
     TFloat{}   -> tFloat
     TDouble{}  -> tDouble
     TChar{}    -> tChar

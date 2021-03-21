@@ -67,10 +67,7 @@ data NoListSugar
 data NoFunPats
     deriving (Show, Eq)
 
-compileExpr
-  :: (TypeTag t, MonadSupply Name m)
-  => Expr t (Pattern t f g) (Binding (Pattern t f g)) [Pattern t f g] Void Void c d
-  -> m Core
+compileExpr :: (TypeTag t, MonadSupply Name m) => Ast t Void Void -> m Core
 compileExpr =
     expandFunPatterns
     >=> pure . desugarLists
@@ -101,8 +98,8 @@ compileExpr =
 
 expandFunPatterns
   :: (MonadSupply Name m)
-  => Expr t (Pattern t f g) q [Pattern t f g] Void Void c d
-  -> m (Expr t (Pattern t f g) q [Pattern t f g] Void Void c NoFunPats)
+  => Ast t Void Void
+  -> m (Expr t (Pattern t () ()) (Binding (Pattern t () ())) [Pattern t () ()] Void Void c NoFunPats)
 expandFunPatterns = cata $ \case
 
     EPat t [] exs@(Clause ps _ e:_) -> do
@@ -126,9 +123,12 @@ expandFunPatterns = cata $ \case
     ELst t a         -> lstExpr t <$> sequence a
 
 unrollLets
+--  :: (TypeTag t, MonadSupply Name m)
+--  => Expr t p (Binding (Pattern t f g)) [Pattern t f g] Void Void NoListSugar NoFunPats
+--  -> m (Expr t p (Pattern t f g) [Pattern t f g] Void Void NoListSugar NoFunPats)
   :: (TypeTag t, MonadSupply Name m)
-  => Expr t p (Binding (Pattern t f g)) [Pattern t f g] Void Void NoListSugar NoFunPats
-  -> m (Expr t p (Pattern t f g) [Pattern t f g] Void Void NoListSugar NoFunPats)
+  => Expr t p (Binding (Pattern t () ())) [Pattern t () ()] Void Void NoListSugar NoFunPats
+  -> m (Expr t p (Pattern t () ()) [Pattern t () ()] Void Void NoListSugar NoFunPats)
 unrollLets = cata $ \case
 
     EVar t var       -> pure (varExpr t var)
@@ -153,8 +153,11 @@ unrollLets = cata $ \case
         letExpr t (varPat t1 f) (lamExpr t1 ps expr) <$> e2
 
 simplify
+--  :: (TypeTag t, MonadSupply Name m)
+--  => Expr t (Pattern t f g) (Pattern t f g) [Pattern t f g] Void Void NoListSugar NoFunPats
+--  -> m (Expr t (Prep t) Name Name Void Void NoListSugar NoFunPats)
   :: (TypeTag t, MonadSupply Name m)
-  => Expr t (Pattern t f g) (Pattern t f g) [Pattern t f g] Void Void NoListSugar NoFunPats
+  => Expr t (Pattern t () ()) (Pattern t () ()) [Pattern t () ()] Void Void NoListSugar NoFunPats
   -> m (Expr t (Prep t) Name Name Void Void NoListSugar NoFunPats)
 simplify = cata $ \case
     EVar t var       -> pure (varExpr t var)
@@ -193,7 +196,9 @@ simplify = cata $ \case
 
 expandPatterns
   :: (TypeTag t, MonadSupply Name m)
-  => [Clause (Pattern t f g) (Expr t (Prep t) Name Name Void Void NoListSugar NoFunPats)]
+--  => [Clause (Pattern t f g) (Expr t (Prep t) Name Name Void Void NoListSugar NoFunPats)]
+--  -> m [Clause (Pattern t PatternsExpanded g) (Expr t (Prep t) Name Name Void Void NoListSugar NoFunPats)]
+  => [Clause (Pattern t () g) (Expr t (Prep t) Name Name Void Void NoListSugar NoFunPats)]
   -> m [Clause (Pattern t PatternsExpanded g) (Expr t (Prep t) Name Name Void Void NoListSugar NoFunPats)]
 expandPatterns = (toExpanded <$$>) . expandLitPatterns . expandOrPatterns 
   where
@@ -249,9 +254,9 @@ expandOrPatterns = concatMap $ \(Clause ps exs e) ->
 
 compilePatterns
   :: (TypeTag t, MonadSupply Name m)
-  => [Expr t (Prep t) Name Name Void Void c d]
-  -> [Clause (Pattern t PatternsExpanded g) (Expr t (Prep t) Name Name Void Void c d)]
-  -> m (Expr t (Prep t) Name Name Void Void c d)
+  => [Expr t (Prep t) Name Name Void Void NoListSugar NoFunPats]
+  -> [Clause (Pattern t PatternsExpanded g) (Expr t (Prep t) Name Name Void Void NoListSugar NoFunPats)]
+  -> m (Expr t (Prep t) Name Name Void Void NoListSugar NoFunPats)
 compilePatterns us qs = matchAlgo us qs (varExpr (tvar "FAIL") "FAIL")
 
 andExpr :: (TypeTag t) => Expr t p q r n o c d -> Expr t p q r n o c d -> Expr t p q r n o c d
@@ -277,10 +282,10 @@ andExpr a b = appExpr tbool [varExpr (tarr tbool (tarr tbool tbool)) "@(&&)", a,
 --  -> m (Expr t (Prep t) Name Name Void Void)
 matchAlgo
   :: (TypeTag t, MonadSupply Name m)
-  => [Expr t (Prep t) Name Name Void Void c d]
-  -> [Clause (Pattern t PatternsExpanded g) (Expr t (Prep t) Name Name Void Void c d)]
-  -> Expr t (Prep t) Name Name Void Void c d
-  -> m (Expr t (Prep t) Name Name Void Void c d)
+  => [Expr t (Prep t) Name Name Void Void NoListSugar NoFunPats]
+  -> [Clause (Pattern t PatternsExpanded g) (Expr t (Prep t) Name Name Void Void NoListSugar NoFunPats)]
+  -> Expr t (Prep t) Name Name Void Void NoListSugar NoFunPats
+  -> m (Expr t (Prep t) Name Name Void Void NoListSugar NoFunPats)
 matchAlgo [] []                   c = pure c
 matchAlgo [] (Clause [] []  e:_)  _ = pure e
 matchAlgo [] (Clause [] exs e:qs) c =
@@ -323,17 +328,17 @@ matchAlgo (u:us) qs c =
         mixed -> do
             foldrM (matchAlgo (u:us)) c (clauses <$> mixed)
 
-data ConsGroup t n o c d = ConsGroup 
+data ConsGroup t = ConsGroup 
     { consName     :: Name
     , consType     :: t
     , consPatterns :: [Pattern t PatternsExpanded PatternsDesugared]
-    , consClauses  :: [Clause (Pattern t PatternsExpanded PatternsDesugared) (Expr t (Prep t) Name Name n o c d)]
+    , consClauses  :: [Clause (Pattern t PatternsExpanded PatternsDesugared) (Expr t (Prep t) Name Name Void Void NoListSugar NoFunPats)]
     } deriving (Show, Eq)
 
 consGroups 
-  :: Expr t (Prep t) Name Name n o c d 
-  -> [Clause (Pattern t PatternsExpanded g) (Expr t (Prep t) Name Name n o c d)] 
-  -> [ConsGroup t n o c d]
+  :: Expr t (Prep t) Name Name Void Void NoListSugar NoFunPats 
+  -> [Clause (Pattern t PatternsExpanded g) (Expr t (Prep t) Name Name Void Void NoListSugar NoFunPats)] 
+  -> [ConsGroup t]
 consGroups u cs = concatMap grp (groupSortOn fst (info <$> cs))
   where
     grp all@((con, (t, ps, _)):_) = 
@@ -490,7 +495,7 @@ optimizeCore = cata $ \case
 
     e -> embed <$> sequence e
 
-desugarOperators :: Expr t p q r (Op1 t) (Op2 t) c d -> Expr t p q r Void Void c d
+desugarOperators :: Expr t p q r (Op1 t) (Op2 t) () () -> Expr t p q r Void Void () ()
 desugarOperators = cata $ \case
 
     EOp1 t op a -> 

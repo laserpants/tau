@@ -6,13 +6,7 @@ import Tau.Lang.Type
 import Tau.Util
 import Tau.Util.Env (Env(..))
 
-type ProgExpr = Expr () (Pattern () () ()) 
-                        (Binding (Pattern () () ())) 
-                        [Pattern () () ()] 
-                        (Op1 ()) 
-                        (Op2 ())
-                        () 
-                        ()
+type ProgExpr = Ast () (Op1 ()) (Op2 ()) 
 
 -- | Product type
 data Product = Prod Name [Type]
@@ -59,7 +53,6 @@ type ClassInfo p a = ([PredicateT p], PredicateT p, [(Name, a)])
 
 --type ClassEnv a = Env (ClassInfo a)
 --type ClassEnv a = Env ([Name], Name, [(Name, Type)], [Instance a])
-
 
 data Module = Module 
     { moduleName      :: Name

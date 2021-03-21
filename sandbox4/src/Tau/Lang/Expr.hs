@@ -357,7 +357,11 @@ patternVars = cata $ \case
     PLit _ _             -> []
     PAny _               -> []
 
-type Ast t n o = Expr t (Pattern t () ()) (Binding (Pattern t () ())) [Pattern t () ()] n o () ()
+type Ast t n o = Expr t 
+    (Pattern t () ()) 
+    (Binding (Pattern t () ())) 
+    [Pattern t () ()] 
+    n o () ()
 
 class MapT s t a b where
     mapTagsM :: (Monad m) => (s -> m t) -> a -> m b
