@@ -11,6 +11,8 @@ type ProgExpr = Expr () (Pattern () () ())
                         [Pattern () () ()] 
                         (Op1 ()) 
                         (Op2 ())
+                        () 
+                        ()
 
 -- | Product type
 data Product = Prod Name [Type]

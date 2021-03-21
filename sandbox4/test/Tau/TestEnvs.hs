@@ -46,7 +46,7 @@ testValueEnv = Env.map (fromJust . (`evalExpr` mempty)) testExprEnv
 --    second_ = cLam "p" (cPat (cVar "p") [(["(,)", "a", "b"], cVar "b")])
 
 --testClassEnv :: ClassEnv (Ast NodeInfo (Op1 NodeInfo) (Op2 NodeInfo) f)
-testClassEnv :: ClassEnv f g
+testClassEnv :: ClassEnv f g c d
 testClassEnv = Env.fromList
     [ ( "Num"
       , ( ( []

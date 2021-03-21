@@ -127,6 +127,7 @@ evalEnv = Env.fromList
     , ("second"  , fromJust (runEval (eval snd_) mempty))
     , ("(+)"     , fromJust (evalExpr plus__ mempty))
     , ("(?)"     , fromJust (evalExpr opt__ mempty))
+    , ("(++)"    , fromJust (evalExpr (cVar "@(++)") mempty)) -- PrimFun "@(++)")
 --    , ("Z"       , constructor "Z" 0)  
 --    , ("S"       , constructor "S" 1)  
     ]
@@ -181,7 +182,7 @@ evalEnv = Env.fromList
 --
 --type Infer a = StateT (Substitution, Context) (ReaderT (ClassEnv a, TypeEnv) (SupplyT Name (ExceptT String Maybe))) a 
 
-runInfer :: ClassEnv f g -> TypeEnv -> StateT (Substitution, Context) (ReaderT (ClassEnv f g, TypeEnv) (SupplyT Name (ExceptT String Maybe))) a -> Either String (a, (Substitution, Context))
+runInfer :: ClassEnv f g c d -> TypeEnv -> StateT (Substitution, Context) (ReaderT (ClassEnv f g c d, TypeEnv) (SupplyT Name (ExceptT String Maybe))) a -> Either String (a, (Substitution, Context))
 runInfer e1 e2 = 
     flip runStateT (mempty, mempty)
         >>> flip runReaderT (e1, e2)
@@ -314,47 +315,47 @@ runInfer e1 e2 =
 --        , conExpr () "(::)" [litExpr () (TInt 3), conExpr () "[]" []]
 --        ]
 
-testExpr2 :: Expr () (Pattern () () ()) (Binding (Pattern () () ())) [Pattern () () ()] (Op1 ()) (Op2 ())
+testExpr2 :: Expr () (Pattern () () ()) (Binding (Pattern () () ())) [Pattern () () ()] (Op1 ()) (Op2 ()) c d
 testExpr2 = letExpr () (BLet (varPat () "f")) (varExpr () "lenShow") (varExpr () "f")
 
-testExpr3 :: Expr () (Pattern () () ()) (Binding (Pattern () () ())) [Pattern () () ()] (Op1 ()) (Op2 ())
+testExpr3 :: Expr () (Pattern () () ()) (Binding (Pattern () () ())) [Pattern () () ()] (Op1 ()) (Op2 ()) c d
 testExpr3 = letExpr () (BLet (varPat () "f")) (varExpr () "lenShow") (appExpr () [varExpr () "f", litExpr () (TInt 5)])
 
-testExpr4 :: Expr () (Pattern () () ()) (Binding (Pattern () () ())) [Pattern () () ()] (Op1 ()) (Op2 ())
+testExpr4 :: Expr () (Pattern () () ()) (Binding (Pattern () () ())) [Pattern () () ()] (Op1 ()) (Op2 ()) c d
 testExpr4 = lamExpr () [varPat () "x"] (appExpr () [varExpr () "lenShow", varExpr () "x"])
 
-testExpr5 :: Expr () (Pattern () () ()) (Binding (Pattern () () ())) [Pattern () () ()] (Op1 ()) (Op2 ())
+testExpr5 :: Expr () (Pattern () () ()) (Binding (Pattern () () ())) [Pattern () () ()] (Op1 ()) (Op2 ()) c d
 testExpr5 = lamExpr () [varPat () "x"] (letExpr () (BLet (varPat () "f")) (varExpr () "lenShow") (appExpr () [varExpr () "f", varExpr () "x"]))
 
-testExpr6 :: Expr () (Pattern () () ()) (Binding (Pattern () () ())) [Pattern () () ()] (Op1 ()) (Op2 ())
+testExpr6 :: Expr () (Pattern () () ()) (Binding (Pattern () () ())) [Pattern () () ()] (Op1 ()) (Op2 ()) c d
 testExpr6 = letExpr () (BLet (varPat () "f")) (varExpr () "lenShow") (lamExpr () [varPat () "x"] (appExpr () [varExpr () "f", varExpr () "x"]))
 
-testExpr7 :: Expr () (Pattern () () ()) (Binding (Pattern () () ())) [Pattern () () ()] (Op1 ()) (Op2 ())
+testExpr7 :: Expr () (Pattern () () ()) (Binding (Pattern () () ())) [Pattern () () ()] (Op1 ()) (Op2 ()) c d
 testExpr7 = appExpr () [varExpr () "lenShow", litExpr () (TInt 12345)]
 
-testExpr8 :: Expr () (Pattern () () ()) (Binding (Pattern () () ())) [Pattern () () ()] (Op1 ()) (Op2 ())
+testExpr8 :: Expr () (Pattern () () ()) (Binding (Pattern () () ())) [Pattern () () ()] (Op1 ()) (Op2 ()) c d
 testExpr8 = lamExpr () [varPat () "x"] (appExpr () [varExpr () "f", varExpr () "x"])
 
-testExpr9 :: Expr () (Pattern () () ()) (Binding (Pattern () () ())) [Pattern () () ()] (Op1 ()) (Op2 ())
+testExpr9 :: Expr () (Pattern () () ()) (Binding (Pattern () () ())) [Pattern () () ()] (Op1 ()) (Op2 ()) c d
 testExpr9 = letExpr () (BLet (varPat () "f")) (varExpr () "lenShow") (varExpr () "f")
 
 -- let f x = lenShow in f ()
-testExpr10 :: Expr () (Pattern () () ()) (Binding (Pattern () () ())) [Pattern () () ()] (Op1 ()) (Op2 ())
+testExpr10 :: Expr () (Pattern () () ()) (Binding (Pattern () () ())) [Pattern () () ()] (Op1 ()) (Op2 ()) c d
 testExpr10 = letExpr () (BFun "f" [varPat () "x"]) (varExpr () "lenShow") (appExpr () [varExpr () "f", litExpr () TUnit])
 
 -- let p = (5, 1) in show p
-testExpr11 :: Expr () (Pattern () () ()) (Binding (Pattern () () ())) [Pattern () () ()] (Op1 ()) (Op2 ())
+testExpr11 :: Expr () (Pattern () () ()) (Binding (Pattern () () ())) [Pattern () () ()] (Op1 ()) (Op2 ()) c d
 testExpr11 = letExpr () (BLet (varPat () "p")) (conExpr () "(,)" [litExpr () (TInt 5), litExpr () (TInt 1)]) (appExpr () [varExpr () "show", varExpr () "p"])
 
 -- \x => show (x, x)
-testExpr12 :: Expr () (Pattern () () ()) (Binding (Pattern () () ())) [Pattern () () ()] (Op1 ()) (Op2 ())
+testExpr12 :: Expr () (Pattern () () ()) (Binding (Pattern () () ())) [Pattern () () ()] (Op1 ()) (Op2 ()) c d
 testExpr12 = lamExpr () [varPat () "x"] (appExpr () [varExpr () "show", conExpr () "(,)" [varExpr () "x", varExpr () "x"]])
 
 --testExpr21 = op2Expr () OAdd (litExpr () (LFloat 3.1)) (litExpr () (LFloat 4.1)) 
-testExpr21 :: Expr () (Pattern () () ()) (Binding (Pattern () () ())) [Pattern () () ()] (Op1 ()) (Op2 ())
+testExpr21 :: Expr () (Pattern () () ()) (Binding (Pattern () () ())) [Pattern () () ()] (Op1 ()) (Op2 ()) c d
 testExpr21 = op2Expr () (OAdd ()) (litExpr () (TInt 3)) (litExpr () (TInt 4)) 
 
-testExpr22 :: Expr () (Pattern () () ()) (Binding (Pattern () () ())) [Pattern () () ()] (Op1 ()) (Op2 ())
+testExpr22 :: Expr () (Pattern () () ()) (Binding (Pattern () () ())) [Pattern () () ()] (Op1 ()) (Op2 ()) c d
 testExpr22 = appExpr () [patExpr () [] [
       Clause [ conPat () "(::)" [litPat () (TInt 2), varPat () "z"]
              , varPat () "y" ] [] (litExpr () (TString "one")) 
@@ -364,13 +365,13 @@ testExpr22 = appExpr () [patExpr () [] [
              , varPat () "x" ] [] (litExpr () (TString "three"))
     ], conExpr () "(::)" [litExpr () (TInt 3), conExpr () "[]" []], litExpr () (TInt 4)]
 
-testExpr23 :: Expr () (Pattern () () ()) (Binding (Pattern () () ())) [Pattern () () ()] (Op1 ()) (Op2 ())
+testExpr23 :: Expr () (Pattern () () ()) (Binding (Pattern () () ())) [Pattern () () ()] (Op1 ()) (Op2 ()) c d
 testExpr23 = appExpr () [letExpr () (BFun "f" [varPat () "x"]) (varExpr () "lenShow") (appExpr () [varExpr () "f", litExpr () TUnit]), litExpr () (TInt 873)] 
 
-testExpr24 :: Expr () (Pattern () () ()) (Binding (Pattern () () ())) [Pattern () () ()] (Op1 ()) (Op2 ())
+testExpr24 :: Expr () (Pattern () () ()) (Binding (Pattern () () ())) [Pattern () () ()] (Op1 ()) (Op2 ()) c d
 testExpr24 = appExpr () [lamExpr () [varPat () "x"] (appExpr () [varExpr () "show", conExpr () "(,)" [varExpr () "x", varExpr () "x"]]), litExpr () (TInt 11)]
 
-testExpr25 :: Expr () (Pattern () () ()) (Binding (Pattern () () ())) [Pattern () () ()] (Op1 ()) (Op2 ())
+testExpr25 :: Expr () (Pattern () () ()) (Binding (Pattern () () ())) [Pattern () () ()] (Op1 ()) (Op2 ()) c d 
 testExpr25 = appExpr () [patExpr () [] [
       Clause [ conPat () "(::)" [varPat () "z", varPat () "zs"]
              , varPat () "y" ] 
@@ -382,7 +383,7 @@ testExpr25 = appExpr () [patExpr () [] [
              (litExpr () (TString "two")) 
     ], conExpr () "(::)" [litExpr () (TInt 3), conExpr () "[]" []], litExpr () (TInt 4)]
 
-testExpr26 :: Expr () (Pattern () () ()) (Binding (Pattern () () ())) [Pattern () () ()] (Op1 ()) (Op2 ())
+testExpr26 :: Expr () (Pattern () () ()) (Binding (Pattern () () ())) [Pattern () () ()] (Op1 ()) (Op2 ()) c d
 testExpr26 = appExpr () [patExpr () [] [
       Clause [ conPat () "(::)" [varPat () "z", varPat () "zs"]
              , varPat () "y" ] 
@@ -394,7 +395,7 @@ testExpr26 = appExpr () [patExpr () [] [
              (litExpr () (TString "two")) 
     ], conExpr () "(::)" [litExpr () (TInt 1), conExpr () "[]" []], litExpr () (TInt 4)]
 
-testExpr26b :: Expr () (Pattern () () ()) (Binding (Pattern () () ())) [Pattern () () ()] (Op1 ()) (Op2 ())
+testExpr26b :: Expr () (Pattern () () ()) (Binding (Pattern () () ())) [Pattern () () ()] (Op1 ()) (Op2 ()) c d
 testExpr26b = patExpr () [] [
       Clause [ conPat () "(::)" [varPat () "z", varPat () "zs"]
              , varPat () "y" ] 
@@ -406,19 +407,19 @@ testExpr26b = patExpr () [] [
              (litExpr () (TString "two")) ]
 
 -- let map f xs = fix mu = fun [] => [] | x :: xs => f x :: mu xs in mu xs
-testExpr27 :: Expr () (Pattern () () ()) (Binding (Pattern () () ())) [Pattern () () ()] (Op1 ()) (Op2 ())
+testExpr27 :: Expr () (Pattern () () ()) (Binding (Pattern () () ())) [Pattern () () ()] (Op1 ()) (Op2 ()) c d
 testExpr27 = -- fixExpr () "map" (patExpr () [] [Clause [conPat () "(::)" [varPat () "x", varPat () "xs"]] [] (conExpr () "(::)" [undefined, appExpr () [varExpr () "map", varExpr () "f", varExpr () "xs"]]), Clause [conPat () "[]" []] [] (conExpr () "[]" [])]) 
     (letExpr () (BFun "map" [varPat () "f", varPat () "xs"]) (fixExpr () "mu" (patExpr () [] [Clause [conPat () "(::)" [varPat () "x", varPat () "xs"]] [] (conExpr () "(::)" [appExpr () [varExpr () "f", varExpr () "x"], appExpr () [varExpr () "mu", varExpr () "xs"]]), Clause [conPat () "[]" []] [] (conExpr () "[]" [])]) (appExpr () [varExpr () "mu", varExpr () "xs"]))
           (letExpr () (BLet (varPat () "xs")) (conExpr () "(::)" [litExpr () (TInt 1), conExpr () "(::)" [litExpr () (TInt 2), conExpr () "(::)" [litExpr () (TInt 3), conExpr () "[]" []]]]) (dotExpr () (varExpr () "xs") (appExpr () [varExpr () "map", lamExpr () [varPat () "x"] (op2Expr () (OAdd ()) (varExpr () "x") (litExpr () (TInt 1)))]))))
 
-testExpr28 :: Expr () (Pattern () () ()) (Binding (Pattern () () ())) [Pattern () () ()] (Op1 ()) (Op2 ())
+testExpr28 :: Expr () (Pattern () () ()) (Binding (Pattern () () ())) [Pattern () () ()] (Op1 ()) (Op2 ()) c d
 testExpr28 = appExpr () [patExpr () [] [Clause [conPat () "(::)" [anyPat (), anyPat ()]] [] (litExpr () (TBool True)), Clause [anyPat ()] [] (litExpr () (TBool False))], conExpr () "(::)" [litExpr () (TInt 1), conExpr () "[]" []]]
 
 -- (fun | _ :: _ => True | _ => False) []
-testExpr29 :: Expr () (Pattern () () ()) (Binding (Pattern () () ())) [Pattern () () ()] (Op1 ()) (Op2 ())
+testExpr29 :: Expr () (Pattern () () ()) (Binding (Pattern () () ())) [Pattern () () ()] (Op1 ()) (Op2 ()) c d
 testExpr29 = appExpr () [patExpr () [] [Clause [conPat () "(::)" [anyPat (), anyPat ()]] [] (litExpr () (TBool True)), Clause [anyPat ()] [] (litExpr () (TBool False))], conExpr () "[]" []]
 
-testExpr30 :: Expr () (Pattern () () ()) (Binding (Pattern () () ())) [Pattern () () ()] (Op1 ()) (Op2 ())
+testExpr30 :: Expr () (Pattern () () ()) (Binding (Pattern () () ())) [Pattern () () ()] (Op1 ()) (Op2 ()) c d
 testExpr30 = patExpr () [] [Clause [conPat () "(::)" [anyPat (), anyPat ()]] [] (litExpr () (TBool True)), Clause [varPat () "x"] [] (litExpr () (TBool False))]
 
 testExpr31 = evalSupply (compilePatterns [varExpr () "x"] 
@@ -433,18 +434,18 @@ testExpr32 = evalSupply (compilePatterns [varExpr () "x"]
     ]) (nameSupply "$")
 
 
-testExpr33 :: Expr () (Pattern () () ()) (Binding (Pattern () () ())) [Pattern () () ()] (Op1 ()) (Op2 ())
+testExpr33 :: Expr () (Pattern () () ()) (Binding (Pattern () () ())) [Pattern () () ()] (Op1 ()) (Op2 ()) c d
 testExpr33 = 
     patExpr () [litExpr () (TInt 2)]
         [ Clause [ asPat () "x" (orPat () (litPat () (TInt 1)) (litPat () (TInt 2))) ] [] (varExpr () "x") ]
 
-testExpr34 :: Expr () (Pattern () () ()) (Binding (Pattern () () ())) [Pattern () () ()] (Op1 ()) (Op2 ())
+testExpr34 :: Expr () (Pattern () () ()) (Binding (Pattern () () ())) [Pattern () () ()] (Op1 ()) (Op2 ()) c d
 testExpr34 = 
     patExpr () [litExpr () (TInt 1)]
         [ Clause [ asPat () "x" (litPat () (TInt 1)) ] [] (varExpr () "x") 
         , Clause [ asPat () "x" (litPat () (TInt 2)) ] [] (varExpr () "x") ]
 
-testExpr34b :: Expr () (Pattern () () ()) (Binding (Pattern () () ())) [Pattern () () ()] (Op1 ()) (Op2 ())
+testExpr34b :: Expr () (Pattern () () ()) (Binding (Pattern () () ())) [Pattern () () ()] (Op1 ()) (Op2 ()) c d
 testExpr34b = 
     lamExpr () [varPat () "z"] (patExpr () [varExpr () "z"]
         [ Clause [ asPat () "x" (litPat () (TInt 1)) ] [] (varExpr () "x") 
@@ -453,26 +454,26 @@ testExpr34b =
         ])
 
 
-testExpr35 :: Expr () (Pattern () () ()) (Binding (Pattern () () ())) [Pattern () () ()] (Op1 ()) (Op2 ())
+testExpr35 :: Expr () (Pattern () () ()) (Binding (Pattern () () ())) [Pattern () () ()] (Op1 ()) (Op2 ()) c d
 testExpr35 = 
     patExpr () [litExpr () (TInt 1)] [ Clause [ asPat () "x" (litPat () (TInt 1)) ] [] (varExpr () "x") ]
 
-testExpr36 :: Expr () (Pattern () () ()) (Binding (Pattern () () ())) [Pattern () () ()] (Op1 ()) (Op2 ())
+testExpr36 :: Expr () (Pattern () () ()) (Binding (Pattern () () ())) [Pattern () () ()] (Op1 ()) (Op2 ()) c d
 testExpr36 =
     patExpr () [] [Clause [lstPat () [orPat () (litPat () (TInt 1)) (litPat () (TInt 2))]] [] (litExpr () (TInt 1))]
 
-testExpr37 :: Expr () (Pattern () () ()) (Binding (Pattern () () ())) [Pattern () () ()] (Op1 ()) (Op2 ())
+testExpr37 :: Expr () (Pattern () () ()) (Binding (Pattern () () ())) [Pattern () () ()] (Op1 ()) (Op2 ()) c d
 testExpr37 =
     appExpr () [varExpr () "(>=)", litExpr () (TInt 5), litExpr () (TInt 5)]
 
-testExpr38 :: Expr () (Pattern () () ()) (Binding (Pattern () () ())) [Pattern () () ()] (Op1 ()) (Op2 ())
+testExpr38 :: Expr () (Pattern () () ()) (Binding (Pattern () () ())) [Pattern () () ()] (Op1 ()) (Op2 ()) c d
 testExpr38 =
     fixExpr () "fixS" (lamExpr () [varPat () "f", varPat () "s"] (patExpr () [] 
         [ Clause [conPat () "Z" []] [] (varExpr () "s")
         , Clause [asPat () "nat" (conPat () "S" [varPat () "n"])] [] (appExpr () [varExpr () "fixS", varExpr () "f", appExpr () [varExpr () "f", varExpr () "nat", varExpr () "s"], varExpr () "n"])
         ])) (varExpr () "fixS")
 
-testExpr39 :: Expr () (Pattern () () ()) (Binding (Pattern () () ())) [Pattern () () ()] (Op1 ()) (Op2 ())
+testExpr39 :: Expr () (Pattern () () ()) (Binding (Pattern () () ())) [Pattern () () ()] (Op1 ()) (Op2 ()) c d
 testExpr39 =
     letExpr () (BLet (varPat () "x")) (conExpr () "S" [conExpr () "S" [conExpr () "S" [conExpr () "Z" []]]])
         (fixExpr () "fixS" (lamExpr () [varPat () "f", varPat () "s"] (patExpr () [] 
@@ -480,7 +481,7 @@ testExpr39 =
             , Clause [asPat () "nat" (conPat () "S" [varPat () "n"])] [] (appExpr () [varExpr () "fixS", varExpr () "f", appExpr () [varExpr () "f", varExpr () "nat", varExpr () "s"], varExpr () "n"])
             ])) (appExpr () [varExpr () "fixS", lamExpr () [anyPat (), varPat () "z"] (op2Expr () (OAdd ()) (varExpr () "z") (litExpr () (TInt 1))), litExpr () (TInt 0), varExpr () "x"]))
 
-testExpr40 :: Expr () (Pattern () () ()) (Binding (Pattern () () ())) [Pattern () () ()] (Op1 ()) (Op2 ())
+testExpr40 :: Expr () (Pattern () () ()) (Binding (Pattern () () ())) [Pattern () () ()] (Op1 ()) (Op2 ()) c d
 testExpr40 =
     letExpr () (BLet (varPat () "x")) (conExpr () "S" [conExpr () "S" [conExpr () "S" [conExpr () "Z" []]]])
         (fixExpr () "fixS" (lamExpr () [varPat () "f", varPat () "s"] (patExpr () [] 
@@ -633,7 +634,7 @@ runTest expr = do
         sub <- gets fst
         let ast1 = astApply sub ast
         foo <- evalStateT (compileClasses (desugarOperators ast1)) [] 
-        pure (ast1 :: Ast NodeInfo (Op1 NodeInfo) (Op2 NodeInfo) () (), foo)
+        pure (ast1 :: Ast NodeInfo (Op1 NodeInfo) (Op2 NodeInfo) () () () (), foo)
         )
 
     let (c, z) = 
@@ -646,8 +647,8 @@ runTest expr = do
 
 
 compileExpr2
-  :: (MonadState (Substitution, Context) m, MonadError String m, MonadSupply Name m, MonadReader (ClassEnv f g, TypeEnv) m)
-  => Expr t (Pattern t f g) (Binding (Pattern t f g)) [Pattern t f g] (Op1 t) (Op2 t)
+  :: (MonadState (Substitution, Context) m, MonadError String m, MonadSupply Name m, MonadReader (ClassEnv f g c d, TypeEnv) m)
+  => Expr t (Pattern t f g) (Binding (Pattern t f g)) [Pattern t f g] (Op1 t) (Op2 t) c d
   -> m Core
 compileExpr2 e = do
     ast <- infer e

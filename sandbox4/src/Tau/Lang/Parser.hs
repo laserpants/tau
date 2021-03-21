@@ -112,7 +112,7 @@ constructor_ = word (withInitial upperChar)
 --      $ traceShow b
 --        $ dotExpr () a b
 
-operator :: [[Operator Parser (Expr () (Pattern () () ()) (Binding (Pattern () () ())) [Pattern () () ()] (Op1 ()) (Op2 ()))]]
+operator :: [[Operator Parser ProgExpr]]
 operator = 
     [
 --      [ Postfix dotSuffix
@@ -134,11 +134,12 @@ operator =
       , InfixL (op2Expr () (ODiv ()) <$ try (symbol "/" <* notFollowedBy (symbol "=")))
       ]
       -- 6
-    , [ InfixL (op2Expr () (OAdd ()) <$ symbol "+")
+    , [ InfixL (op2Expr () (OAdd ()) <$ try (symbol "+" <* notFollowedBy (symbol "+")))
       , InfixL (op2Expr () (OSub ()) <$ symbol "-")
       ]
       -- 5
     , [ InfixR (listConsExpr () <$ symbol "::")
+      , InfixR (op2Expr () (OScc ()) <$ symbol "++")
       ]
       -- 4
     , [ InfixN (op2Expr () (OEq ()) <$ symbol "==")
@@ -165,7 +166,7 @@ operator =
       ]
     ]
 
-app :: (Show p, Show q, Show r, Show n, Show o) => Expr () p q r n o -> Expr () p q r n o -> Expr () p q r n o
+app :: (Show p, Show q, Show r, Show n, Show o) => Expr () p q r n o c d -> Expr () p q r n o c d -> Expr () p q r n o c d
 app e f =  
     case project e of
 --        EDot _ a b    -> dotExpr () a (app b f)

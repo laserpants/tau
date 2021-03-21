@@ -5,6 +5,7 @@ import Data.Text (Text, pack, unpack)
 import Data.Text.Prettyprint.Doc
 import Tau.Lang.Expr
 import Tau.Lang.Pretty
+import Tau.Lang.Prog
 import Tau.Lang.Type
 import Tau.Util
 import Test.Hspec
@@ -66,7 +67,7 @@ testPrettyPrinter = do
     describe "\nTuples\n" $ do
 
         prettyPrintsTo
-            (tupExpr () [varExpr () "x", litExpr () (TInt 5)] :: Expr () (Pattern () () ()) [Pattern () () ()] r (Op1 ()) (Op2 ()))
+            (tupExpr () [varExpr () "x", litExpr () (TInt 5)] :: ProgExpr)
             "(x, 5)"
 
     -- Pattern clauses

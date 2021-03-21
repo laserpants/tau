@@ -175,7 +175,6 @@ evalPat ((p:ps, e):eqs) val =
         _ ->
             evalPat eqs val
 
---evalPat ((["$_"], e):_) _ = e
 
 --
 --

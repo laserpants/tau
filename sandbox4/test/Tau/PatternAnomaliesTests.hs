@@ -14,7 +14,7 @@ import Test.Hspec
 import Utils
 import qualified Data.Text as Text
 
-type PatternClause = Clause (Pattern () () ()) (Ast () (Op1 ()) (Op2 ()) () ())
+type PatternClause c d = Clause (Pattern () () ()) (Ast () (Op1 ()) (Op2 ()) () () c d)
 
 testConstrEnv :: ConstructorEnv
 testConstrEnv = constructorEnv
@@ -394,63 +394,63 @@ testPatternAnomalies = do
         testExhaustive
             ( [ Clause [conPat () "(::)" [anyPat (), anyPat ()]] [] (litExpr () (TBool True))
               , Clause [varPat () "a"] [] (litExpr () (TBool False))
-              ] :: [PatternClause] )
+              ] :: [PatternClause c d] )
 
         testNonExhaustive
             ( [ Clause [conPat () "(::)" [anyPat (), anyPat ()]] [] (litExpr () (TBool True))
-              ] :: [PatternClause] )
+              ] :: [PatternClause c d] )
 
         testNonExhaustive
             ( [ Clause [varPat () "x"] [varExpr () "pIsTrue"] (litExpr () (TBool True))
-              ] :: [PatternClause] )
+              ] :: [PatternClause c d] )
 
         testExhaustive
             ( [ Clause [varPat () "x"] [varExpr () "pIsTrue"] (litExpr () (TBool True))
               , Clause [varPat () "x"] [] (litExpr () (TBool True))
-              ] :: [PatternClause] )
+              ] :: [PatternClause c d] )
 
         testExhaustive
             ( [ Clause [litPat () (TString "x")] [] (litExpr () (TBool True))
               , Clause [litPat () (TString "y")] [] (litExpr () (TBool True))
               , Clause [anyPat ()] [] (litExpr () (TBool True))
-              ] :: [PatternClause] )
+              ] :: [PatternClause c d] )
 
         testNonExhaustive
             ( [ Clause [litPat () (TString "x")] [] (litExpr () (TBool True))
               , Clause [litPat () (TString "y")] [] (litExpr () (TBool True))
               , Clause [anyPat ()] [varExpr () "pIsTrue"] (litExpr () (TBool True))
-              ] :: [PatternClause] )
+              ] :: [PatternClause c d] )
 
         testExhaustive
             ( [ Clause [litPat () (TString "x")] [] (litExpr () (TBool True))
               , Clause [litPat () (TString "y")] [varExpr () "pIsTrue"] (litExpr () (TBool True))
               , Clause [anyPat ()] [] (litExpr () (TBool True))
-              ] :: [PatternClause] )
+              ] :: [PatternClause c d] )
 
         testExhaustive
             ( [ Clause [litPat () (TString "x")] [] (litExpr () (TBool True))
               , Clause [anyPat ()] [varExpr () "pIsTrue"] (litExpr () (TBool True))
               , Clause [varPat () "x"] [] (litExpr () (TBool True))
-              ] :: [PatternClause] )
+              ] :: [PatternClause c d] )
 
         testExhaustive
             ( [ Clause [conPat () "Cons" [varPat () "x", conPat () "Cons" [varPat () "y", varPat () "ys"]]] [] (litExpr () (TBool True))
               , Clause [conPat () "Nil" []] [] (litExpr () (TBool True))
               , Clause [conPat () "Cons" [varPat () "z", conPat () "Nil" []]] [] (litExpr () (TBool True))
-              ] :: [PatternClause] )
+              ] :: [PatternClause c d] )
 
         testNonExhaustive
             ( [ Clause [conPat () "Cons" [varPat () "x", conPat () "Cons" [varPat () "y", varPat () "ys"]]] [] (litExpr () (TBool True))
               , Clause [conPat () "Nil" []] [varExpr () "aEqualsB"] (litExpr () (TBool True))
               , Clause [conPat () "Cons" [varPat () "z", conPat () "Nil" []]] [] (litExpr () (TBool True))
-              ] :: [PatternClause] )
+              ] :: [PatternClause c d] )
 
         testExhaustive
             ( [ Clause [conPat () "Cons" [varPat () "x", conPat () "Cons" [varPat () "y", varPat () "ys"]]] [] (litExpr () (TBool True))
               , Clause [conPat () "Nil" []] [varExpr () "aEqualsB"] (litExpr () (TBool True))
               , Clause [conPat () "Nil" []] [] (litExpr () (TBool True))
               , Clause [conPat () "Cons" [varPat () "z", conPat () "Nil" []]] [] (litExpr () (TBool True))
-              ] :: [PatternClause] )
+              ] :: [PatternClause c d] )
 
     -- Expressions
 

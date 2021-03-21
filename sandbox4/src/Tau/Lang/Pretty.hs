@@ -51,7 +51,7 @@ instance Parens (Pattern t f g) where
         POr{}       -> True
         _           -> False
 
-instance Parens (Expr t p q r n o) where
+instance Parens (Expr t p q r n o c d) where
     needsParens = project >>> \case
         ECon _ _ [] -> False
         ECon{}      -> True
@@ -216,7 +216,7 @@ instance (Pretty t) => Pretty (Binding (Pattern t f g)) where
     pretty (BLet p)    = pretty p
     pretty (BFun f ps) = foldl conArg (pretty f) ps
 
-instance (Pretty p, Pretty q, Pretty n, Pretty o) => Pretty (Expr t p q r n o) where
+instance (Pretty p, Pretty q, Pretty n, Pretty o) => Pretty (Expr t p q r n o c d) where
     pretty = para $ \case
         EVar _ var            -> pretty var
         ELit _ lit            -> pretty lit
@@ -241,8 +241,8 @@ prettyLet
   :: (Pretty p, Pretty q, Pretty l, Pretty n, Pretty o)
   => Doc a
   -> l
-  -> (Expr t p q r n o, Doc a)
-  -> (Expr t p q r n o, Doc a)
+  -> (Expr t p q r n o c d, Doc a)
+  -> (Expr t p q r n o c d, Doc a)
   -> Doc a
 prettyLet keyword p e1 e =
     group (vsep

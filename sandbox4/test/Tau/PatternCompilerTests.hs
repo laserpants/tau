@@ -14,7 +14,7 @@ import Tau.Util
 import Test.Hspec
 import Utils
 
-type TestExpr   = Expr () (Prep ()) Name Name Void Void
+type TestExpr = Expr () (Prep ()) Name Name Void Void NoListSugar NoFunPats
 type TestClause = Clause (Pattern () () PatternsDesugared) TestExpr
 
 succeedCompileAndEvalTo :: [TestClause] -> [Core] -> Value Eval -> SpecWith ()

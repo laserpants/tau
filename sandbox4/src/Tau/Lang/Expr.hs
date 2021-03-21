@@ -110,12 +110,12 @@ data Op2 t
     | ORArr t                 -- ^ Reverse function composition
     | OFPipe t                -- ^ Forward pipe operator
     | OBPipe t                -- ^ Reverse pipe operator
-    | OOpt t                 
+    | OOpt t                  -- ^ Option default operator
+    | OScc t                  -- ^ String concatenation operator
 
     -- TODO:
     -- integer division (//)
     -- modulo (%)
-    -- string concatenation (++)
 
     deriving (Show, Eq)
 
@@ -129,7 +129,7 @@ deriveShow1 ''Binding
 deriveEq1   ''Binding
 
 -- | Base functor for Expr
-data ExprF t p q r n o a 
+data ExprF t p q r n o c d a 
     = EVar t Name             -- ^ Variable
     | ECon t Name [a]         -- ^ Data constructor
     | ELit t Prim             -- ^ Literal value
@@ -153,14 +153,8 @@ deriveEq    ''ExprF
 deriveShow1 ''ExprF
 deriveEq1   ''ExprF
 
---data NoListSugar
---    deriving (Show, Eq)
---
---data NoFunPats
---    deriving (Show, Eq)
-
 -- | Expression language tagged term tree
-type Expr t p q r n o = Fix (ExprF t p q r n o)
+type Expr t p q r n o c d = Fix (ExprF t p q r n o c d)
 
 literalName :: Prim -> Name
 literalName = \case
@@ -195,6 +189,7 @@ opPrecedence = \case
     OFPipe _ -> 0
     OBPipe _ -> 0
     OOpt   _ -> 3
+    OScc   _ -> 5
 
 -- | Operator associativity
 data Assoc
@@ -224,6 +219,7 @@ opAssoc = \case
     OFPipe _ -> AssocL
     OBPipe _ -> AssocR
     OOpt   _ -> AssocN
+    OScc   _ -> AssocR
 
 -- | Return the symbolic representation of a binary operator
 op2Symbol :: Op2 t -> Name
@@ -246,6 +242,7 @@ op2Symbol = \case
     OFPipe _ -> "|>"
     OBPipe _ -> "<|"
     OOpt   _ -> "?"
+    OScc   _ -> "++"
 
 fieldSet :: [Field t a] -> FieldSet t a
 fieldSet fields = FieldSet (to <$> sortOn fieldName fields)
@@ -261,7 +258,7 @@ lookupField name (FieldSet fields) = lookup name fields
         | n == name = Just (t, val)
         | otherwise = lookup name fs 
 
-exprTag :: Expr t p q r n o -> t
+exprTag :: Expr t p q r n o c d -> t
 exprTag = project >>> \case
     EVar t _       -> t
     ECon t _ _     -> t
@@ -279,7 +276,7 @@ exprTag = project >>> \case
     ETup t _       -> t
     ELst t _       -> t
 
-setExprTag :: t -> Expr t p q r n o -> Expr t p q r n o
+setExprTag :: t -> Expr t p q r n o c d -> Expr t p q r n o c d
 setExprTag t = project >>> \case
     EVar _ a       -> varExpr t a
     ECon _ a b     -> conExpr t a b
@@ -346,6 +343,7 @@ op2Tag = \case
     OFPipe t -> t
     OBPipe t -> t
     OOpt   t -> t
+    OScc   t -> t
 
 patternVars :: Pattern t f g -> [(Name, t)]
 patternVars = cata $ \case
@@ -359,7 +357,7 @@ patternVars = cata $ \case
     PLit _ _             -> []
     PAny _               -> []
 
-type Ast t n o f g = Expr t (Pattern t f g) (Binding (Pattern t f g)) [Pattern t f g] n o
+type Ast t n o f g c d = Expr t (Pattern t f g) (Binding (Pattern t f g)) [Pattern t f g] n o c d
 
 class MapT s t a b where
     mapTagsM :: (Monad m) => (s -> m t) -> a -> m b
@@ -373,7 +371,7 @@ instance
     , MapT s t e f
     , MapT s t g h
     , MapT s t i j
-    ) => MapT s t (Expr s a c e g i) (Expr t b d f h j) 
+    ) => MapT s t (Expr s a c e g i k l) (Expr t b d f h j m n)
   where
     mapTagsM f = cata $ \case
         EVar t a -> 
@@ -469,6 +467,7 @@ instance MapT s t (Op2 s) (Op2 t) where
         OFPipe t -> OFPipe <$> f t
         OBPipe t -> OBPipe <$> f t
         OOpt   t -> OOpt   <$> f t
+        OScc   t -> OScc   <$> f t
 
 instance MapT s t (Field s a) (Field t a) where
     mapTagsM f (Field t a b) = 
@@ -504,54 +503,54 @@ lstPat = embed2 PLst
 anyPat :: t -> Pattern t f g
 anyPat = embed1 PAny
 
-varExpr :: t -> Name -> Expr t p q r n o
+varExpr :: t -> Name -> Expr t p q r n o c d
 varExpr = embed2 EVar
 
-conExpr :: t -> Name -> [Expr t p q r n o] -> Expr t p q r n o
+conExpr :: t -> Name -> [Expr t p q r n o c d] -> Expr t p q r n o c d
 conExpr = embed3 ECon
 
-litExpr :: t -> Prim -> Expr t p q r n o
+litExpr :: t -> Prim -> Expr t p q r n o c d
 litExpr = embed2 ELit
 
-appExpr :: t -> [Expr t p q r n o] -> Expr t p q r n o
+appExpr :: t -> [Expr t p q r n o c d] -> Expr t p q r n o c d
 appExpr = embed2 EApp
 
-letExpr :: t -> q -> Expr t p q r n o -> Expr t p q r n o -> Expr t p q r n o
+letExpr :: t -> q -> Expr t p q r n o c d -> Expr t p q r n o c d -> Expr t p q r n o c d
 letExpr = embed4 ELet
 
-fixExpr :: t -> Name -> Expr t p q r n o -> Expr t p q r n o -> Expr t p q r n o
+fixExpr :: t -> Name -> Expr t p q r n o c d -> Expr t p q r n o c d -> Expr t p q r n o c d
 fixExpr = embed4 EFix
 
-lamExpr :: t -> r -> Expr t p q r n o -> Expr t p q r n o
+lamExpr :: t -> r -> Expr t p q r n o c d -> Expr t p q r n o c d
 lamExpr = embed3 ELam
 
-ifExpr :: t -> Expr t p q r n o -> Expr t p q r n o -> Expr t p q r n o -> Expr t p q r n o
+ifExpr :: t -> Expr t p q r n o c d -> Expr t p q r n o c d -> Expr t p q r n o c d -> Expr t p q r n o c d
 ifExpr = embed4 EIf
 
-patExpr :: t -> [Expr t p q r n o] -> [Clause p (Expr t p q r n o)] -> Expr t p q r n o
+patExpr :: t -> [Expr t p q r n o c d] -> [Clause p (Expr t p q r n o c d)] -> Expr t p q r n o c d
 patExpr = embed3 EPat
 
-op1Expr :: t -> n -> Expr t p q r n o -> Expr t p q r n o
+op1Expr :: t -> n -> Expr t p q r n o c d -> Expr t p q r n o c d
 op1Expr = embed3 EOp1
 
-op2Expr :: t -> o -> Expr t p q r n o -> Expr t p q r n o -> Expr t p q r n o
+op2Expr :: t -> o -> Expr t p q r n o c d -> Expr t p q r n o c d -> Expr t p q r n o c d
 op2Expr = embed4 EOp2
 
-dotExpr :: t -> Expr t p q r n o -> Expr t p q r n o -> Expr t p q r n o
+dotExpr :: t -> Expr t p q r n o c d -> Expr t p q r n o c d -> Expr t p q r n o c d
 dotExpr = embed3 EDot
 
-recExpr :: t -> FieldSet t (Expr t p q r n o) -> Expr t p q r n o
+recExpr :: t -> FieldSet t (Expr t p q r n o c d) -> Expr t p q r n o c d
 recExpr = embed2 ERec
 
-tupExpr :: t -> [Expr t p q r n o] -> Expr t p q r n o
+tupExpr :: t -> [Expr t p q r n o c d] -> Expr t p q r n o c d
 tupExpr = embed2 ETup
 
-lstExpr :: t -> [Expr t p q r n o] -> Expr t p q r n o
+lstExpr :: t -> [Expr t p q r n o c d] -> Expr t p q r n o c d
 lstExpr = embed2 ELst
 
 -- List cons constructors
 
-listConsExpr :: t -> Expr t p q r n o -> Expr t p q r n o -> Expr t p q r n o
+listConsExpr :: t -> Expr t p q r n o c d -> Expr t p q r n o c d -> Expr t p q r n o c d
 listConsExpr t hd tl = conExpr t "(::)" [hd, tl]
 
 listConsPat :: t -> Pattern t f g -> Pattern t f g -> Pattern t f g

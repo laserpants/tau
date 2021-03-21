@@ -16,7 +16,9 @@
     - Records
   - Syntax
     - Program layout
+      - Top-level definitions
       - Keywords `where`, and `and`
+    - Function application and composition
     - Control structures: `if`, `let`, etc.
     - Pattern matching with `match` and `fun`
     - Anonymous (lambda) functions 
@@ -35,6 +37,7 @@
   - Polymorphism and type classes
     - Built-in classes
   - Recursion
+    - Rationale
 - Roadmap
 - Wishlist
 - Contribute
@@ -91,6 +94,50 @@ head _        = None
 headOr : forall a. a -> List a -> a
 headOr rep xs = head xs ? rep
 ```
+
+#### Natural numbers (Peano arithmetic)
+#### Lists
+#### Tuples
+#### Algebraic data types
+##### `Option`
+##### `Result`
+#### Records
+### Syntax
+#### Program layout
+##### Top-level definitions
+##### Keywords `where`, and `and`
+#### Function application and composition
+#### Control structures: `if`, `let`, etc.
+#### Pattern matching with `match` and `fun`
+#### Anonymous (lambda) functions 
+#### Dot-syntax
+#### Operators
+#### Type annotations
+### Patterns
+#### Variable, literal and constructor patterns
+#### Lists
+#### Tuples
+#### Records
+#### `as`-patterns
+#### `or`-patterns
+#### Wildcard patterns
+#### `when`-guards
+### Polymorphism and type classes
+#### Built-in classes
+### Recursion
+#### Rationale
+## Roadmap
+## Wishlist
+## Contribute
+### Code of conduct
+### Bugs and issues
+### Feature requests
+## License
+
+
+
+
+
 
 <!--
 
