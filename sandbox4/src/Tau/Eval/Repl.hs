@@ -126,9 +126,9 @@ typed
   :: ( MonadError String m
      , MonadIO m
      , MonadState (Substitution, Context) m
-     , MonadReader (ClassEnv f g () (), TypeEnv) m
+     , MonadReader (ClassEnv () () () (), TypeEnv) m
      , MonadSupply Name m ) 
-  => Ast t (Op1 t) (Op2 t) f g () ()
+  => Ast t (Op1 t) (Op2 t) () () () ()
   -> m (Maybe (Value Eval))
 typed e = do
     ast <- infer e
@@ -151,7 +151,7 @@ typed e = do
 
 
 --classEnv2 :: ClassEnv (Ast NodeInfo (Op1 NodeInfo) (Op2 NodeInfo) f)
-classEnv2 :: ClassEnv f g c d
+classEnv2 :: ClassEnv () () c d
 classEnv2 = Env.fromList 
     [ ( "Num"
       , ( ( []
@@ -303,7 +303,7 @@ evalEnv2 = Env.fromList
 
 --runInfer2 :: ClassEnv c -> TypeEnv -> StateT (Substitution, Context) (ReaderT (ClassEnv c, TypeEnv) (SupplyT Name (ExceptT String (MaybeT IO)))) a -> x -- Either String (a, (Substitution, Context))
 --runInfer2 :: ClassEnv c -> TypeEnv -> StateT (Substitution, Context) (ReaderT (ClassEnv c, TypeEnv) (SupplyT Name (ExceptT String (MaybeT IO)))) a -> IO (Either String (a, (Substitution, Context)))
-runInfer2 :: ClassEnv f g c d -> TypeEnv -> StateT (Substitution, Context) (ReaderT (ClassEnv f g c d, TypeEnv) (SupplyT Name (ExceptT String (MaybeT IO)))) a -> IO (Either String (a, (Substitution, Context)))
+runInfer2 :: ClassEnv () () c d -> TypeEnv -> StateT (Substitution, Context) (ReaderT (ClassEnv () () () (), TypeEnv) (SupplyT Name (ExceptT String (MaybeT IO)))) a -> IO (Either String (a, (Substitution, Context)))
 runInfer2 e1 e2 = 
     flip runStateT (mempty, mempty)
         >>> flip runReaderT (e1, e2)

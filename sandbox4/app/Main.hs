@@ -182,7 +182,7 @@ evalEnv = Env.fromList
 --
 --type Infer a = StateT (Substitution, Context) (ReaderT (ClassEnv a, TypeEnv) (SupplyT Name (ExceptT String Maybe))) a 
 
-runInfer :: ClassEnv f g c d -> TypeEnv -> StateT (Substitution, Context) (ReaderT (ClassEnv f g c d, TypeEnv) (SupplyT Name (ExceptT String Maybe))) a -> Either String (a, (Substitution, Context))
+--runInfer :: ClassEnv f g c d -> TypeEnv -> StateT (Substitution, Context) (ReaderT (ClassEnv f g c d, TypeEnv) (SupplyT Name (ExceptT String Maybe))) a -> Either String (a, (Substitution, Context))
 runInfer e1 e2 = 
     flip runStateT (mempty, mempty)
         >>> flip runReaderT (e1, e2)
@@ -647,8 +647,8 @@ runTest expr = do
 
 
 compileExpr2
-  :: (MonadState (Substitution, Context) m, MonadError String m, MonadSupply Name m, MonadReader (ClassEnv f g () (), TypeEnv) m)
-  => Expr t (Pattern t f g) (Binding (Pattern t f g)) [Pattern t f g] (Op1 t) (Op2 t) () ()
+  :: (MonadState (Substitution, Context) m, MonadError String m, MonadSupply Name m, MonadReader (ClassEnv () () () (), TypeEnv) m)
+  => Ast t (Op1 t) (Op2 t) () () () ()
   -> m Core
 compileExpr2 e = do
     ast <- infer e
