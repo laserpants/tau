@@ -31,14 +31,14 @@ data Tok
     | TNewline
     | TIndNewline
     | TSpace
-    | TLeftParen
-    | TRightParen
-    | TLeftBracket
-    | TRightBracket
-    | TLeftBrace
-    | TRightBrace
-    | TCommentStart
-    | TCommentEnd
+    | TLeftParen              -- (
+    | TRightParen             -- )
+    | TLeftBracket            -- [
+    | TRightBracket           -- ]
+    | TLeftBrace              -- {
+    | TRightBrace             -- }
+    | TCommentStart           -- {-
+    | TCommentEnd             -- -}
     deriving (Show, Eq, Ord)
 
 --
