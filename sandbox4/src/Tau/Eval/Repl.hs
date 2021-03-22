@@ -137,15 +137,14 @@ typed e = do
     liftIO $ putStrLn (showTree (nodesToString (prettyAst ast2)))
     ast4 <- evalStateT (compileClasses (desugarOperators ast2)) []
     liftIO $ putStrLn (showTree (nodesToString (prettyAst ast4)))
-    undefined
---    case evalSupply (compileExpr (extractType ast4)) (numSupply "$") of
---        Just c -> do
---            liftIO $ putStrLn (showTree (nodesToString (prettyCoreTree c)))
---            traceShowM c
---            traceShowM (evalExpr c evalEnv2)
---            pure (evalExpr c evalEnv2)
---        Nothing -> 
---            throwError "==fail=="
+    case evalSupply (compileExpr3 (extractType2 ast4)) (numSupply "$") of
+        Just c -> do
+            liftIO $ putStrLn (showTree (nodesToString (prettyCoreTree c)))
+            traceShowM c
+            traceShowM (evalExpr c evalEnv2)
+            pure (evalExpr c evalEnv2)
+        Nothing -> 
+            throwError "==fail=="
 
     --let ast2 = astApply sub ast
     --evalStateT (compileClasses (desugarOperators ast2)) []
