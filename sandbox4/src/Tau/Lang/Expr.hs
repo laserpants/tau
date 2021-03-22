@@ -81,9 +81,6 @@ data Guard a = Guard [a] a
 deriveShow1 ''Guard
 deriveEq1   ''Guard
 
-fooPair :: Guard a -> ([a], a)
-fooPair (Guard a b) = (a, b)
-
 -- | Pattern match expression clause
 data Clause p a = Clause [p] [Guard a] 
     deriving (Show, Eq, Functor, Foldable, Traversable)
@@ -253,6 +250,9 @@ op2Symbol = \case
     OBPipe _ -> "<|"
     OOpt   _ -> "?"
     OScc   _ -> "++"
+
+guardPair :: Guard a -> ([a], a)
+guardPair (Guard a b) = (a, b)
 
 fieldSet :: [Field t a] -> FieldSet t a
 fieldSet fields = FieldSet (to <$> sortOn fieldName fields)

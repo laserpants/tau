@@ -260,7 +260,7 @@ inferClause2
 inferClause2 ty types clause@(Clause ps _) = do
     (tps, vs) <- runWriterT (traverse inferPattern ps)
     let Clause _ guards = local (second (Env.inserts (toScheme <$$> vs))) <$> clause
-        (tests, es) = unzip (fooPair <$> guards)
+        (tests, es) = unzip (guardPair <$> guards)
     forM_ (concat tests) (>>= unifyTyped (tBool :: Type) . typeOf)
     forM_ (zip tps types) (uncurry unifyTyped)
     forM_ es (>>= unifyTyped ty . typeOf)
