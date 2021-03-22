@@ -309,7 +309,7 @@ clause sym = do
     cond <- fromMaybe [] <$> optional when_
     symbol "=>" 
     term <- expr
-    pure (Clause [pat] cond term)
+    pure (Clause [pat] [Guard cond term])
 
 --    pats <- sym *> some pattern_
 --    cond <- fromMaybe [] <$> optional when_
@@ -600,4 +600,4 @@ definition = do
         cond <- fromMaybe [] <$> optional when_
         symbol "="
         term <- expr
-        pure (fun, Clause tok cond term) -- ps, body) -- (Def fun ps body)
+        pure (fun, Clause tok [Guard cond term]) -- ps, body) -- (Def fun ps body)

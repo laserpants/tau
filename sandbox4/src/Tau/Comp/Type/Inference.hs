@@ -159,17 +159,30 @@ infer = cata $ \expr -> do
         --      | Some a => a
         --      | None   => 0
         --
-        EPat _ [] eqs@(Clause ps _ _:_) -> do
+        EPat _ [] eqs@(Clause ps _:_) -> do
             ts <- tVar kTyp <$$> supplies (length ps)
-            es2 <- sequence (inferClause newTy ts <$> eqs)
+            es2 <- sequence (inferClause2 newTy ts <$> eqs)
             pure (patExpr (NodeInfo (foldr tArr newTy ts) []) [] es2)
+
+--        EPat _ [] eqs@(Clause ps _ _:_) -> do
+--            ts <- tVar kTyp <$$> supplies (length ps)
+--            es2 <- sequence (inferClause newTy ts <$> eqs)
+--            pure (patExpr (NodeInfo (foldr tArr newTy ts) []) [] es2)
+--
+--        --
+--        -- Ordinary match expression
+--        --
+--        EPat _ exs eqs -> do
+--            es1 <- sequence exs
+--            es2 <- sequence (inferClause newTy (typeOf <$> es1) <$> eqs)
+--            pure (patExpr (NodeInfo newTy []) es1 es2)
 
         --
         -- Ordinary match expression
         --
         EPat _ exs eqs -> do
             es1 <- sequence exs
-            es2 <- sequence (inferClause newTy (typeOf <$> es1) <$> eqs)
+            es2 <- sequence (inferClause2 newTy (typeOf <$> es1) <$> eqs)
             pure (patExpr (NodeInfo newTy []) es1 es2)
 
         EOp1 _ op expr1 -> do
@@ -237,20 +250,46 @@ inferPrim = pure . \case
     TChar{}    -> tChar
     TString{}  -> tString
 
-inferClause
+inferClause2
   :: ( MonadSupply Name m
      , MonadReader (ClassEnv, TypeEnv) m
      , MonadState (Substitution, Context) m
      , MonadError String m ) 
   => Type -> [Type] -> Clause (Pattern t f g) (m (Ast NodeInfo n o))
   -> m (Clause (Pattern NodeInfo f g) (Ast NodeInfo n o))
-inferClause ty types clause@(Clause ps _ _) = do
+inferClause2 ty types clause@(Clause ps _) = do
     (tps, vs) <- runWriterT (traverse inferPattern ps)
-    let Clause _ exs e = local (second (Env.inserts (toScheme <$$> vs))) <$> clause
-    forM_ exs (>>= unifyTyped (tBool :: Type) . typeOf)
-    forM_ (zip tps types) (uncurry unifyTyped) 
-    e >>= unifyTyped ty . typeOf
-    Clause tps <$> sequence exs <*> e
+    let Clause _ guards = local (second (Env.inserts (toScheme <$$> vs))) <$> clause
+        (tests, es) = unzip (fooPair <$> guards)
+    forM_ (concat tests) (>>= unifyTyped (tBool :: Type) . typeOf)
+    forM_ (zip tps types) (uncurry unifyTyped)
+    forM_ es (>>= unifyTyped ty . typeOf)
+    Clause tps <$> traverse sequence guards
+
+--    forM_ (zip tps types) (uncurry unifyTyped) 
+--    e >>= unifyTyped ty . typeOf
+--    Clause tps <$> sequence exs <*> e
+
+--inferClause
+--  :: ( MonadSupply Name m
+--     , MonadReader (ClassEnv, TypeEnv) m
+--     , MonadState (Substitution, Context) m
+--     , MonadError String m ) 
+--  => Type -> [Type] -> Clause (Pattern t f g) (m (Ast NodeInfo n o))
+--  -> m (Clause (Pattern NodeInfo f g) (Ast NodeInfo n o))
+--inferClause ty types clause@(Clause ps _) = do
+--    undefined
+----inferClause ty types clause@(Clause ps _) = do
+----    undefined
+----    (tps, vs) <- runWriterT (traverse inferPattern ps)
+--
+----inferClause ty types clause@(Clause ps _ _) = do
+----    (tps, vs) <- runWriterT (traverse inferPattern ps)
+----    let Clause _ exs e = local (second (Env.inserts (toScheme <$$> vs))) <$> clause
+----    forM_ exs (>>= unifyTyped (tBool :: Type) . typeOf)
+----    forM_ (zip tps types) (uncurry unifyTyped) 
+----    e >>= unifyTyped ty . typeOf
+----    Clause tps <$> sequence exs <*> e
 
 inferPattern
   :: ( MonadSupply Name m

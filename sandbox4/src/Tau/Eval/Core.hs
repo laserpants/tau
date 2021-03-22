@@ -45,18 +45,6 @@ instance Eq (Value m) where
     (==) (PrimFun f _ _) (PrimFun g _ _) = f == g
     (==) _ _                             = False
 
---constructor :: (MonadReader (ValueEnv m) m) => Name -> Int -> Value m
---constructor name 0 = Data name []
---constructor name n = Closure v val mempty
---  where
---    vars@(v:vs) = 
---        take n (nameSupply "%")
---    val = (ini & foldr (\fun -> asks . Closure fun)) vs
---    ini = do
---        Env env <- ask
---        let args = fmap (env Map.!) vars
---        pure (Data name args)
-
 newtype Eval a = Eval { unEval :: ReaderT (ValueEnv Eval) Maybe a } deriving
     ( Functor
     , Applicative
@@ -75,13 +63,14 @@ eval
   => Core
   -> m (Value m)
 eval = cata $ \case
+
     CVar var ->
         evalVar var
 
     CLit lit ->
         pure (Value lit)
 
-    CApp exs ->
+    CApp exs -> 
         foldl1 evalApp exs
 
     CLet var e1 e2 -> do
@@ -110,8 +99,7 @@ evalVar var =
 
         _ -> 
             asks (Env.lookup var) >>= \case
-                Just value -> 
-                    pure value
+                Just value -> pure value
                 Nothing -> 
                     if isConstructor var 
                         then pure (Data var []) 
@@ -120,10 +108,17 @@ evalVar var =
 -- TODO
 isConstructor :: Name -> Bool
 isConstructor var
-    | isLower init = False
-    | '_' == init  = False
-    | '$' == init  = False
-    | otherwise    = True
+    | isLower init    = False
+    | '_' == init     = False
+    | '$' == init     = False
+    -- TODO
+    | isUpper init    = True
+    | "(::)" == var   = True
+    | "[]" == var     = True
+    | isTupleCon var  = True
+    | isRecordCon var = True
+    -- TODO
+    | otherwise       = False
   where
     init = Text.head var
 

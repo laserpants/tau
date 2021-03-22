@@ -137,14 +137,15 @@ typed e = do
     liftIO $ putStrLn (showTree (nodesToString (prettyAst ast2)))
     ast4 <- evalStateT (compileClasses (desugarOperators ast2)) []
     liftIO $ putStrLn (showTree (nodesToString (prettyAst ast4)))
-    case evalSupply (compileExpr (extractType ast4)) (numSupply "$") of
-        Just c -> do
-            liftIO $ putStrLn (showTree (nodesToString (prettyCoreTree c)))
-            traceShowM c
-            traceShowM (evalExpr c evalEnv2)
-            pure (evalExpr c evalEnv2)
-        Nothing -> 
-            throwError "==fail=="
+    undefined
+--    case evalSupply (compileExpr (extractType ast4)) (numSupply "$") of
+--        Just c -> do
+--            liftIO $ putStrLn (showTree (nodesToString (prettyCoreTree c)))
+--            traceShowM c
+--            traceShowM (evalExpr c evalEnv2)
+--            pure (evalExpr c evalEnv2)
+--        Nothing -> 
+--            throwError "==fail=="
 
     --let ast2 = astApply sub ast
     --evalStateT (compileClasses (desugarOperators ast2)) []
@@ -291,14 +292,13 @@ evalEnv2 = Env.fromList
     plus__  = fromJust (evalSupply (compileExpr foo5) (numSupply "$"))
     opt__   = fromJust (evalSupply (compileExpr foo6) (numSupply "$"))
     foo3 = lamExpr () [varPat () "d"] (lamExpr () [varPat () "x"] (appExpr () [varExpr () "@String.length", appExpr () [varExpr () "show", varExpr () "d", varExpr () "x"]]))
-    foo4 = lamExpr () [varPat () "d"] (patExpr () [varExpr () "d"] [ Clause [recPat () (fieldSet [Field () "show" (varPat () "show")])] [] (varExpr () "show") ])
-    foo5 = lamExpr () [varPat () "d"] (patExpr () [varExpr () "d"] [ Clause [recPat () (fieldSet 
-              [ Field () "(+)" (varPat () "x"), Field () "(*)" (anyPat ()), Field () "(-)" (anyPat ()) ])] [] (varExpr () "x") ])
+    foo4 = lamExpr () [varPat () "d"] (patExpr () [varExpr () "d"] [ Clause [recPat () (fieldSet [Field () "show" (varPat () "show")])] [Guard [] (varExpr () "show")] ])
+    foo5 = lamExpr () [varPat () "d"] (patExpr () [varExpr () "d"] [ Clause [recPat () (fieldSet [ Field () "(+)" (varPat () "x"), Field () "(*)" (anyPat ()), Field () "(-)" (anyPat ()) ])] [Guard [] (varExpr () "x")] ])
     fst_ = fromJust (evalSupply (compileExpr foo24) (numSupply "$"))
     snd_ = fromJust (evalSupply (compileExpr foo25) (numSupply "$"))
-    foo24 = lamExpr () [varPat () "p"] (patExpr () [varExpr () "p"] [Clause [conPat () "(,)" [varPat () "a", anyPat ()]] [] (varExpr () "a")])
-    foo25 = lamExpr () [varPat () "p"] (patExpr () [varExpr () "p"] [Clause [conPat () "(,)" [varPat () "zz", varPat () "b"]] [] (varExpr () "b")])
-    foo6 = lamExpr () [varPat () "a", varPat () "b"] (patExpr () [varExpr () "a"] [ Clause [conPat () "Some" [varPat () "x"]] [] (varExpr () "x"), Clause [anyPat ()] [] (varExpr () "b")])
+    foo24 = lamExpr () [varPat () "p"] (patExpr () [varExpr () "p"] [Clause [conPat () "(,)" [varPat () "a", anyPat ()]] [Guard [] (varExpr () "a")]])
+    foo25 = lamExpr () [varPat () "p"] (patExpr () [varExpr () "p"] [Clause [conPat () "(,)" [varPat () "zz", varPat () "b"]] [Guard [] (varExpr () "b")]])
+    foo6 = lamExpr () [varPat () "a", varPat () "b"] (patExpr () [varExpr () "a"] [ Clause [conPat () "Some" [varPat () "x"]] [Guard [] (varExpr () "x")], Clause [anyPat ()] [Guard [] (varExpr () "b")]])
  
 
 --runInfer2 :: ClassEnv c -> TypeEnv -> StateT (Substitution, Context) (ReaderT (ClassEnv c, TypeEnv) (SupplyT Name (ExceptT String (MaybeT IO)))) a -> x -- Either String (a, (Substitution, Context))

@@ -38,6 +38,7 @@ type TypedAst = Ast NodeInfo (Op1 NodeInfo) (Op2 NodeInfo)
 type Internals = 
     ( TypedAst 
     , Ast Type Void Void
+--    , Ast Type (Op1 Type) (Op2 Type)
     , Context )
 
 data ProgEnv = ProgEnv
@@ -158,9 +159,9 @@ compileDefinition Def{..} = do
             --traceShowM code
 
             modifyTypeEnv (Env.insert defName scheme)
-            let core = fromJust (evalSupply (compileExpr (extractType code)) (numSupply "$"))
+            let core = fromJust (evalSupply (compileExpr3 (extractType2 code)) (numSupply "$"))
             modifyExprEnv (Env.insert defName core)
-            modifyInternals (Env.insert defName (ast, extractType code, ctx))
+            modifyInternals (Env.insert defName (ast, extractType2 code, ctx)) -- extractType code, ctx))
   where
     steps = do
       ast <- infer (patExpr () [] defClauses)
@@ -168,6 +169,7 @@ compileDefinition Def{..} = do
       let expr = astApply sub ast
       scheme <- generalize (typeOf expr)
       code <- evalStateT (compileClasses (desugarOperators expr)) [] 
+      --code <- evalStateT (compileClasses expr) [] 
       pure (expr, scheme, code)
 
 compileClass :: (MonadState ProgEnv m) => ClassInfo Name Type -> m ()
@@ -191,7 +193,7 @@ compileClass info@(super, InClass name var, methods) = do
             let 
             -- Field () field (varPat () "e")])
                 fields_ = Field () f (varPat () "$e"):[Field () g (anyPat ()) | g <- delete f fields]
-                expr = patExpr () [] [ Clause [recPat () (fieldSet fields_)] [] (varExpr () "$e") ]
+                expr = patExpr () [] [ Clause [recPat () (fieldSet fields_)] [Guard [] (varExpr () "$e")] ]
                 core = fromJust (evalSupply (compileExpr expr) (numSupply "$")) -- TODO: DRY
              in Env.insert f core -- (patExpr () [] [ Clause [recPat () (fieldSet [] [] (varExpr () "$e"))] [] (varExpr () "$e") ])
 

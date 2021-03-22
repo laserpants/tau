@@ -45,9 +45,9 @@ runInferError = runExceptT
 runInferMaybe :: Maybe (Either String a) -> Either String a
 runInferMaybe = fromMaybe (Left "error")
 
-type InferStack c d = InferState (InferReader (InferSupply (InferError Maybe)))
+type InferStack = InferState (InferReader (InferSupply (InferError Maybe)))
 
-runInfer :: InferStack c d a -> Either String (a, (Substitution, Context))
+runInfer :: InferStack a -> Either String (a, (Substitution, Context))
 runInfer = runInferState
     >>> runInferReader testClassEnv testTypeEnv
     >>> runInferSupply
@@ -138,25 +138,27 @@ testTypeInference = do
     succeedInferType
         (letExpr () (BLet (varPat () "const")) (lamExpr () [varPat () "a", anyPat ()] (varExpr () "a")) (appExpr () [varExpr () "const", litExpr () TUnit, litExpr () (TInt 5)]))
         tUnit
+    
+    --TODO
 
     succeedInferType
-        (lamExpr () [varPat () "xs"] (patExpr () [varExpr () "xs"] [ Clause [conPat () "(::)" [varPat () "y", varPat () "ys"]] [] (litExpr () (TInt 1)), Clause [conPat () "[]" []] [] (litExpr () (TInt 2)) ]))
+        (lamExpr () [varPat () "xs"] (patExpr () [varExpr () "xs"] [ Clause [conPat () "(::)" [varPat () "y", varPat () "ys"]] [Guard [] (litExpr () (TInt 1))], Clause [conPat () "[]" []] [Guard [] (litExpr () (TInt 2))] ]))
         (tList _a `tArr` tInt)
 
     succeedInferType
-        (appExpr () [lamExpr () [varPat () "xs"] (patExpr () [varExpr () "xs"] [ Clause [conPat () "(::)" [varPat () "y", varPat () "ys"]] [] (litExpr () (TInt 1)), Clause [conPat () "[]" []] [] (litExpr () (TInt 2)) ]), conExpr () "(::)" [litExpr () (TInt 5), conExpr () "[]" []]])
+        (appExpr () [lamExpr () [varPat () "xs"] (patExpr () [varExpr () "xs"] [ Clause [conPat () "(::)" [varPat () "y", varPat () "ys"]] [Guard [] (litExpr () (TInt 1))], Clause [conPat () "[]" []] [Guard [] (litExpr () (TInt 2))] ]), conExpr () "(::)" [litExpr () (TInt 5), conExpr () "[]" []]])
         tInt
 
     succeedInferType
-        (patExpr () [] [ Clause [conPat () "(::)" [varPat () "y", varPat () "ys"]] [] (litExpr () (TInt 1)), Clause [conPat () "[]" []] [] (litExpr () (TInt 2)) ])
+        (patExpr () [] [ Clause [conPat () "(::)" [varPat () "y", varPat () "ys"]] [Guard [] (litExpr () (TInt 1))], Clause [conPat () "[]" []] [Guard [] (litExpr () (TInt 2))] ])
         (tList _a `tArr` tInt)
 
     succeedInferType
-        (appExpr () [patExpr () [] [ Clause [conPat () "(::)" [varPat () "y", varPat () "ys"]] [] (litExpr () (TInt 1)), Clause [conPat () "[]" []] [] (litExpr () (TInt 2)) ], conExpr () "(::)" [litExpr () (TInt 5), conExpr () "[]" []]])
+        (appExpr () [patExpr () [] [ Clause [conPat () "(::)" [varPat () "y", varPat () "ys"]] [Guard [] (litExpr () (TInt 1))], Clause [conPat () "[]" []] [Guard [] (litExpr () (TInt 2))] ], conExpr () "(::)" [litExpr () (TInt 5), conExpr () "[]" []]])
         tInt
 
     succeedInferType
-        (patExpr () [conExpr () "(::)" [litExpr () (TInt 5), conExpr () "[]" []]] [ Clause [conPat () "(::)" [varPat () "y", varPat () "ys"]] [] (litExpr () (TInt 1)), Clause [conPat () "[]" []] [] (litExpr () (TInt 2)) ])
+        (patExpr () [conExpr () "(::)" [litExpr () (TInt 5), conExpr () "[]" []]] [ Clause [conPat () "(::)" [varPat () "y", varPat () "ys"]] [Guard [] (litExpr () (TInt 1))], Clause [conPat () "[]" []] [Guard [] (litExpr () (TInt 2))] ])
         tInt
 
     succeedInferType
@@ -178,171 +180,171 @@ testTypeInference = do
 
 
 
---    succeedInferType
---        $(parseExpr "let id = \\x => x in let x = (id, 4) in (fst x snd x) + 1")
---        $(parseScheme "Int")
---
---    succeedInferType
---        $(parseExpr "let rec f = \\n => if n == 0 then 1 else n * (f (n - 1)) in f 5")
---        $(parseScheme "Int")
---
---    succeedInferType
---        $(parseExpr "(\\x => match x with 1 => 2 | 2 => 3) 1")
---        $(parseScheme "Int")
---
---    failInferTypeWithError (UnificationError CannotUnify)
---        $(parseExpr "match Cons \"a\" Nil with Cons y ys => y + 1")
---
---    failInferTypeWithError (UnificationError CannotUnify)
---        $(parseExpr "match Cons 6 Nil with Cons y ys => y + 1 | Cons 4 ys => \"foo\"")
---
---    failInferTypeWithError (UnificationError CannotUnify)
---        $(parseExpr "match Cons 6 Nil with Cons y ys => y + 1 | 5 => 1")
---
---    failInferTypeWithError (UnificationError CannotUnify)
---        $(parseExpr "match Cons 6 Nil with Cons y ys => y + 1 | Cons \"w\" z => 1")
---
---    failInferTypeWithError (UnificationError CannotUnify)
---        $(parseExpr "match Cons 6 Nil with Cons y ys => y + 1 | Cons z 5 => 1")
---
---    failInferTypeWithError (UnificationError CannotUnify)
---        $(parseExpr "match Cons 6 Nil with Cons y ys => y | _ => \"two\"")
---
---    failInferTypeWithError EmptyMatchStatement
---        (matchS (appS [varS "Nil"]) [])
---
---    failInferTypeWithError (UnificationError CannotUnify)
---        $(parseExpr "if 1 == True then 1 else 0")
---
---    failInferTypeWithError (UnificationError CannotUnify)
---        $(parseExpr "if Cons True Nil == Cons 1 Nil then 1 else 0")
---
---    failInferTypeWithError (UnificationError CannotUnify)
---        $(parseExpr "if Cons True Nil == Foo 1 Nil then 1 else 0")
---
---    failInferTypeWithError (UnificationError CannotUnify)
---        $(parseExpr "if Cons True Nil == Cons then 1 else 0")
---
---    failInferTypeWithError (UnboundVariable "x")
---        $(parseExpr "let x = x in x")
---
---    failInferTypeWithError (UnboundVariable "f")
---        $(parseExpr "let f = \\n => if n == 0 then 1 else n * (f (n - 1)) in f 5")
---
---    succeedInferType
---        $(parseExpr "let fst = \\match (a, b) => a in fst (1, 2)")
---        $(parseScheme "Int")
---
---    succeedInferType
---        $(parseExpr "let fst = \\match (a, b) => a in (1, 2).fst")
---        $(parseScheme "Int")
---
---    succeedInferType
---        $(parseExpr "let fst (a, b) = a in fst (1, 2)")
---        $(parseScheme "Int")
---
---    succeedInferType
---        $(parseExpr "(\\x y z => x + z)")
---        $(parseScheme "forall a b. a -> b -> a -> a")
---
---    failInferTypeWithError (NameClash "key")
---        $(parseExpr "let key = \\_ => 5 in { key = 5 }.key")
---
---    failInferTypeWithError (UnificationError CannotUnify)
---        $(parseExpr "if 1 == 1 then (1, 2) else (1,2,3)")
---
---    failInferTypeWithError (UnificationError CannotUnify)
---        $(parseExpr "if 1 == 1 then (1, 2) else (1,'a')")
---
---    failInferTypeWithError (UnificationError CannotUnify)
---        $(parseExpr "if 1 == 1 then 1 :: 2 :: [] else False :: []")
---
---    failInferTypeWithError (UnificationError CannotUnify)
---        $(parseExpr "1 :: False :: []")
---
---    failInferTypeWithError (UnificationError CannotUnify)
---        $(parseExpr "if 1 == 1 then { a = 3 } else { a = 3, b = 3 }")
---
---    failInferTypeWithError (UnificationError CannotUnify)
---        $(parseExpr "if 1 == 1 then { a = 3 } else { a = False }")
---
---    failInferTypeWithError (UnificationError CannotUnify)
---        $(parseExpr "if 1 == 1 then { a = 3 } else { b = 3 }")
---
---    failInferTypeWithError (UnificationError CannotUnify)
---        $(parseExpr "match { a = 3 } with { a = 3 } => 0 | { a = 4, b = 5 } => 0 | _ => 0")
---
---    failInferTypeWithError (UnificationError CannotUnify)
---        $(parseExpr "match { a = 3 } with { a = 3 } => 0 | { b = 4 } => 0 | _ => 0")
---
---    failInferTypeWithError (UnificationError CannotUnify)
---        (compileAll $(parseExpr "match (1, 2) with (2, 3) => 0 | (2, 3, 4) => 0 | _ => 0"))
---
---    failInferTypeWithError (UnificationError CannotUnify)
---        (compileAll $(parseExpr "match (1, 2) with (2, 3) => 0 | (\"a\", 3) => 0 | _ => 0"))
---
---    succeedInferType
---        $(parseExpr "match { a = 5, b = 'a', c = \"hello\" } with { a = x, b = _, c = name } => (x, name) | _ => (0, \"default\")")
---        $(parseScheme "(Int, String)")
---
---    failInferTypeWithError (UnificationError CannotUnify)
---        $(parseExpr "match { a = 5, b = 'a', c = \"hello\" } with { a = x, b = _, c = name } => (x, x) | _ => (0, \"default\")")
---
---    failInferTypeWithError (UnificationError CannotUnify)
---        $(parseExpr "match { a = 5, b = 'a', c = \"hello\" } with { a = x, b = _, d = name } => (x, name) | _ => (0, \"default\")")
---
---    failInferTypeWithError (UnboundVariable "x")
---        $(parseExpr "match (100, 1) with (101, 1) => x | _ => 1")
---
---    succeedInferType
---        $(parseExpr "match { stuff = (), user = { name = \"Bob\" } } with { stuff = (), user = { name = name } } => name")
---        $(parseScheme "String")
---
---    succeedInferType
---        $(parseExpr "match { stuff = (), user = { id = 1, name = \"Bob\" } } with { stuff = (), user = { id = _, name = name } } => name")
---        $(parseScheme "String")
---
---    succeedInferType
---        $(parseExpr "match { stuff = (), user = { id = 1, data = { name = \"Bob\", shoeSize = 42 } } } with { stuff = (), user = { id = _, data = { name = name, shoeSize = 42 } } } => name")
---        $(parseScheme "String")
---
---    succeedInferType
---        $(parseExpr "match { stuff = (), user = { id = 1, data = { name = (\"Bob\", \"Doe\"), shoeSize = 42 } } } with { stuff = (), user = { id = _, data = { name = (firstName, _), shoeSize = 42 } } } => firstName")
---        $(parseScheme "String")
---
---    failInferTypeWithError (UnificationError CannotUnify)
---        $(parseExpr "match { a = 5 } with { a = x, b = _ } => 1 | _ => 123")
---
---    succeedInferType
---        $(parseExpr "let fst (a, b) = a in { a = { b = ({ stuff = ['x', 'y'] }, 3) } }.a.b.fst.stuff")
---        $(parseScheme "List Char")
---
---    succeedInferType
---        $(parseExpr "let x = { a = { b = \\() => 123 } } in x.a.b ()")
---        $(parseScheme "Int")
---
---    succeedInferType
---        $(parseExpr "((\\{ x = y } => { z = y }) { x = \"stuff\" }).z")
---        $(parseScheme "String")
---
 ----    succeedInferType
-----        $(parseExpr "{ key = 5 }.key")
+----        $(parseExpr "let id = \\x => x in let x = (id, 4) in (fst x snd x) + 1")
 ----        $(parseScheme "Int")
 ----
 ----    succeedInferType
-----        $(parseExpr "let obj = { key = 5 } in obj.key")
-----        $(parseScheme "Int")
-----
-----    failInferTypeWithError (UnboundVariable "b")
-----        $(parseExpr "{ a = 5 }.b")
-----
-----    succeedInferType
-----        $(parseExpr "{ a = { b = 5 }}.a.b")
+----        $(parseExpr "let rec f = \\n => if n == 0 then 1 else n * (f (n - 1)) in f 5")
 ----        $(parseScheme "Int")
 ----
 ----    succeedInferType
-----        $(parseExpr "{ a = { a = \"test\" }}.a.a")
+----        $(parseExpr "(\\x => match x with 1 => 2 | 2 => 3) 1")
+----        $(parseScheme "Int")
+----
+----    failInferTypeWithError (UnificationError CannotUnify)
+----        $(parseExpr "match Cons \"a\" Nil with Cons y ys => y + 1")
+----
+----    failInferTypeWithError (UnificationError CannotUnify)
+----        $(parseExpr "match Cons 6 Nil with Cons y ys => y + 1 | Cons 4 ys => \"foo\"")
+----
+----    failInferTypeWithError (UnificationError CannotUnify)
+----        $(parseExpr "match Cons 6 Nil with Cons y ys => y + 1 | 5 => 1")
+----
+----    failInferTypeWithError (UnificationError CannotUnify)
+----        $(parseExpr "match Cons 6 Nil with Cons y ys => y + 1 | Cons \"w\" z => 1")
+----
+----    failInferTypeWithError (UnificationError CannotUnify)
+----        $(parseExpr "match Cons 6 Nil with Cons y ys => y + 1 | Cons z 5 => 1")
+----
+----    failInferTypeWithError (UnificationError CannotUnify)
+----        $(parseExpr "match Cons 6 Nil with Cons y ys => y | _ => \"two\"")
+----
+----    failInferTypeWithError EmptyMatchStatement
+----        (matchS (appS [varS "Nil"]) [])
+----
+----    failInferTypeWithError (UnificationError CannotUnify)
+----        $(parseExpr "if 1 == True then 1 else 0")
+----
+----    failInferTypeWithError (UnificationError CannotUnify)
+----        $(parseExpr "if Cons True Nil == Cons 1 Nil then 1 else 0")
+----
+----    failInferTypeWithError (UnificationError CannotUnify)
+----        $(parseExpr "if Cons True Nil == Guard 1 Nil then 1 else 0")
+----
+----    failInferTypeWithError (UnificationError CannotUnify)
+----        $(parseExpr "if Cons True Nil == Cons then 1 else 0")
+----
+----    failInferTypeWithError (UnboundVariable "x")
+----        $(parseExpr "let x = x in x")
+----
+----    failInferTypeWithError (UnboundVariable "f")
+----        $(parseExpr "let f = \\n => if n == 0 then 1 else n * (f (n - 1)) in f 5")
+----
+----    succeedInferType
+----        $(parseExpr "let fst = \\match (a, b) => a in fst (1, 2)")
+----        $(parseScheme "Int")
+----
+----    succeedInferType
+----        $(parseExpr "let fst = \\match (a, b) => a in (1, 2).fst")
+----        $(parseScheme "Int")
+----
+----    succeedInferType
+----        $(parseExpr "let fst (a, b) = a in fst (1, 2)")
+----        $(parseScheme "Int")
+----
+----    succeedInferType
+----        $(parseExpr "(\\x y z => x + z)")
+----        $(parseScheme "forall a b. a -> b -> a -> a")
+----
+----    failInferTypeWithError (NameClash "key")
+----        $(parseExpr "let key = \\_ => 5 in { key = 5 }.key")
+----
+----    failInferTypeWithError (UnificationError CannotUnify)
+----        $(parseExpr "if 1 == 1 then (1, 2) else (1,2,3)")
+----
+----    failInferTypeWithError (UnificationError CannotUnify)
+----        $(parseExpr "if 1 == 1 then (1, 2) else (1,'a')")
+----
+----    failInferTypeWithError (UnificationError CannotUnify)
+----        $(parseExpr "if 1 == 1 then 1 :: 2 :: [] else False :: []")
+----
+----    failInferTypeWithError (UnificationError CannotUnify)
+----        $(parseExpr "1 :: False :: []")
+----
+----    failInferTypeWithError (UnificationError CannotUnify)
+----        $(parseExpr "if 1 == 1 then { a = 3 } else { a = 3, b = 3 }")
+----
+----    failInferTypeWithError (UnificationError CannotUnify)
+----        $(parseExpr "if 1 == 1 then { a = 3 } else { a = False }")
+----
+----    failInferTypeWithError (UnificationError CannotUnify)
+----        $(parseExpr "if 1 == 1 then { a = 3 } else { b = 3 }")
+----
+----    failInferTypeWithError (UnificationError CannotUnify)
+----        $(parseExpr "match { a = 3 } with { a = 3 } => 0 | { a = 4, b = 5 } => 0 | _ => 0")
+----
+----    failInferTypeWithError (UnificationError CannotUnify)
+----        $(parseExpr "match { a = 3 } with { a = 3 } => 0 | { b = 4 } => 0 | _ => 0")
+----
+----    failInferTypeWithError (UnificationError CannotUnify)
+----        (compileAll $(parseExpr "match (1, 2) with (2, 3) => 0 | (2, 3, 4) => 0 | _ => 0"))
+----
+----    failInferTypeWithError (UnificationError CannotUnify)
+----        (compileAll $(parseExpr "match (1, 2) with (2, 3) => 0 | (\"a\", 3) => 0 | _ => 0"))
+----
+----    succeedInferType
+----        $(parseExpr "match { a = 5, b = 'a', c = \"hello\" } with { a = x, b = _, c = name } => (x, name) | _ => (0, \"default\")")
+----        $(parseScheme "(Int, String)")
+----
+----    failInferTypeWithError (UnificationError CannotUnify)
+----        $(parseExpr "match { a = 5, b = 'a', c = \"hello\" } with { a = x, b = _, c = name } => (x, x) | _ => (0, \"default\")")
+----
+----    failInferTypeWithError (UnificationError CannotUnify)
+----        $(parseExpr "match { a = 5, b = 'a', c = \"hello\" } with { a = x, b = _, d = name } => (x, name) | _ => (0, \"default\")")
+----
+----    failInferTypeWithError (UnboundVariable "x")
+----        $(parseExpr "match (100, 1) with (101, 1) => x | _ => 1")
+----
+----    succeedInferType
+----        $(parseExpr "match { stuff = (), user = { name = \"Bob\" } } with { stuff = (), user = { name = name } } => name")
 ----        $(parseScheme "String")
 ----
-----    failInferTypeWithError (UnboundVariable "a")
-----        $(parseExpr "{ a = { b = 3 } }.a.a")
+----    succeedInferType
+----        $(parseExpr "match { stuff = (), user = { id = 1, name = \"Bob\" } } with { stuff = (), user = { id = _, name = name } } => name")
+----        $(parseScheme "String")
+----
+----    succeedInferType
+----        $(parseExpr "match { stuff = (), user = { id = 1, data = { name = \"Bob\", shoeSize = 42 } } } with { stuff = (), user = { id = _, data = { name = name, shoeSize = 42 } } } => name")
+----        $(parseScheme "String")
+----
+----    succeedInferType
+----        $(parseExpr "match { stuff = (), user = { id = 1, data = { name = (\"Bob\", \"Doe\"), shoeSize = 42 } } } with { stuff = (), user = { id = _, data = { name = (firstName, _), shoeSize = 42 } } } => firstName")
+----        $(parseScheme "String")
+----
+----    failInferTypeWithError (UnificationError CannotUnify)
+----        $(parseExpr "match { a = 5 } with { a = x, b = _ } => 1 | _ => 123")
+----
+----    succeedInferType
+----        $(parseExpr "let fst (a, b) = a in { a = { b = ({ stuff = ['x', 'y'] }, 3) } }.a.b.fst.stuff")
+----        $(parseScheme "List Char")
+----
+----    succeedInferType
+----        $(parseExpr "let x = { a = { b = \\() => 123 } } in x.a.b ()")
+----        $(parseScheme "Int")
+----
+----    succeedInferType
+----        $(parseExpr "((\\{ x = y } => { z = y }) { x = \"stuff\" }).z")
+----        $(parseScheme "String")
+----
+------    succeedInferType
+------        $(parseExpr "{ key = 5 }.key")
+------        $(parseScheme "Int")
+------
+------    succeedInferType
+------        $(parseExpr "let obj = { key = 5 } in obj.key")
+------        $(parseScheme "Int")
+------
+------    failInferTypeWithError (UnboundVariable "b")
+------        $(parseExpr "{ a = 5 }.b")
+------
+------    succeedInferType
+------        $(parseExpr "{ a = { b = 5 }}.a.b")
+------        $(parseScheme "Int")
+------
+------    succeedInferType
+------        $(parseExpr "{ a = { a = \"test\" }}.a.a")
+------        $(parseScheme "String")
+------
+------    failInferTypeWithError (UnboundVariable "a")
+------        $(parseExpr "{ a = { b = 3 } }.a.a")

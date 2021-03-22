@@ -301,11 +301,12 @@ prettyList_ :: [Doc a] -> Doc a
 prettyList_ = brackets . commaSep
 
 instance (Pretty e) => Pretty (Clause (Pattern t f g) e) where
-    pretty (Clause ps exs e) =
-        patternSeq ps <+> whens (pretty <$> exs) <> "=>" <+> pretty e
-      where
-        whens [] = ""
-        whens es = "when" <+> foldl1 (\e s -> hsep [e, "&&", s]) es <> " "
+    pretty _ = "TODO"
+--    pretty (Clause ps exs e) =
+--        patternSeq ps <+> whens (pretty <$> exs) <> "=>" <+> pretty e
+--      where
+--        whens [] = ""
+--        whens es = "when" <+> foldl1 (\e s -> hsep [e, "&&", s]) es <> " "
 
 patternSeq :: (Parens p, Pretty p) => [p] -> Doc a
 patternSeq []     = ""

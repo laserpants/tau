@@ -12,10 +12,11 @@ testModule = Module
     , moduleTypes = 
         []
     , moduleDefs = 
-        [ Def "factorial" [Clause [varPat () "n"] [] (fixExpr () "f" undefined undefined)] []
-        , Def "map" [] []
-        , Def "testList" [] []
-        , Def "main" [] []
+        [
+--        [ Def "factorial" [Clause [varPat () "n"] [] (fixExpr () "f" undefined undefined)] []
+--        , Def "map" [] []
+--        , Def "testList" [] []
+--        , Def "main" [] []
         ]
     , moduleClasses = 
         []

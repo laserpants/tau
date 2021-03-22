@@ -82,12 +82,14 @@ patternDoc :: (Pretty t) => Doc a -> Pattern t f g -> Doc a
 patternDoc out pat = out <+> parens (pretty pat <+> colon <+> pretty (patternTag pat))
 
 prettyClauseTree :: (Pretty t, Show t, Pretty n, Pretty o) => Clause (Pattern t f g) (Ast t n o) -> [Tree (Doc a)]
-prettyClauseTree (Clause ps exs e) =
+prettyClauseTree (Clause ps [Guard exs e]) =
     [Node (foldl patternDoc "─┬" ps) (whens <> [prefix "=>" (prettyAst e)])]
   where
     whens 
       | null exs  = []
       | otherwise = [Node "when" (prettyAst <$> exs)]
+prettyClauseTree (Clause ps _) = 
+    [Node ":::TODO:::" []]
 
 prettyFieldTree :: (Pretty t, Pretty n, Pretty o) => Field t (Ast t n o, Tree (Doc a)) -> Tree (Doc a)
 prettyFieldTree (Field t name (val, _)) = 

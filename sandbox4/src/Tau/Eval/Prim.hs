@@ -123,6 +123,7 @@ primEnv = Env.fromList
     , ( "Float.(*)"      , fun2 ((*) :: Double -> Double -> Double ) )
 
     , ( "Int.(>)"        , fun2 ((>) :: Int -> Int -> Bool ) )
+    , ( "Int.(<)"        , fun2 ((<) :: Int -> Int -> Bool ) )
 
     , ( "Int.show"       , fun1 (Text.pack . show :: Int -> Text ) )
 

@@ -17,6 +17,7 @@
   - Syntax
     - Program layout
       - Top-level definitions
+      - Comments
       - Keywords `where`, and `and`
     - Function application and composition
     - Control structures: `if`, `let`, etc.
@@ -25,7 +26,7 @@
     - Dot-syntax
     - Operators
     - Type annotations
-  - Patterns
+  - [Patterns](#patterns)
     - Variable, literal and constructor patterns
     - Lists
     - Tuples
@@ -64,7 +65,7 @@
 | Type      | Values                                                                                                        | Explanation                                 |
 |-----------|---------------------------------------------------------------------------------------------------------------|---------------------------------------------|
 | `Void`    | No values                                                                                                     | The uninhabited type                        |
-| `Unit`    | `()`                                                                                                          | Type type with exactly one value. (1 in the [algebra of types](https://codewords.recurse.com/issues/three/algebra-and-calculus-of-algebraic-data-types).) |
+| `Unit`    | `()`                                                                                                          | The type with exactly one value. (1 in the [algebra of types](https://codewords.recurse.com/issues/three/algebra-and-calculus-of-algebraic-data-types).) |
 | `Bool`    | `True`, `False`                                                                                               |                                             |
 | `Int`     | `minBound`, &hellip;, `-1`, `0`, `1`, `2`, &hellip;, `maxBound`                                               | Bounded machine integers (32 or 64 bit)     |
 | `Integer` | &hellip;, `-1`, `0`, `1`, `2`, &hellip;                                                                       | Arbitrary precision integers (bigints)      |
@@ -79,7 +80,7 @@
 
 #### Functions
 
-Function types have the form `a -> b`, where `a` is the type of the argument, and `b` is the return value's type.
+Function types are similar to those of Haskell and OCaml, having the form `a -> b`, where `a` is the type of the argument, and `b` is the return value's type.
 The arrow operator is right-associative. [Currying](https://en.wikipedia.org/wiki/Currying#Definition) naturally allows for the formation of functions of more than one argument, so `a -> b -> c` is a function of two arguments.
 Some examples of function types are `Int -> Int`, `Int -> List Int -> List Int`, and `(Int -> Int) -> Int -> Bool`.
 
@@ -106,10 +107,30 @@ headOr rep xs = head xs ? rep
 ### Syntax
 #### Program layout
 ##### Top-level definitions
+##### Comments
 ##### Keywords `where`, and `and`
 #### Function application and composition
 #### Control structures: `if`, `let`, etc.
 #### Pattern matching with `match` and `fun`
+
+Pattern matching in functional languages is closely related to algebraic data types.
+The `match` statement allows deconstruction of values by comparison against a list of pattern clauses.
+
+```
+match xs with
+  | [x]       => x
+  | [x, y]    => x
+  | [x, y, z] => x
+  | _         => 0
+```
+
+```
+match xs with
+  | [x] or [x, _] or [x, _, _] => x
+  | _                          => 0
+```
+
+
 #### Anonymous (lambda) functions 
 #### Dot-syntax
 #### Operators
@@ -130,6 +151,9 @@ headOr rep xs = head xs ? rep
 ## Compiler
 ## Roadmap
 ## Wishlist
+
+- List comprehensions
+
 ## Contribute
 ### Code of conduct
 ### Bugs and issues

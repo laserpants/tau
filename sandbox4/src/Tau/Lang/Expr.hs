@@ -74,8 +74,18 @@ data Prep t
     = RCon t Name [Name]      -- ^ Simple constuctor pattern
     deriving (Show, Eq)
 
+-- | Pattern guard
+data Guard a = Guard [a] a
+    deriving (Show, Eq, Functor, Foldable, Traversable)
+
+deriveShow1 ''Guard
+deriveEq1   ''Guard
+
+fooPair :: Guard a -> ([a], a)
+fooPair (Guard a b) = (a, b)
+
 -- | Pattern match expression clause
-data Clause p a = Clause [p] [a] a
+data Clause p a = Clause [p] [Guard a] 
     deriving (Show, Eq, Functor, Foldable, Traversable)
 
 deriveShow1 ''Clause
@@ -442,9 +452,13 @@ instance MapT s t (Binding (Pattern s f g)) (Binding (Pattern t f g)) where
         BLet p      -> BLet <$> mapTagsM f p
         BFun fun ps -> BFun fun <$> traverse (mapTagsM f) ps
 
+--instance (MapT s t p q) => MapT s t (Clause p a) (Clause q a) where
+--    mapTagsM f (Clause p a b) = 
+--        Clause <$> mapTagsM f p <*> pure a <*> pure b
+
 instance (MapT s t p q) => MapT s t (Clause p a) (Clause q a) where
-    mapTagsM f (Clause p a b) = 
-        Clause <$> mapTagsM f p <*> pure a <*> pure b
+    mapTagsM f (Clause p a) = 
+        Clause <$> mapTagsM f p <*> pure a
 
 instance MapT s t (Op1 s) (Op1 t) where
     mapTagsM f = \case
