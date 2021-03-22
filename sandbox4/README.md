@@ -46,13 +46,13 @@
   - Code of conduct
   - Bugs and issues
   - Feature requests
-- License
+- [License](#license)
 
 ## Language overview
 
 ### Features
 
-  - [Purely functional](https://en.wikipedia.org/wiki/Purely_functional_programming), strict semantics
+  - Statically typed, [purely functional](https://en.wikipedia.org/wiki/Purely_functional_programming), strict semantics
   - Haskell-like syntax 
   - No partial functions
   - No explicit recursion
@@ -150,6 +150,13 @@ match xs with
 #### Rationale
 ## Compiler
 ## Roadmap
+
+##### Tests
+![Progress](https://progress-bar.dev/5/?width=300)
+
+##### Codegen
+![Progress](https://progress-bar.dev/1/?width=300)
+
 ## Wishlist
 
 - List comprehensions
@@ -160,6 +167,7 @@ match xs with
 ### Feature requests
 ## License
 
+The code is open-sourced, available under the 3-clause BSD license.
 
 
 

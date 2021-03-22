@@ -71,7 +71,6 @@ data NoListSugar
 data NoFunPats
     deriving (Show, Eq)
 
---compileExpr :: (TypeTag t, MonadSupply Name m) => Ast t (Op1 t) (Op2 t) -> m Core
 compileExpr :: (TypeTag t, MonadSupply Name m) => Ast t (Op1 t) (Op2 t) -> m Core
 compileExpr = desugarOperators >>> compileExpr3 
 

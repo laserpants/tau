@@ -38,7 +38,6 @@ type TypedAst = Ast NodeInfo (Op1 NodeInfo) (Op2 NodeInfo)
 type Internals = 
     ( TypedAst 
     , Ast Type Void Void
---    , Ast Type (Op1 Type) (Op2 Type)
     , Context )
 
 data ProgEnv = ProgEnv
@@ -85,7 +84,8 @@ compileType (Sum name vars prods) = do
         let ty = ttt name (tVar kTyp <$> vars)
             missing = nub (free ts) \\ free ty
 
-        unless (null missing) (error ("One or more type variables are missing in the type: " <> show missing))
+        unless (null missing) 
+            (error ("One or more type variables are missing in the type: " <> show missing))
 
         ProgEnv{..} <- get
         case runInfer3 mempty mempty progTypeEnv (generalize (foldr tArr ty ts)) of
@@ -113,7 +113,7 @@ type InferSupply = SupplyT Name
 type InferError  = ExceptT String
 
 runInferState :: Context -> StateT (Substitution, Context) m a -> m (a, (Substitution, Context))
-runInferState ctx = flip runStateT (mempty, ctx)
+runInferState context = flip runStateT (mempty, context)
 
 runInferReader :: a -> b -> ReaderT (a, b) m r -> m r
 runInferReader a b = flip runReaderT (a, b)
@@ -130,8 +130,8 @@ runInferMaybe = fromMaybe (Left "error")
 type InferStack c d = InferState (InferReader (InferSupply (InferError Maybe)))
 
 runInfer3 :: Context -> ClassEnv -> TypeEnv -> InferStack c d a -> Either String (a, (Substitution, Context))
-runInfer3 ctx classEnv typeEnv = 
-    runInferState ctx
+runInfer3 context classEnv typeEnv = 
+    runInferState context
     >>> runInferReader classEnv typeEnv
     >>> runInferSupply
     >>> runInferError
