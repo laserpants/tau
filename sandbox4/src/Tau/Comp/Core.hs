@@ -300,16 +300,25 @@ expandOrPatterns :: [Clause (Pattern t f g) a] -> [Clause (Pattern t f g) a]
 expandOrPatterns = concatMap $ \(Clause ps [e]) ->
     [Clause qs [e] | qs <- traverse fork ps]
   where
-    -- TODO: cata??
     fork :: Pattern t f g -> [Pattern t f g]
-    fork = project >>> \case
-        PCon t con ps  -> conPat t con <$> traverse fork ps
-        PTup t ps      -> tupPat t <$> traverse fork ps
-        PRec t fields  -> recPat t <$> traverse fork fields
-        PLst t ps      -> lstPat t <$> traverse fork ps
-        PAs  t name a  -> asPat t name <$> fork a
-        POr  _ a b     -> fork a <> fork b
-        p              -> [embed p]
+    fork = cata $ \case 
+        PCon t con ps  -> conPat t con <$> sequence ps
+        PTup t ps      -> tupPat t <$> sequence ps
+        PRec t fields  -> recPat t <$> sequence fields
+        PLst t ps      -> lstPat t <$> ps
+        PAs  t name a  -> asPat t name <$> a
+        POr  _ a b     -> a <> b
+        p              -> embed <$> sequence p 
+
+--    fork :: Pattern t f g -> [Pattern t f g]
+--    fork = project >>> \case
+--        PCon t con ps  -> conPat t con <$> traverse fork ps
+--        PTup t ps      -> tupPat t <$> traverse fork ps
+--        PRec t fields  -> recPat t <$> traverse fork fields
+--        PLst t ps      -> lstPat t <$> traverse fork ps
+--        PAs  t name a  -> asPat t name <$> fork a
+--        POr  _ a b     -> fork a <> fork b
+--        p              -> [embed p]
 
 compilePatterns
   :: (TypeTag t, MonadSupply Name m)
@@ -345,7 +354,7 @@ matchAlgo
   -> [Clause (Pattern t PatternsExpanded g) (Expr t (Prep t) Name Name Void Void NoListSugar NoFunPats)]
   -> Expr t (Prep t) Name Name Void Void NoListSugar NoFunPats
   -> m (Expr t (Prep t) Name Name Void Void NoListSugar NoFunPats)
-matchAlgo [] []                         c = pure c
+matchAlgo [] []                           c = pure c
 matchAlgo [] (Clause [] [Guard [] e]:_)   _ = pure e
 matchAlgo [] (Clause [] [Guard exs e]:qs) c =
     ifExpr (exprTag c) (foldr1 andExpr exs) e <$> matchAlgo [] qs c
@@ -354,7 +363,6 @@ matchAlgo (u:us) qs c =
         [Variable eqs] ->
             matchAlgo us (runSubst <$> eqs) c
           where
-
             runSubst (Clause (Fix (PVar t name):ps) [Guard exs e]) =
                 substitute name u <$> Clause ps [Guard exs e]
 
@@ -367,7 +375,6 @@ matchAlgo (u:us) qs c =
             -- The remaining case is for wildcard and literal patterns
             runSubst (Clause (Fix _:ps) [Guard exs e]) =
                 Clause ps [Guard exs e]
-
 
 --            runSubst (Clause (Fix (PVar t name):ps) exs e) =
 --                substitute name u <$> Clause ps exs e
@@ -531,28 +538,37 @@ clauses :: Labeled a -> a
 clauses (Constructor eqs) = eqs
 clauses (Variable    eqs) = eqs
 
---labeledClause eq@(Clause (p:_) _ _) = f p where
 labeledClause :: Clause (Pattern t f g) a -> Labeled (Clause (Pattern t f g) a)
-labeledClause eq@(Clause (p:_) _) = f p 
-    where
-      f = project >>> \case
-          POr{}     -> error "Implementation error"
-          PAs _ _ q -> f q
-          PCon{}    -> Constructor eq
-          PTup{}    -> Constructor eq
-          PRec{}    -> Constructor eq
-          PLst{}    -> Constructor eq
-          PVar{}    -> Variable eq
-          PAny{}    -> Variable eq
-          PLit{}    -> Variable eq
+labeledClause eq@(Clause (p:_) _) = flip cata p $ \case
+
+      PCon{}    -> Constructor eq
+      PTup{}    -> Constructor eq
+      PRec{}    -> Constructor eq
+      PLst{}    -> Constructor eq
+      PVar{}    -> Variable eq
+      PAny{}    -> Variable eq
+      PLit{}    -> Variable eq
+      PAs _ _ q -> q
+      POr{}     -> error "Implementation error"
+
+--      f = project >>> \case
+--          POr{}     -> error "Implementation error"
+--          PAs _ _ q -> f q
+--          PCon{}    -> Constructor eq
+--          PTup{}    -> Constructor eq
+--          PRec{}    -> Constructor eq
+--          PLst{}    -> Constructor eq
+--          PVar{}    -> Variable eq
+--          PAny{}    -> Variable eq
+--          PLit{}    -> Variable eq
 
 clauseGroups :: [Clause (Pattern t f g) a] -> [Labeled [Clause (Pattern t f g) a]]
 clauseGroups = cata alg . fmap labeledClause where
-    alg Nil = []
+    alg Nil                                        = []
     alg (Cons (Constructor e) (Constructor es:ts)) = Constructor (e:es):ts
-    alg (Cons (Variable e) (Variable es:ts)) = Variable (e:es):ts
-    alg (Cons (Constructor e) ts) = Constructor [e]:ts
-    alg (Cons (Variable e) ts) = Variable [e]:ts
+    alg (Cons (Variable e) (Variable es:ts))       = Variable (e:es):ts
+    alg (Cons (Constructor e) ts)                  = Constructor [e]:ts
+    alg (Cons (Variable e) ts)                     = Variable [e]:ts
 
 patternInfo
   :: (MonadSupply Name m)
@@ -589,11 +605,6 @@ substitute name subst = para $ \case
             | otherwise                 = snd <$> eq
         pats (RCon _ _ ps) = ps
 
---        substEq eq@(Clause ps _ _)
---            | name `elem` (pats =<< ps) = fst <$> eq
---            | otherwise                 = snd <$> eq
---        pats (RCon _ _ ps) = ps
-
     expr -> snd <$> expr & \case
         EVar t var
             | name == var -> subst
@@ -609,6 +620,7 @@ sequenceExs = (fun <$>) . sequence where
 
 toCore :: (MonadSupply Name m) => Expr t (Prep t) Name Name Void Void NoListSugar NoFunPats -> m Core
 toCore = cata $ \case
+
     EVar _ var       -> pure (cVar var)
     ELit _ lit       -> pure (cLit lit)
     EIf  _ e1 e2 e3  -> cIf <$> e1 <*> e2 <*> e3
@@ -788,7 +800,9 @@ applyDicts (InClass name ty) expr
 --                    _ -> 
 --                        def
 
---blob :: (Name, ProgExpr) -> m (Name, (Ast (NodeInfoT Type) Void Void f))
+--blob (a, b) = Field (exprTag foo) a <$> compileClasses (desugarOperators b)
+
+----blob :: (Name, ProgExpr) -> m (Name, (Ast (NodeInfoT Type) Void Void f))
 blob (a, b) = do
     foo <- compileClasses (desugarOperators b)
     --foo <- compileClasses b
@@ -867,6 +881,59 @@ defaultMatrix = (fun =<<)
             PAs _ _ q -> fun (q:ps)
             POr _ q r -> fun (q:ps) <> fun (r:ps)
             _         -> [ps]
+
+--defaultMatrix :: [[Pattern t f g]] -> [[Pattern t f g]]
+--defaultMatrix = undefined -- concatMap fun2
+--
+--boss :: [Pattern t f g] -> [[Pattern t f g]]
+--boss = ana $ \case
+--    (Fix PCon{}:_)       -> Nil
+--    (Fix PRec{}:_)       -> Nil
+--    (Fix PTup{}:_)       -> Nil
+--    (Fix PLst{}:_)       -> Nil
+--    (Fix PLit{}:_)       -> Nil
+--    (Fix (PAs _ _ q):ps) -> Cons ps []
+--    (Fix _:ps)           -> Cons ps []
+--    _                    -> Nil
+--
+--fun :: Pattern t f g -> [Pattern t f g]
+--fun = cata $ \case
+--    PCon{}    -> []
+--    PRec{}    -> []
+--    PTup{}    -> []
+--    PLst{}    -> []
+--    PLit{}    -> []
+--    PAs _ _ q -> [q]
+--    POr _ q r -> [q, r]
+----    _         -> []
+--
+--defaultMatrix33 :: (Show t, Show f, Show g) => [[Pattern t f g]] -> [[Pattern t f g]]
+--defaultMatrix33 = concatMap boss
+
+--fun2 :: (Show t, Show f, Show g) => [Pattern t f g] -> [[Pattern t f g]]
+--fun2 = para $ \case
+--
+--    Cons (Fix PCon{}) _       -> []
+--    Cons (Fix PRec{}) _       -> []
+--    Cons (Fix PTup{}) _       -> []
+--    Cons (Fix PLst{}) _       -> []
+--    Cons (Fix PLit{}) _       -> []
+--    Cons (Fix (PAs _ _ q)) ps -> traceShow q $ traceShow ps $ [fst ps] -- traceShow q $ traceShow ps $ []
+----    Cons (Fix (POr _ q r)) ps -> ([q]:ps) <> ([r]:ps)
+--    Cons _                 ps -> [fst ps]
+--    Nil                       -> []
+
+--fun2 (p:ps) = flip cata p $ \case
+--
+--    PCon{}    -> []
+--    PRec{}    -> []
+--    PTup{}    -> []
+--    PLst{}    -> []
+--    PLit{}    -> []
+----    PAs _ _ q -> let xx = q <> ps in undefined
+----    POr _ q r -> q <> [ps] <> r <> [ps] -- fun2 (q:ps) <> fun2 (r:ps)
+--    _         -> [ps]
+
 
 specialized :: Name -> [t] -> [[Pattern t f g]] -> [[Pattern t f g]]
 specialized name ts = concatMap rec 

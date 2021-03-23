@@ -21,7 +21,7 @@
       - Keywords `where`, and `and`
     - Function application and composition
     - Control structures: `if`, `let`, etc.
-    - Pattern matching with `match` and `fun`
+    - Pattern matching: `match` and `fun` statements
     - Anonymous (lambda) functions 
     - Dot-syntax
     - Operators
@@ -111,7 +111,7 @@ headOr rep xs = head xs ? rep
 ##### Keywords `where`, and `and`
 #### Function application and composition
 #### Control structures: `if`, `let`, etc.
-#### Pattern matching with `match` and `fun`
+#### Pattern matching: `match` and `fun` statements
 
 Pattern matching in functional languages is closely related to algebraic data types.
 The `match` statement allows deconstruction of values by comparison against a list of pattern clauses.
@@ -128,6 +128,12 @@ match xs with
 match xs with
   | [x] or [x, _] or [x, _, _] => x
   | _                          => 0
+```
+
+```
+match xs with
+  | (x :: _) when (xs.length <= 3) => x
+  | _                              => 0
 ```
 
 

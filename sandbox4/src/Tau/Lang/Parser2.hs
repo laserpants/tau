@@ -9,7 +9,10 @@ import Text.Megaparsec
 
 data Keyword
     = KLet
+    | KIn
     | KIf
+    | KThen
+    | KElse
     deriving (Show, Eq, Ord)
 
 data Symbol

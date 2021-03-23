@@ -1,3 +1,4 @@
+import Tau.Comp.CoreTests
 import Tau.CompilerTests
 import Tau.CoreEvalTests
 import Tau.ParserTests
@@ -27,3 +28,7 @@ main =
         describe "\nTerm substitution\n" testTermSubtitution
         describe "\nTypes\n" testTypes
         describe "\nProgram translation\n" testProgTransl
+
+        describe "\nUnit tests\n" $ do
+            describe "\nComp.Core\n" $ do
+                testDefaultMatrix
