@@ -1,3 +1,4 @@
+{-# LANGUAGE DeriveTraversable #-}
 {-# LANGUAGE EmptyDataDeriving    #-}
 {-# LANGUAGE FlexibleContexts     #-}
 {-# LANGUAGE FlexibleInstances    #-}
@@ -867,10 +868,11 @@ headCons = (>>= fun)
     prim TChar{}       = "#Char"
     prim TString{}     = "#String"
 
-defaultMatrix :: [[Pattern t f g]] -> [[Pattern t f g]]
+-- o
+defaultMatrix :: [[Pattern t a u]] -> [[Pattern t a u]]
 defaultMatrix = (fun =<<)
-  where 
-    fun :: [Pattern t f g] -> [[Pattern t f g]]
+  where
+    fun :: [Pattern t a u] -> [[Pattern t a u]]
     fun (p:ps) =
         case project p of
             PCon{}    -> []
@@ -882,76 +884,167 @@ defaultMatrix = (fun =<<)
             POr _ q r -> fun (q:ps) <> fun (r:ps)
             _         -> [ps]
 
+--bork2 :: ([[Pattern t f g]] -> [[Pattern t f g]]) -> [[Pattern t f g]] -> [[Pattern t f g]]
+--bork2 fun xx = do
+--    (p:ps) <- xx
+--    case project p of
+--        PCon{}    -> []
+--        PRec{}    -> []
+--        PTup{}    -> []
+--        PLst{}    -> []
+--        PLit{}    -> []
+--        PAs _ _ q -> fun [q:ps]
+--        POr _ q r -> fun [q:ps] <> fun [r:ps]
+--        _         -> [ps]
 --
---     a11      c x      a31       a41
---      |        |        |         |
---     a12      a22      a32    a42 or b42
---      |      |        |         |    
---     a13      a23      a33       a43
---
---
+--(p:ps) =
+--        case project p of
+--            PCon{}    -> []
+--            PRec{}    -> []
+--            PTup{}    -> []
+--            PLst{}    -> []
+--            PLit{}    -> []
+--            PAs _ _ q -> fun (q:ps)
+--            POr _ q r -> fun (q:ps) <> fun (r:ps)
+--            _         -> [ps]
 
-data RowInfo t f g = RowInfo [(Pattern t f g, [RowInfo t f g])]
+--  where 
+--    fun :: [Pattern t f g] -> [[Pattern t f g]]
+--    fun (p:ps) =
+--        case project p of
+--            PCon{}    -> []
+--            PRec{}    -> []
+--            PTup{}    -> []
+--            PLst{}    -> []
+--            PLit{}    -> []
+--            PAs _ _ q -> fun (q:ps)
+--            POr _ q r -> fun (q:ps) <> fun (r:ps)
+--            _         -> [ps]
 
-testInfo = RowInfo 
-    [ (varPat () "a11"               , [])
-    , (conPat () "c" [varPat () "x"] , [])
-    ]
-
-row :: RowInfo t f g -> RowInfo t f g
-row = undefined
-
---defaultMatrix :: [[Pattern t f g]] -> [[Pattern t f g]]
---defaultMatrix = undefined -- concatMap fun2
+----
+----     a11      c x      a31       a41
+----      |        |        |         |
+----     a12      a22      a32    a42 or b42
+----      |      |        |         |    
+----     a13      a23      a33       a43
+----
 --
---boss :: [Pattern t f g] -> [[Pattern t f g]]
---boss = ana $ \case
---    (Fix PCon{}:_)       -> Nil
---    (Fix PRec{}:_)       -> Nil
---    (Fix PTup{}:_)       -> Nil
---    (Fix PLst{}:_)       -> Nil
---    (Fix PLit{}:_)       -> Nil
---    (Fix (PAs _ _ q):ps) -> Cons ps []
---    (Fix _:ps)           -> Cons ps []
---    _                    -> Nil
+--data RowInfo t f g = RowInfo [(Pattern t f g, [RowInfo t f g])]
+--    deriving (Show, Eq)
 --
---fun :: Pattern t f g -> [Pattern t f g]
---fun = cata $ \case
---    PCon{}    -> []
---    PRec{}    -> []
---    PTup{}    -> []
---    PLst{}    -> []
---    PLit{}    -> []
---    PAs _ _ q -> [q]
---    POr _ q r -> [q, r]
-----    _         -> []
+--testInfo = RowInfo 
+--    [ (varPat () "a11"               , [ RowInfo [ (varPat () "a12", [ RowInfo [ (varPat () "a13", []) ] ]) ] ])
+--    , (conPat () "c" [varPat () "x"] , [ RowInfo [ (varPat () "a22", [ RowInfo [ (varPat () "a23", []) ] ]) ] ])
+--    , (varPat () "a31"               , [ RowInfo [ (varPat () "a32", [ RowInfo [ (varPat () "a33", []) ] ]) ] ])
+--    , (varPat () "a41"               , [ RowInfo [ (orPat () (varPat () "a42") (varPat () "b42"), [ RowInfo [ (varPat () "a43", []) ] ]) ] ])
+--    ]
 --
---defaultMatrix33 :: (Show t, Show f, Show g) => [[Pattern t f g]] -> [[Pattern t f g]]
---defaultMatrix33 = concatMap boss
-
---fun2 :: (Show t, Show f, Show g) => [Pattern t f g] -> [[Pattern t f g]]
---fun2 = para $ \case
+--row :: RowInfo t f g -> RowInfo t f g
+--row (RowInfo xs) = RowInfo (foo9 =<< xs)
+-- 
+--foo9 :: (Pattern t f g, [RowInfo t f g]) -> [(Pattern t f g, [RowInfo t f g])]
+--foo9 (Fix PCon{}, _) = []
+--foo9 (Fix PRec{}, _) = []
+--foo9 (Fix PTup{}, _) = []
+--foo9 (Fix PLst{}, _) = []
+--foo9 (Fix PLit{}, _) = []
+--foo9 (Fix (PAs _ _ p), rows) = [(p, row <$> rows)]
+--foo9 (Fix (POr _ p q), rows) = [(p, row <$> rows), (q, row <$> rows)]
+--foo9 (p, rows)               = [(p, row <$> rows)]
 --
---    Cons (Fix PCon{}) _       -> []
---    Cons (Fix PRec{}) _       -> []
---    Cons (Fix PTup{}) _       -> []
---    Cons (Fix PLst{}) _       -> []
---    Cons (Fix PLit{}) _       -> []
---    Cons (Fix (PAs _ _ q)) ps -> traceShow q $ traceShow ps $ [fst ps] -- traceShow q $ traceShow ps $ []
-----    Cons (Fix (POr _ q r)) ps -> ([q]:ps) <> ([r]:ps)
---    Cons _                 ps -> [fst ps]
---    Nil                       -> []
-
---fun2 (p:ps) = flip cata p $ \case
+----data ColumnF t f g a = ColumnF [(Pattern t f g, [a])]
+----    deriving (Show, Eq, Functor, Foldable)
+----
+----type Column t f g = Fix (ColumnF t f g)
+----
+----column_ = Fix . ColumnF
+----
+----testInfo_ = column_
+----    [ (varPat () "a11"               , [ column_ [ (varPat () "a12", [ column_ [ (varPat () "a13", []) ] ]) ] ])
+----    , (conPat () "c" [varPat () "x"] , [ column_ [ (varPat () "a22", [ column_ [ (varPat () "a23", []) ] ]) ] ])
+----    , (varPat () "a31"               , [ column_ [ (varPat () "a32", [ column_ [ (varPat () "a33", []) ] ]) ] ])
+----    , (varPat () "a41"               , [ column_ [ (orPat () (varPat () "a42") (varPat () "b42"), [ column_ [ (varPat () "a43", []) ] ]) ] ])
+----    ]
 --
---    PCon{}    -> []
---    PRec{}    -> []
---    PTup{}    -> []
---    PLst{}    -> []
---    PLit{}    -> []
-----    PAs _ _ q -> let xx = q <> ps in undefined
-----    POr _ q r -> q <> [ps] <> r <> [ps] -- fun2 (q:ps) <> fun2 (r:ps)
---    _         -> [ps]
+----col__ :: Column t f g -> Column t f g
+----col__ (Fix (ColumnF xs)) = column_ undefined
+----  where
+----    zoom = (cata alg xs)
+----
+----    alg x =
+----        case x of
+----            ColumnF ((Fix PCon{}, _):_) -> [Fix (ColumnF undefined)]
+--
+--
+----row :: RowInfo t f g -> RowInfo t f g
+----row (RowInfo xs) = RowInfo (foo9 =<< xs)
+---- 
+----foo9 :: (Pattern t f g, [RowInfo t f g]) -> [(Pattern t f g, [RowInfo t f g])]
+----foo9 (Fix PCon{}, _) = []
+----foo9 (Fix PRec{}, _) = []
+----foo9 (Fix PTup{}, _) = []
+----foo9 (Fix PLst{}, _) = []
+----foo9 (Fix PLit{}, _) = []
+----foo9 (Fix (PAs _ _ p), rows) = [(p, rows)]
+----foo9 (Fix (POr _ p q), rows) = [(p, rows), (q, rows)]
+----foo9 r = [r]
+--
+--
+--
+--
+--
+--
+----defaultMatrix :: [[Pattern t f g]] -> [[Pattern t f g]]
+----defaultMatrix = undefined -- concatMap fun2
+----
+----boss :: [Pattern t f g] -> [[Pattern t f g]]
+----boss = ana $ \case
+----    (Fix PCon{}:_)       -> Nil
+----    (Fix PRec{}:_)       -> Nil
+----    (Fix PTup{}:_)       -> Nil
+----    (Fix PLst{}:_)       -> Nil
+----    (Fix PLit{}:_)       -> Nil
+----    (Fix (PAs _ _ q):ps) -> Cons ps []
+----    (Fix _:ps)           -> Cons ps []
+----    _                    -> Nil
+----
+----fun :: Pattern t f g -> [Pattern t f g]
+----fun = cata $ \case
+----    PCon{}    -> []
+----    PRec{}    -> []
+----    PTup{}    -> []
+----    PLst{}    -> []
+----    PLit{}    -> []
+----    PAs _ _ q -> [q]
+----    POr _ q r -> [q, r]
+------    _         -> []
+----
+----defaultMatrix33 :: (Show t, Show f, Show g) => [[Pattern t f g]] -> [[Pattern t f g]]
+----defaultMatrix33 = concatMap boss
+--
+----fun2 :: (Show t, Show f, Show g) => [Pattern t f g] -> [[Pattern t f g]]
+----fun2 = para $ \case
+----
+----    Cons (Fix PCon{}) _       -> []
+----    Cons (Fix PRec{}) _       -> []
+----    Cons (Fix PTup{}) _       -> []
+----    Cons (Fix PLst{}) _       -> []
+----    Cons (Fix PLit{}) _       -> []
+----    Cons (Fix (PAs _ _ q)) ps -> traceShow q $ traceShow ps $ [fst ps] -- traceShow q $ traceShow ps $ []
+------    Cons (Fix (POr _ q r)) ps -> ([q]:ps) <> ([r]:ps)
+----    Cons _                 ps -> [fst ps]
+----    Nil                       -> []
+--
+----fun2 (p:ps) = flip cata p $ \case
+----
+----    PCon{}    -> []
+----    PRec{}    -> []
+----    PTup{}    -> []
+----    PLst{}    -> []
+----    PLit{}    -> []
+------    PAs _ _ q -> let xx = q <> ps in undefined
+------    POr _ q r -> q <> [ps] <> r <> [ps] -- fun2 (q:ps) <> fun2 (r:ps)
+----    _         -> [ps]
 
 
 specialized :: Name -> [t] -> [[Pattern t f g]] -> [[Pattern t f g]]

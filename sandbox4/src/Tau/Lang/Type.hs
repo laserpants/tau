@@ -21,9 +21,10 @@ import qualified Tau.Util.Env as Env
 
 -- | Base functor for Kind
 data KindF a
-    = KTyp                    -- ^ A concrete type (kind of value-types)
-    | KArr a a                -- ^ Type constructor
---    | KCls                    -- ^ A type class constraint
+    = KTyp                    -- ^ Kind of concrete (value) types
+    | KArr a a                -- ^ Kind of type constructors
+--  | KClc                    -- ^ Kind of type class constraints
+--  | KRow 
     deriving (Show, Eq, Ord, Functor, Foldable, Traversable)
 
 deriveShow1 ''KindF

@@ -1,8 +1,10 @@
 {-# LANGUAGE OverloadedStrings #-}
 module Tau.Comp.CoreTests where
 
+import Data.Text (Text, pack, unpack)
 import Tau.Comp.Core
 import Tau.Lang.Expr
+import Tau.Util
 import Test.Hspec
 import Utils
 
@@ -10,8 +12,9 @@ type TestMatrix = [[Pattern () () ()]]
 
 computeDefaultMatrix :: TestMatrix -> TestMatrix -> SpecWith ()
 computeDefaultMatrix m1 m2 = 
-    it "✔ TODO\n" $
-        defaultMatrix m1 == m2
+    describe ("\n" <> unpack (prettyPrint m1) <> "\n") $ do
+        it "✔ Pass\n" $
+            defaultMatrix m1 == m2
 
 testDefaultMatrix :: SpecWith ()
 testDefaultMatrix = do
