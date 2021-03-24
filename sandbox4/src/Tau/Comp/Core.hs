@@ -882,6 +882,25 @@ defaultMatrix = (fun =<<)
             POr _ q r -> fun (q:ps) <> fun (r:ps)
             _         -> [ps]
 
+--
+--     a11      c x      a31       a41
+--      |        |        |         |
+--     a12      a22      a32    a42 or b42
+--      |      |        |         |    
+--     a13      a23      a33       a43
+--
+--
+
+data RowInfo t f g = RowInfo [(Pattern t f g, [RowInfo t f g])]
+
+testInfo = RowInfo 
+    [ (varPat () "a11"               , [])
+    , (conPat () "c" [varPat () "x"] , [])
+    ]
+
+row :: RowInfo t f g -> RowInfo t f g
+row = undefined
+
 --defaultMatrix :: [[Pattern t f g]] -> [[Pattern t f g]]
 --defaultMatrix = undefined -- concatMap fun2
 --
