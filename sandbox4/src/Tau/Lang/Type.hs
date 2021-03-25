@@ -1,10 +1,11 @@
-{-# LANGUAGE DeriveTraversable #-}
-{-# LANGUAGE FlexibleContexts  #-}
-{-# LANGUAGE FlexibleInstances #-}
-{-# LANGUAGE LambdaCase        #-}
-{-# LANGUAGE OverloadedStrings #-}
-{-# LANGUAGE StrictData        #-}
-{-# LANGUAGE TemplateHaskell   #-}
+{-# LANGUAGE DeriveTraversable  #-}
+{-# LANGUAGE FlexibleContexts   #-}
+{-# LANGUAGE FlexibleInstances  #-}
+{-# LANGUAGE LambdaCase         #-}
+{-# LANGUAGE OverloadedStrings  #-}
+{-# LANGUAGE StandaloneDeriving #-}
+{-# LANGUAGE StrictData         #-}
+{-# LANGUAGE TemplateHaskell    #-}
 module Tau.Lang.Type where
 
 import Control.Arrow (second, (<<<), (>>>))
@@ -24,7 +25,7 @@ data KindF a
     = KTyp                    -- ^ Kind of concrete (value) types
     | KArr a a                -- ^ Kind of type constructors
 --  | KClc                    -- ^ Kind of type class constraints
---  | KRow 
+--  | KRow
     deriving (Show, Eq, Ord, Functor, Foldable, Traversable)
 
 deriveShow1 ''KindF
@@ -34,35 +35,28 @@ deriveOrd1  ''KindF
 -- | Kinds
 type Kind = Fix KindF
 
+-- | Base functor for row types
+data RowF t a
+    = RNil                    -- ^ Empty row
+    | RExt t a                -- ^ Extension of a row
+
+-- | Row type
+type RowT g = Fix (RowF (TypeT g))
+
+type Row = RowT Void
+
+type PolyRow = RowT Int
+
 -- | Base functor for Type
---data TypeF r g a 
---data TypeF r g a 
-data TypeF g a 
+data TypeF g a
     = TVar Kind Name
     | TCon Kind Name
     | TArr a a
     | TApp a a
---    | TRow r
+    | TRow (RowT g)
     | TGen g
-    deriving (Show, Eq, Ord, Functor, Foldable, Traversable)
-
-deriveShow1 ''TypeF
-deriveEq1   ''TypeF
-deriveOrd1  ''TypeF
-
-data RowF t a = RNil | RExt t a
-    deriving (Show, Eq, Ord, Functor, Foldable, Traversable)
-
-deriveShow1 ''RowF
-deriveEq1   ''RowF
-deriveOrd1  ''RowF
-
--- | Row type
-type Row t = Fix (RowF t)
 
 -- | Types
---type TypeT g = Fix (TypeF Row g)
---type TypeT t g = Fix (TypeF t g)
 type TypeT g = Fix (TypeF g)
 
 -- | Standalone type (a type that is not part of a type scheme)
@@ -81,6 +75,16 @@ type Predicate = PredicateT Type
 -- | A type-class constraint which appears in a type scheme
 type PolyPredicate = PredicateT Int
 
+deriving instance Functor (TypeF g)
+
+deriveShow1 ''TypeF
+deriveEq1   ''TypeF
+deriveOrd1  ''TypeF
+
+deriveShow1 ''RowF
+deriveEq1   ''RowF
+deriveOrd1  ''RowF
+
 -- | Polymorphic type schemes
 data Scheme = Forall [Kind] [PolyPredicate] PolyType
     deriving (Show, Eq)
@@ -91,6 +95,7 @@ predicateName (InClass n _) = n
 predicateType :: PredicateT a -> a
 predicateType (InClass _ t) = t
 
+-- HasType?
 class Typed a where
     typeOf :: a -> Type
 
@@ -138,13 +143,13 @@ maybeSplit :: Maybe Name -> [Name]
 maybeSplit = maybe [] $ Text.split (== ',')
 
 recordFieldNames :: Name -> [Name]
-recordFieldNames tag = 
-    maybeSplit (Text.stripPrefix "{" 
+recordFieldNames tag =
+    maybeSplit (Text.stripPrefix "{"
         =<< Text.stripSuffix "}" tag)
 
 tupleElems :: Name -> [Name]
-tupleElems tag = 
-    maybeSplit (Text.stripPrefix "(" 
+tupleElems tag =
+    maybeSplit (Text.stripPrefix "("
         =<< Text.stripSuffix ")" tag)
 
 upgrade :: Type -> PolyType
