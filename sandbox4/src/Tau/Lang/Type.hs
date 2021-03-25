@@ -24,8 +24,8 @@ import qualified Tau.Util.Env as Env
 data KindF a
     = KTyp                    -- ^ Kind of concrete (value) types
     | KArr a a                -- ^ Kind of type constructors
---  | KClc                    -- ^ Kind of type class constraints
---  | KRow
+    | KClc                    -- ^ Kind of type class constraints
+    | KRow
     deriving (Show, Eq, Ord, Functor, Foldable, Traversable)
 
 deriveShow1 ''KindF
@@ -38,7 +38,7 @@ type Kind = Fix KindF
 -- | Base functor for row types
 data RowF t a
     = RNil                    -- ^ Empty row
-    | RExt t a                -- ^ Extension of a row
+    | RExt Name t a           -- ^ Extension of a row
 
 -- | Row type
 type RowT g = Fix (RowF (TypeT g))
@@ -76,6 +76,7 @@ type Predicate = PredicateT Type
 type PolyPredicate = PredicateT Int
 
 deriving instance Functor (TypeF g)
+deriving instance Functor (RowF t)
 
 deriveShow1 ''TypeF
 deriveEq1   ''TypeF
@@ -210,8 +211,8 @@ kTyp = embed KTyp
 kArr :: Kind -> Kind -> Kind
 kArr = embed2 KArr
 
---kCls :: Kind
---kCls = embed KCls
+kClc :: Kind
+kClc = embed KClc
 
 infixr 1 `kArr`
 
@@ -220,6 +221,12 @@ kFun = kTyp `kArr` kTyp
 
 kFun2 :: Kind
 kFun2 = kTyp `kArr` kTyp `kArr` kTyp
+
+rNil :: RowT g
+rNil = embed RNil
+
+rExt :: Name -> TypeT g -> RowT g -> RowT g
+rExt = embed3 RExt
 
 tVar :: Kind -> Name -> TypeT a
 tVar = embed2 TVar
