@@ -35,11 +35,14 @@ deriveOrd1  ''KindF
 type Kind = Fix KindF
 
 -- | Base functor for Type
-data TypeF g a
+--data TypeF r g a 
+--data TypeF r g a 
+data TypeF g a 
     = TVar Kind Name
     | TCon Kind Name
     | TArr a a
     | TApp a a
+--    | TRow r
     | TGen g
     deriving (Show, Eq, Ord, Functor, Foldable, Traversable)
 
@@ -47,8 +50,20 @@ deriveShow1 ''TypeF
 deriveEq1   ''TypeF
 deriveOrd1  ''TypeF
 
+data RowF t a = RNil | RExt t a
+    deriving (Show, Eq, Ord, Functor, Foldable, Traversable)
+
+deriveShow1 ''RowF
+deriveEq1   ''RowF
+deriveOrd1  ''RowF
+
+-- | Row type
+type Row t = Fix (RowF t)
+
 -- | Types
-type TypeT a = Fix (TypeF a)
+--type TypeT g = Fix (TypeF Row g)
+--type TypeT t g = Fix (TypeF t g)
+type TypeT g = Fix (TypeF g)
 
 -- | Standalone type (a type that is not part of a type scheme)
 type Type = TypeT Void
