@@ -15,10 +15,9 @@ import Data.Text (Text)
 import Data.Types.Injective
 import Tau.Util
 
--- | Language primitives
+-- | Built-in primitive types
 data Prim
-    = TVoid
-    | TUnit                   -- ^ Unit value
+    = TUnit                   -- ^ Unit value
     | TBool Bool              -- ^ Booleans
     | TInt Int                -- ^ Bounded machine integers (32 or 64 bit)
     | TInteger Integer        -- ^ Arbitrary precision integers (bigint)
@@ -165,7 +164,6 @@ type Expr t p q r n o c d = Fix (ExprF t p q r n o c d)
 
 literalName :: Prim -> Name
 literalName = \case
-    TVoid        -> "Void"
     TUnit        -> "Unit"
     (TBool    _) -> "Bool"
     (TInt     _) -> "Int"

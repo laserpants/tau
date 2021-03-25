@@ -240,7 +240,6 @@ infer = cata $ \expr -> do
 
 inferPrim :: (Monad m) => Prim -> m Type
 inferPrim = pure . \case
-    TVoid      -> tVoid
     TUnit      -> tUnit
     TBool{}    -> tBool
     TInt{}     -> tInt
