@@ -972,6 +972,11 @@ testfact = recN go 1 (S (S (S (S (S Z)))))
   where
     go x a = fromNat x * a
 
+a = rExt "name" tString (rExt "id" tInt rNil)
+
+b = rExt "id" tInt (rExt "name" tString rNil)
+
+
 -- fact = 
 --   reduce Succ init 1 | a => fromNat elem * a
 
