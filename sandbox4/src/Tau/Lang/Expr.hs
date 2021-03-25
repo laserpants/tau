@@ -21,8 +21,8 @@ data Prim
     | TBool Bool              -- ^ Booleans
     | TInt Int                -- ^ Bounded machine integers (32 or 64 bit)
     | TInteger Integer        -- ^ Arbitrary precision integers (bigint)
-    | TFloat Float            -- ^ Single precision Floating point numbers 
-    | TDouble Double          -- ^ Double precision Floating point numbers
+    | TFloat Float            -- ^ Single precision floating point numbers 
+    | TDouble Double          -- ^ Double precision floating point numbers
     | TChar Char              -- ^ Chars
     | TString Text            -- ^ Strings
     deriving (Show, Eq, Ord)

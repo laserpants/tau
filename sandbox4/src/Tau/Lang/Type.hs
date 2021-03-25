@@ -263,8 +263,8 @@ tInt = typ "Int"
 tInteger :: TypeT a
 tInteger = typ "Integer"
 
---tNat :: TypeT a
---tNat = typ "Nat"
+tNat :: TypeT a
+tNat = typ "Nat"
 
 tFloat :: TypeT a
 tFloat = typ "Float"
