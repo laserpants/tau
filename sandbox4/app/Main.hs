@@ -976,6 +976,12 @@ a = rExt "name" tString (rExt "id" tInt rNil)
 
 b = rExt "id" tInt (rExt "name" tString rNil)
 
+c = rExt "id" tInt (rExt "name" tString (rExt "id" tString rNil))
+
+--
+--  a : Int, b : String, c : Bool, a : String, r
+--
+
 
 -- fact = 
 --   reduce Succ init 1 | a => fromNat elem * a

@@ -13,10 +13,12 @@ import Control.Comonad.Cofree
 import Control.Monad.Supply
 import Data.Functor.Foldable
 import Data.List (nub, sortOn)
+import Data.Map (Map)
 import Data.Set.Monad (Set)
 import Data.Void
 import Tau.Util
 import Tau.Util.Env (Env(..))
+import qualified Data.Map as Map
 import qualified Data.Text as Text
 import qualified Tau.Util.Env as Env
 
@@ -24,8 +26,8 @@ import qualified Tau.Util.Env as Env
 data KindF a
     = KTyp                    -- ^ Kind of concrete (value) types
     | KArr a a                -- ^ Kind of type constructors
-    | KClc                    -- ^ Kind of type class constraints
-    | KRow
+    | KTcc                    -- ^ Kind of type class constraints
+    | KRow                    -- ^ Kind of rows
     deriving (Show, Eq, Ord, Functor, Foldable, Traversable)
 
 deriveShow1 ''KindF
@@ -205,14 +207,35 @@ instance Free TypeEnv where
 
 type Context = Env (Set Name)
 
+type RowRep g = Map Name [TypeT g]
+
+rowRepresentation :: RowT g -> RowRep g
+rowRepresentation = cata $ \case 
+    RNil              -> mempty
+    RExt label ty map -> Map.insertWith (<>) label [ty] map
+
+repToRow :: RowRep g -> RowT g 
+repToRow = Map.foldrWithKey (flip . foldr . rExt) rNil
+
+rowPermutation :: Name -> RowT g -> Maybe (RowT g)
+rowPermutation label row = 
+    case Map.lookup label map of
+        Nothing     -> Nothing
+        Just (t:ts) -> Just (rExt label t (repToRow (Map.update (const (Just ts)) label map)))
+  where
+    map = rowRepresentation row
+
 kTyp :: Kind
 kTyp = embed KTyp
 
 kArr :: Kind -> Kind -> Kind
 kArr = embed2 KArr
 
-kClc :: Kind
-kClc = embed KClc
+kTcc :: Kind
+kTcc = embed KTcc
+
+kRow :: Kind
+kRow = embed KRow
 
 infixr 1 `kArr`
 
@@ -244,6 +267,9 @@ infixr 1 `tArr`
 
 tApp :: TypeT a -> TypeT a -> TypeT a
 tApp = embed2 TApp
+
+tRow :: RowT a -> TypeT a
+tRow = embed1 TRow
 
 typ :: Name -> TypeT a
 typ = tCon kTyp
@@ -280,6 +306,9 @@ tChar = typ "Char"
 
 tListCon :: TypeT a
 tListCon = tCon kFun "List"
+
+tRowExtCon :: TypeT a
+tRowExtCon = tCon (kTyp `kArr` kRow `kArr` kRow) "{label}"
 
 tList :: TypeT a -> TypeT a
 tList = tApp tListCon

@@ -97,6 +97,38 @@ headOr : forall a. a -> List a -> a
 headOr rep xs = head xs ? rep
 ```
 
+```
+head : forall a. List a -> Option a
+head(xs) = 
+  match xs with
+    | x :: _ => Some x
+    | _      => None
+```
+
+```
+head : forall a. List a -> Option a
+head() = fun
+  | x :: _ = Some x
+  | _      = None
+```
+
+
+```
+headOr : forall a. a -> List a -> a
+headOr(rep, xs) = head(xs) ? rep
+```
+
+```
+forall a. 
+headOr(rep : a, xs : List a) : a = 
+  head(xs) ? rep
+```
+
+```
+headOr : forall a. a -> List a -> a
+headOr(rep, xs) = xs.head() ? rep
+```
+
 #### Natural numbers (Peano arithmetic)
 #### Lists
 #### Tuples
@@ -204,9 +236,26 @@ let withDefault default =
         [].head <?> 0
 
 
+let withDefault(default) = 
+  fun 
+    | None       => default 
+    | Some value => value 
+  in 
+    let head = 
+      fun 
+        | []     => None 
+        | x :: _ => Some x 
+      in 
+        [].head() <?> 0
+
 let withDefault default = \None => default | Some value => value 
   in let head = \[] => None | x :: _ => Some x 
     in [].head ? 0
+
+let withDefault(default) = \None => default | Some value => value 
+  in let head = \[] => None | x :: _ => Some x 
+    in [].head() ? 0
+
 
 withDefault default = fun
   | None       => default 
@@ -226,6 +275,60 @@ withDefault default = \None => default | Some value => value
 (\(1 or 2) as x => x) 1
 
 ---> 
+
+```
+let withDefault default = 
+  fun 
+    | None       => default 
+    | Some value => value 
+  in 
+    let head = 
+      fun 
+        | []     => None 
+        | x :: _ => Some x 
+      in 
+        [].head <?> 0
+
+
+let withDefault(default) = 
+  fun 
+    | None       => default 
+    | Some value => value 
+  in 
+    let head = 
+      fun 
+        | []     => None 
+        | x :: _ => Some x 
+      in 
+        [].head() <?> 0
+
+let withDefault default = \None => default | Some value => value 
+  in let head = \[] => None | x :: _ => Some x 
+    in [].head ? 0
+
+let withDefault(default) = \None => default | Some value => value 
+  in let head = \[] => None | x :: _ => Some x 
+    in [].head() ? 0
+
+
+withDefault default = fun
+  | None       => default 
+  | Some value => value 
+
+
+withDefault default = \None => default | Some value => value 
+  in let head = \[] => None | x :: _ => Some x 
+    in [].head ? 0
+
+
+(\1 or 2 or 3 as x :: _ => 1 | _ => 0) (2 :: []) 
+
+(\[1 or 2 or 3 as x] => 1 | _ => 0) (2 :: []) 
+
+
+(\(1 or 2) as x => x) 1
+
+
 
   | 1 as x => x
   | 2 as x => x
@@ -269,6 +372,23 @@ headOrZero xs = xs.head ? 0
         | None       => default 
         | Some value => value 
 
+headOrZero(xs) = head(xs) ? 0
+
+headOrZero(xs) = xs.head() ? 0
+
+headOrZero : List Int -> Int
+headOrZero(xs) = 
+  xs.head() ? 0 
+    where
+      head() = 
+        fun 
+          | []     => None 
+          | x :: _ => Some x 
+    and
+      withDefault(default) = 
+        fun 
+          | None       => default 
+          | Some value => value 
 
 headOrZero : List Int -> Int
 headOrZero xs = xs.head ? 0
@@ -287,6 +407,37 @@ fun (x :: _)
 fun (x :: _) = 100 
 fun _        = 200
 
+imp() = do {
+  first();
+  then();
+}
+
+first((x, y)) = x
+
+first(x; y) = x
+
+first = fun (x, y) => x
+
+
+
+headOrZero(xs, y) = 
+  xs.head() ? 0 
+    where
+      head = 
+        fun 
+          | []     => None 
+          | x :: _ => Some x 
+
+let pair = (4; "yes") in pair.first()
+
+
+let pair = 4; "yes" in pair.first()
+```
+
+```
+headOr : Va. a -> List a -> a
+headOr(rep, xs) = xs.head() ? rep
+```
 
 # -- keyword        let, if, where, type, etc.
 # -- literal
