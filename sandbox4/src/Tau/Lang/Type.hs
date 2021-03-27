@@ -26,7 +26,7 @@ import qualified Tau.Util.Env as Env
 data KindF a
     = KTyp                    -- ^ Concrete (value) types
     | KArr a a                -- ^ Type constructors
-    | KTcl                    -- ^ Type class constraints
+    | KTcl                    -- ^ Typeclass constraints
     | KRow                    -- ^ Rows
     deriving (Show, Eq, Ord, Functor, Foldable, Traversable)
 
@@ -59,14 +59,14 @@ type Type = TypeT Void
 -- | A type which appears in a type scheme
 type PolyType = TypeT Int
 
--- | Type class constraints
+-- | Typeclass constraints
 data PredicateT a = InClass Name a
     deriving (Show, Eq, Ord, Functor, Foldable, Traversable)
 
--- | A standalone type-class constraint
+-- | A standalone typeclass constraint
 type Predicate = PredicateT Type
 
--- | A type-class constraint which appears in a type scheme
+-- | A typeclass constraint which appears in a type scheme
 type PolyPredicate = PredicateT Int
 
 -- | Polymorphic type schemes

@@ -29,7 +29,7 @@ type ClassInfo p a = ([PredicateT p], PredicateT p, [(Name, a)])
 --type ClassDef = ([PredicateT Name], PredicateT Name, [(Name, Type)])
 --type ClassDef = ClassInfo Name Type
 
----- | Type class instance
+---- | Typeclass instance
 --data Instance a = Instance
 --    { predicates   :: [Predicate]
 --    , instanceType :: Type
