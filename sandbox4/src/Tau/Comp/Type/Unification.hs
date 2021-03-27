@@ -5,7 +5,8 @@ import Control.Monad.Except
 import Data.Function ((&))
 import Tau.Comp.Type.Substitution
 import Tau.Lang.Type
-import Tau.Util (Fix(..), Name, project)
+import Tau.Lang.Type.Row
+import Tau.Util (Fix(..), Name, project, embed)
 
 bind :: (MonadError String m) => Name -> Kind -> Type -> m Substitution
 bind name kind ty
@@ -14,10 +15,14 @@ bind name kind ty
     | Just kind /= kindOf ty                  = throwError "KindMismatch"
     | otherwise                               = pure (name `mapsTo` ty)
 
+isRow :: Type -> Bool
+isRow t = Just kRow == kindOf t
+
 unify :: (MonadError String m) => Type -> Type -> m Substitution
-unify t u = fn (project t) (project u) 
+unify t u 
+    | isRow t && isRow u                      = unifyRowTypes t u
+    | otherwise                               = fn (project t) (project u)
   where
---    fn (TRow r) (TRow s)                      = unifyRows r s
     fn (TArr t1 t2) (TArr u1 u2)              = unifyPairs (t1, t2) (u1, u2)
     fn (TApp t1 t2) (TApp u1 u2)              = unifyPairs (t1, t2) (u1, u2)
     fn (TVar kind name) _                     = bind name kind u
@@ -46,15 +51,17 @@ matchPairs (t1, t2) (u1, u2) = do
     sub2 <- match t2 u2
     merge sub1 sub2 & maybe (throwError "MergeFailed") pure
 
---unifyRows :: (Eq g, MonadError String m) => RowT g -> RowT g -> m Substitution
---unifyRows r s = fn (project r) -- (project s)
---  where
---    fn (RExt label t1 r1)  
---        | r == s = pure mempty
---        | otherwise = case rowPermutation label s of
---            Just (Fix (RExt _ t2 r2)) ->
---                undefined
---            _ -> 
---                throwError "CannotMatch"
---    fn _ = 
---        throwError "CannotMatch"
+unifyRowTypes :: (MonadError String m) => Type -> Type -> m Substitution
+unifyRowTypes t u = fn (project (unfoldRow t)) (project (unfoldRow u))
+  where
+    fn RNil RNil                              = pure mempty
+    fn (RVar var) _                           = bind var kRow u
+    fn _ (RVar var)                           = bind var kRow t
+    fn (RExt label t1 r1) s =
+        case project <$> rowPermutation label (embed s) of
+            Just (RExt _ t2 r2) -> do
+                sub1 <- unify t1 t2
+                unify (apply sub1 (foldRow r1)) (apply sub1 (foldRow r2))
+            Nothing ->
+                throwError "CannotUnfy"
+    fn _ _                                    = throwError "CannotUnify"

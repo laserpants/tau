@@ -1,19 +1,19 @@
-{-# LANGUAGE DeriveTraversable  #-}
-{-# LANGUAGE FlexibleContexts   #-}
-{-# LANGUAGE FlexibleInstances  #-}
-{-# LANGUAGE LambdaCase         #-}
-{-# LANGUAGE OverloadedStrings  #-}
-{-# LANGUAGE StandaloneDeriving #-}
-{-# LANGUAGE StrictData         #-}
-{-# LANGUAGE TemplateHaskell    #-}
+{-# LANGUAGE DeriveTraversable #-}
+{-# LANGUAGE FlexibleContexts  #-}
+{-# LANGUAGE FlexibleInstances #-}
+{-# LANGUAGE LambdaCase        #-}
+{-# LANGUAGE OverloadedStrings #-}
+{-# LANGUAGE StrictData        #-}
+{-# LANGUAGE TemplateHaskell   #-}
 module Tau.Lang.Type where
 
 import Control.Arrow (second, (<<<), (>>>))
 import Control.Comonad.Cofree
 import Control.Monad.Supply
 import Data.Functor.Foldable
-import Data.List (nub, sortOn)
+import Data.List (nub, sortOn, unfoldr)
 import Data.Map (Map)
+import Data.Maybe (isNothing)
 import Data.Set.Monad (Set)
 import Data.Void
 import Tau.Util
@@ -24,10 +24,10 @@ import qualified Tau.Util.Env as Env
 
 -- | Base functor for Kind
 data KindF a
-    = KTyp                    -- ^ Kind of concrete (value) types
-    | KArr a a                -- ^ Kind of type constructors
-    | KTcc                    -- ^ Kind of type class constraints
-    | KRow                    -- ^ Kind of rows
+    = KTyp                    -- ^ Concrete (value) types
+    | KArr a a                -- ^ Type constructors
+    | KTcl                    -- ^ Type class constraints
+    | KRow                    -- ^ Rows
     deriving (Show, Eq, Ord, Functor, Foldable, Traversable)
 
 deriveShow1 ''KindF
@@ -37,26 +37,18 @@ deriveOrd1  ''KindF
 -- | Kinds
 type Kind = Fix KindF
 
--- | Base functor for row types
-data RowF t a
-    = RNil                    -- ^ Empty row
-    | RExt Name t a           -- ^ Extension of a row
-
--- | Row type
-type RowT g = Fix (RowF (TypeT g))
-
-type Row = RowT Void
-
-type PolyRow = RowT Int
-
 -- | Base functor for Type
-data TypeF g a
+data TypeF g a 
     = TVar Kind Name
     | TCon Kind Name
     | TArr a a
     | TApp a a
-    | TRow (RowT g)
     | TGen g
+    deriving (Show, Eq, Ord, Functor, Foldable, Traversable)
+
+deriveShow1 ''TypeF
+deriveEq1   ''TypeF
+deriveOrd1  ''TypeF
 
 -- | Types
 type TypeT g = Fix (TypeF g)
@@ -76,17 +68,6 @@ type Predicate = PredicateT Type
 
 -- | A type-class constraint which appears in a type scheme
 type PolyPredicate = PredicateT Int
-
-deriving instance Functor (TypeF g)
-deriving instance Functor (RowF t)
-
-deriveShow1 ''TypeF
-deriveEq1   ''TypeF
-deriveOrd1  ''TypeF
-
-deriveShow1 ''RowF
-deriveEq1   ''RowF
-deriveOrd1  ''RowF
 
 -- | Polymorphic type schemes
 data Scheme = Forall [Kind] [PolyPredicate] PolyType
@@ -146,13 +127,13 @@ maybeSplit :: Maybe Name -> [Name]
 maybeSplit = maybe [] $ Text.split (== ',')
 
 recordFieldNames :: Name -> [Name]
-recordFieldNames tag =
-    maybeSplit (Text.stripPrefix "{"
+recordFieldNames tag = 
+    maybeSplit (Text.stripPrefix "{" 
         =<< Text.stripSuffix "}" tag)
 
 tupleElems :: Name -> [Name]
-tupleElems tag =
-    maybeSplit (Text.stripPrefix "("
+tupleElems tag = 
+    maybeSplit (Text.stripPrefix "(" 
         =<< Text.stripSuffix ")" tag)
 
 upgrade :: Type -> PolyType
@@ -207,32 +188,14 @@ instance Free TypeEnv where
 
 type Context = Env (Set Name)
 
-type RowRep g = Map Name [TypeT g]
-
-rowRepresentation :: RowT g -> RowRep g
-rowRepresentation = cata $ \case 
-    RNil              -> mempty
-    RExt label ty map -> Map.insertWith (<>) label [ty] map
-
-repToRow :: RowRep g -> RowT g 
-repToRow = Map.foldrWithKey (flip . foldr . rExt) rNil
-
-rowPermutation :: Name -> RowT g -> Maybe (RowT g)
-rowPermutation label row = 
-    case Map.lookup label map of
-        Nothing     -> Nothing
-        Just (t:ts) -> Just (rExt label t (repToRow (Map.update (const (Just ts)) label map)))
-  where
-    map = rowRepresentation row
-
 kTyp :: Kind
 kTyp = embed KTyp
 
 kArr :: Kind -> Kind -> Kind
 kArr = embed2 KArr
 
-kTcc :: Kind
-kTcc = embed KTcc
+kTcl :: Kind
+kTcl = embed KTcl
 
 kRow :: Kind
 kRow = embed KRow
@@ -244,12 +207,6 @@ kFun = kTyp `kArr` kTyp
 
 kFun2 :: Kind
 kFun2 = kTyp `kArr` kTyp `kArr` kTyp
-
-rNil :: RowT g
-rNil = embed RNil
-
-rExt :: Name -> TypeT g -> RowT g -> RowT g
-rExt = embed3 RExt
 
 tVar :: Kind -> Name -> TypeT a
 tVar = embed2 TVar
@@ -267,9 +224,6 @@ infixr 1 `tArr`
 
 tApp :: TypeT a -> TypeT a -> TypeT a
 tApp = embed2 TApp
-
-tRow :: RowT a -> TypeT a
-tRow = embed1 TRow
 
 typ :: Name -> TypeT a
 typ = tCon kTyp
@@ -306,9 +260,6 @@ tChar = typ "Char"
 
 tListCon :: TypeT a
 tListCon = tCon kFun "List"
-
-tRowExtCon :: TypeT a
-tRowExtCon = tCon (kTyp `kArr` kRow `kArr` kRow) "{label}"
 
 tList :: TypeT a -> TypeT a
 tList = tApp tListCon

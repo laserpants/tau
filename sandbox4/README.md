@@ -451,4 +451,17 @@ headOr(rep, xs) = xs.head() ? rep
 # -- space
 # -- comment
 
+
+rowRepresentation row = foldr fn mempty (unfoldRow row)
+rowRepresentation = foldr fn mempty << unfoldRow 
+
+rowRepresentation(row) = foldr(fn, mempty, unfoldRow(row))
+
+rowRepresentation(row) = foldr(fn, mempty)(unfoldRow(row))
+
+rowRepresentation() = foldr(fn, mempty) << unfoldRow()
+
+rowRepresentation = foldr(fn, mempty) << unfoldRow
+
 -->
+

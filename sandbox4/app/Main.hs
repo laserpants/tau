@@ -34,6 +34,7 @@ import Tau.Lang.Parser2
 import Tau.Lang.Pretty.Ast
 import Tau.Lang.Prog
 import Tau.Lang.Type
+import Tau.Lang.Type.Row
 import Tau.Util
 import Tau.Util.Env (Env(..))
 import qualified Data.Map.Strict as Map
@@ -972,11 +973,31 @@ testfact = recN go 1 (S (S (S (S (S Z)))))
   where
     go x a = fromNat x * a
 
-a = rExt "name" tString (rExt "id" tInt rNil)
+-- a = rExt "name" tString (rExt "id" tInt rNil)
 
-b = rExt "id" tInt (rExt "name" tString rNil)
+-- { name : String { id : Int {} } }
+a = tRowExtend "name" tString (tRowExtend "id" tInt tEmptyRow)
 
-c = rExt "id" tInt (rExt "name" tString (rExt "id" tString rNil))
+--b = rExt "id" tInt (rExt "name" tString rNil)
+
+-- { id : Int { r } }
+x = tRowExtend "id" tInt (tVar kRow "r")
+
+-- { id : Int { name : String {} } }
+b = tRowExtend "id" tInt (tRowExtend "name" tString tEmptyRow)
+
+-- { id : Int { name : String { { id : String } } } }
+c = tRowExtend "id" tInt (tRowExtend "name" tString (tRowExtend "id" tString tEmptyRow))
+
+-- { id : Int { name : String { id : String { r } } } }
+d = tRowExtend "id" tInt (tRowExtend "name" tString (tRowExtend "id" tString (tVar kRow "r")))
+
+e = tRowExtend "name" tString tEmptyRow
+
+ee1 = tRowExtend "x" tInt (tVar kRow "r")
+
+ee2 = tRowExtend "x" tInt (tVar kRow "r")
+
 
 --
 --  a : Int, b : String, c : Bool, a : String, r
