@@ -5,6 +5,7 @@
 module Tau.Lang.Type.Row where
 
 import Data.Map (Map)
+import Data.Maybe (fromJust)
 import Tau.Lang.Type
 import Tau.Util
 import qualified Data.Map as Map
@@ -69,6 +70,11 @@ rowPermutation label row =
         Just (t:ts) -> Just (rExt label t (repToRow (Map.update (const (Just ts)) label map, fin)))
   where
     (map, fin) = rowRepresentation row
+
+rowSet :: Row g -> [Row g]
+rowSet row = [fromJust (rowPermutation label row) | label <- Map.keys rep]
+  where 
+    (rep, _) = rowRepresentation row
 
 tRowCon :: Name -> TypeT a
 tRowCon label = tCon (kTyp `kArr` kRow `kArr` kRow) ("{" <> label <> "}")

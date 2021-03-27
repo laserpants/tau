@@ -138,11 +138,32 @@ testTypeUnification = do
             (tRowExtend "shoeSize" tFloat (tRowExtend "id" tInt (tRowExtend "name" tString tEmptyRow)))
 
         succeedUnifyTypes
---          { name : String, id : Int, shoeSize : Float }
+            -- { name : String, shoeSize : Float }
+            (tRowExtend "name" tString (tRowExtend "shoeSize" tFloat tEmptyRow))
+            -- { shoeSize : Float | r }
+            (tRowExtend "shoeSize" tFloat (tVar kRow "r"))
+
+        succeedUnifyTypes
+            -- { name : String, id : Int, shoeSize : Float }
             (tRowExtend "name" tString (tRowExtend "id" tInt (tRowExtend "shoeSize" tFloat tEmptyRow)))
---          { shoeSize : Float, id : Int | r }
+            -- { shoeSize : Float, id : Int | r }
             (tRowExtend "shoeSize" tFloat (tRowExtend "id" tInt (tVar kRow "r")))
+
+        succeedUnifyTypes
+            -- { name : String, id : Int, shoeSize : Float }
+            (tRowExtend "name" tString (tRowExtend "id" tInt (tRowExtend "shoeSize" tFloat tEmptyRow)))
+            -- { shoeSize : Float | r }
+            (tRowExtend "shoeSize" tFloat (tVar kRow "r"))
+
+        succeedUnifyTypes
+            (tRowExtend "shoeSize" tFloat (tVar kRow "r"))
+            (tRowExtend "name" tString (tRowExtend "shoeSize" tFloat tEmptyRow))
+
+        succeedUnifyTypes
+            (tRowExtend "shoeSize" tFloat (tRowExtend "id" tInt (tVar kRow "r")))
+            (tRowExtend "name" tString (tRowExtend "id" tInt (tRowExtend "shoeSize" tFloat tEmptyRow)))
 
         succeedUnifyTypes
             (tRowExtend "name" tString (tRowExtend "id" tInt (tRowExtend "shoeSize" tFloat tEmptyRow)))
             (tRowExtend "name" tString (tRowExtend "id" tInt (tVar kRow "r")))
+

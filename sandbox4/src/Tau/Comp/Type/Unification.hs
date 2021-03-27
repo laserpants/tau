@@ -3,6 +3,7 @@ module Tau.Comp.Type.Unification where
 
 import Control.Monad.Except
 import Data.Function ((&))
+import Data.Void (Void)
 import Tau.Comp.Type.Substitution
 import Tau.Lang.Type
 import Tau.Lang.Type.Row
@@ -57,11 +58,21 @@ unifyRowTypes t u = fn (project (unfoldRow t)) (project (unfoldRow u))
     fn RNil RNil                              = pure mempty
     fn (RVar var) _                           = bind var kRow u
     fn _ (RVar var)                           = bind var kRow t
-    fn (RExt label t1 r1) s =
-        case project <$> rowPermutation label (embed s) of
-            Just (RExt _ t2 r2) -> do
+    fn r s                                    = pairRows (embed r) (embed s)
+
+    pairRows :: (MonadError String m) => Row Void -> Row Void -> m Substitution
+    pairRows r s = 
+        case perm of
+            Just (RExt _ t1 r1, RExt _ t2 r2) -> do
                 sub1 <- unify t1 t2
-                unify (apply sub1 (foldRow r1)) (apply sub1 (foldRow r2))
+                let t3 = foldRow r1
+                    t4 = foldRow r2
+                unify (apply sub1 t3) (apply sub1 t4)
             Nothing ->
                 throwError "CannotUnfy"
-    fn _ _                                    = throwError "CannotUnify"
+      where 
+        perm = msum $ do
+            r1@(RExt label _ _) <- project <$> rowSet r
+            case project <$> rowPermutation label s of
+                Nothing -> [Nothing]
+                Just r2 -> [Just (r1, r2)]
