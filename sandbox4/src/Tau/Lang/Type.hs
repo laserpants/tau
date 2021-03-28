@@ -264,11 +264,18 @@ tListCon = tCon kFun "List"
 tList :: TypeT a -> TypeT a
 tList = tApp tListCon
 
+-- TODO: remove
 tRecord :: [(Name, TypeT a)] -> TypeT a
 tRecord pairs = foldl tApp (tCon kind (recordCon ns)) ts
   where
     (ns, ts) = unzip (sortOn fst pairs)
     kind = foldr kArr kTyp (replicate (length pairs) kTyp)
+
+tRecordCon :: TypeT a
+tRecordCon = tCon (kArr kRow kTyp) "{r}" 
+
+tRecord2 :: TypeT a -> TypeT a
+tRecord2 = tApp tRecordCon
 
 tTuple :: [TypeT a] -> TypeT a
 tTuple types = foldl tApp (tCon kind (tupleCon (length types))) types
