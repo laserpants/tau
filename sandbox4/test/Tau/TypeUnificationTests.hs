@@ -167,3 +167,10 @@ testTypeUnification = do
             (tRowExtend "name" tString (tRowExtend "id" tInt (tRowExtend "shoeSize" tFloat tEmptyRow)))
             (tRowExtend "name" tString (tRowExtend "id" tInt (tVar kRow "r")))
 
+        succeedUnifyTypes
+            (tRowExtend "name" tString (tRowExtend "id" tInt tEmptyRow))
+            (tRowExtend "name" tString (tRowExtend "id" (tVar kTyp "a") tEmptyRow))
+
+        succeedUnifyTypes
+            (tRowExtend "name" tString (tRowExtend "id" (tVar kTyp "a") tEmptyRow))
+            (tRowExtend "name" tString (tRowExtend "id" tInt tEmptyRow))

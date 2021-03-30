@@ -17,6 +17,7 @@ import Tau.Lang.Expr
 import Tau.Lang.Parser
 import Tau.Lang.Prog
 import Tau.Lang.Type
+import Tau.Lang.Type.Row
 import Tau.TestEnvs
 import Tau.Util
 import Tau.Util.Env (Env(..))
@@ -66,13 +67,13 @@ normalize ty = apply sub ty
     fun (v, k) a = (v, tVar k a :: Type)
 
 succeedInferType :: ProgExpr -> Type -> SpecWith ()
-succeedInferType expr expected =
+succeedInferType expr expected = 
     describe ("The expression : " <> prettyString expr) $
         it ("✔ has type " <> prettyString expected <> "\n") $
             (normalize <$> runTest expr) == Right expected
 
 failInferTypeWithError :: ProgExpr -> String -> SpecWith ()
-failInferTypeWithError expr err = 
+failInferTypeWithError expr err =
     describe ("The expression : " <> prettyString expr) $
         it ("✗ fails with error " <> show err <> "\n") $
             runTest expr == Left err
@@ -107,78 +108,87 @@ failInferTypeWithError expr err =
 testTypeInference :: SpecWith ()
 testTypeInference = do
 
+--    succeedInferType
+--        (letExpr () (BLet (varPat () "const")) (lamExpr () [varPat () "a", varPat () "b"] (varExpr () "a")) (appExpr () [varExpr () "const", litExpr () TUnit]))
+--        (_a `tArr` tUnit)
+--
+--    failInferTypeWithError 
+--        (op2Expr () (OAdd ()) (litExpr () (TInt 1)) (litExpr () TUnit))
+--        "CannotUnify"
+--
+--    succeedInferType
+--        (appExpr () [varExpr () "const", litExpr () (TInt 5), litExpr () TUnit])
+--        tInt
+--
+--    succeedInferType
+--        (appExpr () [varExpr () "id", litExpr () (TInt 5)])
+--        tInt
+--
+--    succeedInferType
+--        (varExpr () "id")
+--        (_a `tArr` _a)
+--
+--    succeedInferType
+--        (varExpr () "const")
+--        (_a `tArr` _b `tArr` _a)
+--
+--    succeedInferType
+--        (letExpr () (BLet (varPat () "const")) (lamExpr () [varPat () "a", varPat () "b"] (varExpr () "a")) (appExpr () [varExpr () "const", litExpr () TUnit, litExpr () (TInt 5)]))
+--        tUnit
+--
+--    succeedInferType
+--        (letExpr () (BLet (varPat () "const")) (lamExpr () [varPat () "a", anyPat ()] (varExpr () "a")) (appExpr () [varExpr () "const", litExpr () TUnit, litExpr () (TInt 5)]))
+--        tUnit
+--    
+--    --TODO
+--
+--    succeedInferType
+--        (lamExpr () [varPat () "xs"] (patExpr () [varExpr () "xs"] [ Clause [conPat () "(::)" [varPat () "y", varPat () "ys"]] [Guard [] (litExpr () (TInt 1))], Clause [conPat () "[]" []] [Guard [] (litExpr () (TInt 2))] ]))
+--        (tList _a `tArr` tInt)
+--
+--    succeedInferType
+--        (appExpr () [lamExpr () [varPat () "xs"] (patExpr () [varExpr () "xs"] [ Clause [conPat () "(::)" [varPat () "y", varPat () "ys"]] [Guard [] (litExpr () (TInt 1))], Clause [conPat () "[]" []] [Guard [] (litExpr () (TInt 2))] ]), conExpr () "(::)" [litExpr () (TInt 5), conExpr () "[]" []]])
+--        tInt
+--
+--    succeedInferType
+--        (patExpr () [] [ Clause [conPat () "(::)" [varPat () "y", varPat () "ys"]] [Guard [] (litExpr () (TInt 1))], Clause [conPat () "[]" []] [Guard [] (litExpr () (TInt 2))] ])
+--        (tList _a `tArr` tInt)
+--
+--    succeedInferType
+--        (appExpr () [patExpr () [] [ Clause [conPat () "(::)" [varPat () "y", varPat () "ys"]] [Guard [] (litExpr () (TInt 1))], Clause [conPat () "[]" []] [Guard [] (litExpr () (TInt 2))] ], conExpr () "(::)" [litExpr () (TInt 5), conExpr () "[]" []]])
+--        tInt
+--
+--    succeedInferType
+--        (patExpr () [conExpr () "(::)" [litExpr () (TInt 5), conExpr () "[]" []]] [ Clause [conPat () "(::)" [varPat () "y", varPat () "ys"]] [Guard [] (litExpr () (TInt 1))], Clause [conPat () "[]" []] [Guard [] (litExpr () (TInt 2))] ])
+--        tInt
+--
+--    succeedInferType
+--        (letExpr () (BFun "plus" [varPat () "a", varPat () "b"]) 
+--          (op2Expr () (OAdd ()) (varExpr () "a") (varExpr () "b")) 
+--            (letExpr () (BLet (varPat () "plus5")) (appExpr () [varExpr () "plus", litExpr () (TInt 5)]) 
+--              (letExpr () (BLet (varPat () "id")) (lamExpr () [varPat () "x"] (varExpr () "x"))
+--                (appExpr () [appExpr () [varExpr () "id", varExpr () "plus5"], appExpr () [varExpr () "id", litExpr () (TInt 3)]]))))
+--        tInt
+--
+--    succeedInferType
+--        (letExpr () (BFun "plus" [varPat () "a", varPat () "b"]) 
+--          (op2Expr () (OAdd ()) (varExpr () "a") (varExpr () "b")) 
+--            (letExpr () (BLet (varPat () "plus5")) (appExpr () [varExpr () "plus", litExpr () (TInt 5)]) 
+--              (letExpr () (BFun "id" [varPat () "x"]) (varExpr () "x") 
+--                (appExpr () [appExpr () [varExpr () "id", varExpr () "plus5"], appExpr () [varExpr () "id", litExpr () (TInt 3)]]))))
+--        tInt
+--
+--    succeedInferType
+--        (recExpr2 () [Field () "id" (litExpr () (TInt 1))] Nothing)
+--        (tRecord2 (foldRow (rExt "id" tInt rNil)))
+--
+--    succeedInferType
+--        (recExpr2 () [Field () "id" (litExpr () (TInt 1)), Field () "name" (litExpr () (TString "Jeki"))] Nothing)
+--        (tRecord2 (foldRow (rExt "id" tInt (rExt "name" tString rNil))))
+
     succeedInferType
-        (letExpr () (BLet (varPat () "const")) (lamExpr () [varPat () "a", varPat () "b"] (varExpr () "a")) (appExpr () [varExpr () "const", litExpr () TUnit]))
-        (_a `tArr` tUnit)
-
-    failInferTypeWithError 
-        (op2Expr () (OAdd ()) (litExpr () (TInt 1)) (litExpr () TUnit))
-        "CannotUnify"
-
-    succeedInferType
-        (appExpr () [varExpr () "const", litExpr () (TInt 5), litExpr () TUnit])
-        tInt
-
-    succeedInferType
-        (appExpr () [varExpr () "id", litExpr () (TInt 5)])
-        tInt
-
-    succeedInferType
-        (varExpr () "id")
-        (_a `tArr` _a)
-
-    succeedInferType
-        (varExpr () "const")
-        (_a `tArr` _b `tArr` _a)
-
-    succeedInferType
-        (letExpr () (BLet (varPat () "const")) (lamExpr () [varPat () "a", varPat () "b"] (varExpr () "a")) (appExpr () [varExpr () "const", litExpr () TUnit, litExpr () (TInt 5)]))
-        tUnit
-
-    succeedInferType
-        (letExpr () (BLet (varPat () "const")) (lamExpr () [varPat () "a", anyPat ()] (varExpr () "a")) (appExpr () [varExpr () "const", litExpr () TUnit, litExpr () (TInt 5)]))
-        tUnit
-    
-    --TODO
-
-    succeedInferType
-        (lamExpr () [varPat () "xs"] (patExpr () [varExpr () "xs"] [ Clause [conPat () "(::)" [varPat () "y", varPat () "ys"]] [Guard [] (litExpr () (TInt 1))], Clause [conPat () "[]" []] [Guard [] (litExpr () (TInt 2))] ]))
-        (tList _a `tArr` tInt)
-
-    succeedInferType
-        (appExpr () [lamExpr () [varPat () "xs"] (patExpr () [varExpr () "xs"] [ Clause [conPat () "(::)" [varPat () "y", varPat () "ys"]] [Guard [] (litExpr () (TInt 1))], Clause [conPat () "[]" []] [Guard [] (litExpr () (TInt 2))] ]), conExpr () "(::)" [litExpr () (TInt 5), conExpr () "[]" []]])
-        tInt
-
-    succeedInferType
-        (patExpr () [] [ Clause [conPat () "(::)" [varPat () "y", varPat () "ys"]] [Guard [] (litExpr () (TInt 1))], Clause [conPat () "[]" []] [Guard [] (litExpr () (TInt 2))] ])
-        (tList _a `tArr` tInt)
-
-    succeedInferType
-        (appExpr () [patExpr () [] [ Clause [conPat () "(::)" [varPat () "y", varPat () "ys"]] [Guard [] (litExpr () (TInt 1))], Clause [conPat () "[]" []] [Guard [] (litExpr () (TInt 2))] ], conExpr () "(::)" [litExpr () (TInt 5), conExpr () "[]" []]])
-        tInt
-
-    succeedInferType
-        (patExpr () [conExpr () "(::)" [litExpr () (TInt 5), conExpr () "[]" []]] [ Clause [conPat () "(::)" [varPat () "y", varPat () "ys"]] [Guard [] (litExpr () (TInt 1))], Clause [conPat () "[]" []] [Guard [] (litExpr () (TInt 2))] ])
-        tInt
-
-    succeedInferType
-        (letExpr () (BFun "plus" [varPat () "a", varPat () "b"]) 
-          (op2Expr () (OAdd ()) (varExpr () "a") (varExpr () "b")) 
-            (letExpr () (BLet (varPat () "plus5")) (appExpr () [varExpr () "plus", litExpr () (TInt 5)]) 
-              (letExpr () (BLet (varPat () "id")) (lamExpr () [varPat () "x"] (varExpr () "x"))
-                (appExpr () [appExpr () [varExpr () "id", varExpr () "plus5"], appExpr () [varExpr () "id", litExpr () (TInt 3)]]))))
-        tInt
-
-    succeedInferType
-        (letExpr () (BFun "plus" [varPat () "a", varPat () "b"]) 
-          (op2Expr () (OAdd ()) (varExpr () "a") (varExpr () "b")) 
-            (letExpr () (BLet (varPat () "plus5")) (appExpr () [varExpr () "plus", litExpr () (TInt 5)]) 
-              (letExpr () (BFun "id" [varPat () "x"]) (varExpr () "x") 
-                (appExpr () [appExpr () [varExpr () "id", varExpr () "plus5"], appExpr () [varExpr () "id", litExpr () (TInt 3)]]))))
-        tInt
-
-
-
+        (recExpr2 () [Field () "id" (litExpr () (TInt 1)), Field () "name" (litExpr () (TString "Jeki"))] (Just "r"))
+        (tRecord2 (foldRow (rExt "id" tInt (rExt "name" tString (rVar "a")))))
 
 ----    succeedInferType
 ----        $(parseExpr "let id = \\x => x in let x = (id, 4) in (fst x snd x) + 1")

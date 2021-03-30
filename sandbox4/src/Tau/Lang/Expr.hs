@@ -5,6 +5,7 @@
 {-# LANGUAGE MultiParamTypeClasses #-}
 {-# LANGUAGE OverloadedStrings     #-}
 {-# LANGUAGE StrictData            #-}
+{-# LANGUAGE StandaloneDeriving   #-}
 {-# LANGUAGE TemplateHaskell       #-}
 module Tau.Lang.Expr where
 
@@ -15,7 +16,7 @@ import Data.Text (Text)
 import Data.Types.Injective
 import Tau.Util
 
--- | Built-in primitive types
+-- | Built-in language primitives
 data Prim
     = TUnit                   -- ^ Unit value
     | TBool Bool              -- ^ Booleans
@@ -49,24 +50,64 @@ newtype FieldSet t a = FieldSet [Field t a]
 deriveShow1 ''FieldSet
 deriveEq1   ''FieldSet
 
+--------------------------
+-- Row
+--------------------------
+
+data ARowF t e a
+    = ARNil t
+    | ARVar t Name 
+    | ARExt t Name e a
+    deriving (Show, Eq, Functor, Foldable, Traversable)
+
+deriveShow1 ''ARowF
+deriveEq1   ''ARowF
+
+type ARow t e = Fix (ARowF t e)
+
+-- rowNil 
+arNil :: t -> ARow t e
+arNil = embed1 ARNil
+
+-- rowVar
+arVar :: t -> Name -> ARow t e
+arVar = embed2 ARVar
+
+-- rowExt
+arExt :: t -> Name -> e -> ARow t e -> ARow t e
+arExt = embed4 ARExt
+
+--------------------------
+
 -- | Base functor for Pattern
 data PatternF t f g a 
     = PVar t Name             -- ^ Variable pattern
     | PCon t Name [a]         -- ^ Constuctor pattern
     | PLit t Prim             -- ^ Literal pattern
     | PRec t (FieldSet t a)   -- ^ Record pattern
+    | PRec2 t [Field t a] (Maybe Name)
+    | PRec3 t (ARow t (Pattern t f g))
     | PTup t [a]              -- ^ Tuple pattern
     | PLst t [a]              -- ^ List pattern
     | PAs  t Name a           -- ^ As pattern
     | POr  t a a              -- ^ Or pattern
     | PAny t                  -- ^ Wildcard pattern
-    deriving (Show, Eq, Functor, Foldable, Traversable)
 
-deriveShow1 ''PatternF
-deriveEq1   ''PatternF
+--newtype PatternRow t f g = PatternRow (ARow t (Pattern t f g))
+--    deriving (Show, Eq)
 
 -- | Patterns
 type Pattern t f g = Fix (PatternF t f g)
+
+--deriving (Show, Eq, Functor, Foldable, Traversable)
+deriving instance (Show a, Show f, Show g, Show t) => Show (PatternF t f g a)
+deriving instance (Eq a, Eq f, Eq g, Eq t) => Eq (PatternF t f g a)
+deriving instance Functor (PatternF t f g)
+deriving instance Foldable (PatternF t f g)
+deriving instance Traversable (PatternF t f g)
+
+deriveShow1 ''PatternF
+deriveEq1   ''PatternF
 
 -- | Simple patterns
 data Prep t
@@ -118,6 +159,7 @@ data Op2 t
     | OBPipe t                -- ^ Reverse pipe operator
     | OOpt t                  -- ^ Option default operator
     | OScc t                  -- ^ String concatenation operator
+    -- OConcat
 
     -- TODO:
     -- integer division (//)
@@ -149,18 +191,27 @@ data ExprF t p q r n o c d a
     | EOp2 t o a a            -- ^ Unary operator
     | EDot t a a              -- ^ Dot operator
     | ERec t (FieldSet t a)   -- ^ Records
+    | ERec2 t [Field t a] (Maybe Name)
+    | ERec3 t (ARow t (Expr t p q r n o c d))
     | ETup t [a]              -- ^ Tuples
     | ELst t [a]              -- ^ List literal
 --  | EAnn Scheme a           -- ^ Type-annotated expression
-    deriving (Functor, Foldable, Traversable)
+
+-- | Expression language tagged term tree
+type Expr t p q r n o c d = Fix (ExprF t p q r n o c d)
+
+--deriving instance Show (ExprF t p q r n o c d a)
+--deriving instance Eq (ExprF t p q r n o c d a)
+deriving instance Foldable (ExprF t p q r n o c d)
+deriving instance Traversable (ExprF t p q r n o c d)
+deriving instance Functor (ExprF t p q r n o c d)
+
+--    deriving (Functor, Foldable, Traversable)
 
 deriveShow  ''ExprF
 deriveEq    ''ExprF
 deriveShow1 ''ExprF
 deriveEq1   ''ExprF
-
--- | Expression language tagged term tree
-type Expr t p q r n o c d = Fix (ExprF t p q r n o c d)
 
 literalName :: Prim -> Name
 literalName = \case
@@ -252,6 +303,8 @@ op2Symbol = \case
 guardPair :: Guard a -> ([a], a)
 guardPair (Guard a b) = (a, b)
 
+fieldInfo (Field tag name value) = (tag, name, value)
+
 fieldSet :: [Field t a] -> FieldSet t a
 fieldSet fields = FieldSet (to <$> sortOn fieldName fields)
 
@@ -281,6 +334,7 @@ exprTag = project >>> \case
     EOp2 t _ _ _   -> t
     EDot t _ _     -> t
     ERec t _       -> t
+    ERec2 t _ _    -> t
     ETup t _       -> t
     ELst t _       -> t
 
@@ -299,6 +353,7 @@ setExprTag t = project >>> \case
     EOp2 _ a b c   -> op2Expr t a b c
     EDot _ a b     -> dotExpr t a b
     ERec _ a       -> recExpr t a
+    ERec2 _ a b    -> recExpr2 t a b
     ETup _ a       -> tupExpr t a
     ELst _ a       -> lstExpr t a
 
@@ -308,6 +363,7 @@ patternTag = project >>> \case
     PCon t _ _     -> t
     PLit t _       -> t
     PRec t _       -> t
+    PRec2 t _ _    -> t
     PTup t _       -> t
     PLst t _       -> t
     PAny t         -> t
@@ -416,6 +472,9 @@ instance
         ERec t (FieldSet fs) -> do
             fields <- traverse sequence fs
             recExpr <$> f t <*> (FieldSet <$> traverse (mapTagsM f) fields)
+        ERec2 t fs r -> do
+            fields <- traverse sequence fs
+            recExpr2 <$> f t <*> traverse (mapTagsM f) fields <*> pure r
         ELst t a ->
             lstExpr <$> f t <*> sequence a 
 
@@ -436,6 +495,9 @@ instance MapT s t (Pattern s f g) (Pattern t f g) where
         PRec t (FieldSet fs) -> do
             fields <- traverse sequence fs
             recPat <$> f t <*> (FieldSet <$> traverse (mapTagsM f) fields)
+        PRec2 t fs r -> do
+            fields <- traverse sequence fs
+            recPat2 <$> f t <*> traverse (mapTagsM f) fields <*> pure r
         PTup t elems ->
             tupPat <$> f t <*> sequence elems
         PLst t elems ->
@@ -510,6 +572,9 @@ litPat = embed2 PLit
 recPat :: t -> FieldSet t (Pattern t f g) -> Pattern t f g
 recPat = embed2 PRec
 
+recPat2 :: t -> [Field t (Pattern t f g)] -> Maybe Name -> Pattern t f g
+recPat2 = embed3 PRec2
+
 tupPat :: t -> [Pattern t f g] -> Pattern t f g
 tupPat = embed2 PTup
 
@@ -557,6 +622,9 @@ dotExpr = embed3 EDot
 
 recExpr :: t -> FieldSet t (Expr t p q r n o c d) -> Expr t p q r n o c d
 recExpr = embed2 ERec
+
+recExpr2 :: t -> [Field t (Expr t p q r n o c d)] -> Maybe Name -> Expr t p q r n o c d
+recExpr2 = embed3 ERec2
 
 tupExpr :: t -> [Expr t p q r n o c d] -> Expr t p q r n o c d
 tupExpr = embed2 ETup

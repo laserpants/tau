@@ -25,6 +25,7 @@ import Tau.Comp.Type.Unification
 import Tau.Lang.Expr
 import Tau.Lang.Prog
 import Tau.Lang.Type
+import Tau.Lang.Type.Row
 import Tau.Util
 import Tau.Util.Env (Env(..))
 import qualified Data.Map.Strict as Map
@@ -216,12 +217,22 @@ infer = cata $ \expr -> do
             --unifyTyped (typeOf e1 `tArr` newTy) ty
             --pure (dotExpr (NodeInfo newTy ps) name e1)
 
-        ERec _ fields -> do
-            let (_, ns, fs) = unzip3 (fieldList fields)
-                info Field{..} = Field{ fieldTag = NodeInfo (typeOf fieldValue) [], .. }
+        ERec2 _ fields r -> do
+
+            case r of
+                Nothing -> 
+                    undefined
+                Just var -> do
+                    (ty, ps) <- lookupScheme var >>= instantiate
+                    undefined
+
+            let (_, ns, fs) = unzip3 (fieldInfo <$> fields)
             es <- sequence fs
-            unifyTyped newTy (tRecord (zip ns (typeOf <$> es)))
-            pure (recExpr (NodeInfo newTy []) (FieldSet (zipWith (info <$$> Field ()) ns es))) 
+            let ts = typeOf <$> es
+                info Field{..} = Field{ fieldTag = NodeInfo (typeOf fieldValue) [], .. }
+                fin = maybe tEmptyRow (tVar kRow) r
+            unifyTyped newTy (tRecord2 (foldr (uncurry tRowExtend) fin (zip ns ts)))
+            pure (recExpr2 (NodeInfo newTy []) (zipWith (info <$$> Field ()) ns es) r)
 
         ETup _ elems -> do
             tes <- sequence elems
@@ -320,6 +331,23 @@ inferPattern = cata $ \pat -> do
             let tfs = zipWith (\n p -> Field (patternTag p) n p) ns ps
             unifyTyped newTy (tRecord (zip ns (typeOf <$> ps)))
             pure (recPat (NodeInfo newTy []) (FieldSet tfs))
+
+        PRec2 _ fields r -> do
+            let (_, ns, fs) = unzip3 (fieldInfo <$> fields)
+            ps <- sequence fs
+            let ts = typeOf <$> ps
+                tfs = zipWith (\n p -> Field (patternTag p) n p) ns ps
+                fin = maybe tEmptyRow (tVar kRow) r
+            unifyTyped newTy (tRecord2 (foldr (uncurry tRowExtend) fin (zip ns ts)))
+            pure (recPat2 (NodeInfo newTy []) tfs r)
+
+--            let (_, ns, fs) = unzip3 (fieldInfo <$> fields)
+--            es <- sequence fs
+--            let ts = typeOf <$> es
+--                info Field{..} = Field{ fieldTag = NodeInfo (typeOf fieldValue) [], .. }
+--                fin = maybe tEmptyRow (tVar kRow) r
+--            unifyTyped newTy (tRecord2 (foldr (uncurry tRowExtend) fin (zip ns ts)))
+--            pure (recExpr2 (NodeInfo newTy []) (zipWith (info <$$> Field ()) ns es) r)
 
         PTup _ elems -> do
             ps <- sequence elems

@@ -7,7 +7,7 @@ import Data.Void (Void)
 import Tau.Comp.Type.Substitution
 import Tau.Lang.Type
 import Tau.Lang.Type.Row
-import Tau.Util (Fix(..), Name, project, embed)
+import Tau.Util (Fix(..), Name, project, embed, traceShowM)
 
 bind :: (MonadError String m) => Name -> Kind -> Type -> m Substitution
 bind name kind ty
@@ -67,7 +67,8 @@ unifyRows r s =
             sub1 <- unify t1 t2
             let t3 = foldRow r1
                 t4 = foldRow r2
-            unify (apply sub1 t3) (apply sub1 t4)
+            sub2 <- unify (apply sub1 t3) (apply sub1 t4)
+            pure (sub2 <> sub1)
         Nothing ->
             throwError "CannotUnfy"
   where 

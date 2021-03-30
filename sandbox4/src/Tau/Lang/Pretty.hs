@@ -200,6 +200,7 @@ instance Pretty (Pattern t f g) where
         PCon _ con ps         -> foldl conArg (pretty con) (fst <$> ps)
         PLit _ lit            -> pretty lit
         PRec _ fields         -> prettyRecord equals (snd <$> fields)
+        PRec2 _ fields r       -> "TODO" -- prettyRecord2 equals fields -- TODO
         PTup _ elems          -> prettyTuple (snd <$> elems)
         PLst _ elems          -> prettyList_ (snd <$> elems)
         PAs  _ name p         -> pretty (fst p) <+> "as" <+> pretty name
@@ -233,6 +234,7 @@ instance (Pretty p, Pretty q, Pretty n, Pretty o) => Pretty (Expr t p q r n o c 
         EOp2 _ op a b         -> "TODO:" <+> pretty op <+> snd a <+> snd b
         EDot _ e1 e2          -> snd e1 <> dot <> snd e2
         ERec _ _              -> "TODO:erec"
+        ERec2 _ _ _           -> "TODO:erec2"
         ETup _ elems          -> prettyTuple (snd <$> elems)
         ELst _ elems          -> prettyList_ (snd <$> elems)
 
@@ -288,6 +290,15 @@ prettyRecord sep fset
   where
     fields = fieldList fset
     prettyField (_, key, val) = pretty key <+> sep <+> val
+
+--prettyRecord2 :: Doc a -> FieldSet t (Doc a) -> Doc a
+--prettyRecord2 sep fs
+--    | null fields = braces ""
+--    | otherwise   = lbrace <+> commaSep (prettyField <$> fields) <+> rbrace
+--  where
+--    fields = fieldInfo <$> fs
+--    prettyField (_, key, val) = pretty key <+> sep <+> val
+
 
 --patternConArg :: Doc a -> (Pattern p, Doc a) -> Doc a
 --patternConArg out (pat, doc) = out <+> addParens pat doc 

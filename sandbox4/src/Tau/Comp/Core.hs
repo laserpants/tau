@@ -38,23 +38,26 @@ import qualified Tau.Util.Env as Env
 
 --class TypeTag t where
 --class (Eq t, Show t) => TypeTag t where
-class (Eq t) => TypeTag t where
+class (Show t, Eq t) => TypeTag t where
     tvar  :: Name -> t
     tarr  :: t -> t -> t
     tapp  :: t -> t -> t
     tbool :: t
+    fromType :: Type -> t
 
 instance TypeTag () where
     tvar _   = ()
     tarr _ _ = ()
     tapp _ _ = ()
     tbool    = ()
+    fromType _ = ()
 
 instance TypeTag Type where
     tvar  = tVar kTyp
     tarr  = tArr
     tapp  = tApp
     tbool = tBool
+    fromType = id
 
 ---- TODO
 --data GuardsExpanded 
@@ -180,6 +183,7 @@ expandFunPatterns = cata $ \case
     EPat t eqs exs   -> patExpr t <$> sequence eqs <*> traverse sequence exs
     EDot t e1 e2     -> dotExpr t <$> e1 <*> e2
     ERec t fields    -> recExpr t <$> sequence fields
+    ERec2 t fields r -> recExpr2 t <$> traverse sequence fields <*> pure r
     ETup t exs       -> tupExpr t <$> sequence exs
     ELst t a         -> lstExpr t <$> sequence a
 
@@ -202,6 +206,7 @@ unrollLets = cata $ \case
     EPat t eqs exs   -> patExpr t <$> sequence eqs <*> traverse sequence exs
     EDot t e1 e2     -> dotExpr t <$> e1 <*> e2
     ERec t fields    -> recExpr t <$> sequence fields
+    ERec2 t fields r  -> recExpr2 t <$> traverse sequence fields <*> pure r
     ETup t exs       -> tupExpr t <$> sequence exs
 
     ELet t (BLet pat) e1 e2 ->
@@ -265,6 +270,7 @@ expandPatterns = (toExpanded <$$>) . expandLitPatterns . expandOrPatterns
         PVar t a       -> varPat t a
         PCon t a b     -> conPat t a b
         PRec t s       -> recPat t s
+        PRec2 t s r     -> recPat2 t s r
         PTup t a       -> tupPat t a
         PLst t a       -> lstPat t a
         PAny t         -> anyPat t
@@ -483,7 +489,8 @@ data ConsGroup t = ConsGroup
     } deriving (Show, Eq)
 
 consGroups 
-  :: Expr t (Prep t) Name Name Void Void NoListSugar NoFunPats 
+  :: (TypeTag t) 
+  => Expr t (Prep t) Name Name Void Void NoListSugar NoFunPats 
   -> [Clause (Pattern t PatternsExpanded g) (Expr t (Prep t) Name Name Void Void NoListSugar NoFunPats)] 
   -> [ConsGroup t]
 consGroups u cs = concatMap grp (groupSortOn fst (info <$> cs))
@@ -521,16 +528,53 @@ consGroups u cs = concatMap grp (groupSortOn fst (info <$> cs))
 --    clauseDesugared (Clause ps ex e) = 
 --        Clause (patternsDesugared <$> ps) ex e
 
-desugarPattern :: Pattern t f g -> Pattern t f g
+--desugarPattern2 :: (TypeTag t, Show t, Show f, Show g) => Pattern t f g -> Pattern t f g
+--desugarPattern2 = cata $ \case
+--    PRec t (FieldSet fields) ->
+--        conPat t (recordCon (fieldName <$> fields)) (fieldValue <$> fields)
+--
+--    PRec2 t fields r -> do
+--        let fin = conPat undefined "{}" []
+--        foldr abc undefined fields
+--        --conPat t "X" []
+--        --conPat t (recordCon (fieldName <$> fields)) (fieldValue <$> fields)
+--
+--    PTup t elems ->
+--        conPat t (tupleCon (length elems)) elems
+--    PLst t elems ->
+--        foldr (listConsPat t) (conPat t "[]" []) elems
+--    p ->
+--        embed p
+
+
+desugarPattern :: (TypeTag t) => Pattern t f g -> Pattern t f g
 desugarPattern = cata $ \case
     PRec t (FieldSet fields) ->
         conPat t (recordCon (fieldName <$> fields)) (fieldValue <$> fields)
+
+--    PRec2 t fields r -> do
+--        let fin = case r of
+--                Nothing  -> conPat (fromType (tCon kRow "{}")) "{}" []
+--                Just var -> varPat (fromType (tVar kRow var)) var
+--        foldr abc fin fields
+--        --conPat t "X" []
+--        --conPat t (recordCon (fieldName <$> fields)) (fieldValue <$> fields)
+--      where
+--        xx = case r of
+--            Nothing -> tCon kRow "{}" 
+--            Just var -> tVar kRow var
+
     PTup t elems ->
         conPat t (tupleCon (length elems)) elems
     PLst t elems ->
         foldr (listConsPat t) (conPat t "[]" []) elems
     p ->
         embed p
+
+abc :: (TypeTag t) => Field t a -> Pattern t f g -> Pattern t f g
+abc (Field t n v) p = conPat t n [p]
+
+--desugarRecord = undefined
 
 data Labeled a = Constructor a | Variable a
     deriving (Show, Eq, Ord)
@@ -545,6 +589,7 @@ labeledClause eq@(Clause (p:_) _) = flip cata p $ \case
       PCon{}    -> Constructor eq
       PTup{}    -> Constructor eq
       PRec{}    -> Constructor eq
+      PRec2{}    -> Constructor eq
       PLst{}    -> Constructor eq
       PVar{}    -> Variable eq
       PAny{}    -> Variable eq
@@ -687,6 +732,7 @@ desugarOperators = cata $ \case
     EPat t eqs exs   -> patExpr t eqs exs
     EDot t name e1   -> dotExpr t name e1
     ERec t fields    -> recExpr t fields
+    ERec2 t fields r -> recExpr2 t fields r
     ETup t exs       -> tupExpr t exs
     ELst t exs       -> lstExpr t exs
 
@@ -711,6 +757,7 @@ desugarLists = cata $ \case
     EOp2 t op a b    -> op2Expr t op a b
     EDot t name e1   -> dotExpr t name e1
     ERec t fields    -> recExpr t fields
+    ERec2 t fields r -> recExpr2 t fields r
     ETup t exs       -> tupExpr t exs
 
 -- ============================================================================
@@ -877,6 +924,7 @@ defaultMatrix = (fun =<<)
         case project p of
             PCon{}    -> []
             PRec{}    -> []
+            PRec2{}    -> []
             PTup{}    -> []
             PLst{}    -> []
             PLit{}    -> []

@@ -41,6 +41,7 @@ unfoldRow = para $ \case
     fieldName = cata $ \case
         TCon _ a -> Text.tail (Text.init a)
         TApp a _ -> a
+        _        -> ""
 
     fieldType :: TypeT g -> TypeT g
     fieldType = cata $ \case

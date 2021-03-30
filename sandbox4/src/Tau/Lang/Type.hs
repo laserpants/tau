@@ -272,7 +272,7 @@ tRecord pairs = foldl tApp (tCon kind (recordCon ns)) ts
     kind = foldr kArr kTyp (replicate (length pairs) kTyp)
 
 tRecordCon :: TypeT a
-tRecordCon = tCon (kArr kRow kTyp) "{r}" 
+tRecordCon = tCon (kArr kRow kTyp) "#Record" 
 
 tRecord2 :: TypeT a -> TypeT a
 tRecord2 = tApp tRecordCon
