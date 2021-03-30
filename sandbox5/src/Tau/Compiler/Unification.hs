@@ -4,6 +4,7 @@ module Tau.Compiler.Unification where
 import Control.Monad.Except
 import Data.Function ((&))
 import Tau.Compiler.Substitution
+import Tau.Lang
 import Tau.Tool
 import Tau.Type
 
@@ -29,13 +30,33 @@ unify t u
     fn _ _                                    = throwError "Cannot unify"
 
 match :: (MonadError Error m) => Type -> Type -> m TypeSubstitution
-match t u = fn (project t) (project u)
+match t u
+    | isRow t && isRow u                      = matchRowTypes t u
+    | otherwise                               = fn (project t) (project u)
   where
     fn (TArr t1 t2) (TArr u1 u2)              = matchPairs (t1, t2) (u1, u2)
     fn (TApp t1 t2) (TApp u1 u2)              = matchPairs (t1, t2) (u1, u2)
-    fn (TVar k name) _ | k == kindOf u        = pure (name `mapsTo` u)
+    fn (TVar kind name) _                     = bind name kind u
     fn _ _ | t == u                           = pure mempty
     fn _ _                                    = throwError "Cannot match"
+
+unifyRowTypes :: (MonadError Error m) => Type -> Type -> m TypeSubstitution
+unifyRowTypes t u = fn (rowRep t) (rowRep u)
+  where
+    fn (RNil _) (RNil _)                      = pure mempty
+    fn (RVar _ var) _                         = bind var kRow u
+    fn _ (RVar _ var)                         = bind var kRow t
+    fn r s                                    = unifyRows (embed r) (embed s)
+
+matchRowTypes :: (MonadError Error m) => Type -> Type -> m TypeSubstitution
+matchRowTypes t u = fn (rowRep t) (rowRep u)
+  where
+    fn (RNil _) (RNil _)                      = pure mempty
+    fn (RVar _ var) _                         = bind var kRow u
+    fn r s                                    = unifyRows (embed r) (embed s)
+
+rowRep :: Type -> RowF r Type (Row r Type)
+rowRep = project . unfoldRowType
 
 unifyPairs :: (MonadError Error m) => (Type, Type) -> (Type, Type) -> m TypeSubstitution
 unifyPairs (t1, t2) (u1, u2) = do
@@ -49,11 +70,9 @@ matchPairs (t1, t2) (u1, u2) = do
     sub2 <- match t2 u2
     merge sub1 sub2 & maybe (throwError "Merge failed") pure
 
-unifyRowTypes :: (MonadError Error m) => Type -> Type -> m TypeSubstitution
-unifyRowTypes t u =
-    undefined
+unfoldRowType :: TypeT a -> Row r Type
+unfoldRowType = undefined
 
-matchRowTypes :: (MonadError Error m) => Type -> Type -> m TypeSubstitution
-matchRowTypes t u =
+unifyRows :: (MonadError String m) => Row t Type -> Row t Type -> m TypeSubstitution
+unifyRows r s = 
     undefined
-

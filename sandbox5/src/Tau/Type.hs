@@ -9,6 +9,7 @@ module Tau.Type where
 
 import Data.List (nub)
 import Tau.Tool
+import qualified Data.Text as Text
 
 data KindF a
     = KTyp                    -- ^ Concrete (value) types
@@ -228,6 +229,17 @@ tListCon = tCon kFun "List"
 tList :: TypeT a -> TypeT a
 tList = tApp tListCon
 
+tTuple :: [TypeT a] -> TypeT a
+tTuple types = foldl tApp (tCon kind (tupleCon (length types))) types
+  where
+    kind = foldr (const (kArr kTyp)) kTyp types
+
+tPair :: TypeT a -> TypeT a -> TypeT a
+tPair t1 t2 = tTuple [t1, t2]
+
+tTriple :: TypeT a -> TypeT a -> TypeT a -> TypeT a
+tTriple t1 t2 t3 = tTuple [t1, t2, t3]
+
 -- >>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>
 
 kindOf :: Type -> Kind
@@ -252,5 +264,11 @@ upgrade = cata $ \case
     TArr t1 t2 -> tArr t1 t2
     TApp t1 t2 -> tApp t1 t2
 
+toScheme :: Type -> Scheme
+toScheme = Forall [] [] . upgrade
+
 isRow :: Type -> Bool
 isRow t = kRow == kindOf t
+
+tupleCon :: Int -> Name
+tupleCon size = "(" <> Text.replicate (pred size) "," <> ")"
