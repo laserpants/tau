@@ -264,7 +264,7 @@ upgrade = cata $ \case
     TArr t1 t2 -> tArr t1 t2
     TApp t1 t2 -> tApp t1 t2
 
-toScheme :: Type -> Scheme
+toScheme :: TypeT a -> Scheme
 toScheme = Forall [] [] . upgrade
 
 isRow :: Type -> Bool

@@ -55,9 +55,6 @@ matchRowTypes t u = fn (rowRep t) (rowRep u)
     fn (RVar _ var) _                         = bind var kRow u
     fn r s                                    = unifyRows (embed r) (embed s)
 
-rowRep :: Type -> RowF r Type (Row r Type)
-rowRep = project . unfoldRowType
-
 unifyPairs :: (MonadError Error m) => (Type, Type) -> (Type, Type) -> m TypeSubstitution
 unifyPairs (t1, t2) (u1, u2) = do
     sub1 <- unify t1 u1
@@ -69,6 +66,9 @@ matchPairs (t1, t2) (u1, u2) = do
     sub1 <- match t1 u1
     sub2 <- match t2 u2
     merge sub1 sub2 & maybe (throwError "Merge failed") pure
+
+rowRep :: Type -> RowF r Type (Row r Type)
+rowRep = project . unfoldRowType
 
 unfoldRowType :: TypeT a -> Row r Type
 unfoldRowType = undefined
