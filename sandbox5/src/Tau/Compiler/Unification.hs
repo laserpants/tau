@@ -6,17 +6,17 @@ import Tau.Compiler.Substitution
 import Tau.Tool
 import Tau.Type
 
-type Error = String -- TODO
+type Error = String
 
 bind :: (MonadError Error m) => Name -> Kind -> Type -> m TypeSubstitution
 bind name kind ty
     | ty == tVar kind name                    = pure mempty
---    | name `elem` (fst <$> typeVars ty)       = throwError "Infinite type"
---    | Just kind /= kindOf ty                  = throwError "Kind mismatch"
+    | name `elem` free ty                     = throwError "Infinite type"
+    | kind /= kindOf ty                       = throwError "Kind mismatch"
     | otherwise                               = pure (name `mapsTo` ty)
 
 isRow :: Type -> Bool
-isRow t = undefined -- Just kRow == kindOf t
+isRow t = kRow == kindOf t
 
 unify :: (MonadError Error m) => Type -> Type -> m TypeSubstitution
 unify = undefined

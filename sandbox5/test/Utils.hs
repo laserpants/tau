@@ -1,7 +1,11 @@
 module Utils where
 
 import Data.Text (Text, unpack)
-import Test.Hspec
+import Test.Hspec hiding (describe, it)
+import qualified Test.Hspec as Hspec
 
-describeTest :: Text -> SpecWith () -> SpecWith ()
-describeTest = describe . unpack
+describe :: Text -> SpecWith () -> SpecWith ()
+describe = Hspec.describe . unpack
+
+it :: (Example a) => Text -> a -> SpecWith (Arg a)
+it = Hspec.it . unpack

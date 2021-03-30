@@ -1,10 +1,12 @@
 {-# LANGUAGE DeriveTraversable  #-}
+{-# LANGUAGE FlexibleInstances  #-}
 {-# LANGUAGE LambdaCase         #-}
 {-# LANGUAGE StandaloneDeriving #-}
 {-# LANGUAGE StrictData         #-}
 {-# LANGUAGE TemplateHaskell    #-}
 module Tau.Type where
 
+import Data.List (nub)
 import Tau.Tool
 
 data KindF a
@@ -60,7 +62,7 @@ class Typed a where
 -- >>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>
 
 -- | Class of types that contain free type variables
-class Free t where
+class FreeIn t where
     free :: t -> [Name]
 
 -- >>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>
@@ -127,6 +129,17 @@ deriving instance Traversable PredicateT
 deriving instance Show Scheme
 deriving instance Eq Scheme 
 deriving instance Ord Scheme
+
+-- FreeIn instances
+
+instance (FreeIn t) => FreeIn [t] where
+    free = concatMap free
+
+instance FreeIn (TypeT a) where
+    free = (fst <$>) . typeVars
+
+instance FreeIn Scheme where
+    free (Forall _ _ t) = free t
 
 -- >>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>
 -- Constructors
@@ -222,3 +235,18 @@ kindOf = para $ \case
     TVar k _ -> k
     TCon k _ -> k
     TArr{}   -> kTyp
+
+typeVars :: TypeT a -> [(Name, Kind)]
+typeVars = nub . cata alg where
+    alg = \case
+        TVar k var -> [(var, k)]
+        TArr t1 t2 -> t1 <> t2
+        TApp t1 t2 -> t1 <> t2
+        _          -> []
+
+upgrade :: TypeT a -> PolyType
+upgrade = cata $ \case
+    TVar k var -> tVar k var
+    TCon k con -> tCon k con
+    TArr t1 t2 -> tArr t1 t2
+    TApp t1 t2 -> tApp t1 t2

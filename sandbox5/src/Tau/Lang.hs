@@ -227,6 +227,17 @@ deriving instance Traversable (ExprF t1 t2 t3 t4 t5 t6 t7 t8 t9 t10 t11 t12 t13 
 -- Constructors
 -- >>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>
 
+-- Row
+
+rNil :: t -> Row t e 
+rNil = embed1 RNil
+
+rVar :: t -> Name -> Row t e 
+rVar = embed2 RVar
+
+rExt :: t -> Name -> e -> Row t e -> Row t e 
+rExt = embed4 RExt
+
 -- Pattern
 
 varPat :: t1 -> Name -> Pattern t1 t2 t3 t4 t5 t6 t7 t8 t9
