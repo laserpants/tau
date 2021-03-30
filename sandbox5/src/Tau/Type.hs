@@ -251,3 +251,6 @@ upgrade = cata $ \case
     TCon k con -> tCon k con
     TArr t1 t2 -> tArr t1 t2
     TApp t1 t2 -> tApp t1 t2
+
+isRow :: Type -> Bool
+isRow t = kRow == kindOf t

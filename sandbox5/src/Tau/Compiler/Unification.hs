@@ -15,23 +15,24 @@ bind name kind ty
     | kind /= kindOf ty                       = throwError "Kind mismatch"
     | otherwise                               = pure (name `mapsTo` ty)
 
-isRow :: Type -> Bool
-isRow t = kRow == kindOf t
-
 unify :: (MonadError Error m) => Type -> Type -> m TypeSubstitution
-unify = undefined
+unify t u = undefined
 
 match :: (MonadError Error m) => Type -> Type -> m TypeSubstitution
-match = undefined
+match t u = undefined
 
 unifyPairs :: (MonadError Error m) => (Type, Type) -> (Type, Type) -> m TypeSubstitution
-unifyPairs = undefined
+unifyPairs (t1, t2) (u1, u2) = do
+    undefined
 
 matchPairs :: (MonadError Error m) => (Type, Type) -> (Type, Type) -> m TypeSubstitution
-matchPairs = undefined
+matchPairs (t1, t2) (u1, u2) = do
+    undefined
 
 unifyRowTypes :: (MonadError Error m) => Type -> Type -> m TypeSubstitution
-unifyRowTypes = undefined
+unifyRowTypes t u = 
+    undefined
 
 matchRowTypes :: (MonadError Error m) => Type -> Type -> m TypeSubstitution
-matchRowTypes = undefined
+matchRowTypes t u = 
+    undefined
