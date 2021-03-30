@@ -21,7 +21,7 @@ testKindOf = do
 
     describe "The kind of (List a)" $ do
         it "✔ is *" 
-            (kindOf (tList (tVar kTyp "a")) == kTyp)
+            (kindOf (tList _a) == kTyp)
 
     describe "The kind of (List Int)" $ do
         it "✔ is *" 
@@ -43,17 +43,17 @@ testTypeVars :: SpecWith ()
 testTypeVars = do
 
     typeVarsAre 
-        (tVar kTyp "v") 
-        [("v", kTyp)] 
-        ("v", ["v : *"])
+        _a
+        [("a", kTyp)] 
+        ("a", ["a : *"])
 
     typeVarsAre 
-        (tVar kTyp "a" `tArr` tVar kTyp "b") 
+        (_a `tArr` _b) 
         [("a", kTyp), ("b", kTyp)] 
         ("a -> b", ["a : *", "b : *"])
 
     typeVarsAre 
-        (tList (tVar kTyp "a") `tArr` tVar kTyp "b") 
+        (tList _a `tArr` _b) 
         [("a", kTyp), ("b", kTyp)] 
         ("List a -> b", ["a : *", "b : *"])
 
@@ -63,7 +63,7 @@ testTypeVars = do
         ("Int", [])
 
     typeVarsAre 
-        (tApp (tVar kFun "m") (tVar kTyp "a")) 
+        (tApp (tVar kFun "m") _a) 
         [("m", kFun), ("a", kTyp)] 
         ("m a", ["m : * -> *", "a : *"])
 
@@ -71,4 +71,11 @@ testTypeVars = do
 
 testUpgrade :: SpecWith ()
 testUpgrade = do
-    pure ()
+
+    describe "Upgrading a type variable" $ do
+        it "✔ returns the same type" 
+            (upgrade _a == (tVar kTyp "a" :: PolyType))
+
+    describe "Upgrading a type constructor" $ do
+        it "✔ returns the same type" 
+            (upgrade tInt == (tInt :: PolyType))

@@ -1,4 +1,5 @@
 {-# LANGUAGE DeriveTraversable  #-}
+{-# LANGUAGE OverloadedStrings  #-}
 {-# LANGUAGE StandaloneDeriving #-}
 {-# LANGUAGE StrictData         #-}
 {-# LANGUAGE TemplateHaskell    #-}
