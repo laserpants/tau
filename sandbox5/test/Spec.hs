@@ -11,6 +11,7 @@ main =
         describe "Tau.Type.kindOf"                         testKindOf
         describe "Tau.Type.typeVars"                       testTypeVars
         describe "Tau.Type.upgrade"                        testUpgrade
+        describe "Tau.Type.tupleCon"                       testTupleCon
 
         describe "Tau.Compiler.Unification.bind"           testBind
         describe "Tau.Compiler.Unification.isRow"          testIsRow

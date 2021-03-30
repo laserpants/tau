@@ -79,3 +79,20 @@ testUpgrade = do
     describe "Upgrading a type constructor" $ do
         it "✔ returns the same type" 
             (upgrade tInt == (tInt :: PolyType))
+
+-- >>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>
+
+testTupleCon :: SpecWith ()
+testTupleCon = do
+
+    describe "The 2-tuple constructor" $ do
+        it "✔ is (,)" 
+            (tupleCon 2 == "(,)")
+
+    describe "The 3-tuple constructor" $ do
+        it "✔ is (,,)" 
+            (tupleCon 3 == "(,,)")
+
+    describe "The 4-tuple constructor" $ do
+        it "✔ is (,,,)" 
+            (tupleCon 4 == "(,,,)")
