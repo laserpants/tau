@@ -4,8 +4,14 @@
 module Tau.Pretty where
 
 import Data.Text.Prettyprint.Doc
-import Tau.Type
+import Tau.Lang
 import Tau.Tool
+import Tau.Type
+
+-- >>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>
+
+instance Pretty (ProgPattern t) where
+    pretty = undefined
 
 -- >>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>
 
@@ -18,10 +24,9 @@ instance Pretty Kind where
                     KArr{} -> True
                     _      -> False
 
-        KTyp   -> "*"
-        KClass -> "#"
-        KRow   -> "r"
-
+        KTyp   -> "*"  -- Value type
+        KClass -> "#"  -- Type class constraint
+        KRow   -> "r"  -- Row type
 
 -- >>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>
 

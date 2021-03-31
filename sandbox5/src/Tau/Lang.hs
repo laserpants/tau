@@ -20,13 +20,13 @@ data Prim
 
 -- >>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>
 
-data RowF t e a
-    = RNil t                           -- ^ Empty row
-    | RVar t Name                      -- ^ Row variable
-    | RExt t Name e a                  -- ^ Row extension
+data RowF e a
+    = RNil                             -- ^ Empty row
+    | RVar Name                        -- ^ Row variable
+    | RExt Name e a                    -- ^ Row extension
 
 -- | Row
-type Row t e = Fix (RowF t e)
+type Row e = Fix (RowF e)
 
 -- >>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>
 
@@ -44,7 +44,7 @@ data PatternF t1 t2 t3 t4 t5 t6 t7 t8 t9 a
 -- | Pattern
 type Pattern t1 t2 t3 t4 t5 t6 t7 t8 t9 = Fix (PatternF t1 t2 t3 t4 t5 t6 t7 t8 t9)
 
-type PatternRow t = Row t (ProgPattern t)
+type PatternRow t = Row (ProgPattern t)
 
 type ProgPattern t = Pattern t t t t t t t t t
 
@@ -100,7 +100,7 @@ data ExprF t1 t2 t3 t4 t5 t6 t7 t8 t9 t10 t11 t12 t13 t14 t15 bind lam pat a
 type Expr t1 t2 t3 t4 t5 t6 t7 t8 t9 t10 t11 t12 t13 t14 t15 bind lam pat = 
     Fix (ExprF t1 t2 t3 t4 t5 t6 t7 t8 t9 t10 t11 t12 t13 t14 t15 bind lam pat)
 
-type ExprRow t = Row t (ProgExpr t)
+type ExprRow t = Row (ProgExpr t)
 
 type ProgExpr t = Expr t t t t t t t t t t t t t t t (Binding (ProgPattern t)) [ProgPattern t] (ProgPattern t)
 
@@ -114,22 +114,22 @@ deriving instance Ord  Prim
 
 -- Type class instances for Row
 
-deriving instance (Show t, Show e, Show a) =>
-    Show (RowF t e a)
+deriving instance (Show e, Show a) =>
+    Show (RowF e a)
 
-deriving instance (Eq t, Eq e, Eq a) =>
-    Eq (RowF t e a)
+deriving instance (Eq e, Eq a) =>
+    Eq (RowF e a)
 
-deriving instance (Ord t, Ord e, Ord a) =>
-    Ord (RowF t e a)
+deriving instance (Ord e, Ord a) =>
+    Ord (RowF e a)
 
 deriveShow1 ''RowF
 deriveEq1   ''RowF
 deriveOrd1  ''RowF
 
-deriving instance Functor     (RowF t e)
-deriving instance Foldable    (RowF t e)
-deriving instance Traversable (RowF t e)
+deriving instance Functor     (RowF e)
+deriving instance Foldable    (RowF e)
+deriving instance Traversable (RowF e)
 
 -- Type class instances for Pattern
 
@@ -230,14 +230,14 @@ deriving instance Traversable (ExprF t1 t2 t3 t4 t5 t6 t7 t8 t9 t10 t11 t12 t13 
 
 -- Row
 
-rNil :: t -> Row t e 
-rNil = embed1 RNil
+rNil :: Row e 
+rNil = embed RNil
 
-rVar :: t -> Name -> Row t e 
-rVar = embed2 RVar
+rVar :: Name -> Row e 
+rVar = embed1 RVar
 
-rExt :: t -> Name -> e -> Row t e -> Row t e 
-rExt = embed4 RExt
+rExt :: Name -> e -> Row e -> Row e 
+rExt = embed3 RExt
 
 -- Pattern
 
