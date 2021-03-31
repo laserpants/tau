@@ -76,7 +76,7 @@ testPrettyKind = do
 
     suceedPrint
         kRow
-        "r"
+        "row"
 
     suceedPrint
         (kTyp `kArr` kTyp) 

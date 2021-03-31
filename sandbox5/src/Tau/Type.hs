@@ -224,11 +224,15 @@ tChar = typ "Char"
 tString :: TypeT a
 tString = typ "String"
 
+-- Lists
+
 tListCon :: TypeT a
 tListCon = tCon kFun "List"
 
 tList :: TypeT a -> TypeT a
 tList = tApp tListCon
+
+-- Tuples
 
 tTuple :: [TypeT a] -> TypeT a
 tTuple types = foldl tApp (tCon kind (tupleCon (length types))) types
@@ -240,6 +244,25 @@ tPair t1 t2 = tTuple [t1, t2]
 
 tTriple :: TypeT a -> TypeT a -> TypeT a -> TypeT a
 tTriple t1 t2 t3 = tTuple [t1, t2, t3]
+
+-- Rows
+
+tRowCon :: Name -> TypeT a
+tRowCon label = tCon (kTyp `kArr` kRow `kArr` kRow) ("{" <> label <> "}")
+
+tRowExtend :: Name -> TypeT a -> TypeT a -> TypeT a 
+tRowExtend label ty = tApp (tApp (tRowCon label) ty) 
+
+tEmptyRow :: TypeT a
+tEmptyRow = tCon kRow "{}"
+
+-- Records
+
+tRecordCon :: TypeT a
+tRecordCon = tCon (kArr kRow kTyp) "#Record" 
+
+tRecord :: TypeT a -> TypeT a
+tRecord = tApp tRecordCon
 
 -- >>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>
 

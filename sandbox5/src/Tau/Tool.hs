@@ -13,6 +13,7 @@ module Tau.Tool
   , module Data.Ord.Deriving
   , module Data.Text
   , module Data.Void
+  , module Debug.Trace
   , module Text.Show.Deriving
   ) where
 
@@ -22,6 +23,7 @@ import Data.Functor.Foldable
 import Data.Ord.Deriving
 import Data.Text (Text)
 import Data.Void
+import Debug.Trace
 import Text.Show.Deriving
 
 -- >>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>

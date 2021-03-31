@@ -5,6 +5,7 @@ import Data.Either (isLeft, isRight)
 import Data.Text (Text)
 import Tau.Compiler.Substitution
 import Tau.Compiler.Unification
+import Tau.Lang
 import Tau.Pretty
 import Tau.Type
 import Test.Hspec hiding (describe, it)
@@ -151,3 +152,37 @@ testMatchRowTypes = do
     describe "TODO" $ do
         pure ()
 
+-- >>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>
+
+succeedUnfoldRow :: Type -> Row Type -> SpecWith ()
+succeedUnfoldRow ty row =
+    describe ("The type " <> prettyText ty) $ 
+        it ("✔ unfolds to " <> prettyText row)
+            (unfoldRowType ty == row)
+
+testUnfoldRowType :: SpecWith ()
+testUnfoldRowType = do
+
+    succeedUnfoldRow 
+        (tVar kRow "r") 
+        (rVar "r")
+
+    succeedUnfoldRow 
+        tEmptyRow
+        rNil
+
+    succeedUnfoldRow 
+        (tRowExtend "id" tInt tEmptyRow)
+        (rExt "id" tInt rNil)
+
+    succeedUnfoldRow 
+        (tRowExtend "id" tInt (tVar kRow "r"))
+        (rExt "id" tInt (rVar "r"))
+
+    succeedUnfoldRow 
+        (tRowExtend "name" tString (tRowExtend "id" tInt (tVar kRow "r")))
+        (rExt "name" tString (rExt "id" tInt (rVar "r")))
+
+    succeedUnfoldRow 
+        (tRowExtend "name" tString (tRowExtend "id" tInt tEmptyRow))
+        (rExt "name" tString (rExt "id" tInt rNil))

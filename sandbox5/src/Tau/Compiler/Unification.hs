@@ -1,12 +1,16 @@
-{-# LANGUAGE FlexibleContexts #-}
+{-# LANGUAGE FlexibleContexts  #-}
+{-# LANGUAGE LambdaCase        #-}
+{-# LANGUAGE OverloadedStrings #-}
 module Tau.Compiler.Unification where
 
+import Control.Arrow ((<<<), (>>>))
 import Control.Monad.Except
 import Data.Function ((&))
 import Tau.Compiler.Substitution
 import Tau.Lang
 import Tau.Tool
 import Tau.Type
+import qualified Data.Text as Text
 
 type Error = String
 
@@ -70,8 +74,18 @@ matchPairs (t1, t2) (u1, u2) = do
 rowRep :: Type -> RowF Type (Row Type)
 rowRep = project . unfoldRowType
 
-unfoldRowType :: TypeT a -> Row Type
-unfoldRowType = undefined
+unfoldRowType :: Type -> Row Type
+unfoldRowType =
+    para $ \case
+        TCon (Fix KRow) "{}" -> rNil
+        TVar (Fix KRow) var  -> rVar var
+        TApp (t1, _) (_, b)  -> rExt (getLabel t1)
+                                     (case project t1 of TApp _ a -> a) b
+  where
+    getLabel :: Type -> Name
+    getLabel = cata $ \case
+        TApp t1 _ -> t1
+        TCon _ c  -> Text.tail (Text.init c)
 
 unifyRows :: (MonadError String m) => Row Type -> Row Type -> m TypeSubstitution
 unifyRows r s = 

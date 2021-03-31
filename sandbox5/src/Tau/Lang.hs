@@ -1,11 +1,14 @@
 {-# LANGUAGE DeriveTraversable  #-}
+{-# LANGUAGE LambdaCase         #-}
 {-# LANGUAGE OverloadedStrings  #-}
 {-# LANGUAGE StandaloneDeriving #-}
 {-# LANGUAGE StrictData         #-}
 {-# LANGUAGE TemplateHaskell    #-}
 module Tau.Lang where
 
+import Data.Map (Map)
 import Tau.Tool
+import qualified Data.Map as Map
 
 -- | Built-in language primitives
 data Prim
@@ -52,15 +55,34 @@ type ProgPattern t = Pattern t t t t t t t t t
 
 -- | Unary operators
 data Op1 t
-    = Oneg t                           -- ^ Unary negation
-    | Onot t                           -- ^ Logical NOT
+    = ONeg t                           -- ^ Unary negation
+    | ONot t                           -- ^ Logical NOT
 
 -- >>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>
 
 -- | Binary operators
 data Op2 t
-    = Oeq  t                           -- ^ Equal-to operator
-    | Oneq t                           -- ^ Not-equal-to operator
+    = OEq  t                           -- ^ Equal-to operator
+    | ONeq t                           -- ^ Not-equal-to operator
+    | OAnd t                           -- ^ Logical AND
+    | OOr  t                           -- ^ Logical OR
+    | OAdd t                           -- ^ Addition operator
+    | OSub t                           -- ^ Subtraction operator
+    | OMul t                           -- ^ Multiplication operator
+    | ODiv t                           -- ^ Division operator
+    | ONdiv t                          -- ^ Integral division
+    | OPow t                           -- ^ Exponentiation operator
+    | OMod t                           -- ^ Modulo operator
+    | OLt  t                           -- ^ Strictly less-than operator
+    | OGt  t                           -- ^ Strictly greater-than operator
+    | OLte t                           -- ^ Less-than-or-equal-to operator
+    | OGte t                           -- ^ Greater-than-or-equal-to operator
+    | OLarr t                          -- ^ Function composition operator
+    | ORarr t                          -- ^ Reverse function composition
+    | OFpipe t                         -- ^ Forward pipe operator
+    | OBpipe t                         -- ^ Reverse pipe operator
+    | OOpt t                           -- ^ Option default operator
+    | OStrc t                          -- ^ String concatenation operator
 
 -- >>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>
 
@@ -322,3 +344,11 @@ listConsExpr t hd tl = conExpr t "(::)" [hd, tl]
 
 listConsPat :: t2 -> Pattern t1 t2 t3 t4 t5 t6 t7 t8 t9 -> Pattern t1 t2 t3 t4 t5 t6 t7 t8 t9 -> Pattern t1 t2 t3 t4 t5 t6 t7 t8 t9
 listConsPat t hd tl = conPat t "(::)" [hd, tl]
+
+-- >>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>
+
+rowMap :: Row e -> (Map Name [e], Maybe Name)
+rowMap = cata $ \case
+    RNil                     -> (mempty, Nothing)
+    RVar var                 -> (mempty, Just var)
+    RExt label e (map, leaf) -> (Map.insertWith (<>) label [e] map, leaf)

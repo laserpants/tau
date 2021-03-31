@@ -3,10 +3,32 @@
 {-# LANGUAGE OverloadedStrings #-}
 module Tau.Pretty where
 
+import Control.Arrow ((<<<), (>>>))
 import Data.Text.Prettyprint.Doc
 import Tau.Lang
 import Tau.Tool
 import Tau.Type
+
+-- >>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>
+
+instance (Eq e, Pretty e) => Pretty (Row e) where
+    pretty row =
+        case project row of
+            RNil     -> "<>"
+            RVar var -> pretty var
+            _        -> "<" <+> body <+> ">"
+      where
+        body = (`para` row) $ \case
+            RNil             -> ""
+            RVar var         -> pretty var
+            RExt label e row -> pretty label <+> colon <+> pretty e <> next row
+
+        next :: (Row e, Doc a) -> Doc a
+        next (row, doc) =
+            case project row of
+                RNil     -> ""
+                RVar var -> " |" <+> pretty var
+                _        -> comma <+> doc
 
 -- >>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>
 
@@ -24,9 +46,9 @@ instance Pretty Kind where
                     KArr{} -> True
                     _      -> False
 
-        KTyp   -> "*"  -- Value type
-        KClass -> "#"  -- Type class constraint
-        KRow   -> "r"  -- Row type
+        KTyp   -> "*"    -- Value type
+        KClass -> "!"    -- Type class constraint
+        KRow   -> "row"  -- Row type
 
 -- >>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>
 

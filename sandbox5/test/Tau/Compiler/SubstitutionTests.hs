@@ -2,6 +2,7 @@
 module Tau.Compiler.SubstitutionTests where
 
 import Data.Map.Strict (Map)
+import Data.Maybe (isNothing)
 import Data.Text (pack)
 import Tau.Compiler.Substitution
 import Tau.Pretty
@@ -58,50 +59,50 @@ testCompose ::  SpecWith ()
 testCompose = do 
 
     composeAndApplyTo
-        (fromList [ ("a", tInt)  ]) 
+        (fromList [ ("a", tInt) ]) 
         (fromList [ ("b", tBool) ])
         _a
         tInt
 
     composeAndApplyTo
-        (fromList [ ("a", tInt)  ]) 
+        (fromList [ ("a", tInt) ]) 
         (fromList [ ("b", tBool) ])
         _b
         tBool
 
     composeAndApplyTo
         (fromList [ ("b", tBool) ])
-        (fromList [ ("a", tInt)  ]) 
+        (fromList [ ("a", tInt) ]) 
         _a
         tInt
 
     composeAndApplyTo
         (fromList [ ("b", tBool) ])
-        (fromList [ ("a", tInt)  ]) 
+        (fromList [ ("a", tInt) ]) 
         _b
         tBool
 
     composeAndApplyTo
         (fromList [ ("b", tBool) ])
-        (fromList [ ("a", tInt)  ]) 
+        (fromList [ ("a", tInt) ]) 
         (_a `tArr` _b)
         (tInt `tArr` tBool)
 
     composeAndApplyTo
         (fromList [ ("b", tBool) ])
-        (fromList [ ("a", tVar kTyp "b")  ]) 
+        (fromList [ ("a", tVar kTyp "b") ]) 
         _a
         tBool
 
     composeAndApplyTo
         (fromList [ ("b", tBool) ])
-        (fromList [ ("a", tVar kTyp "b")  ]) 
+        (fromList [ ("a", tVar kTyp "b") ]) 
         _b
         tBool
 
     composeAndApplyTo
         (compose (fromList [ ("a3", tVar kTyp "a4") ]) (fromList [ ("a2", tVar kTyp "a3") ]))
-        (fromList [ ("a1", tVar kTyp "a2")  ]) 
+        (fromList [ ("a1", tVar kTyp "a2") ]) 
         (tVar kTyp "a1")
         (tVar kTyp "a4")
 
@@ -111,7 +112,11 @@ testMerge ::  SpecWith ()
 testMerge = do 
 
     describe "TODO" $ do
-        pure ()
+        it "✗ fails"
+            (isNothing (merge (Sub.fromList [("a", tInt), ("b", tInt)]) (Sub.fromList [("b", tBool)]) :: Maybe TypeSubstitution))
+
+--    describe "TODO" $ do
+--        pure ()
 
 -- >>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>
 
@@ -134,6 +139,18 @@ testToList = do
 testNull ::  SpecWith ()
 testNull = do 
 
+    describe "The null substitution" $ do
+        it "✔ is an empty map"
+            (getSub Sub.null == (mempty :: Map Name Type))
+    describe "The null substitution" $ do
+        it "✔ is an empty map"
+            (getSub Sub.null == (mempty :: Map Name Type))
+    describe "The null substitution" $ do
+        it "✔ is an empty map"
+            (getSub Sub.null == (mempty :: Map Name Type))
+    describe "The null substitution" $ do
+        it "✔ is an empty map"
+            (getSub Sub.null == (mempty :: Map Name Type))
     describe "The null substitution" $ do
         it "✔ is an empty map"
             (getSub Sub.null == (mempty :: Map Name Type))
