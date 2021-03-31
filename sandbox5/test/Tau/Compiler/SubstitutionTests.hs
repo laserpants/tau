@@ -1,11 +1,15 @@
 {-# LANGUAGE OverloadedStrings #-}
 module Tau.Compiler.SubstitutionTests where
 
+import Data.Map.Strict (Map)
 import Data.Text (pack)
 import Tau.Compiler.Substitution
+import Tau.Pretty
+import Tau.Tool
 import Tau.Type
 import Test.Hspec hiding (describe, it)
 import Utils
+import qualified Tau.Compiler.Substitution as Sub
 
 testSubstitution :: SpecWith ()
 testSubstitution = 
@@ -15,8 +19,8 @@ testSubstitution =
 
 applyTo :: TypeSubstitution -> Type -> Type -> SpecWith ()
 applyTo sub ty res =
-    describe "apply TODO to TODO" $ do
-        it "✔ returns TODO"
+    describe ("apply TODO to " <> prettyText ty) $ do
+        it ("✔ returns: " <> prettyText res)
             (apply sub ty == res)
 
 testApply :: SpecWith ()
@@ -46,8 +50,8 @@ testApply = do
 
 composeAndApplyTo :: TypeSubstitution -> TypeSubstitution -> Type -> Type -> SpecWith ()
 composeAndApplyTo sub1 sub2 ty res =
-    describe "apply TODO to TODO" $ do
-        it "✔ returns TODO"
+    describe ("apply TODO to " <> prettyText ty) $ do
+        it ("✔ returns: " <> prettyText res)
             (apply (compose sub1 sub2) ty == res)
 
 testCompose ::  SpecWith ()
@@ -124,3 +128,12 @@ testToList = do
 
     describe "TODO" $ do
         pure ()
+
+-- >>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>
+
+testNull ::  SpecWith ()
+testNull = do 
+
+    describe "The null substitution" $ do
+        it "✔ is an empty map"
+            (getSub Sub.null == (mempty :: Map Name Type))

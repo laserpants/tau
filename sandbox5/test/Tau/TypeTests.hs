@@ -2,6 +2,8 @@
 module Tau.TypeTests where
 
 import Data.Text (Text)
+import Data.Text.Prettyprint.Doc
+import Tau.Pretty
 import Tau.Tool
 import Tau.Type
 import Test.Hspec hiding (describe, it)
@@ -33,11 +35,13 @@ testKindOf = do
 
 -- >>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>
 
-typeVarsAre :: TypeT a -> [(Name, Kind)] -> (Text, [Text]) -> SpecWith ()
-typeVarsAre ty vars (v, vs) =
-    describe ("The free type variables in " <> v) $
-        it ("✔ are [" <> Text.intercalate ", " vs <> "]")
+typeVarsAre :: Type -> [(Name, Kind)] -> SpecWith ()
+typeVarsAre ty vars =
+    describe ("The free type variables in " <> prettyText ty) $
+        it ("✔ are [" <> Text.intercalate ", " (renderDoc . prettyTypePair <$> vars) <> "]")
             (typeVars ty == vars)
+  where
+    prettyTypePair (n, k) = pretty n <+> ":" <+> pretty k
 
 testTypeVars :: SpecWith ()
 testTypeVars = do
@@ -45,27 +49,22 @@ testTypeVars = do
     typeVarsAre 
         _a
         [("a", kTyp)] 
-        ("a", ["a : *"])
 
     typeVarsAre 
         (_a `tArr` _b) 
         [("a", kTyp), ("b", kTyp)] 
-        ("a -> b", ["a : *", "b : *"])
 
     typeVarsAre 
         (tList _a `tArr` _b) 
         [("a", kTyp), ("b", kTyp)] 
-        ("List a -> b", ["a : *", "b : *"])
 
     typeVarsAre 
         tInt
         [] 
-        ("Int", [])
 
     typeVarsAre 
         (tApp (tVar kFun "m") _a) 
         [("m", kFun), ("a", kTyp)] 
-        ("m a", ["m : * -> *", "a : *"])
 
 -- >>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>
 

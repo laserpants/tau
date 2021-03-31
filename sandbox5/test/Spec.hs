@@ -1,6 +1,7 @@
 {-# LANGUAGE OverloadedStrings #-}
 import Tau.Compiler.SubstitutionTests
 import Tau.Compiler.UnificationTests
+import Tau.PrettyTests
 import Tau.TypeTests
 import Test.Hspec hiding (describe, it)
 import Utils
@@ -28,3 +29,7 @@ main =
         describe "Tau.Compiler.Substitution.merge"         testMerge
         describe "Tau.Compiler.Substitution.fromList"      testFromList
         describe "Tau.Compiler.Substitution.toList"        testToList
+        describe "Tau.Compiler.Substitution.null"          testNull
+
+        describe "Tau.Pretty (Type)"                       testPrettyType
+        describe "Tau.Pretty (Kind)"                       testPrettyKind

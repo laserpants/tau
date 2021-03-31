@@ -5,6 +5,7 @@ import Data.Either (isLeft, isRight)
 import Data.Text (Text)
 import Tau.Compiler.Substitution
 import Tau.Compiler.Unification
+import Tau.Pretty
 import Tau.Type
 import Test.Hspec hiding (describe, it)
 import Utils
@@ -26,9 +27,7 @@ testIsRow = do
 -- >>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>
 
 testDescription :: Type -> Type -> Text
-testDescription t1 t2 =
-    --"The types " <> prettyParString t1 <> " and " <> prettyParString t2 
-    "The types TODO and TODO" 
+testDescription t1 t2 = "The types " <> prettyText t1 <> " and " <> prettyText t2 
 
 failUnifyTypes :: Type -> Type -> SpecWith ()
 failUnifyTypes t1 t2 = do

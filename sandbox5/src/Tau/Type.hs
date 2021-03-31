@@ -7,6 +7,7 @@
 {-# LANGUAGE TemplateHaskell    #-}
 module Tau.Type where
 
+import Control.Arrow ((>>>))
 import Data.List (nub)
 import Tau.Tool
 import qualified Data.Text as Text
@@ -241,6 +242,31 @@ tTriple :: TypeT a -> TypeT a -> TypeT a -> TypeT a
 tTriple t1 t2 t3 = tTuple [t1, t2, t3]
 
 -- >>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>
+
+isVar :: Type -> Bool
+isVar = project >>> \case
+    TVar{} -> True
+    _      -> False
+
+isCon :: Type -> Bool
+isCon = project >>> \case
+    TCon{} -> True
+    _      -> False
+
+getTypeVar :: Type -> Maybe Name
+getTypeVar = project >>> \case
+    TVar _ var -> Just var
+    _          -> Nothing
+
+getTypeCon :: Type -> Maybe Name
+getTypeCon = project >>> \case
+    TCon _ con -> Just con
+    _          -> Nothing
+
+getTypeIndex :: PolyType -> Maybe Int
+getTypeIndex = project >>> \case
+    TGen i -> Just i
+    _      -> Nothing
 
 kindOf :: Type -> Kind
 kindOf = para $ \case
