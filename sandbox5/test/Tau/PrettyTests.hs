@@ -150,3 +150,29 @@ testPrettyPattern = do
     suceedPrintPattern
         (recordPat () (rExt "name" (varPat () "name") (rExt "id" (varPat () "id") (rVar "r"))))
         "{ name = name, id = id | r }"
+
+    describe "Constructor patterns" $ do
+
+        suceedPrintPattern
+            (conPat () "C" [])
+            "C"
+
+        suceedPrintPattern
+            (conPat () "C" [varPat () "x", varPat () "y"])
+            "C x y"
+
+        suceedPrintPattern
+            (conPat () "C" [varPat () "x", conPat () "D" [varPat () "y", varPat () "z"]])
+            "C x (D y z)"
+
+        suceedPrintPattern
+            (conPat () "C" [varPat () "x", conPat () "D" []])
+            "C x D"
+
+        suceedPrintPattern
+            (conPat () "C" [orPat () (varPat () "x") (varPat () "y")])
+            "C (x or y)"
+
+        suceedPrintPattern
+            (conPat () "C" [varPat () "x", asPat () "d" (conPat () "D" [varPat () "y"])])
+            "C x (D y as d)"
