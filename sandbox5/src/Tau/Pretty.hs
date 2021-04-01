@@ -96,6 +96,16 @@ instance Pretty Type where
 
 -- >>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>
 
+instance Pretty Predicate where
+    pretty _ = "TODO"
+
+-- >>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>
+
+instance Pretty Scheme where
+    pretty _ = "TODO"
+
+-- >>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>
+
 parensIf :: Bool -> Doc a -> Doc a
 parensIf isTrue doc = if isTrue then parens doc else doc
 

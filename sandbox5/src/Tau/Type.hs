@@ -9,7 +9,6 @@ module Tau.Type where
 
 import Control.Arrow ((>>>))
 import Data.List (nub)
-import Tau.Env (Env(..))
 import Tau.Tool
 import qualified Data.Text as Text
 
@@ -71,10 +70,11 @@ class FreeIn t where
 
 -- >>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>
 
--- TODO
-type ClassEnv = ()
+data TypeInfoT t = TypeInfo
+    { nodeType       :: t
+    , nodePredicates :: [Predicate] }
 
-type TypeEnv = Env Scheme
+type TypeInfo = TypeInfoT Type
 
 -- >>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>
 
@@ -140,6 +140,16 @@ deriving instance Traversable PredicateT
 deriving instance Show Scheme
 deriving instance Eq Scheme 
 deriving instance Ord Scheme
+
+-- Type class instances for TypeInfo
+
+deriving instance (Show t) => 
+    Show (TypeInfoT t)
+
+deriving instance (Eq t) => 
+    Eq (TypeInfoT t)
+
+deriving instance Functor TypeInfoT
 
 -- Typed instances
 

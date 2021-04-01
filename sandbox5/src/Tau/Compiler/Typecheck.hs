@@ -16,19 +16,9 @@ import Tau.Compiler.Substitution
 import Tau.Compiler.Unification
 import Tau.Env (Env(..))
 import Tau.Lang
+import Tau.Prog
 import Tau.Tool
 import Tau.Type
-
-data TypeInfoT t = TypeInfo
-    { nodeType       :: t
-    , nodePredicates :: [Predicate]
-    } deriving (Show, Eq, Functor)
-
-type TypeInfo = TypeInfoT Type
-
-type Context = Env (Set Name)
-
--- >>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>
 
 inferAst
   :: ( MonadSupply Name m
