@@ -45,224 +45,224 @@ import qualified Data.Set.Monad as Set
 import qualified Data.Text as Text
 import qualified Tau.Util.Env as Env
 
--------------------------------------------------------------------------------
-
--- | Built-in language primitives
-data XPrim
-    = XTUnit                            -- ^ Unit value
-    | XTBool Bool                       -- ^ Booleans
-    | XTInt Int                         -- ^ Bounded machine integers (32 or 64 bit)
-    | XTInteger Integer                 -- ^ Arbitrary precision integers (BigInt)
-    | XTFloat Float                     -- ^ Single precision floating point numbers 
-    | XTDouble Double                   -- ^ Double precision floating point numbers
-    | XTChar Char                       -- ^ Chars
-    | XTString Text                     -- ^ Strings
-
--------------------------------------------------------------------------------
-
-data XRowF t e a
-    = XRNil t                           -- ^ Empty row
-    | XRVar t Name                      -- ^ Row variable
-    | XRExt t Name e a                  -- ^ Row extension
-
--- | Row
-type XRow t e = Fix (XRowF t e)
-
--------------------------------------------------------------------------------
-
-data XPatternF t1 t2 t3 t4 t5 t6 t7 t8 t9 a
-    = XPVar    t1 Name                  -- ^ Variable pattern
-    | XPCon    t2 Name [a]              -- ^ Constuctor pattern
-    | XPLit    t3 XPrim                 -- ^ Literal pattern
-    | XPAs     t4 Name a                -- ^ As-pattern
-    | XPOr     t5 a a                   -- ^ Or-pattern
-    | XPAny    t6                       -- ^ Wildcard pattern
-    | XPTuple  t7 [a]                   -- ^ Tuple pattern
-    | XPList   t8 [a]                   -- ^ List pattern
-    | XPRecord t9 (PatternRow t9)       -- ^ Record pattern
-
--- | Pattern
-type XPattern t1 t2 t3 t4 t5 t6 t7 t8 t9 = Fix (XPatternF t1 t2 t3 t4 t5 t6 t7 t8 t9)
-
-type PatternRow t = XRow t (ProgPattern t)
-
-type ProgPattern t = XPattern t t t t t t t t t
-
--------------------------------------------------------------------------------
-
--- | Unary operator
-data XOp1 t
-    = XOneg t                           -- ^ Unary negation
-    | XOnot t                           -- ^ Logical NOT
-
--------------------------------------------------------------------------------
-
--- | Binary operator
-data XOp2 t
-    = XOeq  t                           -- ^ Equal-to operator
-    | XOneq t                           -- ^ Not-equal-to operator
-
--------------------------------------------------------------------------------
-
--- | Pattern guard
-data XGuard a = XGuard [a] a
-
--- | Pattern matching clause
-data XClause p a = XClause [p] [XGuard a] 
-
--------------------------------------------------------------------------------
-
--- | Name binding part of let expressions
-data XBind p
-    = XBLet p                           -- ^ Simple let-binding
-    | XBFun Name [p]                    -- ^ Function binding
-
--------------------------------------------------------------------------------
-
-data XExprF t1 t2 t3 t4 t5 t6 t7 t8 t9 t10 t11 t12 t13 t14 t15 bind lam pat a
-    = XEVar    t1  Name                 -- ^ Variable
-    | XECon    t2  Name [a]             -- ^ Data constructor
-    | XELit    t3  XPrim                -- ^ Literal value
-    | XEApp    t4  [a]                  -- ^ Function application
-    | XELet    t5  bind a a             -- ^ Let expression
-    | XEFix    t6  Name a a             -- ^ Recursive let
-    | XELam    t7  lam a                -- ^ Lambda abstraction
-    | XEIf     t8  a a a                -- ^ If-clause
-    | XEPat    t9  [a] [XClause pat a]  -- ^ Match expressions
-    | XEFun    t10 [XClause pat a]      -- ^ Fun expression
-    | XEOp1    t11 (XOp1 t11) a         -- ^ Unary operator
-    | XEOp2    t12 (XOp2 t12) a a       -- ^ Binary operator
-    | XETuple  t13 [a]                  -- ^ Tuple
-    | XEList   t14 [a]                  -- ^ List literal
-    | XERecord t15 (ExprRow t15)        -- ^ Record
-
--- | Language expression
-type XExpr t1 t2 t3 t4 t5 t6 t7 t8 t9 t10 t11 t12 t13 t14 t15 bind lam pat = 
-    Fix (XExprF t1 t2 t3 t4 t5 t6 t7 t8 t9 t10 t11 t12 t13 t14 t15 bind lam pat)
-
-type ExprRow t = XRow t (XProgExpr t)
-
-type XProgExpr t = XExpr t t t t t t t t t t t t t t t (XBind (ProgPattern t)) [ProgPattern t] (ProgPattern t)
-
------------------------------------------------------------------------------------
-
--- Type class instances for Prim
-
-deriving instance Show XPrim
-deriving instance Eq   XPrim
-deriving instance Ord  XPrim
-
--- Type class instances for Row
-
-deriving instance (Show t, Show e, Show a) => 
-    Show (XRowF t e a)
-
-deriving instance (Eq t, Eq e, Eq a) => 
-    Eq (XRowF t e a)
-
-deriving instance (Ord t, Ord e, Ord a) => 
-    Ord (XRowF t e a)
-
-deriveShow1 ''XRowF
-deriveEq1   ''XRowF
-deriveOrd1  ''XRowF
-
-deriving instance Functor     (XRowF t e)
-deriving instance Foldable    (XRowF t e)
-deriving instance Traversable (XRowF t e)
-
--- Type class instances for Pattern
-
-deriving instance (Show t1, Show t2, Show t3, Show t4, Show t5, Show t6, Show t7, Show t8, Show t9, Show a) => 
-    Show (XPatternF  t1 t2 t3 t4 t5 t6 t7 t8 t9 a)
-
-deriving instance (Eq t1, Eq t2, Eq t3, Eq t4, Eq t5, Eq t6, Eq t7, Eq t8, Eq t9, Eq a) => 
-    Eq (XPatternF  t1 t2 t3 t4 t5 t6 t7 t8 t9 a)
-
-deriving instance (Ord t1, Ord t2, Ord t3, Ord t4, Ord t5, Ord t6, Ord t7, Ord t8, Ord t9, Ord a) => 
-    Ord (XPatternF  t1 t2 t3 t4 t5 t6 t7 t8 t9 a)
-
-deriveShow1 ''XPatternF
-deriveEq1   ''XPatternF
-deriveOrd1  ''XPatternF
-
-deriving instance Functor     (XPatternF t1 t2 t3 t4 t5 t6 t7 t8 t9)
-deriving instance Foldable    (XPatternF t1 t2 t3 t4 t5 t6 t7 t8 t9)
-deriving instance Traversable (XPatternF t1 t2 t3 t4 t5 t6 t7 t8 t9)
-
--- Type class instances for Guard
-
-deriving instance (Show a) => Show (XGuard a)
-deriving instance (Eq   a) => Eq   (XGuard a)
-deriving instance (Ord  a) => Ord  (XGuard a)
-
-deriveShow1 ''XGuard
-deriveEq1   ''XGuard
-deriveOrd1  ''XGuard
-
-deriving instance Functor     XGuard
-deriving instance Foldable    XGuard
-deriving instance Traversable XGuard
-
--- Type class instances for Clause
-
-deriving instance (Show p, Show a) => 
-    Show (XClause p a)
-
-deriving instance (Eq p, Eq a) => 
-    Eq (XClause p a)
-
-deriving instance (Ord p, Ord a) => 
-    Ord (XClause p a)
-
-deriveShow1 ''XClause
-deriveEq1   ''XClause
-deriveOrd1  ''XClause
-
-deriving instance Functor     (XClause p)
-deriving instance Foldable    (XClause p)
-deriving instance Traversable (XClause p)
-
--- Type class instances for Op1
-
-deriving instance (Show t) => Show (XOp1 t)
-deriving instance (Eq   t) => Eq   (XOp1 t)
-deriving instance (Ord  t) => Ord  (XOp1 t)
-
--- Type class instances for Op2
-
-deriving instance (Show t) => Show (XOp2 t)
-deriving instance (Eq   t) => Eq   (XOp2 t)
-deriving instance (Ord  t) => Ord  (XOp2 t)
-
--- Type class instances for Bind
-
-deriving instance (Show p) => Show (XBind p)
-deriving instance (Eq   p) => Eq   (XBind p)
-deriving instance (Ord  p) => Ord  (XBind p)
-
-deriveShow1 ''XBind
-deriveEq1   ''XBind
-deriveOrd1  ''XBind
-
--- Type class instances for Expr
-
-deriving instance (Show t1, Show t2, Show t3, Show t4, Show t5, Show t6, Show t7, Show t8, Show t9, Show t10, Show t11, Show t12, Show t13, Show t14, Show t15, Show bind, Show lam, Show pat, Show a) => 
-    Show (XExprF t1 t2 t3 t4 t5 t6 t7 t8 t9 t10 t11 t12 t13 t14 t15 bind lam pat a)
-
-deriving instance (Eq t1, Eq t2, Eq t3, Eq t4, Eq t5, Eq t6, Eq t7, Eq t8, Eq t9, Eq t10, Eq t11, Eq t12, Eq t13, Eq t14, Eq t15, Eq bind, Eq lam, Eq pat, Eq a) => 
-    Eq (XExprF t1 t2 t3 t4 t5 t6 t7 t8 t9 t10 t11 t12 t13 t14 t15 bind lam pat a)
-
-deriving instance (Ord t1, Ord t2, Ord t3, Ord t4, Ord t5, Ord t6, Ord t7, Ord t8, Ord t9, Ord t10, Ord t11, Ord t12, Ord t13, Ord t14, Ord t15, Ord bind, Ord lam, Ord pat, Ord a) => 
-    Ord (XExprF t1 t2 t3 t4 t5 t6 t7 t8 t9 t10 t11 t12 t13 t14 t15 bind lam pat a)
-
-deriveShow1 ''XExprF
-deriveEq1   ''XExprF
-deriveOrd1  ''XExprF
-
-deriving instance Functor     (XExprF t1 t2 t3 t4 t5 t6 t7 t8 t9 t10 t11 t12 t13 t14 t15 bind lam pat)
-deriving instance Foldable    (XExprF t1 t2 t3 t4 t5 t6 t7 t8 t9 t10 t11 t12 t13 t14 t15 bind lam pat)
-deriving instance Traversable (XExprF t1 t2 t3 t4 t5 t6 t7 t8 t9 t10 t11 t12 t13 t14 t15 bind lam pat)
+---------------------------------------------------------------------------------
+--
+---- | Built-in language primitives
+--data XPrim
+--    = XTUnit                            -- ^ Unit value
+--    | XTBool Bool                       -- ^ Booleans
+--    | XTInt Int                         -- ^ Bounded machine integers (32 or 64 bit)
+--    | XTInteger Integer                 -- ^ Arbitrary precision integers (BigInt)
+--    | XTFloat Float                     -- ^ Single precision floating point numbers 
+--    | XTDouble Double                   -- ^ Double precision floating point numbers
+--    | XTChar Char                       -- ^ Chars
+--    | XTString Text                     -- ^ Strings
+--
+---------------------------------------------------------------------------------
+--
+--data XRowF t e a
+--    = XRNil t                           -- ^ Empty row
+--    | XRVar t Name                      -- ^ Row variable
+--    | XRExt t Name e a                  -- ^ Row extension
+--
+---- | Row
+--type XRow t e = Fix (XRowF t e)
+--
+---------------------------------------------------------------------------------
+--
+--data XPatternF t1 t2 t3 t4 t5 t6 t7 t8 t9 a
+--    = XPVar    t1 Name                  -- ^ Variable pattern
+--    | XPCon    t2 Name [a]              -- ^ Constuctor pattern
+--    | XPLit    t3 XPrim                 -- ^ Literal pattern
+--    | XPAs     t4 Name a                -- ^ As-pattern
+--    | XPOr     t5 a a                   -- ^ Or-pattern
+--    | XPAny    t6                       -- ^ Wildcard pattern
+--    | XPTuple  t7 [a]                   -- ^ Tuple pattern
+--    | XPList   t8 [a]                   -- ^ List pattern
+--    | XPRecord t9 (PatternRow t9)       -- ^ Record pattern
+--
+---- | Pattern
+--type XPattern t1 t2 t3 t4 t5 t6 t7 t8 t9 = Fix (XPatternF t1 t2 t3 t4 t5 t6 t7 t8 t9)
+--
+--type PatternRow t = XRow t (ProgPattern t)
+--
+--type ProgPattern t = XPattern t t t t t t t t t
+--
+---------------------------------------------------------------------------------
+--
+---- | Unary operator
+--data XOp1 t
+--    = XOneg t                           -- ^ Unary negation
+--    | XOnot t                           -- ^ Logical NOT
+--
+---------------------------------------------------------------------------------
+--
+---- | Binary operator
+--data XOp2 t
+--    = XOeq  t                           -- ^ Equal-to operator
+--    | XOneq t                           -- ^ Not-equal-to operator
+--
+---------------------------------------------------------------------------------
+--
+---- | Pattern guard
+--data XGuard a = XGuard [a] a
+--
+---- | Pattern matching clause
+--data XClause p a = XClause [p] [XGuard a] 
+--
+---------------------------------------------------------------------------------
+--
+---- | Name binding part of let expressions
+--data XBind p
+--    = XBLet p                           -- ^ Simple let-binding
+--    | XBFun Name [p]                    -- ^ Function binding
+--
+---------------------------------------------------------------------------------
+--
+--data XExprF t1 t2 t3 t4 t5 t6 t7 t8 t9 t10 t11 t12 t13 t14 t15 bind lam pat a
+--    = XEVar    t1  Name                 -- ^ Variable
+--    | XECon    t2  Name [a]             -- ^ Data constructor
+--    | XELit    t3  XPrim                -- ^ Literal value
+--    | XEApp    t4  [a]                  -- ^ Function application
+--    | XELet    t5  bind a a             -- ^ Let expression
+--    | XEFix    t6  Name a a             -- ^ Recursive let
+--    | XELam    t7  lam a                -- ^ Lambda abstraction
+--    | XEIf     t8  a a a                -- ^ If-clause
+--    | XEPat    t9  [a] [XClause pat a]  -- ^ Match expressions
+--    | XEFun    t10 [XClause pat a]      -- ^ Fun expression
+--    | XEOp1    t11 (XOp1 t11) a         -- ^ Unary operator
+--    | XEOp2    t12 (XOp2 t12) a a       -- ^ Binary operator
+--    | XETuple  t13 [a]                  -- ^ Tuple
+--    | XEList   t14 [a]                  -- ^ List literal
+--    | XERecord t15 (ExprRow t15)        -- ^ Record
+--
+---- | Language expression
+--type XExpr t1 t2 t3 t4 t5 t6 t7 t8 t9 t10 t11 t12 t13 t14 t15 bind lam pat = 
+--    Fix (XExprF t1 t2 t3 t4 t5 t6 t7 t8 t9 t10 t11 t12 t13 t14 t15 bind lam pat)
+--
+--type ExprRow t = XRow t (XProgExpr t)
+--
+--type XProgExpr t = XExpr t t t t t t t t t t t t t t t (XBind (ProgPattern t)) [ProgPattern t] (ProgPattern t)
+--
+-------------------------------------------------------------------------------------
+--
+---- Type class instances for Prim
+--
+--deriving instance Show XPrim
+--deriving instance Eq   XPrim
+--deriving instance Ord  XPrim
+--
+---- Type class instances for Row
+--
+--deriving instance (Show t, Show e, Show a) => 
+--    Show (XRowF t e a)
+--
+--deriving instance (Eq t, Eq e, Eq a) => 
+--    Eq (XRowF t e a)
+--
+--deriving instance (Ord t, Ord e, Ord a) => 
+--    Ord (XRowF t e a)
+--
+--deriveShow1 ''XRowF
+--deriveEq1   ''XRowF
+--deriveOrd1  ''XRowF
+--
+--deriving instance Functor     (XRowF t e)
+--deriving instance Foldable    (XRowF t e)
+--deriving instance Traversable (XRowF t e)
+--
+---- Type class instances for Pattern
+--
+--deriving instance (Show t1, Show t2, Show t3, Show t4, Show t5, Show t6, Show t7, Show t8, Show t9, Show a) => 
+--    Show (XPatternF  t1 t2 t3 t4 t5 t6 t7 t8 t9 a)
+--
+--deriving instance (Eq t1, Eq t2, Eq t3, Eq t4, Eq t5, Eq t6, Eq t7, Eq t8, Eq t9, Eq a) => 
+--    Eq (XPatternF  t1 t2 t3 t4 t5 t6 t7 t8 t9 a)
+--
+--deriving instance (Ord t1, Ord t2, Ord t3, Ord t4, Ord t5, Ord t6, Ord t7, Ord t8, Ord t9, Ord a) => 
+--    Ord (XPatternF  t1 t2 t3 t4 t5 t6 t7 t8 t9 a)
+--
+--deriveShow1 ''XPatternF
+--deriveEq1   ''XPatternF
+--deriveOrd1  ''XPatternF
+--
+--deriving instance Functor     (XPatternF t1 t2 t3 t4 t5 t6 t7 t8 t9)
+--deriving instance Foldable    (XPatternF t1 t2 t3 t4 t5 t6 t7 t8 t9)
+--deriving instance Traversable (XPatternF t1 t2 t3 t4 t5 t6 t7 t8 t9)
+--
+---- Type class instances for Guard
+--
+--deriving instance (Show a) => Show (XGuard a)
+--deriving instance (Eq   a) => Eq   (XGuard a)
+--deriving instance (Ord  a) => Ord  (XGuard a)
+--
+--deriveShow1 ''XGuard
+--deriveEq1   ''XGuard
+--deriveOrd1  ''XGuard
+--
+--deriving instance Functor     XGuard
+--deriving instance Foldable    XGuard
+--deriving instance Traversable XGuard
+--
+---- Type class instances for Clause
+--
+--deriving instance (Show p, Show a) => 
+--    Show (XClause p a)
+--
+--deriving instance (Eq p, Eq a) => 
+--    Eq (XClause p a)
+--
+--deriving instance (Ord p, Ord a) => 
+--    Ord (XClause p a)
+--
+--deriveShow1 ''XClause
+--deriveEq1   ''XClause
+--deriveOrd1  ''XClause
+--
+--deriving instance Functor     (XClause p)
+--deriving instance Foldable    (XClause p)
+--deriving instance Traversable (XClause p)
+--
+---- Type class instances for Op1
+--
+--deriving instance (Show t) => Show (XOp1 t)
+--deriving instance (Eq   t) => Eq   (XOp1 t)
+--deriving instance (Ord  t) => Ord  (XOp1 t)
+--
+---- Type class instances for Op2
+--
+--deriving instance (Show t) => Show (XOp2 t)
+--deriving instance (Eq   t) => Eq   (XOp2 t)
+--deriving instance (Ord  t) => Ord  (XOp2 t)
+--
+---- Type class instances for Bind
+--
+--deriving instance (Show p) => Show (XBind p)
+--deriving instance (Eq   p) => Eq   (XBind p)
+--deriving instance (Ord  p) => Ord  (XBind p)
+--
+--deriveShow1 ''XBind
+--deriveEq1   ''XBind
+--deriveOrd1  ''XBind
+--
+---- Type class instances for Expr
+--
+--deriving instance (Show t1, Show t2, Show t3, Show t4, Show t5, Show t6, Show t7, Show t8, Show t9, Show t10, Show t11, Show t12, Show t13, Show t14, Show t15, Show bind, Show lam, Show pat, Show a) => 
+--    Show (XExprF t1 t2 t3 t4 t5 t6 t7 t8 t9 t10 t11 t12 t13 t14 t15 bind lam pat a)
+--
+--deriving instance (Eq t1, Eq t2, Eq t3, Eq t4, Eq t5, Eq t6, Eq t7, Eq t8, Eq t9, Eq t10, Eq t11, Eq t12, Eq t13, Eq t14, Eq t15, Eq bind, Eq lam, Eq pat, Eq a) => 
+--    Eq (XExprF t1 t2 t3 t4 t5 t6 t7 t8 t9 t10 t11 t12 t13 t14 t15 bind lam pat a)
+--
+--deriving instance (Ord t1, Ord t2, Ord t3, Ord t4, Ord t5, Ord t6, Ord t7, Ord t8, Ord t9, Ord t10, Ord t11, Ord t12, Ord t13, Ord t14, Ord t15, Ord bind, Ord lam, Ord pat, Ord a) => 
+--    Ord (XExprF t1 t2 t3 t4 t5 t6 t7 t8 t9 t10 t11 t12 t13 t14 t15 bind lam pat a)
+--
+--deriveShow1 ''XExprF
+--deriveEq1   ''XExprF
+--deriveOrd1  ''XExprF
+--
+--deriving instance Functor     (XExprF t1 t2 t3 t4 t5 t6 t7 t8 t9 t10 t11 t12 t13 t14 t15 bind lam pat)
+--deriving instance Foldable    (XExprF t1 t2 t3 t4 t5 t6 t7 t8 t9 t10 t11 t12 t13 t14 t15 bind lam pat)
+--deriving instance Traversable (XExprF t1 t2 t3 t4 t5 t6 t7 t8 t9 t10 t11 t12 t13 t14 t15 bind lam pat)
 
 
 ----

@@ -17,11 +17,15 @@ data Datatype = Sum Name [Name] [Product]
 
 -- >>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>
 
-type Context = Env (Set Name)
+data ClassInfo p a = ClassInfo 
+    { classSuper     :: [PredicateT p]
+    , classSignature :: PredicateT p
+    , classMethods   :: [(Name, a)] }
 
--- TODO
-type ClassInfo a b = a
+type Context = Env (Set Name)
 
 type TypeEnv = Env Scheme
 
-type ClassEnv = Env (ClassInfo Name Type, ClassInfo Type (Ast TypeInfo))
+type ClassEnv = Env 
+    ( ClassInfo Name Type                -- Abstract interface
+    , [ClassInfo Type (Ast TypeInfo)] )  -- Instances

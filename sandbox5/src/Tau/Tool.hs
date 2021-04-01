@@ -2,11 +2,18 @@ module Tau.Tool
   ( Name
   , Algebra
   , (<$$>)
+  , pluck
+  , liftMaybe
   , embed1
   , embed2
   , embed3
   , embed4
   , embed5
+  , intToText
+  , integerToText
+  , letters
+  , nameSupply
+  , numSupply
   , module Data.Eq.Deriving
   , module Data.Fix
   , module Data.Functor.Foldable
@@ -17,14 +24,19 @@ module Tau.Tool
   , module Text.Show.Deriving
   ) where
 
+import Control.Monad.Except
+import Control.Monad.State
 import Data.Eq.Deriving
 import Data.Fix (Fix(..))
 import Data.Functor.Foldable
 import Data.Ord.Deriving
-import Data.Text (Text)
+import Data.Text (Text, pack)
+import Data.Text.Lazy.Builder (toLazyText)
+import Data.Text.Lazy.Builder.Int (decimal)
 import Data.Void
 import Debug.Trace
 import Text.Show.Deriving
+import qualified Data.Text.Lazy as Text (toStrict)
 
 -- >>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>
 -- Internal tooling
@@ -38,6 +50,16 @@ type Algebra f a = f a -> a
 (<$$>) f = ((f <$>) <$>)
 
 infixl 4 <$$>
+
+pluck :: (Monoid a, MonadState a m) => m a
+pluck = do
+    a <- get
+    put mempty
+    pure a
+
+liftMaybe :: (MonadError e m) => e -> Maybe a -> m a
+liftMaybe err Nothing = throwError err
+liftMaybe _ (Just ok) = pure ok
 
 -- >>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>
 
@@ -55,3 +77,23 @@ embed4 t a b c d = embed (t a b c d)
 
 embed5 :: (Corecursive t) => (t1 -> t2 -> t3 -> t4 -> t5 -> Base t t) -> t1 -> t2 -> t3 -> t4 -> t5 -> t
 embed5 t a b c d e = embed (t a b c d e)
+
+-- >>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>
+
+integerToText :: Integer -> Text
+integerToText = Text.toStrict . toLazyText . decimal
+
+intToText :: Int -> Text
+intToText = integerToText . fromIntegral
+
+letters :: [Text]
+letters = pack <$> ([1..] >>= flip replicateM ['a'..'z'])
+
+prefixed :: [Text] -> Text -> [Name]
+prefixed suppls prefix = fmap (prefix <>) suppls
+
+nameSupply :: Text -> [Name]
+nameSupply = prefixed letters
+
+numSupply :: Text -> [Name]
+numSupply = prefixed (intToText <$> [1..])

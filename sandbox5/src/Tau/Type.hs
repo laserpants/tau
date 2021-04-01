@@ -156,6 +156,9 @@ deriving instance Functor TypeInfoT
 instance Typed Type where
     typeOf = id
 
+instance (Typed t) => Typed (TypeInfoT t) where
+    typeOf = typeOf . nodeType 
+
 -- FreeIn instances
 
 instance (FreeIn t) => FreeIn [t] where
@@ -336,6 +339,14 @@ upgrade = cata $ \case
     TArr t1 t2 -> tArr t1 t2
     TApp t1 t2 -> tApp t1 t2
 
+replaceBound :: [Type] -> PolyType -> Type
+replaceBound ts = cata $ \case
+    TGen n     -> ts !! n
+    TArr t1 t2 -> tArr t1 t2
+    TApp t1 t2 -> tApp t1 t2
+    TVar k var -> tVar k var
+    TCon k con -> tCon k con
+
 toScheme :: TypeT a -> Scheme
 toScheme = Forall [] [] . upgrade
 
@@ -344,3 +355,9 @@ isRow t = kRow == kindOf t
 
 tupleCon :: Int -> Name
 tupleCon size = "(" <> Text.replicate (pred size) "," <> ")"
+
+predicateName :: PredicateT a -> Name
+predicateName (InClass n _) = n
+
+predicateType :: PredicateT a -> a
+predicateType (InClass _ t) = t
