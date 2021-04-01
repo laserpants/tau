@@ -48,9 +48,9 @@ succeedUnifyTypes t1 t2 = do
             let Right sub = result
                 r1 = apply sub t1 
                 r2 = apply sub t2
-                toRowRep = undefined -- TODO rowRepresentation . unfoldRow
+                toRowRep = rowRep . unfoldRow
             if kRow == kindOf r1
-                then undefined -- TODO toRowRep r1 == toRowRep r2
+                then toRowRep r1 == toRowRep r2
                 else r1 == r2
 
 testUnify :: SpecWith ()
@@ -141,8 +141,83 @@ testMatchPairs = do
 testUnifyRowTypes :: SpecWith ()
 testUnifyRowTypes = do
 
-    describe "TODO" $ do
-        pure ()
+    failUnifyTypes
+        (tRowExtend "name" tString (tRowExtend "id" tInt tEmptyRow))
+        (tRowExtend "id" tString (tRowExtend "name" tInt tEmptyRow))
+
+    succeedUnifyTypes
+        (tRowExtend "name" tString (tRowExtend "id" tInt tEmptyRow))
+        (tRowExtend "id" tInt (tRowExtend "name" tString tEmptyRow))
+
+    succeedUnifyTypes
+        (tRowExtend "x" tInt (tVar kRow "r"))
+        (tRowExtend "x" tInt (tVar kRow "r"))
+
+    failUnifyTypes
+        (tRowExtend "x" tInt (tVar kRow "r"))
+        (tRowExtend "y" tInt (tVar kRow "r"))
+
+    succeedUnifyTypes
+        (tRowExtend "id" tInt (tVar kRow "r"))
+        (tRowExtend "id" tInt (tRowExtend "name" tString tEmptyRow))
+
+    succeedUnifyTypes
+        (tRowExtend "id" tInt (tRowExtend "name" tString tEmptyRow))
+        (tRowExtend "id" tInt (tVar kRow "r"))
+
+    succeedUnifyTypes
+        (tRowExtend "id" tInt (tRowExtend "password" tString (tRowExtend "name" tString tEmptyRow)))
+        (tRowExtend "id" tInt (tVar kRow "r"))
+
+    succeedUnifyTypes
+        (tRowExtend "id" tInt (tRowExtend "password" tString (tRowExtend "name" tString tEmptyRow)))
+        (tVar kRow "r")
+
+    failUnifyTypes
+        (tRowExtend "id" tInt (tRowExtend "password" tString (tRowExtend "name" tString tEmptyRow)))
+        (tVar kTyp "r")  --- Note: Not a row kind!
+
+    succeedUnifyTypes
+        (tRowExtend "name" tString (tRowExtend "id" tInt (tRowExtend "shoeSize" tFloat tEmptyRow)))
+        (tRowExtend "shoeSize" tFloat (tRowExtend "id" tInt (tRowExtend "name" tString tEmptyRow)))
+
+    succeedUnifyTypes
+        -- { name : String, shoeSize : Float }
+        (tRowExtend "name" tString (tRowExtend "shoeSize" tFloat tEmptyRow))
+        -- { shoeSize : Float | r }
+        (tRowExtend "shoeSize" tFloat (tVar kRow "r"))
+
+    succeedUnifyTypes
+        -- { name : String, id : Int, shoeSize : Float }
+        (tRowExtend "name" tString (tRowExtend "id" tInt (tRowExtend "shoeSize" tFloat tEmptyRow)))
+        -- { shoeSize : Float, id : Int | r }
+        (tRowExtend "shoeSize" tFloat (tRowExtend "id" tInt (tVar kRow "r")))
+
+    succeedUnifyTypes
+        -- { name : String, id : Int, shoeSize : Float }
+        (tRowExtend "name" tString (tRowExtend "id" tInt (tRowExtend "shoeSize" tFloat tEmptyRow)))
+        -- { shoeSize : Float | r }
+        (tRowExtend "shoeSize" tFloat (tVar kRow "r"))
+
+    succeedUnifyTypes
+        (tRowExtend "shoeSize" tFloat (tVar kRow "r"))
+        (tRowExtend "name" tString (tRowExtend "shoeSize" tFloat tEmptyRow))
+
+    succeedUnifyTypes
+        (tRowExtend "shoeSize" tFloat (tRowExtend "id" tInt (tVar kRow "r")))
+        (tRowExtend "name" tString (tRowExtend "id" tInt (tRowExtend "shoeSize" tFloat tEmptyRow)))
+
+    succeedUnifyTypes
+        (tRowExtend "name" tString (tRowExtend "id" tInt (tRowExtend "shoeSize" tFloat tEmptyRow)))
+        (tRowExtend "name" tString (tRowExtend "id" tInt (tVar kRow "r")))
+
+    succeedUnifyTypes
+        (tRowExtend "name" tString (tRowExtend "id" tInt tEmptyRow))
+        (tRowExtend "name" tString (tRowExtend "id" (tVar kTyp "a") tEmptyRow))
+
+    succeedUnifyTypes
+        (tRowExtend "name" tString (tRowExtend "id" (tVar kTyp "a") tEmptyRow))
+        (tRowExtend "name" tString (tRowExtend "id" tInt tEmptyRow))
 
 -- >>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>
 
@@ -158,10 +233,10 @@ succeedUnfoldRow :: Type -> Row Type -> SpecWith ()
 succeedUnfoldRow ty row =
     describe ("The type " <> prettyText ty) $ 
         it ("✔ unfolds to " <> prettyText row)
-            (unfoldRowType ty == row)
+            (unfoldRow ty == row)
 
-testUnfoldRowType :: SpecWith ()
-testUnfoldRowType = do
+testUnfoldRow :: SpecWith ()
+testUnfoldRow = do
 
     succeedUnfoldRow 
         (tVar kRow "r") 

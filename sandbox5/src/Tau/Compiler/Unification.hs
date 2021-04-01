@@ -6,10 +6,12 @@ module Tau.Compiler.Unification where
 import Control.Arrow ((<<<), (>>>))
 import Control.Monad.Except
 import Data.Function ((&))
+import Data.Map.Strict (Map)
 import Tau.Compiler.Substitution
 import Tau.Lang
 import Tau.Tool
 import Tau.Type
+import qualified Data.Map.Strict as Map
 import qualified Data.Text as Text
 
 type Error = String
@@ -45,7 +47,7 @@ match t u
     fn _ _                                    = throwError "Cannot match"
 
 unifyRowTypes :: (MonadError Error m) => Type -> Type -> m TypeSubstitution
-unifyRowTypes t u = fn (rowRep t) (rowRep u)
+unifyRowTypes t u = fn (asRow t) (asRow u)
   where
     fn RNil RNil                              = pure mempty
     fn (RVar var) _                           = bind var kRow u
@@ -53,7 +55,7 @@ unifyRowTypes t u = fn (rowRep t) (rowRep u)
     fn r s                                    = unifyRows (embed r) (embed s)
 
 matchRowTypes :: (MonadError Error m) => Type -> Type -> m TypeSubstitution
-matchRowTypes t u = fn (rowRep t) (rowRep u)
+matchRowTypes t u = fn (asRow t) (asRow u)
   where
     fn RNil RNil                              = pure mempty
     fn (RVar var) _                           = bind var kRow u
@@ -71,11 +73,11 @@ matchPairs (t1, t2) (u1, u2) = do
     sub2 <- match t2 u2
     merge sub1 sub2 & maybe (throwError "Merge failed") pure
 
-rowRep :: Type -> RowF Type (Row Type)
-rowRep = project . unfoldRowType
+asRow :: Type -> RowF Type (Row Type)
+asRow = project . unfoldRow
 
-unfoldRowType :: Type -> Row Type
-unfoldRowType =
+unfoldRow :: Type -> Row Type
+unfoldRow =
     para $ \case
         TCon (Fix KRow) "{}" -> rNil
         TVar (Fix KRow) var  -> rVar var
@@ -86,7 +88,28 @@ unfoldRowType =
     getLabel = cata $ \case
         TApp t1 _ -> t1
         TCon _ c  -> Text.tail (Text.init c)
+        TVar _ v  -> ""
 
-unifyRows :: (MonadError String m) => Row Type -> Row Type -> m TypeSubstitution
+foldRow :: Row Type -> Type
+foldRow = cata $ \case
+    RNil              -> tEmptyRow
+    RVar var          -> tVar kRow var
+    RExt label ty row -> tRowExtend label ty row
+
+unifyRows :: (MonadError Error m) => Row Type -> Row Type -> m TypeSubstitution
 unifyRows r s = 
-    undefined
+    case rows of
+        Just (RExt _ t1 r1, RExt _ t2 r2) -> do
+            sub1 <- unify t1 t2
+            let t3 = foldRow r1
+                t4 = foldRow r2
+            sub2 <- unify (apply sub1 t3) (apply sub1 t4)
+            pure (sub2 <> sub1)
+        Nothing ->
+            throwError "CannotUnfy"
+  where 
+    rows = msum $ do
+        r1@(RExt label _ _) <- project <$> rowSet r
+        case project <$> rowPermutation s label of
+            Nothing -> [Nothing]
+            Just r2 -> [Just (r1, r2)]

@@ -6,9 +6,10 @@
 {-# LANGUAGE TemplateHaskell    #-}
 module Tau.Lang where
 
-import Data.Map (Map)
+import Data.Map.Strict (Map)
+import Data.Maybe (fromJust)
 import Tau.Tool
-import qualified Data.Map as Map
+import qualified Data.Map.Strict as Map
 
 -- | Built-in language primitives
 data Prim
@@ -347,8 +348,25 @@ listConsPat t hd tl = conPat t "(::)" [hd, tl]
 
 -- >>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>
 
-rowMap :: Row e -> (Map Name [e], Maybe Name)
-rowMap = cata $ \case
+rowRep :: Row e -> (Map Name [e], Maybe Name)
+rowRep = cata $ \case
     RNil                     -> (mempty, Nothing)
     RVar var                 -> (mempty, Just var)
     RExt label e (map, leaf) -> (Map.insertWith (<>) label [e] map, leaf)
+
+repToRow :: (Map Name [e], Maybe Name) -> Row e
+repToRow (map, leaf) =
+    Map.foldrWithKey (flip . foldr . rExt) (maybe rNil rVar leaf) map
+
+rowPermutation :: Row e -> Name -> Maybe (Row e)
+rowPermutation row label = 
+    case Map.lookup label map of
+        Nothing     -> Nothing
+        Just (t:ts) -> Just (rExt label t (repToRow (Map.update (const (Just ts)) label map, leaf)))
+  where
+    (map, leaf) = rowRep row
+
+rowSet :: Row e -> [Row e]
+rowSet row = [fromJust (rowPermutation row label) | label <- Map.keys map]
+  where 
+    (map, _) = rowRep row

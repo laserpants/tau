@@ -1,9 +1,19 @@
 {-# LANGUAGE OverloadedStrings #-}
-module Utils where
+module Utils 
+  ( module Debug.Trace
+  , describe
+  , it
+  , _a
+  , _b
+  , _c
+  , renderDoc
+  , prettyText
+  ) where
 
 import Data.Text (Text, unpack)
 import Data.Text.Prettyprint.Doc
 import Data.Text.Prettyprint.Doc.Render.Text
+import Debug.Trace
 import Tau.Type
 import Test.Hspec hiding (describe, it) 
 import qualified Test.Hspec as Hspec
