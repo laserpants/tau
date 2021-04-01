@@ -106,7 +106,7 @@ unifyRows r s =
             sub2 <- unify (apply sub1 t3) (apply sub1 t4)
             pure (sub2 <> sub1)
         Nothing ->
-            throwError "CannotUnfy"
+            throwError "Cannot unify"
   where 
     rows = msum $ do
         r1@(RExt label _ _) <- project <$> rowSet r

@@ -16,6 +16,23 @@ suceedPrint p str =
 
 -- >>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>
 
+testPrettyPrim :: SpecWith ()
+testPrettyPrim = do
+
+    suceedPrint
+        TUnit
+        "()"
+
+    suceedPrint
+        (TString "klingon") 
+        "\"klingon\""
+
+    suceedPrint
+        (TChar 'a') 
+        "'a'"
+
+-- >>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>
+
 suceedPrintType :: Type -> String -> SpecWith ()
 suceedPrintType = suceedPrint
 

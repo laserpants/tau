@@ -32,6 +32,7 @@ main =
         describe "Tau.Compiler.Substitution.toList"        testToList
         describe "Tau.Compiler.Substitution.null"          testNull
 
+        describe "Tau.Pretty (Prim)"                       testPrettyPrim
         describe "Tau.Pretty (Type)"                       testPrettyType
         describe "Tau.Pretty (Kind)"                       testPrettyKind
         describe "Tau.Pretty (Pattern)"                    testPrettyPattern

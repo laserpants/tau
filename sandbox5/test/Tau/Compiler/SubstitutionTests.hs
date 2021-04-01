@@ -115,9 +115,6 @@ testMerge = do
         it "✗ fails"
             (isNothing (merge (Sub.fromList [("a", tInt), ("b", tInt)]) (Sub.fromList [("b", tBool)]) :: Maybe TypeSubstitution))
 
---    describe "TODO" $ do
---        pure ()
-
 -- >>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>
 
 testFromList ::  SpecWith ()
@@ -139,18 +136,6 @@ testToList = do
 testNull ::  SpecWith ()
 testNull = do 
 
-    describe "The null substitution" $ do
-        it "✔ is an empty map"
-            (getSub Sub.null == (mempty :: Map Name Type))
-    describe "The null substitution" $ do
-        it "✔ is an empty map"
-            (getSub Sub.null == (mempty :: Map Name Type))
-    describe "The null substitution" $ do
-        it "✔ is an empty map"
-            (getSub Sub.null == (mempty :: Map Name Type))
-    describe "The null substitution" $ do
-        it "✔ is an empty map"
-            (getSub Sub.null == (mempty :: Map Name Type))
     describe "The null substitution" $ do
         it "✔ is an empty map"
             (getSub Sub.null == (mempty :: Map Name Type))
