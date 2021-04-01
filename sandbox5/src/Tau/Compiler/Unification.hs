@@ -7,14 +7,13 @@ import Control.Arrow ((<<<), (>>>))
 import Control.Monad.Except
 import Data.Function ((&))
 import Data.Map.Strict (Map)
+import Tau.Compiler.Error
 import Tau.Compiler.Substitution
 import Tau.Lang
 import Tau.Tool
 import Tau.Type
 import qualified Data.Map.Strict as Map
 import qualified Data.Text as Text
-
-type Error = String
 
 bind :: (MonadError Error m) => Name -> Kind -> Type -> m TypeSubstitution
 bind name kind ty

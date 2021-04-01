@@ -9,6 +9,7 @@ module Tau.Type where
 
 import Control.Arrow ((>>>))
 import Data.List (nub)
+import Tau.Env (Env(..))
 import Tau.Tool
 import qualified Data.Text as Text
 
@@ -67,6 +68,13 @@ class Typed a where
 -- | Class of types that contain free type variables
 class FreeIn t where
     free :: t -> [Name]
+
+-- >>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>
+
+-- TODO
+type ClassEnv = ()
+
+type TypeEnv = Env Scheme
 
 -- >>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>
 
@@ -132,6 +140,11 @@ deriving instance Traversable PredicateT
 deriving instance Show Scheme
 deriving instance Eq Scheme 
 deriving instance Ord Scheme
+
+-- Typed instances
+
+instance Typed Type where
+    typeOf = id
 
 -- FreeIn instances
 

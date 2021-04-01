@@ -95,7 +95,7 @@ data Clause p a = Clause [p] [Guard a]
 
 -- >>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>
 
--- | Name binding part of let expressions
+-- | Name binding-part of let expressions
 data Binding p
     = BLet p                           -- ^ Simple let-binding
     | BFun Name [p]                    -- ^ Function binding
@@ -278,22 +278,22 @@ instance Functor Ast where
             ERecord t row     -> recordExpr (f t) (mapRow mapExpr row)
 
         mapBind = \case
-            BLet p             -> BLet (mapPattern p)
-            BFun name ps       -> BFun name (mapPattern <$> ps)
+            BLet p            -> BLet (mapPattern p)
+            BFun name ps      -> BFun name (mapPattern <$> ps)
 
         mapClause = \case
-            Clause ps gs       -> Clause (mapPattern <$> ps) gs
+            Clause ps gs      -> Clause (mapPattern <$> ps) gs
 
         mapPattern = cata $ \case
-            PVar    t var      -> varPat (f t) var
-            PCon    t con ps   -> conPat (f t) con ps
-            PLit    t prim     -> litPat (f t) prim
-            PAs     t as p     -> asPat (f t) as p
-            POr     t p q      -> orPat (f t) p q
-            PAny    t          -> anyPat (f t)
-            PTuple  t ps       -> tuplePat (f t) ps
-            PList   t ps       -> listPat (f t) ps
-            PRecord t row      -> recordPat (f t) (mapRow mapPattern row)
+            PVar    t var     -> varPat (f t) var
+            PCon    t con ps  -> conPat (f t) con ps
+            PLit    t prim    -> litPat (f t) prim
+            PAs     t as p    -> asPat (f t) as p
+            POr     t p q     -> orPat (f t) p q
+            PAny    t         -> anyPat (f t)
+            PTuple  t ps      -> tuplePat (f t) ps
+            PList   t ps      -> listPat (f t) ps
+            PRecord t row     -> recordPat (f t) (mapRow mapPattern row)
 
         mapOp1 = \case
             ONeg t            -> ONeg (f t)
@@ -453,3 +453,67 @@ rowSet :: Row e -> [Row e]
 rowSet row = [fromJust (rowPermutation row label) | label <- Map.keys map]
   where 
     (map, _) = rowRep row
+
+-- >>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>
+
+exprTag :: ProgExpr t -> t
+exprTag = cata $ \case
+    EVar    t _     -> t
+    ECon    t _ _   -> t
+    ELit    t _     -> t
+    EApp    t _     -> t
+    ELet    t _ _ _ -> t
+    EFix    t _ _ _ -> t
+    ELam    t _ _   -> t
+    EIf     t _ _ _ -> t
+    EPat    t _ _   -> t
+    EFun    t _     -> t
+    EOp1    t _ _   -> t
+    EOp2    t _ _ _ -> t
+    ETuple  t _     -> t
+    EList   t _     -> t
+    ERecord t _     -> t
+
+patternTag :: ProgPattern t -> t
+patternTag = cata $ \case
+    PVar    t _     -> t
+    PCon    t _ _   -> t
+    PLit    t _     -> t 
+    PAs     t _ _   -> t
+    POr     t _ _   -> t
+    PAny    t       -> t
+    PTuple  t _     -> t
+    PList   t _     -> t
+    PRecord t _     -> t
+
+op1Tag :: Op1 t -> t
+op1Tag = \case
+    ONeg    t       -> t
+    ONot    t       -> t
+
+op2Tag :: Op2 t -> t
+op2Tag = \case
+    OEq     t       -> t
+    ONeq    t       -> t
+    OAnd    t       -> t
+    OOr     t       -> t
+    OAdd    t       -> t
+    OSub    t       -> t
+    OMul    t       -> t
+    ODiv    t       -> t
+    OPow    t       -> t
+    OMod    t       -> t
+    OLt     t       -> t
+    OGt     t       -> t
+    OLte    t       -> t
+    OGte    t       -> t
+    OLarr   t       -> t
+    ORarr   t       -> t
+    OFpipe  t       -> t
+    OBpipe  t       -> t
+    OOpt    t       -> t
+    OStrc   t       -> t
+    ONdiv   t       -> t
+
+astTag :: Ast t -> t
+astTag = exprTag . getAst 
