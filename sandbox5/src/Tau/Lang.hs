@@ -129,6 +129,10 @@ type ProgExpr t = Expr t t t t t t t t t t t t t t t (Binding (ProgPattern t)) [
 
 -- >>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>
 
+newtype Ast t = Ast { getAst :: ProgExpr t }
+
+-- >>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>
+
 -- Type class instances for Prim
 
 deriving instance Show Prim
@@ -246,6 +250,83 @@ deriveOrd1  ''ExprF
 deriving instance Functor     (ExprF t1 t2 t3 t4 t5 t6 t7 t8 t9 t10 t11 t12 t13 t14 t15 bind lam pat)
 deriving instance Foldable    (ExprF t1 t2 t3 t4 t5 t6 t7 t8 t9 t10 t11 t12 t13 t14 t15 bind lam pat)
 deriving instance Traversable (ExprF t1 t2 t3 t4 t5 t6 t7 t8 t9 t10 t11 t12 t13 t14 t15 bind lam pat)
+
+-- >>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>
+
+deriving instance (Show t) => Show (Ast t)
+deriving instance (Eq   t) => Eq   (Ast t)
+deriving instance (Ord  t) => Ord  (Ast t)
+
+instance Functor Ast where
+    fmap f (Ast ast) = Ast (mapExpr ast)
+      where 
+        mapExpr = cata $ \case
+            EVar t var        -> varExpr (f t) var
+            ECon t con es     -> conExpr (f t) con es
+            ELit t prim       -> litExpr (f t) prim
+            EApp t es         -> appExpr (f t) es
+            ELet t bind e1 e2 -> letExpr (f t) (mapBind bind) e1 e2
+            EFix t name e1 e2 -> fixExpr (f t) name e1 e2
+            ELam t ps e       -> lamExpr (f t) (mapPattern <$> ps) e
+            EIf t e1 e2 e3    -> ifExpr (f t) e1 e2 e3
+            EPat t es cs      -> patExpr (f t) es (mapClause <$> cs)
+            EFun t cs         -> funExpr (f t) (mapClause <$> cs)
+            EOp1 t op a       -> op1Expr (f t) (mapOp1 op) a
+            EOp2 t op a b     -> op2Expr (f t) (mapOp2 op) a b
+            ETuple t es       -> tupleExpr (f t) es
+            EList t es        -> listExpr (f t) es
+            ERecord t row     -> recordExpr (f t) (mapRow mapExpr row)
+
+        mapBind = \case
+            BLet p             -> BLet (mapPattern p)
+            BFun name ps       -> BFun name (mapPattern <$> ps)
+
+        mapClause = \case
+            Clause ps gs       -> Clause (mapPattern <$> ps) gs
+
+        mapPattern = cata $ \case
+            PVar    t var      -> varPat (f t) var
+            PCon    t con ps   -> conPat (f t) con ps
+            PLit    t prim     -> litPat (f t) prim
+            PAs     t as p     -> asPat (f t) as p
+            POr     t p q      -> orPat (f t) p q
+            PAny    t          -> anyPat (f t)
+            PTuple  t ps       -> tuplePat (f t) ps
+            PList   t ps       -> listPat (f t) ps
+            PRecord t row      -> recordPat (f t) (mapRow mapPattern row)
+
+        mapOp1 = \case
+            ONeg t            -> ONeg (f t)
+            ONot t            -> ONot (f t)
+
+        mapOp2 = \case
+            OEq  t            -> OEq  (f t)  
+            ONeq t            -> ONeq (f t)  
+            OAnd t            -> OAnd (f t)  
+            OOr  t            -> OOr  (f t)  
+            OAdd t            -> OAdd (f t)  
+            OSub t            -> OSub (f t)  
+            OMul t            -> OMul (f t)  
+            ODiv t            -> ODiv (f t)  
+            OPow t            -> OPow (f t)  
+            OMod t            -> OMod (f t)  
+            OLt  t            -> OLt  (f t)  
+            OGt  t            -> OGt  (f t)  
+            OLte t            -> OLte (f t)  
+            OGte t            -> OGte (f t)  
+            OLarr t           -> OLarr (f t) 
+            ORarr t           -> ORarr (f t) 
+            OFpipe t          -> OFpipe (f t)
+            OBpipe t          -> OBpipe (f t)
+            OOpt t            -> OOpt (f t)  
+            OStrc t           -> OStrc (f t) 
+            ONdiv t           -> ONdiv (f t) 
+
+        mapRow :: (a -> b) -> Row a -> Row b
+        mapRow f = cata $ \case
+            RNil              -> rNil
+            RVar var          -> rVar var
+            RExt name e row   -> rExt name (f e) row
 
 -- >>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>
 -- Constructors
