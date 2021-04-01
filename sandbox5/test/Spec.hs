@@ -34,3 +34,4 @@ main =
 
         describe "Tau.Pretty (Type)"                       testPrettyType
         describe "Tau.Pretty (Kind)"                       testPrettyKind
+        describe "Tau.Pretty (Pattern)"                    testPrettyPattern

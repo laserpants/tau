@@ -71,7 +71,6 @@ data Op2 t
     | OSub t                           -- ^ Subtraction operator
     | OMul t                           -- ^ Multiplication operator
     | ODiv t                           -- ^ Division operator
-    | ONdiv t                          -- ^ Integral division
     | OPow t                           -- ^ Exponentiation operator
     | OMod t                           -- ^ Modulo operator
     | OLt  t                           -- ^ Strictly less-than operator
@@ -84,6 +83,7 @@ data Op2 t
     | OBpipe t                         -- ^ Reverse pipe operator
     | OOpt t                           -- ^ Option default operator
     | OStrc t                          -- ^ String concatenation operator
+    | ONdiv t                          -- ^ Integral division
 
 -- >>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>
 
@@ -348,13 +348,15 @@ listConsPat t hd tl = conPat t "(::)" [hd, tl]
 
 -- >>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>
 
-rowRep :: Row e -> (Map Name [e], Maybe Name)
+type RowRep e = (Map Name [e], Maybe Name)
+
+rowRep :: Row e -> RowRep e
 rowRep = cata $ \case
     RNil                     -> (mempty, Nothing)
     RVar var                 -> (mempty, Just var)
     RExt label e (map, leaf) -> (Map.insertWith (<>) label [e] map, leaf)
 
-repToRow :: (Map Name [e], Maybe Name) -> Row e
+repToRow :: RowRep e -> Row e
 repToRow (map, leaf) =
     Map.foldrWithKey (flip . foldr . rExt) (maybe rNil rVar leaf) map
 

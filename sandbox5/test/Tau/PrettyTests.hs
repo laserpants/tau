@@ -2,6 +2,7 @@
 module Tau.PrettyTests where
 
 import Data.Text.Prettyprint.Doc
+import Tau.Lang
 import Tau.Pretty
 import Tau.Type
 import Test.Hspec hiding (describe, it)
@@ -89,3 +90,63 @@ testPrettyKind = do
     suceedPrint
         ((kTyp `kArr` kTyp) `kArr` kTyp) 
         "(* -> *) -> *"
+
+-- >>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>
+
+suceedPrintPattern :: ProgPattern t -> String -> SpecWith ()
+suceedPrintPattern = suceedPrint
+
+testPrettyPattern :: SpecWith ()
+testPrettyPattern = do
+
+    suceedPrintPattern
+        (varPat () "v")
+        "v"
+
+    suceedPrintPattern
+        (anyPat ())
+        "_"
+
+    suceedPrintPattern
+        (litPat () (TInt 5))
+        "5"
+
+    suceedPrintPattern
+        (orPat () (varPat () "v") (litPat () (TInt 5)))
+        "v or 5"
+
+    suceedPrintPattern
+        (asPat () "five" (litPat () (TInt 5)))
+        "5 as five"
+
+    suceedPrintPattern
+        (tuplePat () [varPat () "x", varPat () "y"])
+        "(x, y)"
+
+    suceedPrintPattern
+        (tuplePat () [varPat () "x", anyPat ()])
+        "(x, _)"
+
+    suceedPrintPattern
+        (listPat () [varPat () "x", anyPat ()])
+        "[x, _]"
+
+    suceedPrintPattern
+        (listPat () [])
+        "[]"
+
+    suceedPrintPattern
+        (litPat () TUnit)
+        "()"
+
+    suceedPrintPattern
+        (recordPat () (rExt "name" (varPat () "name") (rExt "id" (varPat () "id") rNil)))
+        "{ name = name, id = id }"
+
+    suceedPrintPattern
+        (recordPat () (rExt "name" (anyPat ()) (rExt "id" (varPat () "id") rNil)))
+        "{ name = _, id = id }"
+
+    suceedPrintPattern
+        (recordPat () (rExt "name" (varPat () "name") (rExt "id" (varPat () "id") (rVar "r"))))
+        "{ name = name, id = id | r }"
