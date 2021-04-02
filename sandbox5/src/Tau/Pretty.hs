@@ -96,8 +96,8 @@ instance Pretty Type where
 
 -- >>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>
 
-instance Pretty Predicate where
-    pretty _ = "TODO"
+instance (Pretty a) => Pretty (PredicateT a) where
+    pretty (InClass n t) = pretty n <+> pretty t
 
 -- >>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>
 

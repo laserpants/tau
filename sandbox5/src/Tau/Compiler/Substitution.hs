@@ -33,7 +33,7 @@ instance Substitutable t a => Substitutable [t] a where
 instance Substitutable (TypeT a) a where
     apply = substitute
 
-instance Substitutable (PredicateT (TypeT a)) a where
+instance (Substitutable t a) => Substitutable (PredicateT t) a where
     apply = fmap . apply
 
 instance (Substitutable t a) => Substitutable (ProgPattern t) a where
@@ -160,3 +160,6 @@ merge s1 s2
   where
     allEqual = all (\v -> appV s1 v == appV s2 v) (domain s1 `intersect` domain s2)
     appV sub var = substitute sub (tVar kTyp var)
+
+normalize :: Type -> Substitution Void
+normalize ty = fromList (zipWith (\(v, k) a -> (v, tVar k a)) (typeVars ty) letters)

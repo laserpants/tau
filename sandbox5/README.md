@@ -6,6 +6,9 @@ reverse
 
 
 
+incrementEach : (Functor f, Num a) => f a -> f a
+incrementEach(xs) = xs.map(x => x + 1)
+
 
 -- lambda
 
@@ -58,6 +61,9 @@ run(x, y) = doStuffWith(x)
 add : Int -> Int -> Int
 add(x, y) = x + y
 
+add : Int -> Int -> Int
+add(x, y) = x + y
+
 add5 : Int -> Int
 add5 = add(5) 
 
@@ -70,8 +76,22 @@ main() = nope ()
 someFun of () = 1
 
 someFun of 
-  | x y z = x + 1
-  | x z d = x + 1
+    | x y z = x + 1
+    | x z d = x + 1
+  where
+    x = 1
+  and
+    y = 2
+
+fn of x = 1
+
+someFun of x y z = x + 1
+
+someFun of (x, y) = x + y
+
+someFun(x, y) = x + y
+
+someFun((x, y)) = x + y
 
 fun(x) = x + 1
 
@@ -81,6 +101,14 @@ someFun(Some x, y, z) =
         when x x > 3  => xx
         when p        => 1
     | (_, _, _)       => 0
+
+someFun(Some x, y, z) =
+  match (x, y, z) with
+    | (Some xx, _, _)
+        iff (x x > 3) => xx
+        iff p         => 1
+    | (_, _, _)       => 0
+
 
   match (x, y) with
     | (1, x) or (x, 1) 

@@ -1,5 +1,6 @@
 {-# LANGUAGE OverloadedStrings #-}
 import Tau.Compiler.SubstitutionTests
+import Tau.Compiler.TypecheckTests
 import Tau.Compiler.UnificationTests
 import Tau.PrettyTests
 import Tau.TypeTests
@@ -32,7 +33,11 @@ main =
         describe "Tau.Compiler.Substitution.toList"        testToList
         describe "Tau.Compiler.Substitution.null"          testNull
 
+        describe "Tau.Compiler.Typecheck.inferPattern"     testInferPattern
+
+        describe "Tau.Compiler.Substitution.null"          testNull
         describe "Tau.Pretty (Prim)"                       testPrettyPrim
         describe "Tau.Pretty (Type)"                       testPrettyType
         describe "Tau.Pretty (Kind)"                       testPrettyKind
         describe "Tau.Pretty (Pattern)"                    testPrettyPattern
+        describe "Tau.Pretty (Predicates)"                 testPrettyPredicates

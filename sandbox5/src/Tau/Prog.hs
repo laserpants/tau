@@ -20,7 +20,8 @@ data Datatype = Sum Name [Name] [Product]
 data ClassInfo p a = ClassInfo 
     { classSuper     :: [PredicateT p]
     , classSignature :: PredicateT p
-    , classMethods   :: [(Name, a)] }
+    , classMethods   :: [(Name, a)] 
+    } deriving (Show, Eq)
 
 type Context = Env (Set Name)
 

@@ -193,3 +193,16 @@ testPrettyPattern = do
         suceedPrintPattern
             (conPat () "C" [varPat () "x", asPat () "d" (conPat () "D" [varPat () "y"])])
             "C x (D y as d)"
+
+-- >>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>
+
+testPrettyPredicates :: SpecWith ()
+testPrettyPredicates = do
+
+    suceedPrint
+        (InClass "Show" _a)
+        "Show a"
+
+    suceedPrint
+        (InClass "Eq" tInt :: Predicate)
+        "Eq Int"
