@@ -1,6 +1,7 @@
 module Tau.Tool 
   ( Name
   , Algebra
+  , List
   , (<$$>)
   , pluck
   , liftMaybe
@@ -14,6 +15,7 @@ module Tau.Tool
   , letters
   , nameSupply
   , numSupply
+  , prettyPrint
   , module Data.Eq.Deriving
   , module Data.Fix
   , module Data.Functor.Foldable
@@ -33,6 +35,8 @@ import Data.Ord.Deriving
 import Data.Text (Text, pack)
 import Data.Text.Lazy.Builder (toLazyText)
 import Data.Text.Lazy.Builder.Int (decimal)
+import Data.Text.Prettyprint.Doc
+import Data.Text.Prettyprint.Doc.Render.Text
 import Data.Void
 import Debug.Trace
 import Text.Show.Deriving
@@ -41,6 +45,8 @@ import qualified Data.Text.Lazy as Text (toStrict)
 -- >>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>
 -- Internal tooling
 -- >>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>
+
+type List = []
 
 type Name = Text
 
@@ -97,3 +103,11 @@ nameSupply = prefixed letters
 
 numSupply :: Text -> [Name]
 numSupply = prefixed (intToText <$> [1..])
+
+-- >>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>
+
+renderDoc :: Doc a -> Text
+renderDoc = renderStrict . layoutPretty defaultLayoutOptions
+
+prettyPrint :: (Pretty p) => p -> Text
+prettyPrint = renderDoc . pretty

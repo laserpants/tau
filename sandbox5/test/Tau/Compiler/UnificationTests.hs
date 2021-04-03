@@ -22,8 +22,7 @@ testBind = do
 testIsRow :: SpecWith ()
 testIsRow = do
 
-    describe "TODO" $ do
-        pure ()
+    describe "TODO" $ do pure ()
 
 -- >>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>
 
@@ -34,7 +33,7 @@ failUnifyTypes :: Type -> Type -> SpecWith ()
 failUnifyTypes t1 t2 = do
     let result = unify t1 t2
     describe (testDescription t1 t2) $
-        it "✗ fails to unify\n" $
+        it "✗ fails to unify" $
             isLeft result
 
 succeedUnifyTypes :: Type -> Type -> SpecWith ()
@@ -44,11 +43,11 @@ succeedUnifyTypes t1 t2 = do
         it "✔ yields a substitution" $
             isRight result
 
-        it "✔ and it unifies the two types\n" $ do
+        it "✔ and it unifies the two types" $ do
             let Right sub = result
                 r1 = apply sub t1 
                 r2 = apply sub t2
-                toRowRep = rowRep . unfoldRow
+                toRowRep = rowRep . typeToRow
             if kRow == kindOf r1
                 then toRowRep r1 == toRowRep r2
                 else r1 == r2
@@ -229,35 +228,35 @@ testMatchRowTypes = do
 
 -- >>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>
 
-succeedUnfoldRow :: Type -> Row Type -> SpecWith ()
-succeedUnfoldRow ty row =
+succeedTypeToRow :: Type -> Row Type -> SpecWith ()
+succeedTypeToRow ty row =
     describe ("The type " <> prettyText ty) $ 
         it ("✔ unfolds to " <> prettyText row)
-            (unfoldRow ty == row)
+            (typeToRow ty == row)
 
-testUnfoldRow :: SpecWith ()
-testUnfoldRow = do
+testTypeToRow :: SpecWith ()
+testTypeToRow = do
 
-    succeedUnfoldRow 
+    succeedTypeToRow 
         (tVar kRow "r") 
         (rVar "r")
 
-    succeedUnfoldRow 
+    succeedTypeToRow 
         tEmptyRow
         rNil
 
-    succeedUnfoldRow 
+    succeedTypeToRow 
         (tRowExtend "id" tInt tEmptyRow)
         (rExt "id" tInt rNil)
 
-    succeedUnfoldRow 
+    succeedTypeToRow 
         (tRowExtend "id" tInt (tVar kRow "r"))
         (rExt "id" tInt (rVar "r"))
 
-    succeedUnfoldRow 
+    succeedTypeToRow 
         (tRowExtend "name" tString (tRowExtend "id" tInt (tVar kRow "r")))
         (rExt "name" tString (rExt "id" tInt (rVar "r")))
 
-    succeedUnfoldRow 
+    succeedTypeToRow 
         (tRowExtend "name" tString (tRowExtend "id" tInt tEmptyRow))
         (rExt "name" tString (rExt "id" tInt rNil))
