@@ -7,6 +7,7 @@ import Tau.Compiler.Substitution
 import Tau.Compiler.Unification
 import Tau.Lang
 import Tau.Pretty
+import Tau.Row
 import Tau.Type
 import Test.Hspec hiding (describe, it)
 import Utils

@@ -9,6 +9,7 @@ module Tau.Type where
 
 import Control.Arrow ((>>>))
 import Data.List (nub)
+import Tau.Row
 import Tau.Tool
 import qualified Data.Text as Text
 
@@ -361,3 +362,26 @@ predicateName (InClass n _) = n
 
 predicateType :: PredicateT a -> a
 predicateType (InClass _ t) = t
+
+-- >>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>
+
+typeToRow :: Type -> Row Type
+typeToRow =
+    para $ \case
+        TCon (Fix KRow) "{}" -> rNil
+        TVar (Fix KRow) var  -> rVar var
+        TApp (t1, _) (_, b)  -> rExt (getLabel t1)
+                                     (case project t1 of TApp _ a -> a) b
+        _ -> error "Type is not a row"
+  where
+    getLabel :: Type -> Name
+    getLabel = cata $ \case
+        TApp t1 _ -> t1
+        TCon _ c  -> Text.tail (Text.init c)
+        TVar _ v  -> ""
+
+rowToType :: Row Type -> Type
+rowToType = cata $ \case
+    RNil              -> tEmptyRow
+    RVar var          -> tVar kRow var
+    RExt label ty row -> tRowExtend label ty row

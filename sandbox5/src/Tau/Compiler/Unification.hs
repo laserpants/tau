@@ -1,5 +1,4 @@
 {-# LANGUAGE FlexibleContexts  #-}
-{-# LANGUAGE LambdaCase        #-}
 {-# LANGUAGE OverloadedStrings #-}
 module Tau.Compiler.Unification where
 
@@ -10,6 +9,7 @@ import Data.Map.Strict (Map)
 import Tau.Compiler.Error
 import Tau.Compiler.Substitution
 import Tau.Lang
+import Tau.Row
 import Tau.Tool
 import Tau.Type
 import qualified Data.Map.Strict as Map
@@ -101,26 +101,3 @@ rowInfo r s =
         case project <$> rowPermutation s label of
             Nothing -> [Nothing]
             Just r2 -> [Just (r1, r2)]
-
--- >>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>
-
-typeToRow :: Type -> Row Type
-typeToRow =
-    para $ \case
-        TCon (Fix KRow) "{}" -> rNil
-        TVar (Fix KRow) var  -> rVar var
-        TApp (t1, _) (_, b)  -> rExt (getLabel t1)
-                                     (case project t1 of TApp _ a -> a) b
-        _ -> error "Type is not a row"
-  where
-    getLabel :: Type -> Name
-    getLabel = cata $ \case
-        TApp t1 _ -> t1
-        TCon _ c  -> Text.tail (Text.init c)
-        TVar _ v  -> ""
-
-rowToType :: Row Type -> Type
-rowToType = cata $ \case
-    RNil              -> tEmptyRow
-    RVar var          -> tVar kRow var
-    RExt label ty row -> tRowExtend label ty row

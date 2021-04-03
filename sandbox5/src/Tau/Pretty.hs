@@ -8,6 +8,7 @@ import Data.Function ((&))
 import Data.List (null)
 import Data.Text.Prettyprint.Doc
 import Tau.Lang
+import Tau.Row
 import Tau.Tool
 import Tau.Type
 
