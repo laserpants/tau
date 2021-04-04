@@ -1,3 +1,5 @@
+{-# LANGUAGE DeriveTraversable #-}
+{-# LANGUAGE StrictData        #-}
 module Tau.Compiler.Error where
 
 import Data.Text (Text)
@@ -12,18 +14,25 @@ data UnificationError
     | IncompatibleRows
     deriving (Show, Eq)
 
-data Error 
+data ErrorT t
     = Err Text
     -- 
-    | CannotUnify UnificationError Type Type
-    | CannotMatch UnificationError Type Type
+    -- 
+    | CannotUnify UnificationError t t
+    | CannotMatch UnificationError t t
+    -- 
     -- Pattern type inference errors
-    | ListPatternTypeUnficationError Error
+    | ListPatternTypeUnficationError 
     | NoDataConstructor Name
     | ConstructorPatternArityMismatch Name Int Int
+    | ConstructorPatternTypeMismatch Name t [t]
+    -- 
     -- 
     | UnboundTypeIdentifier Name
     -- 
-    | MissingClassInstance Name Type
-    deriving (Show, Eq)
+    -- 
+    | MissingClass Name
+    | MissingInstance Name t
+    deriving (Show, Eq, Functor, Foldable, Traversable)
 
+type Error = ErrorT Type

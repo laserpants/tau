@@ -1,3 +1,5 @@
+{-# LANGUAGE FlexibleInstances     #-}
+{-# LANGUAGE MultiParamTypeClasses #-}
 module Tau.Tool 
   ( Name
   , Algebra
@@ -21,6 +23,7 @@ module Tau.Tool
   , module Data.Functor.Foldable
   , module Data.Ord.Deriving
   , module Data.Text
+  , module Data.Types.Injective
   , module Data.Void
   , module Debug.Trace
   , module Text.Show.Deriving
@@ -37,6 +40,7 @@ import Data.Text.Lazy.Builder (toLazyText)
 import Data.Text.Lazy.Builder.Int (decimal)
 import Data.Text.Prettyprint.Doc
 import Data.Text.Prettyprint.Doc.Render.Text
+import Data.Types.Injective
 import Data.Void
 import Debug.Trace
 import Text.Show.Deriving
@@ -66,6 +70,14 @@ pluck = do
 liftMaybe :: (MonadError e m) => e -> Maybe a -> m a
 liftMaybe err Nothing = throwError err
 liftMaybe _ (Just ok) = pure ok
+
+-- >>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>
+
+instance Injective ((a, b), c) (a, b, c) where
+    to ((a, b), c) = (a, b, c) 
+
+instance Injective (a, (b, c)) (a, b, c) where
+    to (a, (b, c)) = (a, b, c)
 
 -- >>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>
 

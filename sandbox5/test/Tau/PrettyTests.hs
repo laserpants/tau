@@ -6,6 +6,7 @@ import Tau.Lang
 import Tau.Pretty
 import Tau.Row
 import Tau.Type
+import Tau.Tool
 import Test.Hspec hiding (describe, it)
 import Utils
 import qualified Data.Text as Text
@@ -157,17 +158,25 @@ testPrettyPattern = do
         (litPat () TUnit)
         "()"
 
-    suceedPrintPattern
-        (recordPat () (rExt "name" (varPat () "name") (rExt "id" (varPat () "id") rNil)))
-        "{ name = name, id = id }"
+--    suceedPrintPattern
+--        (recordPat () (rExt "id" (varPat () "id") (rExt "name" (varPat () "name") rNil)))
+--        "{ name = name, id = id }"
+--
+--    suceedPrintPattern
+--        (recordPat () (RExt "name" () (varPat () "baz")))
+--        "{ name = name, id = id }"
 
-    suceedPrintPattern
-        (recordPat () (rExt "name" (anyPat ()) (rExt "id" (varPat () "id") rNil)))
-        "{ name = _, id = id }"
-
-    suceedPrintPattern
-        (recordPat () (rExt "name" (varPat () "name") (rExt "id" (varPat () "id") (rVar "r"))))
-        "{ name = name, id = id | r }"
+--    suceedPrintPattern
+--        (recordPat () (rExt "name" (varPat () "name") (rExt "id" (varPat () "id") rNil)))
+--        "{ name = name, id = id }"
+--
+--    suceedPrintPattern
+--        (recordPat () (rExt "name" (anyPat ()) (rExt "id" (varPat () "id") rNil)))
+--        "{ name = _, id = id }"
+--
+--    suceedPrintPattern
+--        (recordPat () (rExt "name" (varPat () "name") (rExt "id" (varPat () "id") (rVar "r"))))
+--        "{ name = name, id = id | r }"
 
     describe "Constructor patterns" $ do
 

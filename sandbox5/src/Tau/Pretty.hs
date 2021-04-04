@@ -46,7 +46,7 @@ instance Pretty (ProgPattern t) where
             PAny    _        -> "_"
             PTuple  _ ps     -> prettyTuple ps
             PList   _ ps     -> prettyList_ ps
-            PRecord _ row    -> prettyRow "=" row
+            PRecord _ row    -> prettyRow "=" row 
 
 pCon :: (ProgPattern t, Doc a) -> Doc a -> Doc a
 pCon (p1, doc1) doc2 =

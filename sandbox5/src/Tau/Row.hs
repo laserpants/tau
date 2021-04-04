@@ -19,6 +19,21 @@ data RowF e a
 -- | Row
 type Row e = Fix (RowF e)
 
+--
+
+data RowX e = RowX (Map Name [e]) (Maybe Name) 
+
+data RowY 
+    = RowNil 
+    | RowVar Name 
+    | RowExt
+    deriving (Show, Eq)
+
+fooX :: RowX e -> RowY
+fooX (RowX m Nothing)  | null m = RowNil
+fooX (RowX m (Just r)) | null m = RowVar r
+fooX _                          = RowExt
+
 -- >>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>
 
 -- Type class instances for Row
@@ -39,6 +54,25 @@ deriveOrd1  ''RowF
 deriving instance Functor     (RowF e)
 deriving instance Foldable    (RowF e)
 deriving instance Traversable (RowF e)
+
+-- Type class instances for RowX
+
+deriving instance (Show e) =>
+    Show (RowX e)
+
+deriving instance (Eq e) =>
+    Eq (RowX e)
+
+deriving instance (Ord e) =>
+    Ord (RowX e)
+
+deriveShow1 ''RowX
+deriveEq1   ''RowX
+deriveOrd1  ''RowX
+
+deriving instance Functor     RowX
+deriving instance Foldable    RowX
+deriving instance Traversable RowX
 
 -- >>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>
 -- Constructors

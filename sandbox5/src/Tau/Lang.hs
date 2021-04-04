@@ -31,12 +31,11 @@ data PatternF t1 t2 t3 t4 t5 t6 t7 t8 t9 a
     | PAny    t6                       -- ^ Wildcard pattern
     | PTuple  t7 [a]                   -- ^ Tuple pattern
     | PList   t8 [a]                   -- ^ List pattern
-    | PRecord t9 (PatternRow t9)       -- ^ Record pattern
+    | PRecord t9 (Row (Pattern t1 t2 t3 t4 t5 t6 t7 t8 t9)) -- ^ Record pattern
+    | PRecord2 t9 (RowX a)              -- ^ Record pattern
 
 -- | Pattern
 type Pattern t1 t2 t3 t4 t5 t6 t7 t8 t9 = Fix (PatternF t1 t2 t3 t4 t5 t6 t7 t8 t9)
-
-type PatternRow t = Row (ProgPattern t)
 
 type ProgPattern t = Pattern t t t t t t t t t
 
@@ -105,13 +104,12 @@ data ExprF t1 t2 t3 t4 t5 t6 t7 t8 t9 t10 t11 t12 t13 t14 t15 bind lam pat a
     | EOp2    t12 (Op2 t12) a a        -- ^ Binary operator
     | ETuple  t13 [a]                  -- ^ Tuple
     | EList   t14 [a]                  -- ^ List literal
-    | ERecord t15 (ExprRow t15)        -- ^ Record
+    | ERecord t15 (Row (Expr t1 t2 t3 t4 t5 t6 t7 t8 t9 t10 t11 t12 t13 t14 t15 bind lam pat))         -- ^ Record
+    | ERecord2 t15 (RowX a)             -- ^ Record
 
 -- | Language expression
 type Expr t1 t2 t3 t4 t5 t6 t7 t8 t9 t10 t11 t12 t13 t14 t15 bind lam pat = 
     Fix (ExprF t1 t2 t3 t4 t5 t6 t7 t8 t9 t10 t11 t12 t13 t14 t15 bind lam pat)
-
-type ExprRow t = Row (ProgExpr t)
 
 type ProgExpr t = Expr t t t t t t t t t t t t t t t (Binding (ProgPattern t)) [ProgPattern t] (ProgPattern t)
 
@@ -245,6 +243,7 @@ instance Functor Ast where
             ETuple t es       -> tupleExpr (f t) es
             EList t es        -> listExpr (f t) es
             ERecord t row     -> recordExpr (f t) (mapRow mapExpr row)
+            ERecord2 t row     -> recordExpr2 (f t) (mapRow2 mapExpr row)
 
         mapBind = \case
             BLet p            -> BLet (mapPattern p)
@@ -291,11 +290,17 @@ instance Functor Ast where
             OStrc t           -> OStrc (f t) 
             ONdiv t           -> ONdiv (f t) 
 
-        mapRow :: (a -> b) -> Row a -> Row b
+        mapRow2 :: (a -> b) -> RowX c -> RowX d 
+        mapRow2 f (RowX m r) = undefined
+            --let zz = m :: Int
+            --  in
+            --  undefined
+
+        mapRow :: (a -> b) -> Row a -> Row b 
         mapRow f = cata $ \case
             RNil              -> rNil
             RVar var          -> rVar var
-            RExt name e row   -> rExt name (f e) row
+            RExt name t row   -> rExt name (f t) row
 
 -- >>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>
 -- Constructors
@@ -327,8 +332,11 @@ tuplePat = embed2 PTuple
 listPat :: t8 -> [Pattern t1 t2 t3 t4 t5 t6 t7 t8 t9] -> Pattern t1 t2 t3 t4 t5 t6 t7 t8 t9
 listPat = embed2 PList
 
-recordPat :: t9 -> PatternRow t9 -> Pattern t1 t2 t3 t4 t5 t6 t7 t8 t9
+recordPat :: t9 -> Row (Pattern t1 t2 t3 t4 t5 t6 t7 t8 t9) -> Pattern t1 t2 t3 t4 t5 t6 t7 t8 t9
 recordPat = embed2 PRecord
+
+recordPat2 :: t9 -> RowX (Pattern t1 t2 t3 t4 t5 t6 t7 t8 t9) -> Pattern t1 t2 t3 t4 t5 t6 t7 t8 t9
+recordPat2 = embed2 PRecord2
 
 -- Expr
 
@@ -374,8 +382,11 @@ tupleExpr = embed2 ETuple
 listExpr :: t14 -> [Expr t1 t2 t3 t4 t5 t6 t7 t8 t9 t10 t11 t12 t13 t14 t15 bind lam pat] -> Expr t1 t2 t3 t4 t5 t6 t7 t8 t9 t10 t11 t12 t13 t14 t15 bind lam pat
 listExpr = embed2 EList
 
-recordExpr :: t15 -> ExprRow t15 -> Expr t1 t2 t3 t4 t5 t6 t7 t8 t9 t10 t11 t12 t13 t14 t15 bind lam pat
+recordExpr :: t15 -> Row (Expr t1 t2 t3 t4 t5 t6 t7 t8 t9 t10 t11 t12 t13 t14 t15 bind lam pat) -> Expr t1 t2 t3 t4 t5 t6 t7 t8 t9 t10 t11 t12 t13 t14 t15 bind lam pat
 recordExpr = embed2 ERecord
+
+recordExpr2 :: t15 -> RowX (Expr t1 t2 t3 t4 t5 t6 t7 t8 t9 t10 t11 t12 t13 t14 t15 bind lam pat) -> Expr t1 t2 t3 t4 t5 t6 t7 t8 t9 t10 t11 t12 t13 t14 t15 bind lam pat
+recordExpr2 = embed2 ERecord2
 
 -- List cons constructors
 

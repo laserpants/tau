@@ -12,6 +12,7 @@ import Tau.Compiler.Typecheck
 import Tau.Lang
 import Tau.Pretty
 import Tau.Prog
+import Tau.Row
 import Tau.Tool
 import Tau.Type
 import Test.Hspec hiding (describe, it)
@@ -20,21 +21,23 @@ import qualified Data.Set.Monad as Set
 import qualified Tau.Compiler.Substitution as Sub
 import qualified Tau.Env as Env
 
-runInferWithEnvs :: InferStack a -> Either Error (a, (TypeSubstitution, Context))
+runInferWithEnvs :: InferStack a -> Either InferError (a, TypeSubstitution, Context)
 runInferWithEnvs = runInfer mempty testClassEnv testTypeEnv testConstructorEnv
 
-failInferPattern :: Text -> ProgPattern t -> (Error -> Bool) -> SpecWith ()
+failInferPattern :: (Show t) => Text -> ProgPattern t -> (Error -> Bool) -> SpecWith ()
 failInferPattern expl pat isExpected = do
     describe ("The pattern " <> prettyText pat) $
         case runInferWithEnvs (runWriterT (inferPattern pat)) of
-            Left err -> it ("✗ is not well-typed: (" <> expl <> ")") $ isExpected err
-            _ -> error "was expected to fail"
+            Left (InferError _ _ err) -> 
+                it ("✗ is not well-typed: (" <> expl <> ")") $ isExpected err
+            Right{} -> 
+                error "was expected to fail"
 
-succeedInferPattern :: ProgPattern t -> Type -> [Predicate] -> [(Name, Type)] -> SpecWith ()
+succeedInferPattern :: (Show t) => ProgPattern t -> Type -> [Predicate] -> [(Name, Type)] -> SpecWith ()
 succeedInferPattern pat ty ps vs = do
     case runInferWithEnvs (runWriterT (inferPattern pat)) of
         Left e -> error (show e)
-        Right ((pat, vars), (sub, context)) -> do
+        Right ((pat, vars), sub, context) -> do
             describe ("The pattern " <> prettyText pat) $
                 it ("has type: " <> prettyText ty <> ", class constraints: " 
                                  <> prettyText ps <> ", variables: " 
@@ -129,17 +132,21 @@ testInferPattern = do
 
     -- Record pattern
 
-    -- TODO
+--    succeedInferPattern 
+--        (recordPat () (rExt "id" (varPat () "id") (rExt "name" (varPat () "name") rNil)) )
+--        (rowToType (rExt "id" _a (rExt "name" _b rNil)))
+--        [] 
+--        []
 
     -- Failures
 
     failInferPattern "List type unification fails"
         (listPat () [litPat () (TBool True), litPat () (TInt 5)])
-        (\case { ListPatternTypeUnficationError _ -> True; _ -> False })
+        (\case { ListPatternTypeUnficationError -> True; _ -> False })
 
     failInferPattern "List type unification fails"
         (listPat () [litPat () (TBool True), litPat () TUnit])
-        (\case { ListPatternTypeUnficationError _ -> True; _ -> False })
+        (\case { ListPatternTypeUnficationError -> True; _ -> False })
 
     failInferPattern "Constructor arity doesn't match given arguments"
         (conPat () "Some" [litPat () (TInt 5), litPat () (TInt 5)])
@@ -155,6 +162,7 @@ testTypeEnv :: TypeEnv
 testTypeEnv = Env.fromList
     [ ( "None"   , Forall [kTyp] [] (tApp (tCon kFun "Option") (tGen 0)) )
     , ( "Some"   , Forall [kTyp] [] (tGen 0 `tArr` tApp (tCon kFun "Option") (tGen 0)) )
+    , ( "Foo"    , Forall [] [] (tInt `tArr` tInt `tArr` tCon kTyp "Foo") )
     ]
 
 testClassEnv :: ClassEnv
@@ -207,4 +215,5 @@ testConstructorEnv = constructorEnv
     , ("[]"       , ( ["[]", "(::)"], 0 ))
     , ("(::)"     , ( ["[]", "(::)"], 2 ))
     , ("(,)"      , ( ["(,)"], 2 ))
+    , ("Foo"      , ( ["Foo"], 2 ))
     ]

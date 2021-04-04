@@ -8,6 +8,7 @@ module Tau.Compiler.Substitution where
 import Data.List (intersect)
 import Data.Map.Strict (Map)
 import Prelude hiding (null)
+import Tau.Compiler.Error
 import Tau.Lang
 import Tau.Tool
 import Tau.Type
@@ -34,6 +35,9 @@ instance Substitutable (TypeT a) a where
     apply = substitute
 
 instance (Substitutable t a) => Substitutable (PredicateT t) a where
+    apply = fmap . apply
+
+instance (Substitutable t a) => Substitutable (ErrorT t) a where
     apply = fmap . apply
 
 instance (Substitutable t a) => Substitutable (ProgPattern t) a where

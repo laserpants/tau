@@ -158,6 +158,10 @@ testUnifyRowTypes = do
         (tRowExtend "y" tInt (tVar kRow "r"))
 
     succeedUnifyTypes
+        (tRowExtend "x" tInt (tVar kRow "r"))
+        (tRowExtend "x" tInt (tVar kRow "s"))
+
+    succeedUnifyTypes
         (tRowExtend "id" tInt (tVar kRow "r"))
         (tRowExtend "id" tInt (tRowExtend "name" tString tEmptyRow))
 
