@@ -49,7 +49,9 @@ import qualified Tau.Env as Env
 ----pattern1 = (conPat () "Some" [varPat () "x"])
 
 --pattern1 = recordPat () (rExt "id" (varPat () "id") (rExt "name" (varPat () "name") rNil))
-pattern1 = recordPat () (rExt "name" (varPat () "name") (rExt "id" (varPat () "id") rNil))
+--pattern1 = recordPat () (rExt "name" (varPat () "name") (rExt "id" (varPat () "id") rNil))
+
+pattern1 = tuplePat () [litPat () (TString "foo"), litPat () (TBool True)]
 
 test1 :: IO ()
 test1 = 

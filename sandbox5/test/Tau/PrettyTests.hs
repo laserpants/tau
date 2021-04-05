@@ -97,6 +97,10 @@ testPrettyType = do
         (tApp (tCon (kArr kRow kTyp) "#Record") (tApp (tApp (tCon (kArr kTyp (kArr kRow kRow)) "{id}") (tVar kTyp "a")) (tApp (tApp (tCon (kArr kTyp (kArr kRow kRow)) "{name}") (tVar kTyp "b")) (tCon kRow "{}"))))
         "{ id : a, name : b }"
 
+    suceedPrintType
+        (tApp (tApp (tCon (kArr kTyp (kArr kTyp kTyp)) "(,)") (tCon kTyp "String")) (tCon kTyp "Bool"))
+        "(String, Bool)"
+
 -- >>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>
 
 testPrettyKind :: SpecWith ()

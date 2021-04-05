@@ -4,6 +4,7 @@
 module Tau.Pretty where
 
 import Control.Arrow ((<<<), (>>>))
+import Control.Monad ((<=<))
 import Data.Function ((&))
 import Data.List (null, intersperse)
 import Data.Text.Prettyprint.Doc
@@ -12,6 +13,7 @@ import Tau.Row
 import Tau.Tool
 import Tau.Type
 import qualified Data.Map.Strict as Map
+import qualified Data.Text as Text
 
 -- >>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>
 
@@ -77,12 +79,19 @@ instance Pretty Kind where
 -- >>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>
 
 instance Pretty Type where
-    pretty ty = flip para ty $ \case
+    pretty ty = 
+        case innermostCon ty of
+            Just con | isTuple con -> prettyTupleType ty
+            Just "#Record"         -> prettyRecordType ty
+            _                      -> prettyType ty
 
-        TApp (Fix (TCon _ "#Record"), _) (row, _) -> 
-            lbrace <+> prettyRow ":" (pretty <$> typeToRow row) <+> rbrace
-        _ -> 
-            prettyType ty
+prettyTupleType :: Type -> Doc a
+prettyTupleType ty = let (_:ts) = unfoldApp ty in prettyTuple (pretty <$> ts)
+
+prettyRecordType :: Type -> Doc a
+prettyRecordType = project >>> \case
+    TApp (Fix (TCon _ "#Record")) row -> 
+        lbrace <+> prettyRow ":" (pretty <$> typeToRow row) <+> rbrace
 
 prettyType :: Type -> Doc a
 prettyType = para $ \case
@@ -143,3 +152,22 @@ prettyRow delim row@(Row map r) = body <> leaf where
 
     elm (k, es) = fields ((\y -> pretty k <+> delim <+> y) <$> es)
     fields f    = mconcat (intersperse ", " f)
+
+unfoldApp :: Type -> [Type]
+unfoldApp = para $ \case
+    TApp (_, a) (_, b) -> a <> b
+    TArr (a, _) (b, _) -> [tArr a b]
+    TCon k c           -> [tCon k c]
+    TVar k v           -> [tVar k v]
+
+innermostCon :: Type -> Maybe Name
+innermostCon = cata $ \case
+    TCon _ con -> Just con
+    TApp a _   -> a
+    _          -> Nothing
+
+isTuple :: Name -> Bool
+isTuple con = Just True == (allCommas <$> stripped con)
+  where
+    allCommas = Text.all (== ',')
+    stripped  = Text.stripSuffix ")" <=< Text.stripPrefix "("
