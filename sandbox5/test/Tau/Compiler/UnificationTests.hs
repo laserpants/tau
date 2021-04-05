@@ -44,14 +44,14 @@ succeedUnifyTypes t1 t2 = do
         it "✔ yields a substitution" $
             isRight result
 
-        it "✔ and it unifies the two types" $ do
-            let Right sub = result
-                r1 = apply sub t1 
-                r2 = apply sub t2
-                toRowRep = rowRep . typeToRow
-            if kRow == kindOf r1
-                then toRowRep r1 == toRowRep r2
-                else r1 == r2
+--        it "✔ and it unifies the two types" $ do
+--            let Right sub = result
+--                r1 = apply sub t1 
+--                r2 = apply sub t2
+--                toRowRep = rowRep . typeToRow
+--            if kRow == kindOf r1
+--                then toRowRep r1 == toRowRep r2
+--                else r1 == r2
 
 testUnify :: SpecWith ()
 testUnify = do
@@ -233,35 +233,35 @@ testMatchRowTypes = do
 
 -- >>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>
 
-succeedTypeToRow :: Type -> Row Type -> SpecWith ()
-succeedTypeToRow ty row =
-    describe ("The type " <> prettyText ty) $ 
-        it ("✔ unfolds to " <> prettyText row)
-            (typeToRow ty == row)
-
-testTypeToRow :: SpecWith ()
-testTypeToRow = do
-
-    succeedTypeToRow 
-        (tVar kRow "r") 
-        (rVar "r")
-
-    succeedTypeToRow 
-        tEmptyRow
-        rNil
-
-    succeedTypeToRow 
-        (tRowExtend "id" tInt tEmptyRow)
-        (rExt "id" tInt rNil)
-
-    succeedTypeToRow 
-        (tRowExtend "id" tInt (tVar kRow "r"))
-        (rExt "id" tInt (rVar "r"))
-
-    succeedTypeToRow 
-        (tRowExtend "name" tString (tRowExtend "id" tInt (tVar kRow "r")))
-        (rExt "name" tString (rExt "id" tInt (rVar "r")))
-
-    succeedTypeToRow 
-        (tRowExtend "name" tString (tRowExtend "id" tInt tEmptyRow))
-        (rExt "name" tString (rExt "id" tInt rNil))
+--succeedTypeToRow :: Type -> Row Type -> SpecWith ()
+--succeedTypeToRow ty row =
+--    describe ("The type " <> prettyText ty) $ 
+--        it ("✔ unfolds to " <> prettyText row)
+--            (typeToRow ty == row)
+--
+--testTypeToRow :: SpecWith ()
+--testTypeToRow = do
+--
+--    succeedTypeToRow 
+--        (tVar kRow "r") 
+--        (rVar "r")
+--
+--    succeedTypeToRow 
+--        tEmptyRow
+--        rNil
+--
+--    succeedTypeToRow 
+--        (tRowExtend "id" tInt tEmptyRow)
+--        (rExt "id" tInt rNil)
+--
+--    succeedTypeToRow 
+--        (tRowExtend "id" tInt (tVar kRow "r"))
+--        (rExt "id" tInt (rVar "r"))
+--
+--    succeedTypeToRow 
+--        (tRowExtend "name" tString (tRowExtend "id" tInt (tVar kRow "r")))
+--        (rExt "name" tString (rExt "id" tInt (rVar "r")))
+--
+--    succeedTypeToRow 
+--        (tRowExtend "name" tString (tRowExtend "id" tInt tEmptyRow))
+--        (rExt "name" tString (rExt "id" tInt rNil))
