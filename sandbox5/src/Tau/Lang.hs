@@ -49,27 +49,27 @@ data Op1 t
 
 -- | Binary operators
 data Op2 t
-    = OEq  t                           -- ^ Equal-to operator
-    | ONeq t                           -- ^ Not-equal-to operator
-    | OAnd t                           -- ^ Logical AND
-    | OOr  t                           -- ^ Logical OR
-    | OAdd t                           -- ^ Addition operator
-    | OSub t                           -- ^ Subtraction operator
-    | OMul t                           -- ^ Multiplication operator
-    | ODiv t                           -- ^ Division operator
-    | OPow t                           -- ^ Exponentiation operator
-    | OMod t                           -- ^ Modulo operator
-    | OLt  t                           -- ^ Strictly less-than operator
-    | OGt  t                           -- ^ Strictly greater-than operator
-    | OLte t                           -- ^ Less-than-or-equal-to operator
-    | OGte t                           -- ^ Greater-than-or-equal-to operator
-    | OLarr t                          -- ^ Function composition operator
-    | ORarr t                          -- ^ Reverse function composition
+    = OEq    t                         -- ^ Equal-to operator
+    | ONeq   t                         -- ^ Not-equal-to operator
+    | OAnd   t                         -- ^ Logical AND
+    | OOr    t                         -- ^ Logical OR
+    | OAdd   t                         -- ^ Addition operator
+    | OSub   t                         -- ^ Subtraction operator
+    | OMul   t                         -- ^ Multiplication operator
+    | ODiv   t                         -- ^ Division operator
+    | OPow   t                         -- ^ Exponentiation operator
+    | OMod   t                         -- ^ Modulo operator
+    | OLt    t                         -- ^ Strictly less-than operator
+    | OGt    t                         -- ^ Strictly greater-than operator
+    | OLte   t                         -- ^ Less-than-or-equal-to operator
+    | OGte   t                         -- ^ Greater-than-or-equal-to operator
+    | OLarr  t                         -- ^ Function composition operator
+    | ORarr  t                         -- ^ Reverse function composition
     | OFpipe t                         -- ^ Forward pipe operator
     | OBpipe t                         -- ^ Reverse pipe operator
-    | OOpt t                           -- ^ Option default operator
-    | OStrc t                          -- ^ String concatenation operator
-    | ONdiv t                          -- ^ Integral division
+    | OOpt   t                         -- ^ Option default operator
+    | OStrc  t                         -- ^ String concatenation operator
+    | ONdiv  t                         -- ^ Integral division
 
 -- >>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>
 
@@ -226,66 +226,66 @@ instance Functor Ast where
     fmap f (Ast ast) = Ast (mapExpr ast)
       where 
         mapExpr = cata $ \case
-            EVar t var        -> varExpr    (f t) var
-            ECon t con es     -> conExpr    (f t) con es
-            ELit t prim       -> litExpr    (f t) prim
-            EApp t es         -> appExpr    (f t) es
-            ELet t bind e1 e2 -> letExpr    (f t) (mapBind bind) e1 e2
-            EFix t name e1 e2 -> fixExpr    (f t) name e1 e2
-            ELam t ps e       -> lamExpr    (f t) (mapPattern <$> ps) e
-            EIf t e1 e2 e3    -> ifExpr     (f t) e1 e2 e3
-            EPat t es cs      -> patExpr    (f t) es (mapClause <$> cs)
-            EFun t cs         -> funExpr    (f t) (mapClause <$> cs)
-            EOp1 t op a       -> op1Expr    (f t) (mapOp1 op) a
-            EOp2 t op a b     -> op2Expr    (f t) (mapOp2 op) a b
-            ETuple t es       -> tupleExpr  (f t) es
-            EList t es        -> listExpr   (f t) es
-            ERecord t row     -> recordExpr (f t) row
+            EVar    t var        -> varExpr    (f t) var
+            ECon    t con es     -> conExpr    (f t) con es
+            ELit    t prim       -> litExpr    (f t) prim
+            EApp    t es         -> appExpr    (f t) es
+            ELet    t bind e1 e2 -> letExpr    (f t) (mapBind bind) e1 e2
+            EFix    t name e1 e2 -> fixExpr    (f t) name e1 e2
+            ELam    t ps e       -> lamExpr    (f t) (mapPattern <$> ps) e
+            EIf     t e1 e2 e3   -> ifExpr     (f t) e1 e2 e3
+            EPat    t es cs      -> patExpr    (f t) es (mapClause <$> cs)
+            EFun    t cs         -> funExpr    (f t) (mapClause <$> cs)
+            EOp1    t op a       -> op1Expr    (f t) (mapOp1 op) a
+            EOp2    t op a b     -> op2Expr    (f t) (mapOp2 op) a b
+            ETuple  t es         -> tupleExpr  (f t) es
+            EList   t es         -> listExpr   (f t) es
+            ERecord t row        -> recordExpr (f t) row
 
         mapBind = \case
-            BLet p            -> BLet (mapPattern p)
-            BFun name ps      -> BFun name (mapPattern <$> ps)
+            BLet p               -> BLet (mapPattern p)
+            BFun name ps         -> BFun name (mapPattern <$> ps)
 
         mapClause = \case
-            Clause ps gs      -> Clause (mapPattern <$> ps) gs
+            Clause ps gs         -> Clause (mapPattern <$> ps) gs
 
         mapPattern = cata $ \case
-            PVar    t var     -> varPat    (f t) var
-            PCon    t con ps  -> conPat    (f t) con ps
-            PLit    t prim    -> litPat    (f t) prim
-            PAs     t as p    -> asPat     (f t) as p
-            POr     t p q     -> orPat     (f t) p q
-            PAny    t         -> anyPat    (f t)
-            PTuple  t ps      -> tuplePat  (f t) ps
-            PList   t ps      -> listPat   (f t) ps
-            PRecord t row     -> recordPat (f t) row
+            PVar    t var        -> varPat    (f t) var
+            PCon    t con ps     -> conPat    (f t) con ps
+            PLit    t prim       -> litPat    (f t) prim
+            PAs     t as p       -> asPat     (f t) as p
+            POr     t p q        -> orPat     (f t) p q
+            PAny    t            -> anyPat    (f t)
+            PTuple  t ps         -> tuplePat  (f t) ps
+            PList   t ps         -> listPat   (f t) ps
+            PRecord t row        -> recordPat (f t) row
 
         mapOp1 = \case
-            ONeg t            -> ONeg   (f t)
-            ONot t            -> ONot   (f t)
+            ONeg t               -> ONeg   (f t)
+            ONot t               -> ONot   (f t)
 
         mapOp2 = \case
-            OEq  t            -> OEq    (f t)
-            ONeq t            -> ONeq   (f t)
-            OAnd t            -> OAnd   (f t)
-            OOr  t            -> OOr    (f t)
-            OAdd t            -> OAdd   (f t)
-            OSub t            -> OSub   (f t)
-            OMul t            -> OMul   (f t)
-            ODiv t            -> ODiv   (f t)
-            OPow t            -> OPow   (f t)
-            OMod t            -> OMod   (f t)
-            OLt  t            -> OLt    (f t)
-            OGt  t            -> OGt    (f t)
-            OLte t            -> OLte   (f t)
-            OGte t            -> OGte   (f t)
-            OLarr t           -> OLarr  (f t)
-            ORarr t           -> ORarr  (f t)
-            OFpipe t          -> OFpipe (f t)
-            OBpipe t          -> OBpipe (f t)
-            OOpt t            -> OOpt   (f t)
-            OStrc t           -> OStrc  (f t)
-            ONdiv t           -> ONdiv  (f t)
+            OEq    t             -> OEq    (f t)
+            ONeq   t             -> ONeq   (f t)
+            OAnd   t             -> OAnd   (f t)
+            OOr    t             -> OOr    (f t)
+            OAdd   t             -> OAdd   (f t)
+            OSub   t             -> OSub   (f t)
+            OMul   t             -> OMul   (f t)
+            ODiv   t             -> ODiv   (f t)
+            OPow   t             -> OPow   (f t)
+            OMod   t             -> OMod   (f t)
+            OLt    t             -> OLt    (f t)
+            OGt    t             -> OGt    (f t)
+            OLte   t             -> OLte   (f t)
+            OGte   t             -> OGte   (f t)
+            OLarr  t             -> OLarr  (f t)
+            ORarr  t             -> ORarr  (f t)
+            OFpipe t             -> OFpipe (f t)
+            OBpipe t             -> OBpipe (f t)
+            OOpt   t             -> OOpt   (f t)
+            OStrc  t             -> OStrc  (f t)
+            ONdiv  t             -> ONdiv  (f t)
 
 -- >>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>
 -- Constructors
