@@ -78,16 +78,16 @@ deriving instance Traversable RowX
 -- Constructors
 -- >>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>
 
----- Row
---
---rNil :: Row e 
---rNil = embed RNil
---
---rVar :: Name -> Row e 
---rVar = embed1 RVar
---
---rExt :: Name -> e -> Row e -> Row e 
---rExt = embed3 RExt
+-- Row
+
+rNil :: RowX e 
+rNil = RowX mempty Nothing
+
+rVar :: Name -> RowX e 
+rVar var = RowX mempty (Just var)
+
+rExt :: Name -> e -> RowX e -> RowX e 
+rExt var e (RowX map r) = RowX (Map.insertWith (<>) var [e] map) r
 
 -- >>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>
 
