@@ -368,19 +368,6 @@ predicateType (InClass _ t) = t
 
 -- >>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>
 
---typeToRowY :: Type -> RowY
---typeToRowY = cata $ \case
---    TCon (Fix KRow) "{}" -> RowNil
---    TVar (Fix KRow) var  -> RowVar var
---    _                    -> RowExt
-
---typeToRow :: Type -> Row Type
---typeToRow = \case
---    Fix (TCon (Fix KRow) "{}") -> Row mempty Nothing
---    Fix (TVar (Fix KRow) var)  -> Row mempty (Just var)
---    Fix (TApp a b)             -> undefined
---    _                          -> error "Not a row type"
-
 typeToRow :: Type -> Row Type
 typeToRow t = Row m r 
   where
@@ -395,25 +382,8 @@ typeToRow t = Row m r
         TCon _ c  -> Text.tail (Text.init c)
         TVar _ v  -> ""
 
-    insert t = Map.insertWith (<>) (getLabel t) 
-                                   (case project t of TApp _ a -> [a])
-
---xxx :: Type -> [Type]
---xxx t1 = undefined
---    case project t1 of 
---        TApp _ a -> a
-
-
---        TApp (t1, _) (_, b)  -> rExt (getLabel t1)
---                                     (case project t1 of TApp _ a -> a) b
-
---typeToRow :: Type -> Row Type
---typeToRow = para $ \case
---    TCon (Fix KRow) "{}" -> Row mempty Nothing
---    TVar (Fix KRow) var  -> Row mempty (Just var)
---    TApp (t1, _) (_, b)  -> undefined
---
---    _                    -> error "Not a row type"
+    insert t = 
+        Map.insertWith (<>) (getLabel t) (case project t of TApp _ a -> [a])
 
 rowToType :: Row Type -> Type
 rowToType (Row map r) = Map.foldrWithKey (flip . foldr . tRowExtend) leaf map
@@ -421,24 +391,3 @@ rowToType (Row map r) = Map.foldrWithKey (flip . foldr . tRowExtend) leaf map
     leaf = case r of
       Nothing -> tEmptyRow
       Just v  -> tVar kRow v
-
---typeToRow :: Type -> Row Type
---typeToRow =
---    para $ \case
---        TCon (Fix KRow) "{}" -> rNil
---        TVar (Fix KRow) var  -> rVar var
---        TApp (t1, _) (_, b)  -> rExt (getLabel t1)
---                                     (case project t1 of TApp _ a -> a) b
---        _ -> error "Not a row type"
---  where
---    getLabel :: Type -> Name
---    getLabel = cata $ \case
---        TApp t1 _ -> t1
---        TCon _ c  -> Text.tail (Text.init c)
---        TVar _ v  -> ""
---
---rowToType :: Row Type -> Type
---rowToType = cata $ \case
---    RNil              -> tEmptyRow
---    RVar var          -> tVar kRow var
---    RExt label ty row -> tRowExtend label ty row

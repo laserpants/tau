@@ -1,5 +1,15 @@
 
 
+grok : Option Int -> Int -> Int
+grok of 
+  | (Some x) 1 iff x > 100 = 0  
+  | None     1             = 1 
+  | _        _             = 2
+  where
+    valid = True
+
+
+
 reverse 
   | (Some x, y) = x + y
   | (_     , _) = 0
@@ -30,6 +40,10 @@ incrementEach(xs) = xs.map(x => x + 1)
   | Some x => x 
   | None   => 0)
 
+(of
+  | Some x => x 
+  | None   => 0)
+
 -- Let fun
 
 let f(x, y) = x + y
@@ -49,6 +63,13 @@ let f = fun
       when x > 3 => 5
       when x < 0 => 1
   | None         => 0
+
+let f of
+  | Some x 
+      when x > 3 = 5
+      when x < 0 = 1
+  | None         = 0
+
 
 
 add(x, y) = x + y
@@ -124,4 +145,18 @@ someFun of () = Yup
 someFun of (x, y) = x + y
 
 baz of (x, y) = x + y
+
+
+length xs 
+
+xs.length()
+
+length () xs
+
+
+xs.map(\x => x + 1)
+
+map (\x => x + 1) xs
+
+foo(())
 
