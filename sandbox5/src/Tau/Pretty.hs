@@ -31,7 +31,9 @@ instance Pretty Prim where
 -- >>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>
 
 instance (Eq e, Pretty e) => Pretty (Row e) where
-    pretty row = lbrace <+> prettyRow ":" (pretty <$> row) <+> rbrace
+    pretty (Row map r) | null map = maybe "{}" pretty r
+    pretty row = 
+        lbrace <+> prettyRow ":" (pretty <$> row) <+> rbrace
 
 -- >>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>
 
