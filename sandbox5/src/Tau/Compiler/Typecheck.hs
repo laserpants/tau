@@ -91,9 +91,11 @@ inferPattern = cata $ \pat -> do
         PAny _ ->
             pure (anyPat (TypeInfo newTy []))
 
-        PTuple _ pats -> do
+        PTuple t pats -> do
             ps <- sequence pats
-            newTy ## tTuple (typeOf <$> ps)
+            catchError 
+                (newTy ## tTuple (typeOf <$> ps))
+                (throwError . setMeta t)
             pure (tuplePat (TypeInfo newTy (patternPredicates =<< ps)) ps)
 
         PList t pats -> do
@@ -306,6 +308,9 @@ data InferError t = InferError
     , errorType    :: Error
     , errorMeta    :: t
     } deriving (Show, Eq)
+
+setMeta :: t -> InferError t -> InferError t
+setMeta meta InferError{..} = InferError{ errorMeta = meta, .. }
 
 -- Monad transformer stack
 
