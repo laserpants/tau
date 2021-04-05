@@ -31,7 +31,7 @@ data PatternF t1 t2 t3 t4 t5 t6 t7 t8 t9 a
     | PAny    t6                       -- ^ Wildcard pattern
     | PTuple  t7 [a]                   -- ^ Tuple pattern
     | PList   t8 [a]                   -- ^ List pattern
-    | PRecord2 t9 (Row a)              -- ^ Record pattern
+    | PRecord t9 (Row a)               -- ^ Record pattern
 
 -- | Pattern
 type Pattern t1 t2 t3 t4 t5 t6 t7 t8 t9 = Fix (PatternF t1 t2 t3 t4 t5 t6 t7 t8 t9)
@@ -103,7 +103,7 @@ data ExprF t1 t2 t3 t4 t5 t6 t7 t8 t9 t10 t11 t12 t13 t14 t15 bind lam pat a
     | EOp2    t12 (Op2 t12) a a        -- ^ Binary operator
     | ETuple  t13 [a]                  -- ^ Tuple
     | EList   t14 [a]                  -- ^ List literal
-    | ERecord2 t15 (Row a)             -- ^ Record
+    | ERecord t15 (Row a)              -- ^ Record
 
 -- | Language expression
 type Expr t1 t2 t3 t4 t5 t6 t7 t8 t9 t10 t11 t12 t13 t14 t15 bind lam pat = 
@@ -226,21 +226,21 @@ instance Functor Ast where
     fmap f (Ast ast) = Ast (mapExpr ast)
       where 
         mapExpr = cata $ \case
-            EVar t var        -> varExpr (f t) var
-            ECon t con es     -> conExpr (f t) con es
-            ELit t prim       -> litExpr (f t) prim
-            EApp t es         -> appExpr (f t) es
-            ELet t bind e1 e2 -> letExpr (f t) (mapBind bind) e1 e2
-            EFix t name e1 e2 -> fixExpr (f t) name e1 e2
-            ELam t ps e       -> lamExpr (f t) (mapPattern <$> ps) e
-            EIf t e1 e2 e3    -> ifExpr (f t) e1 e2 e3
-            EPat t es cs      -> patExpr (f t) es (mapClause <$> cs)
-            EFun t cs         -> funExpr (f t) (mapClause <$> cs)
-            EOp1 t op a       -> op1Expr (f t) (mapOp1 op) a
-            EOp2 t op a b     -> op2Expr (f t) (mapOp2 op) a b
-            ETuple t es       -> tupleExpr (f t) es
-            EList t es        -> listExpr (f t) es
-            ERecord2 t row     -> recordExpr2 (f t) row
+            EVar t var        -> varExpr    (f t) var
+            ECon t con es     -> conExpr    (f t) con es
+            ELit t prim       -> litExpr    (f t) prim
+            EApp t es         -> appExpr    (f t) es
+            ELet t bind e1 e2 -> letExpr    (f t) (mapBind bind) e1 e2
+            EFix t name e1 e2 -> fixExpr    (f t) name e1 e2
+            ELam t ps e       -> lamExpr    (f t) (mapPattern <$> ps) e
+            EIf t e1 e2 e3    -> ifExpr     (f t) e1 e2 e3
+            EPat t es cs      -> patExpr    (f t) es (mapClause <$> cs)
+            EFun t cs         -> funExpr    (f t) (mapClause <$> cs)
+            EOp1 t op a       -> op1Expr    (f t) (mapOp1 op) a
+            EOp2 t op a b     -> op2Expr    (f t) (mapOp2 op) a b
+            ETuple t es       -> tupleExpr  (f t) es
+            EList t es        -> listExpr   (f t) es
+            ERecord t row     -> recordExpr (f t) row
 
         mapBind = \case
             BLet p            -> BLet (mapPattern p)
@@ -250,42 +250,42 @@ instance Functor Ast where
             Clause ps gs      -> Clause (mapPattern <$> ps) gs
 
         mapPattern = cata $ \case
-            PVar    t var     -> varPat (f t) var
-            PCon    t con ps  -> conPat (f t) con ps
-            PLit    t prim    -> litPat (f t) prim
-            PAs     t as p    -> asPat (f t) as p
-            POr     t p q     -> orPat (f t) p q
-            PAny    t         -> anyPat (f t)
-            PTuple  t ps      -> tuplePat (f t) ps
-            PList   t ps      -> listPat (f t) ps
-            PRecord2 t row     -> recordPat2 (f t) row
+            PVar    t var     -> varPat    (f t) var
+            PCon    t con ps  -> conPat    (f t) con ps
+            PLit    t prim    -> litPat    (f t) prim
+            PAs     t as p    -> asPat     (f t) as p
+            POr     t p q     -> orPat     (f t) p q
+            PAny    t         -> anyPat    (f t)
+            PTuple  t ps      -> tuplePat  (f t) ps
+            PList   t ps      -> listPat   (f t) ps
+            PRecord t row     -> recordPat (f t) row
 
         mapOp1 = \case
-            ONeg t            -> ONeg (f t)
-            ONot t            -> ONot (f t)
+            ONeg t            -> ONeg   (f t)
+            ONot t            -> ONot   (f t)
 
         mapOp2 = \case
-            OEq  t            -> OEq  (f t)  
-            ONeq t            -> ONeq (f t)  
-            OAnd t            -> OAnd (f t)  
-            OOr  t            -> OOr  (f t)  
-            OAdd t            -> OAdd (f t)  
-            OSub t            -> OSub (f t)  
-            OMul t            -> OMul (f t)  
-            ODiv t            -> ODiv (f t)  
-            OPow t            -> OPow (f t)  
-            OMod t            -> OMod (f t)  
-            OLt  t            -> OLt  (f t)  
-            OGt  t            -> OGt  (f t)  
-            OLte t            -> OLte (f t)  
-            OGte t            -> OGte (f t)  
-            OLarr t           -> OLarr (f t) 
-            ORarr t           -> ORarr (f t) 
+            OEq  t            -> OEq    (f t)
+            ONeq t            -> ONeq   (f t)
+            OAnd t            -> OAnd   (f t)
+            OOr  t            -> OOr    (f t)
+            OAdd t            -> OAdd   (f t)
+            OSub t            -> OSub   (f t)
+            OMul t            -> OMul   (f t)
+            ODiv t            -> ODiv   (f t)
+            OPow t            -> OPow   (f t)
+            OMod t            -> OMod   (f t)
+            OLt  t            -> OLt    (f t)
+            OGt  t            -> OGt    (f t)
+            OLte t            -> OLte   (f t)
+            OGte t            -> OGte   (f t)
+            OLarr t           -> OLarr  (f t)
+            ORarr t           -> ORarr  (f t)
             OFpipe t          -> OFpipe (f t)
             OBpipe t          -> OBpipe (f t)
-            OOpt t            -> OOpt (f t)  
-            OStrc t           -> OStrc (f t) 
-            ONdiv t           -> ONdiv (f t) 
+            OOpt t            -> OOpt   (f t)
+            OStrc t           -> OStrc  (f t)
+            ONdiv t           -> ONdiv  (f t)
 
 -- >>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>
 -- Constructors
@@ -317,8 +317,8 @@ tuplePat = embed2 PTuple
 listPat :: t8 -> [Pattern t1 t2 t3 t4 t5 t6 t7 t8 t9] -> Pattern t1 t2 t3 t4 t5 t6 t7 t8 t9
 listPat = embed2 PList
 
-recordPat2 :: t9 -> Row (Pattern t1 t2 t3 t4 t5 t6 t7 t8 t9) -> Pattern t1 t2 t3 t4 t5 t6 t7 t8 t9
-recordPat2 = embed2 PRecord2
+recordPat :: t9 -> Row (Pattern t1 t2 t3 t4 t5 t6 t7 t8 t9) -> Pattern t1 t2 t3 t4 t5 t6 t7 t8 t9
+recordPat = embed2 PRecord
 
 -- Expr
 
@@ -364,8 +364,8 @@ tupleExpr = embed2 ETuple
 listExpr :: t14 -> [Expr t1 t2 t3 t4 t5 t6 t7 t8 t9 t10 t11 t12 t13 t14 t15 bind lam pat] -> Expr t1 t2 t3 t4 t5 t6 t7 t8 t9 t10 t11 t12 t13 t14 t15 bind lam pat
 listExpr = embed2 EList
 
-recordExpr2 :: t15 -> Row (Expr t1 t2 t3 t4 t5 t6 t7 t8 t9 t10 t11 t12 t13 t14 t15 bind lam pat) -> Expr t1 t2 t3 t4 t5 t6 t7 t8 t9 t10 t11 t12 t13 t14 t15 bind lam pat
-recordExpr2 = embed2 ERecord2
+recordExpr :: t15 -> Row (Expr t1 t2 t3 t4 t5 t6 t7 t8 t9 t10 t11 t12 t13 t14 t15 bind lam pat) -> Expr t1 t2 t3 t4 t5 t6 t7 t8 t9 t10 t11 t12 t13 t14 t15 bind lam pat
+recordExpr = embed2 ERecord
 
 -- List cons constructors
 
@@ -393,7 +393,7 @@ exprTag = cata $ \case
     EOp2    t _ _ _ -> t
     ETuple  t _     -> t
     EList   t _     -> t
-    ERecord2 t _     -> t
+    ERecord t _     -> t
 
 patternTag :: ProgPattern t -> t
 patternTag = cata $ \case
@@ -405,7 +405,7 @@ patternTag = cata $ \case
     PAny    t       -> t
     PTuple  t _     -> t
     PList   t _     -> t
-    PRecord2 t _     -> t
+    PRecord t _     -> t
 
 op1Tag :: Op1 t -> t
 op1Tag = \case

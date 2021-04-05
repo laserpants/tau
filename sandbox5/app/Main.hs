@@ -48,7 +48,8 @@ import qualified Tau.Env as Env
 ----pattern1 = asPat () "someX" (conPat () "Some" [varPat () "x"])
 ----pattern1 = (conPat () "Some" [varPat () "x"])
 
-pattern1 = recordPat2 () (rExt "id" (varPat () "id") (rExt "name" (varPat () "name") rNil))
+--pattern1 = recordPat () (rExt "id" (varPat () "id") (rExt "name" (varPat () "name") rNil))
+pattern1 = recordPat () (rExt "name" (varPat () "name") (rExt "id" (varPat () "id") rNil))
 
 test1 :: IO ()
 test1 = 
@@ -62,7 +63,8 @@ test1 =
                 xx2 = apply sub1 nodePredicates
                 xx3 = apply sub1 <$$> vars'
               in do
-                  print (typeOf pat)
+                  print (apply sub (typeOf pat))
+                  --print (normalized (apply sub (typeOf pat)))
                   --print sub
                   --print ">>>>"
                   --print nodeType 

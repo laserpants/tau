@@ -28,9 +28,6 @@ instance Pretty Prim where
 
 -- >>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>
 
---instance (Eq e, Pretty e) => Pretty (Row e) where
---    pretty = prettyRow ":"
-
 instance (Eq e, Pretty e) => Pretty (Row e) where
     pretty row = lbrace <+> prettyRow ":" (pretty <$> row) <+> rbrace
 
@@ -50,7 +47,7 @@ instance Pretty (ProgPattern t) where
             PAny    _        -> "_"
             PTuple  _ ps     -> prettyTuple ps
             PList   _ ps     -> prettyList_ ps
-            PRecord2 _ row    -> lbrace <+> prettyRow "=" row <+> rbrace
+            PRecord _ row    -> lbrace <+> prettyRow "=" row <+> rbrace
 
 pCon :: (ProgPattern t, Doc a) -> Doc a -> Doc a
 pCon (p1, doc1) doc2 =
@@ -80,24 +77,33 @@ instance Pretty Kind where
 -- >>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>
 
 instance Pretty Type where
-    pretty = para $ \case
-        TArr (t1, doc1) (_, doc2) -> parensIf useLeft doc1 <+> "->" <+> doc2
-          where
-            useLeft = 
-                case project t1 of
-                    TArr{} -> True
-                    _      -> False
+    pretty ty = flip para ty $ \case
 
-        TApp (_, doc1) (t2, doc2) -> doc1 <+> parensIf useRight doc2
-          where
-            useRight = 
-                case project t2 of
-                    TApp{} -> True
-                    TArr{} -> True
-                    _      -> False
+        TApp (Fix (TCon _ "#Record"), _) (row, _) -> 
+            lbrace <+> prettyRow ":" (pretty <$> typeToRow row) <+> rbrace
+        _ -> 
+            prettyType ty
 
-        TVar _ var -> pretty var
-        TCon _ con -> pretty con
+prettyType :: Type -> Doc a
+prettyType = para $ \case
+
+    TArr (t1, doc1) (_, doc2) -> parensIf useLeft doc1 <+> "->" <+> doc2
+      where
+        useLeft = 
+            case project t1 of
+                TArr{} -> True
+                _      -> False
+
+    TApp (_, doc1) (t2, doc2) -> doc1 <+> parensIf useRight doc2
+      where
+        useRight = 
+            case project t2 of
+                TApp{} -> True
+                TArr{} -> True
+                _      -> False
+
+    TVar _ var -> pretty var
+    TCon _ con -> pretty con
 
 -- >>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>
 
@@ -137,34 +143,3 @@ prettyRow delim row@(Row map r) = body <> leaf where
 
     elm (k, es) = fields ((\y -> pretty k <+> delim <+> y) <$> es)
     fields f    = mconcat (intersperse ", " f)
-
---prettyRow2 :: (Pretty e) => Doc a -> Row e -> Doc a
---prettyRow2 delim row = prettyRow delim (pretty <$> row)
---
---prettyRow2 delim row@(Row map r) =
---    case rowType row of
---        RNil     -> "{}"
---        RVar var -> pretty var
---        RExt     -> fields (elm <$> Map.toList map)
---  where
---    elm (k, es) = fields ((\y -> pretty k <+> delim <+> pretty y) <$> es)
---    fields f    = mconcat (intersperse ", " f)
-
---prettyRow :: (Pretty e) => Doc a -> Row e -> Doc a
---prettyRow delim row =
---    case project row of
---        RNil     -> "{}"
---        RVar var -> pretty var
---        _        -> "{" <+> body <+> "}"
---  where
---    body = (`para` row) $ \case
---        RNil             -> ""
---        RVar var         -> pretty var
---        RExt label e row -> pretty label <+> delim <+> pretty e <> next row
---
---    next :: (Row e, Doc a) -> Doc a
---    next (row, doc) =
---        case project row of
---            RNil     -> ""
---            RVar var -> " |" <+> pretty var
---            _        -> comma <+> doc

@@ -110,12 +110,12 @@ inferPattern = cata $ \pat -> do
                 (const $ failWithError ListPatternTypeUnficationError t)
             pure (listPat (TypeInfo newTy (patternPredicates =<< ps)) ps)
 
-        PRecord2 t row -> do
+        PRecord t row -> do
             fs <- sequence row
             catchError 
                 (newTy ## tRecord (rowToType (typeOf <$> fs)))
                 (throwError . setMeta t)
-            pure (recordPat2 (TypeInfo newTy (concat (concatRow (nodePredicates . patternTag <$> fs)))) fs)
+            pure (recordPat (TypeInfo newTy (concat (concatRow (nodePredicates . patternTag <$> fs)))) fs)
 
 inferOp1 = undefined
 

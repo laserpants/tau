@@ -42,15 +42,15 @@ instance (Substitutable t a) => Substitutable (ErrorT t) a where
 
 instance (Substitutable t a) => Substitutable (ProgPattern t) a where
     apply sub = cata $ \case
-        PVar    t var     -> varPat      (apply sub t) var
-        PCon    t con ps  -> conPat      (apply sub t) con ps
-        PLit    t prim    -> litPat      (apply sub t) prim
-        PAs     t as p    -> asPat       (apply sub t) as p
-        POr     t p q     -> orPat       (apply sub t) p q
-        PAny    t         -> anyPat      (apply sub t)
-        PTuple  t ps      -> tuplePat    (apply sub t) ps
-        PList   t ps      -> listPat     (apply sub t) ps
-        PRecord2 t row     -> recordPat2 (apply sub t) row
+        PVar    t var     -> varPat    (apply sub t) var
+        PCon    t con ps  -> conPat    (apply sub t) con ps
+        PLit    t prim    -> litPat    (apply sub t) prim
+        PAs     t as p    -> asPat     (apply sub t) as p
+        POr     t p q     -> orPat     (apply sub t) p q
+        PAny    t         -> anyPat    (apply sub t)
+        PTuple  t ps      -> tuplePat  (apply sub t) ps
+        PList   t ps      -> listPat   (apply sub t) ps
+        PRecord t row     -> recordPat (apply sub t) row
 
 instance (Substitutable p a) => Substitutable (Binding p) a where
     apply sub = \case
@@ -67,21 +67,21 @@ instance (Substitutable t a) => Substitutable (Clause (ProgPattern t) (ProgExpr 
 
 instance (Substitutable t a) => Substitutable (ProgExpr t) a where
     apply sub = cata $ \case
-        EVar t var        -> varExpr      (apply sub t) var
-        ECon t con es     -> conExpr      (apply sub t) con es
-        ELit t prim       -> litExpr      (apply sub t) prim
-        EApp t es         -> appExpr      (apply sub t) es
-        ELet t bind e1 e2 -> letExpr      (apply sub t) (apply sub bind) e1 e2
-        EFix t name e1 e2 -> fixExpr      (apply sub t) name e1 e2
-        ELam t ps e       -> lamExpr      (apply sub t) (apply sub ps) e
-        EIf t e1 e2 e3    -> ifExpr       (apply sub t) e1 e2 e3
-        EPat t es cs      -> patExpr      (apply sub t) es (apply sub cs)
-        EFun t cs         -> funExpr      (apply sub t) (apply sub cs)
-        EOp1 t op a       -> op1Expr      (apply sub t) (apply sub op) a
-        EOp2 t op a b     -> op2Expr      (apply sub t) (apply sub op) a b
-        ETuple t es       -> tupleExpr    (apply sub t) es
-        EList t es        -> listExpr     (apply sub t) es
-        ERecord2 t row     -> recordExpr2 (apply sub t) row
+        EVar t var        -> varExpr    (apply sub t) var
+        ECon t con es     -> conExpr    (apply sub t) con es
+        ELit t prim       -> litExpr    (apply sub t) prim
+        EApp t es         -> appExpr    (apply sub t) es
+        ELet t bind e1 e2 -> letExpr    (apply sub t) (apply sub bind) e1 e2
+        EFix t name e1 e2 -> fixExpr    (apply sub t) name e1 e2
+        ELam t ps e       -> lamExpr    (apply sub t) (apply sub ps) e
+        EIf t e1 e2 e3    -> ifExpr     (apply sub t) e1 e2 e3
+        EPat t es cs      -> patExpr    (apply sub t) es (apply sub cs)
+        EFun t cs         -> funExpr    (apply sub t) (apply sub cs)
+        EOp1 t op a       -> op1Expr    (apply sub t) (apply sub op) a
+        EOp2 t op a b     -> op2Expr    (apply sub t) (apply sub op) a b
+        ETuple t es       -> tupleExpr  (apply sub t) es
+        EList t es        -> listExpr   (apply sub t) es
+        ERecord t row     -> recordExpr (apply sub t) row
 
 instance (Substitutable t a) => Substitutable (Op1 t) a where
     apply sub = \case
@@ -167,3 +167,6 @@ merge s1 s2
 
 normalize :: Type -> Substitution Void
 normalize ty = fromList (zipWith (\(v, k) a -> (v, tVar k a)) (typeVars ty) letters)
+
+normalized :: Type -> Type
+normalized ty = apply (normalize ty) ty

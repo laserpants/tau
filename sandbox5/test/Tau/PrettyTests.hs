@@ -89,6 +89,14 @@ testPrettyType = do
         (tApp (tApp (tCon kFun2 "C") (_a `tArr` _a)) (tApp (tCon kFun "D") _b) `tArr` _a) 
         "C (a -> a) (D b) -> a"
 
+    suceedPrintType 
+        (tApp (tCon (kArr kRow kTyp) "#Record") (tApp (tApp (tCon (kArr kTyp (kArr kRow kRow)) "{id}") (tVar kTyp "a")) (tApp (tApp (tCon (kArr kTyp (kArr kRow kRow)) "{name}") (tVar kTyp "b")) (tVar kRow "r"))))
+        "{ id : a, name : b | r }"
+
+    suceedPrintType 
+        (tApp (tCon (kArr kRow kTyp) "#Record") (tApp (tApp (tCon (kArr kTyp (kArr kRow kRow)) "{id}") (tVar kTyp "a")) (tApp (tApp (tCon (kArr kTyp (kArr kRow kRow)) "{name}") (tVar kTyp "b")) (tCon kRow "{}"))))
+        "{ id : a, name : b }"
+
 -- >>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>
 
 testPrettyKind :: SpecWith ()
@@ -159,19 +167,19 @@ testPrettyPattern = do
         "()"
 
     suceedPrintPattern
-        (recordPat2 () (rExt "id" (varPat () "id") (rExt "name" (varPat () "name") rNil)))
+        (recordPat () (rExt "id" (varPat () "id") (rExt "name" (varPat () "name") rNil)))
         "{ id = id, name = name }"
 
     suceedPrintPattern
-        (recordPat2 () (rExt "name" (varPat () "name") (rExt "id" (varPat () "id") rNil)))
+        (recordPat () (rExt "name" (varPat () "name") (rExt "id" (varPat () "id") rNil)))
         "{ id = id, name = name }"
 
     suceedPrintPattern
-        (recordPat2 () (rExt "name" (anyPat ()) (rExt "id" (varPat () "id") rNil)))
+        (recordPat () (rExt "name" (anyPat ()) (rExt "id" (varPat () "id") rNil)))
         "{ id = id, name = _ }"
 
     suceedPrintPattern
-        (recordPat2 () (rExt "name" (varPat () "name") (rExt "id" (varPat () "id") (rVar "r"))))
+        (recordPat () (rExt "name" (varPat () "name") (rExt "id" (varPat () "id") (rVar "r"))))
         "{ id = id, name = name | r }"
 
     describe "Constructor patterns" $ do

@@ -46,8 +46,9 @@ succeedInferPattern pat ty ps vs = do
                     let TypeInfo{..} = patternTag (apply sub pat)
                         sub1 = normalize nodeType
                         vars' = apply sub <$$> vars
-                     in let result = unify (apply sub1 nodeType) ty :: Either UnificationError TypeSubstitution
-                         in isRight result 
+                     in -- result = unify (apply sub1 nodeType) ty :: Either UnificationError TypeSubstitution
+                           -- in isRight result 
+                        apply sub1 nodeType ==  ty
                              && apply sub1 (nub nodePredicates) == ps
                              && Set.fromList (apply sub1 <$$> vars') == Set.fromList vs
 
@@ -134,8 +135,20 @@ testInferPattern = do
     -- Record pattern
 
     succeedInferPattern 
-        (recordPat2 () (rExt "id" (varPat () "id") (rExt "name" (varPat () "name") rNil)))
+        (recordPat () (rExt "id" (varPat () "id") (rExt "name" (varPat () "name") rNil)))
         (tRecord (rowToType (rExt "id" _a (rExt "name" _b rNil))))
+        [] 
+        [("id", _a), ("name", _b)]
+
+    succeedInferPattern 
+        (recordPat () (rExt "name" (varPat () "name") (rExt "id" (varPat () "id") rNil)))
+        (tRecord (rowToType (rExt "id" _a (rExt "name" _b rNil))))
+        [] 
+        [("id", _a), ("name", _b)]
+
+    succeedInferPattern 
+        (recordPat () (rExt "name" (varPat () "name") (rExt "id" (varPat () "id") (rVar "r"))))
+        (tRecord (rowToType (rExt "id" _a (rExt "name" _b (rVar "c")))))
         [] 
         [("id", _a), ("name", _b)]
 
