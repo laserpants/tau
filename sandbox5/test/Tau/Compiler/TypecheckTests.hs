@@ -21,19 +21,19 @@ import qualified Data.Set.Monad as Set
 import qualified Tau.Compiler.Substitution as Sub
 import qualified Tau.Env as Env
 
-runInferWithEnvs :: InferStack a -> Either InferError (a, TypeSubstitution, Context)
+runInferWithEnvs :: (Monoid t) => InferStack t a -> Either (InferError t) (a, TypeSubstitution, Context)
 runInferWithEnvs = runInfer mempty testClassEnv testTypeEnv testConstructorEnv
 
-failInferPattern :: (Show t) => Text -> ProgPattern t -> (Error -> Bool) -> SpecWith ()
+failInferPattern :: (Show t, Monoid t) => Text -> ProgPattern t -> (Error -> Bool) -> SpecWith ()
 failInferPattern expl pat isExpected = do
     describe ("The pattern " <> prettyText pat) $
         case runInferWithEnvs (runWriterT (inferPattern pat)) of
-            Left (InferError _ _ err) -> 
+            Left (InferError _ _ err _) -> 
                 it ("✗ is not well-typed: (" <> expl <> ")") $ isExpected err
             Right{} -> 
                 error "was expected to fail"
 
-succeedInferPattern :: (Show t) => ProgPattern t -> Type -> [Predicate] -> [(Name, Type)] -> SpecWith ()
+succeedInferPattern :: (Show t, Monoid t) => ProgPattern t -> Type -> [Predicate] -> [(Name, Type)] -> SpecWith ()
 succeedInferPattern pat ty ps vs = do
     case runInferWithEnvs (runWriterT (inferPattern pat)) of
         Left e -> error (show e)

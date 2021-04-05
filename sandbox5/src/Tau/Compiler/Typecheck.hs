@@ -36,17 +36,17 @@ inferAst
   :: ( MonadSupply Name m
      , MonadReader (ClassEnv, TypeEnv, ConstructorEnv) m
      , MonadState (TypeSubstitution, Context) m
-     , MonadError InferError m )
+     , MonadError (InferError t) m )
   => Ast t 
   -> m (Ast TypeInfo)
 inferAst = undefined
 
 inferPattern
-  :: ( Show t
+  :: ( Monoid t, Show t
      , MonadSupply Name m
      , MonadReader (ClassEnv, TypeEnv, ConstructorEnv) m
      , MonadState (TypeSubstitution, Context) m
-     , MonadError InferError m ) 
+     , MonadError (InferError t) m ) 
   => ProgPattern t 
   -> WriterT [(Name, Type)] m (ProgPattern TypeInfo)
 inferPattern = cata $ \pat -> do
@@ -57,17 +57,17 @@ inferPattern = cata $ \pat -> do
             tell [(var, newTy)]
             pure (varPat (TypeInfo newTy []) var)
 
-        PCon _ con pats -> do
+        PCon t con pats -> do
             arity <- snd <$> lookupConstructor con
             -- The number of arguments must match constructor arity 
             when (arity /= length pats) $
-                failWithError (ConstructorPatternArityMismatch con arity (length pats))
+                failWithError (ConstructorPatternArityMismatch con arity (length pats)) t
 
             (ty, qs) <- lookupScheme con >>= instantiate
             ps <- sequence pats
             catchError 
                 (ty ## foldr tArr newTy (typeOf <$> ps))
-                (const $ failWithError (ConstructorPatternTypeMismatch con ty (typeOf <$> ps)))
+                (const $ failWithError (ConstructorPatternTypeMismatch con ty (typeOf <$> ps)) t)
             pure (conPat (TypeInfo newTy (qs <> (patternPredicates =<< ps))) con ps)
 
         PLit _ prim -> do
@@ -96,7 +96,7 @@ inferPattern = cata $ \pat -> do
             newTy ## tTuple (typeOf <$> ps)
             pure (tuplePat (TypeInfo newTy (patternPredicates =<< ps)) ps)
 
-        PList _ pats -> do
+        PList t pats -> do
             ps <- sequence pats
             t1 <- case ps of
                 []    -> newTVar kTyp
@@ -104,7 +104,7 @@ inferPattern = cata $ \pat -> do
             newTy ## tList t1
             catchError 
                 (forM ps (t1 ##))
-                (const $ failWithError ListPatternTypeUnficationError)
+                (const $ failWithError ListPatternTypeUnficationError t)
             pure (listPat (TypeInfo newTy (patternPredicates =<< ps)) ps)
 
         PRecord2 _ row -> do
@@ -139,25 +139,27 @@ newTVar kind = tVar kind <$> supply
 
 errorSpec
   :: ( MonadState (TypeSubstitution, Context) m
-     , MonadError InferError m ) 
+     , MonadError (InferError t) m ) 
   => Error
-  -> m InferError
-errorSpec err = do
+  -> t
+  -> m (InferError t)
+errorSpec err t = do
     (sub, context) <- get
-    pure (InferError sub context err)
+    pure (InferError sub context err t)
 
 failWithError
   :: ( MonadState (TypeSubstitution, Context) m
-     , MonadError InferError m ) 
+     , MonadError (InferError t) m ) 
   => Error
+  -> t
   -> m a
-failWithError err = errorSpec err >>= throwError
+failWithError err t = errorSpec err t >>= throwError
 
 instantiate 
   :: ( MonadSupply Name m
      , MonadReader (ClassEnv, TypeEnv, ConstructorEnv) m
      , MonadState (TypeSubstitution, Context) m
-     , MonadError InferError m ) 
+     , MonadError (InferError t) m ) 
   => Scheme 
   -> m (Type, [Predicate])
 instantiate (Forall kinds preds ty) = do
@@ -174,52 +176,56 @@ insertAll :: Context -> [(Name, Set Name)] -> Context
 insertAll = foldr (uncurry (Env.insertWith Set.union)) 
 
 lookupConstructor
-  :: ( MonadSupply Name m
+  :: ( Monoid t
+     , MonadSupply Name m
      , MonadReader (ClassEnv, TypeEnv, ConstructorEnv) m
      , MonadState (TypeSubstitution, Context) m
-     , MonadError InferError m ) 
+     , MonadError (InferError t) m ) 
   => Name 
   -> m (Set Name, Int)
 lookupConstructor con = do
     env <- asks thd3
     case Env.lookup con env of
-        Nothing   -> failWithError (NoDataConstructor con)
+        Nothing   -> failWithError (NoDataConstructor con) mempty
         Just info -> pure info
 
 lookupScheme 
-  :: ( MonadSupply Name m
+  :: ( Monoid t
+     , MonadSupply Name m
      , MonadReader (ClassEnv, TypeEnv, ConstructorEnv) m
      , MonadState (TypeSubstitution, Context) m
-     , MonadError InferError m ) 
+     , MonadError (InferError t) m ) 
   => Name 
   -> m Scheme
 lookupScheme name = do
     env <- asks snd3
     case Env.lookup name env of
-        Nothing     -> failWithError (UnboundTypeIdentifier name)
+        Nothing     -> failWithError (UnboundTypeIdentifier name) mempty
         Just scheme -> gets (apply . fst) <*> pure scheme
 
 unified 
-  :: ( MonadState (TypeSubstitution, Context) m 
-     , MonadError InferError m ) 
+  :: ( Monoid t
+     , MonadState (TypeSubstitution, Context) m 
+     , MonadError (InferError t) m ) 
   => Type 
   -> Type 
   -> m TypeSubstitution
 unified t1 t2 = do
     sub1 <- gets fst
     case unify (apply sub1 t1) (apply sub1 t2) of
-        Left err   -> failWithError (CannotUnify err t1 t2)
+        Left err   -> failWithError (CannotUnify err t1 t2) mempty
         Right sub2 -> pure (sub2 <> sub1)
 
 (##)
-  :: ( MonadSupply Name m
+  :: ( Monoid t
+     , MonadSupply Name m
      , MonadReader (ClassEnv, TypeEnv, ConstructorEnv) m
      , MonadState (TypeSubstitution, Context) m
-     , MonadError InferError m
-     , Typed t
-     , Typed u ) 
-  => t 
-  -> u 
+     , MonadError (InferError t) m
+     , Typed a
+     , Typed b ) 
+  => a 
+  -> b 
   -> m ()
 (##) v1 v2 = do 
     sub <- unified (typeOf v1) (typeOf v2)
@@ -231,10 +237,11 @@ unified t1 t2 = do
         propagateClasses ty (fromMaybe mempty (Env.lookup tv env))
 
 propagateClasses 
-  :: ( MonadSupply Name m
+  :: ( Monoid t
+     , MonadSupply Name m
      , MonadReader (ClassEnv, TypeEnv, ConstructorEnv) m
      , MonadState (TypeSubstitution, Context) m
-     , MonadError InferError m )
+     , MonadError (InferError t) m )
   => Type 
   -> Set Name
   -> m ()
@@ -248,17 +255,18 @@ propagateClasses ty ps =
         sequence_ [propagateClasses t (Set.singleton a) | InClass a t <- preds]
 
 lookupClassInstance 
-  :: ( MonadError InferError m
+  :: ( Monoid t
+     , MonadError (InferError t) m
      , MonadState (TypeSubstitution, Context) m )
   => Name 
   -> Type 
   -> ClassEnv
   -> m (ClassInfo Type (Ast TypeInfo))
 lookupClassInstance tc ty env = do
-    err <- errorSpec (MissingClass tc)
+    err <- errorSpec (MissingClass tc) mempty
     (ClassInfo{..}, insts) <- liftMaybe err (Env.lookup tc env)
     msum [tryMatch i | i <- insts] &
-        maybe (failWithError (MissingInstance tc ty)) pure
+        maybe (failWithError (MissingInstance tc ty) mempty) pure
   where
     tryMatch ci@ClassInfo{..} = 
         case match (predicateType classSignature) ty of
@@ -292,26 +300,19 @@ instance Substitutable (ClassInfo Type (Ast TypeInfo)) Void where
 
 -- >>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>
 
-data InferError = InferError 
+data InferError t = InferError 
     { errorSub     :: TypeSubstitution
     , errorContext :: Context
     , errorType    :: Error
+    , errorMeta    :: t
     } deriving (Show, Eq)
-
---data InferError t = InferError 
---    { errorSub     :: TypeSubstitution
---    , errorContext :: Context
---    , errorType    :: Error
---    , errorMeta    :: t
---    } deriving (Show, Eq)
-
 
 -- Monad transformer stack
 
-type InferState  = StateT (TypeSubstitution, Context)
-type InferReader = ReaderT (ClassEnv, TypeEnv, ConstructorEnv)
-type InferSupply = SupplyT Name
-type InferExcept = ExceptT InferError
+type InferState    = StateT (TypeSubstitution, Context)
+type InferReader   = ReaderT (ClassEnv, TypeEnv, ConstructorEnv)
+type InferSupply   = SupplyT Name
+type InferExcept t = ExceptT (InferError t)
 
 runInferState :: (Monad m) => Context -> InferState m a -> m (a, (TypeSubstitution, Context))
 runInferState context = flip runStateT (mempty, context)
@@ -322,21 +323,22 @@ runInferReader e1 e2 e3 = flip runReaderT (e1, e2, e3)
 runInferSupply :: (Monad m) => InferSupply m a -> m a
 runInferSupply = flip evalSupplyT (numSupply "a")
 
-runInferExcept :: InferExcept m a -> m (Either InferError a)
+runInferExcept :: InferExcept t m a -> m (Either (InferError t) a)
 runInferExcept = runExceptT
 
-runInferMaybe :: Maybe (Either InferError a) -> Either InferError a
-runInferMaybe = fromMaybe (Left (InferError mempty mempty (Err "Implementation error")))
+runInferMaybe :: (Monoid t) => Maybe (Either (InferError t) a) -> Either (InferError t) a
+runInferMaybe = fromMaybe (Left (InferError mempty mempty (Err "Implementation error") mempty))
 
-type InferStack = InferReader (InferState (InferSupply (InferExcept Maybe)))
+type InferStack t = InferReader (InferState (InferSupply (InferExcept t Maybe)))
 
 runInfer 
-  :: Context 
+  ::(Monoid t) 
+  => Context 
   -> ClassEnv 
   -> TypeEnv 
   -> ConstructorEnv 
-  -> InferStack a 
-  -> Either InferError (a, TypeSubstitution, Context)
+  -> InferStack t a 
+  -> Either (InferError t) (a, TypeSubstitution, Context)
 runInfer context classEnv typeEnv constructorEnv = 
     runInferReader classEnv typeEnv constructorEnv
     >>> runInferState context

@@ -31,7 +31,7 @@ data PatternF t1 t2 t3 t4 t5 t6 t7 t8 t9 a
     | PAny    t6                       -- ^ Wildcard pattern
     | PTuple  t7 [a]                   -- ^ Tuple pattern
     | PList   t8 [a]                   -- ^ List pattern
-    | PRecord2 t9 (RowX a)              -- ^ Record pattern
+    | PRecord2 t9 (Row a)              -- ^ Record pattern
 
 -- | Pattern
 type Pattern t1 t2 t3 t4 t5 t6 t7 t8 t9 = Fix (PatternF t1 t2 t3 t4 t5 t6 t7 t8 t9)
@@ -103,7 +103,7 @@ data ExprF t1 t2 t3 t4 t5 t6 t7 t8 t9 t10 t11 t12 t13 t14 t15 bind lam pat a
     | EOp2    t12 (Op2 t12) a a        -- ^ Binary operator
     | ETuple  t13 [a]                  -- ^ Tuple
     | EList   t14 [a]                  -- ^ List literal
-    | ERecord2 t15 (RowX a)             -- ^ Record
+    | ERecord2 t15 (Row a)             -- ^ Record
 
 -- | Language expression
 type Expr t1 t2 t3 t4 t5 t6 t7 t8 t9 t10 t11 t12 t13 t14 t15 bind lam pat = 
@@ -317,7 +317,7 @@ tuplePat = embed2 PTuple
 listPat :: t8 -> [Pattern t1 t2 t3 t4 t5 t6 t7 t8 t9] -> Pattern t1 t2 t3 t4 t5 t6 t7 t8 t9
 listPat = embed2 PList
 
-recordPat2 :: t9 -> RowX (Pattern t1 t2 t3 t4 t5 t6 t7 t8 t9) -> Pattern t1 t2 t3 t4 t5 t6 t7 t8 t9
+recordPat2 :: t9 -> Row (Pattern t1 t2 t3 t4 t5 t6 t7 t8 t9) -> Pattern t1 t2 t3 t4 t5 t6 t7 t8 t9
 recordPat2 = embed2 PRecord2
 
 -- Expr
@@ -364,7 +364,7 @@ tupleExpr = embed2 ETuple
 listExpr :: t14 -> [Expr t1 t2 t3 t4 t5 t6 t7 t8 t9 t10 t11 t12 t13 t14 t15 bind lam pat] -> Expr t1 t2 t3 t4 t5 t6 t7 t8 t9 t10 t11 t12 t13 t14 t15 bind lam pat
 listExpr = embed2 EList
 
-recordExpr2 :: t15 -> RowX (Expr t1 t2 t3 t4 t5 t6 t7 t8 t9 t10 t11 t12 t13 t14 t15 bind lam pat) -> Expr t1 t2 t3 t4 t5 t6 t7 t8 t9 t10 t11 t12 t13 t14 t15 bind lam pat
+recordExpr2 :: t15 -> Row (Expr t1 t2 t3 t4 t5 t6 t7 t8 t9 t10 t11 t12 t13 t14 t15 bind lam pat) -> Expr t1 t2 t3 t4 t5 t6 t7 t8 t9 t10 t11 t12 t13 t14 t15 bind lam pat
 recordExpr2 = embed2 ERecord2
 
 -- List cons constructors

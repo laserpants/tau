@@ -5,12 +5,13 @@ module Tau.Pretty where
 
 import Control.Arrow ((<<<), (>>>))
 import Data.Function ((&))
-import Data.List (null)
+import Data.List (null, intersperse)
 import Data.Text.Prettyprint.Doc
 import Tau.Lang
 import Tau.Row
 import Tau.Tool
 import Tau.Type
+import qualified Data.Map.Strict as Map
 
 -- >>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>
 
@@ -30,8 +31,8 @@ instance Pretty Prim where
 --instance (Eq e, Pretty e) => Pretty (Row e) where
 --    pretty = prettyRow ":"
 
-instance (Eq e, Pretty e) => Pretty (RowX e) where
-    pretty = prettyRow2 ":"
+instance (Eq e, Pretty e) => Pretty (Row e) where
+    pretty row = lbrace <+> prettyRow ":" (pretty <$> row) <+> rbrace
 
 -- >>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>
 
@@ -49,8 +50,7 @@ instance Pretty (ProgPattern t) where
             PAny    _        -> "_"
             PTuple  _ ps     -> prettyTuple ps
             PList   _ ps     -> prettyList_ ps
-            --PRecord _ row    -> prettyRow "=" row 
-            PRecord2 _ row    -> "TODO" -- prettyRow "=" row 
+            PRecord2 _ row    -> lbrace <+> prettyRow "=" row <+> rbrace
 
 pCon :: (ProgPattern t, Doc a) -> Doc a -> Doc a
 pCon (p1, doc1) doc2 =
@@ -123,7 +123,32 @@ prettyTuple = parens . commaSep
 prettyList_ :: [Doc a] -> Doc a
 prettyList_ = brackets . commaSep
 
-prettyRow2 _ _ = "TODO"
+prettyRow :: Doc a -> Row (Doc a) -> Doc a
+prettyRow delim row@(Row map r) = body <> leaf where
+
+    leaf = case r of
+        Nothing -> ""
+        Just q -> " " <> pipe <+> pretty q
+
+    body = case rowType row of
+        RNil     -> "{}"
+        RVar var -> pretty var
+        RExt     -> fields (elm <$> Map.toList map)
+
+    elm (k, es) = fields ((\y -> pretty k <+> delim <+> y) <$> es)
+    fields f    = mconcat (intersperse ", " f)
+
+--prettyRow2 :: (Pretty e) => Doc a -> Row e -> Doc a
+--prettyRow2 delim row = prettyRow delim (pretty <$> row)
+--
+--prettyRow2 delim row@(Row map r) =
+--    case rowType row of
+--        RNil     -> "{}"
+--        RVar var -> pretty var
+--        RExt     -> fields (elm <$> Map.toList map)
+--  where
+--    elm (k, es) = fields ((\y -> pretty k <+> delim <+> pretty y) <$> es)
+--    fields f    = mconcat (intersperse ", " f)
 
 --prettyRow :: (Pretty e) => Doc a -> Row e -> Doc a
 --prettyRow delim row =

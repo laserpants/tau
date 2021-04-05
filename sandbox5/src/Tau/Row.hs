@@ -21,18 +21,18 @@ import qualified Data.Map.Strict as Map
 --
 ----
 
-data RowX e = RowX (Map Name [e]) (Maybe Name) 
+data Row e = Row (Map Name [e]) (Maybe Name) 
 
-data RowY 
+data RowType 
     = RNil 
     | RVar Name 
     | RExt
     deriving (Show, Eq)
 
-fooX :: RowX e -> RowY
-fooX (RowX m Nothing)  | null m = RNil
-fooX (RowX m (Just r)) | null m = RVar r
-fooX _                          = RExt
+rowType :: Row e -> RowType
+rowType (Row m Nothing)  | null m = RNil
+rowType (Row m (Just r)) | null m = RVar r
+rowType _                          = RExt
 
 -- >>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>
 
@@ -55,24 +55,24 @@ fooX _                          = RExt
 --deriving instance Foldable    (RowF e)
 --deriving instance Traversable (RowF e)
 
--- Type class instances for RowX
+-- Type class instances for Row
 
 deriving instance (Show e) =>
-    Show (RowX e)
+    Show (Row e)
 
 deriving instance (Eq e) =>
-    Eq (RowX e)
+    Eq (Row e)
 
 deriving instance (Ord e) =>
-    Ord (RowX e)
+    Ord (Row e)
 
-deriveShow1 ''RowX
-deriveEq1   ''RowX
-deriveOrd1  ''RowX
+deriveShow1 ''Row
+deriveEq1   ''Row
+deriveOrd1  ''Row
 
-deriving instance Functor     RowX
-deriving instance Foldable    RowX
-deriving instance Traversable RowX
+deriving instance Functor     Row
+deriving instance Foldable    Row
+deriving instance Traversable Row
 
 -- >>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>
 -- Constructors
@@ -80,14 +80,14 @@ deriving instance Traversable RowX
 
 -- Row
 
-rNil :: RowX e 
-rNil = RowX mempty Nothing
+rNil :: Row e 
+rNil = Row mempty Nothing
 
-rVar :: Name -> RowX e 
-rVar var = RowX mempty (Just var)
+rVar :: Name -> Row e 
+rVar var = Row mempty (Just var)
 
-rExt :: Name -> e -> RowX e -> RowX e 
-rExt var e (RowX map r) = RowX (Map.insertWith (<>) var [e] map) r
+rExt :: Name -> e -> Row e -> Row e 
+rExt var e (Row map r) = Row (Map.insertWith (<>) var [e] map) r
 
 -- >>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>
 

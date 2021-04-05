@@ -374,15 +374,15 @@ predicateType (InClass _ t) = t
 --    TVar (Fix KRow) var  -> RowVar var
 --    _                    -> RowExt
 
---typeToRowX :: Type -> RowX Type
---typeToRowX = \case
---    Fix (TCon (Fix KRow) "{}") -> RowX mempty Nothing
---    Fix (TVar (Fix KRow) var)  -> RowX mempty (Just var)
+--typeToRow :: Type -> Row Type
+--typeToRow = \case
+--    Fix (TCon (Fix KRow) "{}") -> Row mempty Nothing
+--    Fix (TVar (Fix KRow) var)  -> Row mempty (Just var)
 --    Fix (TApp a b)             -> undefined
 --    _                          -> error "Not a row type"
 
-typeToRowX :: Type -> RowX Type
-typeToRowX t = RowX m r 
+typeToRow :: Type -> Row Type
+typeToRow t = Row m r 
   where
     (m, r) = flip para t $ \case
         TCon (Fix KRow) "{}" -> (mempty, Nothing)
@@ -407,16 +407,16 @@ typeToRowX t = RowX m r
 --        TApp (t1, _) (_, b)  -> rExt (getLabel t1)
 --                                     (case project t1 of TApp _ a -> a) b
 
---typeToRowX :: Type -> RowX Type
---typeToRowX = para $ \case
---    TCon (Fix KRow) "{}" -> RowX mempty Nothing
---    TVar (Fix KRow) var  -> RowX mempty (Just var)
+--typeToRow :: Type -> Row Type
+--typeToRow = para $ \case
+--    TCon (Fix KRow) "{}" -> Row mempty Nothing
+--    TVar (Fix KRow) var  -> Row mempty (Just var)
 --    TApp (t1, _) (_, b)  -> undefined
 --
 --    _                    -> error "Not a row type"
 
-rowXToType :: RowX Type -> Type
-rowXToType (RowX map r) = Map.foldrWithKey (flip . foldr . tRowExtend) leaf map
+rowToType :: Row Type -> Type
+rowToType (Row map r) = Map.foldrWithKey (flip . foldr . tRowExtend) leaf map
   where
     leaf = case r of
       Nothing -> tEmptyRow

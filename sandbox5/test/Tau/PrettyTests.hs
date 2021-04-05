@@ -158,25 +158,21 @@ testPrettyPattern = do
         (litPat () TUnit)
         "()"
 
---    suceedPrintPattern
---        (recordPat () (rExt "id" (varPat () "id") (rExt "name" (varPat () "name") rNil)))
---        "{ name = name, id = id }"
---
---    suceedPrintPattern
---        (recordPat () (RExt "name" () (varPat () "baz")))
---        "{ name = name, id = id }"
+    suceedPrintPattern
+        (recordPat2 () (rExt "id" (varPat () "id") (rExt "name" (varPat () "name") rNil)))
+        "{ id = id, name = name }"
 
---    suceedPrintPattern
---        (recordPat () (rExt "name" (varPat () "name") (rExt "id" (varPat () "id") rNil)))
---        "{ name = name, id = id }"
---
---    suceedPrintPattern
---        (recordPat () (rExt "name" (anyPat ()) (rExt "id" (varPat () "id") rNil)))
---        "{ name = _, id = id }"
---
---    suceedPrintPattern
---        (recordPat () (rExt "name" (varPat () "name") (rExt "id" (varPat () "id") (rVar "r"))))
---        "{ name = name, id = id | r }"
+    suceedPrintPattern
+        (recordPat2 () (rExt "name" (varPat () "name") (rExt "id" (varPat () "id") rNil)))
+        "{ id = id, name = name }"
+
+    suceedPrintPattern
+        (recordPat2 () (rExt "name" (anyPat ()) (rExt "id" (varPat () "id") rNil)))
+        "{ id = id, name = _ }"
+
+    suceedPrintPattern
+        (recordPat2 () (rExt "name" (varPat () "name") (rExt "id" (varPat () "id") (rVar "r"))))
+        "{ id = id, name = name | r }"
 
     describe "Constructor patterns" $ do
 
