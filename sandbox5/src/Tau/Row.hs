@@ -24,15 +24,15 @@ import qualified Data.Map.Strict as Map
 data RowX e = RowX (Map Name [e]) (Maybe Name) 
 
 data RowY 
-    = RowNil 
-    | RowVar Name 
-    | RowExt
+    = RNil 
+    | RVar Name 
+    | RExt
     deriving (Show, Eq)
 
 fooX :: RowX e -> RowY
-fooX (RowX m Nothing)  | null m = RowNil
-fooX (RowX m (Just r)) | null m = RowVar r
-fooX _                          = RowExt
+fooX (RowX m Nothing)  | null m = RNil
+fooX (RowX m (Just r)) | null m = RVar r
+fooX _                          = RExt
 
 -- >>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>
 

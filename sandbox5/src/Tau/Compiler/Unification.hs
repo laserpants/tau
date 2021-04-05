@@ -51,9 +51,9 @@ match t u
 unifyRowTypes :: (MonadError UnificationError m) => Type -> Type -> m TypeSubstitution
 unifyRowTypes t u = fn (fooX r) (fooX s)
   where
-    fn RowNil RowNil                          = pure mempty
-    fn (RowVar var) _                         = bind var kRow u
-    fn _ (RowVar var)                         = bind var kRow t
+    fn RNil RNil                              = pure mempty
+    fn (RVar var) _                           = bind var kRow u
+    fn _ (RVar var)                           = bind var kRow t
     fn _ _                                    = unifyRows r s
     r                                         = typeToRowX t 
     s                                         = typeToRowX u
@@ -61,8 +61,8 @@ unifyRowTypes t u = fn (fooX r) (fooX s)
 matchRowTypes :: (MonadError UnificationError m) => Type -> Type -> m TypeSubstitution
 matchRowTypes t u = fn (fooX r) (fooX s)
   where
-    fn RowNil RowNil                          = pure mempty
-    fn (RowVar var) _                         = bind var kRow u
+    fn RNil RNil                              = pure mempty
+    fn (RVar var) _                           = bind var kRow u
     fn _ _                                    = matchRows r s
     r                                         = typeToRowX t
     s                                         = typeToRowX u
