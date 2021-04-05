@@ -27,8 +27,11 @@ instance Pretty Prim where
 
 -- >>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>
 
-instance (Eq e, Pretty e) => Pretty (Row e) where
-    pretty = prettyRow ":"
+--instance (Eq e, Pretty e) => Pretty (Row e) where
+--    pretty = prettyRow ":"
+
+instance (Eq e, Pretty e) => Pretty (RowX e) where
+    pretty = prettyRow2 ":"
 
 -- >>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>
 
@@ -46,7 +49,8 @@ instance Pretty (ProgPattern t) where
             PAny    _        -> "_"
             PTuple  _ ps     -> prettyTuple ps
             PList   _ ps     -> prettyList_ ps
-            PRecord _ row    -> prettyRow "=" row 
+            --PRecord _ row    -> prettyRow "=" row 
+            PRecord2 _ row    -> "TODO" -- prettyRow "=" row 
 
 pCon :: (ProgPattern t, Doc a) -> Doc a -> Doc a
 pCon (p1, doc1) doc2 =
@@ -119,21 +123,23 @@ prettyTuple = parens . commaSep
 prettyList_ :: [Doc a] -> Doc a
 prettyList_ = brackets . commaSep
 
-prettyRow :: (Pretty e) => Doc a -> Row e -> Doc a
-prettyRow delim row =
-    case project row of
-        RNil     -> "{}"
-        RVar var -> pretty var
-        _        -> "{" <+> body <+> "}"
-  where
-    body = (`para` row) $ \case
-        RNil             -> ""
-        RVar var         -> pretty var
-        RExt label e row -> pretty label <+> delim <+> pretty e <> next row
+prettyRow2 _ _ = "TODO"
 
-    next :: (Row e, Doc a) -> Doc a
-    next (row, doc) =
-        case project row of
-            RNil     -> ""
-            RVar var -> " |" <+> pretty var
-            _        -> comma <+> doc
+--prettyRow :: (Pretty e) => Doc a -> Row e -> Doc a
+--prettyRow delim row =
+--    case project row of
+--        RNil     -> "{}"
+--        RVar var -> pretty var
+--        _        -> "{" <+> body <+> "}"
+--  where
+--    body = (`para` row) $ \case
+--        RNil             -> ""
+--        RVar var         -> pretty var
+--        RExt label e row -> pretty label <+> delim <+> pretty e <> next row
+--
+--    next :: (Row e, Doc a) -> Doc a
+--    next (row, doc) =
+--        case project row of
+--            RNil     -> ""
+--            RVar var -> " |" <+> pretty var
+--            _        -> comma <+> doc

@@ -422,23 +422,23 @@ rowXToType (RowX map r) = Map.foldrWithKey (flip . foldr . tRowExtend) leaf map
       Nothing -> tEmptyRow
       Just v  -> tVar kRow v
 
-typeToRow :: Type -> Row Type
-typeToRow =
-    para $ \case
-        TCon (Fix KRow) "{}" -> rNil
-        TVar (Fix KRow) var  -> rVar var
-        TApp (t1, _) (_, b)  -> rExt (getLabel t1)
-                                     (case project t1 of TApp _ a -> a) b
-        _ -> error "Not a row type"
-  where
-    getLabel :: Type -> Name
-    getLabel = cata $ \case
-        TApp t1 _ -> t1
-        TCon _ c  -> Text.tail (Text.init c)
-        TVar _ v  -> ""
-
-rowToType :: Row Type -> Type
-rowToType = cata $ \case
-    RNil              -> tEmptyRow
-    RVar var          -> tVar kRow var
-    RExt label ty row -> tRowExtend label ty row
+--typeToRow :: Type -> Row Type
+--typeToRow =
+--    para $ \case
+--        TCon (Fix KRow) "{}" -> rNil
+--        TVar (Fix KRow) var  -> rVar var
+--        TApp (t1, _) (_, b)  -> rExt (getLabel t1)
+--                                     (case project t1 of TApp _ a -> a) b
+--        _ -> error "Not a row type"
+--  where
+--    getLabel :: Type -> Name
+--    getLabel = cata $ \case
+--        TApp t1 _ -> t1
+--        TCon _ c  -> Text.tail (Text.init c)
+--        TVar _ v  -> ""
+--
+--rowToType :: Row Type -> Type
+--rowToType = cata $ \case
+--    RNil              -> tEmptyRow
+--    RVar var          -> tVar kRow var
+--    RExt label ty row -> tRowExtend label ty row

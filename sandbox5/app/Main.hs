@@ -17,59 +17,59 @@ import Tau.Tool
 import Tau.Type
 import qualified Tau.Env as Env
 
-test3 = unifyRows (typeToRowX r1) (typeToRowX r2) :: Either UnificationError TypeSubstitution
-  where
-    r1 = tRowExtend "name" tString (tRowExtend "id" tInt tEmptyRow)
-    r2 = tRowExtend "id" tString (tRowExtend "name" tInt tEmptyRow)
-
-test4 = unifyRows (typeToRowX r1) (typeToRowX r2) :: Either UnificationError TypeSubstitution
-  where
-    r1 = tRowExtend "name" tString (tRowExtend "id" tInt tEmptyRow)
-    r2 = tRowExtend "id" tInt (tRowExtend "name" tString tEmptyRow)
-
-test5 = unifyRows (typeToRowX r1) (typeToRowX r2) :: Either UnificationError TypeSubstitution
-  where
-    r1 = tRowExtend "x" tInt (tVar kRow "r")
-    r2 = tRowExtend "x" tInt (tVar kRow "r")
-
-test6 = unifyRows (typeToRowX r1) (typeToRowX r2) :: Either UnificationError TypeSubstitution
-
-r1 = tRowExtend "x" tInt (tVar kRow "r")
-r2 = tRowExtend "y" tInt (tVar kRow "r")
-
-
-pattern1 = recordPat () (rExt "id" (varPat () "id") (rExt "name" (varPat () "name") rNil)) 
-
---pattern1 = conPat () "Foo" [litPat () (TBool True), litPat () (TInt 5)]
---pattern1 = conPat () "Done" [litPat () (TInt 5), litPat () (TInt 5)]
---pattern1 = conPat () "Some" [litPat () (TInt 5), litPat () (TInt 5)]
---pattern1 = listPat () [litPat () (TBool True), litPat () TUnit]
---pattern1 = listPat () [litPat () (TBool True), litPat () (TInt 5)]
---pattern1 = asPat () "someX" (conPat () "Some" [varPat () "x"])
---pattern1 = (conPat () "Some" [varPat () "x"])
-
-test1 :: IO ()
-test1 = 
-    case runInfer mempty testClassEnv testTypeEnv testConstructorEnv (runWriterT (inferPattern pattern1)) of
-        Left e -> error (show e)
-        Right ((pat, vars), sub, context) -> do
-            let TypeInfo{..} = patternTag (apply sub pat)
-                vars' = apply sub <$$> vars
-                sub1 = normalize nodeType
-                xx1 = apply sub1 nodeType
-                xx2 = apply sub1 nodePredicates
-                xx3 = apply sub1 <$$> vars'
-              in do
-                  print sub
-                  print ">>>>"
-                  print nodeType 
-                  print nodePredicates
-                  print vars'
-                  print ">>>>"
-                  print xx1
-                  print xx2
-                  print xx3
-                  pure ()
+--test3 = unifyRows (typeToRowX r1) (typeToRowX r2) :: Either UnificationError TypeSubstitution
+--  where
+--    r1 = tRowExtend "name" tString (tRowExtend "id" tInt tEmptyRow)
+--    r2 = tRowExtend "id" tString (tRowExtend "name" tInt tEmptyRow)
+--
+--test4 = unifyRows (typeToRowX r1) (typeToRowX r2) :: Either UnificationError TypeSubstitution
+--  where
+--    r1 = tRowExtend "name" tString (tRowExtend "id" tInt tEmptyRow)
+--    r2 = tRowExtend "id" tInt (tRowExtend "name" tString tEmptyRow)
+--
+--test5 = unifyRows (typeToRowX r1) (typeToRowX r2) :: Either UnificationError TypeSubstitution
+--  where
+--    r1 = tRowExtend "x" tInt (tVar kRow "r")
+--    r2 = tRowExtend "x" tInt (tVar kRow "r")
+--
+--test6 = unifyRows (typeToRowX r1) (typeToRowX r2) :: Either UnificationError TypeSubstitution
+--
+--r1 = tRowExtend "x" tInt (tVar kRow "r")
+--r2 = tRowExtend "y" tInt (tVar kRow "r")
+--
+--
+--pattern1 = recordPat () (rExt "id" (varPat () "id") (rExt "name" (varPat () "name") rNil)) 
+--
+----pattern1 = conPat () "Foo" [litPat () (TBool True), litPat () (TInt 5)]
+----pattern1 = conPat () "Done" [litPat () (TInt 5), litPat () (TInt 5)]
+----pattern1 = conPat () "Some" [litPat () (TInt 5), litPat () (TInt 5)]
+----pattern1 = listPat () [litPat () (TBool True), litPat () TUnit]
+----pattern1 = listPat () [litPat () (TBool True), litPat () (TInt 5)]
+----pattern1 = asPat () "someX" (conPat () "Some" [varPat () "x"])
+----pattern1 = (conPat () "Some" [varPat () "x"])
+--
+--test1 :: IO ()
+--test1 = 
+--    case runInfer mempty testClassEnv testTypeEnv testConstructorEnv (runWriterT (inferPattern pattern1)) of
+--        Left e -> error (show e)
+--        Right ((pat, vars), sub, context) -> do
+--            let TypeInfo{..} = patternTag (apply sub pat)
+--                vars' = apply sub <$$> vars
+--                sub1 = normalize nodeType
+--                xx1 = apply sub1 nodeType
+--                xx2 = apply sub1 nodePredicates
+--                xx3 = apply sub1 <$$> vars'
+--              in do
+--                  print sub
+--                  print ">>>>"
+--                  print nodeType 
+--                  print nodePredicates
+--                  print vars'
+--                  print ">>>>"
+--                  print xx1
+--                  print xx2
+--                  print xx3
+--                  pure ()
 
 main :: IO ()
 main = print "Main"

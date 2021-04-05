@@ -107,8 +107,9 @@ inferPattern = cata $ \pat -> do
                 (const $ failWithError ListPatternTypeUnficationError)
             pure (listPat (TypeInfo newTy (patternPredicates =<< ps)) ps)
 
-        PRecord _ row -> do
-            traceShowM row
+        PRecord2 _ row -> do
+            a <- sequence row
+            traceShowM a
             undefined
 
             --pure (recordPat (TypeInfo newTy undefined) undefined)
