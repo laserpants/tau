@@ -4,11 +4,12 @@
 module Tau.Compiler.TypecheckTests where
 
 import Control.Monad.Writer
-import Data.Either (isLeft)
+import Data.Either (isLeft, isRight)
 import Data.List (nub)
 import Tau.Compiler.Error
 import Tau.Compiler.Substitution
 import Tau.Compiler.Typecheck
+import Tau.Compiler.Unification
 import Tau.Lang
 import Tau.Pretty
 import Tau.Prog
@@ -45,10 +46,10 @@ succeedInferPattern pat ty ps vs = do
                     let TypeInfo{..} = patternTag (apply sub pat)
                         sub1 = normalize nodeType
                         vars' = apply sub <$$> vars
-                     in -- traceShow (apply sub1 nodeType, apply sub1 nodePredicates, apply sub1 <$$> vars') $
-                        apply sub1 nodeType == ty
-                              && apply sub1 (nub nodePredicates) == ps
-                              && Set.fromList (apply sub1 <$$> vars') == Set.fromList vs
+                     in let result = unify (apply sub1 nodeType) ty :: Either UnificationError TypeSubstitution
+                         in isRight result 
+                             && apply sub1 (nub nodePredicates) == ps
+                             && Set.fromList (apply sub1 <$$> vars') == Set.fromList vs
 
 testInferPattern :: SpecWith ()
 testInferPattern = do
@@ -132,11 +133,11 @@ testInferPattern = do
 
     -- Record pattern
 
---    succeedInferPattern 
---        (recordPat () (rExt "id" (varPat () "id") (rExt "name" (varPat () "name") rNil)) )
---        (rowToType (rExt "id" _a (rExt "name" _b rNil)))
---        [] 
---        []
+    succeedInferPattern 
+        (recordPat2 () (rExt "id" (varPat () "id") (rExt "name" (varPat () "name") rNil)))
+        (tRecord (rowToType (rExt "id" _a (rExt "name" _b rNil))))
+        [] 
+        [("id", _a), ("name", _b)]
 
     -- Failures
 

@@ -47,29 +47,32 @@ import qualified Tau.Env as Env
 ----pattern1 = listPat () [litPat () (TBool True), litPat () (TInt 5)]
 ----pattern1 = asPat () "someX" (conPat () "Some" [varPat () "x"])
 ----pattern1 = (conPat () "Some" [varPat () "x"])
---
---test1 :: IO ()
---test1 = 
---    case runInfer mempty testClassEnv testTypeEnv testConstructorEnv (runWriterT (inferPattern pattern1)) of
---        Left e -> error (show e)
---        Right ((pat, vars), sub, context) -> do
---            let TypeInfo{..} = patternTag (apply sub pat)
---                vars' = apply sub <$$> vars
---                sub1 = normalize nodeType
---                xx1 = apply sub1 nodeType
---                xx2 = apply sub1 nodePredicates
---                xx3 = apply sub1 <$$> vars'
---              in do
---                  print sub
---                  print ">>>>"
---                  print nodeType 
---                  print nodePredicates
---                  print vars'
---                  print ">>>>"
---                  print xx1
---                  print xx2
---                  print xx3
---                  pure ()
+
+pattern1 = recordPat2 () (rExt "id" (varPat () "id") (rExt "name" (varPat () "name") rNil))
+
+test1 :: IO ()
+test1 = 
+    case runInfer mempty testClassEnv testTypeEnv testConstructorEnv (runWriterT (inferPattern pattern1)) of
+        Left e -> error (show e)
+        Right ((pat, vars), sub, context) -> do
+            let TypeInfo{..} = patternTag (apply sub pat)
+                vars' = apply sub <$$> vars
+                sub1 = normalize nodeType
+                xx1 = apply sub1 nodeType
+                xx2 = apply sub1 nodePredicates
+                xx3 = apply sub1 <$$> vars'
+              in do
+                  print (typeOf pat)
+                  --print sub
+                  --print ">>>>"
+                  --print nodeType 
+                  --print nodePredicates
+                  --print vars'
+                  --print ">>>>"
+                  --print xx1
+                  --print xx2
+                  --print xx3
+                  pure ()
 
 main :: IO ()
 main = print "Main"

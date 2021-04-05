@@ -32,7 +32,10 @@ data RowType
 rowType :: Row e -> RowType
 rowType (Row m Nothing)  | null m = RNil
 rowType (Row m (Just r)) | null m = RVar r
-rowType _                          = RExt
+rowType _                         = RExt
+
+concatRow :: Row e -> [e]
+concatRow (Row m _) = Map.foldr (<>) mempty m
 
 -- >>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>
 

@@ -27,6 +27,7 @@ import Tau.Pretty
 import Tau.Prog
 import Tau.Tool
 import Tau.Type
+import Tau.Row
 import qualified Data.Map.Strict as Map
 import qualified Data.Set.Monad as Set
 import qualified Data.Text as Text
@@ -109,12 +110,12 @@ inferPattern = cata $ \pat -> do
                 (const $ failWithError ListPatternTypeUnficationError t)
             pure (listPat (TypeInfo newTy (patternPredicates =<< ps)) ps)
 
-        PRecord2 _ row -> do
-            a <- sequence row
-            traceShowM a
-            undefined
-
-            --pure (recordPat (TypeInfo newTy undefined) undefined)
+        PRecord2 t row -> do
+            fs <- sequence row
+            catchError 
+                (newTy ## tRecord (rowToType (typeOf <$> fs)))
+                (throwError . setMeta t)
+            pure (recordPat2 (TypeInfo newTy (concat (concatRow (nodePredicates . patternTag <$> fs)))) fs)
 
 inferOp1 = undefined
 
