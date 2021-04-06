@@ -8,6 +8,7 @@ import Control.Monad ((<=<))
 import Data.Function ((&))
 import Data.List (null, intersperse)
 import Data.Text.Prettyprint.Doc
+import Tau.Compiler.Substitution hiding (null)
 import Tau.Lang
 import Tau.Row
 import Tau.Tool
@@ -124,6 +125,11 @@ instance (Pretty a) => Pretty (PredicateT a) where
 -- >>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>
 
 instance Pretty Scheme where
+    pretty _ = "TODO"
+
+-- >>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>
+
+instance (Pretty t) => Pretty (Substitution t) where
     pretty _ = "TODO"
 
 -- >>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>

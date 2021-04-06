@@ -46,6 +46,9 @@ patternPredicates = nodePredicates . patternTag
 exprPredicates :: ProgExpr (TypeInfoT t) -> [Predicate]
 exprPredicates = nodePredicates . exprTag
 
+guardPredicates :: Guard (ProgExpr (TypeInfoT t)) -> [Predicate]
+guardPredicates (Guard es e) = exprPredicates e <> (exprPredicates =<< es)
+
 astPredicates :: Ast (TypeInfoT t) -> [Predicate]
 astPredicates = exprPredicates . getAst
 

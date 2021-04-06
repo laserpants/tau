@@ -261,8 +261,8 @@ instance Functor Ast where
             PRecord t row        -> recordPat (f t) row
 
         mapOp1 = \case
-            ONeg t               -> ONeg   (f t)
-            ONot t               -> ONot   (f t)
+            ONeg   t             -> ONeg   (f t)
+            ONot   t             -> ONot   (f t)
 
         mapOp2 = \case
             OEq    t             -> OEq    (f t)
@@ -438,3 +438,12 @@ op2Tag = \case
 
 astTag :: Ast t -> t
 astTag = exprTag . getAst 
+
+clausePatterns :: Clause p a -> [p]
+clausePatterns (Clause ps _) = ps
+
+clauseGuards :: Clause p a -> [Guard a]
+clauseGuards (Clause _ gs) = gs
+
+guardPair :: Guard a -> ([a], a)
+guardPair (Guard as a) = (as, a)

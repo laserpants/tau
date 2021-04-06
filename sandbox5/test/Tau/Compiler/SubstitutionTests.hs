@@ -20,7 +20,7 @@ testSubstitution =
 
 applyTo :: TypeSubstitution -> Type -> Type -> SpecWith ()
 applyTo sub ty res =
-    describe ("apply TODO to " <> prettyText ty) $ do
+    describe ("apply " <> prettyText sub <> " to " <> prettyText ty) $ do
         it ("✔ returns: " <> prettyText res)
             (apply sub ty == res)
 

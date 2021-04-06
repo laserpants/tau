@@ -44,7 +44,7 @@ succeedInferPattern pat ty ps vs = do
                                  <> prettyText ps <> ", variables: " 
                                  <> prettyText vs <> ", etc.") $
                     let TypeInfo{..} = patternTag (apply sub pat)
-                        sub1 = normalize nodeType
+                        sub1 = normalizer nodeType
                         vars' = apply sub <$$> vars
                      in -- result = unify (apply sub1 nodeType) ty :: Either UnificationError TypeSubstitution
                            -- in isRight result 

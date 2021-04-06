@@ -17,7 +17,7 @@ import Control.Monad.Writer
 import Data.Function ((&))
 import Data.Maybe (fromMaybe)
 import Data.Set.Monad (Set)
-import Data.Tuple.Extra (first, second, fst3, snd3, thd3)
+import Data.Tuple.Extra (first, second, fst3, snd3, thd3, first3, second3, third3)
 import Tau.Compiler.Error
 import Tau.Compiler.Substitution
 import Tau.Compiler.Unification
@@ -25,9 +25,9 @@ import Tau.Env (Env(..))
 import Tau.Lang
 import Tau.Pretty
 import Tau.Prog
+import Tau.Row
 import Tau.Tool
 import Tau.Type
-import Tau.Row
 import qualified Data.Map.Strict as Map
 import qualified Data.Set.Monad as Set
 import qualified Data.Text as Text
@@ -42,8 +42,44 @@ inferAst
   -> m (Ast TypeInfo)
 inferAst = undefined
 
+inferExpr
+  :: ( Monoid t
+     , Show t
+     , MonadSupply Name m
+     , MonadReader (ClassEnv, TypeEnv, ConstructorEnv) m
+     , MonadState (TypeSubstitution, Context) m
+     , MonadError (InferError t) m )
+  => ProgExpr t 
+  -> m (ProgExpr TypeInfo)
+inferExpr = cata $ \expr -> do
+    newTy <- newTVar kTyp
+    case expr of
+
+        EVar _ var -> do
+            (ty, ps) <- lookupScheme var >>= instantiate
+            ty ## newTy
+            pure (varExpr (TypeInfo newTy ps) var)
+
+        ELit _ prim -> do
+            (t, ps) <- instantiate (primType prim)
+            newTy ## t
+            pure (litExpr (TypeInfo newTy ps) prim)
+
+        EFun t eqs@(Clause ps _:_) -> do
+            ts <- newTVars kTyp (length ps)
+            es <- sequence (inferClause t ts <$> eqs)
+            let ty = foldr tArr newTy ts
+            -- Unify return type with rhs of arrow in clauses
+            forM_ (clauseGuards =<< es) (\(Guard _ e) -> e ## newTy)
+            -- Check patterns' types
+            forM_ (clausePatterns <$> es) (\ps -> forM_ (zip ps ts) (unifyPatterns t))
+            -- Collect predicates
+            let preds = concat ((patternPredicates <$> concatMap clausePatterns es) <> (guardPredicates <$> concatMap clauseGuards es))
+            pure (funExpr (TypeInfo ty preds) es)
+
 inferPattern
-  :: ( Monoid t, Show t
+  :: ( Monoid t
+     , Show t
      , MonadSupply Name m
      , MonadReader (ClassEnv, TypeEnv, ConstructorEnv) m
      , MonadState (TypeSubstitution, Context) m
@@ -115,13 +151,64 @@ inferPattern = cata $ \pat -> do
             catchError 
                 (newTy ## tRecord (rowToType (typeOf <$> fs)))
                 (throwError . setMeta t)
-            pure (recordPat (TypeInfo newTy (concat (concatRow (nodePredicates . patternTag <$> fs)))) fs)
+            pure (recordPat (TypeInfo newTy (concat (concatRow (patternPredicates <$> fs)))) fs)
 
 inferOp1 = undefined
 
 inferOp2 = undefined
 
-inferClause = undefined
+inferClause
+  :: ( Monoid t
+     , Show t
+     , MonadSupply Name m
+     , MonadReader (ClassEnv, TypeEnv, ConstructorEnv) m
+     , MonadState (TypeSubstitution, Context) m
+     , MonadError (InferError t) m ) 
+  => t
+  -> [Type]
+  -> Clause (ProgPattern t) (m (ProgExpr TypeInfo))
+  -> m (Clause (ProgPattern TypeInfo) (ProgExpr TypeInfo))
+inferClause t tys eq@(Clause ps _) = do
+    (tps, vs) <- runWriterT (traverse inferPattern ps)
+    let schemes = toScheme <$$> vs
+        Clause _ guards = local (second3 (Env.inserts schemes)) <$> eq
+        (tests, es) = unzip (guardPair <$> guards)
+    -- Conditions must be of type Bool
+    forM_ (concat tests) (unifyCondition t)
+    Clause tps <$> traverse sequence guards
+
+unifyPatterns
+  :: ( Monoid t
+     , Show t
+     , Typed a
+     , Typed b 
+     , MonadSupply Name m
+     , MonadReader (ClassEnv, TypeEnv, ConstructorEnv) m
+     , MonadState (TypeSubstitution, Context) m
+     , MonadError (InferError t) m ) 
+  => t
+  -> (a, b) 
+  -> m ()
+unifyPatterns t (v1, v2) = 
+    catchError 
+        (v1 ## v2)
+        (const $ failWithError (ClausePatternTypeMismatch (typeOf v1) (typeOf v2)) t)
+
+unifyCondition
+  :: ( Monoid t
+     , Show t
+     , MonadSupply Name m
+     , MonadReader (ClassEnv, TypeEnv, ConstructorEnv) m
+     , MonadState (TypeSubstitution, Context) m
+     , MonadError (InferError t) m ) 
+  => t 
+  -> m (ProgExpr TypeInfo) 
+  -> m ()
+unifyCondition t expr = do 
+    e <- expr
+    catchError 
+        (e ## (tBool :: Type))
+        (const $ failWithError (BadGuardCondition (typeOf e)) t)
 
 primType :: Prim -> Scheme
 primType = \case
@@ -139,6 +226,9 @@ primType = \case
 
 newTVar :: (MonadSupply Name m) => Kind -> m (TypeT a)
 newTVar kind = tVar kind <$> supply
+
+newTVars :: (MonadSupply Name m) => Kind -> Int -> m [TypeT a]
+newTVars kind n = tVar kind <$$> supplies n
 
 errorSpec
   :: ( MonadState (TypeSubstitution, Context) m

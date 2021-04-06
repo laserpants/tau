@@ -23,6 +23,7 @@ module Tau.Tool
   , module Data.Functor.Foldable
   , module Data.Ord.Deriving
   , module Data.Text
+  , module Data.Text.Prettyprint.Doc
   , module Data.Types.Injective
   , module Data.Void
   , module Debug.Trace

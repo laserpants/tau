@@ -3,6 +3,7 @@
 module Tau.Compiler.Error where
 
 import Data.Text (Text)
+import Tau.Lang
 import Tau.Tool
 import Tau.Type
 
@@ -21,6 +22,10 @@ data ErrorT t
     | CannotUnify UnificationError t t
     | CannotMatch UnificationError t t
     -- 
+    -- Expr type inference errors
+    | BadGuardCondition t
+    | ClausePatternTypeMismatch t t
+    | ClauseExprTypeMismatch (ProgExpr TypeInfo) t t
     -- Pattern type inference errors
     | ListPatternTypeUnficationError 
     | NoDataConstructor Name

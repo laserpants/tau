@@ -14,6 +14,7 @@ import Tau.Pretty
 import Tau.Prog
 import Tau.Row
 import Tau.Tool
+import Tau.Tool
 import Tau.Type
 import qualified Tau.Env as Env
 
@@ -60,13 +61,13 @@ test1 =
         Right ((pat, vars), sub, context) -> do
             let TypeInfo{..} = patternTag (apply sub pat)
                 vars' = apply sub <$$> vars
-                sub1 = normalize nodeType
+                sub1 = normalizer nodeType
                 xx1 = apply sub1 nodeType
                 xx2 = apply sub1 nodePredicates
                 xx3 = apply sub1 <$$> vars'
               in do
                   print (apply sub (typeOf pat))
-                  --print (normalized (apply sub (typeOf pat)))
+                  --print (normalize (apply sub (typeOf pat)))
                   --print sub
                   --print ">>>>"
                   --print nodeType 
@@ -77,6 +78,37 @@ test1 =
                   --print xx2
                   --print xx3
                   pure ()
+
+expr1 = funExpr () 
+    [ Clause [ varPat () "x" ] [ Guard [] (litExpr () (TInt 1)) ] 
+    ]
+
+test2 :: IO ()
+test2 = 
+    case runInfer mempty testClassEnv testTypeEnv testConstructorEnv (inferExpr expr1) of
+        Left e -> error (show e)
+        Right (expr, sub, context) -> do
+            print (expr, sub, context)
+            print "..."
+            print (apply sub expr)
+            print "///"
+            print context
+            --let TypeInfo{..} = exprTag (apply sub expr)
+            --    sub1 = normalizer nodeType
+            --    xx1 = apply sub1 nodeType
+            --    xx2 = apply sub1 nodePredicates
+            --  in do
+            --    --  print (normalize (apply sub (typeOf pat)))
+            --    --  print sub
+            --    --  print ">>>>"
+            --    print nodeType 
+            --    print nodePredicates
+            --    --  print vars'
+            --    print ">>>>"
+            --    print (pretty xx1)
+            --    print (pretty xx2)
+            --    pure ()
+
 
 main :: IO ()
 main = print "Main"
