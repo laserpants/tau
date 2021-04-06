@@ -68,14 +68,11 @@ inferExpr = cata $ \expr -> do
         EFun t eqs@(Clause ps _:_) -> do
             ts <- newTVars kTyp (length ps)
             es <- sequence (inferClause t ts <$> eqs)
-            let ty = foldr tArr newTy ts
             -- Unify return type with rhs of arrow in clauses
             forM_ (clauseGuards =<< es) (\(Guard _ e) -> e ## newTy)
             -- Check patterns' types
             forM_ (clausePatterns <$> es) (\ps -> forM_ (zip ps ts) (unifyPatterns t))
-            -- Collect predicates
-            let preds = concat ((patternPredicates <$> concatMap clausePatterns es) <> (guardPredicates <$> concatMap clauseGuards es))
-            pure (funExpr (TypeInfo ty preds) es)
+            pure (funExpr (TypeInfo (foldr tArr newTy ts) (clausePredicates =<< es)) es)
 
 inferPattern
   :: ( Monoid t

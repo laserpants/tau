@@ -233,14 +233,14 @@ tUnit = typ "Unit"
 tBool :: TypeT a
 tBool = typ "Bool"
 
+tNat :: TypeT a
+tNat = typ "Nat"
+
 tInt :: TypeT a
 tInt = typ "Int"
 
 tInteger :: TypeT a
 tInteger = typ "Integer"
-
-tNat :: TypeT a
-tNat = typ "Nat"
 
 tFloat :: TypeT a
 tFloat = typ "Float"
