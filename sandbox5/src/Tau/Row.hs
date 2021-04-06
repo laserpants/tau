@@ -11,6 +11,7 @@ import Data.Maybe (fromJust)
 import Tau.Tool
 import qualified Data.Map.Strict as Map
 
+-- | Row
 data Row e = Row (Map Name [e]) (Maybe Name) 
 
 data RowType 

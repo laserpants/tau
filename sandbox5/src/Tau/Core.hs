@@ -9,7 +9,7 @@ import Tau.Tool
 
 data CoreF a
     = CVar Name                 -- ^ Variable
-    | CLit Prim                 -- ^ Prim value
+    | CLit Prim                 -- ^ Primitive value
     | CApp [a]                  -- ^ Function application
     | CLet Name a a             -- ^ Let expression
     | CLam Name a               -- ^ Lambda abstraction
