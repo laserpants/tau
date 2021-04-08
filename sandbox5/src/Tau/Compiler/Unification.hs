@@ -46,7 +46,7 @@ match t u
     fn (TApp t1 t2) (TApp u1 u2)              = matchPairs (t1, t2) (u1, u2)
     fn (TVar kind name) _                     = bind name kind u
     fn _ _ | t == u                           = pure mempty
-    fn _ _                                    = throwError IncompatibleTypes 
+    fn _ _                                    = throwError IncompatibleTypes
 
 unifyRowTypes :: (MonadError UnificationError m) => Type -> Type -> m TypeSubstitution
 unifyRowTypes t u = fn (rowType r) (rowType s)
@@ -55,7 +55,7 @@ unifyRowTypes t u = fn (rowType r) (rowType s)
     fn (RVar var) _                           = bind var kRow u
     fn _ (RVar var)                           = bind var kRow t
     fn _ _                                    = unifyRows r s
-    r                                         = typeToRow t 
+    r                                         = typeToRow t
     s                                         = typeToRow u
 
 matchRowTypes :: (MonadError UnificationError m) => Type -> Type -> m TypeSubstitution
@@ -80,7 +80,7 @@ matchPairs (t1, t2) (u1, u2) = do
     merge sub1 sub2 & maybe (throwError MergeFailed) pure
 
 unifyRows :: (MonadError UnificationError m) => Row Type -> Row Type -> m TypeSubstitution
-unifyRows (Row m1 Nothing) (Row m2 Nothing) 
+unifyRows (Row m1 Nothing) (Row m2 Nothing)
     | Map.null m1 && Map.null m2              = pure mempty
 unifyRows (Row m (Just r)) row | Map.null m   = bind r kRow (rowToType row)
 unifyRows row (Row m (Just r)) | Map.null m   = bind r kRow (rowToType row)
@@ -91,7 +91,7 @@ unifyRows r1 r2 = do
     unifyWith (t, u) sub = unify (apply sub t) (apply sub u)
 
 matchRows :: (MonadError UnificationError m) => Row Type -> Row Type -> m TypeSubstitution
-matchRows (Row m1 Nothing) (Row m2 Nothing) 
+matchRows (Row m1 Nothing) (Row m2 Nothing)
     | Map.null m1 && Map.null m2              = pure mempty
 matchRows (Row m (Just r)) row | Map.null m   = bind r kRow (rowToType row)
 matchRows r1 r2 = do
@@ -102,14 +102,14 @@ matchRows r1 r2 = do
         sub2 <- match t u
         merge sub1 sub2 & maybe (throwError MergeFailed) pure
 
-rowSubs 
-  :: (MonadError UnificationError m) 
-  => (Row Type -> Row Type -> m TypeSubstitution) 
-  -> ((Type, Type) -> TypeSubstitution -> m TypeSubstitution) 
-  -> Row Type 
-  -> Row Type 
+rowSubs
+  :: (MonadError UnificationError m)
+  => (Row Type -> Row Type -> m TypeSubstitution)
+  -> ((Type, Type) -> TypeSubstitution -> m TypeSubstitution)
+  -> Row Type
+  -> Row Type
   -> m (TypeSubstitution, TypeSubstitution)
-rowSubs combineRows unifyFun (Row m1 r1) (Row m2 r2) 
+rowSubs combineRows unifyFun (Row m1 r1) (Row m2 r2)
     | null mutualKeys = throwError IncompatibleRows
     | otherwise = do
         sub1 <- combineRows (Row (unique m1) r1) (Row (unique m2) r2)

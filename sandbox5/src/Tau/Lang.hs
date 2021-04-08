@@ -11,27 +11,27 @@ import Tau.Tool
 
 -- | Built-in language primitives
 data Prim
-    = TUnit                            -- ^ Unit value
-    | TBool Bool                       -- ^ Booleans
-    | TInt Int                         -- ^ Bounded machine integers (32 or 64 bit)
-    | TInteger Integer                 -- ^ Arbitrary precision integers (BigInt)
-    | TFloat Float                     -- ^ Single precision floating point numbers 
-    | TDouble Double                   -- ^ Double precision floating point numbers
-    | TChar Char                       -- ^ Chars
-    | TString Text                     -- ^ Strings
+    = TUnit                              -- ^ Unit value
+    | TBool Bool                         -- ^ Booleans
+    | TInt Int                           -- ^ Bounded machine integers (32 or 64 bit)
+    | TInteger Integer                   -- ^ Arbitrary precision integers (BigInt)
+    | TFloat Float                       -- ^ Single precision floating point numbers 
+    | TDouble Double                     -- ^ Double precision floating point numbers
+    | TChar Char                         -- ^ Chars
+    | TString Text                       -- ^ Strings
 
 -- >>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>
 
 data PatternF t1 t2 t3 t4 t5 t6 t7 t8 t9 a
-    = PVar    t1 Name                  -- ^ Variable pattern
-    | PCon    t2 Name [a]              -- ^ Constuctor pattern
-    | PLit    t3 Prim                  -- ^ Literal pattern
-    | PAs     t4 Name a                -- ^ As-pattern
-    | POr     t5 a a                   -- ^ Or-pattern
-    | PAny    t6                       -- ^ Wildcard pattern
-    | PTuple  t7 [a]                   -- ^ Tuple pattern
-    | PList   t8 [a]                   -- ^ List pattern
-    | PRecord t9 (Row a)               -- ^ Record pattern
+    = PVar    t1 Name                    -- ^ Variable pattern
+    | PCon    t2 Name [a]                -- ^ Constuctor pattern
+    | PLit    t3 Prim                    -- ^ Literal pattern
+    | PAs     t4 Name a                  -- ^ As-pattern
+    | POr     t5 a a                     -- ^ Or-pattern
+    | PAny    t6                         -- ^ Wildcard pattern
+    | PTuple  t7 [a]                     -- ^ Tuple pattern
+    | PList   t8 [a]                     -- ^ List pattern
+    | PRecord t9 (Row a)                 -- ^ Record pattern
 
 -- | Pattern
 type Pattern t1 t2 t3 t4 t5 t6 t7 t8 t9 = Fix (PatternF t1 t2 t3 t4 t5 t6 t7 t8 t9)
@@ -42,34 +42,34 @@ type ProgPattern t = Pattern t t t t t t t t t
 
 -- | Unary operators
 data Op1 t
-    = ONeg t                           -- ^ Unary negation
-    | ONot t                           -- ^ Logical NOT
+    = ONeg t                             -- ^ Unary negation
+    | ONot t                             -- ^ Logical NOT
 
 -- >>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>
 
 -- | Binary operators
 data Op2 t
-    = OEq    t                         -- ^ Equal-to operator
-    | ONeq   t                         -- ^ Not-equal-to operator
-    | OAnd   t                         -- ^ Logical AND
-    | OOr    t                         -- ^ Logical OR
-    | OAdd   t                         -- ^ Addition operator
-    | OSub   t                         -- ^ Subtraction operator
-    | OMul   t                         -- ^ Multiplication operator
-    | ODiv   t                         -- ^ Division operator
-    | OPow   t                         -- ^ Exponentiation operator
-    | OMod   t                         -- ^ Modulo operator
-    | OLt    t                         -- ^ Strictly less-than operator
-    | OGt    t                         -- ^ Strictly greater-than operator
-    | OLte   t                         -- ^ Less-than-or-equal-to operator
-    | OGte   t                         -- ^ Greater-than-or-equal-to operator
-    | OLarr  t                         -- ^ Function composition operator
-    | ORarr  t                         -- ^ Reverse function composition
-    | OFpipe t                         -- ^ Forward pipe operator
-    | OBpipe t                         -- ^ Reverse pipe operator
-    | OOpt   t                         -- ^ Option default operator
-    | OStrc  t                         -- ^ String concatenation operator
-    | ONdiv  t                         -- ^ Integral division
+    = OEq    t                           -- ^ Equal-to operator
+    | ONeq   t                           -- ^ Not-equal-to operator
+    | OAnd   t                           -- ^ Logical AND
+    | OOr    t                           -- ^ Logical OR
+    | OAdd   t                           -- ^ Addition operator
+    | OSub   t                           -- ^ Subtraction operator
+    | OMul   t                           -- ^ Multiplication operator
+    | ODiv   t                           -- ^ Division operator
+    | OPow   t                           -- ^ Exponentiation operator
+    | OMod   t                           -- ^ Modulo operator
+    | OLt    t                           -- ^ Strictly less-than operator
+    | OGt    t                           -- ^ Strictly greater-than operator
+    | OLte   t                           -- ^ Less-than-or-equal-to operator
+    | OGte   t                           -- ^ Greater-than-or-equal-to operator
+    | OLarr  t                           -- ^ Function composition operator
+    | ORarr  t                           -- ^ Reverse function composition
+    | OFpipe t                           -- ^ Forward pipe operator
+    | OBpipe t                           -- ^ Reverse pipe operator
+    | OOpt   t                           -- ^ Option default operator
+    | OStrc  t                           -- ^ String concatenation operator
+    | ONdiv  t                           -- ^ Integral division
 
 -- >>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>
 
@@ -77,33 +77,35 @@ data Op2 t
 data Guard a = Guard [a] a
 
 -- | Pattern matching clause
-data Clause p a = Clause [p] [Guard a] 
+data Clause t p a = Clause t [p] [Guard a] 
+
+type ProgClause t = Clause t (ProgPattern t) (ProgExpr t)
 
 -- >>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>
 
 -- | Name binding-part of let expressions
 data Binding p
-    = BLet p                           -- ^ Simple let-binding
-    | BFun Name [p]                    -- ^ Function binding
+    = BLet p                             -- ^ Simple let-binding
+    | BFun Name [p]                      -- ^ Function binding
 
 -- >>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>
 
 data ExprF t1 t2 t3 t4 t5 t6 t7 t8 t9 t10 t11 t12 t13 t14 t15 bind lam pat a
-    = EVar    t1  Name                 -- ^ Variable
-    | ECon    t2  Name [a]             -- ^ Data constructor
-    | ELit    t3  Prim                 -- ^ Literal value
-    | EApp    t4  [a]                  -- ^ Function application
-    | ELet    t5  bind a a             -- ^ Let expression
-    | EFix    t6  Name a a             -- ^ Recursive let
-    | ELam    t7  lam a                -- ^ Lambda abstraction
-    | EIf     t8  a a a                -- ^ If-clause
-    | EPat    t9  [a] [Clause pat a]   -- ^ Match expressions
-    | EFun    t10 [Clause pat a]       -- ^ Fun expression
-    | EOp1    t11 (Op1 t11) a          -- ^ Unary operator
-    | EOp2    t12 (Op2 t12) a a        -- ^ Binary operator
-    | ETuple  t13 [a]                  -- ^ Tuple
-    | EList   t14 [a]                  -- ^ List literal
-    | ERecord t15 (Row a)              -- ^ Record
+    = EVar    t1  Name                   -- ^ Variable
+    | ECon    t2  Name [a]               -- ^ Data constructor
+    | ELit    t3  Prim                   -- ^ Literal value
+    | EApp    t4  [a]                    -- ^ Function application
+    | ELet    t5  bind a a               -- ^ Let expression
+    | EFix    t6  Name a a               -- ^ Recursive let
+    | ELam    t7  lam a                  -- ^ Lambda abstraction
+    | EIf     t8  a a a                  -- ^ If-clause
+    | EPat    t9  [a] [Clause t9 pat a]  -- ^ Match expressions
+    | EFun    t10 [Clause t10 pat a]     -- ^ Fun expression
+    | EOp1    t11 (Op1 t11) a            -- ^ Unary operator
+    | EOp2    t12 (Op2 t12) a a          -- ^ Binary operator
+    | ETuple  t13 [a]                    -- ^ Tuple
+    | EList   t14 [a]                    -- ^ List literal
+    | ERecord t15 (Row a)                -- ^ Record
 
 -- | Language expression
 type Expr t1 t2 t3 t4 t5 t6 t7 t8 t9 t10 t11 t12 t13 t14 t15 bind lam pat = 
@@ -158,22 +160,22 @@ deriving instance Traversable Guard
 
 -- Type class instances for Clause
 
-deriving instance (Show p, Show a) => 
-    Show (Clause p a)
+deriving instance (Show t, Show p, Show a) => 
+    Show (Clause t p a)
 
-deriving instance (Eq p, Eq a) => 
-    Eq (Clause p a)
+deriving instance (Eq t, Eq p, Eq a) => 
+    Eq (Clause t p a)
 
-deriving instance (Ord p, Ord a) => 
-    Ord (Clause p a)
+deriving instance (Ord t, Ord p, Ord a) => 
+    Ord (Clause t p a)
 
 deriveShow1 ''Clause
 deriveEq1   ''Clause
 deriveOrd1  ''Clause
 
-deriving instance Functor     (Clause p)
-deriving instance Foldable    (Clause p)
-deriving instance Traversable (Clause p)
+deriving instance Functor     (Clause t p)
+deriving instance Foldable    (Clause t p)
+deriving instance Traversable (Clause t p)
 
 -- Type class instances for Op1
 
@@ -247,7 +249,7 @@ instance Functor Ast where
             BFun name ps         -> BFun name (mapPattern <$> ps)
 
         mapClause = \case
-            Clause ps gs         -> Clause (mapPattern <$> ps) gs
+            Clause  t ps gs      -> Clause    (f t) (mapPattern <$> ps) gs
 
         mapPattern = cata $ \case
             PVar    t var        -> varPat    (f t) var
@@ -346,10 +348,10 @@ lamExpr = embed3 ELam
 ifExpr :: t8 -> Expr t1 t2 t3 t4 t5 t6 t7 t8 t9 t10 t11 t12 t13 t14 t15 bind lam pat -> Expr t1 t2 t3 t4 t5 t6 t7 t8 t9 t10 t11 t12 t13 t14 t15 bind lam pat -> Expr t1 t2 t3 t4 t5 t6 t7 t8 t9 t10 t11 t12 t13 t14 t15 bind lam pat -> Expr t1 t2 t3 t4 t5 t6 t7 t8 t9 t10 t11 t12 t13 t14 t15 bind lam pat
 ifExpr = embed4 EIf
 
-patExpr :: t9 -> [Expr t1 t2 t3 t4 t5 t6 t7 t8 t9 t10 t11 t12 t13 t14 t15 bind lam pat] -> [Clause pat (Expr t1 t2 t3 t4 t5 t6 t7 t8 t9 t10 t11 t12 t13 t14 t15 bind lam pat)] -> Expr t1 t2 t3 t4 t5 t6 t7 t8 t9 t10 t11 t12 t13 t14 t15 bind lam pat
+patExpr :: t9 -> [Expr t1 t2 t3 t4 t5 t6 t7 t8 t9 t10 t11 t12 t13 t14 t15 bind lam pat] -> [Clause t9 pat (Expr t1 t2 t3 t4 t5 t6 t7 t8 t9 t10 t11 t12 t13 t14 t15 bind lam pat)] -> Expr t1 t2 t3 t4 t5 t6 t7 t8 t9 t10 t11 t12 t13 t14 t15 bind lam pat
 patExpr = embed3 EPat
 
-funExpr :: t10 -> [Clause pat (Expr t1 t2 t3 t4 t5 t6 t7 t8 t9 t10 t11 t12 t13 t14 t15 bind lam pat)] -> Expr t1 t2 t3 t4 t5 t6 t7 t8 t9 t10 t11 t12 t13 t14 t15 bind lam pat
+funExpr :: t10 -> [Clause t10 pat (Expr t1 t2 t3 t4 t5 t6 t7 t8 t9 t10 t11 t12 t13 t14 t15 bind lam pat)] -> Expr t1 t2 t3 t4 t5 t6 t7 t8 t9 t10 t11 t12 t13 t14 t15 bind lam pat
 funExpr = embed2 EFun
 
 op1Expr :: t11 -> Op1 t11 -> Expr t1 t2 t3 t4 t5 t6 t7 t8 t9 t10 t11 t12 t13 t14 t15 bind lam pat -> Expr t1 t2 t3 t4 t5 t6 t7 t8 t9 t10 t11 t12 t13 t14 t15 bind lam pat
@@ -439,11 +441,11 @@ op2Tag = \case
 astTag :: Ast t -> t
 astTag = exprTag . getAst 
 
-clausePatterns :: Clause p a -> [p]
-clausePatterns (Clause ps _) = ps
+clausePatterns :: Clause t p a -> [p]
+clausePatterns (Clause _ ps _) = ps
 
-clauseGuards :: Clause p a -> [Guard a]
-clauseGuards (Clause _ gs) = gs
+clauseGuards :: Clause t p a -> [Guard a]
+clauseGuards (Clause _ _ gs) = gs
 
 guardPair :: Guard a -> ([a], a)
 guardPair (Guard as a) = (as, a)

@@ -10,6 +10,7 @@ import Data.Map.Strict (Map)
 import Prelude hiding (null)
 import Tau.Compiler.Error
 import Tau.Lang
+import Tau.Prog
 import Tau.Tool
 import Tau.Type
 import qualified Data.Map.Strict as Map
@@ -61,9 +62,9 @@ instance (Substitutable t a) => Substitutable (Guard (ProgExpr t)) a where
     apply sub = \case
         Guard es e           -> Guard (apply sub es) (apply sub e)
 
-instance (Substitutable t a) => Substitutable (Clause (ProgPattern t) (ProgExpr t)) a where
+instance (Substitutable t a) => Substitutable (Clause t (ProgPattern t) (ProgExpr t)) a where
     apply sub = \case
-        Clause gs es         -> Clause (apply sub gs) (apply sub es)
+        Clause  t gs es      -> Clause (apply sub t) (apply sub gs) (apply sub es)
 
 instance (Substitutable t a) => Substitutable (ProgExpr t) a where
     apply sub = cata $ \case
@@ -112,9 +113,9 @@ instance (Substitutable t a) => Substitutable (Op2 t) a where
         OStrc  t             -> OStrc  (apply sub t)
         ONdiv  t             -> ONdiv  (apply sub t)
 
-instance Substitutable TypeInfo Void where
+instance Substitutable (TypeInfo e) Void where
     apply sub = \case
-        TypeInfo ty ps       -> TypeInfo (apply sub ty) (apply sub ps)
+        TypeInfo ty ps e     -> TypeInfo (apply sub ty) (apply sub ps) e
 
 instance (Substitutable t a) => Substitutable (Ast t) a where
     apply sub = \case

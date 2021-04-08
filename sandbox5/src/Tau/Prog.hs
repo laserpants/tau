@@ -1,4 +1,6 @@
-{-# LANGUAGE StrictData #-}
+{-# LANGUAGE DeriveTraversable  #-}
+{-# LANGUAGE StandaloneDeriving #-}
+{-# LANGUAGE StrictData         #-}
 module Tau.Prog where
 
 import Data.Set.Monad (Set)
@@ -33,26 +35,49 @@ type Context = Env (Set Name)
 type TypeEnv = Env Scheme
 
 type ClassEnv = Env 
-    ( ClassInfo Name Type                     -- Abstract interface
-    , List (ClassInfo Type (Ast TypeInfo)) )  -- Instances
+    ( ClassInfo Name Type                          -- Abstract interface
+    , List (ClassInfo Type (Ast (TypeInfo ()))) )  -- Instances
 
 type ConstructorEnv = Env (Set Name, Int)
 
 -- >>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>
 
-patternPredicates :: ProgPattern (TypeInfoT t) -> [Predicate]
+data TypeInfoT e t = TypeInfo
+    { nodeType       :: t
+    , nodePredicates :: [Predicate] 
+    , nodeErrors     :: e
+    }
+
+type TypeInfo e = TypeInfoT e Type
+
+-- Type class instances for TypeInfo
+
+deriving instance (Show e, Show t) => 
+    Show (TypeInfoT e t)
+
+deriving instance (Eq e, Eq t) => 
+    Eq (TypeInfoT e t)
+
+deriving instance Functor (TypeInfoT e)
+
+instance (Typed t) => Typed (TypeInfoT e t) where
+    typeOf = typeOf . nodeType 
+
+-- >>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>
+
+patternPredicates :: ProgPattern (TypeInfoT e t) -> [Predicate]
 patternPredicates = nodePredicates . patternTag
 
-exprPredicates :: ProgExpr (TypeInfoT t) -> [Predicate]
+exprPredicates :: ProgExpr (TypeInfoT e t) -> [Predicate]
 exprPredicates = nodePredicates . exprTag
 
-guardPredicates :: Guard (ProgExpr (TypeInfoT t)) -> [Predicate]
+guardPredicates :: Guard (ProgExpr (TypeInfoT e t)) -> [Predicate]
 guardPredicates (Guard es e) = exprPredicates e <> (exprPredicates =<< es)
 
-clausePredicates :: Clause (ProgPattern (TypeInfoT t)) (ProgExpr (TypeInfoT t)) -> [Predicate]
-clausePredicates (Clause ps gs) = concat ((patternPredicates <$> ps) <> (guardPredicates <$> gs))
+clausePredicates :: Clause s (ProgPattern (TypeInfoT e t)) (ProgExpr (TypeInfoT e t)) -> [Predicate]
+clausePredicates (Clause _ ps gs) = concat ((patternPredicates <$> ps) <> (guardPredicates <$> gs))
 
-astPredicates :: Ast (TypeInfoT t) -> [Predicate]
+astPredicates :: Ast (TypeInfoT e t) -> [Predicate]
 astPredicates = exprPredicates . getAst
 
 constructorEnv :: [(Name, ([Name], Int))] -> ConstructorEnv

@@ -18,96 +18,96 @@ import Tau.Tool
 import Tau.Type
 import qualified Tau.Env as Env
 
---test3 = unifyRows (typeToRowX r1) (typeToRowX r2) :: Either UnificationError TypeSubstitution
---  where
---    r1 = tRowExtend "name" tString (tRowExtend "id" tInt tEmptyRow)
---    r2 = tRowExtend "id" tString (tRowExtend "name" tInt tEmptyRow)
+----test3 = unifyRows (typeToRowX r1) (typeToRowX r2) :: Either UnificationError TypeSubstitution
+----  where
+----    r1 = tRowExtend "name" tString (tRowExtend "id" tInt tEmptyRow)
+----    r2 = tRowExtend "id" tString (tRowExtend "name" tInt tEmptyRow)
+----
+----test4 = unifyRows (typeToRowX r1) (typeToRowX r2) :: Either UnificationError TypeSubstitution
+----  where
+----    r1 = tRowExtend "name" tString (tRowExtend "id" tInt tEmptyRow)
+----    r2 = tRowExtend "id" tInt (tRowExtend "name" tString tEmptyRow)
+----
+----test5 = unifyRows (typeToRowX r1) (typeToRowX r2) :: Either UnificationError TypeSubstitution
+----  where
+----    r1 = tRowExtend "x" tInt (tVar kRow "r")
+----    r2 = tRowExtend "x" tInt (tVar kRow "r")
+----
+----test6 = unifyRows (typeToRowX r1) (typeToRowX r2) :: Either UnificationError TypeSubstitution
+----
+----r1 = tRowExtend "x" tInt (tVar kRow "r")
+----r2 = tRowExtend "y" tInt (tVar kRow "r")
+----
+----
+----pattern1 = recordPat () (rExt "id" (varPat () "id") (rExt "name" (varPat () "name") rNil)) 
+----
+------pattern1 = conPat () "Foo" [litPat () (TBool True), litPat () (TInt 5)]
+------pattern1 = conPat () "Done" [litPat () (TInt 5), litPat () (TInt 5)]
+------pattern1 = conPat () "Some" [litPat () (TInt 5), litPat () (TInt 5)]
+------pattern1 = listPat () [litPat () (TBool True), litPat () TUnit]
+------pattern1 = listPat () [litPat () (TBool True), litPat () (TInt 5)]
+------pattern1 = asPat () "someX" (conPat () "Some" [varPat () "x"])
+------pattern1 = (conPat () "Some" [varPat () "x"])
 --
---test4 = unifyRows (typeToRowX r1) (typeToRowX r2) :: Either UnificationError TypeSubstitution
---  where
---    r1 = tRowExtend "name" tString (tRowExtend "id" tInt tEmptyRow)
---    r2 = tRowExtend "id" tInt (tRowExtend "name" tString tEmptyRow)
+----pattern1 = recordPat () (rExt "id" (varPat () "id") (rExt "name" (varPat () "name") rNil))
+----pattern1 = recordPat () (rExt "name" (varPat () "name") (rExt "id" (varPat () "id") rNil))
 --
---test5 = unifyRows (typeToRowX r1) (typeToRowX r2) :: Either UnificationError TypeSubstitution
---  where
---    r1 = tRowExtend "x" tInt (tVar kRow "r")
---    r2 = tRowExtend "x" tInt (tVar kRow "r")
+--pattern1 = tuplePat () [litPat () (TString "foo"), litPat () (TBool True)]
 --
---test6 = unifyRows (typeToRowX r1) (typeToRowX r2) :: Either UnificationError TypeSubstitution
+--test1 :: IO ()
+--test1 = 
+--    case runInfer mempty testClassEnv testTypeEnv testConstructorEnv (runWriterT (inferPattern pattern1)) of
+--        Left e -> error (show e)
+--        Right ((pat, vars), sub, context) -> do
+--            let TypeInfo{..} = patternTag (apply sub pat)
+--                vars' = apply sub <$$> vars
+--                sub1 = normalizer nodeType
+--                xx1 = apply sub1 nodeType
+--                xx2 = apply sub1 nodePredicates
+--                xx3 = apply sub1 <$$> vars'
+--              in do
+--                  print (apply sub (typeOf pat))
+--                  --print (normalize (apply sub (typeOf pat)))
+--                  --print sub
+--                  --print ">>>>"
+--                  --print nodeType 
+--                  --print nodePredicates
+--                  --print vars'
+--                  --print ">>>>"
+--                  --print xx1
+--                  --print xx2
+--                  --print xx3
+--                  pure ()
 --
---r1 = tRowExtend "x" tInt (tVar kRow "r")
---r2 = tRowExtend "y" tInt (tVar kRow "r")
+--expr1 = funExpr () 
+--    [ Clause [ varPat () "x" ] [ Guard [] (litExpr () (TInt 1)) ] 
+--    ]
 --
---
---pattern1 = recordPat () (rExt "id" (varPat () "id") (rExt "name" (varPat () "name") rNil)) 
---
-----pattern1 = conPat () "Foo" [litPat () (TBool True), litPat () (TInt 5)]
-----pattern1 = conPat () "Done" [litPat () (TInt 5), litPat () (TInt 5)]
-----pattern1 = conPat () "Some" [litPat () (TInt 5), litPat () (TInt 5)]
-----pattern1 = listPat () [litPat () (TBool True), litPat () TUnit]
-----pattern1 = listPat () [litPat () (TBool True), litPat () (TInt 5)]
-----pattern1 = asPat () "someX" (conPat () "Some" [varPat () "x"])
-----pattern1 = (conPat () "Some" [varPat () "x"])
-
---pattern1 = recordPat () (rExt "id" (varPat () "id") (rExt "name" (varPat () "name") rNil))
---pattern1 = recordPat () (rExt "name" (varPat () "name") (rExt "id" (varPat () "id") rNil))
-
-pattern1 = tuplePat () [litPat () (TString "foo"), litPat () (TBool True)]
-
-test1 :: IO ()
-test1 = 
-    case runInfer mempty testClassEnv testTypeEnv testConstructorEnv (runWriterT (inferPattern pattern1)) of
-        Left e -> error (show e)
-        Right ((pat, vars), sub, context) -> do
-            let TypeInfo{..} = patternTag (apply sub pat)
-                vars' = apply sub <$$> vars
-                sub1 = normalizer nodeType
-                xx1 = apply sub1 nodeType
-                xx2 = apply sub1 nodePredicates
-                xx3 = apply sub1 <$$> vars'
-              in do
-                  print (apply sub (typeOf pat))
-                  --print (normalize (apply sub (typeOf pat)))
-                  --print sub
-                  --print ">>>>"
-                  --print nodeType 
-                  --print nodePredicates
-                  --print vars'
-                  --print ">>>>"
-                  --print xx1
-                  --print xx2
-                  --print xx3
-                  pure ()
-
-expr1 = funExpr () 
-    [ Clause [ varPat () "x" ] [ Guard [] (litExpr () (TInt 1)) ] 
-    ]
-
-test2 :: IO ()
-test2 = 
-    case runInfer mempty testClassEnv testTypeEnv testConstructorEnv (inferExpr expr1) of
-        Left e -> error (show e)
-        Right (expr, sub, context) -> do
-            print (expr, sub, context)
-            print "..."
-            print (apply sub expr)
-            print "///"
-            print context
-            --let TypeInfo{..} = exprTag (apply sub expr)
-            --    sub1 = normalizer nodeType
-            --    xx1 = apply sub1 nodeType
-            --    xx2 = apply sub1 nodePredicates
-            --  in do
-            --    --  print (normalize (apply sub (typeOf pat)))
-            --    --  print sub
-            --    --  print ">>>>"
-            --    print nodeType 
-            --    print nodePredicates
-            --    --  print vars'
-            --    print ">>>>"
-            --    print (pretty xx1)
-            --    print (pretty xx2)
-            --    pure ()
+--test2 :: IO ()
+--test2 = 
+--    case runInfer mempty testClassEnv testTypeEnv testConstructorEnv (inferExpr expr1) of
+--        Left e -> error (show e)
+--        Right (expr, sub, context) -> do
+--            print (expr, sub, context)
+--            print "..."
+--            print (apply sub expr)
+--            print "///"
+--            print context
+--            --let TypeInfo{..} = exprTag (apply sub expr)
+--            --    sub1 = normalizer nodeType
+--            --    xx1 = apply sub1 nodeType
+--            --    xx2 = apply sub1 nodePredicates
+--            --  in do
+--            --    --  print (normalize (apply sub (typeOf pat)))
+--            --    --  print sub
+--            --    --  print ">>>>"
+--            --    print nodeType 
+--            --    print nodePredicates
+--            --    --  print vars'
+--            --    print ">>>>"
+--            --    print (pretty xx1)
+--            --    print (pretty xx2)
+--            --    pure ()
 
 
 main :: IO ()
@@ -129,10 +129,10 @@ testClassEnv = Env.fromList
             ]
         -- Instances
         , [ ClassInfo [] (InClass "Show" tInt)
-              [ ( "show", Ast (varExpr (TypeInfo (tInt `tArr` tString) []) "@Int.Show") )
+              [ ( "show", Ast (varExpr (TypeInfo (tInt `tArr` tString) [] ()) "@Int.Show") )
               ]
           , ClassInfo [] (InClass "Show" (tPair (tVar kTyp "a") (tVar kTyp "b")))
-              [ ( "show", Ast (varExpr (TypeInfo (tPair (tVar kTyp "a") (tVar kTyp "b") `tArr` tString) []) "TODO") )
+              [ ( "show", Ast (varExpr (TypeInfo (tPair (tVar kTyp "a") (tVar kTyp "b") `tArr` tString) [] ()) "TODO") )
               ]
           ]
         )
@@ -156,7 +156,7 @@ testClassEnv = Env.fromList
             ]
         -- Instances
         , [ ClassInfo [] (InClass "Eq" tInt)
-            [ ( "(==)", Ast (varExpr (TypeInfo (tInt `tArr` tInt `tArr` tBool) []) "@Int.(==)" ) )
+            [ ( "(==)", Ast (varExpr (TypeInfo (tInt `tArr` tInt `tArr` tBool) [] ()) "@Int.(==)" ) )
             ]
           ]
         )

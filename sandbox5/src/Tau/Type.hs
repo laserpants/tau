@@ -74,14 +74,6 @@ class FreeIn t where
 
 -- >>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>
 
-data TypeInfoT t = TypeInfo
-    { nodeType       :: t
-    , nodePredicates :: [Predicate] }
-
-type TypeInfo = TypeInfoT Type
-
--- >>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>
-
 -- Type class instances for Kind
 
 deriving instance (Show a) => 
@@ -145,23 +137,10 @@ deriving instance Show Scheme
 deriving instance Eq Scheme 
 deriving instance Ord Scheme
 
--- Type class instances for TypeInfo
-
-deriving instance (Show t) => 
-    Show (TypeInfoT t)
-
-deriving instance (Eq t) => 
-    Eq (TypeInfoT t)
-
-deriving instance Functor TypeInfoT
-
 -- Typed instances
 
 instance Typed Type where
     typeOf = id
-
-instance (Typed t) => Typed (TypeInfoT t) where
-    typeOf = typeOf . nodeType 
 
 -- FreeIn instances
 
