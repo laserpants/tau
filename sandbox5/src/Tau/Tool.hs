@@ -18,6 +18,7 @@ module Tau.Tool
   , nameSupply
   , numSupply
   , prettyPrint
+  , whenLeft
   , module Data.Eq.Deriving
   , module Data.Fix
   , module Data.Functor.Foldable
@@ -71,6 +72,12 @@ pluck = do
 liftMaybe :: (MonadError e m) => e -> Maybe a -> m a
 liftMaybe err Nothing = throwError err
 liftMaybe _ (Just ok) = pure ok
+
+whenLeft :: (Monad m) => (a -> m ()) -> Either a () -> m ()
+whenLeft run val =
+    case val of
+        Left err -> run err
+        Right () -> pure ()
 
 -- >>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>
 

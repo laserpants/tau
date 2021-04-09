@@ -19,8 +19,13 @@ data UnificationError
 data ErrorT t
     = Err Text
     -- 
-    | CannotUnify UnificationError t t
-    | CannotMatch UnificationError t t
+    | CannotUnify t t UnificationError 
+    | CannotMatch t t UnificationError 
+    -- 
+    | UnboundTypeIdentifier Name
+    | MissingClass Name
+    | MissingInstance Name t
+    | NoDataConstructor Name
     -- 
     -- Expr type inference errors
 --    | BadGuardCondition t
@@ -28,12 +33,10 @@ data ErrorT t
 ----    | ClauseExprTypeMismatch (ProgExpr (TypeInfo (ErrorT t))) t t
 --    -- Pattern type inference errors
 --    | ListPatternTypeUnficationError 
---    | NoDataConstructor Name
 --    | ConstructorPatternArityMismatch Name Int Int
 --    | ConstructorPatternTypeMismatch Name t [t]
 --    -- 
 --    -- 
---    | UnboundTypeIdentifier Name
 --    -- 
 --    -- 
 --    | MissingClass Name

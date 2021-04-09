@@ -2,7 +2,9 @@
 {-# LANGUAGE OverloadedStrings #-}
 module Main where
 
+import Control.Monad.Identity
 import Control.Monad.Writer
+import Data.Maybe (fromJust)
 import Tau.Compiler.Error
 import Tau.Compiler.Substitution
 import Tau.Compiler.Typecheck
@@ -108,6 +110,21 @@ import qualified Tau.Env as Env
 --            --    print (pretty xx1)
 --            --    print (pretty xx2)
 --            --    pure ()
+
+
+--test1 :: (ProgExpr (TypeInfo [Error]), TypeSubstitution, Context)
+test1 = do
+    print "----------"
+    print x
+    print "=========="
+    print y
+    print "----------"
+    print z
+    print "----------"
+  where
+    (x, y, z) = (apply sub a, ctx, sub)
+    (a, sub, ctx) = fromJust (runInfer2 mempty testClassEnv testTypeEnv testConstructorEnv e)
+    e = inferExpr (funExpr () [ Clause () [varPat () "x"] [Guard [] (litExpr () (TInt 5))] ])
 
 
 main :: IO ()
