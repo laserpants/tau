@@ -156,6 +156,16 @@ test4 = do
 
 
 
+test5 = do
+    print "----------"
+    print (apply sub x)
+    print "=========="
+  where
+    (x, sub, ctx) = fromJust (runInfer mempty testClassEnv testTypeEnv testConstructorEnv e)
+    e = inferExpr (conExpr () "(::)" [litExpr () (TBool True), conExpr () "[]" []])
+
+
+
 
 main :: IO ()
 main = print "Main"
@@ -166,6 +176,8 @@ testTypeEnv = Env.fromList
     , ( "Some"   , Forall [kTyp] [] (tGen 0 `tArr` tApp (tCon kFun "Option") (tGen 0)) )
     , ( "Foo"    , Forall [] [] (tInt `tArr` tInt `tArr` tCon kTyp "Foo") )
     , ( "id"     , Forall [kTyp] [] (tGen 0 `tArr` tGen 0) )
+    , ( "(::)"   , Forall [kTyp] [] (tGen 0 `tArr` tList (tGen 0) `tArr` tList (tGen 0)) )
+    , ( "[]"     , Forall [kTyp] [] (tList (tGen 0)) )
     ]
 
 testClassEnv :: ClassEnv

@@ -441,8 +441,8 @@ op2Tag = \case
 astTag :: Ast t -> t
 astTag = exprTag . getAst 
 
-clauseType :: Clause t p a -> t
-clauseType (Clause t _ _) = t
+clauseTag :: Clause t p a -> t
+clauseTag (Clause t _ _) = t
 
 clausePatterns :: Clause t p a -> [p]
 clausePatterns (Clause _ ps _) = ps

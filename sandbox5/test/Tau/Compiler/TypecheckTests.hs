@@ -234,6 +234,12 @@ testInferExpr = do
         [] 
         []
 
+    succeedInferExpr
+        (conExpr () "(::)" [litExpr () (TBool True), conExpr () "[]" []])
+        (tList tBool)
+        [] 
+        []
+
 
 -- >>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>
 
@@ -243,6 +249,8 @@ testTypeEnv = Env.fromList
     , ( "Some"   , Forall [kTyp] [] (tGen 0 `tArr` tApp (tCon kFun "Option") (tGen 0)) )
     , ( "Foo"    , Forall [] [] (tInt `tArr` tInt `tArr` tCon kTyp "Foo") )
     , ( "id"     , Forall [kTyp] [] (tGen 0 `tArr` tGen 0) )
+    , ( "(::)"   , Forall [kTyp] [] (tGen 0 `tArr` tList (tGen 0) `tArr` tList (tGen 0)) )
+    , ( "[]"     , Forall [kTyp] [] (tList (tGen 0)) )
     ]
 
 testClassEnv :: ClassEnv

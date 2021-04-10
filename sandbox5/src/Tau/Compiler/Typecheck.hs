@@ -65,7 +65,13 @@ inferExpr = cata $ \expr -> do
             pure (varExpr ti var)
 
         ECon _ con exprs -> do
-            undefined
+            (es, ti, __) <- inferNode newTy $ do
+                ty <- lookupScheme con >>= instantiate
+                es <- traverse fooz2 exprs
+                unify2W ty (foldr tArr newTy (typeOf <$> es))
+                pure es
+
+            pure (conExpr ti con es)
 
         ELit _ prim -> do
             (prim, ti, _) <- inferNode newTy $ do
@@ -108,7 +114,7 @@ inferExpr = cata $ \expr -> do
                 -- Unify return type with r.h.s. of arrow in clauses
                 forM_ (clauseGuards =<< es) (\(Guard _ e) -> unify2W (ty :: Type) e)
                 -- Also unify return type with the type of clause itself 
-                forM_ es (unify2W (ty :: Type) . clauseType)
+                forM_ es (unify2W (ty :: Type) . clauseTag)
                 -- Check pattern types
                 forM_ (clausePatterns <$> es) 
                     (\ps -> forM_ (zip ps ts) (uncurry unify2W))
