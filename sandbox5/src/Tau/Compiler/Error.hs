@@ -33,7 +33,7 @@ data ErrorT t
 ----    | ClauseExprTypeMismatch (ProgExpr (TypeInfo (ErrorT t))) t t
 --    -- Pattern type inference errors
 --    | ListPatternTypeUnficationError 
---    | ConstructorPatternArityMismatch Name Int Int
+    | ConstructorPatternArityMismatch Name Int Int
 --    | ConstructorPatternTypeMismatch Name t [t]
 --    -- 
 --    -- 

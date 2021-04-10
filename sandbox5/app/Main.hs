@@ -115,16 +115,46 @@ import qualified Tau.Env as Env
 --test1 :: (ProgExpr (TypeInfo [Error]), TypeSubstitution, Context)
 test1 = do
     print "----------"
-    print x
+    print (apply sub x)
     print "=========="
-    print y
-    print "----------"
-    print z
-    print "----------"
   where
-    (x, y, z) = (apply sub a, ctx, sub)
-    (a, sub, ctx) = fromJust (runInfer2 mempty testClassEnv testTypeEnv testConstructorEnv e)
+    (x, sub, ctx) = fromJust (runInfer mempty testClassEnv testTypeEnv testConstructorEnv e)
     e = inferExpr (funExpr () [ Clause () [varPat () "x"] [Guard [] (litExpr () (TInt 5))] ])
+
+
+test2 = do
+    print "----------"
+    print (apply sub p)
+    print "=========="
+    print (apply sub <$$> vars)
+    print "=========="
+  where
+    ((p, vars), sub, ctx) = fromJust (runInfer mempty testClassEnv testTypeEnv testConstructorEnv e)
+    e = inferPattern (conPat () "Some" [varPat () "x"])
+
+
+test3 = do
+    print "----------"
+    print (apply sub p)
+    print "=========="
+    print (apply sub <$$> vars)
+    print "=========="
+    print sub
+    print "=========="
+  where
+    ((p, vars), sub, ctx) = fromJust (runInfer mempty testClassEnv testTypeEnv testConstructorEnv e)
+    e = inferPattern (listPat () [litPat () (TBool True), varPat () "x"])
+
+
+test4 = do
+    print "----------"
+    print (apply sub x)
+    print "=========="
+  where
+    (x, sub, ctx) = fromJust (runInfer mempty testClassEnv testTypeEnv testConstructorEnv e)
+    e = inferExpr (appExpr () [varExpr () "id", litExpr () (TInt 5)])
+
+
 
 
 main :: IO ()
@@ -135,6 +165,7 @@ testTypeEnv = Env.fromList
     [ ( "None"   , Forall [kTyp] [] (tApp (tCon kFun "Option") (tGen 0)) )
     , ( "Some"   , Forall [kTyp] [] (tGen 0 `tArr` tApp (tCon kFun "Option") (tGen 0)) )
     , ( "Foo"    , Forall [] [] (tInt `tArr` tInt `tArr` tCon kTyp "Foo") )
+    , ( "id"     , Forall [kTyp] [] (tGen 0 `tArr` tGen 0) )
     ]
 
 testClassEnv :: ClassEnv

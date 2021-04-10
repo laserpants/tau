@@ -6,6 +6,7 @@ module Tau.Compiler.TypecheckTests where
 import Control.Monad.Writer
 import Data.Either (isLeft, isRight)
 import Data.List (nub)
+import Data.Maybe (fromJust)
 import Tau.Compiler.Error
 import Tau.Compiler.Substitution
 import Tau.Compiler.Typecheck
@@ -22,36 +23,69 @@ import qualified Data.Set.Monad as Set
 import qualified Tau.Compiler.Substitution as Sub
 import qualified Tau.Env as Env
 
---runInferWithEnvs :: (Monoid t) => InferStack t a -> Either (InferError t) (a, TypeSubstitution, Context)
-runInferWithEnvs = undefined -- runInfer mempty testClassEnv testTypeEnv testConstructorEnv
+succeedInferExpr expr ty ps errs = do
+    describe "xxx" $ do
+        it "yyy" $ do
+            let 
+                    TypeInfo{..} = exprTag (apply sub e)
+                    sub1 = normalizer nodeType
+              in 
+--                traceShow info $
+--                    traceShow (apply sub1 nodeType) $
+--                        traceShow (apply sub1 (nub nodePredicates)) $
 
---failInferPattern :: (Show t, Monoid t) => Text -> ProgPattern t -> (Error -> Bool) -> SpecWith ()
-failInferPattern expl pat isExpected = undefined -- do
---    describe ("The pattern " <> prettyText pat) $
---        case runInferWithEnvs (runWriterT (inferPattern pat)) of
---            Left (InferError _ _ err _) -> 
---                it ("✗ is not well-typed: (" <> expl <> ")") $ isExpected err
---            Right{} -> 
---                error "was expected to fail"
+                      apply sub1 nodeType ==  ty
+                           && apply sub1 (nub nodePredicates) == ps
+                           && nodeErrors == errs
+  where
+    (e, sub, context) = runInferWithEnvs (inferExpr expr)
 
---succeedInferPattern :: (Show t, Monoid t) => ProgPattern t -> Type -> [Predicate] -> [(Name, Type)] -> SpecWith ()
 succeedInferPattern pat ty ps vs = do
-    undefined
---    case runInferWithEnvs (runWriterT (inferPattern pat)) of
---        Left e -> error (show e)
---        Right ((pat, vars), sub, context) -> do
---            describe ("The pattern " <> prettyText pat) $
---                it ("has type: " <> prettyText ty <> ", class constraints: " 
---                                 <> prettyText ps <> ", variables: " 
---                                 <> prettyText vs <> ", etc.") $
---                    let TypeInfo{..} = patternTag (apply sub pat)
---                        sub1 = normalizer nodeType
---                        vars' = apply sub <$$> vars
---                     in -- result = unify (apply sub1 nodeType) ty :: Either UnificationError TypeSubstitution
---                           -- in isRight result 
---                        apply sub1 nodeType ==  ty
---                             && apply sub1 (nub nodePredicates) == ps
---                             && Set.fromList (apply sub1 <$$> vars') == Set.fromList vs
+    describe "xxx" $ do
+        it "yyy" $ do
+            let 
+                    TypeInfo{..} = patternTag (apply sub p)
+                    sub1 = normalizer nodeType
+                    vars' = apply sub <$$> vars
+              in apply sub1 nodeType ==  ty
+                   && apply sub1 (nub nodePredicates) == ps
+                   && Set.fromList (apply sub1 <$$> vars') == Set.fromList vs
+  where
+    ((p, vars), sub, context) = runInferWithEnvs (inferPattern pat)
+
+runInferWithEnvs :: InferStack Maybe a -> (a, TypeSubstitution, Context)
+runInferWithEnvs = fromJust . runInfer mempty testClassEnv testTypeEnv testConstructorEnv
+
+----runInferWithEnvs :: (Monoid t) => InferStack t a -> Either (InferError t) (a, TypeSubstitution, Context)
+--runInferWithEnvs = undefined -- runInfer mempty testClassEnv testTypeEnv testConstructorEnv
+--
+----failInferPattern :: (Show t, Monoid t) => Text -> ProgPattern t -> (Error -> Bool) -> SpecWith ()
+--failInferPattern expl pat isExpected = undefined -- do
+----    describe ("The pattern " <> prettyText pat) $
+----        case runInferWithEnvs (runWriterT (inferPattern pat)) of
+----            Left (InferError _ _ err _) -> 
+----                it ("✗ is not well-typed: (" <> expl <> ")") $ isExpected err
+----            Right{} -> 
+----                error "was expected to fail"
+--
+----succeedInferPattern :: (Show t, Monoid t) => ProgPattern t -> Type -> [Predicate] -> [(Name, Type)] -> SpecWith ()
+--succeedInferPattern pat ty ps vs = do
+--    undefined
+----    case runInferWithEnvs (runWriterT (inferPattern pat)) of
+----        Left e -> error (show e)
+----        Right ((pat, vars), sub, context) -> do
+----            describe ("The pattern " <> prettyText pat) $
+----                it ("has type: " <> prettyText ty <> ", class constraints: " 
+----                                 <> prettyText ps <> ", variables: " 
+----                                 <> prettyText vs <> ", etc.") $
+----                    let TypeInfo{..} = patternTag (apply sub pat)
+----                        sub1 = normalizer nodeType
+----                        vars' = apply sub <$$> vars
+----                     in -- result = unify (apply sub1 nodeType) ty :: Either UnificationError TypeSubstitution
+----                           -- in isRight result 
+----                        apply sub1 nodeType ==  ty
+----                             && apply sub1 (nub nodePredicates) == ps
+----                             && Set.fromList (apply sub1 <$$> vars') == Set.fromList vs
 
 testInferPattern :: SpecWith ()
 testInferPattern = do
@@ -84,6 +118,12 @@ testInferPattern = do
         (conPat () "Some" [litPat () (TInt 5)])
         (tApp (tCon kFun "Option") _a)
         [InClass "Num" _a] 
+        []
+
+    succeedInferPattern 
+        (conPat () "Some" [litPat () (TBool True)])
+        (tApp (tCon kFun "Option") tBool)
+        [] 
         []
 
     -- As-patterns
@@ -155,21 +195,45 @@ testInferPattern = do
 
     -- Failures
 
---    failInferPattern "List type unification fails"
---        (listPat () [litPat () (TBool True), litPat () (TInt 5)])
---        (\case { ListPatternTypeUnficationError -> True; _ -> False })
---
---    failInferPattern "List type unification fails"
---        (listPat () [litPat () (TBool True), litPat () TUnit])
---        (\case { ListPatternTypeUnficationError -> True; _ -> False })
---
---    failInferPattern "Constructor arity doesn't match given arguments"
---        (conPat () "Some" [litPat () (TInt 5), litPat () (TInt 5)])
---        (== ConstructorPatternArityMismatch "Some" 1 2)
---
---    failInferPattern "No such data constructor"
---        (conPat () "Done" [litPat () (TInt 5)])
---        (== NoDataConstructor "Done")
+----    failInferPattern "List type unification fails"
+----        (listPat () [litPat () (TBool True), litPat () (TInt 5)])
+----        (\case { ListPatternTypeUnficationError -> True; _ -> False })
+----
+----    failInferPattern "List type unification fails"
+----        (listPat () [litPat () (TBool True), litPat () TUnit])
+----        (\case { ListPatternTypeUnficationError -> True; _ -> False })
+----
+----    failInferPattern "Constructor arity doesn't match given arguments"
+----        (conPat () "Some" [litPat () (TInt 5), litPat () (TInt 5)])
+----        (== ConstructorPatternArityMismatch "Some" 1 2)
+----
+----    failInferPattern "No such data constructor"
+----        (conPat () "Done" [litPat () (TInt 5)])
+----        (== NoDataConstructor "Done")
+
+-- >>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>
+
+testInferExpr :: SpecWith ()
+testInferExpr = do
+
+    succeedInferExpr
+        (varExpr () "x") 
+        (tVar kTyp "a") 
+        [] 
+        [UnboundTypeIdentifier "x"]
+
+    succeedInferExpr
+        (appExpr () [varExpr () "id", litExpr () (TInt 5)])
+        (tVar kTyp "a") 
+        [InClass "Num" (tVar kTyp "a")] 
+        []
+
+    succeedInferExpr
+        (appExpr () [varExpr () "id", litExpr () (TBool True)])
+        tBool
+        [] 
+        []
+
 
 -- >>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>
 
@@ -178,6 +242,7 @@ testTypeEnv = Env.fromList
     [ ( "None"   , Forall [kTyp] [] (tApp (tCon kFun "Option") (tGen 0)) )
     , ( "Some"   , Forall [kTyp] [] (tGen 0 `tArr` tApp (tCon kFun "Option") (tGen 0)) )
     , ( "Foo"    , Forall [] [] (tInt `tArr` tInt `tArr` tCon kTyp "Foo") )
+    , ( "id"     , Forall [kTyp] [] (tGen 0 `tArr` tGen 0) )
     ]
 
 testClassEnv :: ClassEnv
