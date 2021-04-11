@@ -200,13 +200,42 @@ test8 = do
 test9 = do
     print "----------"
     print (apply sub x)
+    print (pretty (apply sub x))
     print ctx
     print "=========="
   where
     (x, sub, ctx) = fromJust (runInfer mempty testClassEnv testTypeEnv testConstructorEnv e)
-    e = inferExpr (op2Expr () (OEq ()) (litExpr () (TInt 1)) (litExpr () (TInt 1)))
+    e = inferAst (Ast (op2Expr () (OEq ()) (litExpr () (TInt 1)) (litExpr () (TInt 1))))
 
 
+test10 =
+    Ast (letExpr () (BLet (varPat () "x")) (litExpr () (TInt 5)) (varExpr () "x"))
+
+
+test11 =
+    Ast (letExpr () (BFun "f" [varPat () "x", varPat () "y"]) (litExpr () (TInt 5)) (varExpr () "x"))
+
+
+test12 = do
+    print "----------"
+    print (apply sub x)
+    print (pretty (apply sub x))
+    print ctx
+    print "=========="
+  where
+    (x, sub, ctx) = fromJust (runInfer mempty testClassEnv testTypeEnv testConstructorEnv e)
+    e = inferAst (Ast (letExpr () (BFun "f" [varPat () "x", varPat () "y"]) (litExpr () (TInt 5)) (appExpr () [varExpr () "f", litExpr () (TInt 1), litExpr () (TInt 1)])))
+
+
+test14 = do
+    print "----------"
+    print (apply sub x)
+    print (pretty (apply sub x))
+    print ctx
+    print "=========="
+  where
+    (x, sub, ctx) = fromJust (runInfer mempty testClassEnv testTypeEnv testConstructorEnv e)
+    e = inferAst (Ast (letExpr () (BLet (varPat () "x")) (litExpr () (TInt 5)) (varExpr () "x")))
 
 
 

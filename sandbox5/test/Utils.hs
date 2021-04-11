@@ -6,7 +6,6 @@ module Utils
   , _a
   , _b
   , _c
-  , renderDoc
   , prettyText
   ) where
 
@@ -14,6 +13,7 @@ import Data.Text (Text, unpack)
 import Data.Text.Prettyprint.Doc
 import Data.Text.Prettyprint.Doc.Render.Text
 import Debug.Trace
+import Tau.Tool
 import Tau.Type
 import Test.Hspec hiding (describe, it) 
 import qualified Test.Hspec as Hspec
@@ -32,9 +32,6 @@ _b = tVar kTyp "b"
 
 _c :: Type
 _c = tVar kTyp "c"
-
-renderDoc :: Doc a -> Text
-renderDoc = renderStrict . layoutPretty defaultLayoutOptions
 
 prettyText :: (Pretty p) => p -> Text
 prettyText = renderDoc . pretty

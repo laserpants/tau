@@ -142,6 +142,9 @@ deriving instance Ord Scheme
 instance Typed Type where
     typeOf = id
 
+instance Typed () where
+    typeOf = const (tCon kTyp "()")
+
 -- FreeIn instances
 
 instance (FreeIn t) => FreeIn [t] where

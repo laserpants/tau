@@ -7,9 +7,11 @@ import Control.Arrow ((<<<), (>>>))
 import Control.Monad ((<=<))
 import Data.Function ((&))
 import Data.List (null, intersperse)
+import Data.Text (pack, unpack)
 import Data.Text.Prettyprint.Doc
 import Data.Text.Prettyprint.Doc.Render.Text
 import Data.Tree
+import Data.Tree.View (showTree)
 import Tau.Compiler.Substitution hiding (null)
 import Tau.Lang
 import Tau.Row
@@ -35,7 +37,7 @@ instance Pretty Prim where
 
 instance (Eq e, Pretty e) => Pretty (Row e) where
     pretty (Row map r) | null map = maybe "{}" pretty r
-    pretty row = 
+    pretty row =
         lbrace <+> prettyRow ":" (pretty <$> row) <+> rbrace
 
 -- >>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>
@@ -43,7 +45,7 @@ instance (Eq e, Pretty e) => Pretty (Row e) where
 instance Pretty (ProgPattern t) where
     pretty = para $ \case
 
-        PCon _ con [] -> pretty con 
+        PCon _ con [] -> pretty con
         PCon _ con ps -> pretty con <+> foldr pCon "" ps
 
         expr -> snd <$> expr & \case
@@ -72,7 +74,7 @@ instance Pretty Kind where
     pretty = para $ \case
         KArr (k1, doc1) (_, doc2) -> parensIf useLeft doc1 <+> "->" <+> doc2
           where
-            useLeft = 
+            useLeft =
                 case project k1 of
                     KArr{} -> True
                     _      -> False
@@ -84,7 +86,7 @@ instance Pretty Kind where
 -- >>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>
 
 instance Pretty Type where
-    pretty ty = 
+    pretty ty =
         case innermostCon ty of
             Just con | isTuple con -> prettyTupleType ty
             Just "#Record"         -> prettyRecordType ty
@@ -95,7 +97,7 @@ prettyTupleType ty = let (_:ts) = unfoldApp ty in prettyTuple (pretty <$> ts)
 
 prettyRecordType :: Type -> Doc a
 prettyRecordType = project >>> \case
-    TApp (Fix (TCon _ "#Record")) row -> 
+    TApp (Fix (TCon _ "#Record")) row ->
         lbrace <+> prettyRow ":" (pretty <$> typeToRow row) <+> rbrace
 
 prettyType :: Type -> Doc a
@@ -103,14 +105,14 @@ prettyType = para $ \case
 
     TArr (t1, doc1) (_, doc2) -> parensIf useLeft doc1 <+> "->" <+> doc2
       where
-        useLeft = 
+        useLeft =
             case project t1 of
                 TArr{} -> True
                 _      -> False
 
     TApp (_, doc1) (t2, doc2) -> doc1 <+> parensIf useRight doc2
       where
-        useRight = 
+        useRight =
             case project t2 of
                 TApp{} -> True
                 TArr{} -> True
@@ -187,9 +189,9 @@ isTuple con = Just True == (allCommas <$> stripped con)
 instance Pretty (ProgExpr t) where
     pretty = para $ \case
         ECon    _ name es        -> "TODO"
-        EApp    _ es             -> "TODO"
+        EApp    _ es             -> prettyApp (fst <$> es)
         EFix    _ name e1 e2     -> "TODO"
-        ELam    _ ps e           -> "TODO"
+        ELam    _ ps e           -> prettyTuple (pretty <$> ps) <+> "=>" <+> snd e
         EPat    _ es cs          -> "TODO"
         EFun    _ cs             -> "TODO"
 
@@ -201,14 +203,17 @@ instance Pretty (ProgExpr t) where
             EIf     _ e1 e2 e3   -> "if" <+> e1 <+> "then" <+> e2 <+> "else" <+> e3
             EOp1    _ op a       -> pretty op <+> a
             EOp2    _ op a b     -> a <+> pretty op <+> b
-            ETuple  _ es         -> prettyTuple es                         
-            EList   _ es         -> prettyList_ es                         
+            ETuple  _ es         -> prettyTuple es
+            EList   _ es         -> prettyList_ es
             ERecord _ row        -> lbrace <+> prettyRow "=" row <+> rbrace
 
-instance Pretty (Binding b) where
+instance (Pretty b) => Pretty (Binding b) where
     pretty = \case
-        BLet pat  -> "TODO"
-        BFun f ps -> "TODO"
+        BLet pat  -> pretty pat
+        BFun f ps -> pretty f <> prettyTuple (pretty <$> ps)
+
+prettyApp :: (Pretty p) => [p] -> Doc a
+prettyApp (f:args) = pretty f <> prettyTuple (pretty <$> args)
 
 -- >>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>
 
@@ -242,26 +247,41 @@ instance Pretty (Op2 t) where
 
 -- >>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>
 
-instance Pretty (Ast t) where
-    pretty (Ast expr) = "TODO"
+instance (Typed t) => Pretty (Ast t) where
+    pretty (Ast expr) = pretty (showTree tree)
+      where
+        tree = unpack . renderDoc <$> exprTree expr
 
 -- >>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>
 
-exprTree :: ProgExpr t -> Tree (Doc a)
+exprTree :: (Typed t) => ProgExpr t -> Tree (Doc a)
 exprTree = para $ \case
 
-    EVar    t var        -> Node "TODO" []
+    EVar    t var        -> Node (pretty var <+> colon <+> pretty (typeOf t)) []
     ECon    t name es    -> Node "TODO" []
-    ELit    t prim       -> Node "TODO" []
-    EApp    t es         -> Node "TODO" []
-    ELet    t bind e1 e2 -> Node "TODO" []
+    ELit    t prim       -> Node (pretty prim <+> colon <+> pretty (typeOf t)) []
+    EApp    t es         -> Node (pretty (appExpr t (fst <$> es)) <+> colon <+> pretty (typeOf t)) []
+    ELet    t bind e1 e2 -> letTree t bind (snd e1) (snd e2)
     EFix    t name e1 e2 -> Node "TODO" []
     ELam    t ps e       -> Node "TODO" []
     EIf     t e1 e2 e3   -> Node "TODO" []
     EPat    t es cs      -> Node "TODO" []
     EFun    t cs         -> Node "TODO" []
-    EOp1    t op a       -> Node "TODO" []
-    EOp2    t op a b     -> Node "TODO" []
+    EOp1    t op a       -> op1Tree t op (snd a)
+    EOp2    t op a b     -> op2Tree t op (snd a) (snd b)
     ETuple  t es         -> Node "TODO" []
     EList   t es         -> Node "TODO" []
     ERecord t row        -> Node "TODO" []
+
+op1Tree :: (Typed t, Pretty p) => t -> p -> Tree (Doc a) -> Tree (Doc a)
+op1Tree t op a = Node (pretty op <+> colon <+> pretty (typeOf t)) [a]
+
+op2Tree :: (Typed t, Pretty p) => t -> p -> Tree (Doc a) -> Tree (Doc a) -> Tree (Doc a)
+op2Tree t op a b = Node ("(" <> pretty op <> ")" <+> colon <+> pretty (typeOf t)) [a, b]
+
+letTree :: (Typed t, Pretty p) => t -> p -> Tree (Doc a) -> Tree (Doc a) -> Tree (Doc a)
+letTree t bind e1 e2 =
+    Node ("let" <+> colon <+> pretty (typeOf t))
+        [ Node (pretty bind <+> equals) [e1]
+        , Node "in" [e2]
+        ]

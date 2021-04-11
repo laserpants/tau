@@ -17,6 +17,7 @@ module Tau.Tool
   , letters
   , nameSupply
   , numSupply
+  , renderDoc
   , prettyPrint
   , whenLeft
   , firstM
