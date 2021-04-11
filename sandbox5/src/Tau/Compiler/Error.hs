@@ -27,6 +27,7 @@ data ErrorT t
     | MissingInstance Name t
     | NoDataConstructor Name
     -- 
+    | ListElemUnficationError 
     | ListPatternElemUnficationError 
     -- Expr type inference errors
 --    | BadGuardCondition t

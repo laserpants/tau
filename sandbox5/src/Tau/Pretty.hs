@@ -56,7 +56,7 @@ instance Pretty (ProgPattern t) where
 
 pCon :: (ProgPattern t, Doc a) -> Doc a -> Doc a
 pCon (p1, doc1) doc2 =
-    parensIf useLeft doc1 <> if "" == show doc2 then doc2 else " " <> doc2
+    parensIf useLeft doc1 <> if "" == show doc2 then doc2 else space <> doc2
   where
     useLeft = case project p1 of
         PCon _ _ ps | not (null ps) -> True
@@ -179,3 +179,66 @@ isTuple con = Just True == (allCommas <$> stripped con)
   where
     allCommas = Text.all (== ',')
     stripped  = Text.stripSuffix ")" <=< Text.stripPrefix "("
+
+-- >>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>
+
+instance Pretty (ProgExpr t) where
+    pretty = para $ \case
+        ECon    _ name es        -> "TODO"
+        EApp    _ es             -> "TODO"
+        EFix    _ name e1 e2     -> "TODO"
+        ELam    _ ps e           -> "TODO"
+        EPat    _ es cs          -> "TODO"
+        EFun    _ cs             -> "TODO"
+
+        expr -> snd <$> expr & \case
+
+            EVar    _ var        -> pretty var
+            ELit    _ prim       -> pretty prim
+            ELet    _ bind e1 e2 -> "let" <+> pretty bind <+> equals <+> e1 <+> "in" <+> e2
+            EIf     _ e1 e2 e3   -> "if" <+> e1 <+> "then" <+> e2 <+> "else" <+> e3
+            EOp1    _ op a       -> pretty op <+> a
+            EOp2    _ op a b     -> a <+> pretty op <+> b
+            ETuple  _ es         -> prettyTuple es                         
+            EList   _ es         -> prettyList_ es                         
+            ERecord _ row        -> lbrace <+> prettyRow "=" row <+> rbrace
+
+instance Pretty (Binding b) where
+    pretty = \case
+        BLet pat  -> "TODO"
+        BFun f ps -> "TODO"
+
+-- >>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>
+
+instance Pretty (Op1 t) where
+    pretty _ = "TODO"
+
+instance Pretty (Op2 t) where
+    pretty = \case
+
+        OEq     _ -> "=="
+        ONeq    _ -> "/="
+        OAnd    _ -> "&&"
+        OOr     _ -> "||"
+        OAdd    _ -> "+"
+        OSub    _ -> "-"
+        OMul    _ -> "*"
+        ODiv    _ -> "/"
+        OPow    _ -> "^"
+        OMod    _ -> "%"
+        OLt     _ -> "<"
+        OGt     _ -> ">"
+        OLte    _ -> "<="
+        OGte    _ -> ">="
+        OLarr   _ -> "<<"
+        ORarr   _ -> ">>"
+        OFpipe  _ -> "|>"
+        OBpipe  _ -> "<|"
+        OOpt    _ -> "?"
+        OStrc   _ -> "++"
+        ONdiv   _ -> "//"
+
+-- >>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>
+
+instance Pretty (Ast t) where
+    pretty (Ast expr) = "TODO"

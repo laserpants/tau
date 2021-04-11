@@ -38,14 +38,86 @@ import qualified Data.Text as Text
 import qualified Tau.Env as Env
 
 inferAst
-  :: ( Monoid t
-     , Show t
-     , MonadSupply Name m
+  :: ( MonadSupply Name m
      , MonadReader (ClassEnv, TypeEnv, ConstructorEnv) m
      , MonadState (TypeSubstitution, Context) m )
   => Ast t 
   -> m (Ast (TypeInfo [Error]))
-inferAst (Ast expr) = Ast <$> inferExpr expr
+inferAst = undefined
+
+--
+
+xyzz0 c f = do
+    newTy <- newTVar kTyp
+    (_, ti, vs) <- inferNode newTy f
+    pure (c ti, vs)
+
+xyzz1
+  :: ( MonadSupply Name m
+     , MonadReader (ClassEnv, TypeEnv, ConstructorEnv) m
+     , MonadState (TypeSubstitution, Context) m )
+  => (TypeInfo [Error] -> t -> a)
+  -> WriterT Node m t 
+  -> m (a, [(Name, Type)])
+xyzz1 c f = do
+    newTy <- newTVar kTyp
+    (a, ti, vs) <- inferNode newTy f
+    pure (c ti a, vs)
+
+xyzz2
+  :: ( MonadSupply Name m
+     , MonadReader (ClassEnv, TypeEnv, ConstructorEnv) m
+     , MonadState (TypeSubstitution, Context) m )
+  => (TypeInfo [Error] -> t1 -> t2 -> a)
+  -> WriterT Node m (t1, t2)
+  -> m (a, [(Name, Type)])
+xyzz2 c f = do
+    newTy <- newTVar kTyp
+    ((a1, a2), ti, vs) <- inferNode newTy f
+    pure (c ti a1 a2, vs)
+
+xyzz3 c f = do
+    newTy <- newTVar kTyp
+    ((a1, a2, a3), ti, vs) <- inferNode newTy f
+    pure (c ti a1 a2 a3, vs)
+
+--
+
+xyz0 c f = do
+    newTy <- newTVar kTyp
+    (_, ti, _) <- inferNode newTy f
+    pure (c ti)
+
+xyz1 c f = do
+    newTy <- newTVar kTyp
+    (a, ti, _) <- inferNode newTy f
+    pure (c ti a)
+
+xyz2 c f = do
+    newTy <- newTVar kTyp
+    ((a1, a2), ti, _) <- inferNode newTy f
+    pure (c ti a1 a2)
+
+xyz3 c f = do
+    newTy <- newTVar kTyp
+    ((a1, a2, a3), ti, _) <- inferNode newTy f
+    pure (c ti a1 a2 a3)
+
+--
+
+thisType 
+  :: ( MonadSupply Name m
+     , MonadReader (ClassEnv, TypeEnv, ConstructorEnv) m
+     , MonadState (TypeSubstitution, Context) m )
+  => WriterT Node m Type
+thisType = do
+    t <- newTVar kTyp
+    unifyThis t
+    pure t
+
+--inferExpr = cata $ \expr -> do
+----    newTy <- newTVar kTyp
+--    case expr of
 
 inferExpr
   :: ( Monoid t
@@ -57,24 +129,46 @@ inferExpr
   -> m (ProgExpr (TypeInfo [Error]))
 inferExpr = cata $ \case
 
-    EVar _ var -> inferExprNode varExpr $ do
+    EVar _ var -> xyz1 varExpr $ do
         ty <- lookupScheme var >>= instantiate
         unifyThis ty
         pure var
 
-    ECon _ con exprs -> inferExprNode (args2 conExpr) $ do
+--            (var, ti, _) <- inferNode newTy $ do
+--                ty <- lookupScheme var >>= instantiate
+--                unifyThis ty
+--                pure var
+--
+--            pure (varExpr ti var)
+
+    ECon _ con exprs -> xyz2 conExpr $ do
         ty <- lookupScheme con >>= instantiate
         es <- traverse exprNode exprs
         t1 <- thisType
         unify2W ty (foldr tArr t1 (typeOf <$> es))
         pure (con, es)
 
-    ELit _ prim -> inferExprNode litExpr $ do
+--            (es, ti, _) <- inferNode newTy $ do
+--                ty <- lookupScheme con >>= instantiate
+--                es <- traverse exprNode exprs
+--                unify2W ty (foldr tArr newTy (typeOf <$> es))
+--                pure es
+--
+--            pure (conExpr ti con es)
+
+    ELit _ prim -> xyz1 litExpr $ do
         ty <- instantiate (primType prim)
         unifyThis ty
         pure prim
 
-    EApp _ exprs -> inferExprNode appExpr $ do
+--            (prim, ti, _) <- inferNode newTy $ do
+--                ty <- instantiate (primType prim)
+--                unifyThis ty
+--                pure prim
+--
+--            pure (litExpr ti prim)
+
+    EApp _ exprs -> xyz1 appExpr $ do
         es <- traverse exprNode exprs
         case es of
             []     -> pure ()
@@ -83,7 +177,16 @@ inferExpr = cata $ \case
                 unify2W f (foldr tArr t1 (typeOf <$> args))
         pure es
 
-    ELet _ (BLet pat) expr1 expr2 -> inferExprNode (args3 letExpr) $ do
+--            (es, ti, _) <- inferNode newTy $ do
+--                es <- traverse exprNode exprs
+--                case es of
+--                    []     -> pure ()
+--                    f:args -> unify2W f (foldr tArr newTy (typeOf <$> args))
+--                pure es
+--
+--            pure (appExpr ti es)
+
+    ELet _ (BLet pat) expr1 expr2 -> xyz3 letExpr $ do
         (p, (_, vs, _, _)) <- listen (patternNode (inferPattern pat))
 
         e1 <- exprNode expr1
@@ -96,7 +199,7 @@ inferExpr = cata $ \case
 
         pure (BLet p, e1, e2)
 
-    ELet _ (BFun f pats) expr1 expr2 -> inferExprNode (args3 letExpr) $ do
+    ELet _ (BFun f pats) expr1 expr2 -> xyz3 letExpr $ do
         (ps, (_, vs, _, _)) <- listen (traverse (patternNode . inferPattern) pats)
 
         e1 <- exprNode (local (second3 (Env.inserts (toScheme <$$> vs))) expr1)
@@ -109,22 +212,35 @@ inferExpr = cata $ \case
 
         pure (BFun f ps, e1, e2)
 
-    EFix _ name expr1 expr2 -> inferExprNode (args3 fixExpr) $ do
-        t1 <- newTVar kTyp
-        e1 <- exprNode (local (second3 (Env.insert name (toScheme t1))) expr1)
-        unify2W (t1 :: Type) e1
-        scheme <- generalize (typeOf e1)
-        e2 <- exprNode (local (second3 (Env.insert name scheme)) expr2)
-        unifyThis (typeOf e2)
-        pure (name, e1, e2)
+--        (ps, vs) <- second concat . unzip <$> traverse inferPattern pats
+--        insertPredicates (patternPredicates =<< ps)
+--        tellVars vs
+--
+--        e1 <- exprNode (local (second3 (Env.inserts (toScheme <$$> vs))) expr1)
+--        t1 <- newTVar kTyp
+--        unify2W t1 (foldr tArr (typeOf e1) (typeOf <$> ps))
+--        scheme <- generalize t1
+--
+--        e2 <- exprNode (local (second3 (Env.insert f scheme)) expr2)
+--        unifyThis (typeOf e2)
+--
+--        pure (BFun f ps, e1, e2)
 
-    ELam _ pats expr -> inferExprNode (args2 lamExpr) $ do
+    EFix _ name e1 e2 -> do
+        undefined
+
+    ELam _ pats expr -> xyz2 lamExpr $ do
         (ps, (_, vs, _, _)) <- listen (traverse (patternNode . inferPattern) pats)
         e1 <- exprNode (local (second3 (Env.inserts (toScheme <$$> vs))) expr)
         unifyThis (foldr tArr (typeOf e1) (typeOf <$> ps))
         pure (ps, e1)
 
-    EIf _ expr1 expr2 expr3 -> inferExprNode (args3 ifExpr) $ do
+--            (tps, vs) <- runWriterT (traverse inferPattern pats)
+--            e1 <- local (second (Env.inserts (toScheme <$$> vs))) expr1
+--            unifyTyped newTy (foldr tArr (typeOf e1) (typeOf <$> tps))
+--            pure (lamExpr (NodeInfo newTy []) tps e1)
+
+    EIf _ expr1 expr2 expr3 -> xyz3 ifExpr $ do
         e1 <- exprNode expr1
         e2 <- exprNode expr2
         e3 <- exprNode expr3
@@ -133,12 +249,12 @@ inferExpr = cata $ \case
         unifyThis (typeOf e2)
         pure (e1, e2, e3)
 
-    EPat _ exprs eqs -> inferExprNode (args2 patExpr) $ do
+    EPat _ exprs eqs -> xyz2 patExpr $ do
         es1 <- traverse exprNode exprs
         es2 <- lift (traverse (inferClause (typeOf <$> es1)) eqs)
         pure (es1, es2)
 
-    EFun _ eqs@(Clause _ ps _:_) -> inferExprNode funExpr $ do
+    EFun _ eqs@(Clause _ ps _:_) -> xyz1 funExpr $ do
         ty <- newTVar kTyp
         ts <- newTVars kTyp (length ps)
         es <- lift (traverse (inferClause ts) eqs)
@@ -154,14 +270,36 @@ inferExpr = cata $ \case
         unifyThis (foldr tArr ty ts)
         pure es
 
-    EOp1 _ op1 expr -> inferExprNode (args2 op1Expr) $ do
+            --es <- sequence (inferClause ts <$> eqs)
+
+            -- Unify return type with rhs of arrow in clauses
+            --forM_ (clauseGuards =<< es) (\(Guard _ e) -> unify2 ty e)
+            ---- Check patterns' types
+            --forM_ (clausePatterns <$> es) (\ps -> forM_ (zip ps ts) unifyPatterns)
+            ----
+            --insertPredicates (clausePredicates =<< es)
+            --unify2 newTy (foldr tArr ty ts)
+            --pure es
+
+--            pure (funExpr ti es)
+
+--        EFun t eqs@(Clause ps _:_) -> do
+--            ts <- newTVars kTyp (length ps)
+--            es <- sequence (inferClause t ts <$> eqs)
+--            -- Unify return type with rhs of arrow in clauses
+--            forM_ (clauseGuards =<< es) (\(Guard _ e) -> e ## newTy)
+--            -- Check patterns' types
+--            forM_ (clausePatterns <$> es) (\ps -> forM_ (zip ps ts) (unifyPatterns t))
+--            pure (funExpr (TypeInfo (foldr tArr newTy ts) (clausePredicates =<< es)) es)
+
+    EOp1 _ op1 expr -> xyz2 op1Expr $ do
         a <- exprNode expr
         op <- inferOp1 op1
         t1 <- thisType
         unify2W (typeOf a `tArr` t1) (typeOf op)
         pure (op, a)
 
-    EOp2 _ op2 expr1 expr2 -> inferExprNode (args3 op2Expr) $ do
+    EOp2 _ op2 expr1 expr2 -> xyz3 op2Expr $ do
         a <- exprNode expr1
         b <- exprNode expr2
         op <- inferOp2 op2
@@ -169,12 +307,12 @@ inferExpr = cata $ \case
         unify2W (typeOf a `tArr` typeOf b `tArr` t1) (typeOf op)
         pure (op, a, b)
 
-    ETuple _ exprs -> inferExprNode tupleExpr $ do
+    ETuple _ exprs -> xyz1 tupleExpr $ do
         es <- traverse exprNode exprs
         unifyThis (tTuple (typeOf <$> es))
         pure es
 
-    EList _ exprs -> inferExprNode listExpr $ do
+    EList _ exprs -> xyz1 listExpr $ do
         es <- traverse exprNode exprs
         t1 <- case es of
             []    -> newTVar kTyp
@@ -188,7 +326,7 @@ inferExpr = cata $ \case
         unifyThis (tList t1)
         pure es
 
-    ERecord _ row -> inferExprNode recordExpr $ do
+    ERecord _ row -> xyz1 recordExpr $ do
         fs <- traverse exprNode row
         unifyThis (tRecord (rowToType (typeOf <$> fs)))
         pure fs
@@ -199,14 +337,24 @@ inferPattern
      , MonadState (TypeSubstitution, Context) m ) 
   => ProgPattern t 
   -> m (ProgPattern (TypeInfo [Error]), [(Name, Type)])
+--inferPattern = cata $ \pat -> do
+----    newTy <- newTVar kTyp
+--    case pat of
+
 inferPattern = cata $ \case
 
-    PVar _ var -> inferPatternNode varPat $ do
-        t <- thisType
-        tellVars [(var, t)]
+    PVar _ var -> xyzz1 varPat $ do
+        insertThis var
         pure var
 
-    PCon _ con pats -> inferPatternNode (args2 conPat) $ do
+--        PVar _ var -> do
+--            (var, ti, vs) <- inferNode newTy $ do
+--                insertThis var
+--                pure var
+--
+--            pure (varPat ti var, vs)
+
+    PCon _ con pats -> xyzz2 conPat $ do
         lookupConstructor con >>= \case
             Nothing -> pure ()
             Just (_, arity) -> do
@@ -224,34 +372,108 @@ inferPattern = cata $ \case
 
         pure (con, ps)
 
-    PLit _ prim -> inferPatternNode litPat $ do
+--        PCon _ con pats -> do
+--            (ps, ti, vs) <- inferNode newTy $ do
+--                lookupConstructor con >>= \case
+--                    Nothing -> pure ()
+--                    Just (_, arity) -> do
+--                        -- The number of arguments must match constructor arity 
+--                        when (arity /= length pats) $
+--                            insertErrors [ConstructorPatternArityMismatch con arity (length pats)]
+--
+--                ty <- lookupScheme con >>= instantiate
+--                ps <- traverse patternNode pats
+--
+--                (_, node) <- listen (unify2W ty (foldr tArr newTy (typeOf <$> ps)))
+--                when (nodeHasErrors node) $
+--                    insertErrors [ConstructorPatternTypeMismatch con]
+--
+--                pure ps
+--
+--            pure (conPat ti con ps, vs)
+--
+--            catchError 
+--                (ty ## foldr tArr newTy (typeOf <$> ps))
+--                (const $ failWithError (ConstructorPatternTypeMismatch con ty (typeOf <$> ps)) t)
+
+    PLit _ prim -> xyzz1 litPat $ do
         t <- instantiate (primType prim)
         unifyThis t
         pure prim
 
-    PAs _ var pat -> inferPatternNode (args2 asPat) $ do
+--        PLit _ prim -> do
+--            (prim, ti, vs) <- inferNode newTy $ do
+--                t <- instantiate (primType prim)
+--                unifyThis t
+--                pure prim
+--
+--            pure (litPat ti prim, vs)
+
+    PAs _ var pat -> xyzz2 asPat $ do
         p <- patternNode pat
-        t <- thisType
-        tellVars [(var, t)]
+        insertThis var
         unifyThis (typeOf p)
         pure (var, p)
 
-    POr _ pat1 pat2 -> inferPatternNode (args2 orPat) $ do
+--        PAs _ var pat -> do
+--            (p, ti, vs) <- inferNode newTy $ do
+--                p <- patternNode pat
+--                insertThis var
+--                unifyThis (typeOf p)
+--                pure p
+--
+--            pure (asPat ti var p, vs)
+
+--            p <- pat
+--            tell [(as, newTy)]
+--            newTy ## p
+--            pure (asPat (TypeInfo newTy (patternPredicates p)) as p)
+--
+    POr _ pat1 pat2 -> xyzz2 orPat $ do
         p1 <- patternNode pat1
         p2 <- patternNode pat2
         unifyThis (typeOf p1)
         unifyThis (typeOf p2)
         pure (p1, p2)
 
-    PAny _ -> 
-        inferPatternNode (args0 anyPat) $ pure ()
+--        POr _ pat1 pat2 -> do
+--            ((p1, p2), ti, vs) <- inferNode newTy $ do
+--                p1 <- patternNode pat1
+--                p2 <- patternNode pat2
+--                unifyThis (typeOf p1)
+--                unifyThis (typeOf p2)
+--                pure (p1, p2)
+--
+--            pure (orPat ti p1 p2, vs)
 
-    PTuple t pats -> inferPatternNode tuplePat $ do
+    PAny _ -> xyzz0 anyPat $ pure ()
+
+--        PAny _ -> do
+--            (_, ti, vs) <- inferNode newTy $ do
+--                pure ()
+--
+--            pure (anyPat ti, vs)
+
+    PTuple t pats -> xyzz1 tuplePat $ do
         ps <- traverse patternNode pats
         unifyThis (tTuple (typeOf <$> ps))
         pure ps
 
-    PList t pats -> inferPatternNode listPat $ do
+--        PTuple t pats -> do
+--            (ps, ti, vs) <- inferNode newTy $ do
+--                ps <- traverse patternNode pats
+--                unifyThis (tTuple (typeOf <$> ps))
+--                pure ps
+--
+--            pure (tuplePat ti ps, vs)
+
+--            ps <- sequence pats
+--            catchError 
+--                (newTy ## tTuple (typeOf <$> ps))
+--                (throwError . setMeta t)
+--            pure (tuplePat (TypeInfo newTy (patternPredicates =<< ps)) ps)
+
+    PList t pats -> xyzz1 listPat $ do
         ps <- traverse patternNode pats
         t1 <- case ps of
             []    -> newTVar kTyp
@@ -265,10 +487,46 @@ inferPattern = cata $ \case
         unifyThis (tList t1)
         pure ps
 
-    PRecord t row -> inferPatternNode recordPat $ do
+--        PList t pats -> do
+--            (ps, ti, vs) <- inferNode newTy $ do
+--                ps <- traverse patternNode pats
+--                t1 <- case ps of
+--                    []    -> newTVar kTyp
+--                    (p:_) -> pure (typeOf p)
+--
+--                -- Unify list elements' types
+--                (_, node) <- listen (forM_ ps (unify2W t1))
+--                when (nodeHasErrors node) $
+--                    insertErrors [ListPatternElemUnficationError]
+--
+--                unifyThis (tList t1)
+--                pure ps
+--
+--            pure (listPat ti ps, vs)
+
+--            catchError 
+--                (forM ps (t1 ##))
+--                (const $ failWithError ListPatternTypeUnficationError t)
+--            pure (listPat (TypeInfo newTy (patternPredicates =<< ps)) ps)
+
+    PRecord t row -> xyzz1 recordPat $ do
         fs <- traverse patternNode row
         unifyThis (tRecord (rowToType (typeOf <$> fs)))
         pure fs
+
+--        PRecord t row -> do
+--            (fs, ti, vs) <- inferNode newTy $ do
+--                fs <- traverse patternNode row
+--                unifyThis (tRecord (rowToType (typeOf <$> fs)))
+--                pure fs
+--
+--            pure (recordPat ti fs, vs)
+
+--            fs <- sequence row
+--            catchError 
+--                (newTy ## tRecord (rowToType (typeOf <$> fs)))
+--                (throwError . setMeta t)
+--            pure (recordPat (TypeInfo newTy (concat (concatRow (patternPredicates <$> fs)))) fs)
 
 patternNode 
   :: ( MonadSupply Name m
@@ -282,6 +540,18 @@ patternNode pat = do
     tellVars vs
     pure p
 
+--patternNode1
+--  :: ( MonadSupply Name m
+--     , MonadReader (ClassEnv, TypeEnv, ConstructorEnv) m
+--     , MonadState (TypeSubstitution, Context) m ) 
+--  => m (ProgPattern (TypeInfo [Error]), [(Name, Type)])
+--  -> WriterT Node m (ProgPattern (TypeInfo [Error]))
+--patternNode1 pat = do
+--    p <- lift pat
+----    insertPredicates (patternPredicates p)
+----    tellVars vs
+--    pure p
+
 exprNode 
   :: ( MonadSupply Name m
      , MonadReader (ClassEnv, TypeEnv, ConstructorEnv) m
@@ -293,15 +563,16 @@ exprNode expr = do
     insertPredicates (exprPredicates e)
     pure e
 
-thisType 
+insertThis
   :: ( MonadSupply Name m
      , MonadReader (ClassEnv, TypeEnv, ConstructorEnv) m
-     , MonadState (TypeSubstitution, Context) m )
-  => WriterT Node m Type
-thisType = do
+     , MonadState (TypeSubstitution, Context) m ) 
+  => Name
+  -> WriterT Node m ()
+insertThis var = do 
     t <- newTVar kTyp
+    tellVars [(var, t)]
     unifyThis t
-    pure t
 
 opType
   :: ( MonadSupply Name m
@@ -352,7 +623,7 @@ inferClause
   => [Type]
   -> Clause t (ProgPattern t) (m (ProgExpr (TypeInfo [Error])))
   -> m (ProgClause (TypeInfo [Error]))
-inferClause tys eq@(Clause _ pats _) = inferExprNode (args2 Clause) $ do
+inferClause tys eq@(Clause _ pats _) = xyz2 Clause $ do
     (ps, (_, vs, _, _)) <- listen (traverse (patternNode . inferPattern) pats)
     let schemes = toScheme <$$> vs
         Clause _ _ guards = local (second3 (Env.inserts schemes)) <$> eq
@@ -369,6 +640,54 @@ inferGuard
   => Guard (m (ProgExpr (TypeInfo [Error])))
   -> WriterT Node m (Guard (ProgExpr (TypeInfo [Error])))
 inferGuard (Guard exprs expr) = Guard <$> traverse exprNode exprs <*> exprNode expr
+
+--    pure (Clause ti x y)
+
+--    newTy <- newTVar kTyp
+--    ((x, y), ti, _) <- inferNode newTy $ do
+--        (tps, vs) <- second concat . unzip <$> traverse inferPattern ps
+--        let schemes = toScheme <$$> vs
+--            Clause _ _ guards = local (second3 (Env.inserts schemes)) <$> eq
+--            (iffs, es) = unzip (guardPair <$> guards)
+--        -- Conditions must be Bool
+--        forM_ (concat iffs) unifyIffCondition 
+--        gs <- lift (traverse sequence guards)
+--        pure (tps, gs)
+--
+--    pure (Clause ti x y)
+
+--unifyPatterns
+--  :: ( Typed u
+--     , Typed v 
+--     , MonadSupply Name m
+--     , MonadReader (ClassEnv, TypeEnv, ConstructorEnv) m
+--     , MonadState (TypeSubstitution, Context) m ) 
+--  => t
+--  -> (u, v) 
+--  -> m ()
+--unifyPatterns = undefined
+
+--unifyPatterns
+--  :: ( Monoid t
+--     , Show t
+--     , Typed a
+--     , Typed b 
+--     , MonadSupply Name m
+--     , MonadReader (ClassEnv, TypeEnv, ConstructorEnv) m
+--     , MonadState (TypeSubstitution, Context) m
+----     , MonadError (InferError t) m 
+--     ) 
+--  => t
+--  -> (a, b) 
+--  -> m ()
+--unifyPatterns t (v1, v2) = 
+--    undefined
+--
+----    catchError 
+----        (v1 ## v2)
+----        (const $ failWithError (ClausePatternTypeMismatch (typeOf v1) (typeOf v2)) t)
+--
+--unifyPatterns (a, b) = uncurry unify2W (a, b)
 
 unifyIffCondition 
   :: ( MonadSupply Name m
@@ -558,41 +877,6 @@ lookupClassInstance tc ty env = do
 
 -- >>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>
 
-args0 :: (TypeInfo [Error] -> a) -> TypeInfo [Error] -> () -> a
-args0 f ti () = f ti
-
-args2 :: (TypeInfo [Error] -> t1 -> t2 -> a) -> TypeInfo [Error] -> (t1, t2) -> a
-args2 f ti (a, b) = f ti a b
-
-args3 :: (TypeInfo [Error] -> t1 -> t2 -> t3 -> a) -> TypeInfo [Error] -> (t1, t2, t3) -> a
-args3 f ti (a, b, c) = f ti a b c
-
-inferPatternNode
-  :: ( MonadSupply Name m
-     , MonadReader (ClassEnv, TypeEnv, ConstructorEnv) m
-     , MonadState (TypeSubstitution, Context) m )
-  => (TypeInfo [Error] -> t -> a)
-  -> WriterT Node m t 
-  -> m (a, [(Name, Type)])
-inferPatternNode c f = do
-    newTy <- newTVar kTyp
-    (a, ti, vs) <- inferNode newTy f
-    pure (c ti a, vs)
-
-inferExprNode
-  :: ( MonadSupply Name m
-     , MonadReader (ClassEnv, TypeEnv, ConstructorEnv) m
-     , MonadState (TypeSubstitution, Context) m )
-  => (TypeInfo [Error] -> t1 -> a)
-  -> WriterT Node m t1
-  -> m a
-inferExprNode c f = do
-    newTy <- newTVar kTyp
-    (a, ti, _) <- inferNode newTy f
-    pure (c ti a)
-
--- >>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>
-
 -- Type class instances 
 
 instance (Typed t) => Typed (ProgExpr t) where
@@ -661,12 +945,21 @@ runUnify = runExceptT <$$> unify2
 
 -- >>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>
 
+--data InferError t = InferError 
+--    { errorSub  :: TypeSubstitution
+--    , errorCtx  :: Context
+--    , errorType :: Error
+--    , errorMeta :: t
+--    } deriving (Show, Eq)
+--
+--setMeta :: t -> InferError t -> InferError t
+--setMeta meta InferError{..} = InferError{ errorMeta = meta, .. }
+
 -- Monad transformer stack
 
-type InferState   = StateT (TypeSubstitution, Context)
-type InferReader  = ReaderT (ClassEnv, TypeEnv, ConstructorEnv)
-type InferSupply  = SupplyT Name
-type InferStack a = InferReader (InferState (InferSupply a))
+--type InferState    = StateT (TypeSubstitution, Context)
+--type InferReader   = ReaderT (ClassEnv, TypeEnv, ConstructorEnv)
+--type InferSupply   = SupplyT Name
 
 runInferState :: (Monad m) => Context -> InferState m a -> m (a, (TypeSubstitution, Context))
 runInferState context = flip runStateT (mempty, context)
@@ -676,6 +969,41 @@ runInferReader e1 e2 e3 = flip runReaderT (e1, e2, e3)
 
 runInferSupply :: (Monad m) => InferSupply m a -> m a
 runInferSupply = flip evalSupplyT (numSupply "a")
+
+--type InferExcept t = ExceptT (InferError t)
+--
+--runInferExcept :: InferExcept t m a -> m (Either (InferError t) a)
+--runInferExcept = runExceptT
+
+--runInferMaybe :: (Monoid t) => Maybe (Either (InferError t) a) -> Either (InferError t) a
+--runInferMaybe = fromMaybe (Left (InferError mempty mempty (Err "Implementation error") mempty))
+
+--type InferStack t = InferReader (InferState (InferSupply (InferExcept t Maybe)))
+
+--runInfer 
+--  ::(Monoid t) 
+--  => Context 
+--  -> ClassEnv 
+--  -> TypeEnv 
+--  -> ConstructorEnv 
+--  -> InferStack t a 
+--  -> Either (InferError t) (a, TypeSubstitution, Context)
+--runInfer context classEnv typeEnv constructorEnv = 
+--    runInferReader classEnv typeEnv constructorEnv
+--    >>> runInferState context
+--    >>> runInferSupply
+--    >>> runInferExcept
+--    >>> runInferMaybe
+--    >>> fmap to
+
+-- >>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>
+
+-- Monad transformer stack
+
+type InferState    = StateT (TypeSubstitution, Context)
+type InferReader   = ReaderT (ClassEnv, TypeEnv, ConstructorEnv)
+type InferSupply   = SupplyT Name
+type InferStack a  = InferReader (InferState (InferSupply a))
 
 runInfer 
   :: (Monad m)
@@ -690,3 +1018,15 @@ runInfer context classEnv typeEnv constructorEnv =
     >>> runInferState context
     >>> runInferSupply
     >>> fmap to
+
+--    >>> runInferExcept
+
+-- (InferState (InferSupply (InferExcept t Maybe)))
+
+--runInfer context classEnv typeEnv constructorEnv = 
+--    runInferReader classEnv typeEnv constructorEnv
+--    >>> runInferState context
+--    >>> runInferSupply
+--    >>> runInferExcept
+--    >>> runInferMaybe
+--    >>> fmap to

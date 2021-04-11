@@ -197,6 +197,17 @@ test8 = do
     e = inferExpr (letExpr () (BLet (varPat () "x")) (litExpr () (TInt 5)) (varExpr () "x"))
 
 
+test9 = do
+    print "----------"
+    print (apply sub x)
+    print ctx
+    print "=========="
+  where
+    (x, sub, ctx) = fromJust (runInfer mempty testClassEnv testTypeEnv testConstructorEnv e)
+    e = inferExpr (op2Expr () (OEq ()) (litExpr () (TInt 1)) (litExpr () (TInt 1)))
+
+
+
 
 
 main :: IO ()
