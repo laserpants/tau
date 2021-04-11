@@ -17,34 +17,17 @@ data UnificationError
     deriving (Show, Eq)
 
 data ErrorT t
-    = Err Text
-    -- 
-    | CannotUnify t t UnificationError 
-    | CannotMatch t t UnificationError 
-    -- 
+    = CannotUnify t t UnificationError
+    | CannotMatch t t UnificationError
     | UnboundTypeIdentifier Name
     | MissingClass Name
     | MissingInstance Name t
     | NoDataConstructor Name
-    -- 
-    | ListElemUnficationError 
-    | ListPatternElemUnficationError 
-    -- Expr type inference errors
---    | BadGuardCondition t
---    | ClausePatternTypeMismatch t t
-----    | ClauseExprTypeMismatch (ProgExpr (TypeInfo (ErrorT t))) t t
---    -- Pattern type inference errors
+    | ListElemUnficationError
+    | ListPatternElemUnficationError
     | ConstructorPatternArityMismatch Name Int Int
-    | ConstructorPatternTypeMismatch Name 
---    -- 
---    -- 
---    -- 
---    -- 
---    | MissingClass Name
---    | MissingInstance Name t
+    | ConstructorPatternTypeMismatch Name
+    | NonBooleanGuardCondition
     deriving (Show, Eq, Functor, Foldable, Traversable)
 
 type Error = ErrorT Type
-
--- >>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>
-

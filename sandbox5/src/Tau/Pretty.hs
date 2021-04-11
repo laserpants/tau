@@ -8,6 +8,8 @@ import Control.Monad ((<=<))
 import Data.Function ((&))
 import Data.List (null, intersperse)
 import Data.Text.Prettyprint.Doc
+import Data.Text.Prettyprint.Doc.Render.Text
+import Data.Tree
 import Tau.Compiler.Substitution hiding (null)
 import Tau.Lang
 import Tau.Row
@@ -242,3 +244,24 @@ instance Pretty (Op2 t) where
 
 instance Pretty (Ast t) where
     pretty (Ast expr) = "TODO"
+
+-- >>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>
+
+exprTree :: ProgExpr t -> Tree (Doc a)
+exprTree = para $ \case
+
+    EVar    t var        -> Node "TODO" []
+    ECon    t name es    -> Node "TODO" []
+    ELit    t prim       -> Node "TODO" []
+    EApp    t es         -> Node "TODO" []
+    ELet    t bind e1 e2 -> Node "TODO" []
+    EFix    t name e1 e2 -> Node "TODO" []
+    ELam    t ps e       -> Node "TODO" []
+    EIf     t e1 e2 e3   -> Node "TODO" []
+    EPat    t es cs      -> Node "TODO" []
+    EFun    t cs         -> Node "TODO" []
+    EOp1    t op a       -> Node "TODO" []
+    EOp2    t op a b     -> Node "TODO" []
+    ETuple  t es         -> Node "TODO" []
+    EList   t es         -> Node "TODO" []
+    ERecord t row        -> Node "TODO" []
