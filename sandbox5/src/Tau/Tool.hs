@@ -19,6 +19,11 @@ module Tau.Tool
   , numSupply
   , prettyPrint
   , whenLeft
+  , firstM
+  , secondM
+  , first3M
+  , second3M
+  , third3M
   , module Data.Eq.Deriving
   , module Data.Fix
   , module Data.Functor.Foldable
@@ -131,3 +136,30 @@ renderDoc = renderStrict . layoutPretty defaultLayoutOptions
 
 prettyPrint :: (Pretty p) => p -> Text
 prettyPrint = renderDoc . pretty
+
+-- >>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>
+
+firstM :: (Monad m) => (a -> m a1) -> (a, b) -> m (a1, b)
+firstM f (a, b) = do
+    a1 <- f a
+    pure (a1, b)
+
+secondM :: (Monad m) => (b -> m b1) -> (a, b) -> m (a, b1)
+secondM f (a, b) = do
+    b1 <- f b
+    pure (a, b1)
+
+first3M :: (Monad m) => (a -> m a1) -> (a, b, c) -> m (a1, b, c)
+first3M f (a, b, c) = do
+    a1 <- f a
+    pure (a1, b, c)
+
+second3M :: (Monad m) => (b -> m b1) -> (a, b, c) -> m (a, b1, c)
+second3M f (a, b, c) = do
+    b1 <- f b
+    pure (a, b1, c)
+
+third3M :: (Monad m) => (c -> m c1) -> (a, b, c) -> m (a, b, c1)
+third3M f (a, b, c) = do
+    c1 <- f c
+    pure (a, b, c1)

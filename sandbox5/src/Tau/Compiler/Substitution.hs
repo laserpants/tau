@@ -14,6 +14,7 @@ import Tau.Prog
 import Tau.Tool
 import Tau.Type
 import qualified Data.Map.Strict as Map
+import qualified Tau.Env as Env
 
 newtype Substitution a = Sub { getSub :: Map Name (TypeT a) }
     deriving (Show, Eq)
@@ -127,6 +128,9 @@ instance Substitutable Scheme Void where
 
 instance Substitutable PolyType Void where
     apply (Sub sub) = substitute (Sub (Map.map upgrade sub))
+
+instance Substitutable TypeEnv Void where
+    apply = Env.map . apply 
 
 -- >>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>
 

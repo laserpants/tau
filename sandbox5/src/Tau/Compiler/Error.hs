@@ -27,14 +27,14 @@ data ErrorT t
     | MissingInstance Name t
     | NoDataConstructor Name
     -- 
+    | ListPatternElemUnficationError 
     -- Expr type inference errors
 --    | BadGuardCondition t
 --    | ClausePatternTypeMismatch t t
 ----    | ClauseExprTypeMismatch (ProgExpr (TypeInfo (ErrorT t))) t t
 --    -- Pattern type inference errors
---    | ListPatternTypeUnficationError 
     | ConstructorPatternArityMismatch Name Int Int
---    | ConstructorPatternTypeMismatch Name t [t]
+    | ConstructorPatternTypeMismatch Name 
 --    -- 
 --    -- 
 --    -- 

@@ -1,4 +1,5 @@
 {-# LANGUAGE DeriveTraversable  #-}
+{-# LANGUAGE FlexibleInstances  #-}
 {-# LANGUAGE StandaloneDeriving #-}
 {-# LANGUAGE StrictData         #-}
 module Tau.Prog where
@@ -62,6 +63,9 @@ deriving instance Functor (TypeInfoT e)
 
 instance (Typed t) => Typed (TypeInfoT e t) where
     typeOf = typeOf . nodeType 
+
+instance FreeIn TypeEnv where
+    free = free . Env.elems
 
 -- >>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>
 

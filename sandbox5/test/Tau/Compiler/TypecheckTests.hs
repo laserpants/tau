@@ -1,4 +1,6 @@
+{-# LANGUAGE FlexibleInstances #-}
 {-# LANGUAGE LambdaCase        #-}
+{-# LANGUAGE MultiParamTypeClasses #-}
 {-# LANGUAGE OverloadedStrings #-}
 {-# LANGUAGE RecordWildCards   #-}
 module Tau.Compiler.TypecheckTests where
@@ -6,11 +8,14 @@ module Tau.Compiler.TypecheckTests where
 import Control.Monad.Writer
 import Data.Either (isLeft, isRight)
 import Data.List (nub)
+import Data.Map.Strict (Map)
 import Data.Maybe (fromJust)
+import Data.Set.Monad (Set)
 import Tau.Compiler.Error
 import Tau.Compiler.Substitution
 import Tau.Compiler.Typecheck
 import Tau.Compiler.Unification
+import Tau.Env (Env(..))
 import Tau.Lang
 import Tau.Pretty
 import Tau.Prog
@@ -19,9 +24,17 @@ import Tau.Tool
 import Tau.Type
 import Test.Hspec hiding (describe, it)
 import Utils
+import qualified Data.Map.Strict as Map
 import qualified Data.Set.Monad as Set
 import qualified Tau.Compiler.Substitution as Sub
 import qualified Tau.Env as Env
+
+--instance Substitutable Context Void where
+--    apply sub ctx = undefined
+--      where
+--        y :: Map Type (Set Name)
+--        y = Map.mapKeys (apply sub . tVar kTyp) x
+--        (Env x) = ctx
 
 succeedInferExpr expr ty ps errs = do
     describe "xxx" $ do
@@ -30,6 +43,7 @@ succeedInferExpr expr ty ps errs = do
                     TypeInfo{..} = exprTag (apply sub e)
                     sub1 = normalizer nodeType
               in 
+                  traceShow context $
 --                traceShow info $
 --                    traceShow (apply sub1 nodeType) $
 --                        traceShow (apply sub1 (nub nodePredicates)) $
@@ -47,9 +61,10 @@ succeedInferPattern pat ty ps vs = do
                     TypeInfo{..} = patternTag (apply sub p)
                     sub1 = normalizer nodeType
                     vars' = apply sub <$$> vars
-              in apply sub1 nodeType ==  ty
-                   && apply sub1 (nub nodePredicates) == ps
-                   && Set.fromList (apply sub1 <$$> vars') == Set.fromList vs
+              in traceShow nodeErrors $
+                    apply sub1 nodeType ==  ty
+                           && apply sub1 (nub nodePredicates) == ps
+                           && Set.fromList (apply sub1 <$$> vars') == Set.fromList vs
   where
     ((p, vars), sub, context) = runInferWithEnvs (inferPattern pat)
 
@@ -195,10 +210,12 @@ testInferPattern = do
 
     -- Failures
 
-----    failInferPattern "List type unification fails"
-----        (listPat () [litPat () (TBool True), litPat () (TInt 5)])
-----        (\case { ListPatternTypeUnficationError -> True; _ -> False })
-----
+--    succeedInferPattern 
+--        (listPat () [litPat () (TBool True), litPat () (TInt 5)])
+--        _a
+--        []
+--        []
+--
 ----    failInferPattern "List type unification fails"
 ----        (listPat () [litPat () (TBool True), litPat () TUnit])
 ----        (\case { ListPatternTypeUnficationError -> True; _ -> False })
@@ -240,6 +257,17 @@ testInferExpr = do
         [] 
         []
 
+    succeedInferExpr
+        (letExpr () (BLet (varPat () "x")) (litExpr () TUnit) (varExpr () "x"))
+        tUnit
+        [] 
+        []
+
+    succeedInferExpr
+        (letExpr () (BLet (varPat () "x")) (litExpr () (TInt 5)) (varExpr () "x"))
+        _a
+        [] -- InClass "Num" (tVar kTyp "a")] 
+        []
 
 -- >>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>
 
@@ -289,9 +317,18 @@ testClassEnv = Env.fromList
             ]
         -- Instances
         , [ ClassInfo [] (InClass "Eq" tInt)
-            [ ( "(==)", Ast (varExpr (TypeInfo (tInt `tArr` tInt `tArr` tBool) [] ()) "@Int.(==)" ) )
-            ]
+              [ ( "(==)", Ast (varExpr (TypeInfo (tInt `tArr` tInt `tArr` tBool) [] ()) "@Int.(==)" ) )
+              ]
           ]
+        )
+      )
+    , ( "Num"
+        -- Interface
+      , ( ClassInfo [] (InClass "Num" "a") 
+            [ ( "(+)", tVar kTyp "a" `tArr` tVar kTyp "a" `tArr` tVar kTyp "a" )
+            ]
+        -- Instances
+        , []
         )
       )
     ]

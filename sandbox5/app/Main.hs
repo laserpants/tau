@@ -166,6 +166,38 @@ test5 = do
 
 
 
+test6 = do
+    print "----------"
+    print (apply sub x)
+    print "=========="
+  where
+    (x, sub, ctx) = fromJust (runInfer mempty testClassEnv testTypeEnv testConstructorEnv e)
+    e = inferExpr 
+        (appExpr () 
+            [ funExpr () [ Clause () [conPat () "Some" [litPat () (TBool True)] ] [Guard [] (litExpr () (TInt 1))] ]
+            , conExpr () "Some" [litExpr () TUnit] ])
+
+
+test7 = do
+    print "----------"
+    print (apply sub x)
+    print "=========="
+  where
+    (x, sub, ctx) = fromJust (runInfer mempty testClassEnv testTypeEnv testConstructorEnv e)
+    e = inferExpr (appExpr () [varExpr () "id", litExpr () (TInt 5)])
+
+
+test8 = do
+    print "----------"
+    print (apply sub x)
+    print ctx
+    print "=========="
+  where
+    (x, sub, ctx) = fromJust (runInfer mempty testClassEnv testTypeEnv testConstructorEnv e)
+    e = inferExpr (letExpr () (BLet (varPat () "x")) (litExpr () (TInt 5)) (varExpr () "x"))
+
+
+
 
 main :: IO ()
 main = print "Main"
@@ -223,13 +255,11 @@ testClassEnv = Env.fromList
       )
     , ( "Num"
         -- Interface
-      , ( ClassInfo [] (InClass "Num" "a")
-            [ 
+      , ( ClassInfo [] (InClass "Num" "a") 
+            [ ( "(+)", tVar kTyp "a" `tArr` tVar kTyp "a" `tArr` tVar kTyp "a" )
             ]
         -- Instances
-        , [ ClassInfo [] (InClass "Num" tInt)
-            []
-        ]
+        , []
         )
       )
     ]
