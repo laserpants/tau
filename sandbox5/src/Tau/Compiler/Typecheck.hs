@@ -84,12 +84,12 @@ xyz3 c f = do
     ((a1, a2, a3), ti, _) <- inferNode newTy f
     pure (c ti a1 a2 a3)
 
-abc123 
+thisVar 
   :: ( MonadSupply Name m
      , MonadReader (ClassEnv, TypeEnv, ConstructorEnv) m
      , MonadState (TypeSubstitution, Context) m )
   => WriterT Node m Type
-abc123 = do
+thisVar = do
     t <- newTVar kTyp
     unifyThis t
     pure t
@@ -123,7 +123,7 @@ inferExpr = cata $ \case
     ECon _ con exprs -> xyz2 conExpr $ do
         ty <- lookupScheme con >>= instantiate
         es <- traverse fooz2 exprs
-        t1 <- abc123
+        t1 <- thisVar
         unify2W ty (foldr tArr t1 (typeOf <$> es))
         pure (con, es)
 
@@ -152,7 +152,7 @@ inferExpr = cata $ \case
         case es of
             []     -> pure ()
             f:args -> do
-                t1 <- abc123
+                t1 <- thisVar
                 unify2W f (foldr tArr t1 (typeOf <$> args))
         pure es
 
@@ -320,7 +320,7 @@ inferPattern = cata $ \case
         ty <- lookupScheme con >>= instantiate
         ps <- traverse fooz pats
 
-        t1 <- abc123
+        t1 <- thisVar
         (_, node) <- listen (unify2W ty (foldr tArr t1 (typeOf <$> ps)))
         when (nodeHasErrors node) $
             insertErrors [ConstructorPatternTypeMismatch con]
@@ -542,15 +542,23 @@ inferClause
   => [Type]
   -> Clause t (ProgPattern t) (m (ProgExpr (TypeInfo [Error])))
   -> m (ProgClause (TypeInfo [Error]))
-inferClause tys eq@(Clause _ ps _) = xyz2 Clause $ do
-    (tps, vs) <- second concat . unzip <$> traverse inferPattern ps
+inferClause tys eq@(Clause _ pats _) = xyz2 Clause $ do
+    (ps, (_, vs, _, _)) <- listen (traverse (fooz . inferPattern) pats)
     let schemes = toScheme <$$> vs
         Clause _ _ guards = local (second3 (Env.inserts schemes)) <$> eq
         (iffs, es) = unzip (guardPair <$> guards)
     -- Conditions must be Bool
     forM_ (concat iffs) unifyIffCondition 
-    gs <- lift (traverse sequence guards)
-    pure (tps, gs)
+    gs <- traverse inferGuard guards
+    pure (ps, gs)
+
+inferGuard 
+  :: ( MonadSupply Name m
+     , MonadReader (ClassEnv, TypeEnv, ConstructorEnv) m
+     , MonadState (TypeSubstitution, Context) m )
+  => Guard (m (ProgExpr (TypeInfo [Error])))
+  -> WriterT Node m (Guard (ProgExpr (TypeInfo [Error])))
+inferGuard (Guard exprs expr) = Guard <$> traverse fooz2 exprs <*> fooz2 expr
 
 --    pure (Clause ti x y)
 
