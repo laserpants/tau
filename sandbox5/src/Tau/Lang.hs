@@ -84,9 +84,9 @@ type ProgClause t = Clause t (ProgPattern t) (ProgExpr t)
 -- >>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>
 
 -- | Name binding-part of let expressions
-data Binding p
-    = BLet p                             -- ^ Simple let-binding
-    | BFun Name [p]                      -- ^ Function binding
+data Binding t p
+    = BLet t p                           -- ^ Simple let-binding
+    | BFun t Name [p]                    -- ^ Function binding
 
 -- >>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>
 
@@ -111,7 +111,7 @@ data ExprF t1 t2 t3 t4 t5 t6 t7 t8 t9 t10 t11 t12 t13 t14 t15 bind lam pat a
 type Expr t1 t2 t3 t4 t5 t6 t7 t8 t9 t10 t11 t12 t13 t14 t15 bind lam pat = 
     Fix (ExprF t1 t2 t3 t4 t5 t6 t7 t8 t9 t10 t11 t12 t13 t14 t15 bind lam pat)
 
-type ProgExpr t = Expr t t t t t t t t t t t t t t t (Binding (ProgPattern t)) [ProgPattern t] (ProgPattern t)
+type ProgExpr t = Expr t t t t t t t t t t t t t t t (Binding t (ProgPattern t)) [ProgPattern t] (ProgPattern t)
 
 -- >>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>
 
@@ -191,9 +191,9 @@ deriving instance (Ord  t) => Ord  (Op2 t)
 
 -- Type class instances for Binding
 
-deriving instance (Show p) => Show (Binding p)
-deriving instance (Eq   p) => Eq   (Binding p)
-deriving instance (Ord  p) => Ord  (Binding p)
+deriving instance (Show t, Show p) => Show (Binding t p)
+deriving instance (Eq   t, Eq   p) => Eq   (Binding t p)
+deriving instance (Ord  t, Ord  p) => Ord  (Binding t p)
 
 deriveShow1 ''Binding
 deriveEq1   ''Binding
@@ -245,8 +245,8 @@ instance Functor Ast where
             ERecord t row        -> recordExpr (f t) row
 
         mapBind = \case
-            BLet p               -> BLet (mapPattern p)
-            BFun name ps         -> BFun name (mapPattern <$> ps)
+            BLet    t p          -> BLet      (f t) (mapPattern p)
+            BFun    t name ps    -> BFun      (f t) name (mapPattern <$> ps)
 
         mapClause = \case
             Clause  t ps gs      -> Clause    (f t) (mapPattern <$> ps) gs
@@ -437,6 +437,11 @@ op2Tag = \case
     OOpt    t       -> t
     OStrc   t       -> t
     ONdiv   t       -> t
+
+bindingTag :: Binding t p -> t
+bindingTag = \case
+    BLet    t _     -> t
+    BFun    t _ _   -> t
 
 astTag :: Ast t -> t
 astTag = exprTag . getAst 

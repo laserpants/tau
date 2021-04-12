@@ -83,8 +83,8 @@ inferExpr = cata $ \case
                 unify2W f (foldr tArr t1 (typeOf <$> args))
         pure es
 
-    ELet _ (BLet pat) expr1 expr2 -> inferExprNode (args3 letExpr) $ do
-        (p, (_, vs, _, _)) <- listen (patternNode (inferPattern pat))
+    ELet _ (BLet _ pat) expr1 expr2 -> inferExprNode (args3 letExpr) $ do
+        (p, vs) <- second nodeVars <$> listen (patternNode (inferPattern pat))
 
         e1 <- exprNode expr1
         -- Unify bound variable with expression
@@ -94,20 +94,20 @@ inferExpr = cata $ \case
         e2 <- exprNode (local (second3 (Env.inserts schemes)) expr2)
         unifyThis (typeOf e2)
 
-        pure (BLet p, e1, e2)
+        pure (BLet (TypeInfo (typeOf e1) (exprPredicates e1) []) p, e1, e2)
 
-    ELet _ (BFun f pats) expr1 expr2 -> inferExprNode (args3 letExpr) $ do
-        (ps, (_, vs, _, _)) <- listen (traverse (patternNode . inferPattern) pats)
+    ELet _ (BFun _ f pats) expr1 expr2 -> inferExprNode (args3 letExpr) $ do
+        (ps, vs) <- second nodeVars <$> listen (traverse (patternNode . inferPattern) pats)
 
         e1 <- exprNode (local (second3 (Env.inserts (toScheme <$$> vs))) expr1)
         t1 <- newTVar kTyp
-        unify2W t1 (foldr tArr (typeOf e1) (typeOf <$> ps))
+        (_, node) <- listen (unify2W t1 (foldr tArr (typeOf e1) (typeOf <$> ps)))
         scheme <- generalize t1
 
         e2 <- exprNode (local (second3 (Env.insert f scheme)) expr2)
         unifyThis (typeOf e2)
 
-        pure (BFun f ps, e1, e2)
+        pure (BFun (TypeInfo t1 (predicates node) []) f ps, e1, e2)
 
     EFix _ name expr1 expr2 -> inferExprNode (args3 fixExpr) $ do
         t1 <- newTVar kTyp
@@ -119,7 +119,7 @@ inferExpr = cata $ \case
         pure (name, e1, e2)
 
     ELam _ pats expr -> inferExprNode (args2 lamExpr) $ do
-        (ps, (_, vs, _, _)) <- listen (traverse (patternNode . inferPattern) pats)
+        (ps, vs) <- second nodeVars <$> listen (traverse (patternNode . inferPattern) pats)
         e1 <- exprNode (local (second3 (Env.inserts (toScheme <$$> vs))) expr)
         unifyThis (foldr tArr (typeOf e1) (typeOf <$> ps))
         pure (ps, e1)
@@ -638,6 +638,15 @@ insertErrors es = tell (mempty, mempty, mempty, es)
 
 nodeHasErrors :: Node -> Bool
 nodeHasErrors (_, _, _, es) = not (Prelude.null es)
+
+predicates :: Node -> [Predicate]
+predicates (_, _, ps, _) = ps
+
+errors :: Node -> [Error]
+errors (_, _, _, es) = es
+
+nodeVars :: Node -> [(Name, Type)]
+nodeVars (_, vs, _, _) = vs
 
 inferNode
   :: ( MonadSupply Name m

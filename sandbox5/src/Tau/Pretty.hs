@@ -207,10 +207,10 @@ instance Pretty (ProgExpr t) where
             EList   _ es         -> prettyList_ es
             ERecord _ row        -> lbrace <+> prettyRow "=" row <+> rbrace
 
-instance (Pretty b) => Pretty (Binding b) where
+instance (Pretty b) => Pretty (Binding t b) where
     pretty = \case
-        BLet pat  -> pretty pat
-        BFun f ps -> pretty f <> prettyTuple (pretty <$> ps)
+        BLet _ pat  -> pretty pat
+        BFun _ f ps -> pretty f <> prettyTuple (pretty <$> ps)
 
 prettyApp :: (Pretty p) => [p] -> Doc a
 prettyApp (f:args) = pretty f <> prettyTuple (pretty <$> args)
@@ -279,9 +279,9 @@ op1Tree t op a = Node (pretty op <+> colon <+> pretty (typeOf t)) [a]
 op2Tree :: (Typed t, Pretty p) => t -> p -> Tree (Doc a) -> Tree (Doc a) -> Tree (Doc a)
 op2Tree t op a b = Node ("(" <> pretty op <> ")" <+> colon <+> pretty (typeOf t)) [a, b]
 
-letTree :: (Typed t, Pretty p) => t -> p -> Tree (Doc a) -> Tree (Doc a) -> Tree (Doc a)
+letTree :: (Pretty p, Typed a1, Typed a2) => a1 -> Binding a2 p -> Tree (Doc a) -> Tree (Doc a) -> Tree (Doc a)
 letTree t bind e1 e2 =
     Node ("let" <+> colon <+> pretty (typeOf t))
-        [ Node (pretty bind <+> equals) [e1]
+        [ Node (pretty bind <+> colon <+> pretty (typeOf (bindingTag bind)) <+> equals) [e1]
         , Node "in" [e2]
         ]

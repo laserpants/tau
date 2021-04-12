@@ -54,10 +54,10 @@ instance (Substitutable t a) => Substitutable (ProgPattern t) a where
         PList   t ps         -> listPat   (apply sub t) ps
         PRecord t row        -> recordPat (apply sub t) row
 
-instance (Substitutable p a) => Substitutable (Binding p) a where
+instance (Substitutable t a, Substitutable p a) => Substitutable (Binding t p) a where
     apply sub = \case
-        BLet p               -> BLet      (apply sub p)
-        BFun name ps         -> BFun name (apply sub ps)
+        BLet t p             -> BLet (apply sub t) (apply sub p)
+        BFun t name ps       -> BFun (apply sub t) name (apply sub ps)
 
 instance (Substitutable t a) => Substitutable (Guard (ProgExpr t)) a where
     apply sub = \case

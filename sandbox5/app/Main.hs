@@ -181,20 +181,22 @@ test6 = do
 test7 = do
     print "----------"
     print (apply sub x)
+    print (pretty (apply sub x))
     print "=========="
   where
     (x, sub, ctx) = fromJust (runInfer mempty testClassEnv testTypeEnv testConstructorEnv e)
-    e = inferExpr (appExpr () [varExpr () "id", litExpr () (TInt 5)])
+    e = inferAst (Ast (appExpr () [varExpr () "id", litExpr () (TInt 5)]))
 
 
 test8 = do
     print "----------"
     print (apply sub x)
+    print (pretty (apply sub x))
     print ctx
     print "=========="
   where
     (x, sub, ctx) = fromJust (runInfer mempty testClassEnv testTypeEnv testConstructorEnv e)
-    e = inferExpr (letExpr () (BLet (varPat () "x")) (litExpr () (TInt 5)) (varExpr () "x"))
+    e = inferAst (Ast (letExpr () (BLet () (varPat () "x")) (litExpr () (TInt 5)) (varExpr () "x")))
 
 
 test9 = do
@@ -209,11 +211,11 @@ test9 = do
 
 
 test10 =
-    Ast (letExpr () (BLet (varPat () "x")) (litExpr () (TInt 5)) (varExpr () "x"))
+    Ast (letExpr () (BLet () (varPat () "x")) (litExpr () (TInt 5)) (varExpr () "x"))
 
 
 test11 =
-    Ast (letExpr () (BFun "f" [varPat () "x", varPat () "y"]) (litExpr () (TInt 5)) (varExpr () "x"))
+    Ast (letExpr () (BFun () "f" [varPat () "x", varPat () "y"]) (litExpr () (TInt 5)) (varExpr () "x"))
 
 
 test12 = do
@@ -224,7 +226,7 @@ test12 = do
     print "=========="
   where
     (x, sub, ctx) = fromJust (runInfer mempty testClassEnv testTypeEnv testConstructorEnv e)
-    e = inferAst (Ast (letExpr () (BFun "f" [varPat () "x", varPat () "y"]) (litExpr () (TInt 5)) (appExpr () [varExpr () "f", litExpr () (TInt 1), litExpr () (TInt 1)])))
+    e = inferAst (Ast (letExpr () (BFun () "f" [varPat () "x", varPat () "y"]) (litExpr () (TInt 5)) (appExpr () [varExpr () "f", litExpr () (TInt 1), litExpr () (TInt 1)])))
 
 
 test14 = do
@@ -235,7 +237,7 @@ test14 = do
     print "=========="
   where
     (x, sub, ctx) = fromJust (runInfer mempty testClassEnv testTypeEnv testConstructorEnv e)
-    e = inferAst (Ast (letExpr () (BLet (varPat () "x")) (litExpr () (TInt 5)) (varExpr () "x")))
+    e = inferAst (Ast (letExpr () (BLet () (varPat () "x")) (litExpr () (TInt 5)) (varExpr () "x")))
 
 
 

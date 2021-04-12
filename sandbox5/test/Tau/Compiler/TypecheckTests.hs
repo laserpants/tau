@@ -258,13 +258,13 @@ testInferExpr = do
         []
 
     succeedInferExpr
-        (letExpr () (BLet (varPat () "x")) (litExpr () TUnit) (varExpr () "x"))
+        (letExpr () (BLet () (varPat () "x")) (litExpr () TUnit) (varExpr () "x"))
         tUnit
         [] 
         []
 
     succeedInferExpr
-        (letExpr () (BLet (varPat () "x")) (litExpr () (TInt 5)) (varExpr () "x"))
+        (letExpr () (BLet () (varPat () "x")) (litExpr () (TInt 5)) (varExpr () "x"))
         _a
         [] -- InClass "Num" (tVar kTyp "a")] 
         []
