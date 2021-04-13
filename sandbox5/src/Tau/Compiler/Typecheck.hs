@@ -45,7 +45,10 @@ inferAst
      , MonadState (TypeSubstitution, Context) m )
   => Ast t
   -> m (Ast (TypeInfo [Error]))
-inferAst (Ast expr) = Ast <$> inferExpr expr
+inferAst (Ast expr) = do
+    e <- inferExpr expr
+    sub <- gets fst
+    pure (optimizePredicates <$> Ast (apply sub e))
 
 inferExpr
   :: ( Monoid t
@@ -87,6 +90,7 @@ inferExpr = cata $ \case
         (p, vs) <- second nodeVars <$> listen (patternNode (inferPattern pat))
 
         e1 <- exprNode expr1
+
         -- Unify bound variable with expression
         unify2W p e1
 
@@ -94,20 +98,33 @@ inferExpr = cata $ \case
         e2 <- exprNode (local (second3 (Env.inserts schemes)) expr2)
         unifyThis (typeOf e2)
 
-        pure (BLet (TypeInfo (typeOf e1) (exprPredicates e1) []) p, e1, e2)
+        name <- inferExprNode BLet $ do
+            unifyThis (typeOf e1)
+            insertPredicates (exprPredicates e1 <> exprPredicates e2)
+            insertPredicates (patternPredicates p)
+            pure p
+
+        pure (name, e1, e2)
 
     ELet _ (BFun _ f pats) expr1 expr2 -> inferExprNode (args3 letExpr) $ do
         (ps, vs) <- second nodeVars <$> listen (traverse (patternNode . inferPattern) pats)
 
         e1 <- exprNode (local (second3 (Env.inserts (toScheme <$$> vs))) expr1)
-        t1 <- newTVar kTyp
-        (_, node) <- listen (unify2W t1 (foldr tArr (typeOf e1) (typeOf <$> ps)))
-        scheme <- generalize t1
 
+        t1 <- newTVar kTyp
+        unify2W t1 (foldr tArr (typeOf e1) (typeOf <$> ps))
+
+        scheme <- generalize t1
         e2 <- exprNode (local (second3 (Env.insert f scheme)) expr2)
         unifyThis (typeOf e2)
 
-        pure (BFun (TypeInfo t1 (predicates node) []) f ps, e1, e2)
+        name <- inferExprNode (args2 BFun) $ do
+            unifyThis t1
+            insertPredicates (exprPredicates e1 <> exprPredicates e2)
+            insertPredicates (patternPredicates =<< ps)
+            pure (f, ps)
+
+        pure (name, e1, e2)
 
     EFix _ name expr1 expr2 -> inferExprNode (args3 fixExpr) $ do
         t1 <- newTVar kTyp
@@ -136,6 +153,13 @@ inferExpr = cata $ \case
     EPat _ exprs eqs -> inferExprNode (args2 patExpr) $ do
         es1 <- traverse exprNode exprs
         es2 <- lift (traverse (inferClause (typeOf <$> es1)) eqs)
+        insertPredicates (clausePredicates =<< es2)
+        -- Unify pattern clauses
+        forM_ es2 $ \(Clause t ps gs) -> do
+            forM_ gs (\(Guard _ e) -> unifyThis (typeOf e))
+            unifyThis (typeOf t)
+            forM_ (zip ps (typeOf <$> es1)) (uncurry unify2W)
+
         pure (es1, es2)
 
     EFun _ eqs@(Clause _ ps _:_) -> inferExprNode funExpr $ do

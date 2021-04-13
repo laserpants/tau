@@ -4,6 +4,7 @@
 {-# LANGUAGE StrictData         #-}
 module Tau.Prog where
 
+import Data.List (nub)
 import Data.Set.Monad (Set)
 import Data.Tuple.Extra (first)
 import Tau.Env (Env(..))
@@ -86,3 +87,11 @@ astPredicates = exprPredicates . getAst
 
 constructorEnv :: [(Name, ([Name], Int))] -> ConstructorEnv
 constructorEnv = Env.fromList . (first Set.fromList <$$>)
+
+optimizePredicates :: TypeInfo e -> TypeInfo e
+optimizePredicates (TypeInfo ty ps e) = TypeInfo ty (nub (filter relevant ps)) e
+  where
+    freeVars = free ty
+    relevant (InClass _ (Fix (TVar _ var))) 
+        | var `notElem` freeVars = False
+    relevant _                   = True

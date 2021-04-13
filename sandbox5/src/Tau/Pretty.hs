@@ -12,8 +12,10 @@ import Data.Text.Prettyprint.Doc
 import Data.Text.Prettyprint.Doc.Render.Text
 import Data.Tree
 import Data.Tree.View (showTree)
+import Tau.Compiler.Error
 import Tau.Compiler.Substitution hiding (null)
 import Tau.Lang
+import Tau.Prog
 import Tau.Row
 import Tau.Tool
 import Tau.Type
@@ -46,7 +48,7 @@ instance Pretty (ProgPattern t) where
     pretty = para $ \case
 
         PCon _ con [] -> pretty con
-        PCon _ con ps -> pretty con <+> foldr pCon "" ps
+        PCon _ con ps -> pretty con <+> foldr pCon "" (fst <$> ps)
 
         expr -> snd <$> expr & \case
             PVar    _ var    -> pretty var
@@ -58,11 +60,22 @@ instance Pretty (ProgPattern t) where
             PList   _ ps     -> prettyList_ ps
             PRecord _ row    -> lbrace <+> prettyRow "=" row <+> rbrace
 
-pCon :: (ProgPattern t, Doc a) -> Doc a -> Doc a
-pCon (p1, doc1) doc2 =
-    parensIf useLeft doc1 <> if "" == show doc2 then doc2 else space <> doc2
+--pCon :: (ProgPattern t, Doc a) -> Doc a -> Doc a
+--pCon (p1, doc1) doc2 =
+--    parensIf useLeft doc1 <> if "" == show doc2 then doc2 else space <> doc2
+--  where
+--    useLeft = case project p1 of
+--        PCon _ _ ps | not (null ps) -> True
+--        PAs{}                       -> True
+--        POr{}                       -> True
+--        _                           -> False
+
+pCon :: ProgPattern t -> Doc a -> Doc a
+pCon pat doc = lhs <> rhs
   where
-    useLeft = case project p1 of
+    lhs = parensIf useLeft (pretty pat)
+    rhs = if "" == show doc then "" else space <> doc
+    useLeft = case project pat of
         PCon _ _ ps | not (null ps) -> True
         PAs{}                       -> True
         POr{}                       -> True
@@ -188,12 +201,13 @@ isTuple con = Just True == (allCommas <$> stripped con)
 
 instance Pretty (ProgExpr t) where
     pretty = para $ \case
-        ECon    _ name es        -> "TODO"
+        ECon    _ con []         -> pretty con
+        ECon    _ con es         -> pretty con <+> foldr eCon "" (fst <$> es)
         EApp    _ es             -> prettyApp (fst <$> es)
-        EFix    _ name e1 e2     -> "TODO"
+        EFix    _ name e1 e2     -> "fix TODO"
         ELam    _ ps e           -> prettyTuple (pretty <$> ps) <+> "=>" <+> snd e
-        EPat    _ es cs          -> "TODO"
-        EFun    _ cs             -> "TODO"
+        EFun    _ cs             -> "fun" <+> pipe <+> prettyClauses (fst <$$> cs)
+        EPat    _ [e] cs         -> "match" <+> snd e <+> "with" <+> prettyClauses (fst <$$> cs)
 
         expr -> snd <$> expr & \case
 
@@ -214,6 +228,41 @@ instance (Pretty b) => Pretty (Binding t b) where
 
 prettyApp :: (Pretty p) => [p] -> Doc a
 prettyApp (f:args) = pretty f <> prettyTuple (pretty <$> args)
+
+instance (Pretty a) => Pretty (Clause t (ProgPattern t) a) where
+    pretty (Clause t ps gs) = pats <> guards
+      where
+        pats   | 1 == length ps = pretty (head ps)
+               | otherwise      = foldr pCon "" ps 
+        guards | null gs        = ""
+               | otherwise      = commaSep (pretty <$> gs)
+
+instance (Pretty a) => Pretty (Guard a) where
+    pretty (Guard es e) = iffs <+> "=>" <+> pretty e
+      where
+        iffs | null es = ""
+             | otherwise = space <> "iff" <+> commaSep (pretty <$> es) 
+
+prettyClauses :: (Pretty p) => [p] -> Doc a
+prettyClauses cs = hsep (punctuate (space <> pipe) (pretty <$> cs))
+
+{-
+  match xs with
+    | Some y 
+      iff y > 10 => 1
+      iff y < 2  => 2
+      otherwise  => 3
+-}
+
+eCon :: ProgExpr t -> Doc a -> Doc a
+eCon expr doc = lhs <> rhs
+  where
+    lhs = parensIf useLeft (pretty expr)
+    rhs = if "" == show doc then "" else space <> doc
+    useLeft = case project expr of
+        ECon _ _ es | not (null es) -> True
+        ELam{}                      -> True
+        _                           -> False
 
 -- >>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>
 
@@ -247,41 +296,70 @@ instance Pretty (Op2 t) where
 
 -- >>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>
 
-instance (Typed t) => Pretty (Ast t) where
+instance (Typed t, Pretty t) => Pretty (Ast t) where
     pretty (Ast expr) = pretty (showTree tree)
       where
         tree = unpack . renderDoc <$> exprTree expr
 
 -- >>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>
 
-exprTree :: (Typed t) => ProgExpr t -> Tree (Doc a)
+exprTree :: (Typed t, Pretty t) => ProgExpr t -> Tree (Doc a)
 exprTree = para $ \case
 
-    EVar    t var        -> Node (pretty var <+> colon <+> pretty (typeOf t)) []
-    ECon    t name es    -> Node "TODO" []
-    ELit    t prim       -> Node (pretty prim <+> colon <+> pretty (typeOf t)) []
-    EApp    t es         -> Node (pretty (appExpr t (fst <$> es)) <+> colon <+> pretty (typeOf t)) []
+    EVar    t var        -> Node (pretty var <+> colon <+> pretty t) []
+    ECon    t name es    -> Node "con TODO" []
+    ELit    t prim       -> Node (pretty prim <+> colon <+> pretty t) []
+    EApp    t es         -> Node (pretty (appExpr t (fst <$> es)) <+> colon <+> pretty t) []
     ELet    t bind e1 e2 -> letTree t bind (snd e1) (snd e2)
-    EFix    t name e1 e2 -> Node "TODO" []
-    ELam    t ps e       -> Node "TODO" []
-    EIf     t e1 e2 e3   -> Node "TODO" []
-    EPat    t es cs      -> Node "TODO" []
-    EFun    t cs         -> Node "TODO" []
+    EFix    t name e1 e2 -> Node "fix TODO" []
+    ELam    t ps e       -> Node "lam TODO" []
+    EIf     t e1 e2 e3   -> ifTree t (snd e1) (snd e2) (snd e3)
+    EPat    t es cs      -> Node ("match" <+> (commaSep (xxx . fst <$> es)) <+> "with" <+> colon <+> pretty t) (clauseTree <$> (fst <$$> cs))
+    EFun    t cs         -> Node ("fun" <+> colon <+> pretty t) (clauseTree <$> (fst <$$> cs))
     EOp1    t op a       -> op1Tree t op (snd a)
     EOp2    t op a b     -> op2Tree t op (snd a) (snd b)
-    ETuple  t es         -> Node "TODO" []
-    EList   t es         -> Node "TODO" []
-    ERecord t row        -> Node "TODO" []
+    ETuple  t es         -> Node "tuple TODO" []
+    EList   t es         -> Node (pretty t) (snd <$> es)
+    ERecord t row        -> Node "record TODO" []
 
-op1Tree :: (Typed t, Pretty p) => t -> p -> Tree (Doc a) -> Tree (Doc a)
-op1Tree t op a = Node (pretty op <+> colon <+> pretty (typeOf t)) [a]
+xxx :: (Typed t) => ProgExpr t -> Doc a
+xxx e = pretty e <+> colon <+> pretty (typeOf (exprTag e))
 
-op2Tree :: (Typed t, Pretty p) => t -> p -> Tree (Doc a) -> Tree (Doc a) -> Tree (Doc a)
-op2Tree t op a b = Node ("(" <> pretty op <> ")" <+> colon <+> pretty (typeOf t)) [a, b]
+clauseTree :: (Typed t, Pretty t) => Clause t (ProgPattern t) (ProgExpr t) -> Tree (Doc a)
+clauseTree (Clause t ps gs) = Node (pats <+> colon <+> pretty t) (guard <$> gs) 
+  where
+    pats | 1 == length ps = pretty (head ps)
+         | otherwise      = foldr pCon "" ps 
+    guard (Guard es e) = Node (commaSep (iff <$> es) <> "=>" <+> pretty e <+> colon <+> pretty (typeOf (exprTag e))) []
+    iff e = "iff" <+> pretty e <> space
 
-letTree :: (Pretty p, Typed a1, Typed a2) => a1 -> Binding a2 p -> Tree (Doc a) -> Tree (Doc a) -> Tree (Doc a)
+--op1Tree :: (Typed t, Pretty p) => t -> p -> Tree (Doc a) -> Tree (Doc a)
+op1Tree t op a = Node (pretty op <+> colon <+> pretty t) [a]
+
+--op2Tree :: (Typed t, Pretty p) => t -> p -> Tree (Doc a) -> Tree (Doc a) -> Tree (Doc a)
+op2Tree t op a b = Node ("(" <> pretty op <> ")" <+> colon <+> pretty t) [a, b]
+
+--letTree :: (Pretty p, Typed a1, Typed a2) => a1 -> Binding a2 p -> Tree (Doc a) -> Tree (Doc a) -> Tree (Doc a)
 letTree t bind e1 e2 =
-    Node ("let" <+> colon <+> pretty (typeOf t))
-        [ Node (pretty bind <+> colon <+> pretty (typeOf (bindingTag bind)) <+> equals) [e1]
+    Node ("let" <+> colon <+> pretty t)
+        [ Node (pretty bind <+> colon <+> pretty (bindingTag bind) <+> equals) [e1]
         , Node "in" [e2]
         ]
+
+ifTree t e1 e2 e3 =
+    Node ("if" <+> colon <+> pretty t)
+        [ e1 
+        , Node "then" [e2]
+        , Node "else" [e3]
+        ]
+
+instance Pretty (TypeInfoT [Error] Type) where
+    pretty (TypeInfo t ps es) = pretty t <> preds <> errs
+      where
+        preds | null ps   = ""
+              | otherwise = space <> pretty ps
+        errs  | null es   = ""
+              | otherwise = space <> pretty es
+
+instance Pretty Error where
+    pretty = pretty . show 
