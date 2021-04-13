@@ -321,11 +321,13 @@ withTag :: (Typed t) => ProgExpr t -> Doc a
 withTag e = annotated (typeOf (exprTag e)) e 
 
 clauseTree :: (Typed t, Pretty t) => Clause t (ProgPattern t) (ProgExpr t) -> Tree (Doc a)
-clauseTree (Clause t ps gs) = Node (pats <+> colon <+> pretty t) (guard <$> gs) 
+--clauseTree (Clause t ps gs) = Node (pats <+> colon <+> pretty t) (guard <$> gs) 
+clauseTree (Clause t ps gs) = Node pats (guard <$> gs)
   where
-    pats | 1 == length ps = pretty (head ps)
+    pats | 1 == length ps = pretty (head ps) 
          | otherwise      = foldr pCon "" ps 
-    guard (Guard es e) = Node (commaSep (iff <$> es) <> "=>" <+> withTag e) []
+    guard (Guard es e) = 
+              Node (commaSep (iff <$> es) <> "=>") [exprTree e]
     iff e = "iff" <+> pretty e <> space
 
 --op1Tree :: (Typed t, Pretty p) => t -> p -> Tree (Doc a) -> Tree (Doc a)
@@ -354,7 +356,7 @@ instance Pretty (TypeInfoT [Error] Type) where
         preds | null ps   = ""
               | otherwise = space <> pretty ps
         errs  | null es   = ""
-              | otherwise = space <> pretty es
+              | otherwise = space <> pretty (parens . pretty <$$> es)
 
-instance Pretty Error where
+instance (Show t) => Pretty (ErrorT t) where
     pretty = pretty . show 
