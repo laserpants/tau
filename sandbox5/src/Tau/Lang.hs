@@ -245,49 +245,130 @@ instance Functor Ast where
             ERecord t row        -> recordExpr (f t) row
 
         mapBind = \case
-            BLet    t p          -> BLet      (f t) (mapPattern p)
-            BFun    t name ps    -> BFun      (f t) name (mapPattern <$> ps)
+            BLet    t p          -> BLet       (f t) (mapPattern p)
+            BFun    t name ps    -> BFun       (f t) name (mapPattern <$> ps)
 
         mapClause = \case
-            Clause  t ps gs      -> Clause    (f t) (mapPattern <$> ps) gs
+            Clause  t ps gs      -> Clause     (f t) (mapPattern <$> ps) gs
 
         mapPattern = cata $ \case
-            PVar    t var        -> varPat    (f t) var
-            PCon    t con ps     -> conPat    (f t) con ps
-            PLit    t prim       -> litPat    (f t) prim
-            PAs     t as p       -> asPat     (f t) as p
-            POr     t p q        -> orPat     (f t) p q
-            PAny    t            -> anyPat    (f t)
-            PTuple  t ps         -> tuplePat  (f t) ps
-            PList   t ps         -> listPat   (f t) ps
-            PRecord t row        -> recordPat (f t) row
+            PVar    t var        -> varPat     (f t) var
+            PCon    t con ps     -> conPat     (f t) con ps
+            PLit    t prim       -> litPat     (f t) prim
+            PAs     t as p       -> asPat      (f t) as p
+            POr     t p q        -> orPat      (f t) p q
+            PAny    t            -> anyPat     (f t)
+            PTuple  t ps         -> tuplePat   (f t) ps
+            PList   t ps         -> listPat    (f t) ps
+            PRecord t row        -> recordPat  (f t) row
 
         mapOp1 = \case
-            ONeg   t             -> ONeg   (f t)
-            ONot   t             -> ONot   (f t)
+            ONeg   t             -> ONeg       (f t)
+            ONot   t             -> ONot       (f t)
 
         mapOp2 = \case
-            OEq    t             -> OEq    (f t)
-            ONeq   t             -> ONeq   (f t)
-            OAnd   t             -> OAnd   (f t)
-            OOr    t             -> OOr    (f t)
-            OAdd   t             -> OAdd   (f t)
-            OSub   t             -> OSub   (f t)
-            OMul   t             -> OMul   (f t)
-            ODiv   t             -> ODiv   (f t)
-            OPow   t             -> OPow   (f t)
-            OMod   t             -> OMod   (f t)
-            OLt    t             -> OLt    (f t)
-            OGt    t             -> OGt    (f t)
-            OLte   t             -> OLte   (f t)
-            OGte   t             -> OGte   (f t)
-            OLarr  t             -> OLarr  (f t)
-            ORarr  t             -> ORarr  (f t)
-            OFpipe t             -> OFpipe (f t)
-            OBpipe t             -> OBpipe (f t)
-            OOpt   t             -> OOpt   (f t)
-            OStrc  t             -> OStrc  (f t)
-            ONdiv  t             -> ONdiv  (f t)
+            OEq    t             -> OEq        (f t)
+            ONeq   t             -> ONeq       (f t)
+            OAnd   t             -> OAnd       (f t)
+            OOr    t             -> OOr        (f t)
+            OAdd   t             -> OAdd       (f t)
+            OSub   t             -> OSub       (f t)
+            OMul   t             -> OMul       (f t)
+            ODiv   t             -> ODiv       (f t)
+            OPow   t             -> OPow       (f t)
+            OMod   t             -> OMod       (f t)
+            OLt    t             -> OLt        (f t)
+            OGt    t             -> OGt        (f t)
+            OLte   t             -> OLte       (f t)
+            OGte   t             -> OGte       (f t)
+            OLarr  t             -> OLarr      (f t)
+            ORarr  t             -> ORarr      (f t)
+            OFpipe t             -> OFpipe     (f t)
+            OBpipe t             -> OBpipe     (f t)
+            OOpt   t             -> OOpt       (f t)
+            OStrc  t             -> OStrc      (f t)
+            ONdiv  t             -> ONdiv      (f t)
+
+-- >>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>
+
+exprTag :: ProgExpr t -> t
+exprTag = cata $ \case
+    EVar    t _     -> t
+    ECon    t _ _   -> t
+    ELit    t _     -> t
+    EApp    t _     -> t
+    ELet    t _ _ _ -> t
+    EFix    t _ _ _ -> t
+    ELam    t _ _   -> t
+    EIf     t _ _ _ -> t
+    EPat    t _ _   -> t
+    EFun    t _     -> t
+    EOp1    t _ _   -> t
+    EOp2    t _ _ _ -> t
+    ETuple  t _     -> t
+    EList   t _     -> t
+    ERecord t _     -> t
+
+patternTag :: ProgPattern t -> t
+patternTag = cata $ \case
+    PVar    t _     -> t
+    PCon    t _ _   -> t
+    PLit    t _     -> t 
+    PAs     t _ _   -> t
+    POr     t _ _   -> t
+    PAny    t       -> t
+    PTuple  t _     -> t
+    PList   t _     -> t
+    PRecord t _     -> t
+
+op1Tag :: Op1 t -> t
+op1Tag = \case
+    ONeg    t       -> t
+    ONot    t       -> t
+
+op2Tag :: Op2 t -> t
+op2Tag = \case
+    OEq     t       -> t
+    ONeq    t       -> t
+    OAnd    t       -> t
+    OOr     t       -> t
+    OAdd    t       -> t
+    OSub    t       -> t
+    OMul    t       -> t
+    ODiv    t       -> t
+    OPow    t       -> t
+    OMod    t       -> t
+    OLt     t       -> t
+    OGt     t       -> t
+    OLte    t       -> t
+    OGte    t       -> t
+    OLarr   t       -> t
+    ORarr   t       -> t
+    OFpipe  t       -> t
+    OBpipe  t       -> t
+    OOpt    t       -> t
+    OStrc   t       -> t
+    ONdiv   t       -> t
+
+bindingTag :: Binding t p -> t
+bindingTag = \case
+    BLet    t _     -> t
+    BFun    t _ _   -> t
+
+astTag :: Ast t -> t
+astTag = exprTag . getAst 
+
+clauseTag :: Clause t p a -> t
+clauseTag (Clause t _ _) = t
+
+clausePatterns :: Clause t p a -> [p]
+clausePatterns (Clause _ ps _) = ps
+
+clauseGuards :: Clause t p a -> [Guard a]
+clauseGuards (Clause _ _ gs) = gs
+
+guardPair :: Guard a -> ([a], a)
+guardPair (Guard as a) = (as, a)
 
 -- >>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>
 -- Constructors
@@ -376,84 +457,3 @@ listConsExpr t hd tl = conExpr t "(::)" [hd, tl]
 
 listConsPat :: t2 -> Pattern t1 t2 t3 t4 t5 t6 t7 t8 t9 -> Pattern t1 t2 t3 t4 t5 t6 t7 t8 t9 -> Pattern t1 t2 t3 t4 t5 t6 t7 t8 t9
 listConsPat t hd tl = conPat t "(::)" [hd, tl]
-
--- >>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>
-
-exprTag :: ProgExpr t -> t
-exprTag = cata $ \case
-    EVar    t _     -> t
-    ECon    t _ _   -> t
-    ELit    t _     -> t
-    EApp    t _     -> t
-    ELet    t _ _ _ -> t
-    EFix    t _ _ _ -> t
-    ELam    t _ _   -> t
-    EIf     t _ _ _ -> t
-    EPat    t _ _   -> t
-    EFun    t _     -> t
-    EOp1    t _ _   -> t
-    EOp2    t _ _ _ -> t
-    ETuple  t _     -> t
-    EList   t _     -> t
-    ERecord t _     -> t
-
-patternTag :: ProgPattern t -> t
-patternTag = cata $ \case
-    PVar    t _     -> t
-    PCon    t _ _   -> t
-    PLit    t _     -> t 
-    PAs     t _ _   -> t
-    POr     t _ _   -> t
-    PAny    t       -> t
-    PTuple  t _     -> t
-    PList   t _     -> t
-    PRecord t _     -> t
-
-op1Tag :: Op1 t -> t
-op1Tag = \case
-    ONeg    t       -> t
-    ONot    t       -> t
-
-op2Tag :: Op2 t -> t
-op2Tag = \case
-    OEq     t       -> t
-    ONeq    t       -> t
-    OAnd    t       -> t
-    OOr     t       -> t
-    OAdd    t       -> t
-    OSub    t       -> t
-    OMul    t       -> t
-    ODiv    t       -> t
-    OPow    t       -> t
-    OMod    t       -> t
-    OLt     t       -> t
-    OGt     t       -> t
-    OLte    t       -> t
-    OGte    t       -> t
-    OLarr   t       -> t
-    ORarr   t       -> t
-    OFpipe  t       -> t
-    OBpipe  t       -> t
-    OOpt    t       -> t
-    OStrc   t       -> t
-    ONdiv   t       -> t
-
-bindingTag :: Binding t p -> t
-bindingTag = \case
-    BLet    t _     -> t
-    BFun    t _ _   -> t
-
-astTag :: Ast t -> t
-astTag = exprTag . getAst 
-
-clauseTag :: Clause t p a -> t
-clauseTag (Clause t _ _) = t
-
-clausePatterns :: Clause t p a -> [p]
-clausePatterns (Clause _ ps _) = ps
-
-clauseGuards :: Clause t p a -> [Guard a]
-clauseGuards (Clause _ _ gs) = gs
-
-guardPair :: Guard a -> ([a], a)
-guardPair (Guard as a) = (as, a)
