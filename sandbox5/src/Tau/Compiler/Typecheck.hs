@@ -90,7 +90,6 @@ inferExpr = cata $ \case
         (p, vs) <- second nodeVars <$> listen (patternNode (inferPattern pat))
 
         e1 <- exprNode expr1
-
         -- Unify bound variable with expression
         p ## e1
 
@@ -182,7 +181,7 @@ inferExpr = cata $ \case
         a <- exprNode expr
         op <- inferOp1 op1
         t1 <- thisType
-        (typeOf a `tArr` t1) ## typeOf op
+        op ## (typeOf a `tArr` t1)
         pure (op, a)
 
     EOp2 _ op2 expr1 expr2 -> inferExprNode (args3 op2Expr) $ do
@@ -190,7 +189,7 @@ inferExpr = cata $ \case
         b <- exprNode expr2
         op <- inferOp2 op2
         t1 <- thisType
-        (typeOf a `tArr` typeOf b `tArr` t1) ## typeOf op
+        op ## (typeOf a `tArr` typeOf b `tArr` t1) 
         pure (op, a, b)
 
     ETuple _ exprs -> inferExprNode tupleExpr $ do
