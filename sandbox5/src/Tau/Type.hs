@@ -358,6 +358,7 @@ typeToRow t = Row m r
         TVar (Fix KRow) var  -> (mempty , Just var)
         TApp (t1, _) (_, r)  -> first (insert t1) r
         _                    -> error "Not a row type"
+
     getLabel :: Type -> Name
     getLabel = cata $ \case
         TApp t1 _ -> t1
