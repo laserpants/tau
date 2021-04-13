@@ -69,7 +69,7 @@ inferExpr = cata $ \case
         ty <- lookupScheme con >>= instantiate
         es <- traverse exprNode exprs
         t1 <- thisType
-        unify2W ty (foldr tArr t1 (typeOf <$> es))
+        ty ## foldr tArr t1 (typeOf <$> es)
         pure (con, es)
 
     ELit _ prim -> inferExprNode litExpr $ do
@@ -83,7 +83,7 @@ inferExpr = cata $ \case
             []     -> pure ()
             f:args -> do
                 t1 <- thisType
-                unify2W f (foldr tArr t1 (typeOf <$> args))
+                f ## foldr tArr t1 (typeOf <$> args)
         pure es
 
     ELet _ (BLet _ pat) expr1 expr2 -> inferExprNode (args3 letExpr) $ do
@@ -92,7 +92,7 @@ inferExpr = cata $ \case
         e1 <- exprNode expr1
 
         -- Unify bound variable with expression
-        unify2W p e1
+        p ## e1
 
         schemes <- traverse (secondM generalize) vs
         e2 <- exprNode (local (second3 (Env.inserts schemes)) expr2)
@@ -112,7 +112,7 @@ inferExpr = cata $ \case
         e1 <- exprNode (local (second3 (Env.inserts (toScheme <$$> vs))) expr1)
 
         t1 <- newTVar kTyp
-        unify2W t1 (foldr tArr (typeOf e1) (typeOf <$> ps))
+        t1 ## foldr tArr (typeOf e1) (typeOf <$> ps)
 
         scheme <- generalize t1
         e2 <- exprNode (local (second3 (Env.insert f scheme)) expr2)
@@ -129,7 +129,7 @@ inferExpr = cata $ \case
     EFix _ name expr1 expr2 -> inferExprNode (args3 fixExpr) $ do
         t1 <- newTVar kTyp
         e1 <- exprNode (local (second3 (Env.insert name (toScheme t1))) expr1)
-        unify2W (t1 :: Type) e1
+        e1 ## (t1 :: Type) 
         scheme <- generalize (typeOf e1)
         e2 <- exprNode (local (second3 (Env.insert name scheme)) expr2)
         unifyThis (typeOf e2)
@@ -145,8 +145,8 @@ inferExpr = cata $ \case
         e1 <- exprNode expr1
         e2 <- exprNode expr2
         e3 <- exprNode expr3
-        unify2W e1 (tBool :: Type)
-        unify2W e2 e3
+        e1 ## (tBool :: Type)
+        e2 ## e3
         unifyThis (typeOf e2)
         pure (e1, e2, e3)
 
@@ -158,7 +158,7 @@ inferExpr = cata $ \case
         forM_ es2 $ \(Clause t ps gs) -> do
             forM_ gs (\(Guard _ e) -> unifyThis (typeOf e))
             unifyThis (typeOf t)
-            forM_ (zip ps (typeOf <$> es1)) (uncurry unify2W)
+            forM_ (zip ps (typeOf <$> es1)) (uncurry unifyWith)
 
         pure (es1, es2)
 
@@ -167,12 +167,12 @@ inferExpr = cata $ \case
         ts <- newTVars kTyp (length ps)
         es <- lift (traverse (inferClause ts) eqs)
         -- Unify return type with r.h.s. of arrow in clauses
-        forM_ (clauseGuards =<< es) (\(Guard _ e) -> unify2W (ty :: Type) e)
+        forM_ (clauseGuards =<< es) (\(Guard _ e) -> e ## (ty :: Type))
         -- Also unify return type with the type of clause itself
-        forM_ es (unify2W (ty :: Type) . clauseTag)
+        forM_ es (unifyWith (ty :: Type) . clauseTag)
         -- Check pattern types
         forM_ (clausePatterns <$> es)
-            (\ps -> forM_ (zip ps ts) (uncurry unify2W))
+            (\ps -> forM_ (zip ps ts) (uncurry unifyWith))
 
         insertPredicates (clausePredicates =<< es)
         unifyThis (foldr tArr ty ts)
@@ -182,7 +182,7 @@ inferExpr = cata $ \case
         a <- exprNode expr
         op <- inferOp1 op1
         t1 <- thisType
-        unify2W (typeOf a `tArr` t1) (typeOf op)
+        (typeOf a `tArr` t1) ## typeOf op
         pure (op, a)
 
     EOp2 _ op2 expr1 expr2 -> inferExprNode (args3 op2Expr) $ do
@@ -190,7 +190,7 @@ inferExpr = cata $ \case
         b <- exprNode expr2
         op <- inferOp2 op2
         t1 <- thisType
-        unify2W (typeOf a `tArr` typeOf b `tArr` t1) (typeOf op)
+        (typeOf a `tArr` typeOf b `tArr` t1) ## typeOf op
         pure (op, a, b)
 
     ETuple _ exprs -> inferExprNode tupleExpr $ do
@@ -205,7 +205,7 @@ inferExpr = cata $ \case
             (e:_) -> pure (typeOf e)
 
         -- Unify list elements' types
-        (_, node) <- listen (forM_ es (unify2W t1))
+        (_, node) <- listen (forM_ es (unifyWith t1))
         when (nodeHasErrors node) $
             insertErrors [ListElemUnficationError]
 
@@ -242,7 +242,7 @@ inferPattern = cata $ \case
         ps <- traverse patternNode pats
 
         t1 <- thisType
-        (_, node) <- listen (unify2W ty (foldr tArr t1 (typeOf <$> ps)))
+        (_, node) <- listen (ty ## foldr tArr t1 (typeOf <$> ps))
         when (nodeHasErrors node) $
             insertErrors [ConstructorPatternTypeMismatch con]
 
@@ -282,7 +282,7 @@ inferPattern = cata $ \case
             (p:_) -> pure (typeOf p)
 
         -- Unify list elements' types
-        (_, node) <- listen (forM_ ps (unify2W t1))
+        (_, node) <- listen (forM_ ps (unifyWith t1))
         when (nodeHasErrors node) $
             insertErrors [ListPatternElemUnficationError]
 
@@ -402,7 +402,7 @@ unifyIffCondition
   -> WriterT Node m ()
 unifyIffCondition expr = do
     e <- lift expr
-    (_, node) <- listen (unify2W (tBool :: Type) e)
+    (_, node) <- listen (e ## (tBool :: Type))
     when (nodeHasErrors node) $
         insertErrors [NonBooleanGuardCondition]
 
@@ -516,26 +516,7 @@ unified t1 t2 = do
         Left err  -> throwError (CannotUnify t1 t2 err)
         Right sub -> pure sub
 
-unify2
-  :: ( MonadSupply Name m
-     , MonadReader (ClassEnv, TypeEnv, ConstructorEnv) m
-     , MonadState (TypeSubstitution, Context) m
-     , MonadError Error m
-     , Typed u
-     , Typed v )
-  => u
-  -> v
-  -> m ()
-unify2 a b = do
-    sub <- unified (typeOf a) (typeOf b)
-    modify (first (sub <>))
-    forM_ (Map.toList (getSub sub)) (uncurry propagate)
-  where
-    propagate tv ty = do
-        env <- gets snd
-        propagateClasses ty (fromMaybe mempty (Env.lookup tv env))
-
-unify2W
+unifyWith
   :: ( MonadSupply Name m
      , MonadReader (ClassEnv, TypeEnv, ConstructorEnv) m
      , MonadState (TypeSubstitution, Context) m
@@ -546,9 +527,22 @@ unify2W
   => u
   -> v
   -> WriterT Node m ()
-unify2W a b = do
+unifyWith a b = do
     sub <- gets fst
     runUnify (apply sub a) (apply sub b) >>= whenLeft (insertErrors . pure)
+
+(##)
+  :: ( MonadSupply Name m
+     , MonadReader (ClassEnv, TypeEnv, ConstructorEnv) m
+     , MonadState (TypeSubstitution, Context) m
+     , Typed u
+     , Typed v
+     , Substitutable u Void
+     , Substitutable v Void )
+  => u
+  -> v
+  -> WriterT Node m ()
+(##) = unifyWith
 
 propagateClasses
   :: ( MonadSupply Name m
@@ -694,7 +688,16 @@ runUnify
   => u
   -> v
   -> m (Either Error ())
-runUnify = runExceptT <$$> unify2
+runUnify = runExceptT <$$> unifyTyped
+  where
+    unifyTyped a b = do
+        sub <- unified (typeOf a) (typeOf b)
+        modify (first (sub <>))
+        forM_ (Map.toList (getSub sub)) (uncurry propagate)
+      where
+        propagate tv ty = do
+            env <- gets snd
+            propagateClasses ty (fromMaybe mempty (Env.lookup tv env))
 
 -- >>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>
 
