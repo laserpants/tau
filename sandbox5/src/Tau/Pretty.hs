@@ -60,16 +60,6 @@ instance Pretty (ProgPattern t) where
             PList   _ ps     -> prettyList_ ps
             PRecord _ row    -> lbrace <+> prettyRow "=" row <+> rbrace
 
---pCon :: (ProgPattern t, Doc a) -> Doc a -> Doc a
---pCon (p1, doc1) doc2 =
---    parensIf useLeft doc1 <> if "" == show doc2 then doc2 else space <> doc2
---  where
---    useLeft = case project p1 of
---        PCon _ _ ps | not (null ps) -> True
---        PAs{}                       -> True
---        POr{}                       -> True
---        _                           -> False
-
 pCon :: ProgPattern t -> Doc a -> Doc a
 pCon pat doc = lhs <> rhs
   where
@@ -314,7 +304,7 @@ exprTree = para $ \case
     EFix    t name e1 e2 -> Node "fix TODO" []
     ELam    t ps e       -> Node "lam TODO" []
     EIf     t e1 e2 e3   -> ifTree t (snd e1) (snd e2) (snd e3)
-    EPat    t es cs      -> Node ("match" <+> (commaSep (xxx . fst <$> es)) <+> "with" <+> colon <+> pretty t) (clauseTree <$> (fst <$$> cs))
+    EPat    t es cs      -> Node ("match" <+> commaSep (withTag . fst <$> es) <+> "with" <+> colon <+> pretty t) (clauseTree <$> (fst <$$> cs))
     EFun    t cs         -> Node ("fun" <+> colon <+> pretty t) (clauseTree <$> (fst <$$> cs))
     EOp1    t op a       -> op1Tree t op (snd a)
     EOp2    t op a b     -> op2Tree t op (snd a) (snd b)
@@ -322,8 +312,8 @@ exprTree = para $ \case
     EList   t es         -> Node (pretty t) (snd <$> es)
     ERecord t row        -> Node "record TODO" []
 
-xxx :: (Typed t) => ProgExpr t -> Doc a
-xxx e = pretty e <+> colon <+> pretty (typeOf (exprTag e))
+withTag :: (Typed t) => ProgExpr t -> Doc a
+withTag e = pretty e <+> colon <+> pretty (typeOf (exprTag e))
 
 clauseTree :: (Typed t, Pretty t) => Clause t (ProgPattern t) (ProgExpr t) -> Tree (Doc a)
 clauseTree (Clause t ps gs) = Node (pats <+> colon <+> pretty t) (guard <$> gs) 
