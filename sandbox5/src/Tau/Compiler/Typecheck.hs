@@ -392,7 +392,7 @@ inferGuard
      , MonadState (TypeSubstitution, Context) m )
   => Guard (m (ProgExpr (TypeInfo [Error])))
   -> WriterT Node m (Guard (ProgExpr (TypeInfo [Error])))
-inferGuard (Guard exprs expr) = Guard <$> traverse exprNode exprs <*> exprNode expr
+inferGuard (Guard es e) = Guard <$> traverse exprNode es <*> exprNode e
 
 unifyIffCondition
   :: ( MonadSupply Name m
