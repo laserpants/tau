@@ -1,5 +1,7 @@
-{-# LANGUAGE RecordWildCards   #-}
+{-# LANGUAGE FlexibleContexts  #-}
+{-# LANGUAGE LambdaCase        #-}
 {-# LANGUAGE OverloadedStrings #-}
+{-# LANGUAGE RecordWildCards   #-}
 module Main where
 
 import Control.Monad.Identity
@@ -19,6 +21,7 @@ import Tau.Tool
 import Tau.Tool
 import Tau.Type
 import qualified Tau.Env as Env
+import qualified Tau.Compiler.Substitution as Sub
 
 ----test3 = unifyRows (typeToRowX r1) (typeToRowX r2) :: Either UnificationError TypeSubstitution
 ----  where
@@ -116,12 +119,14 @@ import qualified Tau.Env as Env
 test1 = do
     print "----------"
     print (apply sub x)
-    print (pretty (apply sub x))
+    print (pretty (normalized (apply sub x)))
     print "=========="
   where
     (x, sub, ctx) = fromJust (runInfer mempty testClassEnv testTypeEnv testConstructorEnv e)
     e = inferAst (Ast (funExpr () [ Clause () [varPat () "x"] [Guard [] (litExpr () (TInt 5))] ]))
 
+normalized :: Ast (TypeInfo e) -> Ast (TypeInfo e)
+normalized ast = apply (normalizer (astTypeVars ast)) ast 
 
 test2 = do
     print "----------"
@@ -150,7 +155,7 @@ test3 = do
 test4 = do
     print "----------"
     print (apply sub x)
-    print (pretty (apply sub x))
+    print (pretty (normalized (apply sub x)))
     print "=========="
   where
     (x, sub, ctx) = fromJust (runInfer mempty testClassEnv testTypeEnv testConstructorEnv e)
@@ -161,17 +166,18 @@ test4 = do
 test5 = do
     print "----------"
     print (apply sub x)
+    print (pretty (normalized (apply sub x)))
     print "=========="
   where
     (x, sub, ctx) = fromJust (runInfer mempty testClassEnv testTypeEnv testConstructorEnv e)
-    e = inferExpr (conExpr () "(::)" [litExpr () (TBool True), conExpr () "[]" []])
+    e = inferAst (Ast (conExpr () "(::)" [litExpr () (TBool True), conExpr () "[]" []]))
 
 
 
 test6 = do
     print "----------"
-    print (apply sub x)
-    print (pretty (apply sub x))
+--    print (apply sub x)
+    print (pretty (normalized (apply sub x)))
     print "=========="
   where
     (x, sub, ctx) = fromJust (runInfer mempty testClassEnv testTypeEnv testConstructorEnv e)

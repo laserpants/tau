@@ -1,5 +1,6 @@
 {-# LANGUAGE DeriveTraversable  #-}
 {-# LANGUAGE FlexibleInstances  #-}
+{-# LANGUAGE LambdaCase         #-}
 {-# LANGUAGE StandaloneDeriving #-}
 {-# LANGUAGE StrictData         #-}
 module Tau.Prog where
@@ -95,3 +96,73 @@ optimizePredicates (TypeInfo ty ps e) = TypeInfo ty (nub (filter relevant ps)) e
     relevant (InClass _ (Fix (TVar _ var))) 
         | var `notElem` freeVars = False
     relevant _                   = True
+
+-- >>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>
+
+astTypeVars :: Ast (TypeInfo e) -> [(Name, Kind)]
+astTypeVars (Ast expr) = nub (exprTypeVars expr)
+  where
+    exprTypeVars = cata $ \case
+        EVar    t _            -> typeVars (typeOf t)
+        ECon    t _ as         -> typeVars (typeOf t) <> concat as
+        ELit    t _            -> typeVars (typeOf t)
+        EApp    t as           -> typeVars (typeOf t) <> concat as
+        ELet    t bind a1 a2   -> typeVars (typeOf t) <> bindingTypeVars bind <> a1 <> a2
+        EFix    t _ a1 a2      -> typeVars (typeOf t) <> a1 <> a2
+        ELam    t ps a         -> typeVars (typeOf t) <> (patternTypeVars =<< ps) <> a
+        EIf     t a1 a2 a3     -> typeVars (typeOf t) <> a1 <> a2 <> a3
+        EPat    t as clauses   -> typeVars (typeOf t) <> concat as <> (clauseTypeVars =<< clauses)
+        EFun    t clauses      -> typeVars (typeOf t) <> (clauseTypeVars =<< clauses)
+        EOp1    t op a         -> typeVars (typeOf t) <> op1TypeVars op <> a
+        EOp2    t op a b       -> typeVars (typeOf t) <> op2TypeVars op <> a <> b
+        ETuple  t as           -> typeVars (typeOf t) <> concat as
+        EList   t as           -> typeVars (typeOf t) <> concat as
+        ERecord t row          -> typeVars (typeOf t) <> concat row
+
+    bindingTypeVars = \case
+        BLet    t p            -> typeVars (typeOf t) <> patternTypeVars p
+        BFun    t _ ps         -> typeVars (typeOf t) <> (patternTypeVars =<< ps)
+
+    clauseTypeVars = \case
+        Clause  t ps gs        -> typeVars (typeOf t) <> (patternTypeVars =<< ps) <> (guardTypeVars =<< gs)
+
+    guardTypeVars = \case
+        Guard es e             -> concat es <> e
+
+    patternTypeVars = cata $ \case
+        PVar    t var          -> typeVars (typeOf t)
+        PCon    t _ ps         -> typeVars (typeOf t) <> concat ps
+        PLit    t _            -> typeVars (typeOf t)
+        PAs     t _ p          -> typeVars (typeOf t) <> p
+        POr     t p q          -> typeVars (typeOf t) <> p <> q
+        PAny    t              -> typeVars (typeOf t)
+        PTuple  t ps           -> typeVars (typeOf t) <> concat ps
+        PList   t ps           -> typeVars (typeOf t) <> concat ps
+        PRecord t row          -> typeVars (typeOf t) <> concat row
+
+    op1TypeVars = \case
+        ONeg    t              -> typeVars (typeOf t)
+        ONot    t              -> typeVars (typeOf t)
+
+    op2TypeVars = \case
+        OEq     t              -> typeVars (typeOf t)
+        ONeq    t              -> typeVars (typeOf t)
+        OAnd    t              -> typeVars (typeOf t)
+        OOr     t              -> typeVars (typeOf t)
+        OAdd    t              -> typeVars (typeOf t)
+        OSub    t              -> typeVars (typeOf t)
+        OMul    t              -> typeVars (typeOf t)
+        ODiv    t              -> typeVars (typeOf t)
+        OPow    t              -> typeVars (typeOf t)
+        OMod    t              -> typeVars (typeOf t)
+        OLt     t              -> typeVars (typeOf t)
+        OGt     t              -> typeVars (typeOf t)
+        OLte    t              -> typeVars (typeOf t)
+        OGte    t              -> typeVars (typeOf t)
+        OLarr   t              -> typeVars (typeOf t)
+        ORarr   t              -> typeVars (typeOf t)
+        OFpipe  t              -> typeVars (typeOf t)
+        OBpipe  t              -> typeVars (typeOf t)
+        OOpt    t              -> typeVars (typeOf t)
+        OStrc   t              -> typeVars (typeOf t)
+        ONdiv   t              -> typeVars (typeOf t)

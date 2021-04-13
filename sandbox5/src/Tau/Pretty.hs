@@ -296,48 +296,53 @@ instance (Typed t, Pretty t) => Pretty (Ast t) where
 exprTree :: (Typed t, Pretty t) => ProgExpr t -> Tree (Doc a)
 exprTree = para $ \case
 
-    EVar    t var        -> Node (pretty var <+> colon <+> pretty t) []
-    ECon    t name es    -> Node "con TODO" []
-    ELit    t prim       -> Node (pretty prim <+> colon <+> pretty t) []
-    EApp    t es         -> Node (pretty (appExpr t (fst <$> es)) <+> colon <+> pretty t) []
+    EVar    t var        -> Node (annotated t var) []
+    ECon    t con es     -> Node (annotated t con) (snd <$> es)
+    ELit    t prim       -> Node (annotated t prim) []
+    EApp    t es         -> Node (annotated t ("@" :: Text)) (snd <$> es) -- (annotated t (appExpr t (fst <$> es))) []
     ELet    t bind e1 e2 -> letTree t bind (snd e1) (snd e2)
     EFix    t name e1 e2 -> Node "fix TODO" []
     ELam    t ps e       -> Node "lam TODO" []
     EIf     t e1 e2 e3   -> ifTree t (snd e1) (snd e2) (snd e3)
-    EPat    t es cs      -> Node ("match" <+> commaSep (withTag . fst <$> es) <+> "with" <+> colon <+> pretty t) (clauseTree <$> (fst <$$> cs))
-    EFun    t cs         -> Node ("fun" <+> colon <+> pretty t) (clauseTree <$> (fst <$$> cs))
+    EPat    t es cs      -> Node (xyz t es) (clauseTree <$> (fst <$$> cs))
+    EFun    t cs         -> Node (annotated t ("fun" :: Text)) (clauseTree <$> (fst <$$> cs))
     EOp1    t op a       -> op1Tree t op (snd a)
     EOp2    t op a b     -> op2Tree t op (snd a) (snd b)
     ETuple  t es         -> Node "tuple TODO" []
     EList   t es         -> Node (pretty t) (snd <$> es)
     ERecord t row        -> Node "record TODO" []
 
+xyz t es = "match" <+> commaSep (withTag . fst <$> es) <+> "with" <+> colon <+> pretty t
+
+annotated :: (Pretty t, Pretty p) => t -> p -> Doc a
+annotated t p = pretty p <+> colon <+> pretty t
+
 withTag :: (Typed t) => ProgExpr t -> Doc a
-withTag e = pretty e <+> colon <+> pretty (typeOf (exprTag e))
+withTag e = annotated (typeOf (exprTag e)) e 
 
 clauseTree :: (Typed t, Pretty t) => Clause t (ProgPattern t) (ProgExpr t) -> Tree (Doc a)
 clauseTree (Clause t ps gs) = Node (pats <+> colon <+> pretty t) (guard <$> gs) 
   where
     pats | 1 == length ps = pretty (head ps)
          | otherwise      = foldr pCon "" ps 
-    guard (Guard es e) = Node (commaSep (iff <$> es) <> "=>" <+> pretty e <+> colon <+> pretty (typeOf (exprTag e))) []
+    guard (Guard es e) = Node (commaSep (iff <$> es) <> "=>" <+> withTag e) []
     iff e = "iff" <+> pretty e <> space
 
 --op1Tree :: (Typed t, Pretty p) => t -> p -> Tree (Doc a) -> Tree (Doc a)
-op1Tree t op a = Node (pretty op <+> colon <+> pretty t) [a]
+op1Tree t op a = Node (annotated t op) [a]
 
 --op2Tree :: (Typed t, Pretty p) => t -> p -> Tree (Doc a) -> Tree (Doc a) -> Tree (Doc a)
 op2Tree t op a b = Node ("(" <> pretty op <> ")" <+> colon <+> pretty t) [a, b]
 
 --letTree :: (Pretty p, Typed a1, Typed a2) => a1 -> Binding a2 p -> Tree (Doc a) -> Tree (Doc a) -> Tree (Doc a)
 letTree t bind e1 e2 =
-    Node ("let" <+> colon <+> pretty t)
-        [ Node (pretty bind <+> colon <+> pretty (bindingTag bind) <+> equals) [e1]
+    Node (annotated t ("let" :: Text))
+        [ Node (annotated (bindingTag bind) bind <+> equals) [e1]
         , Node "in" [e2]
         ]
 
 ifTree t e1 e2 e3 =
-    Node ("if" <+> colon <+> pretty t)
+    Node (annotated t ("if" :: Text))
         [ e1 
         , Node "then" [e2]
         , Node "else" [e3]

@@ -170,8 +170,8 @@ merge s1 s2
     allEqual = all (\v -> appV s1 v == appV s2 v) (domain s1 `intersect` domain s2)
     appV sub var = substitute sub (tVar kTyp var)
 
-normalizer :: Type -> Substitution Void
-normalizer ty = fromList (zipWith (\(v, k) a -> (v, tVar k a)) (typeVars ty) letters)
+normalizer :: [(Name, Kind)] -> TypeSubstitution
+normalizer vars = fromList (zipWith (\(v, k) a -> (v, tVar k a)) vars letters)
 
 normalize :: Type -> Type
-normalize ty = apply (normalizer ty) ty
+normalize ty = apply (normalizer (typeVars ty)) ty

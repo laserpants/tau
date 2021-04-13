@@ -41,7 +41,7 @@ succeedInferExpr expr ty ps errs = do
         it "yyy" $ do
             let 
                     TypeInfo{..} = exprTag (apply sub e)
-                    sub1 = normalizer nodeType
+                    sub1 = normalizer (typeVars nodeType)
               in 
                   traceShow context $
 --                traceShow info $
@@ -59,7 +59,7 @@ succeedInferPattern pat ty ps vs = do
         it "yyy" $ do
             let 
                     TypeInfo{..} = patternTag (apply sub p)
-                    sub1 = normalizer nodeType
+                    sub1 = normalizer (typeVars nodeType)
                     vars' = apply sub <$$> vars
               in traceShow nodeErrors $
                     apply sub1 nodeType ==  ty
