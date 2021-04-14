@@ -183,7 +183,10 @@ test6 = do
     (x, sub, ctx) = fromJust (runInfer mempty testClassEnv testTypeEnv testConstructorEnv e)
     e = inferAst
         (Ast (appExpr () 
-            [ funExpr () [ Clause () [conPat () "Some" [litPat () (TBool True)] ] [Guard [] (litExpr () (TInt 1))] ]
+            [ funExpr () [ Clause () [conPat () "Some" [litPat () (TBool True)] ] 
+                [ Guard [op2Expr () (OEq ()) (litExpr () (TInt 5)) (litExpr () (TInt 3)), op2Expr () (OEq ()) (litExpr () (TInt 5)) (litExpr () (TInt 3))] (litExpr () (TInt 1))
+                , Guard [] (litExpr () (TInt 1))
+                ] ]
             , conExpr () "Some" [litExpr () TUnit] ]))
 
 
