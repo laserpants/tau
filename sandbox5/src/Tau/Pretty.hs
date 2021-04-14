@@ -27,20 +27,19 @@ import qualified Data.Text as Text
 instance Pretty Prim where
     pretty = \case
         TUnit      -> "()"
-        TBool b    -> pretty b
-        TInt n     -> pretty n
+        TBool    b -> pretty b
+        TInt     n -> pretty n
         TInteger n -> pretty n
-        TFloat f   -> pretty f
-        TDouble d  -> pretty d
-        TChar c    -> squotes (pretty c)
-        TString s  -> dquotes (pretty s)
+        TFloat   f -> pretty f
+        TDouble  d -> pretty d
+        TChar    c -> squotes (pretty c)
+        TString  s -> dquotes (pretty s)
 
 -- >>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>
 
 instance (Eq e, Pretty e) => Pretty (Row e) where
     pretty (Row map r) | null map = maybe "{}" pretty r
-    pretty row =
-        lbrace <+> prettyRow ":" (pretty <$> row) <+> rbrace
+    pretty row = lbrace <+> prettyRow ":" (pretty <$> row) <+> rbrace
 
 -- >>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>
 
@@ -194,7 +193,6 @@ instance Pretty (ProgExpr t) where
         ECon    _ con []         -> pretty con
         ECon    _ con es         -> pretty con <+> foldr eCon "" (fst <$> es)
         EApp    _ es             -> prettyApp (fst <$> es)
-        EFix    _ name e1 e2     -> "fix TODO"
         ELam    _ ps e           -> prettyTuple (pretty <$> ps) <+> "=>" <+> snd e
         EFun    _ cs             -> "fun" <+> pipe <+> prettyClauses (fst <$$> cs)
         EPat    _ [e] cs         -> "match" <+> snd e <+> "with" <+> prettyClauses (fst <$$> cs)
@@ -204,8 +202,10 @@ instance Pretty (ProgExpr t) where
             EVar    _ var        -> pretty var
             ELit    _ prim       -> pretty prim
             ELet    _ bind e1 e2 -> "let" <+> pretty bind <+> equals <+> e1 <+> "in" <+> e2
+            EFix    _ name e1 e2 -> "fix" <+> pretty name <+> equals <+> e1 <+> "in" <+> e2
             EIf     _ e1 e2 e3   -> "if" <+> e1 <+> "then" <+> e2 <+> "else" <+> e3
-            EOp1    _ op a       -> pretty op <+> a
+            EOp1    _ (ONeg _) a -> "-" <> a
+            EOp1    _ (ONot _) a -> "not" <+> a
             EOp2    _ op a b     -> a <+> pretty op <+> b
             ETuple  _ es         -> prettyTuple es
             EList   _ es         -> prettyList_ es
@@ -256,8 +256,11 @@ eCon expr doc = lhs <> rhs
 
 -- >>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>
 
-instance Pretty (Op1 t) where
-    pretty _ = "TODO"
+--instance Pretty (Op1 t) where
+--    pretty = \case
+--
+--        ONeg    _ -> "-"
+--        ONot    _ -> "not"
 
 instance Pretty (Op2 t) where
     pretty = \case
@@ -306,11 +309,12 @@ exprTree = para $ \case
     EIf     t e1 e2 e3   -> ifTree t (snd e1) (snd e2) (snd e3)
     EPat    t es cs      -> Node (xyz t es) (clauseTree <$> (fst <$$> cs))
     EFun    t cs         -> Node (annotated t ("fun" :: Text)) (clauseTree <$> (fst <$$> cs))
-    EOp1    t op a       -> op1Tree t op (snd a)
+    EOp1    t (ONeg _) a -> op1Tree t ("negate" :: Text) (snd a)
+    EOp1    t (ONot _) a -> op1Tree t ("not" :: Text) (snd a)
     EOp2    t op a b     -> op2Tree t op (snd a) (snd b)
-    ETuple  t es         -> Node "tuple TODO" []
+    ETuple  t es         -> Node (pretty t) (snd <$> es)
     EList   t es         -> Node (pretty t) (snd <$> es)
-    ERecord t row        -> Node "record TODO" []
+    ERecord t row        -> Node (pretty t) (snd <$> concatRow row)
 
 xyz t es = "match" <+> commaSep (withTag . fst <$> es) <+> "with" <+> colon <+> pretty t
 
@@ -326,9 +330,9 @@ clauseTree (Clause t ps gs) = Node pats (guard <$> gs)
   where
     pats | 1 == length ps = pretty (head ps) 
          | otherwise      = foldr pCon "" ps 
-    guard (Guard es e) = 
-              Node (commaSep (iff <$> es) <> "=>") [exprTree e]
-    iff e = "iff" <+> pretty e <> space
+    guard (Guard [] e)    = exprTree e
+    guard (Guard es e)    = Node (commaSep (iff <$> es)) [exprTree e]
+    iff e = "iff" <+> pretty e 
 
 --op1Tree :: (Typed t, Pretty p) => t -> p -> Tree (Doc a) -> Tree (Doc a)
 op1Tree t op a = Node (annotated t op) [a]
@@ -336,13 +340,14 @@ op1Tree t op a = Node (annotated t op) [a]
 --op2Tree :: (Typed t, Pretty p) => t -> p -> Tree (Doc a) -> Tree (Doc a) -> Tree (Doc a)
 op2Tree t op a b = Node ("(" <> pretty op <> ")" <+> colon <+> pretty t) [a, b]
 
---letTree :: (Pretty p, Typed a1, Typed a2) => a1 -> Binding a2 p -> Tree (Doc a) -> Tree (Doc a) -> Tree (Doc a)
+letTree :: (Pretty t1, Pretty t2, Pretty p) => t1 -> Binding t2 p -> Tree (Doc a) -> Tree (Doc a) -> Tree (Doc a)
 letTree t bind e1 e2 =
     Node (annotated t ("let" :: Text))
         [ Node (annotated (bindingTag bind) bind <+> equals) [e1]
         , Node "in" [e2]
         ]
 
+ifTree :: (Pretty t) => t -> Tree (Doc a) -> Tree (Doc a) -> Tree (Doc a) -> Tree (Doc a)
 ifTree t e1 e2 e3 =
     Node (annotated t ("if" :: Text))
         [ e1 
