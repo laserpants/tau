@@ -263,29 +263,7 @@ eCon expr doc = lhs <> rhs
 --        ONot    _ -> "not"
 
 instance Pretty (Op2 t) where
-    pretty = \case
-
-        OEq     _ -> "=="
-        ONeq    _ -> "/="
-        OAnd    _ -> "&&"
-        OOr     _ -> "||"
-        OAdd    _ -> "+"
-        OSub    _ -> "-"
-        OMul    _ -> "*"
-        ODiv    _ -> "/"
-        OPow    _ -> "^"
-        OMod    _ -> "%"
-        OLt     _ -> "<"
-        OGt     _ -> ">"
-        OLte    _ -> "<="
-        OGte    _ -> ">="
-        OLarr   _ -> "<<"
-        ORarr   _ -> ">>"
-        OFpipe  _ -> "|>"
-        OBpipe  _ -> "<|"
-        OOpt    _ -> "?"
-        OStrc   _ -> "++"
-        ONdiv   _ -> "//"
+    pretty = pretty . op2Symbol
 
 -- >>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>
 
