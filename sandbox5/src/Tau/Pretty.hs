@@ -14,6 +14,7 @@ import Data.Tree
 import Data.Tree.View (showTree)
 import Tau.Compiler.Error
 import Tau.Compiler.Substitution hiding (null)
+import Tau.Compiler.Unification
 import Tau.Lang
 import Tau.Prog
 import Tau.Row
@@ -157,15 +158,20 @@ prettyRow delim row@(Row map r) = body <> leaf where
 
     leaf = case r of
         Nothing -> ""
-        Just q -> " " <> pipe <+> pretty q
+        Just q  -> " " <> pipe <+> q
 
-    body = case rowType row of
+    body = case rowDoc row of
         RNil     -> "{}"
-        RVar var -> pretty var
+        RVar var -> var
         RExt     -> fields (elm <$> Map.toList map)
 
     elm (k, es) = fields ((\y -> pretty k <+> delim <+> y) <$> es)
     fields f    = mconcat (intersperse ", " f)
+
+rowDoc :: Row (Doc a) -> RowType (Doc a)
+rowDoc (Row m Nothing)  | null m = RNil
+rowDoc (Row m (Just r)) | null m = RVar r
+rowDoc _                         = RExt
 
 unfoldApp :: Type -> [Type]
 unfoldApp = para $ \case
@@ -292,7 +298,7 @@ exprTree = para $ \case
     EOp2    t op a b     -> op2Tree t op (snd a) (snd b)
     ETuple  t es         -> Node (pretty t) (snd <$> es)
     EList   t es         -> Node (pretty t) (snd <$> es)
-    ERecord t row        -> Node (pretty t) (foo <$> concatRowWithKey row)
+    ERecord t row        -> Node ("#Record" <+> pretty t) (foo <$> concatRowWithKey row)
 
 concatRowWithKey :: Row e -> [(Name, e)]
 concatRowWithKey (Row m _) = f =<< Map.foldrWithKey (curry (:)) mempty m

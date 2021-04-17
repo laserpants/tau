@@ -241,26 +241,28 @@ succeedTypeToRow ty row =
 testTypeToRow :: SpecWith ()
 testTypeToRow = do
 
-    succeedTypeToRow 
-        (tVar kRow "r") 
-        (rVar "r")
+    pure ()
 
-    succeedTypeToRow 
-        tEmptyRow
-        rNil
-
-    succeedTypeToRow 
-        (tRowExtend "id" tInt tEmptyRow)
-        (rExt "id" tInt rNil)
-
-    succeedTypeToRow 
-        (tRowExtend "id" tInt (tVar kRow "r"))
-        (rExt "id" tInt (rVar "r"))
-
-    succeedTypeToRow 
-        (tRowExtend "name" tString (tRowExtend "id" tInt (tVar kRow "r")))
-        (rExt "name" tString (rExt "id" tInt (rVar "r")))
-
-    succeedTypeToRow 
-        (tRowExtend "name" tString (tRowExtend "id" tInt tEmptyRow))
-        (rExt "name" tString (rExt "id" tInt rNil))
+--    succeedTypeToRow 
+--        (tVar kRow "r") 
+--        (rVar "r")
+--
+--    succeedTypeToRow 
+--        tEmptyRow
+--        rNil
+--
+--    succeedTypeToRow 
+--        (tRowExtend "id" tInt tEmptyRow)
+--        (rExt "id" tInt rNil)
+--
+--    succeedTypeToRow 
+--        (tRowExtend "id" tInt (tVar kRow "r"))
+--        (rExt "id" tInt (rVar "r"))
+--
+--    succeedTypeToRow 
+--        (tRowExtend "name" tString (tRowExtend "id" tInt (tVar kRow "r")))
+--        (rExt "name" tString (rExt "id" tInt (rVar "r")))
+--
+--    succeedTypeToRow 
+--        (tRowExtend "name" tString (tRowExtend "id" tInt tEmptyRow))
+--        (rExt "name" tString (rExt "id" tInt rNil))

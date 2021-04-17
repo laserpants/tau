@@ -10,6 +10,7 @@ module Tau.Type where
 import Control.Arrow ((>>>))
 import Data.List (nub)
 import Data.Map.Strict (Map)
+import Data.Maybe (fromMaybe, fromJust)
 import Data.Tuple.Extra (first)
 import Tau.Row
 import Tau.Tool
@@ -293,6 +294,9 @@ getTypeVar = project >>> \case
     TVar _ var -> Just var
     _          -> Nothing
 
+unsafeGetTypeVar :: Type -> Name
+unsafeGetTypeVar = fromJust . getTypeVar
+
 getTypeCon :: Type -> Maybe Name
 getTypeCon = project >>> \case
     TCon _ con -> Just con
@@ -355,7 +359,7 @@ typeToRow t = Row m r
   where
     (m, r) = flip para t $ \case
         TCon (Fix KRow) "{}" -> (mempty, Nothing)
-        TVar (Fix KRow) var  -> (mempty , Just var)
+        TVar (Fix KRow) var  -> (mempty, Just (tVar kRow var))
         TApp (t1, _) (_, r)  -> first (insert t1) r
         _                    -> error "Not a row type"
 
@@ -369,8 +373,5 @@ typeToRow t = Row m r
         Map.insertWith (<>) (getLabel t) (case project t of TApp _ a -> [a])
 
 rowToType :: Row Type -> Type
-rowToType (Row map r) = Map.foldrWithKey (flip . foldr . tRowExtend) leaf map
-  where
-    leaf = case r of
-      Nothing -> tEmptyRow
-      Just v  -> tVar kRow v
+rowToType (Row map r) = 
+    Map.foldrWithKey (flip . foldr . tRowExtend) (fromMaybe tEmptyRow r) map

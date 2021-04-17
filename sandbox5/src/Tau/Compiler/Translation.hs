@@ -117,22 +117,16 @@ translateRecords
   -> Expr t t t t t t t t t t t t t t () bind lam clause 
 translateRecords = cata $ \case
 
-    ERecord t (Row m r) -> zoom1
+    ERecord t (Row m r) -> Map.foldrWithKey foo zoup m 
       where
-        --zoom1 = Map.foldrWithKey foo (conExpr (tCon kRow "{}") "{}" []) m
-        zoom1 = Map.foldrWithKey foo zoo m
-          where
-            zoo = 
-                case r of
-                    Nothing -> conExpr undefined "{}" []
-                    Just var -> varExpr undefined var 
-            foo k a b = foldr boo b a
+        zoup = case r of
+            Nothing -> conExpr (fromType (tCon kRow "{}")) "{}" []
+            Just e  -> e
 
-            boo x e = conExpr undefined undefined undefined
---
---        foo key a b = foldr boo b a -- conExpr (fromType tInt) undefined (foldr1 boo es) -- [undefined, undefined]
---          where
---            boo x e@(Fix (ECon _ _ _)) = conExpr (tRowExtend key tInt tBool) ("{" <> key <> "}") [x, e]
+        foo key a b = foldr boo b a
+          where
+            boo x e = conExpr (fromType (tCon (kArr kTyp (kArr kRow kRow)) foss)) foss [x, e]
+            foss = "{" <> key <> "}"
 
     EVar    t var        -> varExpr    t var
     ECon    t con es     -> conExpr    t con es
@@ -148,26 +142,6 @@ translateRecords = cata $ \case
     EOp2    t op a b     -> op2Expr    t op a b
     EList   t es         -> listExpr   t es
     ETuple  t es         -> tupleExpr  t es
---  where
---    tag = cata $ \case
---        EVar    t _     -> t
---        ECon    t _ _   -> t
---        ELit    t _     -> t
---        EApp    t _     -> t
-----        ELet    t _ _ _ -> t
-----        EFix    t _ _ _ -> t
-----        ELam    t _ _   -> t
-----        EIf     t _ _ _ -> t
-----        EPat    t _ _   -> t
-----        EFun    t _     -> t
-----        EOp1    t _ _   -> t
-----        EOp2    t _ _ _ -> t
-----        EList   t _     -> t
-----        ERecord t _     -> t
-
-
-
---xxx t hd tl = conExpr t "{xxx}" [hd, tl]
 
 translateUnaryOps 
   :: Expr t1 t2 t3 t4 t5 t6 t7 t8 t9 t10 t11 t12 t13 t14 t15 bind lam clause 

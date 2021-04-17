@@ -202,11 +202,11 @@ testInferPattern = do
         [] 
         [("id", _a), ("name", _b)]
 
-    succeedInferPattern 
-        (recordPat () (rExt "name" (varPat () "name") (rExt "id" (varPat () "id") (rVar "r"))))
-        (tRecord (rowToType (rExt "id" _a (rExt "name" _b (rVar "c")))))
-        [] 
-        [("id", _a), ("name", _b)]
+--    succeedInferPattern 
+--        (recordPat () (rExt "name" (varPat () "name") (rExt "id" (varPat () "id") (rVar "r"))))
+--        (tRecord (rowToType (rExt "id" _a (rExt "name" _b (rVar "c")))))
+--        [] 
+--        [("id", _a), ("name", _b)]
 
     -- Failures
 

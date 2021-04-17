@@ -12,18 +12,7 @@ import Tau.Tool
 import qualified Data.Map.Strict as Map
 
 -- | Row
-data Row e = Row (Map Name [e]) (Maybe Name) 
-
-data RowType 
-    = RNil 
-    | RVar Name 
-    | RExt
-    deriving (Show, Eq)
-
-rowType :: Row e -> RowType
-rowType (Row m Nothing)  | null m = RNil
-rowType (Row m (Just r)) | null m = RVar r
-rowType _                         = RExt
+data Row e = Row (Map Name [e]) (Maybe e) 
 
 concatRow :: Row e -> [e]
 concatRow (Row m _) = Map.foldr (<>) mempty m
@@ -56,7 +45,7 @@ deriving instance Traversable Row
 rNil :: Row e 
 rNil = Row mempty Nothing
 
-rVar :: Name -> Row e 
+rVar :: e -> Row e 
 rVar var = Row mempty (Just var)
 
 rExt :: Name -> e -> Row e -> Row e 
