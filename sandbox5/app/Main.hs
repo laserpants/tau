@@ -9,6 +9,7 @@ import Control.Monad.Writer
 import Data.Maybe (fromJust)
 import Tau.Compiler.Error
 import Tau.Compiler.Substitution
+import Tau.Compiler.Translation
 import Tau.Compiler.Typecheck
 import Tau.Compiler.Unification
 import Tau.Core
@@ -20,8 +21,8 @@ import Tau.Row
 import Tau.Tool
 import Tau.Tool
 import Tau.Type
-import qualified Tau.Env as Env
 import qualified Tau.Compiler.Substitution as Sub
+import qualified Tau.Env as Env
 
 ----test3 = unifyRows (typeToRowX r1) (typeToRowX r2) :: Either UnificationError TypeSubstitution
 ----  where
@@ -297,6 +298,21 @@ test15 = do
   where
     (x, sub, ctx) = fromJust (runInfer mempty testClassEnv testTypeEnv testConstructorEnv e)
     e = inferAst (Ast (listExpr () [litExpr () (TInt 1), litExpr () (TBool True)]))
+
+
+test16 = do
+    print "----------"
+    print (apply sub x)
+    print (pretty (apply sub x))
+    let (Ast e) = typeOf <$> apply sub x
+        e1 = translateRecords e
+    print e1
+    print "=========="
+  where
+    (x, sub, ctx) = fromJust (runInfer mempty testClassEnv testTypeEnv testConstructorEnv e)
+    --e = inferAst (Ast (recordExpr () (rExt "name" (litExpr () (TInt 1)) ((rExt "name" (litExpr () (TString "Foo")) (rExt "id" (litExpr () (TInt 123)) rNil :: Row (ProgExpr ())))))))
+    e = inferAst (Ast (recordExpr () (rExt "id" (litExpr () (TInt 1)) rNil :: Row (ProgExpr ()))))
+
 
 
 

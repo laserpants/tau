@@ -8,8 +8,10 @@ module Tau.Compiler.Translation where
 
 import Control.Monad.Supply
 import Tau.Lang
+import Tau.Row
 import Tau.Tool
 import Tau.Type
+import qualified Data.Map.Strict as Map
 
 data ClauseA t p a = ClauseA t [p] [a] a
     deriving (Show, Eq, Functor, Foldable, Traversable)
@@ -21,25 +23,28 @@ data Labeled a = Constructor a | Variable a
     deriving (Show, Eq, Ord)
 
 class (Show t, Eq t) => TypeTag t where
-    tvar  :: Name -> t
-    tarr  :: t -> t -> t
-    tapp  :: t -> t -> t
+    tvar     :: Name -> t
+    tarr     :: t -> t -> t
+    tapp     :: t -> t -> t
+    fromType :: Type -> t
 
 instance TypeTag () where
-    tvar _   = ()
-    tarr _ _ = ()
-    tapp _ _ = ()
+    tvar _     = ()
+    tarr _ _   = ()
+    tapp _ _   = ()
+    fromType _ = ()
 
 instance TypeTag Type where
     tvar  = tVar kTyp
     tarr  = tArr
     tapp  = tApp
+    fromType = id
 
 -- >>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>
 
 expandClauseGuards
-  :: Expr t1 t2 t3 t4 t5 t6 t7 t8 t9 t10 t11 t12 t13 t14 t15 bind lam (Clause  t (ProgPattern t))
-  -> Expr t1 t2 t3 t4 t5 t6 t7 t8 t9 t10 t11 t12 t13 t14 t15 bind lam (ClauseA t (ProgPattern t))
+  :: Expr t t t t t t t t t t t t t t t bind lam (Clause  t (ProgPattern t))
+  -> Expr t t t t t t t t t t t t t t t bind lam (ClauseA t (ProgPattern t))
 expandClauseGuards = cata $ \case
     EPat t es cs -> patExpr t es (expandClause =<< cs)
     EFun t cs    -> funExpr t    (expandClause =<< cs)
@@ -47,22 +52,122 @@ expandClauseGuards = cata $ \case
     expandClause (Clause t ps gs) = [ClauseA t ps es e | Guard es e <- gs]
 
 translateTuples
-  :: Expr t1 t2 t3 t4 t5 t6 t7 t8 t9 t10 t11 t12 t13 t14 t15 bind lam clause 
-  -> Expr t1 t2 t3 t4 t5 t6 t7 t8 t9 t10 t11 t12 ()  t14 t15 bind lam clause 
-translateTuples =
-    undefined
+  :: (Functor clause, TypeTag t) 
+  => Expr t t t t t t t t t t t t t t t bind lam clause 
+  -> Expr t t t t t t t t t t t t () t t bind lam clause 
+translateTuples = cata $ \case
+
+    ETuple  t exprs      -> appExpr    t (varExpr (foldr tarr t (tag <$> exprs)) (tupleCon (length exprs)):exprs)
+    EVar    t var        -> varExpr    t var
+    ECon    t con es     -> conExpr    t con es
+    ELit    t prim       -> litExpr    t prim
+    EApp    t es         -> appExpr    t es
+    ELet    t bind e1 e2 -> letExpr    t bind e1 e2
+    EFix    t name e1 e2 -> fixExpr    t name e1 e2
+    ELam    t ps e       -> lamExpr    t ps e
+    EIf     t e1 e2 e3   -> ifExpr     t e1 e2 e3
+    EPat    t es cs      -> patExpr    t es cs
+    EFun    t cs         -> funExpr    t cs
+    EOp1    t op a       -> op1Expr    t op a
+    EOp2    t op a b     -> op2Expr    t op a b
+    EList   t es         -> listExpr   t es
+    ERecord t row        -> recordExpr t row
+  where
+    tag = cata $ \case
+        EVar    t _     -> t
+        ECon    t _ _   -> t
+        ELit    t _     -> t
+        EApp    t _     -> t
+        ELet    t _ _ _ -> t
+        EFix    t _ _ _ -> t
+        ELam    t _ _   -> t
+        EIf     t _ _ _ -> t
+        EPat    t _ _   -> t
+        EFun    t _     -> t
+        EOp1    t _ _   -> t
+        EOp2    t _ _ _ -> t
+        EList   t _     -> t
+        ERecord t _     -> t
 
 translateLists 
-  :: Expr t1 t2 t3 t4 t5 t6 t7 t8 t9 t10 t11 t12 t13 t14 t15 bind lam clause 
-  -> Expr t1 t2 t3 t4 t5 t6 t7 t8 t9 t10 t11 t12 t13 ()  t15 bind lam clause 
-translateLists =
-    undefined
+  :: (Functor clause, TypeTag t) 
+  => Expr t t t t t t t t t t t t t t t bind lam clause 
+  -> Expr t t t t t t t t t t t t t () t bind lam clause 
+translateLists = cata $ \case
+
+    EList   t exprs      -> foldr (listConsExpr t) (conExpr t "[]" []) exprs
+    EVar    t var        -> varExpr    t var
+    ECon    t con es     -> conExpr    t con es
+    ELit    t prim       -> litExpr    t prim
+    EApp    t es         -> appExpr    t es
+    ELet    t bind e1 e2 -> letExpr    t bind e1 e2
+    EFix    t name e1 e2 -> fixExpr    t name e1 e2
+    ELam    t ps e       -> lamExpr    t ps e
+    EIf     t e1 e2 e3   -> ifExpr     t e1 e2 e3
+    EPat    t es cs      -> patExpr    t es cs
+    EFun    t cs         -> funExpr    t cs
+    EOp1    t op a       -> op1Expr    t op a
+    EOp2    t op a b     -> op2Expr    t op a b
+    ETuple  t es         -> tupleExpr  t es
+    ERecord t row        -> recordExpr t row
 
 translateRecords 
-  :: Expr t1 t2 t3 t4 t5 t6 t7 t8 t9 t10 t11 t12 t13 t14 t15 bind lam clause 
-  -> Expr t1 t2 t3 t4 t5 t6 t7 t8 t9 t10 t11 t12 t13 t14 ()  bind lam clause 
-translateRecords =
-    undefined
+  :: (Functor clause, TypeTag t) 
+  => Expr t t t t t t t t t t t t t t t bind lam clause 
+  -> Expr t t t t t t t t t t t t t t () bind lam clause 
+translateRecords = cata $ \case
+
+    ERecord t (Row m r) -> zoom1
+      where
+        --zoom1 = Map.foldrWithKey foo (conExpr (tCon kRow "{}") "{}" []) m
+        zoom1 = Map.foldrWithKey foo zoo m
+          where
+            zoo = 
+                case r of
+                    Nothing -> conExpr undefined "{}" []
+                    Just var -> varExpr undefined var 
+            foo k a b = foldr boo b a
+
+            boo x e = conExpr undefined undefined undefined
+--
+--        foo key a b = foldr boo b a -- conExpr (fromType tInt) undefined (foldr1 boo es) -- [undefined, undefined]
+--          where
+--            boo x e@(Fix (ECon _ _ _)) = conExpr (tRowExtend key tInt tBool) ("{" <> key <> "}") [x, e]
+
+    EVar    t var        -> varExpr    t var
+    ECon    t con es     -> conExpr    t con es
+    ELit    t prim       -> litExpr    t prim
+    EApp    t es         -> appExpr    t es
+    ELet    t bind e1 e2 -> letExpr    t bind e1 e2
+    EFix    t name e1 e2 -> fixExpr    t name e1 e2
+    ELam    t ps e       -> lamExpr    t ps e
+    EIf     t e1 e2 e3   -> ifExpr     t e1 e2 e3
+    EPat    t es cs      -> patExpr    t es cs
+    EFun    t cs         -> funExpr    t cs
+    EOp1    t op a       -> op1Expr    t op a
+    EOp2    t op a b     -> op2Expr    t op a b
+    EList   t es         -> listExpr   t es
+    ETuple  t es         -> tupleExpr  t es
+--  where
+--    tag = cata $ \case
+--        EVar    t _     -> t
+--        ECon    t _ _   -> t
+--        ELit    t _     -> t
+--        EApp    t _     -> t
+----        ELet    t _ _ _ -> t
+----        EFix    t _ _ _ -> t
+----        ELam    t _ _   -> t
+----        EIf     t _ _ _ -> t
+----        EPat    t _ _   -> t
+----        EFun    t _     -> t
+----        EOp1    t _ _   -> t
+----        EOp2    t _ _ _ -> t
+----        EList   t _     -> t
+----        ERecord t _     -> t
+
+
+
+--xxx t hd tl = conExpr t "{xxx}" [hd, tl]
 
 translateUnaryOps 
   :: Expr t1 t2 t3 t4 t5 t6 t7 t8 t9 t10 t11 t12 t13 t14 t15 bind lam clause 

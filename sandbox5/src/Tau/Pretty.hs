@@ -292,7 +292,15 @@ exprTree = para $ \case
     EOp2    t op a b     -> op2Tree t op (snd a) (snd b)
     ETuple  t es         -> Node (pretty t) (snd <$> es)
     EList   t es         -> Node (pretty t) (snd <$> es)
-    ERecord t row        -> Node (pretty t) (snd <$> concatRow row)
+    ERecord t row        -> Node (pretty t) (foo <$> concatRowWithKey row)
+
+concatRowWithKey :: Row e -> [(Name, e)]
+concatRowWithKey (Row m _) = f =<< Map.foldrWithKey (curry (:)) mempty m
+  where 
+    f (n, es) = [(n, e) | e <- es]
+
+foo :: (Name, (ProgExpr t, Tree (Doc a))) -> Tree (Doc a)
+foo (a, b) = Node (pretty a) [snd b]
 
 xyz t es = "match" <+> commaSep (withTag . fst <$> es) <+> "with" <+> colon <+> pretty t
 
