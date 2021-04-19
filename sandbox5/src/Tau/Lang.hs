@@ -25,8 +25,8 @@ data Prim
 data PatternF t1 t2 t3 t4 t5 t6 t7 t8 t9 a
     = PVar    t1 Name                    -- ^ Variable pattern
     | PCon    t2 Name [a]                -- ^ Constuctor pattern
-    | PLit    t3 Prim                    -- ^ Literal pattern
-    | PAs     t4 Name a                  -- ^ As-pattern
+    | PAs     t3 Name a                  -- ^ As-pattern
+    | PLit    t4 Prim                    -- ^ Literal pattern
     | POr     t5 a a                     -- ^ Or-pattern
     | PAny    t6                         -- ^ Wildcard pattern
     | PTuple  t7 [a]                     -- ^ Tuple pattern
@@ -95,12 +95,12 @@ data ExprF t1 t2 t3 t4 t5 t6 t7 t8 t9 t10 t11 t12 t13 t14 t15 bind lam clause a
     | ECon    t2  Name [a]               -- ^ Data constructor
     | ELit    t3  Prim                   -- ^ Literal value
     | EApp    t4  [a]                    -- ^ Function application
-    | ELet    t5  bind a a               -- ^ Let expression
-    | EFix    t6  Name a a               -- ^ Recursive let
-    | ELam    t7  lam a                  -- ^ Lambda abstraction
-    | EIf     t8  a a a                  -- ^ If-clause
-    | EPat    t9  [a] [clause a]         -- ^ Match expressions
-    | EFun    t10 [clause a]             -- ^ Fun expression
+    | EFix    t5  Name a a               -- ^ Recursive let
+    | ELam    t6  lam a                  -- ^ Lambda abstraction
+    | EIf     t7  a a a                  -- ^ If-clause
+    | EPat    t8  [a] [clause a]         -- ^ Match expressions
+    | EFun    t9  [clause a]             -- ^ Fun expression
+    | ELet    t10 bind a a               -- ^ Let expression
     | EOp1    t11 (Op1 t11) a            -- ^ Unary operator
     | EOp2    t12 (Op2 t12) a a          -- ^ Binary operator
     | ETuple  t13 [a]                    -- ^ Tuple
@@ -473,11 +473,11 @@ varPat = embed2 PVar
 conPat :: t2 -> Name -> [Pattern t1 t2 t3 t4 t5 t6 t7 t8 t9] -> Pattern t1 t2 t3 t4 t5 t6 t7 t8 t9
 conPat = embed3 PCon
 
-litPat :: t3 -> Prim -> Pattern t1 t2 t3 t4 t5 t6 t7 t8 t9
-litPat = embed2 PLit
-
-asPat :: t4 -> Name -> Pattern t1 t2 t3 t4 t5 t6 t7 t8 t9 -> Pattern t1 t2 t3 t4 t5 t6 t7 t8 t9
+asPat :: t3 -> Name -> Pattern t1 t2 t3 t4 t5 t6 t7 t8 t9 -> Pattern t1 t2 t3 t4 t5 t6 t7 t8 t9
 asPat = embed3 PAs
+
+litPat :: t4 -> Prim -> Pattern t1 t2 t3 t4 t5 t6 t7 t8 t9
+litPat = embed2 PLit
 
 orPat :: t5 -> Pattern t1 t2 t3 t4 t5 t6 t7 t8 t9 -> Pattern t1 t2 t3 t4 t5 t6 t7 t8 t9 -> Pattern t1 t2 t3 t4 t5 t6 t7 t8 t9
 orPat = embed3 POr
@@ -508,23 +508,23 @@ litExpr = embed2 ELit
 appExpr :: (Functor clause) => t4 -> [Expr t1 t2 t3 t4 t5 t6 t7 t8 t9 t10 t11 t12 t13 t14 t15 bind lam clause] -> Expr t1 t2 t3 t4 t5 t6 t7 t8 t9 t10 t11 t12 t13 t14 t15 bind lam clause 
 appExpr = embed2 EApp
 
-letExpr :: (Functor clause) => t5 -> bind -> Expr t1 t2 t3 t4 t5 t6 t7 t8 t9 t10 t11 t12 t13 t14 t15 bind lam clause -> Expr t1 t2 t3 t4 t5 t6 t7 t8 t9 t10 t11 t12 t13 t14 t15 bind lam clause -> Expr t1 t2 t3 t4 t5 t6 t7 t8 t9 t10 t11 t12 t13 t14 t15 bind lam clause
-letExpr = embed4 ELet
-
-fixExpr :: (Functor clause) => t6 -> Name -> Expr t1 t2 t3 t4 t5 t6 t7 t8 t9 t10 t11 t12 t13 t14 t15 bind lam clause -> Expr t1 t2 t3 t4 t5 t6 t7 t8 t9 t10 t11 t12 t13 t14 t15 bind lam clause -> Expr t1 t2 t3 t4 t5 t6 t7 t8 t9 t10 t11 t12 t13 t14 t15 bind lam clause
+fixExpr :: (Functor clause) => t5 -> Name -> Expr t1 t2 t3 t4 t5 t6 t7 t8 t9 t10 t11 t12 t13 t14 t15 bind lam clause -> Expr t1 t2 t3 t4 t5 t6 t7 t8 t9 t10 t11 t12 t13 t14 t15 bind lam clause -> Expr t1 t2 t3 t4 t5 t6 t7 t8 t9 t10 t11 t12 t13 t14 t15 bind lam clause
 fixExpr = embed4 EFix
 
-lamExpr :: (Functor clause) => t7 -> lam -> Expr t1 t2 t3 t4 t5 t6 t7 t8 t9 t10 t11 t12 t13 t14 t15 bind lam clause -> Expr t1 t2 t3 t4 t5 t6 t7 t8 t9 t10 t11 t12 t13 t14 t15 bind lam clause
+lamExpr :: (Functor clause) => t6 -> lam -> Expr t1 t2 t3 t4 t5 t6 t7 t8 t9 t10 t11 t12 t13 t14 t15 bind lam clause -> Expr t1 t2 t3 t4 t5 t6 t7 t8 t9 t10 t11 t12 t13 t14 t15 bind lam clause
 lamExpr = embed3 ELam
 
-ifExpr :: (Functor clause) => t8 -> Expr t1 t2 t3 t4 t5 t6 t7 t8 t9 t10 t11 t12 t13 t14 t15 bind lam clause -> Expr t1 t2 t3 t4 t5 t6 t7 t8 t9 t10 t11 t12 t13 t14 t15 bind lam clause -> Expr t1 t2 t3 t4 t5 t6 t7 t8 t9 t10 t11 t12 t13 t14 t15 bind lam clause -> Expr t1 t2 t3 t4 t5 t6 t7 t8 t9 t10 t11 t12 t13 t14 t15 bind lam clause
+ifExpr :: (Functor clause) => t7 -> Expr t1 t2 t3 t4 t5 t6 t7 t8 t9 t10 t11 t12 t13 t14 t15 bind lam clause -> Expr t1 t2 t3 t4 t5 t6 t7 t8 t9 t10 t11 t12 t13 t14 t15 bind lam clause -> Expr t1 t2 t3 t4 t5 t6 t7 t8 t9 t10 t11 t12 t13 t14 t15 bind lam clause -> Expr t1 t2 t3 t4 t5 t6 t7 t8 t9 t10 t11 t12 t13 t14 t15 bind lam clause
 ifExpr = embed4 EIf
 
-patExpr :: (Functor clause) => t9 -> [Expr t1 t2 t3 t4 t5 t6 t7 t8 t9 t10 t11 t12 t13 t14 t15 bind lam clause] -> [clause (Expr t1 t2 t3 t4 t5 t6 t7 t8 t9 t10 t11 t12 t13 t14 t15 bind lam clause)] -> Expr t1 t2 t3 t4 t5 t6 t7 t8 t9 t10 t11 t12 t13 t14 t15 bind lam clause
+patExpr :: (Functor clause) => t8 -> [Expr t1 t2 t3 t4 t5 t6 t7 t8 t9 t10 t11 t12 t13 t14 t15 bind lam clause] -> [clause (Expr t1 t2 t3 t4 t5 t6 t7 t8 t9 t10 t11 t12 t13 t14 t15 bind lam clause)] -> Expr t1 t2 t3 t4 t5 t6 t7 t8 t9 t10 t11 t12 t13 t14 t15 bind lam clause
 patExpr = embed3 EPat
 
-funExpr :: (Functor clause) => t10 -> [clause (Expr t1 t2 t3 t4 t5 t6 t7 t8 t9 t10 t11 t12 t13 t14 t15 bind lam clause)] -> Expr t1 t2 t3 t4 t5 t6 t7 t8 t9 t10 t11 t12 t13 t14 t15 bind lam clause
+funExpr :: (Functor clause) => t9 -> [clause (Expr t1 t2 t3 t4 t5 t6 t7 t8 t9 t10 t11 t12 t13 t14 t15 bind lam clause)] -> Expr t1 t2 t3 t4 t5 t6 t7 t8 t9 t10 t11 t12 t13 t14 t15 bind lam clause
 funExpr = embed2 EFun
+
+letExpr :: (Functor clause) => t10 -> bind -> Expr t1 t2 t3 t4 t5 t6 t7 t8 t9 t10 t11 t12 t13 t14 t15 bind lam clause -> Expr t1 t2 t3 t4 t5 t6 t7 t8 t9 t10 t11 t12 t13 t14 t15 bind lam clause -> Expr t1 t2 t3 t4 t5 t6 t7 t8 t9 t10 t11 t12 t13 t14 t15 bind lam clause
+letExpr = embed4 ELet
 
 op1Expr :: (Functor clause) => t11 -> Op1 t11 -> Expr t1 t2 t3 t4 t5 t6 t7 t8 t9 t10 t11 t12 t13 t14 t15 bind lam clause -> Expr t1 t2 t3 t4 t5 t6 t7 t8 t9 t10 t11 t12 t13 t14 t15 bind lam clause
 op1Expr = embed3 EOp1

@@ -208,6 +208,10 @@ test67 = do
     print "----------"
     print (apply sub x)
     print (pretty (apply sub x))
+    --
+    let Ast e1 = typeOf <$> apply sub x
+    let e2 = desugarExpr e1
+    print (e2)
     print "=========="
   where
     (x, sub, ctx) = fromJust (runInfer mempty testClassEnv testTypeEnv testConstructorEnv e)
@@ -301,17 +305,37 @@ test15 = do
 
 
 test16 = do
-    print "----------"
-    print (apply sub x)
-    print (pretty (apply sub x))
-    let (Ast e) = typeOf <$> apply sub x
-        e1 = translateRecords e
-    print e1
-    print "=========="
+    print "x"
+    --print (pretty (apply sub x))
+
+    --let Ast e1 = typeOf <$> apply sub x
+    let Ast e1 = const () <$> apply sub x
+    let e2 = desugarExpr e1
+    print (e2)
+
   where
-    (x, sub, ctx) = fromJust (runInfer mempty testClassEnv testTypeEnv testConstructorEnv e)
-    --e = inferAst (Ast (recordExpr () (rExt "name" (litExpr () (TInt 1)) ((rExt "name" (litExpr () (TString "Foo")) (rExt "id" (litExpr () (TInt 123)) rNil :: Row (ProgExpr ())))))))
-    e = inferAst (Ast (recordExpr () (rExt "id" (litExpr () (TInt 1)) rNil :: Row (ProgExpr ()))))
+    (x, sub, ctx) = fromJust (runInfer mempty testClassEnv testTypeEnv testConstructorEnv b)
+    b = inferAst (Ast e)
+    --c = apply sub x
+    --d = desugarExpr c
+--    print (apply sub x)
+    --
+
+    e :: ProgExpr ()
+    e = letExpr () (BFun () "f" [varPat () "x", varPat () "y"]) (litExpr () (TInt 5)) (appExpr () [varExpr () "f", litExpr () TUnit, litExpr () TUnit])
+
+--test16 = do
+--    print "----------"
+--    print (apply sub x)
+--    print (pretty (apply sub x))
+--    let (Ast e) = typeOf <$> apply sub x
+--        e1 = translateRecords e
+--    print e1
+--    print "=========="
+--  where
+--    (x, sub, ctx) = fromJust (runInfer mempty testClassEnv testTypeEnv testConstructorEnv e)
+--    --e = inferAst (Ast (recordExpr () (rExt "name" (litExpr () (TInt 1)) ((rExt "name" (litExpr () (TString "Foo")) (rExt "id" (litExpr () (TInt 123)) rNil :: Row (ProgExpr ())))))))
+--    e = inferAst (Ast (recordExpr () (rExt "id" (litExpr () (TInt 1)) rNil :: Row (ProgExpr ()))))
 
 
 
@@ -390,3 +414,7 @@ testConstructorEnv = constructorEnv
     , ("(,)"      , ( ["(,)"], 2 ))
     , ("Foo"      , ( ["Foo"], 2 ))
     ]
+
+foz1 = case \x -> 1 of
+    f -> f ()
+

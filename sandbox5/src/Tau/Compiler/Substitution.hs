@@ -87,8 +87,8 @@ instance (Substitutable t a) => Substitutable (ProgExpr t) a where
 
 instance (Substitutable t a) => Substitutable (Op1 t) a where
     apply sub = \case
-        ONeg   t             -> ONeg (apply sub t)
-        ONot   t             -> ONot (apply sub t)
+        ONeg   t             -> ONeg   (apply sub t)
+        ONot   t             -> ONot   (apply sub t)
 
 instance (Substitutable t a) => Substitutable (Op2 t) a where
     apply sub = \case
