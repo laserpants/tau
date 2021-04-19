@@ -26,7 +26,9 @@ deriveOrd1  ''ClauseA
 data Prep t = RCon t Name [Name]
     deriving (Show, Eq)
 
-data Labeled a = Constructor a | Variable a
+data Labeled a
+    = Constructor a
+    | Variable a
     deriving (Show, Eq, Ord)
 
 class (Show t, Eq t) => TypeTag t where
@@ -51,29 +53,29 @@ instance TypeTag Type where
 
 type DesugaredPattern t = Pattern t t t t t t Void Void Void
 
-type DesugaredExpr a s t = Expr t t t t t t t t Void Void Void Void Void Void Void a s (ClauseA t (DesugaredPattern t))
+type DesugaredExpr t = Expr t t t t t t t t Void Void Void Void Void Void Void Void Name (ClauseA t (DesugaredPattern t))
 
 -- type SimplifiedPattern t = Pattern t t t Void Void Void Void Void Void
 type SimplifiedPattern t = Pattern t t t t Void Void Void Void Void
 
-desugarExpr
-  :: (TypeTag t)
-  => Expr t t t t t t t t t t t t t t t (Binding t (ProgPattern t)) [ProgPattern t] (Clause t (ProgPattern t))
-  -> DesugaredExpr Void Name t
+desugarExpr :: (TypeTag t) => ProgExpr t -> DesugaredExpr t
 desugarExpr = desugarExprPatterns . cata (\case
+
+--desugarExpr = desugarExprPatterns . removeFuns . cata (\case
 
     -- Translate tuples, lists, and records
     ETuple  t exprs      -> conExpr t (tupleCon (length exprs)) exprs
     EList   t exprs      -> foldr (listConsExpr t) (conExpr t "[]" []) exprs
-    ERecord t row        -> desugarRow conExpr row 
+    ERecord t row        -> desugarRow conExpr row
     -- Translate operators to prefix form
-    EOp1    t op a       -> appExpr  t [prefixOp1 op, a]
-    EOp2    t op a b     -> appExpr  t [varExpr (op2Tag op) ("(" <> op2Symbol op <> ")"), a, b]
+    EOp1    t op a       -> appExpr t [prefixOp1 op, a]
+    EOp2    t op a b     -> appExpr t [varExpr (op2Tag op) ("(" <> op2Symbol op <> ")"), a, b]
     -- Expand pattern clause guards
     EPat    t es cs      -> patExpr t es (expandClause =<< cs)
     EFun    t cs         -> funExpr t (expandClause =<< cs)
     -- Unroll lambdas
-    ELam    t ps e       -> foldr (\p e1 -> unrollLambda undefined p e1) e ps
+--    ELam    t ps e       -> foldr (\p e1 -> unrollLambda undefined p e1) e ps
+    ELam    t ps e       -> fst $ foldr unrollLambda (e, t) ps
     -- Translate let expressions
     ELet    t bind e1 e2 -> desugarLet t bind e1 e2
 
@@ -90,13 +92,16 @@ desugarExpr = desugarExprPatterns . cata (\case
     expandClause (Clause t ps gs) = [ClauseA t ps es e | Guard es e <- gs]
 
     desugarLet t bind e1 e2 = patExpr t [e3] [ClauseA t [p3] [] e2]
-      where 
+      where
         (e3, p3) = case bind of
             BLet _ pat   -> (e1, pat)
-            BFun t f ps  -> (foldr (\p e -> unrollLambda undefined p e) e1 ps, varPat t f)
+--            BFun t f ps  -> (foldr (\p e -> unrollLambda undefined p e) e1 ps, varPat t f)
+            BFun t f ps  -> (fst $ foldr unrollLambda (e1, t) ps, varPat t f)
 
-    unrollLambda t p e = 
-        lamExpr t "$!" (patExpr undefined [varExpr undefined "$!"] [ClauseA undefined [] [] e])
+    unrollLambda p (e, t) = (traceShow t $ funExpr t [ClauseA t [p] [] e], t)
+
+--        lamExpr undefined "$!" (patExpr undefined [varExpr undefined "$!"] [ClauseA undefined [] [] e])
+
 
 --    ELam    t ps e       -> foldr (\p e1 -> lamExpr (tarr (patternTag p) (eTag e1)) p e1) e ps
 
@@ -113,9 +118,9 @@ desugarExpr = desugarExprPatterns . cata (\case
 ----        EPat    t _ _    -> t
 
 desugarExprPatterns
-  :: (TypeTag t) 
+  :: (TypeTag t)
   => Expr t t t t t t t t t Void Void Void Void Void Void Void Name (ClauseA t (ProgPattern t))
-  -> DesugaredExpr Void Name t
+  -> DesugaredExpr t
 desugarExprPatterns = cata $ \case
 
     EVar    t var        -> varExpr t var
@@ -126,7 +131,8 @@ desugarExprPatterns = cata $ \case
     EIf     t e1 e2 e3   -> ifExpr  t e1 e2 e3
     EPat    t es cs      -> patExpr t es (translClause <$> cs)
   where
-    translClause (ClauseA t ps es e) = ClauseA t (desugarPatterns <$> ps) es e
+    translClause (ClauseA t ps es e) =
+        ClauseA t (desugarPatterns <$> ps) es e
 
 --    ELet    t bind e1 e2 -> letExpr t (translBinding bind) e1 e2
 --    ELam    t p e        -> lamExpr t (desugarPatterns p) e
@@ -134,12 +140,12 @@ desugarExprPatterns = cata $ \case
 --    translBinding (BLet t p)    = BLet t (desugarPatterns p)
 --    translBinding (BFun t f ps) = BFun t f (desugarPatterns <$> ps)
 
-desugarPatterns :: (TypeTag t) => ProgPattern t -> DesugaredPattern t 
+desugarPatterns :: (TypeTag t) => ProgPattern t -> DesugaredPattern t
 desugarPatterns = cata $ \case
 
     PTuple  t ps         -> conPat t (tupleCon (length ps)) ps
     PList   t ps         -> foldr (listConsPat t) (conPat t "[]" []) ps
-    PRecord t row        -> desugarRow conPat row 
+    PRecord t row        -> desugarRow conPat row
 
     PVar    t var        -> varPat t var
     PCon    t con ps     -> conPat t con ps
@@ -151,14 +157,14 @@ desugarPatterns = cata $ \case
 desugarRow :: (TypeTag t) => (t -> Name -> [a] -> a) -> Row a -> a
 desugarRow con (Row map r) = Map.foldrWithKey fun (initl r) map
   where
-    initl = fromMaybe (con (fromType (tCon kRow "{}")) "{}" []) 
-    fun key = 
+    initl = fromMaybe (con (fromType (tCon kRow "{}")) "{}" [])
+    fun key =
         let kind  = kArr kTyp (kArr kRow kRow)
             field = "{" <> key <> "}"
          in flip (foldr (\e es -> con (fromType (tCon kind field)) field [e, es]))
 
---translateLetExprs 
---  :: (TypeTag t, MonadSupply Name m) 
+--translateLetExprs
+--  :: (TypeTag t, MonadSupply Name m)
 ----  => DesugaredExpr (Binding t (Pattern t t t t t t () () ())) t
 --  => DesugaredExpr (Binding t (Pattern t t t t t t Void Void Void)) t
 --  -> m (DesugaredExpr Void t)
@@ -191,7 +197,7 @@ desugarRow con (Row map r) = Map.foldrWithKey fun (initl r) map
 --        let zzz = foldr (\p e -> lamExpr (tarr (pTag p) (eTag e)) p e) e1 ps
 --        pure (patExpr t [e1] [ClauseA t [varPat undefined f] [] e2])
 --        --let zzz = foldr undefined undefined ps
---        
+--
 --        --pure (lamExpr undefined undefined undefined)
 --
 ----        foldrM (\x y -> do
@@ -230,11 +236,11 @@ desugarRow con (Row map r) = Map.foldrWithKey fun (initl r) map
 -- \z => match z with
 --         | Some x => y
 
---yyy 
---  :: DesugaredExpr Void t 
+--yyy
+--  :: DesugaredExpr Void t
 ----  -> Expr t t t t t t t t t t () () () () () (SimplifiedPattern t) [SimplifiedPattern t] (ClauseA t (SimplifiedPattern t))
 --  -> Expr t t t t Void t Void t t Void Void Void Void Void Void Void Void (ClauseA t (SimplifiedPattern t))
---yyy = cata $ \case 
+--yyy = cata $ \case
 --    EVar    t var        -> varExpr t var
 --    ECon    t con es     -> conExpr t con es
 --    ELit    t prim       -> litExpr t prim
@@ -248,10 +254,10 @@ desugarRow con (Row map r) = Map.foldrWithKey fun (initl r) map
 --    EIf     t e1 e2 e3   -> ifExpr  t e1 e2 e3
 --    EPat    t es cs      -> patExpr t es (expandPatterns cs)
 
--- expandPatterns 
+-- expandPatterns
 --   :: [ClauseA t (DesugaredPattern t) (Expr t t t t t t t t t t () () () () () (SimplifiedPattern t) [SimplifiedPattern t] (ClauseA t (SimplifiedPattern t)))]
 --   -> [ClauseA t (SimplifiedPattern t) (Expr t t t t t t t t t t () () () () () (SimplifiedPattern t) [SimplifiedPattern t] (ClauseA t (SimplifiedPattern t)))]
-expandPatterns 
+expandPatterns
   :: [ClauseA t (DesugaredPattern t) (Expr t t t t Void t Void t t Void Void Void Void Void Void Void Void (ClauseA t (SimplifiedPattern t)))]
   -> [ClauseA t (SimplifiedPattern t) (Expr t t t t Void t Void t t Void Void Void Void Void Void Void Void (ClauseA t (SimplifiedPattern t)))]
 expandPatterns = concatMap $ \(ClauseA t ps es e) ->
@@ -276,15 +282,15 @@ compilePatterns (u:us) qs c =
         [Constructor eqs] -> do
             undefined
 
-        mixed -> 
+        mixed ->
             undefined
 
 clauses :: Labeled a -> a
 clauses (Constructor eqs) = eqs
 clauses (Variable    eqs) = eqs
 
-clauseGroups 
-  :: [Clause t (Pattern t1 t2 t3 t4 () t6 t7 t8 t9) a] 
+clauseGroups
+  :: [Clause t (Pattern t1 t2 t3 t4 () t6 t7 t8 t9) a]
   -> [Labeled [Clause t (Pattern t1 t2 t3 t4 () t6 t7 t8 t9) a]]
 clauseGroups = cata alg . fmap labeledClause where
 
@@ -294,8 +300,8 @@ clauseGroups = cata alg . fmap labeledClause where
     alg (Cons (Constructor e) ts)                  = Constructor [e]:ts
     alg (Cons (Variable e) ts)                     = Variable [e]:ts
 
-labeledClause 
-  :: Clause t (Pattern t1 t2 t3 t4 () t6 t7 t8 t9) a 
+labeledClause
+  :: Clause t (Pattern t1 t2 t3 t4 () t6 t7 t8 t9) a
   -> Labeled (Clause t (Pattern t1 t2 t3 t4 () t6 t7 t8 t9) a)
 labeledClause eq@(Clause _ (p:_) _) = flip cata p $ \case
 
