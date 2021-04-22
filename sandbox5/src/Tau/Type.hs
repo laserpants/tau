@@ -75,6 +75,15 @@ class FreeIn t where
 
 -- >>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>
 
+-- | Tags to accommodate for type annotations and other information inserted
+-- into the AST
+class (Show t) => Tag t where
+    tarr     :: t -> t -> t
+    tapp     :: t -> t -> t
+    fromType :: Type -> t
+
+-- >>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>
+
 -- Type class instances for Kind
 
 deriving instance (Show a) => 
@@ -156,6 +165,18 @@ instance FreeIn (TypeT a) where
 
 instance FreeIn Scheme where
     free (Forall _ _ t) = free t
+
+-- Tag instances
+
+instance Tag () where
+    tarr _ _   = ()
+    tapp _ _   = ()
+    fromType _ = ()
+
+instance Tag Type where
+    tarr     = tArr
+    tapp     = tApp
+    fromType = id
 
 -- >>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>
 -- Constructors
@@ -260,14 +281,15 @@ tTriple t1 t2 t3 = tTuple [t1, t2, t3]
 
 -- Rows
 
-tRowCon :: Name -> TypeT a
-tRowCon label = tCon (kTyp `kArr` kRow `kArr` kRow) ("{" <> label <> "}")
+tRowCon :: (Tag t) => Name -> t
+tRowCon label = tcon (kTyp `kArr` kRow `kArr` kRow) ("{" <> label <> "}")
+--tRowCon label = tcon (kTyp `kArr` kRow `kArr` kRow) label
 
-tRowExtend :: Name -> TypeT a -> TypeT a -> TypeT a 
-tRowExtend label ty = tApp (tApp (tRowCon label) ty) 
+tRowExtend :: (Tag t) => Name -> t -> t -> t
+tRowExtend label ty = tapp (tapp (tRowCon label) ty) 
 
-tEmptyRow :: TypeT a
-tEmptyRow = tCon kRow "{}"
+tEmptyRow :: (Tag t) => t
+tEmptyRow = tcon kRow "{}"
 
 -- Records
 
@@ -276,6 +298,14 @@ tRecordCon = tCon (kArr kRow kTyp) "#Record"
 
 tRecord :: TypeT a -> TypeT a
 tRecord = tApp tRecordCon
+
+-- >>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>
+
+tvar :: (Tag t) => Kind -> Name -> t
+tvar kind name = fromType (tVar kind name)
+
+tcon :: (Tag t) => Kind -> Name -> t
+tcon kind name = fromType (tCon kind name)
 
 -- >>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>
 
@@ -372,6 +402,6 @@ typeToRow t = Row m r
     insert t = 
         Map.insertWith (<>) (getLabel t) (case project t of TApp _ a -> [a])
 
-rowToType :: Row Type -> Type
-rowToType (Row map r) = 
+rowToTag :: (Tag t) => Row t -> t
+rowToTag (Row map r) = 
     Map.foldrWithKey (flip . foldr . tRowExtend) (fromMaybe tEmptyRow r) map

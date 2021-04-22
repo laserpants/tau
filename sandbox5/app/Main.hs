@@ -5,8 +5,11 @@
 module Main where
 
 import Control.Monad.Identity
+import Control.Monad.Supply
 import Control.Monad.Writer
 import Data.Maybe (fromJust)
+import Data.Text (unpack)
+import Data.Tree.View (showTree)
 import Tau.Compiler.Error
 import Tau.Compiler.Substitution
 import Tau.Compiler.Translation
@@ -116,192 +119,192 @@ import qualified Tau.Env as Env
 --            --    pure ()
 
 
---test1 :: (ProgExpr (TypeInfo [Error]), TypeSubstitution, Context)
-test1 = do
-    print "----------"
-    print (apply sub x)
-    print (pretty (normalized (apply sub x)))
-    print "=========="
-  where
-    (x, sub, ctx) = fromJust (runInfer mempty testClassEnv testTypeEnv testConstructorEnv e)
-    e = inferAst (Ast (funExpr () [ Clause () [varPat () "x"] [Guard [] (litExpr () (TInt 5))] ]))
-
-normalized :: Ast (TypeInfo e) -> Ast (TypeInfo e)
-normalized ast = apply (normalizer (astTypeVars ast)) ast 
-
-test2 = do
-    print "----------"
-    print (apply sub p)
-    print "=========="
-    print (apply sub <$$> vars)
-    print "=========="
-  where
-    ((p, vars), sub, ctx) = fromJust (runInfer mempty testClassEnv testTypeEnv testConstructorEnv e)
-    e = inferPattern (conPat () "Some" [varPat () "x"])
-
-
-test3 = do
-    print "----------"
-    print (apply sub p)
-    print "=========="
-    print (apply sub <$$> vars)
-    print "=========="
-    print sub
-    print "=========="
-  where
-    ((p, vars), sub, ctx) = fromJust (runInfer mempty testClassEnv testTypeEnv testConstructorEnv e)
-    e = inferPattern (listPat () [litPat () (TBool True), varPat () "x"])
-
-
-test4 = do
-    print "----------"
-    print (apply sub x)
-    print (pretty (normalized (apply sub x)))
-    print "=========="
-  where
-    (x, sub, ctx) = fromJust (runInfer mempty testClassEnv testTypeEnv testConstructorEnv e)
-    e = inferAst (Ast (appExpr () [varExpr () "id", litExpr () (TInt 5)]))
-
-
-
-test5 = do
-    print "----------"
-    print (apply sub x)
-    print (pretty (normalized (apply sub x)))
-    print "=========="
-  where
-    (x, sub, ctx) = fromJust (runInfer mempty testClassEnv testTypeEnv testConstructorEnv e)
-    e = inferAst (Ast (conExpr () "(::)" [litExpr () (TBool True), conExpr () "[]" []]))
-
-
-
-test6 = do
-    print "----------"
+----test1 :: (ProgExpr (TypeInfo [Error]), TypeSubstitution, Context)
+--test1 = do
+--    print "----------"
 --    print (apply sub x)
-    print (pretty (normalized (apply sub x)))
-    print "=========="
-  where
-    (x, sub, ctx) = fromJust (runInfer mempty testClassEnv testTypeEnv testConstructorEnv e)
-    e = inferAst
-        (Ast (appExpr () 
-            [ funExpr () [ Clause () [conPat () "Some" [litPat () (TBool True)] ] 
-                [ Guard [op2Expr () (OEq ()) (litExpr () (TInt 5)) (litExpr () (TInt 3)), op2Expr () (OEq ()) (litExpr () (TInt 5)) (litExpr () (TInt 3))] (litExpr () (TInt 1))
-                , Guard [] (litExpr () (TInt 1))
-                ] ]
-            , conExpr () "Some" [litExpr () TUnit] ]))
-
-
-test66 = do
-    print "----------"
-    print (apply sub x)
-    print (pretty (apply sub x))
-    print "=========="
-  where
-    (x, sub, ctx) = fromJust (runInfer mempty testClassEnv testTypeEnv testConstructorEnv e)
-    e = inferAst (Ast (funExpr () [ Clause () [conPat () "Some" [litPat () (TBool True)] ] 
-        [ Guard [op2Expr () (OEq ()) (litExpr () (TInt 5)) (litExpr () (TInt 3))] (litExpr () (TInt 1)) 
-        , Guard [op2Expr () (OEq ()) (litExpr () (TInt 5)) (litExpr () (TInt 3))] (litExpr () (TInt 2)) 
-        , Guard [] (litExpr () (TInt 3)) 
-        ] ]))
-
-test67 = do
-    print "----------"
-    print (apply sub x)
-    print (pretty (apply sub x))
-    --
-    let Ast e1 = typeOf <$> apply sub x
-    let e2 = desugarExpr e1
-    print (e2)
-    print "=========="
-  where
-    (x, sub, ctx) = fromJust (runInfer mempty testClassEnv testTypeEnv testConstructorEnv e)
-    e = inferAst (Ast (patExpr () [varExpr () "xs"] [ Clause () [conPat () "Some" [litPat () (TBool True)] ] 
-        [ Guard [op2Expr () (OEq ()) (litExpr () (TInt 5)) (litExpr () (TInt 3))] (litExpr () (TInt 1)) 
-        , Guard [op2Expr () (OEq ()) (litExpr () (TInt 5)) (litExpr () (TInt 3))] (litExpr () (TInt 2)) 
-        , Guard [] (litExpr () (TInt 3)) 
-        ] ]))
-
-
-
-
---test66 :: ProgExpr ()
---test66 = funExpr () 
---    [ Clause () [conPat () "Some" [litPat () (TBool True)], conPat () "Some" [litPat () (TBool True)] ] [Guard [] (litExpr () (TInt 1))] 
---    , Clause () [conPat () "Some" [litPat () (TBool True)] ] [Guard [op2Expr () (litExpr () (TInt 4)) (litExpr () (TInt 4))] (litExpr () (TInt 1))] 
---    ]
-
-
-test7 = do
-    print "----------"
-    print (apply sub x)
-    print (pretty (apply sub x))
-    print "=========="
-  where
-    (x, sub, ctx) = fromJust (runInfer mempty testClassEnv testTypeEnv testConstructorEnv e)
-    e = inferAst (Ast (appExpr () [varExpr () "id", litExpr () (TInt 5)]))
-
-
-test8 = do
-    print "----------"
-    print (apply sub x)
-    print (pretty (apply sub x))
-    print ctx
-    print "=========="
-  where
-    (x, sub, ctx) = fromJust (runInfer mempty testClassEnv testTypeEnv testConstructorEnv e)
-    e = inferAst (Ast (letExpr () (BLet () (varPat () "x")) (litExpr () (TInt 5)) (varExpr () "x")))
-
-
-test9 = do
-    print "----------"
-    print (apply sub x)
-    print (pretty (apply sub x))
-    print ctx
-    print "=========="
-  where
-    (x, sub, ctx) = fromJust (runInfer mempty testClassEnv testTypeEnv testConstructorEnv e)
-    e = inferAst (Ast (op2Expr () (OEq ()) (litExpr () (TInt 1)) (litExpr () (TInt 1))))
-
-
-test10 =
-    Ast (letExpr () (BLet () (varPat () "x")) (litExpr () (TInt 5)) (varExpr () "x"))
-
-
-test11 =
-    Ast (letExpr () (BFun () "f" [varPat () "x", varPat () "y"]) (litExpr () (TInt 5)) (varExpr () "x"))
-
-
-test12 = do
-    print "----------"
-    print (apply sub x)
-    print (pretty (apply sub x))
-    print ctx
-    print "=========="
-  where
-    (x, sub, ctx) = fromJust (runInfer mempty testClassEnv testTypeEnv testConstructorEnv e)
-    e = inferAst (Ast (letExpr () (BFun () "f" [varPat () "x", varPat () "y"]) (litExpr () (TInt 5)) (appExpr () [varExpr () "f", litExpr () (TInt 1), litExpr () (TInt 1)])))
-
-
-test14 = do
-    print "----------"
-    print (apply sub x)
-    print (pretty (apply sub x))
-    print ctx
-    print "=========="
-  where
-    (x, sub, ctx) = fromJust (runInfer mempty testClassEnv testTypeEnv testConstructorEnv e)
-    e = inferAst (Ast (letExpr () (BLet () (varPat () "x")) (litExpr () (TInt 5)) (varExpr () "x")))
-
-
-test15 = do
-    print "----------"
-    print (apply sub x)
-    print (pretty (apply sub x))
-    print ctx
-    print "=========="
-  where
-    (x, sub, ctx) = fromJust (runInfer mempty testClassEnv testTypeEnv testConstructorEnv e)
-    e = inferAst (Ast (listExpr () [litExpr () (TInt 1), litExpr () (TBool True)]))
+--    print (pretty (normalized (apply sub x)))
+--    print "=========="
+--  where
+--    (x, sub, ctx) = fromJust (runInfer mempty testClassEnv testTypeEnv testConstructorEnv e)
+--    e = inferAst (Ast (funExpr () [ Clause () [varPat () "x"] [Guard [] (litExpr () (TInt 5))] ]))
+--
+--normalized :: Ast (TypeInfo e) -> Ast (TypeInfo e)
+--normalized ast = apply (normalizer (astTypeVars ast)) ast 
+--
+--test2 = do
+--    print "----------"
+--    print (apply sub p)
+--    print "=========="
+--    print (apply sub <$$> vars)
+--    print "=========="
+--  where
+--    ((p, vars), sub, ctx) = fromJust (runInfer mempty testClassEnv testTypeEnv testConstructorEnv e)
+--    e = inferPattern (conPat () "Some" [varPat () "x"])
+--
+--
+--test3 = do
+--    print "----------"
+--    print (apply sub p)
+--    print "=========="
+--    print (apply sub <$$> vars)
+--    print "=========="
+--    print sub
+--    print "=========="
+--  where
+--    ((p, vars), sub, ctx) = fromJust (runInfer mempty testClassEnv testTypeEnv testConstructorEnv e)
+--    e = inferPattern (listPat () [litPat () (TBool True), varPat () "x"])
+--
+--
+--test4 = do
+--    print "----------"
+--    print (apply sub x)
+--    print (pretty (normalized (apply sub x)))
+--    print "=========="
+--  where
+--    (x, sub, ctx) = fromJust (runInfer mempty testClassEnv testTypeEnv testConstructorEnv e)
+--    e = inferAst (Ast (appExpr () [varExpr () "id", litExpr () (TInt 5)]))
+--
+--
+--
+--test5 = do
+--    print "----------"
+--    print (apply sub x)
+--    print (pretty (normalized (apply sub x)))
+--    print "=========="
+--  where
+--    (x, sub, ctx) = fromJust (runInfer mempty testClassEnv testTypeEnv testConstructorEnv e)
+--    e = inferAst (Ast (conExpr () "(::)" [litExpr () (TBool True), conExpr () "[]" []]))
+--
+--
+--
+--test6 = do
+--    print "----------"
+----    print (apply sub x)
+--    print (pretty (normalized (apply sub x)))
+--    print "=========="
+--  where
+--    (x, sub, ctx) = fromJust (runInfer mempty testClassEnv testTypeEnv testConstructorEnv e)
+--    e = inferAst
+--        (Ast (appExpr () 
+--            [ funExpr () [ Clause () [conPat () "Some" [litPat () (TBool True)] ] 
+--                [ Guard [op2Expr () (OEq ()) (litExpr () (TInt 5)) (litExpr () (TInt 3)), op2Expr () (OEq ()) (litExpr () (TInt 5)) (litExpr () (TInt 3))] (litExpr () (TInt 1))
+--                , Guard [] (litExpr () (TInt 1))
+--                ] ]
+--            , conExpr () "Some" [litExpr () TUnit] ]))
+--
+--
+--test66 = do
+--    print "----------"
+--    print (apply sub x)
+--    print (pretty (apply sub x))
+--    print "=========="
+--  where
+--    (x, sub, ctx) = fromJust (runInfer mempty testClassEnv testTypeEnv testConstructorEnv e)
+--    e = inferAst (Ast (funExpr () [ Clause () [conPat () "Some" [litPat () (TBool True)] ] 
+--        [ Guard [op2Expr () (OEq ()) (litExpr () (TInt 5)) (litExpr () (TInt 3))] (litExpr () (TInt 1)) 
+--        , Guard [op2Expr () (OEq ()) (litExpr () (TInt 5)) (litExpr () (TInt 3))] (litExpr () (TInt 2)) 
+--        , Guard [] (litExpr () (TInt 3)) 
+--        ] ]))
+--
+--test67 = do
+--    print "----------"
+--    print (apply sub x)
+--    print (pretty (apply sub x))
+--    --
+--    let Ast e1 = typeOf <$> apply sub x
+--    let e2 = simplifyExpr e1
+--    print (e2)
+--    print "=========="
+--  where
+--    (x, sub, ctx) = fromJust (runInfer mempty testClassEnv testTypeEnv testConstructorEnv e)
+--    e = inferAst (Ast (patExpr () [varExpr () "xs"] [ Clause () [conPat () "Some" [litPat () (TBool True)] ] 
+--        [ Guard [op2Expr () (OEq ()) (litExpr () (TInt 5)) (litExpr () (TInt 3))] (litExpr () (TInt 1)) 
+--        , Guard [op2Expr () (OEq ()) (litExpr () (TInt 5)) (litExpr () (TInt 3))] (litExpr () (TInt 2)) 
+--        , Guard [] (litExpr () (TInt 3)) 
+--        ] ]))
+--
+--
+--
+--
+----test66 :: ProgExpr ()
+----test66 = funExpr () 
+----    [ Clause () [conPat () "Some" [litPat () (TBool True)], conPat () "Some" [litPat () (TBool True)] ] [Guard [] (litExpr () (TInt 1))] 
+----    , Clause () [conPat () "Some" [litPat () (TBool True)] ] [Guard [op2Expr () (litExpr () (TInt 4)) (litExpr () (TInt 4))] (litExpr () (TInt 1))] 
+----    ]
+--
+--
+--test7 = do
+--    print "----------"
+--    print (apply sub x)
+--    print (pretty (apply sub x))
+--    print "=========="
+--  where
+--    (x, sub, ctx) = fromJust (runInfer mempty testClassEnv testTypeEnv testConstructorEnv e)
+--    e = inferAst (Ast (appExpr () [varExpr () "id", litExpr () (TInt 5)]))
+--
+--
+--test8 = do
+--    print "----------"
+--    print (apply sub x)
+--    print (pretty (apply sub x))
+--    print ctx
+--    print "=========="
+--  where
+--    (x, sub, ctx) = fromJust (runInfer mempty testClassEnv testTypeEnv testConstructorEnv e)
+--    e = inferAst (Ast (letExpr () (BLet () (varPat () "x")) (litExpr () (TInt 5)) (varExpr () "x")))
+--
+--
+--test9 = do
+--    print "----------"
+--    print (apply sub x)
+--    print (pretty (apply sub x))
+--    print ctx
+--    print "=========="
+--  where
+--    (x, sub, ctx) = fromJust (runInfer mempty testClassEnv testTypeEnv testConstructorEnv e)
+--    e = inferAst (Ast (op2Expr () (OEq ()) (litExpr () (TInt 1)) (litExpr () (TInt 1))))
+--
+--
+--test10 =
+--    Ast (letExpr () (BLet () (varPat () "x")) (litExpr () (TInt 5)) (varExpr () "x"))
+--
+--
+--test11 =
+--    Ast (letExpr () (BFun () "f" [varPat () "x", varPat () "y"]) (litExpr () (TInt 5)) (varExpr () "x"))
+--
+--
+--test12 = do
+--    print "----------"
+--    print (apply sub x)
+--    print (pretty (apply sub x))
+--    print ctx
+--    print "=========="
+--  where
+--    (x, sub, ctx) = fromJust (runInfer mempty testClassEnv testTypeEnv testConstructorEnv e)
+--    e = inferAst (Ast (letExpr () (BFun () "f" [varPat () "x", varPat () "y"]) (litExpr () (TInt 5)) (appExpr () [varExpr () "f", litExpr () (TInt 1), litExpr () (TInt 1)])))
+--
+--
+--test14 = do
+--    print "----------"
+--    print (apply sub x)
+--    print (pretty (apply sub x))
+--    print ctx
+--    print "=========="
+--  where
+--    (x, sub, ctx) = fromJust (runInfer mempty testClassEnv testTypeEnv testConstructorEnv e)
+--    e = inferAst (Ast (letExpr () (BLet () (varPat () "x")) (litExpr () (TInt 5)) (varExpr () "x")))
+--
+--
+--test15 = do
+--    print "----------"
+--    print (apply sub x)
+--    print (pretty (apply sub x))
+--    print ctx
+--    print "=========="
+--  where
+--    (x, sub, ctx) = fromJust (runInfer mempty testClassEnv testTypeEnv testConstructorEnv e)
+--    e = inferAst (Ast (listExpr () [litExpr () (TInt 1), litExpr () (TBool True)]))
 
 
 test16 = do
@@ -310,19 +313,45 @@ test16 = do
 
     --let Ast e1 = typeOf <$> apply sub x
     let Ast e1 = const () <$> apply sub x
-    let e2 = desugarExpr e1
-    print (e2)
+    let e2 = evalSupply (simplifyExpr e1) (nameSupply "a")
+    print e2
 
   where
     (x, sub, ctx) = fromJust (runInfer mempty testClassEnv testTypeEnv testConstructorEnv b)
     b = inferAst (Ast e)
     --c = apply sub x
-    --d = desugarExpr c
+    --d = simplifyExpr c
 --    print (apply sub x)
     --
 
     e :: ProgExpr ()
     e = letExpr () (BFun () "f" [varPat () "x", varPat () "y"]) (litExpr () (TInt 5)) (appExpr () [varExpr () "f", litExpr () TUnit, litExpr () TUnit])
+
+
+test17 = do
+    print "y"
+    let Ast e1 = typeOf <$> apply sub x
+    let e2 = fromJust (evalSupply (simplifyExpr e1) (nameSupply "a"))
+    let fff = simplifiedExprTree e2
+    let xxx = unpack . renderDoc <$> fff
+    putStrLn (showTree xxx)
+    print (e2)
+
+  where
+    (x, sub, ctx) = fromJust (runInfer mempty testClassEnv testTypeEnv testConstructorEnv b)
+    b = inferAst (Ast e)
+
+    e :: ProgExpr ()
+    e = recordExpr () (rExt "name" (litExpr () (TString "Bob")) (rExt "id" (litExpr () (TInt 1)) rNil :: Row (ProgExpr ())))
+--    e = listExpr () [litExpr () (TInt 1), litExpr () (TInt 2), litExpr () (TInt 3)]
+
+--    e = tupleExpr () [litExpr () (TInt 1), litExpr () (TString "Bob")]
+
+test18 = desugarRow2 exprTag conExpr (rExt "name" (litExpr tString (TString "Bob")) (rExt "id" (litExpr tInt (TInt 1)) rNil :: Row (ProgExpr Type)))
+
+test19 = desugarRow2 exprTag conExpr (rNil :: Row (ProgExpr Type))
+
+test20 = desugarRow2 exprTag conExpr (rExt "id" (litExpr tInt (TInt 1)) rNil :: Row (ProgExpr Type))
 
 --test16 = do
 --    print "----------"

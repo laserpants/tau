@@ -14,6 +14,7 @@ import Data.Tree
 import Data.Tree.View (showTree)
 import Tau.Compiler.Error
 import Tau.Compiler.Substitution hiding (null)
+import Tau.Compiler.Translation
 import Tau.Compiler.Unification
 import Tau.Lang
 import Tau.Prog
@@ -154,8 +155,8 @@ prettyList_ :: [Doc a] -> Doc a
 prettyList_ = brackets . commaSep
 
 prettyRow :: Doc a -> Row (Doc a) -> Doc a
-prettyRow delim row@(Row map r) = body <> leaf where
-
+prettyRow delim row@(Row map r) = body <> leaf 
+  where
     leaf = case r of
         Nothing -> ""
         Just q  -> " " <> pipe <+> q
@@ -191,6 +192,27 @@ isTuple con = Just True == (allCommas <$> stripped con)
   where
     allCommas = Text.all (== ',')
     stripped  = Text.stripSuffix ")" <=< Text.stripPrefix "("
+
+-- >>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>
+
+instance Pretty (SimplifiedExpr t) where
+
+    pretty = para $ \case
+        ECon    _ con []         -> pretty con
+--        ECon    _ con es         -> pretty con <+> foldr eCon "" (fst <$> es)
+        EApp    _ es             -> prettyApp (fst <$> es)
+--        ELam    _ ps e           -> prettyTuple (pretty <$> ps) <+> "=>" <+> snd e
+--        EFun    _ cs             -> "fun" <+> pipe -- <+> prettyClauses (fst <$$> cs)
+
+--        EPat    _ [e] cs         -> "match" <+> snd e <+> "with" <+> prettyClauses (fst <$$> cs)
+
+        expr -> snd <$> expr & \case
+
+            EVar    _ var        -> pretty var
+            ELit    _ prim       -> pretty prim
+--            ELet    _ bind e1 e2 -> "let" <+> pretty bind <+> equals <+> e1 <+> "in" <+> e2
+            EFix    _ name e1 e2 -> "fix" <+> pretty name <+> equals <+> e1 <+> "in" <+> e2
+            EIf     _ e1 e2 e3   -> "if" <+> e1 <+> "then" <+> e2 <+> "else" <+> e3
 
 -- >>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>
 
@@ -280,6 +302,40 @@ instance (Typed t, Pretty t) => Pretty (Ast t) where
 
 -- >>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>
 
+simplifiedExprTree :: (Typed t, Pretty t) => SimplifiedExpr t -> Tree (Doc a)
+simplifiedExprTree = para $ \case
+
+    EVar    t var        -> Node (annotated t var) []
+    ECon    t con es     -> Node (annotated t con) (snd <$> es)
+    ELit    t prim       -> Node (annotated t prim) []
+    EApp    t es         -> Node (annotated t ("@" :: Text)) (snd <$> es) 
+    EFix    t name e1 e2 -> Node "fix TODO" []
+    ELam    t ps e       -> Node "lam TODO" []
+    EIf     t e1 e2 e3   -> ifTree t (snd e1) (snd e2) (snd e3)
+    EPat    t es cs      -> Node (xyz2 t es) undefined -- (xyz t es) (clauseTree <$> (fst <$$> cs))
+
+-- xyz :: (Typed t, Pretty p) => p -> [(ProgExpr t, e)] -> Doc a
+
+xyz2 :: (Typed t, Pretty t, Pretty p) => p -> [(SimplifiedExpr t, e)] -> Doc a
+xyz2 t es = "match" <+> commaSep (withTag2 . fst <$> es) <+> "with" <+> colon <+> pretty t
+--xyz2 t es = "match" <+> commaSep (withTag . fst <$> es) <+> "with" <+> colon <+> pretty t
+
+withTag2 :: (Typed t, Pretty t) => SimplifiedExpr t -> Doc a
+withTag2 e = annotated (typeOf (eTag e)) e 
+  where
+    eTag :: SimplifiedExpr t -> t
+    eTag = cata $ \case
+        EVar    t _          -> t
+        ECon    t _ _        -> t
+--        ELit    t prim       -> Node (annotated t prim) []
+--        EApp    t es         -> Node (annotated t ("@" :: Text)) (snd <$> es) 
+--        EFix    t name e1 e2 -> Node "fix TODO" []
+--        ELam    t ps e       -> Node "lam TODO" []
+--        EIf     t e1 e2 e3   -> ifTree t (snd e1) (snd e2) (snd e3)
+--        EPat    t es cs      -> Node (xyz2 t es) undefined -- (xyz t es) (clauseTree <$> (fst <$$> cs))
+
+-- >>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>
+
 exprTree :: (Typed t, Pretty t) => ProgExpr t -> Tree (Doc a)
 exprTree = para $ \case
 
@@ -308,6 +364,7 @@ concatRowWithKey (Row m _) = f =<< Map.foldrWithKey (curry (:)) mempty m
 foo :: (Name, (ProgExpr t, Tree (Doc a))) -> Tree (Doc a)
 foo (a, b) = Node (pretty a) [snd b]
 
+xyz :: (Typed t, Pretty p) => p -> [(ProgExpr t, e)] -> Doc a
 xyz t es = "match" <+> commaSep (withTag . fst <$> es) <+> "with" <+> colon <+> pretty t
 
 annotated :: (Pretty t, Pretty p) => t -> p -> Doc a
