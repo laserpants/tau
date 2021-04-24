@@ -75,12 +75,11 @@ class FreeIn t where
 
 -- >>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>
 
--- | Tags to accommodate for type annotations and other information inserted
--- into the AST
 class (Show t) => Tag t where
     tarr     :: t -> t -> t
     tapp     :: t -> t -> t
     fromType :: Type -> t
+    toType   :: t -> Type
 
 -- >>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>
 

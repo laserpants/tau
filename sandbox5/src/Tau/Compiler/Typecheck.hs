@@ -48,7 +48,7 @@ inferAst
 inferAst (Ast expr) = do
     e <- inferExpr expr
     sub <- gets fst
-    pure (optimizePredicates <$> Ast (apply sub e))
+    pure (simplifyPredicates <$> Ast (apply sub e))
 
 inferExpr
   :: ( Monoid t

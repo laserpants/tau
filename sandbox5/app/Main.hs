@@ -119,16 +119,26 @@ import qualified Tau.Env as Env
 --            --    pure ()
 
 
-----test1 :: (ProgExpr (TypeInfo [Error]), TypeSubstitution, Context)
---test1 = do
---    print "----------"
+-- fun | x => 5
+--test1 :: (ProgExpr (TypeInfo [Error]), TypeSubstitution, Context)
+test1 = do
+    print "----------"
 --    print (apply sub x)
+--    print z
+
+    let xxx = unpack . renderDoc <$> zz
+    putStrLn (showTree xxx)
+
 --    print (pretty (normalized (apply sub x)))
---    print "=========="
---  where
---    (x, sub, ctx) = fromJust (runInfer mempty testClassEnv testTypeEnv testConstructorEnv e)
---    e = inferAst (Ast (funExpr () [ Clause () [varPat () "x"] [Guard [] (litExpr () (TInt 5))] ]))
---
+    print "=========="
+  where
+
+    zz = simplifiedExprTree z
+    z = fromJust (evalSupply (simplifyExpr y) (nameSupply "a"))
+    y = getAst (apply sub x)
+    (x, sub, ctx) = fromJust (runInfer mempty testClassEnv testTypeEnv testConstructorEnv e)
+    e = inferAst (Ast (funExpr () [ Clause () [varPat () "x"] [Guard [] (litExpr () (TInt 5))] ]))
+
 --normalized :: Ast (TypeInfo e) -> Ast (TypeInfo e)
 --normalized ast = apply (normalizer (astTypeVars ast)) ast 
 --
@@ -347,11 +357,13 @@ test17 = do
 
 --    e = tupleExpr () [litExpr () (TInt 1), litExpr () (TString "Bob")]
 
-test18 = desugarRow2 exprTag conExpr (rExt "name" (litExpr tString (TString "Bob")) (rExt "id" (litExpr tInt (TInt 1)) rNil :: Row (ProgExpr Type)))
+test18 = desugarRow exprTag conExpr (rExt "name" (litExpr tString (TString "Bob")) (rExt "id" (litExpr tInt (TInt 1)) rNil :: Row (ProgExpr Type)))
 
-test19 = desugarRow2 exprTag conExpr (rNil :: Row (ProgExpr Type))
+test19 = desugarRow exprTag conExpr (rNil :: Row (ProgExpr Type))
 
-test20 = desugarRow2 exprTag conExpr (rExt "id" (litExpr tInt (TInt 1)) rNil :: Row (ProgExpr Type))
+test20 = desugarRow exprTag conExpr (rExt "id" (litExpr tInt (TInt 1)) rNil :: Row (ProgExpr Type))
+
+test21 = desugarRow exprTag conExpr (rVar (varExpr (tCon kRow "a") "r") :: Row (ProgExpr Type))
 
 --test16 = do
 --    print "----------"

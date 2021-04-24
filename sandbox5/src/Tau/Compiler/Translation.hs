@@ -1,10 +1,11 @@
-{-# LANGUAGE DeriveTraversable #-}
-{-# LANGUAGE FlexibleContexts  #-}
-{-# LANGUAGE FlexibleInstances #-}
-{-# LANGUAGE LambdaCase        #-}
-{-# LANGUAGE OverloadedStrings #-}
-{-# LANGUAGE StrictData        #-}
-{-# LANGUAGE TemplateHaskell   #-}
+{-# LANGUAGE DeriveTraversable     #-}
+{-# LANGUAGE FlexibleContexts      #-}
+{-# LANGUAGE FlexibleInstances     #-}
+{-# LANGUAGE LambdaCase            #-}
+{-# LANGUAGE MultiParamTypeClasses #-}
+{-# LANGUAGE OverloadedStrings     #-}
+{-# LANGUAGE StrictData            #-}
+{-# LANGUAGE TemplateHaskell       #-}
 module Tau.Compiler.Translation where
 
 import Control.Arrow ((<<<), (>>>), (***), second)
@@ -46,7 +47,7 @@ simplifyExpr = simplifyExprPatterns <=< desugarExprPatterns <<< cata (\case
  -- Translate tuples, lists, and records
     ETuple  t exprs      -> conExpr t (tupleCon (length exprs)) exprs
     EList   t exprs      -> foldr (listConsExpr t) (conExpr t "[]" []) exprs
-    ERecord t row        -> conExpr (rowTag (eTag <$> row)) "#Record" [desugarRow2 eTag conExpr row]
+    ERecord t row        -> conExpr (rowTag (eTag <$> row)) "#Record" [desugarRow eTag conExpr row]
  -- Translate operators to prefix form
     EOp1    t op a       -> appExpr t [prefixOp1 op, a]
     EOp2    t op a b     -> appExpr t [varExpr (op2Tag op) ("(" <> op2Symbol op <> ")"), a, b]
@@ -132,14 +133,19 @@ desugarExprPatterns = cata $ \case
     EPat    t es cs      -> patExpr t <$> sequence es <*> traverse translClause cs
     EFun    t clauses    -> do
         cs <- traverse translClause clauses
-        let tags = gork cs
-        let vars = (`varExpr` "#0") <$> tags
-        pure (foldr (\p e -> lamExpr (tarr p (eTag e)) "#0" e) (patExpr t vars cs) tags)
+        let tags = clausePatterns (head cs)
+            vars = (`varExpr` "#0") <$> tags
+
+        pure (foldr (\p e -> lamExpr (eTag e) "#0" e) (patExpr t vars cs) tags)
+
+--        let tags = gork cs
+--        let vars = (`varExpr` "#0") <$> tags
+--        pure (foldr (\p e -> lamExpr (tarr p (eTag e)) "#0" e) (patExpr t vars cs) tags)
   where
     translClause (ClauseA t ps es e) =
         ClauseA t (desugarPatterns <$> ps) <$> sequence es <*> e
 
-    gork (ClauseA _ ps _ _:_) = pTag <$> ps
+    clausePatterns (ClauseA _ ps _ _) = pTag <$> ps
 
     eTag = cata $ \case
         EVar    t _          -> t
@@ -167,7 +173,7 @@ desugarPatterns = cata $ \case
 
     PTuple  t ps         -> conPat t (tupleCon (length ps)) ps
     PList   t ps         -> foldr (listConsPat t) (conPat t "[]" []) ps
-    PRecord t row        -> conPat (rowTag (pTag <$> row)) "#Record" [desugarRow2 pTag conPat row]
+    PRecord t row        -> conPat (rowTag (pTag <$> row)) "#Record" [desugarRow pTag conPat row]
 
     PVar    t var        -> varPat t var
     PCon    t con ps     -> conPat t con ps
@@ -184,24 +190,15 @@ desugarPatterns = cata $ \case
         POr     t _ _        -> t
         PAny    t            -> t
 
-desugarRow2 :: (Tag t) => (a -> t) -> (t -> Name -> [a] -> a) -> Row a -> a
-desugarRow2 foo con (Row map r) = Map.foldrWithKey fun (initl r) map
+desugarRow :: (Tag t) => (a -> t) -> (t -> Name -> [a] -> a) -> Row a -> a
+desugarRow untag con (Row map r) = Map.foldrWithKey fun (initl r) map
   where
     initl = fromMaybe (con (tcon kRow "{}") "{}" [])
     fun key =
         let kind  = kArr kTyp (kArr kRow kRow)
             field = "{" <> key <> "}"
-         in flip (foldr (\e es -> con (tapp (tapp (tcon kind field) (foo e)) (foo es)) field [e, es]))
-
-
---desugarRow :: (Tag t) => (t -> Name -> [a] -> a) -> Row a -> a
---desugarRow con (Row map r) = Map.foldrWithKey fun (initl r) map
---  where
---    initl = fromMaybe (con (fromType (tCon kRow "{}")) "{}" [])
---    fun key =
---        let kind  = kArr kTyp (kArr kRow kRow)
---            field = "{" <> key <> "}"
---         in flip (foldr (\e es -> con (tarr (tcon kind field) undefined) field [e, es]))
+            ty e es = tapp (tapp (tcon kind field) (untag e)) (untag es)
+         in flip (foldr (\e es -> con (ty e es) field [e, es]))
 
 simplifyExprPatterns :: (Tag t, MonadSupply Name m) => DesugaredExpr t -> m (SimplifiedExpr t)
 simplifyExprPatterns = cata $ \case

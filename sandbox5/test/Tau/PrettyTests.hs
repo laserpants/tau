@@ -182,9 +182,9 @@ testPrettyPattern = do
         (recordPat () (rExt "name" (anyPat ()) (rExt "id" (varPat () "id") rNil)))
         "{ id = id, name = _ }"
 
---    suceedPrintPattern
---        (recordPat () (rExt "name" (varPat () "name") (rExt "id" (varPat () "id") (rVar "r"))))
---        "{ id = id, name = name | r }"
+    suceedPrintPattern
+        (recordPat () (rExt "name" (varPat () "name") (rExt "id" (varPat () "id") (rVar (varPat () "r")))))
+        "{ id = id, name = name | r }"
 
     describe "Constructor patterns" $ do
 

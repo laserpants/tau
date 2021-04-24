@@ -310,9 +310,11 @@ simplifiedExprTree = para $ \case
     ELit    t prim       -> Node (annotated t prim) []
     EApp    t es         -> Node (annotated t ("@" :: Text)) (snd <$> es) 
     EFix    t name e1 e2 -> Node "fix TODO" []
-    ELam    t ps e       -> Node "lam TODO" []
+    ELam    t ps e       -> Node (annotated t ("\\" <> ps)) [snd e]
     EIf     t e1 e2 e3   -> ifTree t (snd e1) (snd e2) (snd e3)
     EPat    t es cs      -> Node (xyz2 t es) undefined -- (xyz t es) (clauseTree <$> (fst <$$> cs))
+
+fooza = undefined
 
 -- xyz :: (Typed t, Pretty p) => p -> [(ProgExpr t, e)] -> Doc a
 
