@@ -365,48 +365,6 @@ clauseTag (Clause t _ _) = t
 
 -- >>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>
 
---class Tagged a t where
---    tag :: a -> t
-
---instance (Functor clause) => Tagged (Expr t t t t t t t t t t t t t t t bind lam clause) t where
---    tag = exprTag
---
---instance Tagged (ProgExpr t) t where
---    tag = undefined
-
---instance (Functor clause) => Tagged (Expr t t t t t t t t t Void  bind lam clause) t where
---    tag = undefined
-
---
---instance (Functor clause) => Tagged (Expr t t2 t3 t4 t5 t6 t7 t8 t9 t10 t11 t12 t13 t14 t15 bind lam clause) t where
---    tag = cata $ \case
---        EVar    t _     -> t
---
---instance (Functor clause) => Tagged (Expr t1 t t3 t4 t5 t6 t7 t8 t9 t10 t11 t12 t13 t14 t15 bind lam clause) t where
---    tag = cata $ \case
---        ECon    t _ _   -> t
---
---
---instance Tagged (Pattern t t t t t t t t t) t where
---    tag = patternTag
---
---instance Tagged (Op1 t) t where
---    tag = op1Tag
---
---instance Tagged (Op2 t) t where
---    tag = op2Tag
---
---instance Tagged (Binding t p) t where
---    tag = bindingTag
---
---instance Tagged (Ast t) t where
---    tag = astTag
---
---instance Tagged (Clause t p pa) t where
---    tag = clauseTag
-
--- >>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>
-
 clausePatterns :: Clause t p a -> [p]
 clausePatterns (Clause _ ps _) = ps
 

@@ -69,19 +69,6 @@ instance (Typed t) => Typed (TypeInfoT e t) where
 instance FreeIn TypeEnv where
     free = free . Env.elems
 
-instance (Show e) => Tag (TypeInfo [e]) where
-    tarr t1 t2 = TypeInfo{ nodeType       = nodeType t1 `tArr` nodeType t2
-                         , nodePredicates = nodePredicates t1 <> nodePredicates t2
-                         , nodeErrors     = nodeErrors t1 <> nodeErrors t2 }
-
-    tapp t1 t2 = TypeInfo{ nodeType       = tApp (nodeType t1) (nodeType t2)
-                         , nodePredicates = nodePredicates t1 <> nodePredicates t2
-                         , nodeErrors     = nodeErrors t1 <> nodeErrors t2 }
-
-    fromType t = TypeInfo{ nodeType       = t
-                         , nodePredicates = []
-                         , nodeErrors     = [] }
-
 -- >>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>
 
 patternPredicates :: ProgPattern (TypeInfoT e t) -> [Predicate]

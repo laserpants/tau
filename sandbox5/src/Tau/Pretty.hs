@@ -195,11 +195,21 @@ isTuple con = Just True == (allCommas <$> stripped con)
 
 -- >>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>
 
+eCon2 :: SimplifiedExpr t -> Doc a -> Doc a
+eCon2 expr doc = lhs <> rhs
+  where
+    lhs = parensIf useLeft (pretty expr)
+    rhs = if "" == show doc then "" else space <> doc
+    useLeft = case project expr of
+        ECon _ _ es | not (null es) -> True
+        ELam{}                      -> True
+        _                           -> False
+
 instance Pretty (SimplifiedExpr t) where
 
     pretty = para $ \case
         ECon    _ con []         -> pretty con
---        ECon    _ con es         -> pretty con <+> foldr eCon "" (fst <$> es)
+        ECon    _ con es         -> pretty con <+> foldr eCon2 "" (fst <$> es)
         EApp    _ es             -> prettyApp (fst <$> es)
 --        ELam    _ ps e           -> prettyTuple (pretty <$> ps) <+> "=>" <+> snd e
 --        EFun    _ cs             -> "fun" <+> pipe -- <+> prettyClauses (fst <$$> cs)

@@ -93,8 +93,8 @@ matchPairs (t1, t2) (u1, u2) = do
 unifyRows :: (MonadError UnificationError m) => Row Type -> Row Type -> m TypeSubstitution
 unifyRows (Row m1 Nothing) (Row m2 Nothing)
     | Map.null m1 && Map.null m2              = pure mempty
-unifyRows (Row m (Just r)) row | Map.null m   = bind (unsafeGetTypeVar r) kRow (rowToTag row)
-unifyRows row (Row m (Just r)) | Map.null m   = bind (unsafeGetTypeVar r) kRow (rowToTag row)
+unifyRows (Row m (Just r)) row | Map.null m   = bind (unsafeGetTypeVar r) kRow (rowToType row)
+unifyRows row (Row m (Just r)) | Map.null m   = bind (unsafeGetTypeVar r) kRow (rowToType row)
 unifyRows r1 r2 = do
     (sub1, sub2) <- rowSubs unifyRows unifyWith r1 r2
     pure (sub2 <> sub1)
@@ -104,7 +104,7 @@ unifyRows r1 r2 = do
 matchRows :: (MonadError UnificationError m) => Row Type -> Row Type -> m TypeSubstitution
 matchRows (Row m1 Nothing) (Row m2 Nothing)
     | Map.null m1 && Map.null m2              = pure mempty
-matchRows (Row m (Just r)) row | Map.null m   = bind (unsafeGetTypeVar r) kRow (rowToTag row)
+matchRows (Row m (Just r)) row | Map.null m   = bind (unsafeGetTypeVar r) kRow (rowToType row)
 matchRows r1 r2 = do
     (sub1, sub2) <- rowSubs matchRows matchWith r1 r2
     merge sub1 sub2 & maybe (throwError MergeFailed) pure

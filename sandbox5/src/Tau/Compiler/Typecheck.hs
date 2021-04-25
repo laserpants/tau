@@ -213,7 +213,7 @@ inferExpr = cata $ \case
 
     ERecord _ row -> inferExprNode recordExpr $ do
         fs <- traverse exprNode row
-        unifyThis (tRecord (rowToTag (typeOf <$> fs)))
+        unifyThis (tRecord (rowToType (typeOf <$> fs)))
         pure fs
 
 inferPattern
@@ -290,7 +290,7 @@ inferPattern = cata $ \case
 
     PRecord t row -> inferPatternNode recordPat $ do
         fs <- traverse patternNode row
-        unifyThis (tRecord (rowToTag (typeOf <$> fs)))
+        unifyThis (tRecord (rowToType (typeOf <$> fs)))
         pure fs
 
 patternNode

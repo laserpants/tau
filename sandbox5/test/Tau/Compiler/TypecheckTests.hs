@@ -192,19 +192,19 @@ testInferPattern = do
 
     succeedInferPattern 
         (recordPat () (rExt "id" (varPat () "id") (rExt "name" (varPat () "name") rNil)))
-        (tRecord (rowToTag (rExt "id" _a (rExt "name" _b rNil))))
+        (tRecord (rowToType (rExt "id" _a (rExt "name" _b rNil))))
         [] 
         [("id", _a), ("name", _b)]
 
     succeedInferPattern 
         (recordPat () (rExt "name" (varPat () "name") (rExt "id" (varPat () "id") rNil)))
-        (tRecord (rowToTag (rExt "id" _a (rExt "name" _b rNil))))
+        (tRecord (rowToType (rExt "id" _a (rExt "name" _b rNil))))
         [] 
         [("id", _a), ("name", _b)]
 
 --    succeedInferPattern 
 --        (recordPat () (rExt "name" (varPat () "name") (rExt "id" (varPat () "id") (rVar "r"))))
---        (tRecord (rowToTag (rExt "id" _a (rExt "name" _b (rVar "c")))))
+--        (tRecord (rowToType (rExt "id" _a (rExt "name" _b (rVar "c")))))
 --        [] 
 --        [("id", _a), ("name", _b)]
 
