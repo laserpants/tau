@@ -379,13 +379,39 @@ import qualified Tau.Env as Env
 -- --    e = inferAst (Ast (recordExpr () (rExt "id" (litExpr () (TInt 1)) rNil :: Row (ProgExpr ()))))
 
 test123 = do
+    print sub
     print y
   where
     Ast y = apply sub x
     (x, sub, ctx) = fromJust (runInfer mempty testClassEnv testTypeEnv testConstructorEnv e)
     e = inferAst (Ast (e1 :: ProgExpr ()))
     --e1 = op1Expr () (ONeg ()) (varExpr () "x")
-    e1 = recordExpr () (rExt "name" (litExpr () (TString "Bob")) (rExt "id" (litExpr () (TInt 1)) rNil))
+    --e1 = recordExpr () (rExt "name" (litExpr () (TString "Bob")) (rExt "id" (litExpr () (TInt 1)) rNil))
+    --e1 = (op2Expr () (OEq ()) (varExpr () "x") (varExpr () "y"))
+    e1 = recordExpr () (rExt "name" (litExpr () (TString "Bob")) (rExt "id" (litExpr () (TInt 1)) (rVar (varExpr () "r"))))
+
+
+test456 = simplifyExpr2 (lamExpr (ti (tInt `tArr` tInt `tArr` tString)) [varPat (ti tInt) "p", varPat (ti tInt) "q"] (litExpr (ti tString) (TString "abc")))
+--     let fff = simplifiedExprTree e2
+
+----test456_ = simplifyExpr2 (lamExpr () [varPat () "p"] (litExpr () (TString "abc")))
+--
+----test456 = simplifyExpr2 (lamExpr (ti (tInt `tArr` tString)) [varPat (ti tInt) "p"] (litExpr (ti tString) (TString "abc")))
+--
+--xxx123 :: Expr t t t t t t t t Void Void Void Void Void Void Void Void Name (ClauseA t (ProgPattern t)) -> SimplifiedExpr t
+--xxx123 = cata $ \case
+--    EVar    t var        -> varExpr t var
+--    ECon    t con es     -> conExpr t con es
+--    ELit    t prim       -> litExpr t prim
+--    EApp    t es         -> appExpr t es
+--    EFix    t name e1 e2 -> fixExpr t name e1 e2
+--    EIf     t e1 e2 e3   -> ifExpr  t e1 e2 e3
+--    EPat    t es cs      -> patExpr t es undefined
+--    ELam    t ps e       -> lamExpr t ps e
+
+
+ti :: Type -> TypeInfo [Error]
+ti t = TypeInfo t [] []
 
 main :: IO ()
 main = print "Main"
@@ -462,6 +488,6 @@ testConstructorEnv = constructorEnv
     , ("Foo"      , ( ["Foo"], 2 ))
     ]
 
-foz1 = case \x -> 1 of
-    f -> f ()
-
+--foz1 = case \x -> 1 of
+--    f -> f ()
+--

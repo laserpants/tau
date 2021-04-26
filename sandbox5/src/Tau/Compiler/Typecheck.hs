@@ -110,7 +110,7 @@ inferExpr = cata $ \case
 
         e1 <- exprNode (local (second3 (Env.inserts (toScheme <$$> vs))) expr1)
 
-        t1 <- newTVar kTyp
+        t1 <- newTVar kHole
         t1 ## foldr tArr (typeOf e1) (typeOf <$> ps)
 
         scheme <- generalize t1
@@ -126,7 +126,7 @@ inferExpr = cata $ \case
         pure (name, e1, e2)
 
     EFix _ name expr1 expr2 -> inferExprNode (args3 fixExpr) $ do
-        t1 <- newTVar kTyp
+        t1 <- newTVar kHole
         e1 <- exprNode (local (second3 (Env.insert name (toScheme t1))) expr1)
         e1 ## (t1 :: Type) 
         scheme <- generalize (typeOf e1)
@@ -162,8 +162,8 @@ inferExpr = cata $ \case
         pure (es1, es2)
 
     EFun _ eqs@(Clause _ ps _:_) -> inferExprNode funExpr $ do
-        ty <- newTVar kTyp
-        ts <- newTVars kTyp (length ps)
+        ty <- newTVar kHole
+        ts <- newTVars kHole (length ps)
         es <- lift (traverse (inferClause ts) eqs)
         -- Unify return type with r.h.s. of arrow in clauses
         forM_ (clauseGuards =<< es) (\(Guard _ e) -> e ## (ty :: Type))
@@ -200,7 +200,7 @@ inferExpr = cata $ \case
     EList _ exprs -> inferExprNode listExpr $ do
         es <- traverse exprNode exprs
         t1 <- case es of
-            []    -> newTVar kTyp
+            []    -> newTVar kHole
             (e:_) -> pure (typeOf e)
 
         -- Unify list elements' types
@@ -277,7 +277,7 @@ inferPattern = cata $ \case
     PList t pats -> inferPatternNode listPat $ do
         ps <- traverse patternNode pats
         t1 <- case ps of
-            []    -> newTVar kTyp
+            []    -> newTVar kHole
             (p:_) -> pure (typeOf p)
 
         -- Unify list elements' types
@@ -322,7 +322,7 @@ thisType
      , MonadState (TypeSubstitution, Context) m )
   => WriterT Node m Type
 thisType = do
-    t <- newTVar kTyp
+    t <- newTVar kHole
     unifyThis t
     pure t
 
@@ -487,7 +487,7 @@ lookupScheme name = do
     case Env.lookup name env of
         Nothing -> do
             insertErrors [UnboundTypeIdentifier name]
-            toScheme <$> newTVar kTyp
+            toScheme <$> newTVar kHole
         Just ty ->
             pure (apply sub ty)
 
@@ -596,7 +596,7 @@ inferPatternNode
   -> WriterT Node m t
   -> m (a, [(Name, Type)])
 inferPatternNode c f = do
-    newTy <- newTVar kTyp
+    newTy <- newTVar kHole
     (a, ti, vs) <- inferNode newTy f
     pure (c ti a, vs)
 
@@ -608,7 +608,7 @@ inferExprNode
   -> WriterT Node m t1
   -> m a
 inferExprNode c f = do
-    newTy <- newTVar kTyp
+    newTy <- newTVar kHole
     (a, ti, _) <- inferNode newTy f
     pure (c ti a)
 

@@ -47,7 +47,7 @@ type ConstructorEnv = Env (Set Name, Int)
 
 data TypeInfoT e t = TypeInfo
     { nodeType       :: t
-    , nodePredicates :: [Predicate] 
+    , nodePredicates :: List Predicate
     , nodeErrors     :: e
     }
 

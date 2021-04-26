@@ -1,4 +1,5 @@
 {-# LANGUAGE FlexibleContexts  #-}
+{-# LANGUAGE LambdaCase        #-}
 {-# LANGUAGE OverloadedStrings #-}
 {-# LANGUAGE StrictData        #-}
 module Tau.Compiler.Unification where
@@ -29,16 +30,27 @@ rowType (Row m Nothing)  | null m = RNil
 rowType (Row m (Just r)) | null m = RVar (unsafeGetTypeVar r)
 rowType _                         = RExt
 
+setKind :: Kind -> Type -> Type
+setKind kind = cata $ \case
+    TVar _ var -> tVar kind var
+    TCon _ con -> tCon kind con
+    t          -> embed t
+
 bind :: (MonadError UnificationError m) => Name -> Kind -> Type -> m TypeSubstitution
+--bind name kind ty
+--    | "a5" == name = traceShow kind $ traceShow ty $ undefined
+--
 bind name kind ty
     | ty == tVar kind name                    = pure mempty
     | name `elem` free ty                     = throwError InfiniteType
+    | kHole == kind                           = pure (name `mapsTo` ty)
+    | kHole == kindOf ty                      = pure (name `mapsTo` setKind kind ty)
     | kind /= kindOf ty                       = throwError KindMismatch
     | otherwise                               = pure (name `mapsTo` ty)
 
 unify :: (MonadError UnificationError m) => Type -> Type -> m TypeSubstitution
 unify t u
-    | isRow t && isRow u                      = unifyRowTypes t u
+    | isRow t || isRow u                      = unifyRowTypes t u
     | otherwise                               = fn (project t) (project u)
   where
     fn (TArr t1 t2) (TArr u1 u2)              = unifyPairs (t1, t2) (u1, u2)
@@ -50,7 +62,7 @@ unify t u
 
 match :: (MonadError UnificationError m) => Type -> Type -> m TypeSubstitution
 match t u
-    | isRow t && isRow u                      = matchRowTypes t u
+    | isRow t || isRow u                      = matchRowTypes t u
     | otherwise                               = fn (project t) (project u)
   where
     fn (TArr t1 t2) (TArr u1 u2)              = matchPairs (t1, t2) (u1, u2)

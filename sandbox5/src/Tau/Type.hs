@@ -22,6 +22,12 @@ data KindF a
     | KArr a a                -- ^ Type constructors
     | KClass                  -- ^ Type class constraints
     | KRow                    -- ^ Rows
+    | KHole                   -- 
+
+--data KindF a
+--    = KVar Name
+--    | KCon Name
+--    | KArr a a 
 
 -- | Kind
 type Kind = Fix KindF
@@ -174,6 +180,9 @@ kClass = embed KClass
 
 kRow :: Kind
 kRow = embed KRow
+
+kHole :: Kind
+kHole = embed KHole
 
 infixr 1 `kArr`
 
