@@ -10,29 +10,29 @@ import Test.Hspec hiding (describe, it)
 import Utils
 import qualified Data.Text as Text
 
---testKindOf :: SpecWith ()
---testKindOf = do
---
---    describe "The kind of Bool" $ do
---        it "✔ is *" 
---            (kindOf tBool == kTyp)
---
---    describe "The kind of (Int -> Int)" $ do
---        it "✔ is *" 
---            (kindOf (tInt `tArr` tInt) == kTyp)
---
---    describe "The kind of (List a)" $ do
---        it "✔ is *" 
---            (kindOf (tList _a) == kTyp)
---
---    describe "The kind of (List Int)" $ do
---        it "✔ is *" 
---            (kindOf (tList tInt) == kTyp)
---
---    describe "The kind of List" $ do
---        it "✔ is * -> *" 
---            (kindOf tListCon == kFun)
---
+testKindOf :: SpecWith ()
+testKindOf = do
+
+    describe "The kind of Bool" $ do
+        it "✔ is *" 
+            (kindOf tBool == kTyp)
+
+    describe "The kind of (Int -> Int)" $ do
+        it "✔ is *" 
+            (kindOf (tInt `fn` tInt) == kTyp)
+
+    describe "The kind of (List a)" $ do
+        it "✔ is *" 
+            (kindOf (tList _a) == kTyp)
+
+    describe "The kind of (List Int)" $ do
+        it "✔ is *" 
+            (kindOf (tList tInt) == kTyp)
+
+    describe "The kind of List" $ do
+        it "✔ is * -> *" 
+            (kindOf tListCon == kFun)
+
 ---- >>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>
 --
 --typeVarsAre :: Type -> [(Name, Kind)] -> SpecWith ()

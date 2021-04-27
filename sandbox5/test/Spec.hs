@@ -1,19 +1,17 @@
 {-# LANGUAGE OverloadedStrings #-}
---import Tau.Compiler.SubstitutionTests
---import Tau.Compiler.TranslationTests
---import Tau.Compiler.TypecheckTests
---import Tau.Compiler.UnificationTests
---import Tau.PrettyTests
---import Tau.TypeTests
---import Test.Hspec hiding (describe, it)
+import Tau.Compiler.SubstitutionTests
+import Tau.Compiler.TranslationTests
+import Tau.Compiler.TypecheckTests
+import Tau.Compiler.UnificationTests
+import Tau.PrettyTests
+import Tau.TypeTests
+import Test.Hspec hiding (describe, it)
 import Utils
 
 main :: IO ()
 main =
-    pure ()
-
---    hspec $ do
---        describe "Tau.Type.kindOf"                         testKindOf
+    hspec $ do
+        describe "Tau.Type.kindOf"                         testKindOf
 --        describe "Tau.Type.typeVars"                       testTypeVars
 --        describe "Tau.Type.upgrade"                        testUpgrade
 --        describe "Tau.Type.tupleCon"                       testTupleCon
@@ -41,8 +39,8 @@ main =
 --        describe "Tau.Compiler.Tranlsation.simplifyExpr"   testSimplifyExpr
 --
 --        describe "Tau.Compiler.Substitution.null"          testNull
---        describe "Tau.Pretty (Prim)"                       testPrettyPrim
---        describe "Tau.Pretty (Type)"                       testPrettyType
---        describe "Tau.Pretty (Kind)"                       testPrettyKind
---        describe "Tau.Pretty (Pattern)"                    testPrettyPattern
---        describe "Tau.Pretty (Predicates)"                 testPrettyPredicates
+        describe "Tau.Pretty (Prim)"                       testPrettyPrim
+        describe "Tau.Pretty (Type)"                       testPrettyType
+        describe "Tau.Pretty (Kind)"                       testPrettyKind
+        describe "Tau.Pretty (Pattern)"                    testPrettyPattern
+        describe "Tau.Pretty (Predicates)"                 testPrettyPredicates

@@ -6,7 +6,7 @@
 {-# LANGUAGE OverloadedStrings     #-}
 {-# LANGUAGE StrictData            #-}
 {-# LANGUAGE TemplateHaskell       #-}
-module Tau.Compiler.Translation where
+module Tau.Compiler.Translate where
 
 --import Control.Arrow ((<<<), (>>>), (***), second)
 --import Control.Monad

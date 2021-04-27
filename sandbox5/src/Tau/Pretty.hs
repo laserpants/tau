@@ -13,9 +13,9 @@ import Data.Text.Prettyprint.Doc.Render.Text
 import Data.Tree
 import Data.Tree.View (showTree)
 import Tau.Compiler.Error
-import Tau.Compiler.Substitution hiding (null)
-import Tau.Compiler.Translation
-import Tau.Compiler.Unification
+import Tau.Compiler.Substitute hiding (null)
+import Tau.Compiler.Translate
+import Tau.Compiler.Unify
 import Tau.Lang
 import Tau.Prog
 import Tau.Row
@@ -116,11 +116,11 @@ prettyType = para $ \case
     TVar _ var -> pretty var
     TCon _ con -> pretty con
 
----- >>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>
---
---instance (Pretty a) => Pretty (PredicateT a) where
---    pretty (InClass n t) = pretty n <+> pretty t
---
+-- >>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>
+
+instance (Pretty a) => Pretty (PredicateT a) where
+    pretty (InClass n t) = pretty n <+> pretty t
+
 ---- >>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>
 --
 --instance Pretty Scheme where

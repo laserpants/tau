@@ -4,13 +4,13 @@ module Tau.Compiler.SubstitutionTests where
 import Data.Map.Strict (Map)
 import Data.Maybe (isNothing)
 import Data.Text (pack)
-import Tau.Compiler.Substitution
+import Tau.Compiler.Substitute
 import Tau.Pretty
 import Tau.Tool
 import Tau.Type
 import Test.Hspec hiding (describe, it)
 import Utils
-import qualified Tau.Compiler.Substitution as Sub
+import qualified Tau.Compiler.Substitute as Sub
 
 --testSubstitution :: SpecWith ()
 --testSubstitution = 

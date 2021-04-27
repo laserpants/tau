@@ -3,7 +3,7 @@
 {-# LANGUAGE LambdaCase            #-}
 {-# LANGUAGE MultiParamTypeClasses #-}
 {-# LANGUAGE StrictData            #-}
-module Tau.Compiler.Substitution where
+module Tau.Compiler.Substitute where
 
 import Data.List (intersect)
 import Data.Map.Strict (Map)
@@ -69,20 +69,20 @@ instance (Substitutable t a) => Substitutable (Clause t (ProgPattern t) (ProgExp
 
 instance (Substitutable t a) => Substitutable (ProgExpr t) a where
     apply sub = cata $ \case
-        EVar    t var        -> varExpr    (apply sub t) var
-        ECon    t con es     -> conExpr    (apply sub t) con es
-        ELit    t prim       -> litExpr    (apply sub t) prim
-        EApp    t es         -> appExpr    (apply sub t) es
-        ELet    t bind e1 e2 -> letExpr    (apply sub t) (apply sub bind) e1 e2
-        EFix    t name e1 e2 -> fixExpr    (apply sub t) name e1 e2
-        ELam    t ps e       -> lamExpr    (apply sub t) (apply sub ps) e
-        EIf     t e1 e2 e3   -> ifExpr     (apply sub t) e1 e2 e3
-        EPat    t es cs      -> patExpr    (apply sub t) es (apply sub cs)
-        EFun    t cs         -> funExpr    (apply sub t) (apply sub cs)
-        EOp1    t op a       -> op1Expr    (apply sub t) (apply sub op) a
-        EOp2    t op a b     -> op2Expr    (apply sub t) (apply sub op) a b
-        ETuple  t es         -> tupleExpr  (apply sub t) es
-        EList   t es         -> listExpr   (apply sub t) es
+        EVar    t var        -> varExpr   (apply sub t) var
+        ECon    t con es     -> conExpr   (apply sub t) con es
+        ELit    t prim       -> litExpr   (apply sub t) prim
+        EApp    t es         -> appExpr   (apply sub t) es
+        ELet    t bind e1 e2 -> letExpr   (apply sub t) (apply sub bind) e1 e2
+        EFix    t name e1 e2 -> fixExpr   (apply sub t) name e1 e2
+        ELam    t ps e       -> lamExpr   (apply sub t) (apply sub ps) e
+        EIf     t e1 e2 e3   -> ifExpr    (apply sub t) e1 e2 e3
+        EPat    t es cs      -> patExpr   (apply sub t) es (apply sub cs)
+        EFun    t cs         -> funExpr   (apply sub t) (apply sub cs)
+        EOp1    t op a       -> op1Expr   (apply sub t) (apply sub op) a
+        EOp2    t op a b     -> op2Expr   (apply sub t) (apply sub op) a b
+        ETuple  t es         -> tupleExpr (apply sub t) es
+        EList   t es         -> listExpr  (apply sub t) es
 --        ERecord t row        -> recordExpr (apply sub t) row
 
 instance (Substitutable t a) => Substitutable (Op1 t) a where
@@ -126,7 +126,7 @@ instance Substitutable Scheme Type where
     apply sub = \case
         Forall ks ps pt      -> Forall ks ps (apply sub pt)
 
-instance Substitutable PolyType Type where
+instance Substitutable PolyType (TypeT a) where
     apply (Sub sub) = typeSubstitute (Sub (Map.map toPolyType sub))
 
 instance Substitutable TypeEnv Type where

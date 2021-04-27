@@ -2,33 +2,32 @@
 {-# LANGUAGE StrictData        #-}
 module Tau.Compiler.Error where
 
---import Data.Text (Text)
---import Tau.Lang
---import Tau.Prog
---import Tau.Tool
+import Data.Text (Text)
+import Tau.Lang
+import Tau.Prog
+import Tau.Tool
 import Tau.Type
 
---data UnificationError
---    = InfiniteType
+data UnificationError
+    = InfiniteType
+    | IncompatibleTypes
+    | MergeFailed
 --    | KindMismatch
---    | MergeFailed
---    | IncompatibleTypes
 --    | IncompatibleRows
---    deriving (Show, Eq)
+    deriving (Show, Eq)
 
 data ErrorT t
-    = E
---    = CannotUnify t t UnificationError
+    = CannotUnify t t UnificationError
+    | UnboundTypeIdentifier Name
+    | MissingDataConstructor Name
 --    | CannotMatch t t UnificationError
---    | UnboundTypeIdentifier Name
---    | MissingClass Name
---    | MissingInstance Name t
---    | NoDataConstructor Name
+    | MissingClass Name
+    | MissingInstance Name t
 --    | ListElemUnficationError
 --    | ListPatternElemUnficationError
 --    | ConstructorPatternArityMismatch Name Int Int
 --    | ConstructorPatternTypeMismatch Name
---    | NonBooleanGuardCondition
+    | GuardConditionNotABool
     deriving (Show, Eq, Functor, Foldable, Traversable)
 
 type Error = ErrorT Type

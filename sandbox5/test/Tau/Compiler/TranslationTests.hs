@@ -3,7 +3,7 @@ module Tau.Compiler.TranslationTests where
 
 import Data.Void
 import Tau.Compiler.Error
-import Tau.Compiler.Translation
+import Tau.Compiler.Translate
 import Tau.Lang
 import Tau.Pretty
 import Tau.Prog

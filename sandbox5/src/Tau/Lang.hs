@@ -379,10 +379,10 @@ clauseTag (Clause t _ _) = t
 --
 --clauseGuards :: Clause t p a -> [Guard a]
 --clauseGuards (Clause _ _ gs) = gs
---
---guardPair :: Guard a -> ([a], a)
---guardPair (Guard as a) = (as, a)
---
+
+guardToPair :: Guard a -> ([a], a)
+guardToPair (Guard as a) = (as, a)
+
 -- >>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>
 
 literalName :: Prim -> Name

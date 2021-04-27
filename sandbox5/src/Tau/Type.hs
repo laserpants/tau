@@ -265,13 +265,16 @@ tCon = embed2 TCon
 tArr :: Kind -> TypeT a -> TypeT a -> TypeT a
 tArr = embed3 TArr
 
-infixr 1 `tArr`
-
 tApp :: Kind -> TypeT a -> TypeT a -> TypeT a
 tApp = embed3 TApp
 
 typ :: Name -> TypeT a
 typ = tCon kTyp
+
+fn :: TypeT a -> TypeT a -> TypeT a
+fn = tArr kTyp
+
+infixr 1 `fn`
 
 -- Built-in types
 

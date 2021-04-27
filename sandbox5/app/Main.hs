@@ -4,28 +4,28 @@
 {-# LANGUAGE RecordWildCards   #-}
 module Main where
 
---import Control.Monad.Identity
---import Control.Monad.Supply
---import Control.Monad.Writer
---import Data.Maybe (fromJust)
---import Data.Text (unpack)
---import Data.Tree.View (showTree)
---import Tau.Compiler.Error
---import Tau.Compiler.Substitution
---import Tau.Compiler.Translation
---import Tau.Compiler.Typecheck
---import Tau.Compiler.Unification
---import Tau.Core
---import Tau.Env
---import Tau.Lang
---import Tau.Pretty
---import Tau.Prog
---import Tau.Row
---import Tau.Tool
---import Tau.Tool
---import Tau.Type
---import qualified Tau.Compiler.Substitution as Sub
---import qualified Tau.Env as Env
+import Control.Monad.Identity
+import Control.Monad.Supply
+import Control.Monad.Writer
+import Data.Maybe (fromJust)
+import Data.Text (unpack)
+import Data.Tree.View (showTree)
+import Tau.Compiler.Error
+import Tau.Compiler.Substitute
+import Tau.Compiler.Translate
+import Tau.Compiler.Typecheck
+import Tau.Compiler.Unify
+import Tau.Core
+import Tau.Env
+import Tau.Lang
+import Tau.Pretty
+import Tau.Prog
+import Tau.Row
+import Tau.Tool
+import Tau.Tool
+import Tau.Type
+import qualified Tau.Compiler.Substitute as Sub
+import qualified Tau.Env as Env
 --
 ---- ----test3 = unifyRows (typeToRowX r1) (typeToRowX r2) :: Either UnificationError TypeSubstitution
 ---- ----  where
