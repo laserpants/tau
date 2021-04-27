@@ -10,39 +10,30 @@ module Tau.Type where
 import Control.Arrow ((>>>))
 import Data.List (nub)
 import Data.Map.Strict (Map)
-import Data.Maybe (fromMaybe, fromJust)
 import Data.Tuple.Extra (first)
-import Tau.Row
 import Tau.Tool
 import qualified Data.Map.Strict as Map
 import qualified Data.Text as Text
 
 data KindF a
-    = KTyp                    -- ^ Concrete (value) types
-    | KArr a a                -- ^ Type constructors
-    | KClass                  -- ^ Type class constraints
-    | KRow                    -- ^ Rows
-    | KHole                   -- 
-
---data KindF a
---    = KVar Name
---    | KCon Name
---    | KArr a a 
+    = KVar Name
+    | KCon Name
+    | KArr a a 
 
 -- | Kind
 type Kind = Fix KindF
 
 -- >>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>
 
-data TypeF i a 
-    = TVar Kind Name          -- ^ Type variable
-    | TCon Kind Name          -- ^ Type constructor
-    | TArr a a                -- ^ Function type
-    | TApp a a                -- ^ Type application
+data TypeF k i a 
+    = TVar k Name             -- ^ Type variable
+    | TCon k Name             -- ^ Type constructor
+    | TArr k a a              -- ^ Function type
+    | TApp k a a              -- ^ Type application
     | TGen i                  -- ^ Quantified type variable
 
 -- | Type 
-type TypeT i = Fix (TypeF i)
+type TypeT i = Fix (TypeF Kind i)
 
 -- | Standalone type (a type that is not part of a type scheme)
 type Type = TypeT Void
@@ -77,7 +68,7 @@ class Typed a where
 
 -- | Class of types that contain free type variables
 class FreeIn t where
-    free :: t -> [Name]
+    free :: t -> [(Name, Kind)]
 
 -- >>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>
 
@@ -102,22 +93,22 @@ deriving instance Traversable KindF
 
 -- Type class instances for Type
 
-deriving instance (Show i, Show a) => 
-    Show (TypeF i a)
+deriving instance (Show k, Show i, Show a) => 
+    Show (TypeF k i a)
 
-deriving instance (Eq i, Eq a) => 
-    Eq (TypeF i a)
+deriving instance (Eq k, Eq i, Eq a) => 
+    Eq (TypeF k i a)
 
-deriving instance (Ord i, Ord a) => 
-    Ord (TypeF i a)
+deriving instance (Ord k, Ord i, Ord a) => 
+    Ord (TypeF k i a)
 
 deriveShow1 ''TypeF
 deriveEq1   ''TypeF
 deriveOrd1  ''TypeF
 
-deriving instance Functor     (TypeF i)
-deriving instance Foldable    (TypeF i)
-deriving instance Traversable (TypeF i)
+deriving instance Functor     (TypeF k i)
+deriving instance Foldable    (TypeF k i)
+deriving instance Traversable (TypeF k i)
 
 -- Type class instances for Predicate
 
@@ -149,19 +140,84 @@ deriving instance Ord Scheme
 instance Typed Type where
     typeOf = id
 
-instance Typed () where
-    typeOf = const (tCon kTyp "()")
-
 -- FreeIn instances
 
 instance (FreeIn t) => FreeIn [t] where
     free = concatMap free
 
 instance FreeIn (TypeT a) where
-    free = (fst <$>) . typeVars
+    free = typeVars
 
 instance FreeIn Scheme where
     free (Forall _ _ t) = free t
+
+-- >>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>
+
+isVar :: Type -> Bool
+isVar = project >>> \case
+    TVar{} -> True
+    _      -> False
+
+isCon :: Type -> Bool
+isCon = project >>> \case
+    TCon{} -> True
+    _      -> False
+
+getTypeVar :: Type -> Maybe Name
+getTypeVar = project >>> \case
+    TVar _ var -> Just var
+    _          -> Nothing
+
+getTypeCon :: Type -> Maybe Name
+getTypeCon = project >>> \case
+    TCon _ con -> Just con
+    _          -> Nothing
+
+getTypeIndex :: PolyType -> Maybe Int
+getTypeIndex = project >>> \case
+    TGen i -> Just i
+    _      -> Nothing
+
+kindOf :: Type -> Kind
+kindOf = project >>> \case
+    TVar k _     -> k
+    TCon k _     -> k
+    TArr k _ _   -> k
+    TApp k _ _   -> k
+
+typeVars :: TypeT a -> [(Name, Kind)]
+typeVars = nub . cata (\case
+    TVar k var   -> [(var, k)]
+    TArr _ t1 t2 -> t1 <> t2
+    TApp _ t1 t2 -> t1 <> t2
+    _            -> [])
+
+toPolyType :: TypeT a -> PolyType
+toPolyType = cata $ \case
+    TVar k var   -> tVar k var
+    TCon k con   -> tCon k con
+    TArr k t1 t2 -> tArr k t1 t2
+    TApp k t1 t2 -> tApp k t1 t2
+
+fromPolyType :: [Type] -> PolyType -> Type
+fromPolyType ts = cata $ \case
+    TGen n       -> ts !! n
+    TArr k t1 t2 -> tArr k t1 t2
+    TApp k t1 t2 -> tApp k t1 t2
+    TVar k var   -> tVar k var
+    TCon k con   -> tCon k con
+
+toScheme :: TypeT a -> Scheme
+toScheme = Forall [] [] . toPolyType
+
+tupleCon :: Int -> Name
+tupleCon size = "(" <> Text.replicate (pred size) "," <> ")"
+
+predicateName :: PredicateT a -> Name
+predicateName (InClass name _) = name
+
+predicateType :: PredicateT a -> a
+predicateType (InClass _ t) = t
 
 -- >>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>
 -- Constructors
@@ -169,20 +225,23 @@ instance FreeIn Scheme where
 
 -- Kind
 
-kTyp :: Kind
-kTyp = embed KTyp
+kVar :: Name -> Kind 
+kVar = embed1 KVar
+
+kCon :: Name -> Kind 
+kCon = embed1 KCon
 
 kArr :: Kind -> Kind -> Kind
 kArr = embed2 KArr
 
+kTyp :: Kind
+kTyp = kCon "*"
+
 kClass :: Kind
-kClass = embed KClass
+kClass = kCon "Constraint"
 
 kRow :: Kind
-kRow = embed KRow
-
-kHole :: Kind
-kHole = embed KHole
+kRow = kCon "Row"
 
 infixr 1 `kArr`
 
@@ -203,13 +262,13 @@ tGen = embed1 TGen
 tCon :: Kind -> Name -> TypeT a
 tCon = embed2 TCon
 
-tArr :: TypeT a -> TypeT a -> TypeT a
-tArr = embed2 TArr
+tArr :: Kind -> TypeT a -> TypeT a -> TypeT a
+tArr = embed3 TArr
 
 infixr 1 `tArr`
 
-tApp :: TypeT a -> TypeT a -> TypeT a
-tApp = embed2 TApp
+tApp :: Kind -> TypeT a -> TypeT a -> TypeT a
+tApp = embed3 TApp
 
 typ :: Name -> TypeT a
 typ = tCon kTyp
@@ -252,12 +311,12 @@ tListCon :: TypeT a
 tListCon = tCon kFun "List"
 
 tList :: TypeT a -> TypeT a
-tList = tApp tListCon
+tList = tApp kTyp tListCon
 
 -- Tuples
 
 tTuple :: [TypeT a] -> TypeT a
-tTuple types = foldl tApp (tCon kind (tupleCon (length types))) types
+tTuple types = foldl (tApp kTyp) (tCon kind (tupleCon (length types))) types
   where
     kind = foldr (const (kArr kTyp)) kTyp types
 
@@ -266,121 +325,3 @@ tPair t1 t2 = tTuple [t1, t2]
 
 tTriple :: TypeT a -> TypeT a -> TypeT a -> TypeT a
 tTriple t1 t2 t3 = tTuple [t1, t2, t3]
-
--- Rows
-
-tRowCon :: Name -> Type
-tRowCon label = tCon (kTyp `kArr` kRow `kArr` kRow) ("{" <> label <> "}")
-
-tRowExtend :: Name -> Type -> Type -> Type
-tRowExtend label ty = tApp (tApp (tRowCon label) ty) 
-
-tEmptyRow :: Type
-tEmptyRow = tCon kRow "{}"
-
--- Records
-
-tRecordCon :: TypeT a
-tRecordCon = tCon (kArr kRow kTyp) "#Record" 
-
-tRecord :: TypeT a -> TypeT a
-tRecord = tApp tRecordCon
-
--- >>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>
-
-isVar :: Type -> Bool
-isVar = project >>> \case
-    TVar{} -> True
-    _      -> False
-
-isCon :: Type -> Bool
-isCon = project >>> \case
-    TCon{} -> True
-    _      -> False
-
-getTypeVar :: Type -> Maybe Name
-getTypeVar = project >>> \case
-    TVar _ var -> Just var
-    _          -> Nothing
-
-unsafeGetTypeVar :: Type -> Name
-unsafeGetTypeVar = fromJust . getTypeVar
-
-getTypeCon :: Type -> Maybe Name
-getTypeCon = project >>> \case
-    TCon _ con -> Just con
-    _          -> Nothing
-
-getTypeIndex :: PolyType -> Maybe Int
-getTypeIndex = project >>> \case
-    TGen i -> Just i
-    _      -> Nothing
-
-kindOf :: Type -> Kind
-kindOf = para $ \case
-    TApp (_, Fix (KArr _ k)) _ -> k
-    TVar k _ -> k
-    TCon k _ -> k
-    TArr{}   -> kTyp
-
-typeVars :: TypeT a -> [(Name, Kind)]
-typeVars = nub . cata alg where
-    alg = \case
-        TVar k var -> [(var, k)]
-        TArr t1 t2 -> t1 <> t2
-        TApp t1 t2 -> t1 <> t2
-        _          -> []
-
-upgrade :: TypeT a -> PolyType
-upgrade = cata $ \case
-    TVar k var -> tVar k var
-    TCon k con -> tCon k con
-    TArr t1 t2 -> tArr t1 t2
-    TApp t1 t2 -> tApp t1 t2
-
-replaceBound :: [Type] -> PolyType -> Type
-replaceBound ts = cata $ \case
-    TGen n     -> ts !! n
-    TArr t1 t2 -> tArr t1 t2
-    TApp t1 t2 -> tApp t1 t2
-    TVar k var -> tVar k var
-    TCon k con -> tCon k con
-
-toScheme :: TypeT a -> Scheme
-toScheme = Forall [] [] . upgrade
-
-isRow :: Type -> Bool
-isRow t = kRow == kindOf t
-
-tupleCon :: Int -> Name
-tupleCon size = "(" <> Text.replicate (pred size) "," <> ")"
-
-predicateName :: PredicateT a -> Name
-predicateName (InClass n _) = n
-
-predicateType :: PredicateT a -> a
-predicateType (InClass _ t) = t
-
--- >>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>
-
-typeToRow :: Type -> Row Type
-typeToRow t = Row m r 
-  where
-    (m, r) = flip para t $ \case
-        TCon (Fix KRow) "{}" -> (mempty, Nothing)
-        TVar (Fix KRow) var  -> (mempty, Just (tVar kRow var))
-        TApp (t1, _) (_, r)  -> first (insert t1) r
-        _                    -> error "Not a row type"
-
-    getLabel :: Type -> Name
-    getLabel = cata $ \case
-        TApp t1 _ -> t1
-        TCon _ c  -> Text.tail (Text.init c)
-        TVar _ v  -> ""
-
-    insert t = 
-        Map.insertWith (<>) (getLabel t) (case project t of TApp _ a -> [a])
-
-rowToType :: Row Type -> Type
-rowToType (Row map r) = 
-    Map.foldrWithKey (flip . foldr . tRowExtend) (fromMaybe tEmptyRow r) map

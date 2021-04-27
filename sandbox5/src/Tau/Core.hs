@@ -7,6 +7,8 @@ module Tau.Core where
 import Tau.Lang (Prim)
 import Tau.Tool
 
+type Matrix a = List ([Name], a)
+
 data CoreF a
     = CVar Name                 -- ^ Variable
     | CLit Prim                 -- ^ Primitive value
@@ -14,7 +16,7 @@ data CoreF a
     | CLet Name a a             -- ^ Let expression
     | CLam Name a               -- ^ Lambda abstraction
     | CIf  a ~a ~a              -- ^ If-clause
-    | CPat a [([Name], a)]      -- ^ Pattern matching clause matrix
+    | CPat a (Matrix a)         -- ^ Pattern matching clause matrix
 
 -- | Core language expression used for evaluation and code generation
 type Core = Fix CoreF
@@ -57,5 +59,5 @@ cLam = embed2 CLam
 cIf :: Core -> Core -> Core -> Core
 cIf = embed3 CIf
 
-cPat :: Core -> [([Name], Core)] -> Core
+cPat :: Core -> Matrix Core -> Core
 cPat = embed2 CPat

@@ -8,19 +8,19 @@
 {-# LANGUAGE TemplateHaskell       #-}
 module Tau.Lang where
 
-import Tau.Row
+--import Tau.Row
 import Tau.Tool
 
 -- | Built-in language primitives
 data Prim
     = TUnit                              -- ^ Unit value
-    | TBool Bool                         -- ^ Booleans
-    | TInt Int                           -- ^ Bounded machine integers (32 or 64 bit)
+    | TBool    Bool                      -- ^ Booleans
+    | TInt     Int                       -- ^ Bounded machine integers (32 or 64 bit)
     | TInteger Integer                   -- ^ Arbitrary precision integers (BigInt)
-    | TFloat Float                       -- ^ Single precision floating point numbers 
-    | TDouble Double                     -- ^ Double precision floating point numbers
-    | TChar Char                         -- ^ Chars
-    | TString Text                       -- ^ Strings
+    | TFloat   Float                     -- ^ Single precision floating point numbers 
+    | TDouble  Double                    -- ^ Double precision floating point numbers
+    | TChar    Char                      -- ^ Chars
+    | TString  Text                      -- ^ Strings
 
 -- >>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>
 
@@ -33,7 +33,7 @@ data PatternF t1 t2 t3 t4 t5 t6 t7 t8 t9 a
     | PAny    t6                         -- ^ Wildcard pattern
     | PTuple  t7 [a]                     -- ^ Tuple pattern
     | PList   t8 [a]                     -- ^ List pattern
-    | PRecord t9 (Row a)                 -- ^ Record pattern
+--    | PRecord t9 (Row a)                 -- ^ Record pattern
 
 -- | Pattern
 type Pattern t1 t2 t3 t4 t5 t6 t7 t8 t9 = Fix (PatternF t1 t2 t3 t4 t5 t6 t7 t8 t9)
@@ -73,6 +73,12 @@ data Op2 t
     | OStrc  t                           -- ^ String concatenation operator
     | ONdiv  t                           -- ^ Integral division
 
+-- | Operator associativity
+data Assoc
+    = AssocL                             -- ^ Operator is left-associative
+    | AssocR                             -- ^ Operator is right-associative
+    | AssocN                             -- ^ Operator is non-associative
+
 -- >>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>
 
 -- | Pattern guard
@@ -107,7 +113,7 @@ data ExprF t1 t2 t3 t4 t5 t6 t7 t8 t9 t10 t11 t12 t13 t14 t15 bind lam clause a
     | EOp2    t12 (Op2 t12) a a          -- ^ Binary operator
     | ETuple  t13 [a]                    -- ^ Tuple
     | EList   t14 [a]                    -- ^ List literal
-    | ERecord t15 (Row a)                -- ^ Record
+--    | ERecord t15 (Row a)                -- ^ Record
 
 -- | Language expression
 type Expr t1 t2 t3 t4 t5 t6 t7 t8 t9 t10 t11 t12 t13 t14 t15 bind lam clause = 
@@ -191,6 +197,9 @@ deriving instance (Show t) => Show (Op2 t)
 deriving instance (Eq   t) => Eq   (Op2 t)
 deriving instance (Ord  t) => Ord  (Op2 t)
 
+deriving instance Show Assoc
+deriving instance Eq Assoc
+
 -- Type class instances for Binding
 
 deriving instance (Show t, Show p) => Show (Binding t p)
@@ -244,7 +253,7 @@ instance Functor Ast where
             EOp2    t op a b     -> op2Expr    (f t) (mapOp2 op) a b
             ETuple  t es         -> tupleExpr  (f t) es
             EList   t es         -> listExpr   (f t) es
-            ERecord t row        -> recordExpr (f t) row
+--            ERecord t row        -> recordExpr (f t) row
 
         mapBind = \case
             BLet    t p          -> BLet       (f t) (mapPattern p)
@@ -262,7 +271,7 @@ instance Functor Ast where
             PAny    t            -> anyPat     (f t)
             PTuple  t ps         -> tuplePat   (f t) ps
             PList   t ps         -> listPat    (f t) ps
-            PRecord t row        -> recordPat  (f t) row
+--            PRecord t row        -> recordPat  (f t) row
 
         mapOp1 = \case
             ONeg    t            -> ONeg       (f t)
@@ -309,7 +318,7 @@ exprTag = cata $ \case
     EOp2    t _ _ _ -> t
     ETuple  t _     -> t
     EList   t _     -> t
-    ERecord t _     -> t
+--    ERecord t _     -> t
 
 patternTag :: Pattern t t t t t t t t t -> t
 patternTag = cata $ \case
@@ -321,7 +330,7 @@ patternTag = cata $ \case
     PAny    t       -> t
     PTuple  t _     -> t
     PList   t _     -> t
-    PRecord t _     -> t
+--    PRecord t _     -> t
 
 op1Tag :: Op1 t -> t
 op1Tag = \case
@@ -363,17 +372,17 @@ astTag = exprTag . getAst
 clauseTag :: Clause t p a -> t
 clauseTag (Clause t _ _) = t
 
--- >>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>
-
-clausePatterns :: Clause t p a -> [p]
-clausePatterns (Clause _ ps _) = ps
-
-clauseGuards :: Clause t p a -> [Guard a]
-clauseGuards (Clause _ _ gs) = gs
-
-guardPair :: Guard a -> ([a], a)
-guardPair (Guard as a) = (as, a)
-
+---- >>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>
+--
+--clausePatterns :: Clause t p a -> [p]
+--clausePatterns (Clause _ ps _) = ps
+--
+--clauseGuards :: Clause t p a -> [Guard a]
+--clauseGuards (Clause _ _ gs) = gs
+--
+--guardPair :: Guard a -> ([a], a)
+--guardPair (Guard as a) = (as, a)
+--
 -- >>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>
 
 literalName :: Prim -> Name
@@ -409,13 +418,6 @@ opPrecedence = \case
     OBpipe _ -> 0
     OOpt   _ -> 3
     OStrc  _ -> 5
-
--- | Operator associativity
-data Assoc
-    = AssocL                  -- ^ Operator is left-associative
-    | AssocR                  -- ^ Operator is right-associative
-    | AssocN                  -- ^ Operator is non-associative
-    deriving (Show, Eq)
 
 -- | Return the associativity of a binary operator
 opAssoc :: Op2 t -> Assoc
@@ -495,8 +497,8 @@ tuplePat = embed2 PTuple
 listPat :: t8 -> [Pattern t1 t2 t3 t4 t5 t6 t7 t8 t9] -> Pattern t1 t2 t3 t4 t5 t6 t7 t8 t9
 listPat = embed2 PList
 
-recordPat :: t9 -> Row (Pattern t1 t2 t3 t4 t5 t6 t7 t8 t9) -> Pattern t1 t2 t3 t4 t5 t6 t7 t8 t9
-recordPat = embed2 PRecord
+--recordPat :: t9 -> Row (Pattern t1 t2 t3 t4 t5 t6 t7 t8 t9) -> Pattern t1 t2 t3 t4 t5 t6 t7 t8 t9
+--recordPat = embed2 PRecord
 
 -- Expr
 
@@ -542,13 +544,13 @@ tupleExpr = embed2 ETuple
 listExpr :: (Functor clause) => t14 -> [Expr t1 t2 t3 t4 t5 t6 t7 t8 t9 t10 t11 t12 t13 t14 t15 bind lam clause] -> Expr t1 t2 t3 t4 t5 t6 t7 t8 t9 t10 t11 t12 t13 t14 t15 bind lam clause
 listExpr = embed2 EList
 
-recordExpr :: (Functor clause) => t15 -> Row (Expr t1 t2 t3 t4 t5 t6 t7 t8 t9 t10 t11 t12 t13 t14 t15 bind lam clause) -> Expr t1 t2 t3 t4 t5 t6 t7 t8 t9 t10 t11 t12 t13 t14 t15 bind lam clause
-recordExpr = embed2 ERecord
+--recordExpr :: (Functor clause) => t15 -> Row (Expr t1 t2 t3 t4 t5 t6 t7 t8 t9 t10 t11 t12 t13 t14 t15 bind lam clause) -> Expr t1 t2 t3 t4 t5 t6 t7 t8 t9 t10 t11 t12 t13 t14 t15 bind lam clause
+--recordExpr = embed2 ERecord
 
 -- List cons constructors
 
-listConsExpr :: (Functor clause) => t2 -> Expr t1 t2 t3 t4 t5 t6 t7 t8 t9 t10 t11 t12 t13 t14 t15 bind lam clause -> Expr t1 t2 t3 t4 t5 t6 t7 t8 t9 t10 t11 t12 t13 t14 t15 bind lam clause -> Expr t1 t2 t3 t4 t5 t6 t7 t8 t9 t10 t11 t12 t13 t14 t15 bind lam clause
-listConsExpr t hd tl = conExpr t "(::)" [hd, tl]
+listExprCons :: (Functor clause) => t2 -> Expr t1 t2 t3 t4 t5 t6 t7 t8 t9 t10 t11 t12 t13 t14 t15 bind lam clause -> Expr t1 t2 t3 t4 t5 t6 t7 t8 t9 t10 t11 t12 t13 t14 t15 bind lam clause -> Expr t1 t2 t3 t4 t5 t6 t7 t8 t9 t10 t11 t12 t13 t14 t15 bind lam clause
+listExprCons t hd tl = conExpr t "(::)" [hd, tl]
 
-listConsPat :: t2 -> Pattern t1 t2 t3 t4 t5 t6 t7 t8 t9 -> Pattern t1 t2 t3 t4 t5 t6 t7 t8 t9 -> Pattern t1 t2 t3 t4 t5 t6 t7 t8 t9
-listConsPat t hd tl = conPat t "(::)" [hd, tl]
+listPatCons :: t2 -> Pattern t1 t2 t3 t4 t5 t6 t7 t8 t9 -> Pattern t1 t2 t3 t4 t5 t6 t7 t8 t9 -> Pattern t1 t2 t3 t4 t5 t6 t7 t8 t9
+listPatCons t hd tl = conPat t "(::)" [hd, tl]

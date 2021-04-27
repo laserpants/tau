@@ -16,16 +16,8 @@ import Tau.Type
 import qualified Data.Map.Strict as Map
 import qualified Tau.Env as Env
 
-newtype Substitution a = Sub { getSub :: Map Name (TypeT a) }
+newtype Substitution a = Sub { getSub :: Map Name a }
     deriving (Show, Eq)
-
-type TypeSubstitution = Substitution Void
-
-instance Semigroup (Substitution a) where
-    (<>) = compose
-
-instance Monoid (Substitution a) where
-    mempty = null
 
 class Substitutable t a where
     apply :: Substitution a -> t -> t
@@ -33,8 +25,16 @@ class Substitutable t a where
 instance Substitutable t a => Substitutable [t] a where
     apply = fmap . apply
 
-instance Substitutable (TypeT a) a where
-    apply = substitute
+-- >>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>
+
+instance Semigroup (Substitution Type) where
+    (<>) = compose
+
+instance Monoid (Substitution Type) where
+    mempty = null
+
+instance Substitutable Type Type where
+    apply = typeSubstitute
 
 instance (Substitutable t a) => Substitutable (PredicateT t) a where
     apply = fmap . apply
@@ -52,7 +52,7 @@ instance (Substitutable t a) => Substitutable (ProgPattern t) a where
         PAny    t            -> anyPat    (apply sub t)
         PTuple  t ps         -> tuplePat  (apply sub t) ps
         PList   t ps         -> listPat   (apply sub t) ps
-        PRecord t row        -> recordPat (apply sub t) row
+--        PRecord t row        -> recordPat (apply sub t) row
 
 instance (Substitutable t a, Substitutable p a) => Substitutable (Binding t p) a where
     apply sub = \case
@@ -83,7 +83,7 @@ instance (Substitutable t a) => Substitutable (ProgExpr t) a where
         EOp2    t op a b     -> op2Expr    (apply sub t) (apply sub op) a b
         ETuple  t es         -> tupleExpr  (apply sub t) es
         EList   t es         -> listExpr   (apply sub t) es
-        ERecord t row        -> recordExpr (apply sub t) row
+--        ERecord t row        -> recordExpr (apply sub t) row
 
 instance (Substitutable t a) => Substitutable (Op1 t) a where
     apply sub = \case
@@ -114,7 +114,7 @@ instance (Substitutable t a) => Substitutable (Op2 t) a where
         OStrc  t             -> OStrc  (apply sub t)
         ONdiv  t             -> ONdiv  (apply sub t)
 
-instance Substitutable (TypeInfo e) Void where
+instance Substitutable (TypeInfo e) Type where
     apply sub = \case
         TypeInfo ty ps e     -> TypeInfo (apply sub ty) (apply sub ps) e
 
@@ -122,56 +122,84 @@ instance (Substitutable t a) => Substitutable (Ast t) a where
     apply sub = \case
         Ast ast              -> Ast (apply sub ast)
 
-instance Substitutable Scheme Void where
+instance Substitutable Scheme Type where
     apply sub = \case
         Forall ks ps pt      -> Forall ks ps (apply sub pt)
 
-instance Substitutable PolyType Void where
-    apply (Sub sub) = substitute (Sub (Map.map upgrade sub))
+instance Substitutable PolyType Type where
+    apply (Sub sub) = typeSubstitute (Sub (Map.map toPolyType sub))
 
-instance Substitutable TypeEnv Void where
+instance Substitutable TypeEnv Type where
     apply = Env.map . apply 
 
 -- >>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>
 
-substitute :: Substitution a -> TypeT a -> TypeT a
-substitute sub = cata $ \case
-    TVar kind var -> withDefault (tVar kind var) var sub
-    TArr t1 t2    -> tArr t1 t2
-    TApp t1 t2    -> tApp t1 t2
-    ty            -> embed ty
+instance Semigroup (Substitution Kind) where
+    (<>) = compose
+
+instance Monoid (Substitution Kind) where
+    mempty = null
+
+instance Substitutable Kind Kind where
+    apply = kindSubstitute
+
+instance (Substitutable Void Kind) => Substitutable Type Kind where
+    apply sub = cata $ \case
+        TVar k var           -> tVar (apply sub k) var
+        TCon k con           -> tCon (apply sub k) con
+        TArr k t1 t2         -> tArr (apply sub k) t1 t2
+        TApp k t1 t2         -> tApp (apply sub k) t1 t2
+
+-- >>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>
 
 null :: Substitution a
 null = Sub mempty
 
-mapsTo :: Name -> TypeT a -> Substitution a
+compose :: (Substitutable a a) => Substitution a -> Substitution a -> Substitution a
+compose s1 s2 = Sub (fmap (apply s1) (getSub s2) `Map.union` getSub s1)
+
+mapsTo :: Name -> a -> Substitution a
 mapsTo name val = Sub (Map.singleton name val)
 
-withDefault :: TypeT a -> Name -> Substitution a -> TypeT a
+withDefault :: a -> Name -> Substitution a -> a
 withDefault def name = Map.findWithDefault def name . getSub
 
-fromList :: [(Name, TypeT a)] -> Substitution a
+fromList :: [(Name, a)] -> Substitution a
 fromList = Sub . Map.fromList
 
-toList :: Substitution a -> [(Name, TypeT a)]
+toList :: Substitution a -> [(Name, a)]
 toList = Map.toList . getSub
 
 domain :: Substitution a -> [Name]
 domain (Sub sub) = Map.keys sub 
 
-compose :: Substitution a -> Substitution a -> Substitution a
-compose s1 s2 = Sub (fmap (apply s1) (getSub s2) `Map.union` getSub s1)
+-- >>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>
 
-merge :: (Eq a) => Substitution a -> Substitution a -> Maybe (Substitution a)
+typeSubstitute :: Substitution (TypeT a) -> TypeT a -> TypeT a
+typeSubstitute sub = cata $ \case
+    TVar kind var -> withDefault (tVar kind var) var sub
+    TArr k t1 t2  -> tArr k t1 t2
+    TApp k t1 t2  -> tApp k t1 t2
+    ty            -> embed ty
+
+merge :: Substitution Type -> Substitution Type -> Maybe (Substitution Type)
 merge s1 s2 
     | allEqual  = Just (Sub (getSub s1 `Map.union` getSub s2))
     | otherwise = Nothing
   where
     allEqual = all (\v -> appV s1 v == appV s2 v) (domain s1 `intersect` domain s2)
-    appV sub var = substitute sub (tVar kTyp var)
+    appV sub var = typeSubstitute sub (tVar kTyp var)
 
-normalizer :: [(Name, Kind)] -> TypeSubstitution
+normalizer :: [(Name, Kind)] -> Substitution Type
 normalizer vars = fromList (zipWith (\(v, k) a -> (v, tVar k a)) vars letters)
 
 normalize :: Type -> Type
 normalize ty = apply (normalizer (typeVars ty)) ty
+
+-- >>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>
+
+kindSubstitute :: Substitution Kind -> Kind -> Kind
+kindSubstitute sub = cata $ \case 
+    KVar var   -> withDefault (kVar var) var sub
+    KArr k1 k2 -> kArr k1 k2
+    ty         -> embed ty
