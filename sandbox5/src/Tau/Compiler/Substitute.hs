@@ -147,8 +147,8 @@ instance (Substitutable Void Kind) => Substitutable Type Kind where
     apply sub = cata $ \case
         TVar k var           -> tVar (apply sub k) var
         TCon k con           -> tCon (apply sub k) con
-        TArr k t1 t2         -> tArr (apply sub k) t1 t2
         TApp k t1 t2         -> tApp (apply sub k) t1 t2
+        TArr t1 t2           -> tArr t1 t2
 
 -- >>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>
 
@@ -178,8 +178,8 @@ domain (Sub sub) = Map.keys sub
 typeSubstitute :: Substitution (TypeT a) -> TypeT a -> TypeT a
 typeSubstitute sub = cata $ \case
     TVar kind var -> withDefault (tVar kind var) var sub
-    TArr k t1 t2  -> tArr k t1 t2
     TApp k t1 t2  -> tApp k t1 t2
+    TArr t1 t2    -> tArr t1 t2
     ty            -> embed ty
 
 merge :: Substitution Type -> Substitution Type -> Maybe (Substitution Type)

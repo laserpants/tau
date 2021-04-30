@@ -37,6 +37,8 @@ type Context = Env (Set Name)
 
 type TypeEnv = Env Scheme
 
+type KindEnv = Env Kind
+
 type ClassEnv = Env 
     ( ClassInfo Name Type                          -- Abstract interface
     , List (ClassInfo Type (Ast (TypeInfo ()))) )  -- Instances

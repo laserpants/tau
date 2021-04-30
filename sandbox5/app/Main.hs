@@ -26,7 +26,7 @@ import Tau.Tool
 import Tau.Type
 import qualified Tau.Compiler.Substitute as Sub
 import qualified Tau.Env as Env
---
+
 ---- ----test3 = unifyRows (typeToRowX r1) (typeToRowX r2) :: Either UnificationError TypeSubstitution
 ---- ----  where
 ---- ----    r1 = tRowExtend "name" tString (tRowExtend "id" tInt tEmptyRow)
@@ -138,10 +138,10 @@ import qualified Tau.Env as Env
 ----     y = getAst (apply sub x)
 ----     (x, sub, ctx) = fromJust (runInfer mempty testClassEnv testTypeEnv testConstructorEnv e)
 ----     e = inferAst (Ast (funExpr () [ Clause () [varPat () "x"] [Guard [] (litExpr () (TInt 5))] ]))
----- 
----- --normalized :: Ast (TypeInfo e) -> Ast (TypeInfo e)
----- --normalized ast = apply (normalizer (astTypeVars ast)) ast 
----- --
+
+normalized :: Ast (TypeInfo e) -> Ast (TypeInfo e)
+normalized ast = apply (normalizer (astTypeVars ast)) ast 
+
 ---- --test2 = do
 ---- --    print "----------"
 ---- --    print (apply sub p)
@@ -413,81 +413,137 @@ import qualified Tau.Env as Env
 --ti :: Type -> TypeInfo [Error]
 --ti t = TypeInfo t [] []
 
+test1 = do -- case fromJust (runInfer mempty testClassEnv testTypeEnv testConstructorEnv (inferExprType expr1)) of
+    print "----------"
+    print (apply sub a)
+    print "=========="
+--    Left e -> error (show e)
+--    Right (expr, sub, context) -> do
+--        print (expr, sub, context)
+--        print "..."
+--        print (apply sub expr)
+  where
+    (a, sub, _, ctx) = fromJust (runInfer mempty testClassEnv testTypeEnv testKindEnv testConstructorEnv expr)
+    expr = inferAst (Ast (varExpr () "x"))
+
+
+test2 = do -- case fromJust (runInfer mempty testClassEnv testTypeEnv testConstructorEnv (inferExprType expr1)) of
+    print "----------"
+    print (apply sub a)
+    print "----------"
+    putStrLn (showTree h)
+    print "=========="
+--    Left e -> error (show e)
+--    Right (expr, sub, context) -> do
+--        print (expr, sub, context)
+--        print "..."
+--        print (apply sub expr)
+  where
+--    e :: ProgExpr (TypeInfo [Error])
+--    e = getAst (apply sub a)
+
+    h = unpack . renderDoc <$> g
+    g = exprTree (getAst ee)
+
+    f :: Ast Type
+    f = typeOf <$> (apply sub a)
+
+    ee :: Ast (TypeInfo [Error])
+    ee = (apply sub a)
+
+    (a, sub, _, ctx) = fromJust (runInfer mempty testClassEnv testTypeEnv testKindEnv testConstructorEnv expr)
+    expr = inferAst (Ast (appExpr () [varExpr () "id", litExpr () (TInt 5)]))
+
+
+---- --test4 = do
+---- --    print "----------"
+---- --    print (apply sub x)
+---- --    print (pretty (normalized (apply sub x)))
+---- --    print "=========="
+---- --  where
+---- --    (x, sub, ctx) = fromJust (runInfer mempty testClassEnv testTypeEnv testConstructorEnv e)
+---- --    e = inferAst (Ast (appExpr () [varExpr () "id", litExpr () (TInt 5)]))
+
 main :: IO ()
 main = print "Main"
 
---testTypeEnv :: TypeEnv
---testTypeEnv = Env.fromList
---    [ ( "None"   , Forall [kTyp] [] (tApp (tCon kFun "Option") (tGen 0)) )
---    , ( "Some"   , Forall [kTyp] [] (tGen 0 `tArr` tApp (tCon kFun "Option") (tGen 0)) )
---    , ( "Foo"    , Forall [] [] (tInt `tArr` tInt `tArr` tCon kTyp "Foo") )
---    , ( "id"     , Forall [kTyp] [] (tGen 0 `tArr` tGen 0) )
---    , ( "(::)"   , Forall [kTyp] [] (tGen 0 `tArr` tList (tGen 0) `tArr` tList (tGen 0)) )
---    , ( "[]"     , Forall [kTyp] [] (tList (tGen 0)) )
---    ]
+testKindEnv :: KindEnv
+testKindEnv = Env.fromList
+    [
+    ]
+
+testTypeEnv :: TypeEnv
+testTypeEnv = Env.fromList
+    [ ( "None"   , Forall [kTyp] [] (tApp kTyp (tCon kFun "Option") (tGen 0)) )
+    , ( "Some"   , Forall [kTyp] [] (tGen 0 `fn` tApp kTyp (tCon kFun "Option") (tGen 0)) )
+    , ( "Foo"    , Forall [] [] (tInt `fn` tInt `fn` tCon kTyp "Foo") )
+    , ( "id"     , Forall [kTyp] [] (tGen 0 `fn` tGen 0) )
+    , ( "(::)"   , Forall [kTyp] [] (tGen 0 `fn` tList (tGen 0) `fn` tList (tGen 0)) )
+    , ( "[]"     , Forall [kTyp] [] (tList (tGen 0)) )
+    ]
+
+testClassEnv :: ClassEnv
+testClassEnv = Env.fromList
+    [ ( "Show"
+        -- Interface
+      , ( ClassInfo [] (InClass "Show" "a") 
+            [ ( "show", tVar kTyp "a" `fn` tString )
+            ]
+        -- Instances
+        , [ ClassInfo [] (InClass "Show" tInt)
+              [ ( "show", Ast (varExpr (TypeInfo (tInt `fn` tString) [] ()) "@Int.Show") )
+              ]
+          , ClassInfo [] (InClass "Show" (tPair (tVar kTyp "a") (tVar kTyp "b")))
+              [ ( "show", Ast (varExpr (TypeInfo (tPair (tVar kTyp "a") (tVar kTyp "b") `fn` tString) [] ()) "TODO") )
+              ]
+          ]
+        )
+      )
+    , ( "Ord"
+        -- Interface
+      , ( ClassInfo [] (InClass "Ord" "a") 
+            [ ( "(>)", tVar kTyp "a" `fn` tVar kTyp "a" `fn` tBool ) 
+            , ( "(<)", tVar kTyp "a" `fn` tVar kTyp "a" `fn` tBool ) 
+            , ( "(>=)", tVar kTyp "a" `fn` tVar kTyp "a" `fn` tBool ) 
+            , ( "(<=)", tVar kTyp "a" `fn` tVar kTyp "a" `fn` tBool ) 
+            ]
+        -- Instances
+        , []
+        )
+      )
+    , ( "Eq"
+        -- Interface
+      , ( ClassInfo [InClass "Ord" "a"] (InClass "Eq" "a")
+            [ ( "(==)", tVar kTyp "a" `fn` tVar kTyp "a" `fn` tBool )
+            ]
+        -- Instances
+        , [ ClassInfo [] (InClass "Eq" tInt)
+            [ ( "(==)", Ast (varExpr (TypeInfo (tInt `fn` tInt `fn` tBool) [] ()) "@Int.(==)" ) )
+            ]
+          ]
+        )
+      )
+    , ( "Num"
+        -- Interface
+      , ( ClassInfo [] (InClass "Num" "a") 
+            [ ( "(+)", tVar kTyp "a" `fn` tVar kTyp "a" `fn` tVar kTyp "a" )
+            ]
+        -- Instances
+        , []
+        )
+      )
+    ]
+
+testConstructorEnv :: ConstructorEnv
+testConstructorEnv = constructorEnv
+    [ ("Some"     , ( ["Some", "None"], 1 ))
+    , ("None"     , ( ["Some", "None"], 0 ))
+    , ("[]"       , ( ["[]", "(::)"], 0 ))
+    , ("(::)"     , ( ["[]", "(::)"], 2 ))
+    , ("(,)"      , ( ["(,)"], 2 ))
+    , ("Foo"      , ( ["Foo"], 2 ))
+    ]
+
+--foz1 = case \x -> 1 of
+--    f -> f ()
 --
---testClassEnv :: ClassEnv
---testClassEnv = Env.fromList
---    [ ( "Show"
---        -- Interface
---      , ( ClassInfo [] (InClass "Show" "a") 
---            [ ( "show", tVar kTyp "a" `tArr` tString )
---            ]
---        -- Instances
---        , [ ClassInfo [] (InClass "Show" tInt)
---              [ ( "show", Ast (varExpr (TypeInfo (tInt `tArr` tString) [] ()) "@Int.Show") )
---              ]
---          , ClassInfo [] (InClass "Show" (tPair (tVar kTyp "a") (tVar kTyp "b")))
---              [ ( "show", Ast (varExpr (TypeInfo (tPair (tVar kTyp "a") (tVar kTyp "b") `tArr` tString) [] ()) "TODO") )
---              ]
---          ]
---        )
---      )
---    , ( "Ord"
---        -- Interface
---      , ( ClassInfo [] (InClass "Ord" "a") 
---            [ ( "(>)", tVar kTyp "a" `tArr` tVar kTyp "a" `tArr` tBool ) 
---            , ( "(<)", tVar kTyp "a" `tArr` tVar kTyp "a" `tArr` tBool ) 
---            , ( "(>=)", tVar kTyp "a" `tArr` tVar kTyp "a" `tArr` tBool ) 
---            , ( "(<=)", tVar kTyp "a" `tArr` tVar kTyp "a" `tArr` tBool ) 
---            ]
---        -- Instances
---        , []
---        )
---      )
---    , ( "Eq"
---        -- Interface
---      , ( ClassInfo [InClass "Ord" "a"] (InClass "Eq" "a")
---            [ ( "(==)", tVar kTyp "a" `tArr` tVar kTyp "a" `tArr` tBool )
---            ]
---        -- Instances
---        , [ ClassInfo [] (InClass "Eq" tInt)
---            [ ( "(==)", Ast (varExpr (TypeInfo (tInt `tArr` tInt `tArr` tBool) [] ()) "@Int.(==)" ) )
---            ]
---          ]
---        )
---      )
---    , ( "Num"
---        -- Interface
---      , ( ClassInfo [] (InClass "Num" "a") 
---            [ ( "(+)", tVar kTyp "a" `tArr` tVar kTyp "a" `tArr` tVar kTyp "a" )
---            ]
---        -- Instances
---        , []
---        )
---      )
---    ]
---
---testConstructorEnv :: ConstructorEnv
---testConstructorEnv = constructorEnv
---    [ ("Some"     , ( ["Some", "None"], 1 ))
---    , ("None"     , ( ["Some", "None"], 0 ))
---    , ("[]"       , ( ["[]", "(::)"], 0 ))
---    , ("(::)"     , ( ["[]", "(::)"], 2 ))
---    , ("(,)"      , ( ["(,)"], 2 ))
---    , ("Foo"      , ( ["Foo"], 2 ))
---    ]
---
-----foz1 = case \x -> 1 of
-----    f -> f ()
-----

@@ -1,5 +1,4 @@
 {-# LANGUAGE FlexibleContexts  #-}
-{-# LANGUAGE LambdaCase        #-}
 {-# LANGUAGE OverloadedStrings #-}
 {-# LANGUAGE StrictData        #-}
 module Tau.Compiler.Unify where
@@ -19,8 +18,30 @@ import Tau.Type
 import qualified Data.Map.Strict as Map
 import qualified Data.Text as Text
 
-bind :: (MonadError UnificationError m) => Name -> Type -> m (Substitution Type)
-bind name ty
+bindKind :: (MonadError UnificationError m) => Name -> Kind -> m (Substitution Kind)
+bindKind name kind
+    | getKindVar kind == Just name            = pure mempty
+    | otherwise                               = pure (name `mapsTo` kind)
+
+unifyKinds :: (MonadError UnificationError m) => Kind -> Kind -> m (Substitution Kind)
+unifyKinds k l = fn (project k) (project l)
+  where
+    fn (KArr k1 k2) (KArr l1 l2)              = unifyKindPairs (k1, k2) (l1, l2)
+    fn (KVar name) _                          = bindKind name l
+    fn _ (KVar name)                          = bindKind name k
+    fn _ _ | k == l                           = pure mempty
+    fn _ _                                    = throwError IncompatibleKinds
+
+unifyKindPairs :: (MonadError UnificationError m) => (Kind, Kind) -> (Kind, Kind) -> m (Substitution Kind)
+unifyKindPairs (k1, k2) (l1, l2) = do
+    sub1 <- unifyKinds k1 l1
+    sub2 <- unifyKinds (apply sub1 k2) (apply sub1 l2)
+    pure (sub2 <> sub1)
+
+-- >>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>
+
+bindType :: (MonadError UnificationError m) => Name -> Type -> m (Substitution Type)
+bindType name ty
     | getTypeVar ty == Just name              = pure mempty
     | name `elem` (fst <$> free ty)           = throwError InfiniteType
     | otherwise                               = pure (name `mapsTo` ty)
@@ -28,30 +49,30 @@ bind name ty
 unifyTypes :: (MonadError UnificationError m) => Type -> Type -> m (Substitution Type)
 unifyTypes t u = fn (project t) (project u)
   where
-    fn (TArr _ t1 t2) (TArr _ u1 u2)          = unifyPairs (t1, t2) (u1, u2)
-    fn (TApp _ t1 t2) (TApp _ u1 u2)          = unifyPairs (t1, t2) (u1, u2)
-    fn (TVar _ name) _                        = bind name u
-    fn _ (TVar _ name)                        = bind name t
+    fn (TArr t1 t2) (TArr u1 u2)              = unifyTypePairs (t1, t2) (u1, u2)
+    fn (TApp _ t1 t2) (TApp _ u1 u2)          = unifyTypePairs (t1, t2) (u1, u2)
+    fn (TVar _ name) _                        = bindType name u
+    fn _ (TVar _ name)                        = bindType name t
     fn _ _ | t == u                           = pure mempty
     fn _ _                                    = throwError IncompatibleTypes
 
 matchTypes :: (MonadError UnificationError m) => Type -> Type -> m (Substitution Type)
 matchTypes t u = fn (project t) (project u)
   where
-    fn (TArr _ t1 t2) (TArr _ u1 u2)          = matchPairs (t1, t2) (u1, u2)
-    fn (TApp _ t1 t2) (TApp _ u1 u2)          = matchPairs (t1, t2) (u1, u2)
-    fn (TVar _ name) _                        = bind name u
+    fn (TArr t1 t2) (TArr u1 u2)              = matchTypePairs (t1, t2) (u1, u2)
+    fn (TApp _ t1 t2) (TApp _ u1 u2)          = matchTypePairs (t1, t2) (u1, u2)
+    fn (TVar _ name) _                        = bindType name u
     fn _ _ | t == u                           = pure mempty
     fn _ _                                    = throwError IncompatibleTypes
 
-unifyPairs :: (MonadError UnificationError m) => (Type, Type) -> (Type, Type) -> m (Substitution Type)
-unifyPairs (t1, t2) (u1, u2) = do
+unifyTypePairs :: (MonadError UnificationError m) => (Type, Type) -> (Type, Type) -> m (Substitution Type)
+unifyTypePairs (t1, t2) (u1, u2) = do
     sub1 <- unifyTypes t1 u1
     sub2 <- unifyTypes (apply sub1 t2) (apply sub1 u2)
     pure (sub2 <> sub1)
 
-matchPairs :: (MonadError UnificationError m) => (Type, Type) -> (Type, Type) -> m (Substitution Type)
-matchPairs (t1, t2) (u1, u2) = do
+matchTypePairs :: (MonadError UnificationError m) => (Type, Type) -> (Type, Type) -> m (Substitution Type)
+matchTypePairs (t1, t2) (u1, u2) = do
     sub1 <- matchTypes t1 u1
     sub2 <- matchTypes t2 u2
     merge sub1 sub2 & maybe (throwError MergeFailed) pure
@@ -91,8 +112,8 @@ matchPairs (t1, t2) (u1, u2) = do
 --    | isRow t || isRow u                      = unifyRowTypes t u
 --    | otherwise                               = fn (project t) (project u)
 --  where
---    fn (TArr t1 t2) (TArr u1 u2)              = unifyPairs (t1, t2) (u1, u2)
---    fn (TApp t1 t2) (TApp u1 u2)              = unifyPairs (t1, t2) (u1, u2)
+--    fn (TArr t1 t2) (TArr u1 u2)              = unifyTypePairs (t1, t2) (u1, u2)
+--    fn (TApp t1 t2) (TApp u1 u2)              = unifyTypePairs (t1, t2) (u1, u2)
 --    fn (TVar kind name) _                     = bind name kind u
 --    fn _ (TVar kind name)                     = bind name kind t
 --    fn _ _ | t == u                           = pure mempty
@@ -103,8 +124,8 @@ matchPairs (t1, t2) (u1, u2) = do
 --    | isRow t || isRow u                      = matchRowTypes t u
 --    | otherwise                               = fn (project t) (project u)
 --  where
---    fn (TArr t1 t2) (TArr u1 u2)              = matchPairs (t1, t2) (u1, u2)
---    fn (TApp t1 t2) (TApp u1 u2)              = matchPairs (t1, t2) (u1, u2)
+--    fn (TArr t1 t2) (TArr u1 u2)              = matchTypePairs (t1, t2) (u1, u2)
+--    fn (TApp t1 t2) (TApp u1 u2)              = matchTypePairs (t1, t2) (u1, u2)
 --    fn (TVar kind name) _                     = bind name kind u
 --    fn _ _ | t == u                           = pure mempty
 --    fn _ _                                    = throwError IncompatibleTypes
@@ -128,14 +149,14 @@ matchPairs (t1, t2) (u1, u2) = do
 --    r                                         = typeToRow t
 --    s                                         = typeToRow u
 --
---unifyPairs :: (MonadError UnificationError m) => (Type, Type) -> (Type, Type) -> m TypeSubstitution
---unifyPairs (t1, t2) (u1, u2) = do
+--unifyTypePairs :: (MonadError UnificationError m) => (Type, Type) -> (Type, Type) -> m TypeSubstitution
+--unifyTypePairs (t1, t2) (u1, u2) = do
 --    sub1 <- unify t1 u1
 --    sub2 <- unify (apply sub1 t2) (apply sub1 u2)
 --    pure (sub2 <> sub1)
 --
---matchPairs :: (MonadError UnificationError m) => (Type, Type) -> (Type, Type) -> m TypeSubstitution
---matchPairs (t1, t2) (u1, u2) = do
+--matchTypePairs :: (MonadError UnificationError m) => (Type, Type) -> (Type, Type) -> m TypeSubstitution
+--matchTypePairs (t1, t2) (u1, u2) = do
 --    sub1 <- match t1 u1
 --    sub2 <- match t2 u2
 --    merge sub1 sub2 & maybe (throwError MergeFailed) pure

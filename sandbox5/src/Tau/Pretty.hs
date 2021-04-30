@@ -96,7 +96,7 @@ prettyTupleType ty = let (_:ts) = unfoldApp ty in prettyTuple (pretty <$> ts)
 prettyType :: Type -> Doc a
 prettyType = para $ \case
 
-    TArr _ (t1, doc1) (_, doc2) -> 
+    TArr (t1, doc1) (_, doc2) -> 
         parensIf useLeft doc1 <+> "->" <+> doc2
       where
         useLeft =
@@ -168,7 +168,7 @@ prettyList_ = brackets . commaSep
 unfoldApp :: Type -> [Type]
 unfoldApp = para $ \case
     TApp _ (_, a) (_, b) -> a <> b
-    TArr k (a, _) (b, _) -> [tArr k a b]
+    TArr (a, _) (b, _)   -> [tArr a b]
     TCon kind con        -> [tCon kind con]
     TVar kind var        -> [tVar kind var]
 
@@ -410,6 +410,9 @@ exprTree = para $ \case
     EVar    t var        -> Node (annotated t var) []
     ECon    t con es     -> Node (annotated t con) (snd <$> es)
     ELit    t prim       -> Node (annotated t prim) []
+    EApp    t es         -> Node (annotated t ("@" :: Text)) (snd <$> es)
+    _                    -> Node "TODO" []
+
 --    EApp    t es         -> Node (annotated t ("@" :: Text)) (snd <$> es) -- (annotated t (appExpr t (fst <$> es))) []
 --    ELet    t bind e1 e2 -> letTree t bind (snd e1) (snd e2)
 --    EFix    t name e1 e2 -> Node "fix TODO" []
@@ -471,14 +474,15 @@ annotated t p = pretty p <+> colon <+> pretty t
 --        , Node "then" [e2]
 --        , Node "else" [e3]
 --        ]
---
---instance Pretty (TypeInfoT [Error] Type) where
---    pretty (TypeInfo t ps es) = pretty t <> preds <> errs
---      where
---        preds | null ps   = ""
---              | otherwise = space <> pretty ps
---        errs  | null es   = ""
---              | otherwise = space <> pretty (parens . pretty <$$> es)
---
---instance (Show t) => Pretty (ErrorT t) where
---    pretty = pretty . show 
+
+instance Pretty (TypeInfoT [Error] Type) where
+    pretty (TypeInfo t ps es) = pretty t <> preds <> errs
+      where
+        preds | null ps   = ""
+              | otherwise = space <> pretty ps
+        errs  | null es   = ""
+              | otherwise = space <> pretty (parens . pretty <$$> es)
+
+-- TODO
+instance (Show t) => Pretty (ErrorT t) where
+    pretty = pretty . show 

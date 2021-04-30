@@ -28,8 +28,8 @@ type Kind = Fix KindF
 data TypeF k i a 
     = TVar k Name             -- ^ Type variable
     | TCon k Name             -- ^ Type constructor
-    | TArr k a a              -- ^ Function type
     | TApp k a a              -- ^ Type application
+    | TArr a a                -- ^ Function type
     | TGen i                  -- ^ Quantified type variable
 
 -- | Type 
@@ -153,6 +153,16 @@ instance FreeIn Scheme where
 
 -- >>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>
 
+getKindVar :: Kind -> Maybe Name
+getKindVar = project >>> \case
+    KVar var -> Just var
+    _        -> Nothing
+
+getKindCon :: Kind -> Maybe Name
+getKindCon = project >>> \case
+    KCon con -> Just con
+    _        -> Nothing
+
 isVar :: Type -> Bool
 isVar = project >>> \case
     TVar{} -> True
@@ -182,30 +192,30 @@ kindOf :: Type -> Kind
 kindOf = project >>> \case
     TVar k _     -> k
     TCon k _     -> k
-    TArr k _ _   -> k
     TApp k _ _   -> k
+    TArr _ _     -> kTyp
 
 typeVars :: TypeT a -> [(Name, Kind)]
 typeVars = nub . cata (\case
     TVar k var   -> [(var, k)]
-    TArr _ t1 t2 -> t1 <> t2
     TApp _ t1 t2 -> t1 <> t2
+    TArr t1 t2   -> t1 <> t2
     _            -> [])
 
 toPolyType :: TypeT a -> PolyType
 toPolyType = cata $ \case
     TVar k var   -> tVar k var
     TCon k con   -> tCon k con
-    TArr k t1 t2 -> tArr k t1 t2
     TApp k t1 t2 -> tApp k t1 t2
+    TArr t1 t2   -> tArr t1 t2
 
 fromPolyType :: [Type] -> PolyType -> Type
 fromPolyType ts = cata $ \case
     TGen n       -> ts !! n
-    TArr k t1 t2 -> tArr k t1 t2
     TApp k t1 t2 -> tApp k t1 t2
     TVar k var   -> tVar k var
     TCon k con   -> tCon k con
+    TArr t1 t2   -> tArr t1 t2
 
 toScheme :: TypeT a -> Scheme
 toScheme = Forall [] [] . toPolyType
@@ -262,19 +272,19 @@ tGen = embed1 TGen
 tCon :: Kind -> Name -> TypeT a
 tCon = embed2 TCon
 
-tArr :: Kind -> TypeT a -> TypeT a -> TypeT a
-tArr = embed3 TArr
+tArr :: TypeT a -> TypeT a -> TypeT a
+tArr = embed2 TArr
+
+fn :: TypeT a -> TypeT a -> TypeT a
+fn = tArr
+
+infixr 1 `fn`
 
 tApp :: Kind -> TypeT a -> TypeT a -> TypeT a
 tApp = embed3 TApp
 
 typ :: Name -> TypeT a
 typ = tCon kTyp
-
-fn :: TypeT a -> TypeT a -> TypeT a
-fn = tArr kTyp
-
-infixr 1 `fn`
 
 -- Built-in types
 

@@ -11,13 +11,14 @@ import Tau.Type
 data UnificationError
     = InfiniteType
     | IncompatibleTypes
+    | IncompatibleKinds
     | MergeFailed
---    | KindMismatch
 --    | IncompatibleRows
     deriving (Show, Eq)
 
 data ErrorT t
     = CannotUnify t t UnificationError
+    | KindMismatch Kind Kind UnificationError
     | UnboundTypeIdentifier Name
     | MissingDataConstructor Name
 --    | CannotMatch t t UnificationError
