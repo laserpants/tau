@@ -430,6 +430,7 @@ test1 = do -- case fromJust (runInfer mempty testClassEnv testTypeEnv testConstr
 test2 = do -- case fromJust (runInfer mempty testClassEnv testTypeEnv testConstructorEnv (inferExprType expr1)) of
     print "----------"
     print (apply sub a)
+    print sub2
     print "----------"
     putStrLn (showTree h)
     print "=========="
@@ -451,8 +452,12 @@ test2 = do -- case fromJust (runInfer mempty testClassEnv testTypeEnv testConstr
     ee :: Ast (TypeInfo [Error])
     ee = (apply sub a)
 
-    (a, sub, _, ctx) = fromJust (runInfer mempty testClassEnv testTypeEnv testKindEnv testConstructorEnv expr)
+    (a, sub, sub2, ctx) = fromJust (runInfer mempty testClassEnv testTypeEnv testKindEnv testConstructorEnv expr)
     expr = inferAst (Ast (appExpr () [varExpr () "id", litExpr () (TInt 5)]))
+
+--    expr = inferAst (Ast (varExpr () "(+)"))
+
+--    expr = inferAst (Ast (litExpr () (TInt 5)))
 
 
 ---- --test4 = do
@@ -464,12 +469,21 @@ test2 = do -- case fromJust (runInfer mempty testClassEnv testTypeEnv testConstr
 ---- --    (x, sub, ctx) = fromJust (runInfer mempty testClassEnv testTypeEnv testConstructorEnv e)
 ---- --    e = inferAst (Ast (appExpr () [varExpr () "id", litExpr () (TInt 5)]))
 
+abc :: Substitution (Type, Kind)
+abc = undefined
+
+def :: Type
+def = undefined
+
+--foo :: Substitution (Type, Kind)
+foo = apply abc def
+
 main :: IO ()
 main = print "Main"
 
 testKindEnv :: KindEnv
 testKindEnv = Env.fromList
-    [
+    [ ( "Num" , kArr kTyp kClass )
     ]
 
 testTypeEnv :: TypeEnv
@@ -480,6 +494,7 @@ testTypeEnv = Env.fromList
     , ( "id"     , Forall [kTyp] [] (tGen 0 `fn` tGen 0) )
     , ( "(::)"   , Forall [kTyp] [] (tGen 0 `fn` tList (tGen 0) `fn` tList (tGen 0)) )
     , ( "[]"     , Forall [kTyp] [] (tList (tGen 0)) )
+    , ( "(+)"    , Forall [kTyp] [InClass "Num" 0] (tGen 0 `fn` tGen 0 `fn` tGen 0) )
     ]
 
 testClassEnv :: ClassEnv

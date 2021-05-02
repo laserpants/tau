@@ -1,3 +1,4 @@
+{-# LANGUAGE DeriveFunctor         #-}
 {-# LANGUAGE FlexibleContexts      #-}
 {-# LANGUAGE FlexibleInstances     #-}
 {-# LANGUAGE LambdaCase            #-}
@@ -17,7 +18,7 @@ import qualified Data.Map.Strict as Map
 import qualified Tau.Env as Env
 
 newtype Substitution a = Sub { getSub :: Map Name a }
-    deriving (Show, Eq)
+    deriving (Show, Eq, Functor)
 
 class Substitutable t a where
     apply :: Substitution a -> t -> t
@@ -143,12 +144,19 @@ instance Monoid (Substitution Kind) where
 instance Substitutable Kind Kind where
     apply = kindSubstitute
 
-instance (Substitutable Void Kind) => Substitutable Type Kind where
+instance Substitutable (TypeT a) Kind where
     apply sub = cata $ \case
         TVar k var           -> tVar (apply sub k) var
         TCon k con           -> tCon (apply sub k) con
         TApp k t1 t2         -> tApp (apply sub k) t1 t2
         TArr t1 t2           -> tArr t1 t2
+
+instance Substitutable Type (Type, Kind) where
+    apply sub = cata $ \case
+        TVar k var           -> apply (fst <$> sub) (tVar (apply (snd <$> sub) k) var)
+        TCon k con           -> apply (fst <$> sub) (tCon (apply (snd <$> sub) k) con)
+        TApp k t1 t2         -> apply (fst <$> sub) (tApp (apply (snd <$> sub) k) t1 t2)
+        TArr t1 t2           -> apply (fst <$> sub) (tArr t1 t2)
 
 -- >>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>
 
