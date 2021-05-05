@@ -24,8 +24,8 @@ data ErrorT t
 --    | CannotMatch t t UnificationError
     | MissingClass Name
     | MissingInstance Name t
---    | ListElemUnficationError
---    | ListPatternElemUnficationError
+    | ListElemUnficationError
+    | ListPatternElemUnficationError
 --    | ConstructorPatternArityMismatch Name Int Int
 --    | ConstructorPatternTypeMismatch Name
     | GuardConditionNotABool

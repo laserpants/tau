@@ -459,7 +459,15 @@ test2 = do -- case fromJust (runInfer mempty testClassEnv testTypeEnv testConstr
 
 --    expr = inferAst (Ast (litExpr () (TInt 5)))
 
-    expr = inferAst (Ast (letExpr () (BLet () (varPat () "x")) (litExpr () (TInt 5)) (varExpr () "x")))
+--    expr = inferAst (Ast (letExpr () (BLet () (varPat () "x")) (litExpr () (TInt 5)) (varExpr () "x")))
+
+--    expr = inferAst (Ast (letExpr () (BFun  () "f" [varPat () "x"]) (litExpr () (TInt 5)) (varExpr () "f")))
+
+--    expr = inferAst (Ast (letExpr () (BFun  () "f" [varPat () "x"]) (litExpr () (TInt 5)) (appExpr () [varExpr () "f", litExpr () TUnit])))
+
+--    expr = inferAst (Ast (varExpr () "(::)"))
+
+    expr = inferAst (Ast (appExpr () [varExpr () "(::)", litExpr () (TInt 5), conExpr () "[]" []]))
 
 
 ---- --test4 = do

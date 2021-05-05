@@ -373,12 +373,12 @@ clauseTag :: Clause t p a -> t
 clauseTag (Clause t _ _) = t
 
 ---- >>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>
---
---clausePatterns :: Clause t p a -> [p]
---clausePatterns (Clause _ ps _) = ps
---
---clauseGuards :: Clause t p a -> [Guard a]
---clauseGuards (Clause _ _ gs) = gs
+
+clausePatterns :: Clause t p a -> [p]
+clausePatterns (Clause _ ps _) = ps
+
+clauseGuards :: Clause t p a -> [Guard a]
+clauseGuards (Clause _ _ gs) = gs
 
 guardToPair :: Guard a -> ([a], a)
 guardToPair (Guard as a) = (as, a)

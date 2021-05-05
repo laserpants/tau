@@ -411,6 +411,7 @@ exprTree = para $ \case
     ECon    t con es     -> Node (annotated t con) (snd <$> es)
     ELit    t prim       -> Node (annotated t prim) []
     EApp    t es         -> Node (annotated t ("@" :: Text)) (snd <$> es)
+    ELet    t bind e1 e2 -> letTree t bind (snd e1) (snd e2)
     _                    -> Node "TODO" []
 
 --    EApp    t es         -> Node (annotated t ("@" :: Text)) (snd <$> es) -- (annotated t (appExpr t (fst <$> es))) []
@@ -426,7 +427,20 @@ exprTree = para $ \case
 --    ETuple  t es         -> Node (pretty t) (snd <$> es)
 --    EList   t es         -> Node (pretty t) (snd <$> es)
 --    ERecord t row        -> Node ("#Record" <+> pretty t) (foo <$> concatRowWithKey row)
---
+
+letTree 
+  :: (Pretty t1, Pretty t2, Pretty p) 
+  => t1 
+  -> Binding t2 p 
+  -> Tree (Doc a) 
+  -> Tree (Doc a) 
+  -> Tree (Doc a)
+letTree t bind e1 e2 =
+    Node (annotated t ("let" :: Text))
+        [ Node (annotated (bindingTag bind) bind <+> equals) [e1]
+        , Node "in" [e2] ]
+
+
 --concatRowWithKey :: Row e -> [(Name, e)]
 --concatRowWithKey (Row m _) = f =<< Map.foldrWithKey (curry (:)) mempty m
 --  where 

@@ -92,11 +92,6 @@ inferExprType = cata $ \case
     EVar _ var -> inferExprNode varExpr $ do
         ty <- lookupScheme var >>= instantiate
         unfiyWithNode ty
-
-        traceShowM ":::::::::::::"
-        traceShowM ty
-        traceShowM ":::::::::::::"
-
         pure var
 
     ECon _ con exprs -> inferExprNode (args2 conExpr) $ do
@@ -122,18 +117,11 @@ inferExprType = cata $ \case
 
     ELet _ (BLet _ pat) expr1 expr2 -> inferExprNode (args3 letExpr) $ do
         (p, vs) <- second nodeVars <$> listen (patternNode (inferPatternType pat))
-
         e1 <- exprNode expr1
         -- Unify bound variable with expression
         p ## e1
 
-        traceShowM "vs :: "
-        traceShowM vs
-
         schemes <- traverse (secondM generalize) vs
-
-        traceShowM "schemes:"
-        traceShowM schemes
 
         e2 <- exprNode (local (inTypeEnv (Env.inserts schemes)) expr2)
         unfiyWithNode (typeOf e2)
@@ -147,157 +135,111 @@ inferExprType = cata $ \case
         pure (name, e1, e2)
 
     ELet _ (BFun _ f pats) expr1 expr2 -> inferExprNode (args3 letExpr) $ do
-        undefined
+        (ps, vs) <- second nodeVars <$> listen (traverse (patternNode . inferPatternType) pats)
 
---    ELet _ (BFun _ f pats) expr1 expr2 -> inferExprNode (args3 letExpr) $ do
---        (ps, vs) <- second nodeVars <$> listen (traverse (patternNode . inferPattern) pats)
---
---        e1 <- exprNode (local (inTypeEnv (Env.inserts (toScheme <$$> vs))) expr1)
---
---        t1 <- newTVar kHole
---        t1 ## foldr tArr (typeOf e1) (typeOf <$> ps)
---
---        scheme <- generalize t1
---        e2 <- exprNode (local (inTypeEnv (Env.insert f scheme)) expr2)
---        unfiyWithNode (typeOf e2)
---
---        name <- inferExprNode (args2 BFun) $ do
---            unfiyWithNode t1
---            insertPredicates (exprPredicates e1 <> exprPredicates e2)
---            insertPredicates (patternPredicates =<< ps)
---            pure (f, ps)
---
---        pure (name, e1, e2)
+        e1 <- exprNode (local (inTypeEnv (Env.inserts (toScheme <$$> vs))) expr1)
+
+        t1 <- newTVar 
+        t1 ## foldr tArr (typeOf e1) (typeOf <$> ps)
+
+        scheme <- generalize t1
+        e2 <- exprNode (local (inTypeEnv (Env.insert f scheme)) expr2)
+        unfiyWithNode (typeOf e2)
+
+        name <- inferExprNode (args2 BFun) $ do
+            unfiyWithNode t1
+            insertPredicates (exprPredicates e1 <> exprPredicates e2)
+            insertPredicates (patternPredicates =<< ps)
+            pure (f, ps)
+
+        pure (name, e1, e2)
 
     EFix _ name expr1 expr2 -> inferExprNode (args3 fixExpr) $ do
-        undefined
-
---    EFix _ name expr1 expr2 -> inferExprNode (args3 fixExpr) $ do
---        t1 <- newTVar kHole
---        e1 <- exprNode (local (inTypeEnv (Env.insert name (toScheme t1))) expr1)
---        e1 ## (t1 :: Type) 
---        scheme <- generalize (typeOf e1)
---        e2 <- exprNode (local (inTypeEnv (Env.insert name scheme)) expr2)
---        unfiyWithNode (typeOf e2)
---        pure (name, e1, e2)
+        t1 <- newTVar 
+        e1 <- exprNode (local (inTypeEnv (Env.insert name (toScheme t1))) expr1)
+        e1 ## (t1 :: Type) 
+        scheme <- generalize (typeOf e1)
+        e2 <- exprNode (local (inTypeEnv (Env.insert name scheme)) expr2)
+        unfiyWithNode (typeOf e2)
+        pure (name, e1, e2)
 
     ELam _ pats expr -> inferExprNode (args2 lamExpr) $ do
         (ps, vs) <- second nodeVars <$> listen (traverse (patternNode . inferPatternType) pats)
         e1 <- exprNode (local (inTypeEnv (Env.inserts (toScheme <$$> vs))) expr)
+        unfiyWithNode (foldr tArr (typeOf e1) (typeOf <$> ps))
         pure (ps, e1)
-
---    ELam _ pats expr -> inferExprNode (args2 lamExpr) $ do
---        (ps, vs) <- second nodeVars <$> listen (traverse (patternNode . inferPattern) pats)
---        e1 <- exprNode (local (inTypeEnv (Env.inserts (toScheme <$$> vs))) expr)
---        unfiyWithNode (foldr tArr (typeOf e1) (typeOf <$> ps))
---        pure (ps, e1)
 
     EIf _ expr1 expr2 expr3 -> inferExprNode (args3 ifExpr) $ do
         e1 <- exprNode expr1
         e2 <- exprNode expr2
         e3 <- exprNode expr3
+        e1 ## (tBool :: Type)
+        e2 ## e3
+        unfiyWithNode (typeOf e2)
         pure (e1, e2, e3)
-
---    EIf _ expr1 expr2 expr3 -> inferExprNode (args3 ifExpr) $ do
---        e1 <- exprNode expr1
---        e2 <- exprNode expr2
---        e3 <- exprNode expr3
---        e1 ## (tBool :: Type)
---        e2 ## e3
---        unfiyWithNode (typeOf e2)
---        pure (e1, e2, e3)
 
     EPat _ exprs eqs -> inferExprNode (args2 patExpr) $ do
         es1 <- traverse exprNode exprs
         es2 <- lift (traverse (inferClauseType (typeOf <$> es1)) eqs)
+        insertPredicates (clausePredicates =<< es2)
+        -- Unify pattern clauses
+        forM_ es2 $ \(Clause t ps gs) -> do
+            forM_ gs (\(Guard _ e) -> unfiyWithNode (typeOf e))
+            unfiyWithNode (typeOf t)
+            forM_ (zip ps (typeOf <$> es1)) (uncurry unifyWith)
+
         pure (es1, es2)
 
---    EPat _ exprs eqs -> inferExprNode (args2 patExpr) $ do
---        es1 <- traverse exprNode exprs
---        es2 <- lift (traverse (inferClause (typeOf <$> es1)) eqs)
---        insertPredicates (clausePredicates =<< es2)
---        -- Unify pattern clauses
---        forM_ es2 $ \(Clause t ps gs) -> do
---            forM_ gs (\(Guard _ e) -> unfiyWithNode (typeOf e))
---            unfiyWithNode (typeOf t)
---            forM_ (zip ps (typeOf <$> es1)) (uncurry unifyWith)
---
---        pure (es1, es2)
-
     EFun _ eqs@(Clause _ ps _:_) -> inferExprNode funExpr $ do
+        ty <- newTVar 
         ts <- newTVars (length ps)
         es <- lift (traverse (inferClauseType ts) eqs)
-        pure es
+        -- Unify return type with r.h.s. of arrow in clauses
+        forM_ (clauseGuards =<< es) (\(Guard _ e) -> e ## (ty :: Type))
+        -- Also unify return type with the type of clause itself
+        forM_ es (unifyWith (ty :: Type) . clauseTag)
+        -- Check pattern types
+        forM_ (clausePatterns <$> es)
+            (\ps -> forM_ (zip ps ts) (uncurry unifyWith))
 
---    EFun _ eqs@(Clause _ ps _:_) -> inferExprNode funExpr $ do
---        ty <- newTVar 
---        ts <- newTVars (length ps)
---        es <- lift (traverse (inferClause ts) eqs)
---        -- Unify return type with r.h.s. of arrow in clauses
---        forM_ (clauseGuards =<< es) (\(Guard _ e) -> e ## (ty :: Type))
---        -- Also unify return type with the type of clause itself
---        forM_ es (unifyWith (ty :: Type) . clauseTag)
---        -- Check pattern types
---        forM_ (clausePatterns <$> es)
---            (\ps -> forM_ (zip ps ts) (uncurry unifyWith))
---
---        insertPredicates (clausePredicates =<< es)
---        unfiyWithNode (foldr tArr ty ts)
---        pure es
+        insertPredicates (clausePredicates =<< es)
+        unfiyWithNode (foldr tArr ty ts)
+        pure es
 
     EOp1 _ op1 expr -> inferExprNode (args2 op1Expr) $ do
         a <- exprNode expr
         op <- inferOp1Type op1
+        t1 <- thisNodeType
+        op ## (typeOf a `tArr` t1)
         pure (op, a)
-
---    EOp1 _ op1 expr -> inferExprNode (args2 op1Expr) $ do
---        a <- exprNode expr
---        op <- inferOp1 op1
---        t1 <- thisNodeType
---        op ## (typeOf a `tArr` t1)
---        pure (op, a)
 
     EOp2 _ op2 expr1 expr2 -> inferExprNode (args3 op2Expr) $ do
         a <- exprNode expr1
         b <- exprNode expr2
         op <- inferOp2Type op2
+        t1 <- thisNodeType
+        op ## (typeOf a `tArr` typeOf b `tArr` t1) 
         pure (op, a, b)
-
---    EOp2 _ op2 expr1 expr2 -> inferExprNode (args3 op2Expr) $ do
---        a <- exprNode expr1
---        b <- exprNode expr2
---        op <- inferOp2 op2
---        t1 <- thisNodeType
---        op ## (typeOf a `tArr` typeOf b `tArr` t1) 
---        pure (op, a, b)
 
     ETuple _ exprs -> inferExprNode tupleExpr $ do
         es <- traverse exprNode exprs
+        unfiyWithNode (tTuple (typeOf <$> es))
         pure es
-
---    ETuple _ exprs -> inferExprNode tupleExpr $ do
---        es <- traverse exprNode exprs
---        unfiyWithNode (tTuple (typeOf <$> es))
---        pure es
 
     EList _ exprs -> inferExprNode listExpr $ do
         es <- traverse exprNode exprs
+        t1 <- case es of
+            []    -> newTVar 
+            (e:_) -> pure (typeOf e)
+
+        -- Unify list elements' types
+        (_, node) <- listen (forM_ es (unifyWith t1))
+        when (nodeHasErrors node) $
+            insertErrors [ListElemUnficationError]
+
+        unfiyWithNode (tList t1)
         pure es
 
---    EList _ exprs -> inferExprNode listExpr $ do
---        es <- traverse exprNode exprs
---        t1 <- case es of
---            []    -> newTVar kHole
---            (e:_) -> pure (typeOf e)
---
---        -- Unify list elements' types
---        (_, node) <- listen (forM_ es (unifyWith t1))
---        when (nodeHasErrors node) $
---            insertErrors [ListElemUnficationError]
---
---        unfiyWithNode (tList t1)
---        pure es
---
 --    ERecord _ row -> inferExprNode recordExpr $ do
 --        fs <- traverse exprNode row
 --        unfiyWithNode (tRecord (rowToType (typeOf <$> fs)))
@@ -338,65 +280,45 @@ inferPatternType = cata $ \case
 --        pure (con, ps)
 
     PLit _ prim -> inferPatternNode litPat $ do
+        t <- instantiate (primType prim)
+        unfiyWithNode t
         pure prim
-
---    PLit _ prim -> inferPatternNode litPat $ do
---        t <- instantiate (primType prim)
---        unfiyWithNode t
---        pure prim
 
     PAs _ var pat -> inferPatternNode (args2 asPat) $ do
         p <- patternNode pat
+        t <- thisNodeType
+        tellVars [(var, t)]
+        unfiyWithNode (typeOf p)
         pure (var, p)
-
---    PAs _ var pat -> inferPatternNode (args2 asPat) $ do
---        p <- patternNode pat
---        t <- thisNodeType
---        tellVars [(var, t)]
---        unfiyWithNode (typeOf p)
---        pure (var, p)
 
     POr _ pat1 pat2 -> inferPatternNode (args2 orPat) $ do
         p1 <- patternNode pat1
         p2 <- patternNode pat2
+        unfiyWithNode (typeOf p1)
+        unfiyWithNode (typeOf p2)
         pure (p1, p2)
-
---    POr _ pat1 pat2 -> inferPatternNode (args2 orPat) $ do
---        p1 <- patternNode pat1
---        p2 <- patternNode pat2
---        unfiyWithNode (typeOf p1)
---        unfiyWithNode (typeOf p2)
---        pure (p1, p2)
 
     PAny _ -> inferPatternNode (args0 anyPat) $ pure ()
 
     PTuple t pats -> inferPatternNode tuplePat $ do
         ps <- traverse patternNode pats
+        unfiyWithNode (tTuple (typeOf <$> ps))
         pure ps
-
---    PTuple t pats -> inferPatternNode tuplePat $ do
---        ps <- traverse patternNode pats
---        unfiyWithNode (tTuple (typeOf <$> ps))
---        pure ps
 
     PList t pats -> inferPatternNode listPat $ do
         ps <- traverse patternNode pats
+        t1 <- case ps of
+            []    -> newTVar 
+            (p:_) -> pure (typeOf p)
+
+        -- Unify list elements' types
+        (_, node) <- listen (forM_ ps (unifyWith t1))
+        when (nodeHasErrors node) $
+            insertErrors [ListPatternElemUnficationError]
+
+        unfiyWithNode (tList t1)
         pure ps
 
---    PList t pats -> inferPatternNode listPat $ do
---        ps <- traverse patternNode pats
---        t1 <- case ps of
---            []    -> newTVar kHole
---            (p:_) -> pure (typeOf p)
---
---        -- Unify list elements' types
---        (_, node) <- listen (forM_ ps (unifyWith t1))
---        when (nodeHasErrors node) $
---            insertErrors [ListPatternElemUnficationError]
---
---        unfiyWithNode (tList t1)
---        pure ps
---
 --    PRecord t row -> inferPatternNode recordPat $ do
 --        fs <- traverse patternNode row
 --        unfiyWithNode (tRecord (rowToType (typeOf <$> fs)))
@@ -567,16 +489,6 @@ generalize ty = do
         (vs, ks) = unzip $ filter ((`notElem` frees) . fst) (typeVars typ)
         ixd = Map.fromList (zip vs [0..])
     ps <- lookupPredicates vs
-
-    traceShowM "vvvvvvvvvvv"
-    let xx1 = toPolyType typ :: PolyType
-    let ss1 = Sub (tGen <$> ixd) 
-    let dd1 = apply ss1 xx1 :: PolyType
-
-    traceShowM dd1
-
-    traceShowM "vvvvvvvvvvv"
-
     pure (Forall ks (toPred ixd <$> ps) (apply (Sub (tGen <$> ixd)) (toPolyType typ)))
   where
     toPred map (var, tc) = InClass tc (fromJust (Map.lookup var map))
