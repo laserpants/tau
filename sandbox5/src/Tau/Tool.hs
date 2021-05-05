@@ -152,6 +152,7 @@ renderDoc = renderStrict . layoutPretty defaultLayoutOptions
 
 prettyPrint :: (Pretty p) => p -> Text
 prettyPrint = renderDoc . pretty
+
 -- >>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>
 
 firstM :: (Monad m) => (a -> m a1) -> (a, b) -> m (a1, b)

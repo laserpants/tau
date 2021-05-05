@@ -37,27 +37,6 @@ import qualified Data.Set.Monad as Set
 import qualified Data.Text as Text
 import qualified Tau.Env as Env
 
--- TypeInfo [Error]
-
---xxx 
---  :: ( MonadSupply Name m
---     , MonadReader (ClassEnv, TypeEnv, KindEnv, ConstructorEnv) m
---     , MonadState (Substitution Type, Substitution Kind, Context) m )
---  => TypeInfo [Error]
---  -> m (TypeInfo [Error])
---xxx = undefined
---
---inferKind2
---  :: ( MonadSupply Name m
---     , MonadReader (ClassEnv, TypeEnv, KindEnv, ConstructorEnv) m
---     , MonadState (Substitution Type, Substitution Kind, Context) m )
---  => ProgExpr (TypeInfo [Error])
---  -> m (ProgExpr (TypeInfo [Error]))
---inferKind2 = cata $ \case
---
---    EVar t var -> 
---        undefined
-
 inferKind 
   :: ( MonadSupply Name m
      , MonadReader (ClassEnv, TypeEnv, KindEnv, ConstructorEnv) m
@@ -85,159 +64,6 @@ inferKind = cata $ \case
         runUnifyKinds (kArr (kindOf t2) k) (kindOf t1)
         pure (tApp k t1 t2)
 
---unifyTypeKinds
---  :: ( MonadSupply Name m
---     , MonadReader (ClassEnv, TypeEnv, KindEnv, ConstructorEnv) m
---     , MonadState (Substitution Type, Substitution Kind, Context) m )
---  => Kind 
---  -> Kind
---  -> m ()
---unifyTypeKinds k1 k2 = do
---    sub <- applyAnd unifyKinds (gets snd3) KindMismatch k1 k2
---    pure ()
-
-----lookupKind
-----  :: ( MonadSupply Name m
-----     , MonadReader (ClassEnv, TypeEnv, KindEnv, ConstructorEnv) m
-----     , MonadState (Substitution Type, Substitution Kind, Context) m )
-----  => Name
-----  -> m (Maybe Kind)
-----lookupKind name = do
-----    env <- asks getKindEnv
-----    sub <- gets snd3
-----    pure (apply sub <$> Env.lookup name env)
-----
-----runUnifyKinds
-----  :: ( MonadSupply Name m
-----     , MonadReader (ClassEnv, TypeEnv, KindEnv, ConstructorEnv) m
-----     , MonadState (Substitution Type, Substitution Kind, Context) m )
-----  => Type
-----  -> Type
-----  -> m (Either Error ())
-----runUnifyKinds = undefined
-------runUnify = runExceptT <$$> unifyTyped
-------  where
-------    unifyTyped a b = do
-------        sub <- unifiedT (typeOf a) (typeOf b)
-------        modify (first3 (sub <>))
-------        forM_ (Map.toList (getSub sub)) (uncurry propagate)
-------      where
-------        propagate tv ty = do
-------            env <- gets thd3
-------            propagateClasses ty (fromMaybe mempty (Env.lookup tv env))
-----
-----xxx :: (Monad m) => Type -> Type -> m a
-----xxx t1 t2 = do
-----    --sub <- unifyTypeKinds (kindOf t1) (kindOf t2)
-----    undefined
-----
-----    pure $ case Env.lookup name env of
-----        Nothing -> 
-----            Nothing
-----        Just kind ->
-----            Just (apply sub kind)
---
-----lookupScheme name = do
-----    env <- asks getTypeEnv
-----    sub <- gets fst
-----    case Env.lookup name env of
-----        Nothing -> do
-----            insertErrors [UnboundTypeIdentifier name]
-----            toScheme <$> newTVar 
-----        Just ty ->
-----            pure (apply sub ty)
---
-
---unifyTypeKinds k1 k2 = do
---    sub <- runExceptT (applyAnd unifyKinds KindMismatch snd3 k1 k2) 
---    case sub of
---        Left e -> undefined
---        Right s -> undefined
---    undefined
---
-----  where
-----    foo
-----      :: ( MonadSupply Name m
-----         , MonadState (Substitution Type, Substitution Kind, Context) m
-----         , MonadError Error m ) 
-----      => m (Substitution Kind)
-----    foo = do
-----        applyAnd unifyKinds KindMismatch snd3 k1 k2
---
-----unifyWith
-----  :: ( MonadSupply Name m
-----     , MonadReader (ClassEnv, TypeEnv, KindEnv, ConstructorEnv) m
-----     , MonadState (Substitution Type, Substitution Kind, Context) m
-----     , Typed a
-----     , Typed b
-----     , Substitutable a Type
-----     , Substitutable b Type )
-----  => a
-----  -> b
-----  -> WriterT Node m ()
-----unifyWith a b = do
-----    traceShowM ">>"
-----    traceShowM (kindOf (typeOf a))
-----    traceShowM (kindOf (typeOf b))
-----    sub <- gets fst3
-----    runUnify (apply sub a) (apply sub b) >>= whenLeft (insertErrors . pure)
---
-----        Right sub2 -> do
-----            modify (second3 (sub2 <>))
-----            undefined
-----            --pure sub
---
-----unifiedT
-----  :: ( MonadSupply Name m
-----     , MonadReader (ClassEnv, TypeEnv, KindEnv, ConstructorEnv) m
-----     , MonadState (Substitution Type, Substitution Kind, Context) m
-----     , MonadError Error m )
-----  => Type
-----  -> Type
-----  -> m (Substitution Type)
-----unifiedT t1 t2 = do
-----    sub1 <- gets fst3
-----    case runExcept (unifyTypes (apply sub1 t1) (apply sub1 t2)) of
-----        Left err  -> throwError (CannotUnify t1 t2 err)
-----        Right sub -> pure sub
-----
---
-----runUnifyKinds
-----  :: ( MonadSupply Name m
-----     , MonadReader (ClassEnv, TypeEnv, KindEnv, ConstructorEnv) m
-----     , MonadState (Substitution Type, Context) m
-----     , Typed a
-----     , Typed b )
-----  => a
-----  -> b
-----  -> m (Either Error ())
-----runUnifyKinds = runExceptT <$$> unifyTyped
-----  where
-----    unifyTyped a b = do
-----        sub <- unifiedT (typeOf a) (typeOf b)
-----        modify (first (sub <>))
-----        forM_ (Map.toList (getSub sub)) (uncurry propagate)
-----      where
-----        propagate tv ty = do
-----            env <- gets snd
-----            propagateClasses ty (fromMaybe mempty (Env.lookup tv env))
-----unifyTypeKinds
-----  :: ( MonadSupply Name m
-----     , MonadReader (ClassEnv, TypeEnv, KindEnv, ConstructorEnv) m
-----     , MonadState (Substitution Kind, Context) m )
-----  => Kind
-----  -> Kind
-----  -> m ()
-----unifyTypeKinds k1 k2 = do
-----    sub1 <- gets fst
-----    case runExcept (unifyKinds (apply sub1 k1) (apply sub1 k2)) of
-----        Left err  -> throwError (KindMismatch k1 k2 err)
-----        Right sub2 -> 
-----            modify (first (sub2 <>))
-----            --pure sub
---
-
-
 -- >>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>
 
 inferAst
@@ -250,8 +76,8 @@ inferAst
   -> m (Ast (TypeInfo [Error]))
 inferAst (Ast expr) = do
     e <- inferExprType expr
-    sub <- gets fst3
-    pure (simplifyPredicates <$> Ast (apply sub e))
+    sub <- get
+    pure (simplifyPredicates <$> Ast (apply2 sub e))
 
 inferExprType
   :: ( Monoid t
@@ -266,6 +92,11 @@ inferExprType = cata $ \case
     EVar _ var -> inferExprNode varExpr $ do
         ty <- lookupScheme var >>= instantiate
         unfiyWithNode ty
+
+        traceShowM ":::::::::::::"
+        traceShowM ty
+        traceShowM ":::::::::::::"
+
         pure var
 
     ECon _ con exprs -> inferExprNode (args2 conExpr) $ do
@@ -290,26 +121,30 @@ inferExprType = cata $ \case
         pure es
 
     ELet _ (BLet _ pat) expr1 expr2 -> inferExprNode (args3 letExpr) $ do
-        undefined
+        (p, vs) <- second nodeVars <$> listen (patternNode (inferPatternType pat))
 
---    ELet _ (BLet _ pat) expr1 expr2 -> inferExprNode (args3 letExpr) $ do
---        (p, vs) <- second nodeVars <$> listen (patternNode (inferPattern pat))
---
---        e1 <- exprNode expr1
---        -- Unify bound variable with expression
---        p ## e1
---
---        schemes <- traverse (secondM generalize) vs
---        e2 <- exprNode (local (inTypeEnv (Env.inserts schemes)) expr2)
---        unfiyWithNode (typeOf e2)
---
---        name <- inferExprNode BLet $ do
---            unfiyWithNode (typeOf e1)
---            insertPredicates (exprPredicates e1 <> exprPredicates e2)
---            insertPredicates (patternPredicates p)
---            pure p
---
---        pure (name, e1, e2)
+        e1 <- exprNode expr1
+        -- Unify bound variable with expression
+        p ## e1
+
+        traceShowM "vs :: "
+        traceShowM vs
+
+        schemes <- traverse (secondM generalize) vs
+
+        traceShowM "schemes:"
+        traceShowM schemes
+
+        e2 <- exprNode (local (inTypeEnv (Env.inserts schemes)) expr2)
+        unfiyWithNode (typeOf e2)
+
+        name <- inferExprNode BLet $ do
+            unfiyWithNode (typeOf e1)
+            insertPredicates (exprPredicates e1 <> exprPredicates e2)
+            insertPredicates (patternPredicates p)
+            pure p
+
+        pure (name, e1, e2)
 
     ELet _ (BFun _ f pats) expr1 expr2 -> inferExprNode (args3 letExpr) $ do
         undefined
@@ -477,11 +312,9 @@ inferPatternType
 inferPatternType = cata $ \case
 
     PVar _ var -> inferPatternNode varPat $ do
+        t <- thisNodeType
+        tellVars [(var, t)]
         pure var
-
---        t <- thisNodeType
---        tellVars [(var, t)]
---        pure var
 
     PCon _ con pats -> inferPatternNode (args2 conPat) $ do
         ps <- traverse patternNode pats
@@ -535,8 +368,7 @@ inferPatternType = cata $ \case
 --        unfiyWithNode (typeOf p2)
 --        pure (p1, p2)
 
-    PAny _ ->
-        inferPatternNode (args0 anyPat) $ pure ()
+    PAny _ -> inferPatternNode (args0 anyPat) $ pure ()
 
     PTuple t pats -> inferPatternNode tuplePat $ do
         ps <- traverse patternNode pats
@@ -729,13 +561,23 @@ generalize
   -> m Scheme
 generalize ty = do
     env <- askTypeEnv
-    sub <- gets fst3
-    let typ = apply sub ty
-        frees = fst <$> free (apply sub env)
+    sub <- get
+    let typ = apply2 sub ty
+        frees = fst <$> free (apply (fst3 sub) env)
         (vs, ks) = unzip $ filter ((`notElem` frees) . fst) (typeVars typ)
-        inxd = Map.fromList (zip vs [0..])
+        ixd = Map.fromList (zip vs [0..])
     ps <- lookupPredicates vs
-    pure (Forall ks (toPred inxd <$> ps) (apply (Sub (tGen <$> inxd)) (toPolyType typ)))
+
+    traceShowM "vvvvvvvvvvv"
+    let xx1 = toPolyType typ :: PolyType
+    let ss1 = Sub (tGen <$> ixd) 
+    let dd1 = apply ss1 xx1 :: PolyType
+
+    traceShowM dd1
+
+    traceShowM "vvvvvvvvvvv"
+
+    pure (Forall ks (toPred ixd <$> ps) (apply (Sub (tGen <$> ixd)) (toPolyType typ)))
   where
     toPred map (var, tc) = InClass tc (fromJust (Map.lookup var map))
 
@@ -810,10 +652,9 @@ lookupClassInstance tc ty env = do
         maybe (throwError (MissingInstance tc ty)) pure
   where
     tryMatch info@ClassInfo{..} =
-        undefined
---        case matchTypes (predicateType classSignature) ty of
---            Left{}    -> Nothing
---            Right sub -> Just (apply sub info)
+        case matchTypes (predicateType classSignature) ty of
+            Left{}       -> Nothing
+            Right (t, k) -> Just (apply2 (t, k, ()) info)
 
 -- >>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>
 
@@ -869,7 +710,7 @@ instance (Typed t) => Typed (Op2 t) where
 instance (Typed t) => Typed (Ast t) where
     typeOf = typeOf . astTag
 
-instance Substitutable (ClassInfo Type (Ast (TypeInfo e))) Type where
+instance (Substitutable Type t) => Substitutable (ClassInfo Type (Ast (TypeInfo e))) t where
     apply sub ClassInfo{..} =
         ClassInfo{ classSuper     = apply sub classSuper
                  , classSignature = apply sub classSignature
@@ -989,8 +830,9 @@ runUnify = runExceptT <$$> unifyTyped
         let t1 = typeOf a
             t2 = typeOf b
         (typeSub, kindSub) <- applyAnd unifyTypes (gets fst3) CannotUnify t1 t2
-        modify (first3 (typeSub <>) >> second3 (kindSub <>))
-        runUnifyKinds (kindOf t1) (kindOf t2)
+        modify (first3 (typeSub <>))
+        modify (second3 (kindSub <>))
+--        runUnifyKinds (kindOf t1) (kindOf t2)
         forM_ (Map.toList (getSub typeSub)) (uncurry propagate)
       where
         propagate tv ty = do
@@ -1077,6 +919,7 @@ unifyWith
   -> WriterT Node m ()
 unifyWith a b = do
     sub <- gets fst3
+    tub <- gets snd3
     let t1 = typeOf (apply sub a)
         t2 = typeOf (apply sub b)
     runUnify t1 t2 >>= saveErrors

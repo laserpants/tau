@@ -202,7 +202,7 @@ typeVars = nub . cata (\case
     TArr t1 t2   -> t1 <> t2
     _            -> [])
 
-toPolyType :: TypeT a -> PolyType
+toPolyType :: Type -> PolyType
 toPolyType = cata $ \case
     TVar k var   -> tVar k var
     TCon k con   -> tCon k con
@@ -217,7 +217,7 @@ fromPolyType ts = cata $ \case
     TCon k con   -> tCon k con
     TArr t1 t2   -> tArr t1 t2
 
-toScheme :: TypeT a -> Scheme
+toScheme :: Type -> Scheme
 toScheme = Forall [] [] . toPolyType
 
 tupleCon :: Int -> Name

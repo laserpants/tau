@@ -4,6 +4,7 @@
 {-# LANGUAGE RecordWildCards   #-}
 module Main where
 
+import Control.Monad.Except
 import Control.Monad.Identity
 import Control.Monad.Supply
 import Control.Monad.Writer
@@ -429,8 +430,7 @@ test1 = do -- case fromJust (runInfer mempty testClassEnv testTypeEnv testConstr
 
 test2 = do -- case fromJust (runInfer mempty testClassEnv testTypeEnv testConstructorEnv (inferExprType expr1)) of
     print "----------"
-    print (apply sub a)
-    print sub2
+    print (apply sub2 (apply sub a))
     print "----------"
     putStrLn (showTree h)
     print "=========="
@@ -453,11 +453,13 @@ test2 = do -- case fromJust (runInfer mempty testClassEnv testTypeEnv testConstr
     ee = (apply sub a)
 
     (a, sub, sub2, ctx) = fromJust (runInfer mempty testClassEnv testTypeEnv testKindEnv testConstructorEnv expr)
-    expr = inferAst (Ast (appExpr () [varExpr () "id", litExpr () (TInt 5)]))
+--    expr = inferAst (Ast (appExpr () [varExpr () "id", litExpr () (TInt 5)]))
 
 --    expr = inferAst (Ast (varExpr () "(+)"))
 
 --    expr = inferAst (Ast (litExpr () (TInt 5)))
+
+    expr = inferAst (Ast (letExpr () (BLet () (varPat () "x")) (litExpr () (TInt 5)) (varExpr () "x")))
 
 
 ---- --test4 = do
@@ -469,14 +471,11 @@ test2 = do -- case fromJust (runInfer mempty testClassEnv testTypeEnv testConstr
 ---- --    (x, sub, ctx) = fromJust (runInfer mempty testClassEnv testTypeEnv testConstructorEnv e)
 ---- --    e = inferAst (Ast (appExpr () [varExpr () "id", litExpr () (TInt 5)]))
 
-abc :: Substitution (Type, Kind)
-abc = undefined
-
-def :: Type
-def = undefined
-
---foo :: Substitution (Type, Kind)
-foo = apply abc def
+--abc123 :: (MonadError UnificationError m) => m ()
+--abc123 = do
+--    sub <- unifyTypes tInt tInt
+--    let x = apply sub (tVar kTyp "a")
+--    pure ()
 
 main :: IO ()
 main = print "Main"

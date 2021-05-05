@@ -26,6 +26,9 @@ class Substitutable t a where
 instance Substitutable t a => Substitutable [t] a where
     apply = fmap . apply
 
+--instance Substitutable t a => Substitutable t (Maybe a) where
+--    apply (Sub sub) = apply (Sub (Map.mapMaybe id sub))
+
 -- >>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>
 
 instance Semigroup (Substitution Type) where
@@ -34,8 +37,15 @@ instance Semigroup (Substitution Type) where
 instance Monoid (Substitution Type) where
     mempty = null
 
-instance Substitutable Type Type where
+instance Substitutable (TypeT a) (TypeT a) where
     apply = typeSubstitute
+
+instance Substitutable PolyType Type where
+    apply sub = cata $ \case
+        TVar kind var -> toPolyType (withDefault (tVar kind var) var sub)
+        TApp k t1 t2  -> tApp k t1 t2
+        TArr t1 t2    -> tArr t1 t2
+        ty            -> embed ty
 
 instance (Substitutable t a) => Substitutable (PredicateT t) a where
     apply = fmap . apply
@@ -115,7 +125,7 @@ instance (Substitutable t a) => Substitutable (Op2 t) a where
         OStrc  t             -> OStrc  (apply sub t)
         ONdiv  t             -> ONdiv  (apply sub t)
 
-instance Substitutable (TypeInfo e) Type where
+instance (Substitutable Type a) => Substitutable (TypeInfo e) a where
     apply sub = \case
         TypeInfo ty ps e     -> TypeInfo (apply sub ty) (apply sub ps) e
 
@@ -126,9 +136,6 @@ instance (Substitutable t a) => Substitutable (Ast t) a where
 instance Substitutable Scheme Type where
     apply sub = \case
         Forall ks ps pt      -> Forall ks ps (apply sub pt)
-
-instance Substitutable PolyType (TypeT a) where
-    apply (Sub sub) = typeSubstitute (Sub (Map.map toPolyType sub))
 
 instance Substitutable TypeEnv Type where
     apply = Env.map . apply 
@@ -151,12 +158,12 @@ instance Substitutable (TypeT a) Kind where
         TApp k t1 t2         -> tApp (apply sub k) t1 t2
         TArr t1 t2           -> tArr t1 t2
 
-instance Substitutable Type (Type, Kind) where
-    apply sub = cata $ \case
-        TVar k var           -> apply (fst <$> sub) (tVar (apply (snd <$> sub) k) var)
-        TCon k con           -> apply (fst <$> sub) (tCon (apply (snd <$> sub) k) con)
-        TApp k t1 t2         -> apply (fst <$> sub) (tApp (apply (snd <$> sub) k) t1 t2)
-        TArr t1 t2           -> apply (fst <$> sub) (tArr t1 t2)
+--instance Substitutable Type (Maybe Type, Maybe Kind) where
+--    apply sub = cata $ \case
+--        TVar k var           -> apply (fst <$> sub) (tVar (apply (snd <$> sub) k) var)
+--        TCon k con           -> apply (fst <$> sub) (tCon (apply (snd <$> sub) k) con)
+--        TApp k t1 t2         -> apply (fst <$> sub) (tApp (apply (snd <$> sub) k) t1 t2)
+--        TArr t1 t2           -> apply (fst <$> sub) (tArr t1 t2)
 
 -- >>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>
 
@@ -211,3 +218,31 @@ kindSubstitute sub = cata $ \case
     KVar var   -> withDefault (kVar var) var sub
     KArr k1 k2 -> kArr k1 k2
     ty         -> embed ty
+
+apply2
+  :: ( Substitutable t Type
+     , Substitutable t Kind ) 
+  => (Substitution Type, Substitution Kind, a) 
+  -> t 
+  -> t
+apply2 (typeSub, kindSub, _) = apply kindSub . apply typeSub
+
+---- >>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>
+
+--splitSubs :: Substitution (Maybe Type, Maybe Kind) -> (Substitution Type, Substitution Kind)
+--splitSubs (Sub s) = (Sub (Map.mapMaybe fst s), Sub (Map.mapMaybe snd s))
+--
+--joinSubs :: Substitution Type -> Substitution Kind -> Substitution (Maybe Type, Maybe Kind)
+--joinSubs typeSub kindSub = Sub (Map.foldrWithKey fn initl (getSub kindSub))
+--  where
+--    initl = Map.map (Just &&& const Nothing) (getSub typeSub)
+--    fn key kind = Map.insertWith (\(_, b) (a, _) -> (a, b)) key (Nothing, Just kind) 
+--
+--instance Semigroup (Substitution (Maybe Type, Maybe Kind)) where
+--    (<>) sub1 sub2 = joinSubs (typeSub2 <> typeSub1) (kindSub2 <> kindSub1)
+--      where
+--        (typeSub1, kindSub1) = splitSubs sub1
+--        (typeSub2, kindSub2) = splitSubs sub2
+--
+--instance Monoid (Substitution (Maybe Type, Maybe Kind)) where
+--    mempty = null
