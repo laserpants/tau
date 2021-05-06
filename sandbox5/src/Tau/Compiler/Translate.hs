@@ -8,26 +8,19 @@
 {-# LANGUAGE TemplateHaskell       #-}
 module Tau.Compiler.Translate where
 
---import Control.Arrow ((<<<), (>>>), (***), second)
---import Control.Monad
---import Control.Monad.Supply
---import Data.Maybe (fromMaybe)
---import Data.Void
---import Tau.Compiler.Error
---import Tau.Lang
---import Tau.Prog
---import Tau.Row
---import Tau.Tool
---import Tau.Type
---import qualified Data.Map.Strict as Map
---
---data ClauseA t p a = ClauseA t [p] [a] a
---    deriving (Show, Eq, Functor, Foldable, Traversable)
---
---deriveShow1 ''ClauseA
---deriveEq1   ''ClauseA
---deriveOrd1  ''ClauseA
---
+import Control.Arrow ((<<<), (>>>), (***), second)
+import Control.Monad
+import Control.Monad.Supply
+import Data.Maybe (fromMaybe)
+import Data.Void
+import Tau.Compiler.Error
+import Tau.Lang
+import Tau.Prog
+import Tau.Row
+import Tau.Tool
+import Tau.Type
+import qualified Data.Map.Strict as Map
+
 --data Prep t = RCon t Name [Name]
 --    deriving (Show, Eq)
 --
@@ -35,107 +28,117 @@ module Tau.Compiler.Translate where
 --    = Constructor a
 --    | Variable a
 --    deriving (Show, Eq, Ord)
---
---class InfoTag ti where
---    fromType   :: Type -> ti
---    updateType :: (Type -> Type) -> ti -> ti
---    getType    :: ti -> Type
---
---instance InfoTag (TypeInfo [e]) where
---    fromType t      = TypeInfo t [] []
---    updateType f ti = ti{ nodeType = f (nodeType ti) }
---    getType ti      = nodeType ti
---
---instance InfoTag () where
---    fromType _     = ()
---    updateType _ _ = ()
---    getType _      = tVar kTyp "a"
---
----- >>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>
---
+
+class InfoTag t where
+    fromType   :: Type -> t
+    updateType :: (Type -> Type) -> t -> t
+    getType    :: t -> Type
+
+instance InfoTag (TypeInfo [e]) where
+    fromType t      = TypeInfo t [] []
+    updateType f it = it{ nodeType = f (nodeType it) }
+    getType it      = nodeType it
+
+instance InfoTag () where
+    fromType _      = ()
+    updateType _ _  = ()
+    getType _       = tVar kTyp "a"
+
+-- >>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>
+
+data SimplifiedClause t p a = SimplifiedClause t [p] [a] a
+    deriving (Show, Eq, Functor, Foldable, Traversable)
+
+deriveShow1 ''SimplifiedClause
+deriveEq1   ''SimplifiedClause
+deriveOrd1  ''SimplifiedClause
+
 --type DesugaredPattern t = Pattern t t t t t t Void Void Void
---type DesugaredExpr t = Expr t t t t t t t t Void Void Void Void Void Void Void Void Name (ClauseA t (DesugaredPattern t))
+--type DesugaredExpr t = Expr t t t t t t t t Void Void Void Void Void Void Void Void Name (SimplifiedClause t (DesugaredPattern t))
 --
 --type SimplifiedPattern t = Pattern t t t Void Void Void Void Void Void
---type SimplifiedExpr t = Expr t t t t t t t t Void Void Void Void Void Void Void Void Name (ClauseA t (SimplifiedPattern t))
---
---simplifyExpr2 :: (Typed t, InfoTag t) => ProgExpr t -> Expr t t t t t t t t Void Void Void Void Void Void Void Void Name (ClauseA t (ProgPattern t))
---simplifyExpr2 = cata $ \case
---
--- -- Translate tuples, lists, and records
---    ETuple  t exprs      -> conExpr t (tupleCon (length exprs)) exprs
---    EList   t exprs      -> foldr (listConsExpr t) (conExpr t "[]" []) exprs
+--type SimplifiedExpr t = Expr t t t t t t t t Void Void Void Void Void Void Void Void Name (SimplifiedClause t (SimplifiedPattern t))
+
+simplifyExpr 
+  :: (Typed t, InfoTag t) 
+  => ProgExpr t 
+  -> Expr t t t t t t t t Void Void Void Void Void Void Void Void Name (SimplifiedClause t (ProgPattern t))
+simplifyExpr = cata $ \case
+
+    -- Translate tuples, lists, and records
+    ETuple  t exprs      -> conExpr t (tupleCon (length exprs)) exprs
+    EList   t exprs      -> foldr (listExprCons t) (conExpr t "[]" []) exprs
 --    ERecord t row        -> conExpr t "#Record" [desugarRow row]
--- -- Translate operators to prefix form
---    EOp1    t op a       -> appExpr t [prefixOp1 op, a]
---    EOp2    t op a b     -> appExpr t [varExpr (op2Tag op) ("(" <> op2Symbol op <> ")"), a, b]
--- -- Expand pattern clause guards
+    -- Translate operators to prefix form
+    EOp1    t op a       -> appExpr t [prefixOp1 op, a]
+    EOp2    t op a b     -> appExpr t [varExpr (op2Tag op) ("(" <> op2Symbol op <> ")"), a, b]
+    -- Expand pattern clause guards
 --    EPat    t es cs      -> undefined
 --    EFun    t cs         -> undefined
--- -- Unroll lambdas
---    ELam    t ps e       -> unrollLambda t ps e
--- -- Translate let expressions
---    ELet    t bind e1 e2 -> desugarLet t bind e1 e2
--- -- Remaining values are unchanged
---    EVar    t var        -> varExpr t var
---    ECon    t con es     -> conExpr t con es
---    ELit    t prim       -> litExpr t prim
---    EApp    t es         -> appExpr t es
---    EFix    t name e1 e2 -> fixExpr t name e1 e2
---    EIf     t e1 e2 e3   -> ifExpr  t e1 e2 e3
---
---  where
---    prefixOp1 (ONeg t) = varExpr t "negate"
---    prefixOp1 (ONot t) = varExpr t "not"
---
---unrollLambda 
---  :: (InfoTag t, Typed t) 
---  => t 
---  -> [ProgPattern t] 
---  -> Expr t t t t t t t t Void Void Void Void Void Void Void Void Name (ClauseA t (ProgPattern t)) 
---  -> Expr t t t t t t t t Void Void Void Void Void Void Void Void Name (ClauseA t (ProgPattern t))
---unrollLambda ti ps e = fst (foldr f (e, tag e) ps)
---  where
---    f p (e, t) =
---        let t' = updateType (tArr (typeOf (patternTag p))) t
---         in (lamExpr t' "#0" (patExpr t [varExpr (patternTag p) "#0"] [ClauseA t [p] [] e]), t')
---
---    tag = cata $ \case
---        EVar t _     -> t
---        ECon t _ _   -> t
---        ELit t _     -> t
---        EApp t _     -> t
---        EFix t _ _ _ -> t
---        ELam t _ _   -> t
---        EIf  t _ _ _ -> t
---        EPat t _ _   -> t
---
---desugarLet 
---  :: (InfoTag t, Typed t) 
---  => t
---  -> Binding t (ProgPattern t)
---  -> Expr t t t t t t t t Void Void Void Void Void Void Void Void Name (ClauseA t (ProgPattern t))
---  -> Expr t t t t t t t t Void Void Void Void Void Void Void Void Name (ClauseA t (ProgPattern t)) 
---  -> Expr t t t t t t t t Void Void Void Void Void Void Void Void Name (ClauseA t (ProgPattern t))
---desugarLet t bind e1 e2 = patExpr t [e] [ClauseA t [p] [] e2]
---  where
---    (e, p) = case bind of
---        BLet _ pat   -> (e1, pat)
---        BFun t f ps  -> (unrollLambda t ps (varExpr (ti ps) f), varPat t f)
---
---    ti = foldr (updateType . tArr . typeOf . patternTag) (tag e1) 
---
---    tag = cata $ \case
---        EVar t _     -> t
---        ECon t _ _   -> t
---        ELit t _     -> t
---        EApp t _     -> t
---        EFix t _ _ _ -> t
---        ELam t _ _   -> t
---        EIf  t _ _ _ -> t
---        EPat t _ _   -> t
---
---
+    -- Unroll lambdas
+    ELam    t ps e       -> unrollLambda t ps e
+    -- Translate let expressions
+    ELet    t bind e1 e2 -> desugarLet t bind e1 e2
+    -- Remaining values are unchanged
+    EVar    t var        -> varExpr t var
+    ECon    t con es     -> conExpr t con es
+    ELit    t prim       -> litExpr t prim
+    EApp    t es         -> appExpr t es
+    EFix    t name e1 e2 -> fixExpr t name e1 e2
+    EIf     t e1 e2 e3   -> ifExpr  t e1 e2 e3
+
+  where
+    prefixOp1 (ONeg t) = varExpr t "negate"
+    prefixOp1 (ONot t) = varExpr t "not"
+
+unrollLambda 
+  :: (Typed t, InfoTag t) 
+  => t 
+  -> [ProgPattern t] 
+  -> Expr t t t t t t t t Void Void Void Void Void Void Void Void Name (SimplifiedClause t (ProgPattern t)) 
+  -> Expr t t t t t t t t Void Void Void Void Void Void Void Void Name (SimplifiedClause t (ProgPattern t))
+unrollLambda ti ps e = fst (foldr f (e, tag e) ps)
+  where
+    f p (e, t) =
+        let t' = updateType (tArr (typeOf (patternTag p))) t
+         in (lamExpr t' "#0" (patExpr t [varExpr (patternTag p) "#0"] [SimplifiedClause t [p] [] e]), t')
+
+    tag = cata $ \case
+        EVar t _     -> t
+        ECon t _ _   -> t
+        ELit t _     -> t
+        EApp t _     -> t
+        EFix t _ _ _ -> t
+        ELam t _ _   -> t
+        EIf  t _ _ _ -> t
+        EPat t _ _   -> t
+
+desugarLet 
+  :: (Typed t, InfoTag t) 
+  => t
+  -> Binding t (ProgPattern t)
+  -> Expr t t t t t t t t Void Void Void Void Void Void Void Void Name (SimplifiedClause t (ProgPattern t))
+  -> Expr t t t t t t t t Void Void Void Void Void Void Void Void Name (SimplifiedClause t (ProgPattern t)) 
+  -> Expr t t t t t t t t Void Void Void Void Void Void Void Void Name (SimplifiedClause t (ProgPattern t))
+desugarLet t bind e1 e2 = patExpr t [e] [SimplifiedClause t [p] [] e2]
+  where
+    (e, p) = case bind of
+        BLet _ pat   -> (e1, pat)
+        BFun t f ps  -> (unrollLambda t ps (varExpr (ti ps) f), varPat t f)
+
+    ti = foldr (updateType . tArr . typeOf . patternTag) (tag e1) 
+
+    tag = cata $ \case
+        EVar t _     -> t
+        ECon t _ _   -> t
+        ELit t _     -> t
+        EApp t _     -> t
+        EFix t _ _ _ -> t
+        ELam t _ _   -> t
+        EIf  t _ _ _ -> t
+        EPat t _ _   -> t
+
+
 ---- let f [x, y] = e in z
 ----
 ---- let f = \x y -> e in z
@@ -172,7 +175,7 @@ module Tau.Compiler.Translate where
 --
 -- -- Translate tuples, lists, and records
 --    ETuple  t exprs      -> conExpr t (tupleCon (length exprs)) exprs
---    EList   t exprs      -> foldr (listConsExpr t) (conExpr t "[]" []) exprs
+--    EList   t exprs      -> foldr (listExprCons t) (conExpr t "[]" []) exprs
 --    ERecord t row        -> conExpr t "#Record" [desugarRow row]
 -- -- Translate operators to prefix form
 --    EOp1    t op a       -> appExpr t [prefixOp1 op, a]
@@ -198,8 +201,8 @@ module Tau.Compiler.Translate where
 --
 --    unrollLambda ti ps e = fst (foldr f (e, getType ti) ps)
 --      where
---        f p (e, t) = (funExpr undefined [ClauseA undefined [faz p] [] e], t)
---        -- f p (e, t) = (funExpr t [ClauseA t [p] [] e], t)
+--        f p (e, t) = (funExpr undefined [SimplifiedClause undefined [faz p] [] e], t)
+--        -- f p (e, t) = (funExpr t [SimplifiedClause t [p] [] e], t)
 --
 --faz :: ProgPattern t -> SimplifiedPattern t -- Pattern t t t t t t t t t -> Pattern t t t Void Void Void Void Void Void
 --faz = undefined
@@ -232,7 +235,7 @@ module Tau.Compiler.Translate where
 ----simplifyExpr = simplifyExprPatterns <=< desugarExprPatterns <<< cata (\case
 ---- -- Translate tuples, lists, and records
 ----    ETuple  t exprs      -> conExpr t (tupleCon (length exprs)) exprs
-----    EList   t exprs      -> foldr (listConsExpr t) (conExpr t "[]" []) exprs
+----    EList   t exprs      -> foldr (listExprCons t) (conExpr t "[]" []) exprs
 ----    ERecord t row        -> conExpr (rowTag (eTag <$> row)) "#Record" [desugarRow eTag conExpr row]
 ---- -- Translate operators to prefix form
 ----    EOp1    t op a       -> appExpr t [prefixOp1 op, a]
@@ -255,18 +258,18 @@ module Tau.Compiler.Translate where
 ----    prefixOp1 (ONeg t) = varExpr t "negate"
 ----    prefixOp1 (ONot t) = varExpr t "not"
 ----
-----    expandClause (Clause t ps gs) = [ClauseA t ps es e | Guard es e <- gs]
+----    expandClause (Clause t ps gs) = [SimplifiedClause t ps es e | Guard es e <- gs]
 ----
-----    desugarLet t bind e1 e2 = patExpr t [e] [ClauseA t [p] [] e2]
+----    desugarLet t bind e1 e2 = patExpr t [e] [SimplifiedClause t [p] [] e2]
 ----      where
 ----        (e, p) = case bind of
 ----            BLet _ pat   -> (e1, pat)
 ----            BFun t f ps  -> (fst $ foldr unrollLambda (e1, t) ps, varPat t f)
 ----
 ----    -- TODO
-----    unrollLambda p (e, t) = (traceShow t $ funExpr t [ClauseA t [p] [] e], t)
+----    unrollLambda p (e, t) = (traceShow t $ funExpr t [SimplifiedClause t [p] [] e], t)
 ----
-------        lamExpr undefined "$!" (patExpr undefined [varExpr undefined "$!"] [ClauseA undefined [] [] e])
+------        lamExpr undefined "$!" (patExpr undefined [varExpr undefined "$!"] [SimplifiedClause undefined [] [] e])
 ----
 ----
 ------    ELam    t ps e       -> foldr (\p e1 -> lamExpr (tarr (patternTag p) (eTag e1)) p e1) e ps
@@ -285,8 +288,8 @@ module Tau.Compiler.Translate where
 ----
 ------removeFunExprs 
 ------  :: (Tag t, MonadSupply Name m)
-------  => Expr t t t t t t t t t Void Void Void Void Void Void Void Name (ClauseA t (ProgPattern t))
-------  -> m (Expr t t t t t t t t Void Void Void Void Void Void Void Void Name (ClauseA t (ProgPattern t)))
+------  => Expr t t t t t t t t t Void Void Void Void Void Void Void Name (SimplifiedClause t (ProgPattern t))
+------  -> m (Expr t t t t t t t t Void Void Void Void Void Void Void Void Name (SimplifiedClause t (ProgPattern t)))
 ------removeFunExprs = cata $ \case
 ------
 ------    EVar    t var        -> pure (varExpr t var)
@@ -300,11 +303,11 @@ module Tau.Compiler.Translate where
 ------
 ------    EFun    t cs         -> undefined
 ----
-------  => Expr t t t t t t t t Void Void Void Void Void Void Void Void Name (ClauseA t (ProgPattern t))
+------  => Expr t t t t t t t t Void Void Void Void Void Void Void Void Name (SimplifiedClause t (ProgPattern t))
 ----
 ----desugarExprPatterns
 ----  :: (Tag t, MonadSupply Name m)
-----  => Expr t t t t t t t t t Void Void Void Void Void Void Void Name (ClauseA t (ProgPattern t))
+----  => Expr t t t t t t t t t Void Void Void Void Void Void Void Name (SimplifiedClause t (ProgPattern t))
 ----  -> m (DesugaredExpr t)
 ----desugarExprPatterns = cata $ \case
 ----
@@ -328,10 +331,10 @@ module Tau.Compiler.Translate where
 ------        let vars = (`varExpr` "#0") <$> tags
 ------        pure (foldr (\p e -> lamExpr (tarr p (eTag e)) "#0" e) (patExpr t vars cs) tags)
 ----  where
-----    translClause (ClauseA t ps es e) =
-----        ClauseA t (desugarPatterns <$> ps) <$> sequence es <*> e
+----    translClause (SimplifiedClause t ps es e) =
+----        SimplifiedClause t (desugarPatterns <$> ps) <$> sequence es <*> e
 ----
-----    clausePatterns (ClauseA _ ps _ _) = pTag <$> ps
+----    clausePatterns (SimplifiedClause _ ps _ _) = pTag <$> ps
 ----
 ----    eTag = cata $ \case
 ----        EVar    t _          -> t
@@ -400,25 +403,25 @@ module Tau.Compiler.Translate where
 ----
 ----expandPatterns
 ----  :: (Tag t, MonadSupply Name m) 
-----  => ClauseA t (DesugaredPattern t) (m (Expr t t t t t t t t Void Void Void Void Void Void Void Void Name (ClauseA t (SimplifiedPattern t))))
-----  -> m (ClauseA t (SimplifiedPattern t) (Expr t t t t t t t t Void Void Void Void Void Void Void Void Name (ClauseA t (SimplifiedPattern t))))
+----  => SimplifiedClause t (DesugaredPattern t) (m (Expr t t t t t t t t Void Void Void Void Void Void Void Void Name (SimplifiedClause t (SimplifiedPattern t))))
+----  -> m (SimplifiedClause t (SimplifiedPattern t) (Expr t t t t t t t t Void Void Void Void Void Void Void Void Name (SimplifiedClause t (SimplifiedPattern t))))
 ----expandPatterns clause = do
-----    ClauseA t ps es e <- sequence clause
+----    SimplifiedClause t ps es e <- sequence clause
 ----    qs <- concat <$> traverse splitOrs ps
-----    pure (ClauseA t qs es e)
+----    pure (SimplifiedClause t qs es e)
 ----
-------data ClauseA t p a = ClauseA t [p] [a] a
+------data SimplifiedClause t p a = SimplifiedClause t [p] [a] a
 ----
 -------- expandPatterns
---------   :: [ClauseA t (DesugaredPattern t) (Expr t t t t t t t t t t () () () () () (SimplifiedPattern t) [SimplifiedPattern t] (ClauseA t (SimplifiedPattern t)))]
---------   -> [ClauseA t (SimplifiedPattern t) (Expr t t t t t t t t t t () () () () () (SimplifiedPattern t) [SimplifiedPattern t] (ClauseA t (SimplifiedPattern t)))]
+--------   :: [SimplifiedClause t (DesugaredPattern t) (Expr t t t t t t t t t t () () () () () (SimplifiedPattern t) [SimplifiedPattern t] (SimplifiedClause t (SimplifiedPattern t)))]
+--------   -> [SimplifiedClause t (SimplifiedPattern t) (Expr t t t t t t t t t t () () () () () (SimplifiedPattern t) [SimplifiedPattern t] (SimplifiedClause t (SimplifiedPattern t)))]
 --------expandPatterns
---------  :: [ClauseA t (DesugaredPattern t) (Expr t t t t t t t t t Void Void Void Void Void Void Void Name (ClauseA t (SimplifiedPattern t)))]
---------  -> [ClauseA t (SimplifiedPattern t) (Expr t t t t t t t t t Void Void Void Void Void Void Void Name (ClauseA t (SimplifiedPattern t)))]
+--------  :: [SimplifiedClause t (DesugaredPattern t) (Expr t t t t t t t t t Void Void Void Void Void Void Void Name (SimplifiedClause t (SimplifiedPattern t)))]
+--------  -> [SimplifiedClause t (SimplifiedPattern t) (Expr t t t t t t t t t Void Void Void Void Void Void Void Name (SimplifiedClause t (SimplifiedPattern t)))]
 ------expandPatterns 
 ------  :: (Tag t, MonadSupply Name m) 
-------  => [ClauseA t (DesugaredPattern t) (m (Expr t t t t t t t t Void Void Void Void Void Void Void Void Name (ClauseA t (SimplifiedPattern t))))]
-------  -> m [ClauseA t (SimplifiedPattern t) (Expr t t t t t t t t Void Void Void Void Void Void Void Void Name (ClauseA t (SimplifiedPattern t)))]
+------  => [SimplifiedClause t (DesugaredPattern t) (m (Expr t t t t t t t t Void Void Void Void Void Void Void Void Name (SimplifiedClause t (SimplifiedPattern t))))]
+------  -> m [SimplifiedClause t (SimplifiedPattern t) (Expr t t t t t t t t Void Void Void Void Void Void Void Void Name (SimplifiedClause t (SimplifiedPattern t)))]
 ------expandPatterns xs = do
 ------    zoom <- traverse sequence xs
 ------    foo <- traverse bobbo zoom
@@ -426,19 +429,19 @@ module Tau.Compiler.Translate where
 ----
 ------bobbo 
 ------  :: (MonadSupply Name m) 
-------  => ClauseA t0 (DesugaredPattern t) a 
-------  -> m [ClauseA t0 (SimplifiedPattern t) a]
-------bobbo (ClauseA t ps es e) = do
+------  => SimplifiedClause t0 (DesugaredPattern t) a 
+------  -> m [SimplifiedClause t0 (SimplifiedPattern t) a]
+------bobbo (SimplifiedClause t ps es e) = do
 ------    qs <- concat <$> traverse splitOrs ps
-------    pure [ClauseA t qs es e]
+------    pure [SimplifiedClause t qs es e]
 ----
-------    pure [ClauseA t qs es e] -- [ClauseA t qs es e | qs <- traverse splitOrs ps]
+------    pure [SimplifiedClause t qs es e] -- [SimplifiedClause t qs es e | qs <- traverse splitOrs ps]
 ----
 ------data Clause t p a = Clause t [p] [Guard a] 
 ----
-------expandPatterns = concatMap $ \(ClauseA t ps es e) -> do
+------expandPatterns = concatMap $ \(SimplifiedClause t ps es e) -> do
 ------    undefined
-------    [ClauseA t qs es e | qs <- traverse splitOrs ps]
+------    [SimplifiedClause t qs es e | qs <- traverse splitOrs ps]
 ----
 ----splitOrs 
 ----  :: (MonadSupply Name m) 

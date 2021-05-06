@@ -26,9 +26,6 @@ class Substitutable t a where
 instance Substitutable t a => Substitutable [t] a where
     apply = fmap . apply
 
---instance Substitutable t a => Substitutable t (Maybe a) where
---    apply (Sub sub) = apply (Sub (Map.mapMaybe id sub))
-
 -- >>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>
 
 instance Semigroup (Substitution Type) where
@@ -158,13 +155,6 @@ instance Substitutable (TypeT a) Kind where
         TApp k t1 t2         -> tApp (apply sub k) t1 t2
         TArr t1 t2           -> tArr t1 t2
 
---instance Substitutable Type (Maybe Type, Maybe Kind) where
---    apply sub = cata $ \case
---        TVar k var           -> apply (fst <$> sub) (tVar (apply (snd <$> sub) k) var)
---        TCon k con           -> apply (fst <$> sub) (tCon (apply (snd <$> sub) k) con)
---        TApp k t1 t2         -> apply (fst <$> sub) (tApp (apply (snd <$> sub) k) t1 t2)
---        TArr t1 t2           -> apply (fst <$> sub) (tArr t1 t2)
-
 -- >>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>
 
 null :: Substitution a
@@ -226,23 +216,3 @@ apply2
   -> t 
   -> t
 apply2 (typeSub, kindSub, _) = apply kindSub . apply typeSub
-
----- >>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>
-
---splitSubs :: Substitution (Maybe Type, Maybe Kind) -> (Substitution Type, Substitution Kind)
---splitSubs (Sub s) = (Sub (Map.mapMaybe fst s), Sub (Map.mapMaybe snd s))
---
---joinSubs :: Substitution Type -> Substitution Kind -> Substitution (Maybe Type, Maybe Kind)
---joinSubs typeSub kindSub = Sub (Map.foldrWithKey fn initl (getSub kindSub))
---  where
---    initl = Map.map (Just &&& const Nothing) (getSub typeSub)
---    fn key kind = Map.insertWith (\(_, b) (a, _) -> (a, b)) key (Nothing, Just kind) 
---
---instance Semigroup (Substitution (Maybe Type, Maybe Kind)) where
---    (<>) sub1 sub2 = joinSubs (typeSub2 <> typeSub1) (kindSub2 <> kindSub1)
---      where
---        (typeSub1, kindSub1) = splitSubs sub1
---        (typeSub2, kindSub2) = splitSubs sub2
---
---instance Monoid (Substitution (Maybe Type, Maybe Kind)) where
---    mempty = null

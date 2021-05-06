@@ -1,3 +1,4 @@
+{-# LANGUAGE FlexibleContexts  #-}
 {-# LANGUAGE FlexibleInstances #-}
 {-# LANGUAGE LambdaCase        #-}
 {-# LANGUAGE OverloadedStrings #-}
@@ -404,7 +405,12 @@ instance Pretty (Op2 t) where
 --
 ---- >>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>
 
-exprTree :: (Typed t, Pretty t) => ProgExpr t -> Tree (Doc a)
+--exprTree :: (Typed t, Pretty t) => ProgExpr t -> Tree (Doc a)
+
+exprTree 
+  :: (Typed bind, Foo bind, Functor clause, Pretty t1, Pretty t2, Pretty t3, Pretty t4, Pretty t8, Pretty t10) 
+  => Expr t1 t2 t3 t4 t5 t6 t7 t8 t9 t10 t11 t12 t13 t14 t15 bind lam clause 
+  -> Tree (Doc a)
 exprTree = para $ \case
 
     EVar    t var        -> Node (annotated t var) []
@@ -412,7 +418,20 @@ exprTree = para $ \case
     ELit    t prim       -> Node (annotated t prim) []
     EApp    t es         -> Node (annotated t ("@" :: Text)) (snd <$> es)
     ELet    t bind e1 e2 -> letTree t bind (snd e1) (snd e2)
+    EPat    t es cs      -> Node (xyz t es) (clauseTree <$> (fst <$$> cs))
     _                    -> Node "TODO" []
+
+clauseTree :: clause -> Tree (Doc a)
+clauseTree = undefined
+
+--xyz :: (Pretty p, Pretty t8) => p -> [(Expr t1 t2 t3 t4 t5 t6 t7 t8 t9 t10 t11 t12 t13 t14 t15 bind lam clause, e)] -> Doc a
+xyz t es = "match" <+> commaSep (withTag . fst <$> es) <+> "with" <+> colon <+> pretty t
+
+withTag = undefined
+
+--withTag :: Expr t1 t2 t3 t4 t5 t6 t7 t8 t9 t10 t11 t12 t13 t14 t15 bind lam clause -> Doc a
+--withTag e = annotated (typeOf (exprTag e)) e 
+
 
 --    EApp    t es         -> Node (annotated t ("@" :: Text)) (snd <$> es) -- (annotated t (appExpr t (fst <$> es))) []
 --    ELet    t bind e1 e2 -> letTree t bind (snd e1) (snd e2)
@@ -428,18 +447,27 @@ exprTree = para $ \case
 --    EList   t es         -> Node (pretty t) (snd <$> es)
 --    ERecord t row        -> Node ("#Record" <+> pretty t) (foo <$> concatRowWithKey row)
 
-letTree 
-  :: (Pretty t1, Pretty t2, Pretty p) 
-  => t1 
-  -> Binding t2 p 
-  -> Tree (Doc a) 
-  -> Tree (Doc a) 
-  -> Tree (Doc a)
+class Foo x where
+    foo :: x -> Text
+
+instance (Pretty b) => Foo (Binding t b) where
+    foo = prettyPrint
+
+instance Foo Void where
+    foo = const ""
+
+--letTree 
+--  :: (Pretty t1, Pretty t2, Pretty p, Foo bind) 
+--  => bind
+--  -> Binding t2 p 
+--  -> Tree (Doc a) 
+--  -> Tree (Doc a) 
+--  -> Tree (Doc a)
 letTree t bind e1 e2 =
     Node (annotated t ("let" :: Text))
-        [ Node (annotated (bindingTag bind) bind <+> equals) [e1]
-        , Node "in" [e2] ]
-
+        [ Node (annotated (typeOf bind) (foo bind) <+> equals) [e1]
+        , Node "in" [e2] 
+        ]
 
 --concatRowWithKey :: Row e -> [(Name, e)]
 --concatRowWithKey (Row m _) = f =<< Map.foldrWithKey (curry (:)) mempty m

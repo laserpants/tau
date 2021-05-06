@@ -259,25 +259,22 @@ inferPatternType = cata $ \case
         pure var
 
     PCon _ con pats -> inferPatternNode (args2 conPat) $ do
-        ps <- traverse patternNode pats
-        pure (con, ps)
+        lookupConstructor con >>= \case
+            Nothing -> pure ()
+            Just (_, arity) -> do
+                -- The number of arguments must match arity of constructor
+                when (arity /= length pats) $
+                    insertErrors [ConstructorPatternArityMismatch con arity (length pats)]
 
---        lookupConstructor con >>= \case
---            Nothing -> pure ()
---            Just (_, arity) -> do
---                -- The number of arguments must match arity of constructor
---                when (arity /= length pats) $
---                    insertErrors [ConstructorPatternArityMismatch con arity (length pats)]
---
---        ty <- lookupScheme con >>= instantiate
---        ps <- traverse patternNode pats
---
---        t1 <- thisNodeType
---        (_, node) <- listen (ty ## foldr tArr t1 (typeOf <$> ps))
---        when (nodeHasErrors node) $
---            insertErrors [ConstructorPatternTypeMismatch con]
---
---        pure (con, ps)
+        ty <- lookupScheme con >>= instantiate
+        ps <- traverse patternNode pats
+
+        t1 <- thisNodeType
+        (_, node) <- listen (ty ## foldr tArr t1 (typeOf <$> ps))
+        when (nodeHasErrors node) $
+            insertErrors [ConstructorPatternTypeMismatch con]
+
+        pure (con, ps)
 
     PLit _ prim -> inferPatternNode litPat $ do
         t <- instantiate (primType prim)

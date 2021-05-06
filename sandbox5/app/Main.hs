@@ -434,6 +434,7 @@ test2 = do -- case fromJust (runInfer mempty testClassEnv testTypeEnv testConstr
     print "----------"
     putStrLn (showTree h)
     print "=========="
+    putStrLn (showTree zz)
 --    Left e -> error (show e)
 --    Right (expr, sub, context) -> do
 --        print (expr, sub, context)
@@ -452,6 +453,10 @@ test2 = do -- case fromJust (runInfer mempty testClassEnv testTypeEnv testConstr
     ee :: Ast (TypeInfo [Error])
     ee = (apply sub a)
 
+    xx = simplifyExpr (getAst ee)
+    yy = exprTree xx
+    zz = unpack . renderDoc <$> yy
+
     (a, sub, sub2, ctx) = fromJust (runInfer mempty testClassEnv testTypeEnv testKindEnv testConstructorEnv expr)
 --    expr = inferAst (Ast (appExpr () [varExpr () "id", litExpr () (TInt 5)]))
 
@@ -467,8 +472,20 @@ test2 = do -- case fromJust (runInfer mempty testClassEnv testTypeEnv testConstr
 
 --    expr = inferAst (Ast (varExpr () "(::)"))
 
-    expr = inferAst (Ast (appExpr () [varExpr () "(::)", litExpr () (TInt 5), conExpr () "[]" []]))
+--    expr = inferAst (Ast (appExpr () [varExpr () "(::)", litExpr () (TInt 5), conExpr () "[]" []]))
 
+    expr = inferAst (Ast (letExpr () (BLet () (varPat () "x")) (litExpr () (TInt 5)) (varExpr () "x")))
+
+
+test3 = u :: Either UnificationError (Substitution Type, Substitution Kind)
+  where
+--    u = unifyTypes (tVar (kVar "k1") "a1") tInt
+
+--    u = unifyTypes (tVar kTyp "a1") tInt
+
+--    u = unifyTypes (tVar kTyp "a1") (tVar kTyp "a1" `fn` tVar kTyp "a1")
+
+    u = unifyTypes (tVar (kArr (kVar "k1") (kVar "k1")) "a1") (tVar (kVar "k1") "a1")
 
 ---- --test4 = do
 ---- --    print "----------"

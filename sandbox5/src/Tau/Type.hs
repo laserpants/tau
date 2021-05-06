@@ -155,38 +155,38 @@ instance FreeIn Scheme where
 
 getKindVar :: Kind -> Maybe Name
 getKindVar = project >>> \case
-    KVar var -> Just var
-    _        -> Nothing
+    KVar var     -> Just var
+    _            -> Nothing
 
 getKindCon :: Kind -> Maybe Name
 getKindCon = project >>> \case
-    KCon con -> Just con
-    _        -> Nothing
+    KCon con     -> Just con
+    _            -> Nothing
 
 isVar :: Type -> Bool
 isVar = project >>> \case
-    TVar{} -> True
-    _      -> False
+    TVar{}       -> True
+    _            -> False
 
 isCon :: Type -> Bool
 isCon = project >>> \case
-    TCon{} -> True
-    _      -> False
+    TCon{}       -> True
+    _            -> False
 
 getTypeVar :: Type -> Maybe Name
 getTypeVar = project >>> \case
-    TVar _ var -> Just var
-    _          -> Nothing
+    TVar _ var   -> Just var
+    _            -> Nothing
 
 getTypeCon :: Type -> Maybe Name
 getTypeCon = project >>> \case
-    TCon _ con -> Just con
-    _          -> Nothing
+    TCon _ con   -> Just con
+    _            -> Nothing
 
 getTypeIndex :: PolyType -> Maybe Int
 getTypeIndex = project >>> \case
-    TGen i -> Just i
-    _      -> Nothing
+    TGen i       -> Just i
+    _            -> Nothing
 
 kindOf :: Type -> Kind
 kindOf = project >>> \case
@@ -194,6 +194,12 @@ kindOf = project >>> \case
     TCon k _     -> k
     TApp k _ _   -> k
     TArr _ _     -> kTyp
+
+kindVars :: Kind -> [Name]
+kindVars = nub . cata (\case
+    KVar var     -> [var]
+    KArr k1 k2   -> k1 <> k2
+    _            -> [])
 
 typeVars :: TypeT a -> [(Name, Kind)]
 typeVars = nub . cata (\case

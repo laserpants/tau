@@ -50,8 +50,7 @@ type ConstructorEnv = Env (Set Name, Int)
 data TypeInfoT e t = TypeInfo
     { nodeType       :: t
     , nodePredicates :: List Predicate
-    , nodeErrors     :: e
-    }
+    , nodeErrors     :: e }
 
 type TypeInfo e = TypeInfoT e Type
 
@@ -67,6 +66,12 @@ deriving instance Functor (TypeInfoT e)
 
 instance (Typed t) => Typed (TypeInfoT e t) where
     typeOf = typeOf . nodeType 
+
+instance (Typed t) => Typed (Binding t p) where
+    typeOf = typeOf . bindingTag
+
+instance Typed Void where
+    typeOf _ = tVar kTyp "a" 
 
 instance FreeIn TypeEnv where
     free = free . Env.elems

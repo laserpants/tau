@@ -1,7 +1,7 @@
 {-# LANGUAGE DeriveTraversable     #-}
 {-# LANGUAGE FlexibleInstances     #-}
-{-# LANGUAGE MultiParamTypeClasses #-}
 {-# LANGUAGE LambdaCase            #-}
+{-# LANGUAGE MultiParamTypeClasses #-}
 {-# LANGUAGE OverloadedStrings     #-}
 {-# LANGUAGE StandaloneDeriving    #-}
 {-# LANGUAGE StrictData            #-}
@@ -371,8 +371,6 @@ astTag = exprTag . getAst
 
 clauseTag :: Clause t p a -> t
 clauseTag (Clause t _ _) = t
-
----- >>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>
 
 clausePatterns :: Clause t p a -> [p]
 clausePatterns (Clause _ ps _) = ps

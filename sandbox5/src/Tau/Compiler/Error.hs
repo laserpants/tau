@@ -10,6 +10,7 @@ import Tau.Type
 
 data UnificationError
     = InfiniteType
+    | InfiniteKind
     | IncompatibleTypes
     | IncompatibleKinds
     | MergeFailed
@@ -26,8 +27,8 @@ data ErrorT t
     | MissingInstance Name t
     | ListElemUnficationError
     | ListPatternElemUnficationError
---    | ConstructorPatternArityMismatch Name Int Int
---    | ConstructorPatternTypeMismatch Name
+    | ConstructorPatternArityMismatch Name Int Int
+    | ConstructorPatternTypeMismatch Name
     | GuardConditionNotABool
     deriving (Show, Eq, Functor, Foldable, Traversable)
 

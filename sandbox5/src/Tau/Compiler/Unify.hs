@@ -23,6 +23,7 @@ import qualified Data.Text as Text
 bindKind :: (MonadError UnificationError m) => Name -> Kind -> m (Substitution Kind)
 bindKind name kind
     | getKindVar kind == Just name            = pure mempty
+    | name `elem` kindVars kind               = throwError InfiniteKind
     | otherwise                               = pure (name `mapsTo` kind)
 
 unifyKinds :: (MonadError UnificationError m) => Kind -> Kind -> m (Substitution Kind)
