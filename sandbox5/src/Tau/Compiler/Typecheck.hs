@@ -49,6 +49,11 @@ inferKind = cata $ \case
         pure (tVar k var)
 
     TCon k con -> do
+        kind <- lookupKind con
+        traceShowM "****************"
+        traceShowM "***** TODO *****"
+        traceShowM "****************"
+        traceShowM kind
         pure (tCon k con)
 
     TArr ty1 ty2 -> do
@@ -63,6 +68,23 @@ inferKind = cata $ \case
         t2 <- ty2 
         runUnifyKinds (kArr (kindOf t2) k) (kindOf t1)
         pure (tApp k t1 t2)
+
+lookupKind
+  :: ( MonadReader (ClassEnv, TypeEnv, KindEnv, ConstructorEnv) m
+     , MonadState (a1, Substitution a2, c) m
+     , MonadSupply Name m, Substitutable Kind a2 ) 
+  => Name 
+  -> m Kind
+lookupKind name = do
+    env <- asks getKindEnv
+    sub <- gets snd3
+    case Env.lookup name env of
+        Nothing -> do
+            -- TODO:
+            --insertErrors [UnboundTypeIdentifier name]
+            kVar . ("k" <>) <$> supply
+        Just kind ->
+            pure (apply sub kind)
 
 -- >>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>
 
@@ -759,16 +781,16 @@ runUnifyKinds = runExceptT <$$> (\k1 k2 -> do
     sub <- applyAnd unifyKinds (gets snd3) KindMismatch k1 k2
     modify (second3 (sub <>)))
 
---applyAnd
---  :: ( MonadState (Substitution Type, Substitution Kind, Context) m
---     , Substitutable t1 a, Substitutable t2 a
---     , MonadError e m ) 
---  => (t1 -> t2 -> Except t3 sub)
---  -> (t1 -> t2 -> t3 -> e)
---  -> ((Substitution Type, Substitution Kind, Context) -> Substitution a)
---  -> t1
---  -> t2
---  -> m sub
+applyAnd
+  :: ( Substitutable t1 a
+     , Substitutable t2 a
+     , MonadError e m )
+  => (t1 -> t2 -> Except t3 sub)
+  -> m (Substitution a)
+  -> (t1 -> t2 -> t3 -> e)
+  -> t1
+  -> t2
+  -> m sub
 applyAnd unify getSub toError a b = do
     sub1 <- getSub
     case runExcept (unify (apply sub1 a) (apply sub1 b)) of

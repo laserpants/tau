@@ -3,6 +3,7 @@
 {-# LANGUAGE FlexibleInstances     #-}
 {-# LANGUAGE LambdaCase            #-}
 {-# LANGUAGE MultiParamTypeClasses #-}
+{-# LANGUAGE StandaloneDeriving    #-}
 {-# LANGUAGE StrictData            #-}
 module Tau.Compiler.Substitute where
 
@@ -18,13 +19,23 @@ import qualified Data.Map.Strict as Map
 import qualified Tau.Env as Env
 
 newtype Substitution a = Sub { getSub :: Map Name a }
-    deriving (Show, Eq, Functor)
 
 class Substitutable t a where
     apply :: Substitution a -> t -> t
 
 instance Substitutable t a => Substitutable [t] a where
     apply = fmap . apply
+
+-- >>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>
+
+deriving instance (Show a) => 
+    Show (Substitution a)
+
+deriving instance (Eq a) => 
+    Eq (Substitution a)
+
+deriving instance 
+    Functor Substitution
 
 -- >>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>
 

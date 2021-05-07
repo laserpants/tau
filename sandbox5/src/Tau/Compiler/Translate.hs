@@ -30,19 +30,19 @@ import qualified Data.Map.Strict as Map
 --    deriving (Show, Eq, Ord)
 
 class InfoTag t where
-    fromType   :: Type -> t
-    updateType :: (Type -> Type) -> t -> t
-    getType    :: t -> Type
+    fromType  :: Type -> t
+    tagToType :: t -> Type
 
 instance InfoTag (TypeInfo [e]) where
-    fromType t      = TypeInfo t [] []
-    updateType f it = it{ nodeType = f (nodeType it) }
-    getType it      = nodeType it
+    fromType t   = TypeInfo t [] []
+    tagToType it = nodeType it
 
 instance InfoTag () where
-    fromType _      = ()
-    updateType _ _  = ()
-    getType _       = tVar kTyp "a"
+    fromType _   = ()
+    tagToType _  = tVar kTyp "a"
+
+updateType :: (InfoTag t) => (Type -> Type) -> t -> t
+updateType f = fromType . f . tagToType
 
 -- >>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>
 
@@ -199,7 +199,7 @@ desugarLet t bind e1 e2 = patExpr t [e] [SimplifiedClause t [p] [] e2]
 --    prefixOp1 (ONeg t) = varExpr t "negate"
 --    prefixOp1 (ONot t) = varExpr t "not"
 --
---    unrollLambda ti ps e = fst (foldr f (e, getType ti) ps)
+--    unrollLambda ti ps e = fst (foldr f (e, tagToType ti) ps)
 --      where
 --        f p (e, t) = (funExpr undefined [SimplifiedClause undefined [faz p] [] e], t)
 --        -- f p (e, t) = (funExpr t [SimplifiedClause t [p] [] e], t)
@@ -218,7 +218,7 @@ desugarLet t bind e1 e2 = patExpr t [e] [SimplifiedClause t [p] [] e2]
 --      where
 --        field = "{" <> key <> "}"
 --        f d e = conExpr (updateType (fun (tag e)) (tag d)) field [d, e]
---        fun s t = tApp (tApp (tCon (kArr kTyp (kArr kRow kRow)) field) t) (getType s)
+--        fun s t = tApp (tApp (tCon (kArr kTyp (kArr kRow kRow)) field) t) (tagToType s)
 --
 --    tag = cata $ \case
 --        EVar t _     -> t
