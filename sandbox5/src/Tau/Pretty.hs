@@ -451,7 +451,7 @@ instance PatternClause SimplifiedClause t p (Expr t1 t2 t3 t4 t5 t6 t7 t8 t9 t10
     clauseRhs (SimplifiedClause _ _ es e) = [(es, e)]
 
 exprTree 
-  :: (PatternClause c t (Pattern p1 p2 p3 p4 p5 p6 p7 p8 p9) (Expr t1 t2 t3 t4 t5 t6 t7 t8 t9 t10 t11 t12 t13 t14 t15 bind lam (c t (Pattern p1 p2 p3 p4 p5 p6 p7 p8 p9))), Functor (c t (Pattern p1 p2 p3 p4 p5 p6 p7 p8 p9)), Typed bind, LetBinding bind, Pretty bind, Pretty t1, Pretty t2, Pretty t3, Pretty t4, Pretty t7, Pretty t8, Pretty t10)
+  :: (PatternClause c t (Pattern p1 p2 p3 p4 p5 p6 p7 p8 p9) (Expr t1 t2 t3 t4 t5 t6 t7 t8 t9 t10 t11 t12 t13 t14 t15 bind lam (c t (Pattern p1 p2 p3 p4 p5 p6 p7 p8 p9))), Functor (c t (Pattern p1 p2 p3 p4 p5 p6 p7 p8 p9)), Typed bind, Typed t12, LetBinding bind, Pretty bind, Pretty t1, Pretty t2, Pretty t3, Pretty t4, Pretty t7, Pretty t8, Pretty t10)
   => Expr t1 t2 t3 t4 t5 t6 t7 t8 t9 t10 t11 t12 t13 t14 t15 bind lam (c t (Pattern p1 p2 p3 p4 p5 p6 p7 p8 p9))
   -> Tree (Doc a)
 exprTree = para $ \case
@@ -461,14 +461,13 @@ exprTree = para $ \case
     ELit    t prim       -> Node (annotated t prim) []
     EApp    t es         -> Node (annotated t ("@" :: Text)) (snd <$> es)
     ELet    t bind e1 e2 -> letTree t bind (snd e1) (snd e2)
-    EPat    t es cs      -> Node ("match" <+> commaSep (withTag . fst <$> es) <+> "with") (bork2 <$> (fst <$$> cs)) 
---    EOp1    _ (ONeg _) a -> "-" <> a
---    EOp1    _ (ONot _) a -> "not" <+> a
-    EOp2    _ op a b     -> Node (pretty op) [snd a, snd b]
+    EPat    t es cs      -> Node ("match" <+> commaSep (withTag . fst <$> es) <+> "with") (treeClause <$> (fst <$$> cs)) 
+    EOp1    _ op a       -> Node (pretty op) [snd a]
+    EOp2    _ op a b     -> Node ("(" <> pretty op  <> ")" <+> pretty (typeOf (op2Tag op))) [snd a, snd b]
     _                    -> Node "TODO" []
 
-bork2 :: (Functor (c1 t11 (Pattern p1 p2 p3 p4 p5 p6 p7 p8 p9)), Typed bind, LetBinding bind, Pretty bind, Pretty t12, Pretty t13, Pretty t14, Pretty t15, Pretty t16, Pretty t10, Pretty t19, PatternClause c1 t11 (Pattern p1 p2 p3 p4 p5 p6 p7 p8 p9) (Expr t12 t13 t14 t15 t17 t18 t19 t16 t20 t10 t21 t22 t23 t24 t25 bind lam (c1 t11 (Pattern p1 p2 p3 p4 p5 p6 p7 p8 p9))), PatternClause c2 t26 (Pattern t27 t28 t29 t30 t31 t32 t33 t34 t35) (Expr t12 t13 t14 t15 t17 t18 t19 t16 t20 t10 t21 t22 t23 t24 t25 bind lam (c1 t11 (Pattern p1 p2 p3 p4 p5 p6 p7 p8 p9)))) => c2 t26 (Pattern t27 t28 t29 t30 t31 t32 t33 t34 t35) (Expr t12 t13 t14 t15 t17 t18 t19 t16 t20 t10 t21 t22 t23 t24 t25 bind lam (c1 t11 (Pattern p1 p2 p3 p4 p5 p6 p7 p8 p9))) -> Data.Tree.Tree (Doc ann)
-bork2 c = clauseTree (clauseLhs c) (clauseRhs c)
+treeClause :: (Functor (c1 t11 (Pattern p1 p2 p3 p4 p5 p6 p7 p8 p9)), Typed bind, Typed t22, LetBinding bind, Pretty bind, Pretty t12, Pretty t13, Pretty t14, Pretty t15, Pretty t16, Pretty t10, Pretty t19, PatternClause c1 t11 (Pattern p1 p2 p3 p4 p5 p6 p7 p8 p9) (Expr t12 t13 t14 t15 t17 t18 t19 t16 t20 t10 t21 t22 t23 t24 t25 bind lam (c1 t11 (Pattern p1 p2 p3 p4 p5 p6 p7 p8 p9))), PatternClause c2 t26 (Pattern t27 t28 t29 t30 t31 t32 t33 t34 t35) (Expr t12 t13 t14 t15 t17 t18 t19 t16 t20 t10 t21 t22 t23 t24 t25 bind lam (c1 t11 (Pattern p1 p2 p3 p4 p5 p6 p7 p8 p9)))) => c2 t26 (Pattern t27 t28 t29 t30 t31 t32 t33 t34 t35) (Expr t12 t13 t14 t15 t17 t18 t19 t16 t20 t10 t21 t22 t23 t24 t25 bind lam (c1 t11 (Pattern p1 p2 p3 p4 p5 p6 p7 p8 p9))) -> Data.Tree.Tree (Doc ann)
+treeClause c = clauseTree (clauseLhs c) (clauseRhs c)
 
 withTag 
   :: (PatternClause c t (Pattern p1 p2 p3 p4 p5 p6 p7 p8 p9) (Expr t1 t2 t3 t4 t5 t6 t7 t8 t9 t10 t11 t12 t13 t14 t15 bind lam (c t (Pattern p1 p2 p3 p4 p5 p6 p7 p8 p9))), Functor (c t (Pattern p1 p2 p3 p4 p5 p6 p7 p8 p9)), Typed bind, LetBinding bind, Pretty bind, Pretty t1, Pretty t2, Pretty t3, Pretty t4, Pretty t7, Pretty t8, Pretty t10)
@@ -521,7 +520,7 @@ withTag e = pretty e <+> colon <+> foo e -- (typeOf (exprTag e)) e
 --  => [Pattern u1 u2 u3 u4 u5 u6 u7 u8 u9] 
 --  -> [Guard (Expr t1 t2 t3 t4 t5 t6 t7 t8 t9 t10 t11 t12 t13 t14 t15 bind lam clause)] 
 --  -> Tree (Doc a)
-clauseTree :: (PatternClause c t (Pattern p1 p2 p3 p4 p5 p6 p7 p8 p9) (Expr t11 t12 t13 t14 t15 t16 t17 t18 t19 t10 t20 t21 t22 t23 t24 bind lam (c t (Pattern p1 p2 p3 p4 p5 p6 p7 p8 p9))), Functor (c t (Pattern p1 p2 p3 p4 p5 p6 p7 p8 p9)), Typed bind, LetBinding bind, Pretty bind, Pretty t11, Pretty t12, Pretty t13, Pretty t14, Pretty t18, Pretty t10, Pretty t17, Pretty a) => [Pattern t25 t26 t27 t28 t29 t30 t31 t32 t33] -> [([a], Expr t11 t12 t13 t14 t15 t16 t17 t18 t19 t10 t20 t21 t22 t23 t24 bind lam (c t (Pattern p1 p2 p3 p4 p5 p6 p7 p8 p9)))] -> Data.Tree.Tree (Doc ann)
+clauseTree :: (PatternClause c t (Pattern p1 p2 p3 p4 p5 p6 p7 p8 p9) (Expr t11 t12 t13 t14 t15 t16 t17 t18 t19 t10 t20 t21 t22 t23 t24 bind lam (c t (Pattern p1 p2 p3 p4 p5 p6 p7 p8 p9))), Functor (c t (Pattern p1 p2 p3 p4 p5 p6 p7 p8 p9)), Typed bind, Typed t21, LetBinding bind, Pretty bind, Pretty t11, Pretty t12, Pretty t13, Pretty t14, Pretty t18, Pretty t10, Pretty t17, Pretty a) => [Pattern t25 t26 t27 t28 t29 t30 t31 t32 t33] -> [([a], Expr t11 t12 t13 t14 t15 t16 t17 t18 t19 t10 t20 t21 t22 t23 t24 bind lam (c t (Pattern p1 p2 p3 p4 p5 p6 p7 p8 p9)))] -> Data.Tree.Tree (Doc ann)
 clauseTree ps gs = Node pats (guard <$> gs)
   where
     pats | 1 == length ps = pretty (head ps) 
