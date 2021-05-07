@@ -73,6 +73,9 @@ instance (Typed t) => Typed (Binding t p) where
 instance Typed Void where
     typeOf _ = tVar kTyp "a" 
 
+instance Typed () where
+    typeOf _ = tVar kTyp "a" 
+
 instance FreeIn TypeEnv where
     free = free . Env.elems
 

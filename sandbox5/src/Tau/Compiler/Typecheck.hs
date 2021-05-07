@@ -218,7 +218,7 @@ inferExprType = cata $ \case
         b <- exprNode expr2
         op <- inferOp2Type op2
         t1 <- thisNodeType
-        op ## (typeOf a `tArr` typeOf b `tArr` t1) 
+        op ## (typeOf a `fn` typeOf b `fn` t1) 
         pure (op, a, b)
 
     ETuple _ exprs -> inferExprNode tupleExpr $ do

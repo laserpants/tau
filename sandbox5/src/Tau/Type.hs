@@ -281,6 +281,8 @@ tCon = embed2 TCon
 tArr :: TypeT a -> TypeT a -> TypeT a
 tArr = embed2 TArr
 
+infixr 1 `tArr`
+
 fn :: TypeT a -> TypeT a -> TypeT a
 fn = tArr
 

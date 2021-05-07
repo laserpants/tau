@@ -20,13 +20,21 @@ import Tau.Type
 import qualified Data.Map.Strict as Map
 import qualified Data.Text as Text
 
-bindKind :: (MonadError UnificationError m) => Name -> Kind -> m (Substitution Kind)
+bindKind 
+  :: (MonadError UnificationError m) 
+  => Name 
+  -> Kind 
+  -> m (Substitution Kind)
 bindKind name kind
     | getKindVar kind == Just name            = pure mempty
     | name `elem` kindVars kind               = throwError InfiniteKind
     | otherwise                               = pure (name `mapsTo` kind)
 
-unifyKinds :: (MonadError UnificationError m) => Kind -> Kind -> m (Substitution Kind)
+unifyKinds 
+  :: (MonadError UnificationError m) 
+  => Kind 
+  -> Kind 
+  -> m (Substitution Kind)
 unifyKinds k l = fn (project k) (project l)
   where
     fn (KArr k1 k2) (KArr l1 l2)              = unifyKindPairs (k1, k2) (l1, l2)
@@ -35,7 +43,11 @@ unifyKinds k l = fn (project k) (project l)
     fn _ _ | k == l                           = pure mempty
     fn _ _                                    = throwError IncompatibleKinds
 
-unifyKindPairs :: (MonadError UnificationError m) => (Kind, Kind) -> (Kind, Kind) -> m (Substitution Kind)
+unifyKindPairs 
+  :: (MonadError UnificationError m) 
+  => (Kind, Kind) 
+  -> (Kind, Kind) 
+  -> m (Substitution Kind)
 unifyKindPairs (k1, k2) (l1, l2) = do
     sub1 <- unifyKinds k1 l1
     sub2 <- unifyKinds (apply sub1 k2) (apply sub1 l2)
@@ -43,7 +55,12 @@ unifyKindPairs (k1, k2) (l1, l2) = do
 
 -- >>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>
 
-bindType :: (MonadError UnificationError m) => Name -> Kind -> Type -> m (Substitution Type, Substitution Kind)
+bindType 
+  :: (MonadError UnificationError m) 
+  => Name 
+  -> Kind 
+  -> Type 
+  -> m (Substitution Type, Substitution Kind)
 bindType name kind ty 
     | getTypeVar ty == Just name              = withTypeSub mempty
     | name `elem` (fst <$> free ty)           = throwError InfiniteType
@@ -53,7 +70,11 @@ bindType name kind ty
         kindSub <- unifyKinds kind (kindOf ty)
         pure (sub, kindSub)
 
-unifyTypes :: (MonadError UnificationError m) => Type -> Type -> m (Substitution Type, Substitution Kind)
+unifyTypes 
+  :: (MonadError UnificationError m) 
+  => Type 
+  -> Type 
+  -> m (Substitution Type, Substitution Kind)
 unifyTypes t u = fn (project t) (project u)
   where
     fn (TArr t1 t2) (TArr u1 u2)              = unifyTypePairs (t1, t2) (u1, u2)
