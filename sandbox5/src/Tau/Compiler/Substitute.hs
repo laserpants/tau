@@ -37,9 +37,9 @@ instance Monoid (Substitution Type) where
 instance Substitutable (TypeT a) (TypeT a) where
     apply = typeSubstitute
 
-instance Substitutable PolyType Type where
+instance Substitutable Polytype Type where
     apply sub = cata $ \case
-        TVar kind var -> toPolyType (withDefault (tVar kind var) var sub)
+        TVar kind var -> toPolytype (withDefault (tVar kind var) var sub)
         TApp k t1 t2  -> tApp k t1 t2
         TArr t1 t2    -> tArr t1 t2
         ty            -> embed ty

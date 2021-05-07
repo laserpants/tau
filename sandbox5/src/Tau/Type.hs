@@ -40,7 +40,7 @@ type Type = TypeT Void
 
 -- | A type which appears in a type scheme and therefore may contain quantified 
 -- variables
-type PolyType = TypeT Int
+type Polytype = TypeT Int
 
 -- >>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>
 
@@ -56,7 +56,7 @@ type PolyPredicate = PredicateT Int
 -- >>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>
 
 -- | Polymorphic type scheme
-data Scheme = Forall [Kind] [PolyPredicate] PolyType
+data Scheme = Forall [Kind] [PolyPredicate] Polytype
 
 -- >>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>
 
@@ -183,7 +183,7 @@ getTypeCon = project >>> \case
     TCon _ con   -> Just con
     _            -> Nothing
 
-getTypeIndex :: PolyType -> Maybe Int
+getTypeIndex :: Polytype -> Maybe Int
 getTypeIndex = project >>> \case
     TGen i       -> Just i
     _            -> Nothing
@@ -208,15 +208,15 @@ typeVars = nub . cata (\case
     TArr t1 t2   -> t1 <> t2
     _            -> [])
 
-toPolyType :: Type -> PolyType
-toPolyType = cata $ \case
+toPolytype :: Type -> Polytype
+toPolytype = cata $ \case
     TVar k var   -> tVar k var
     TCon k con   -> tCon k con
     TApp k t1 t2 -> tApp k t1 t2
     TArr t1 t2   -> tArr t1 t2
 
-fromPolyType :: [Type] -> PolyType -> Type
-fromPolyType ts = cata $ \case
+fromPolytype :: [Type] -> Polytype -> Type
+fromPolytype ts = cata $ \case
     TGen n       -> ts !! n
     TApp k t1 t2 -> tApp k t1 t2
     TVar k var   -> tVar k var
@@ -224,7 +224,7 @@ fromPolyType ts = cata $ \case
     TArr t1 t2   -> tArr t1 t2
 
 toScheme :: Type -> Scheme
-toScheme = Forall [] [] . toPolyType
+toScheme = Forall [] [] . toPolytype
 
 tupleCon :: Int -> Name
 tupleCon size = "(" <> Text.replicate (pred size) "," <> ")"
@@ -272,7 +272,7 @@ kFun2 = kTyp `kArr` kTyp `kArr` kTyp
 tVar :: Kind -> Name -> TypeT a
 tVar = embed2 TVar
 
-tGen :: Int -> PolyType
+tGen :: Int -> Polytype
 tGen = embed1 TGen
 
 tCon :: Kind -> Name -> TypeT a

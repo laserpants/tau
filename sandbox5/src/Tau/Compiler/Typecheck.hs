@@ -467,10 +467,10 @@ instantiate (Forall kinds preds ty) = do
         (pairs, ps) = unzip (fn <$> preds)
         fn p@(InClass tc ix) =
             ( (names !! ix, Set.singleton tc)
-            , fromPolyType ts <$> (tGen <$> p) )
+            , fromPolytype ts <$> (tGen <$> p) )
     modify (third3 (`insertAll` pairs))
     insertPredicates ps
-    pure (fromPolyType ts ty)
+    pure (fromPolytype ts ty)
 
 generalize
   :: ( MonadSupply Name m
@@ -486,7 +486,7 @@ generalize ty = do
         (vs, ks) = unzip $ filter ((`notElem` frees) . fst) (typeVars typ)
         ixd = Map.fromList (zip vs [0..])
     ps <- lookupPredicates vs
-    pure (Forall ks (toPred ixd <$> ps) (apply (Sub (tGen <$> ixd)) (toPolyType typ)))
+    pure (Forall ks (toPred ixd <$> ps) (apply (Sub (tGen <$> ixd)) (toPolytype typ)))
   where
     toPred map (var, tc) = InClass tc (fromJust (Map.lookup var map))
 
