@@ -30,19 +30,19 @@ import qualified Data.Map.Strict as Map
 --    deriving (Show, Eq, Ord)
 
 class InfoTag t where
-    fromType  :: Type -> t
-    tagToType :: t -> Type
+    fromType   :: Type -> t
+    tagToType  :: t -> Type
+    updateType :: (Type -> Type) -> t -> t
 
 instance InfoTag (TypeInfo [e]) where
-    fromType t   = TypeInfo t [] []
-    tagToType it = nodeType it
+    fromType t     = TypeInfo t [] []
+    tagToType it   = nodeType it
+    updateType     = fmap 
 
 instance InfoTag () where
-    fromType _   = ()
-    tagToType _  = tVar kTyp "a"
-
-updateType :: (InfoTag t) => (Type -> Type) -> t -> t
-updateType f = fromType . f . tagToType
+    fromType _     = ()
+    tagToType _    = tVar kTyp "a"
+    updateType _ _ = ()
 
 -- >>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>
 
@@ -55,9 +55,9 @@ deriveOrd1  ''SimplifiedClause
 
 --type DesugaredPattern t = Pattern t t t t t t Void Void Void
 --type DesugaredExpr t = Expr t t t t t t t t Void Void Void Void Void Void Void Void Name (SimplifiedClause t (DesugaredPattern t))
---
---type SimplifiedPattern t = Pattern t t t Void Void Void Void Void Void
---type SimplifiedExpr t = Expr t t t t t t t t Void Void Void Void Void Void Void Void Name (SimplifiedClause t (SimplifiedPattern t))
+
+type SimplifiedPattern t = Pattern t t t Void Void Void Void Void Void
+type SimplifiedExpr t = Expr t t t t t t t t Void Void Void Void Void Void Void Void Name (SimplifiedClause t (SimplifiedPattern t))
 
 simplifyExpr 
   :: (Typed t, InfoTag t) 
@@ -73,10 +73,10 @@ simplifyExpr = cata $ \case
     EOp1    t op a       -> appExpr t [prefixOp1 op, a]
     EOp2    t op a b     -> appExpr t [varExpr (op2Tag op) ("(" <> op2Symbol op <> ")"), a, b]
     -- Expand pattern clause guards
---    EPat    t es cs      -> undefined
---    EFun    t cs         -> undefined
+    EPat    t es cs      -> patExpr t es (expandClause =<< cs)
+    EFun    t cs         -> let (t1, t2) = gork t in lamExpr t "#0" (patExpr t2 [varExpr t1 "#0"] (expandClause =<< cs))
     -- Unroll lambdas
-    ELam    t ps e       -> unrollLambda t ps e
+    ELam    t ps e       -> unrollLambda ps e
     -- Translate let expressions
     ELet    t bind e1 e2 -> desugarLet t bind e1 e2
     -- Remaining values are unchanged
@@ -91,13 +91,19 @@ simplifyExpr = cata $ \case
     prefixOp1 (ONeg t) = varExpr t "negate"
     prefixOp1 (ONot t) = varExpr t "not"
 
+    expandClause (Clause t ps gs) = [SimplifiedClause t ps es e | Guard es e <- gs]
+
+gork t = (updateType (const t1) t, updateType (const t2) t)
+  where
+    Fix (TArr t1 t2) = tagToType t
+
 unrollLambda 
   :: (Typed t, InfoTag t) 
-  => t 
-  -> [ProgPattern t] 
+--  => t 
+  => [ProgPattern t] 
   -> Expr t t t t t t t t Void Void Void Void Void Void Void Void Name (SimplifiedClause t (ProgPattern t)) 
   -> Expr t t t t t t t t Void Void Void Void Void Void Void Void Name (SimplifiedClause t (ProgPattern t))
-unrollLambda ti ps e = fst (foldr f (e, tag e) ps)
+unrollLambda ps e = fst (foldr f (e, tag e) ps)
   where
     f p (e, t) =
         let t' = updateType (tArr (typeOf (patternTag p))) t
@@ -113,6 +119,13 @@ unrollLambda ti ps e = fst (foldr f (e, tag e) ps)
         EIf  t _ _ _ -> t
         EPat t _ _   -> t
 
+--unrollLambda 
+--  :: (Typed t, InfoTag t) 
+--  => t 
+--  -> [ProgPattern t] 
+--  -> Expr t t t t t t t t Void Void Void Void Void Void Void Void Name (SimplifiedClause t (ProgPattern t)) 
+--  -> Expr t t t t t t t t Void Void Void Void Void Void Void Void Name (SimplifiedClause t (ProgPattern t))
+
 desugarLet 
   :: (Typed t, InfoTag t) 
   => t
@@ -124,19 +137,15 @@ desugarLet t bind e1 e2 = patExpr t [e] [SimplifiedClause t [p] [] e2]
   where
     (e, p) = case bind of
         BLet _ pat   -> (e1, pat)
-        BFun t f ps  -> (unrollLambda t ps (varExpr (ti ps) f), varPat t f)
+        BFun _ f ps  -> (unrollLambda ps e1, varPat t f)
 
-    ti = foldr (updateType . tArr . typeOf . patternTag) (tag e1) 
-
-    tag = cata $ \case
-        EVar t _     -> t
-        ECon t _ _   -> t
-        ELit t _     -> t
-        EApp t _     -> t
-        EFix t _ _ _ -> t
-        ELam t _ _   -> t
-        EIf  t _ _ _ -> t
-        EPat t _ _   -> t
+unrollLambda2
+  :: (Typed t, InfoTag t) 
+  => t 
+  -> [ProgPattern t] 
+  -> Expr t t t t t t t t Void Void Void Void Void Void Void Void Name (SimplifiedClause t (ProgPattern t)) 
+  -> Expr t t t t t t t t Void Void Void Void Void Void Void Void Name (SimplifiedClause t (ProgPattern t))
+unrollLambda2 = undefined
 
 
 ---- let f [x, y] = e in z

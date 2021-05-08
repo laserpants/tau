@@ -178,7 +178,7 @@ mapsTo :: Name -> a -> Substitution a
 mapsTo name val = Sub (Map.singleton name val)
 
 withDefault :: a -> Name -> Substitution a -> a
-withDefault def name = Map.findWithDefault def name . getSub
+withDefault default_ name = Map.findWithDefault default_ name . getSub
 
 fromList :: [(Name, a)] -> Substitution a
 fromList = Sub . Map.fromList

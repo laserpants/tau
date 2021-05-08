@@ -428,11 +428,21 @@ test1 = do -- case fromJust (runInfer mempty testClassEnv testTypeEnv testConstr
     expr = inferAst (Ast (varExpr () "x"))
 
 
+mapAst :: (a -> b) -> ProgExpr a -> ProgExpr b
+mapAst f e = zz
+  where
+    xx = Ast e
+    yy = fmap f xx
+    zz = getAst yy
+
+
 test2 = do -- case fromJust (runInfer mempty testClassEnv testTypeEnv testConstructorEnv (inferExprType expr1)) of
     print "----------"
     print (apply sub2 (apply sub a))
     print "----------"
     putStrLn (showTree h)
+    print "=========="
+    print xx
     print "=========="
     putStrLn (showTree zz)
 --    Left e -> error (show e)
@@ -453,7 +463,11 @@ test2 = do -- case fromJust (runInfer mempty testClassEnv testTypeEnv testConstr
     ee :: Ast (TypeInfo [Error])
     ee = (apply sub a)
 
+    --xx = simplifyExpr yyyy -- (getAst ee)
     xx = simplifyExpr (getAst ee)
+
+    yyyy = mapAst (const ()) (getAst ee)
+
     yy = exprTree xx
     zz = unpack . renderDoc <$> yy
 
@@ -478,14 +492,26 @@ test2 = do -- case fromJust (runInfer mempty testClassEnv testTypeEnv testConstr
 
 --    expr = inferAst (Ast (letExpr () (BLet () (varPat () "x")) (varExpr () "id") (tupleExpr () [appExpr () [varExpr () "id", litExpr () (TString "foo")], appExpr () [varExpr () "id", litExpr () (TInt 1)]])))
 
-    expr = inferAst (Ast (letExpr () (BLet () (varPat () "x")) (litExpr () (TInt 5)) (op2Expr () (OAdd ()) (varExpr () "x") (litExpr () (TInt 1)))))
+--    expr = inferAst (Ast (letExpr () (BLet () (varPat () "x")) (litExpr () (TInt 5)) (op2Expr () (OAdd ()) (varExpr () "x") (litExpr () (TInt 1)))))
+
+--    expr = inferAst (Ast (letExpr () (BFun () "f" [varPat () "x"]) (litExpr () (TInt 5)) (appExpr ()  [varExpr () "f", litExpr () (TInt 1)])))
+
+--    expr = inferAst (Ast (letExpr () (BFun () "f" [varPat () "x"]) (litExpr () (TInt 5)) (varExpr () "f")))
+
+--    expr = inferAst (Ast (letExpr () (BFun () "f" [varPat () "x", varPat () "y"]) (litExpr () (TInt 5)) (varExpr () "f")))
+
+--    expr = inferAst (Ast (lamExpr () [varPat () "x", varPat () "y"] (varExpr () "y")))
+
+--    expr = inferAst (Ast (funExpr () [ Clause () [varPat () "x"] [Guard [] (litExpr () (TBool True))] ]))
+
+    expr = inferAst (Ast (funExpr () [ Clause () [conPat () "Some" [varPat () "x"]] [Guard [] (litExpr () (TBool True))] ]))
+
 
 test3 = u :: Either UnificationError (Substitution Type, Substitution Kind)
   where
 --    u = unifyTypes (tVar (kVar "k1") "a1") tInt
 
 --    u = unifyTypes (tVar kTyp "a1") tInt
-
 --    u = unifyTypes (tVar kTyp "a1") (tVar kTyp "a1" `fn` tVar kTyp "a1")
 
     u = unifyTypes (tVar (kArr (kVar "k1") (kVar "k1")) "a1") (tVar (kVar "k1") "a1")
