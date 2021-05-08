@@ -283,11 +283,6 @@ tArr = embed2 TArr
 
 infixr 1 `tArr`
 
-fn :: TypeT a -> TypeT a -> TypeT a
-fn = tArr
-
-infixr 1 `fn`
-
 tApp :: Kind -> TypeT a -> TypeT a -> TypeT a
 tApp = embed3 TApp
 

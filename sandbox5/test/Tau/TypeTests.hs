@@ -19,7 +19,7 @@ testKindOf = do
 
     describe "The kind of (Int -> Int)" $ do
         it "✔ is *" 
-            (kindOf (tInt `fn` tInt) == kTyp)
+            (kindOf (tInt `tArr` tInt) == kTyp)
 
     describe "The kind of (List a)" $ do
         it "✔ is *" 

@@ -204,7 +204,9 @@ merge s1 s2
     | otherwise = Nothing
   where
     allEqual = all (\v -> appV s1 v == appV s2 v) (domain s1 `intersect` domain s2)
-    appV sub var = typeSubstitute sub (tVar kTyp var)
+
+    appV :: Substitution Type -> Name -> Maybe Type
+    appV sub var = Map.lookup var (getSub sub)
 
 normalizer :: [(Name, Kind)] -> Substitution Type
 normalizer vars = fromList (zipWith (\(v, k) a -> (v, tVar k a)) vars letters)

@@ -42,7 +42,7 @@ testPrettyType :: SpecWith ()
 testPrettyType = do
 
     suceedPrintType 
-        (_a `fn` _b) 
+        (_a `tArr` _b) 
         "a -> b"
 
     suceedPrintType 
@@ -50,15 +50,15 @@ testPrettyType = do
         "Int"
 
     suceedPrintType 
-        (_a `fn` _b `fn` _c) 
+        (_a `tArr` _b `tArr` _c) 
         "a -> b -> c"
 
     suceedPrintType 
-        ((_a `fn` _b) `fn` _c) 
+        ((_a `tArr` _b) `tArr` _c) 
         "(a -> b) -> c"
 
     suceedPrintType 
-        (tList tInt `fn` _b `fn` _c) 
+        (tList tInt `tArr` _b `tArr` _c) 
         "List Int -> b -> c"
 
     suceedPrintType 
@@ -66,7 +66,7 @@ testPrettyType = do
         "List (List Int)"
 
     suceedPrintType 
-        (tList (tInt `fn` _a)) 
+        (tList (tInt `tArr` _a)) 
         "List (Int -> a)"
 
     suceedPrintType 
@@ -74,19 +74,19 @@ testPrettyType = do
         "C Int Int"
 
     suceedPrintType 
-        (tApp kTyp (tApp kTyp (tCon kFun2 "C") tInt) tInt `fn` _a) 
+        (tApp kTyp (tApp kTyp (tCon kFun2 "C") tInt) tInt `tArr` _a) 
         "C Int Int -> a"
 
     suceedPrintType 
-        (tApp kTyp (tApp kTyp (tCon kFun2 "C") (_a `fn` _a)) tInt `fn` _a) 
+        (tApp kTyp (tApp kTyp (tCon kFun2 "C") (_a `tArr` _a)) tInt `tArr` _a) 
         "C (a -> a) Int -> a"
 
     suceedPrintType 
-        (tApp kTyp (tApp kTyp (tCon kFun2 "C") (_a `fn` _a)) (_b `fn` _b) `fn` _a) 
+        (tApp kTyp (tApp kTyp (tCon kFun2 "C") (_a `tArr` _a)) (_b `tArr` _b) `tArr` _a) 
         "C (a -> a) (b -> b) -> a"
 
     suceedPrintType 
-        (tApp kTyp (tApp kTyp (tCon kFun2 "C") (_a `fn` _a)) (tApp kTyp (tCon kFun "D") _b) `fn` _a) 
+        (tApp kTyp (tApp kTyp (tCon kFun2 "C") (_a `tArr` _a)) (tApp kTyp (tCon kFun "D") _b) `tArr` _a) 
         "C (a -> a) (D b) -> a"
 
 --    suceedPrintType 

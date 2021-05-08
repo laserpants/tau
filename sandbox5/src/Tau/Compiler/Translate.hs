@@ -30,17 +30,17 @@ import qualified Data.Map.Strict as Map
 --    deriving (Show, Eq, Ord)
 
 class InfoTag t where
-    fromType   :: Type -> t
+    typeToTag  :: Type -> t
     tagToType  :: t -> Type
     updateType :: (Type -> Type) -> t -> t
 
 instance InfoTag (TypeInfo [e]) where
-    fromType t     = TypeInfo t [] []
-    tagToType it   = nodeType it
-    updateType     = fmap 
+    typeToTag t  = TypeInfo t [] []
+    tagToType it = nodeType it
+    updateType   = fmap 
 
 instance InfoTag () where
-    fromType _     = ()
+    typeToTag _    = ()
     tagToType _    = tVar kTyp "a"
     updateType _ _ = ()
 
@@ -214,7 +214,7 @@ desugarLet t bind e1 e2 = patExpr t [e] [SimplifiedClause t [p] [] e2]
 --  => Row (Expr t t t t t t t t Void Void Void Void Void Void Void bind lam clause)
 --  -> Expr t t t t t t t t Void Void Void Void Void Void Void bind lam clause
 --desugarRow (Row map r) =
---    Map.foldrWithKey fun (fromMaybe (conExpr (fromType (tCon kRow "{}")) "{}" []) r) map
+--    Map.foldrWithKey fun (fromMaybe (conExpr (typeToTag (tCon kRow "{}")) "{}" []) r) map
 --  where
 --    fun key = flip (foldr f)
 --      where
@@ -357,7 +357,7 @@ desugarLet t bind e1 e2 = patExpr t [e] [SimplifiedClause t [p] [] e2]
 ----        PAny    t            -> t
 ----
 ----rowTag :: (Tag t) => Row t -> t
-----rowTag row = tapp (fromType tRecordCon) (rowToTag row)
+----rowTag row = tapp (typeToTag tRecordCon) (rowToTag row)
 ----
 ----desugarPatterns :: (Tag t) => ProgPattern t -> DesugaredPattern t
 ----desugarPatterns = cata $ \case

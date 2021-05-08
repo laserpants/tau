@@ -240,7 +240,7 @@ inferExprType = cata $ \case
         b <- exprNode expr2
         op <- inferOp2Type op2
         t1 <- thisNodeType
-        op ## (typeOf a `fn` typeOf b `fn` t1) 
+        op ## (typeOf a `tArr` typeOf b `tArr` t1) 
         pure (op, a, b)
 
     ETuple _ exprs -> inferExprNode tupleExpr $ do
@@ -394,8 +394,8 @@ inferOp1Type
   => Op1 t
   -> WriterT Node m (Op1 (TypeInfo [Error]))
 inferOp1Type = \case
-    ONeg _ -> opType ONeg (Forall [kTyp] [InClass "Num" 0] (tGen 0 `fn` tGen 0))
-    ONot _ -> opType ONot (Forall [] [] (tBool `fn` tBool))
+    ONeg _ -> opType ONeg (Forall [kTyp] [InClass "Num" 0] (tGen 0 `tArr` tGen 0))
+    ONot _ -> opType ONot (Forall [] [] (tBool `tArr` tBool))
 
 inferOp2Type
   :: ( MonadSupply Name m
@@ -404,17 +404,17 @@ inferOp2Type
   => Op2 t
   -> WriterT Node m (Op2 (TypeInfo [Error]))
 inferOp2Type = \case
-    OEq  _ -> opType OEq  (Forall [kTyp] [InClass "Eq" 0] (tGen 0 `fn` tGen 0 `fn` tBool))
-    ONeq _ -> opType ONeq (Forall [kTyp] [InClass "Eq" 0] (tGen 0 `fn` tGen 0 `fn` tBool))
-    OAdd _ -> opType OAdd (Forall [kTyp] [InClass "Num" 0] (tGen 0 `fn` tGen 0 `fn` tGen 0))
-    OMul _ -> opType OMul (Forall [kTyp] [InClass "Num" 0] (tGen 0 `fn` tGen 0 `fn` tGen 0))
-    OSub _ -> opType OSub (Forall [kTyp] [InClass "Num" 0] (tGen 0 `fn` tGen 0 `fn` tGen 0))
-    OAnd _ -> opType OAnd (Forall [] [] (tBool `fn` tBool `fn` tBool))
-    OOr  _ -> opType OOr  (Forall [] [] (tBool `fn` tBool `fn` tBool))
-    OLt  _ -> opType OLt  (Forall [kTyp] [InClass "Ord" 0] (tGen 0 `fn` tGen 0 `fn` tBool))
-    OGt  _ -> opType OGt  (Forall [kTyp] [InClass "Ord" 0] (tGen 0 `fn` tGen 0 `fn` tBool))
-    OLte _ -> opType OLte (Forall [kTyp] [InClass "Ord" 0] (tGen 0 `fn` tGen 0 `fn` tBool))
-    OGte _ -> opType OGte (Forall [kTyp] [InClass "Ord" 0] (tGen 0 `fn` tGen 0 `fn` tBool))
+    OEq  _ -> opType OEq  (Forall [kTyp] [InClass "Eq" 0] (tGen 0 `tArr` tGen 0 `tArr` tBool))
+    ONeq _ -> opType ONeq (Forall [kTyp] [InClass "Eq" 0] (tGen 0 `tArr` tGen 0 `tArr` tBool))
+    OAdd _ -> opType OAdd (Forall [kTyp] [InClass "Num" 0] (tGen 0 `tArr` tGen 0 `tArr` tGen 0))
+    OMul _ -> opType OMul (Forall [kTyp] [InClass "Num" 0] (tGen 0 `tArr` tGen 0 `tArr` tGen 0))
+    OSub _ -> opType OSub (Forall [kTyp] [InClass "Num" 0] (tGen 0 `tArr` tGen 0 `tArr` tGen 0))
+    OAnd _ -> opType OAnd (Forall [] [] (tBool `tArr` tBool `tArr` tBool))
+    OOr  _ -> opType OOr  (Forall [] [] (tBool `tArr` tBool `tArr` tBool))
+    OLt  _ -> opType OLt  (Forall [kTyp] [InClass "Ord" 0] (tGen 0 `tArr` tGen 0 `tArr` tBool))
+    OGt  _ -> opType OGt  (Forall [kTyp] [InClass "Ord" 0] (tGen 0 `tArr` tGen 0 `tArr` tBool))
+    OLte _ -> opType OLte (Forall [kTyp] [InClass "Ord" 0] (tGen 0 `tArr` tGen 0 `tArr` tBool))
+    OGte _ -> opType OGte (Forall [kTyp] [InClass "Ord" 0] (tGen 0 `tArr` tGen 0 `tArr` tBool))
 
 inferClauseType
   :: ( Monoid t

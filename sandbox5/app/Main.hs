@@ -504,7 +504,9 @@ test2 = do -- case fromJust (runInfer mempty testClassEnv testTypeEnv testConstr
 
 --    expr = inferAst (Ast (funExpr () [ Clause () [varPat () "x"] [Guard [] (litExpr () (TBool True))] ]))
 
-    expr = inferAst (Ast (funExpr () [ Clause () [conPat () "Some" [varPat () "x"]] [Guard [] (litExpr () (TBool True))] ]))
+--    expr = inferAst (Ast (funExpr () [ Clause () [conPat () "Some" [varPat () "x"]] [Guard [] (litExpr () (TBool True))] ]))
+
+    expr = inferAst (Ast (letExpr () (BLet () (varPat () "id")) (lamExpr () [varPat () "x"] (varExpr () "x")) (tupleExpr () [appExpr () [varExpr () "id", litExpr () (TInt 5)], appExpr () [varExpr () "id", litExpr () (TBool True)]])))
 
 
 test3 = u :: Either UnificationError (Substitution Type, Substitution Kind)
@@ -512,7 +514,7 @@ test3 = u :: Either UnificationError (Substitution Type, Substitution Kind)
 --    u = unifyTypes (tVar (kVar "k1") "a1") tInt
 
 --    u = unifyTypes (tVar kTyp "a1") tInt
---    u = unifyTypes (tVar kTyp "a1") (tVar kTyp "a1" `fn` tVar kTyp "a1")
+--    u = unifyTypes (tVar kTyp "a1") (tVar kTyp "a1" `tArr` tVar kTyp "a1")
 
     u = unifyTypes (tVar (kArr (kVar "k1") (kVar "k1")) "a1") (tVar (kVar "k1") "a1")
 
@@ -542,12 +544,12 @@ testKindEnv = Env.fromList
 testTypeEnv :: TypeEnv
 testTypeEnv = Env.fromList
     [ ( "None"   , Forall [kTyp] [] (tApp kTyp (tCon kFun "Option") (tGen 0)) )
-    , ( "Some"   , Forall [kTyp] [] (tGen 0 `fn` tApp kTyp (tCon kFun "Option") (tGen 0)) )
-    , ( "Foo"    , Forall [] [] (tInt `fn` tInt `fn` tCon kTyp "Foo") )
-    , ( "id"     , Forall [kTyp] [] (tGen 0 `fn` tGen 0) )
-    , ( "(::)"   , Forall [kTyp] [] (tGen 0 `fn` tList (tGen 0) `fn` tList (tGen 0)) )
+    , ( "Some"   , Forall [kTyp] [] (tGen 0 `tArr` tApp kTyp (tCon kFun "Option") (tGen 0)) )
+    , ( "Foo"    , Forall [] [] (tInt `tArr` tInt `tArr` tCon kTyp "Foo") )
+    , ( "id"     , Forall [kTyp] [] (tGen 0 `tArr` tGen 0) )
+    , ( "(::)"   , Forall [kTyp] [] (tGen 0 `tArr` tList (tGen 0) `tArr` tList (tGen 0)) )
     , ( "[]"     , Forall [kTyp] [] (tList (tGen 0)) )
-    , ( "(+)"    , Forall [kTyp] [InClass "Num" 0] (tGen 0 `fn` tGen 0 `fn` tGen 0) )
+    , ( "(+)"    , Forall [kTyp] [InClass "Num" 0] (tGen 0 `tArr` tGen 0 `tArr` tGen 0) )
     ]
 
 testClassEnv :: ClassEnv
@@ -555,14 +557,14 @@ testClassEnv = Env.fromList
     [ ( "Show"
         -- Interface
       , ( ClassInfo [] (InClass "Show" "a") 
-            [ ( "show", tVar kTyp "a" `fn` tString )
+            [ ( "show", tVar kTyp "a" `tArr` tString )
             ]
         -- Instances
         , [ ClassInfo [] (InClass "Show" tInt)
-              [ ( "show", Ast (varExpr (TypeInfo (tInt `fn` tString) [] ()) "@Int.Show") )
+              [ ( "show", Ast (varExpr (TypeInfo (tInt `tArr` tString) [] ()) "@Int.Show") )
               ]
           , ClassInfo [] (InClass "Show" (tPair (tVar kTyp "a") (tVar kTyp "b")))
-              [ ( "show", Ast (varExpr (TypeInfo (tPair (tVar kTyp "a") (tVar kTyp "b") `fn` tString) [] ()) "TODO") )
+              [ ( "show", Ast (varExpr (TypeInfo (tPair (tVar kTyp "a") (tVar kTyp "b") `tArr` tString) [] ()) "TODO") )
               ]
           ]
         )
@@ -570,10 +572,10 @@ testClassEnv = Env.fromList
     , ( "Ord"
         -- Interface
       , ( ClassInfo [] (InClass "Ord" "a") 
-            [ ( "(>)", tVar kTyp "a" `fn` tVar kTyp "a" `fn` tBool ) 
-            , ( "(<)", tVar kTyp "a" `fn` tVar kTyp "a" `fn` tBool ) 
-            , ( "(>=)", tVar kTyp "a" `fn` tVar kTyp "a" `fn` tBool ) 
-            , ( "(<=)", tVar kTyp "a" `fn` tVar kTyp "a" `fn` tBool ) 
+            [ ( "(>)", tVar kTyp "a" `tArr` tVar kTyp "a" `tArr` tBool ) 
+            , ( "(<)", tVar kTyp "a" `tArr` tVar kTyp "a" `tArr` tBool ) 
+            , ( "(>=)", tVar kTyp "a" `tArr` tVar kTyp "a" `tArr` tBool ) 
+            , ( "(<=)", tVar kTyp "a" `tArr` tVar kTyp "a" `tArr` tBool ) 
             ]
         -- Instances
         , []
@@ -582,11 +584,11 @@ testClassEnv = Env.fromList
     , ( "Eq"
         -- Interface
       , ( ClassInfo [InClass "Ord" "a"] (InClass "Eq" "a")
-            [ ( "(==)", tVar kTyp "a" `fn` tVar kTyp "a" `fn` tBool )
+            [ ( "(==)", tVar kTyp "a" `tArr` tVar kTyp "a" `tArr` tBool )
             ]
         -- Instances
         , [ ClassInfo [] (InClass "Eq" tInt)
-            [ ( "(==)", Ast (varExpr (TypeInfo (tInt `fn` tInt `fn` tBool) [] ()) "@Int.(==)" ) )
+            [ ( "(==)", Ast (varExpr (TypeInfo (tInt `tArr` tInt `tArr` tBool) [] ()) "@Int.(==)" ) )
             ]
           ]
         )
@@ -594,7 +596,7 @@ testClassEnv = Env.fromList
     , ( "Num"
         -- Interface
       , ( ClassInfo [] (InClass "Num" "a") 
-            [ ( "(+)", tVar kTyp "a" `fn` tVar kTyp "a" `fn` tVar kTyp "a" )
+            [ ( "(+)", tVar kTyp "a" `tArr` tVar kTyp "a" `tArr` tVar kTyp "a" )
             ]
         -- Instances
         , []
