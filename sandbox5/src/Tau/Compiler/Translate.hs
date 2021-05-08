@@ -55,9 +55,9 @@ deriveOrd1  ''SimplifiedClause
 
 --type DesugaredPattern t = Pattern t t t t t t Void Void Void
 --type DesugaredExpr t = Expr t t t t t t t t Void Void Void Void Void Void Void Void Name (SimplifiedClause t (DesugaredPattern t))
-
-type SimplifiedPattern t = Pattern t t t Void Void Void Void Void Void
-type SimplifiedExpr t = Expr t t t t t t t t Void Void Void Void Void Void Void Void Name (SimplifiedClause t (SimplifiedPattern t))
+--
+--type SimplifiedPattern t = Pattern t t t Void Void Void Void Void Void
+--type SimplifiedExpr t = Expr t t t t t t t t Void Void Void Void Void Void Void Void Name (SimplifiedClause t (SimplifiedPattern t))
 
 simplifyExpr 
   :: (Typed t, InfoTag t) 
@@ -74,7 +74,7 @@ simplifyExpr = cata $ \case
     EOp2    t op a b     -> appExpr t [varExpr (op2Tag op) ("(" <> op2Symbol op <> ")"), a, b]
     -- Expand pattern clause guards
     EPat    t es cs      -> patExpr t es (expandClause =<< cs)
-    EFun    t cs         -> let (t1, t2) = gork t in lamExpr t "#0" (patExpr t2 [varExpr t1 "#0"] (expandClause =<< cs))
+    EFun    t cs         -> let (t1, t2) = split t in lamExpr t "#0" (patExpr t2 [varExpr t1 "#0"] (expandClause =<< cs))
     -- Unroll lambdas
     ELam    t ps e       -> unrollLambda ps e
     -- Translate let expressions
@@ -93,13 +93,13 @@ simplifyExpr = cata $ \case
 
     expandClause (Clause t ps gs) = [SimplifiedClause t ps es e | Guard es e <- gs]
 
-gork t = (updateType (const t1) t, updateType (const t2) t)
+split :: (InfoTag t) => t -> (t, t)
+split t = (updateType (const t1) t, updateType (const t2) t)
   where
     Fix (TArr t1 t2) = tagToType t
 
 unrollLambda 
   :: (Typed t, InfoTag t) 
---  => t 
   => [ProgPattern t] 
   -> Expr t t t t t t t t Void Void Void Void Void Void Void Void Name (SimplifiedClause t (ProgPattern t)) 
   -> Expr t t t t t t t t Void Void Void Void Void Void Void Void Name (SimplifiedClause t (ProgPattern t))
@@ -119,13 +119,6 @@ unrollLambda ps e = fst (foldr f (e, tag e) ps)
         EIf  t _ _ _ -> t
         EPat t _ _   -> t
 
---unrollLambda 
---  :: (Typed t, InfoTag t) 
---  => t 
---  -> [ProgPattern t] 
---  -> Expr t t t t t t t t Void Void Void Void Void Void Void Void Name (SimplifiedClause t (ProgPattern t)) 
---  -> Expr t t t t t t t t Void Void Void Void Void Void Void Void Name (SimplifiedClause t (ProgPattern t))
-
 desugarLet 
   :: (Typed t, InfoTag t) 
   => t
@@ -139,13 +132,13 @@ desugarLet t bind e1 e2 = patExpr t [e] [SimplifiedClause t [p] [] e2]
         BLet _ pat   -> (e1, pat)
         BFun _ f ps  -> (unrollLambda ps e1, varPat t f)
 
-unrollLambda2
-  :: (Typed t, InfoTag t) 
-  => t 
-  -> [ProgPattern t] 
-  -> Expr t t t t t t t t Void Void Void Void Void Void Void Void Name (SimplifiedClause t (ProgPattern t)) 
-  -> Expr t t t t t t t t Void Void Void Void Void Void Void Void Name (SimplifiedClause t (ProgPattern t))
-unrollLambda2 = undefined
+--unrollLambda2
+--  :: (Typed t, InfoTag t) 
+--  => t 
+--  -> [ProgPattern t] 
+--  -> Expr t t t t t t t t Void Void Void Void Void Void Void Void Name (SimplifiedClause t (ProgPattern t)) 
+--  -> Expr t t t t t t t t Void Void Void Void Void Void Void Void Name (SimplifiedClause t (ProgPattern t))
+--unrollLambda2 = undefined
 
 
 ---- let f [x, y] = e in z
@@ -336,7 +329,7 @@ unrollLambda2 = undefined
 ----
 ----        pure (foldr (\p e -> lamExpr (eTag e) "#0" e) (patExpr t vars cs) tags)
 ----
-------        let tags = gork cs
+------        let tags = split cs
 ------        let vars = (`varExpr` "#0") <$> tags
 ------        pure (foldr (\p e -> lamExpr (tarr p (eTag e)) "#0" e) (patExpr t vars cs) tags)
 ----  where
