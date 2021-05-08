@@ -17,6 +17,7 @@ import Tau.Compiler.Translate
 import Tau.Compiler.Typecheck
 import Tau.Compiler.Unify
 import Tau.Core
+import Tau.Eval
 import Tau.Env
 import Tau.Lang
 import Tau.Pretty
