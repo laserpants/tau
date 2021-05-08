@@ -6,17 +6,12 @@
 module Tau.Eval where
 
 import Control.Monad.Reader
---import Data.Function ((&))
 import Data.Char
---import Data.Tuple.Extra (first, second)
 import Tau.Core
 import Tau.Lang
 import Tau.Eval.Prim
---import Tau.Lang.Core
---import Tau.Lang.Expr
 import Tau.Tool
 import Tau.Env (Env(..))
---import qualified Data.Map.Strict as Map
 import qualified Data.Text as Text
 import qualified Tau.Env as Env
 
@@ -100,7 +95,8 @@ evalVar var =
 
         _ -> 
             asks (Env.lookup var) >>= \case
-                Just value -> pure value
+                Just value ->
+                    pure value
                 Nothing -> 
                     if isConstructor var 
                         then pure (Data var []) 
