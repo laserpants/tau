@@ -70,23 +70,23 @@ testPrettyType = do
         "List (Int -> a)"
 
     suceedPrintType 
-        (tApp kTyp (tApp kTyp (tCon kFun2 "C") tInt) tInt) 
+        (tApp kTyp (tApp kFun (tCon kFun2 "C") tInt) tInt) 
         "C Int Int"
 
     suceedPrintType 
-        (tApp kTyp (tApp kTyp (tCon kFun2 "C") tInt) tInt `tArr` _a) 
+        (tApp kTyp (tApp kFun (tCon kFun2 "C") tInt) tInt `tArr` _a) 
         "C Int Int -> a"
 
     suceedPrintType 
-        (tApp kTyp (tApp kTyp (tCon kFun2 "C") (_a `tArr` _a)) tInt `tArr` _a) 
+        (tApp kTyp (tApp kFun (tCon kFun2 "C") (_a `tArr` _a)) tInt `tArr` _a) 
         "C (a -> a) Int -> a"
 
     suceedPrintType 
-        (tApp kTyp (tApp kTyp (tCon kFun2 "C") (_a `tArr` _a)) (_b `tArr` _b) `tArr` _a) 
+        (tApp kTyp (tApp kFun (tCon kFun2 "C") (_a `tArr` _a)) (_b `tArr` _b) `tArr` _a) 
         "C (a -> a) (b -> b) -> a"
 
     suceedPrintType 
-        (tApp kTyp (tApp kTyp (tCon kFun2 "C") (_a `tArr` _a)) (tApp kTyp (tCon kFun "D") _b) `tArr` _a) 
+        (tApp kTyp (tApp kFun (tCon kFun2 "C") (_a `tArr` _a)) (tApp kTyp (tCon kFun "D") _b) `tArr` _a) 
         "C (a -> a) (D b) -> a"
 
 --    suceedPrintType 
