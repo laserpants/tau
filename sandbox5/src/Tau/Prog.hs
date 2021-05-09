@@ -1,3 +1,4 @@
+{-# LANGUAGE FlexibleContexts   #-}
 {-# LANGUAGE DeriveTraversable  #-}
 {-# LANGUAGE FlexibleInstances  #-}
 {-# LANGUAGE LambdaCase         #-}
@@ -5,6 +6,7 @@
 {-# LANGUAGE StrictData         #-}
 module Tau.Prog where
 
+import Control.Monad.Reader
 import Data.List (nub)
 import Data.Set.Monad (Set)
 import Data.Tuple.Extra (first)
@@ -44,6 +46,64 @@ type ClassEnv = Env
     , List (ClassInfo Type (Ast (TypeInfo ()))) )  -- Instances
 
 type ConstructorEnv = Env (Set Name, Int)
+
+-- >>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>
+
+getClassEnv :: (ClassEnv, TypeEnv, KindEnv, ConstructorEnv) -> ClassEnv
+getClassEnv (e, _, _, _) = e
+
+askClassEnv 
+  :: MonadReader (ClassEnv, TypeEnv, KindEnv, ConstructorEnv) m
+  => m ClassEnv
+askClassEnv = asks getClassEnv
+
+getTypeEnv :: (ClassEnv, TypeEnv, KindEnv, ConstructorEnv) -> TypeEnv
+getTypeEnv (_, e, _, _) = e
+
+askTypeEnv 
+  :: MonadReader (ClassEnv, TypeEnv, KindEnv, ConstructorEnv) m
+  => m TypeEnv
+askTypeEnv = asks getTypeEnv
+
+getKindEnv :: (ClassEnv, TypeEnv, KindEnv, ConstructorEnv) -> KindEnv
+getKindEnv (_, _, e, _) = e
+
+askKindEnv 
+  :: MonadReader (ClassEnv, TypeEnv, KindEnv, ConstructorEnv) m
+  => m KindEnv
+askKindEnv = asks getKindEnv
+
+getConstructorEnv :: (ClassEnv, TypeEnv, KindEnv, ConstructorEnv) -> ConstructorEnv
+getConstructorEnv (_, _, _, e) = e
+
+askConstructorEnv 
+  :: MonadReader (ClassEnv, TypeEnv, KindEnv, ConstructorEnv) m
+  => m ConstructorEnv
+askConstructorEnv = asks getConstructorEnv
+
+inClassEnv 
+  :: (ClassEnv -> ClassEnv) 
+  -> (ClassEnv, TypeEnv, KindEnv, ConstructorEnv) 
+  -> (ClassEnv, TypeEnv, KindEnv, ConstructorEnv)
+inClassEnv f (e1, e2, e3, e4) = (f e1, e2, e3, e4)
+
+inTypeEnv 
+  :: (TypeEnv -> TypeEnv) 
+  -> (ClassEnv, TypeEnv, KindEnv, ConstructorEnv) 
+  -> (ClassEnv, TypeEnv, KindEnv, ConstructorEnv)
+inTypeEnv f (e1, e2, e3, e4) = (e1, f e2, e3, e4)
+
+inKindEnv 
+  :: (KindEnv -> KindEnv) 
+  -> (ClassEnv, TypeEnv, KindEnv, ConstructorEnv) 
+  -> (ClassEnv, TypeEnv, KindEnv, ConstructorEnv)
+inKindEnv f (e1, e2, e3, e4) = (e1, e2, f e3, e4)
+
+inConstructorEnv 
+  :: (ConstructorEnv -> ConstructorEnv) 
+  -> (ClassEnv, TypeEnv, KindEnv, ConstructorEnv) 
+  -> (ClassEnv, TypeEnv, KindEnv, ConstructorEnv)
+inConstructorEnv f (e1, e2, e3, e4) = (e1, e2, e3, f e4)
 
 -- >>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>
 

@@ -10,6 +10,7 @@ module Tau.Compiler.Translate where
 
 import Control.Arrow ((<<<), (>>>), (***), second)
 import Control.Monad
+import Control.Monad.Reader
 import Control.Monad.State
 import Control.Monad.Supply
 import Data.Foldable (foldrM)
@@ -509,9 +510,11 @@ desugarLet t bind e1 e2 = patExpr t [e] [SimplifiedClause t [p] [] e2]
 -- >>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>
 -- >>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>
 
-stage1
-  :: ProgExpr t 
-  -> Expr t t t t t t t t t Void Void Void Void Void Void (Binding t (ProgPattern t)) [ProgPattern t] (SimplifiedClause t (ProgPattern t))
+--stage1
+--  :: ProgExpr t 
+--  -> Expr t t t t t t t t t Void Void Void Void Void Void (Binding t (ProgPattern t)) [ProgPattern t] (SimplifiedClause t (ProgPattern t))
+
+stage1 :: ProgExpr (TypeInfo t) -> Foo (TypeInfo t)
 stage1 = cata $ \case
 
     -- Translate tuples, lists, and records
@@ -540,20 +543,15 @@ stage1 = cata $ \case
 
     expandClause (Clause t ps gs) = [SimplifiedClause t ps es e | Guard es e <- gs]
 
-compileClasses 
---  :: Expr t1 t2 t3 t4 t5 t6 t7 t8 t9 Void Void Void Void Void Void bind lam clause 
---  -> StateT [(Name, Type)] m (Expr t1 t2 t3 t4 t5 t6 t7 t8 t9 Void Void Void Void Void Void bind lam clause)
+-- >>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>
 
-  :: (Monad m) 
-  => Expr t t t t t t t t t Void Void Void Void Void Void (Binding t (ProgPattern t)) [ProgPattern t] (SimplifiedClause t (ProgPattern t))
-  -> StateT [(Name, Type)] m (Expr t t t t t t t t t Void Void Void Void Void Void (Binding t (ProgPattern t)) [ProgPattern t] (SimplifiedClause t (ProgPattern t)))
+type Foo t = Expr t t t t t t t t t Void Void Void Void Void Void (Binding t (ProgPattern t)) [ProgPattern t] (SimplifiedClause t (ProgPattern t))
+
+compileClasses :: (MonadReader (ClassEnv, TypeEnv, KindEnv, ConstructorEnv) m) => Foo (TypeInfo t) -> StateT [(Name, Type)] m (Foo (TypeInfo t))
 compileClasses expr = 
     insertDictArgs <$> run expr <*> (nub <$> pluck)
   where
-    run
-      :: (Monad m)
-      => Expr t t t t t t t t t Void Void Void Void Void Void (Binding t (ProgPattern t)) [ProgPattern t] (SimplifiedClause t (ProgPattern t))
-      -> StateT [(Name, Type)] m (Expr t t t t t t t t t Void Void Void Void Void Void (Binding t (ProgPattern t)) [ProgPattern t] (SimplifiedClause t (ProgPattern t)))
+    run :: (MonadReader (ClassEnv, TypeEnv, KindEnv, ConstructorEnv) m) => Foo (TypeInfo t) -> StateT [(Name, Type)] m (Foo (TypeInfo t))
     run = cata $ \case
 
         ELet t pat expr1 expr2 -> do
@@ -562,25 +560,27 @@ compileClasses expr =
             letExpr t pat (insertDictArgs e1 vs) <$> expr2
 
         EVar t var -> 
-            undefined
-            --foldrM applyDicts (varExpr (stripNodePredicates t) var) (nodePredicates t)
+            foldrM applyDicts (varExpr (stripNodePredicates t) var) (nodePredicates t)
 
         e -> 
             embed <$> sequence e
 
-
-insertDictArgs = 
+insertDictArgs :: Foo (TypeInfo t) -> [(Name, Type)] -> Foo (TypeInfo t)
+insertDictArgs expr = 
     undefined
 
+applyDicts :: (MonadReader (ClassEnv, TypeEnv, KindEnv, ConstructorEnv) m) => Predicate -> Foo (TypeInfo t) -> StateT [(Name, Type)] m (Foo (TypeInfo t))
+applyDicts (InClass name ty) expr 
 
-applyDicts = 
-    undefined
+    | isVar ty = do
+        undefined
 
+    | otherwise = do
+        env <- askClassEnv
+        undefined
 
-setNodePredicates :: [Predicate] -> TypeInfo a -> TypeInfo a
-setNodePredicates ps ti = ti{ nodePredicates = ps }
+setNodePredicates :: [Predicate] -> TypeInfo t -> TypeInfo t
+setNodePredicates ps info = info{ nodePredicates = ps }
 
-stripNodePredicates :: TypeInfo a -> TypeInfo a
+stripNodePredicates :: TypeInfo t -> TypeInfo t
 stripNodePredicates = setNodePredicates []
-
-
