@@ -188,7 +188,7 @@ exprPredicates = nodePredicates . exprTag
 guardPredicates :: Guard (ProgExpr (TypeInfoT e t)) -> [Predicate]
 guardPredicates (Guard es e) = exprPredicates e <> (exprPredicates =<< es)
 
-clausePredicates :: Clause s (ProgPattern (TypeInfoT e t)) (ProgExpr (TypeInfoT e t)) -> [Predicate]
+clausePredicates :: ProgClause (TypeInfoT e t) -> [Predicate]
 clausePredicates (Clause _ ps gs) = concat ((patternPredicates <$> ps) <> (guardPredicates <$> gs))
 
 astPredicates :: Ast (TypeInfoT e t) -> [Predicate]

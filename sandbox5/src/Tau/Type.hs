@@ -144,6 +144,7 @@ instance Typed Type where
 instance Typed (Maybe Type) where
     typeOf (Just t) = t
     typeOf Nothing  = tVar (kVar "k") "a"
+---- TODO
 
 -- FreeIn instances
 
