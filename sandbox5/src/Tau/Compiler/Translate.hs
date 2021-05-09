@@ -8,6 +8,7 @@
 {-# LANGUAGE TemplateHaskell       #-}
 module Tau.Compiler.Translate where
 
+import Control.Monad.Except (MonadError, catchError, throwError)
 import Control.Arrow ((<<<), (>>>), (***), second)
 import Control.Monad
 import Control.Monad.Reader
@@ -547,11 +548,19 @@ stage1 = cata $ \case
 
 type Foo t = Expr t t t t t t t t t Void Void Void Void Void Void (Binding t (ProgPattern t)) [ProgPattern t] (SimplifiedClause t (ProgPattern t))
 
-compileClasses :: (MonadReader (ClassEnv, TypeEnv, KindEnv, ConstructorEnv) m) => Foo (TypeInfo t) -> StateT [(Name, Type)] m (Foo (TypeInfo t))
+compileClasses
+  :: ( MonadReader (ClassEnv, TypeEnv, KindEnv, ConstructorEnv) m
+     , MonadError Error m ) 
+  => Foo (TypeInfo t) 
+  -> StateT [(Name, Type)] m (Foo (TypeInfo t))
 compileClasses expr = 
     insertDictArgs <$> run expr <*> (nub <$> pluck)
   where
-    run :: (MonadReader (ClassEnv, TypeEnv, KindEnv, ConstructorEnv) m) => Foo (TypeInfo t) -> StateT [(Name, Type)] m (Foo (TypeInfo t))
+    run 
+      :: ( MonadReader (ClassEnv, TypeEnv, KindEnv, ConstructorEnv) m
+         , MonadError Error m ) 
+      => Foo (TypeInfo t) 
+      -> StateT [(Name, Type)] m (Foo (TypeInfo t))
     run = cata $ \case
 
         ELet t pat expr1 expr2 -> do
@@ -569,7 +578,12 @@ insertDictArgs :: Foo (TypeInfo t) -> [(Name, Type)] -> Foo (TypeInfo t)
 insertDictArgs expr = 
     undefined
 
-applyDicts :: (MonadReader (ClassEnv, TypeEnv, KindEnv, ConstructorEnv) m) => Predicate -> Foo (TypeInfo t) -> StateT [(Name, Type)] m (Foo (TypeInfo t))
+applyDicts 
+  :: ( MonadReader (ClassEnv, TypeEnv, KindEnv, ConstructorEnv) m
+     , MonadError Error m ) 
+  => Predicate 
+  -> Foo (TypeInfo t) 
+  -> StateT [(Name, Type)] m (Foo (TypeInfo t))
 applyDicts (InClass name ty) expr 
 
     | isVar ty = do
@@ -577,7 +591,8 @@ applyDicts (InClass name ty) expr
 
     | otherwise = do
         env <- askClassEnv
-        undefined
+        case lookupClassInstance name ty env of
+            Left e -> throwError e
 
 setNodePredicates :: [Predicate] -> TypeInfo t -> TypeInfo t
 setNodePredicates ps info = info{ nodePredicates = ps }

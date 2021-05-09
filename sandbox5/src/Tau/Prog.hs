@@ -1,15 +1,23 @@
-{-# LANGUAGE FlexibleContexts   #-}
-{-# LANGUAGE DeriveTraversable  #-}
-{-# LANGUAGE FlexibleInstances  #-}
-{-# LANGUAGE LambdaCase         #-}
-{-# LANGUAGE StandaloneDeriving #-}
-{-# LANGUAGE StrictData         #-}
+{-# LANGUAGE DeriveTraversable     #-}
+{-# LANGUAGE FlexibleContexts      #-}
+{-# LANGUAGE FlexibleInstances     #-}
+{-# LANGUAGE LambdaCase            #-}
+{-# LANGUAGE MultiParamTypeClasses #-}
+{-# LANGUAGE RecordWildCards       #-}
+{-# LANGUAGE StandaloneDeriving    #-}
+{-# LANGUAGE StrictData            #-}
 module Tau.Prog where
 
+import Control.Monad.Except (MonadError, catchError, throwError)
 import Control.Monad.Reader
+import Control.Monad.State
+import Data.Function ((&))
 import Data.List (nub)
 import Data.Set.Monad (Set)
 import Data.Tuple.Extra (first)
+import Tau.Compiler.Error
+import Tau.Compiler.Substitute
+import Tau.Compiler.Unify
 import Tau.Env (Env(..))
 import Tau.Lang
 import Tau.Tool
@@ -105,6 +113,22 @@ inConstructorEnv
   -> (ClassEnv, TypeEnv, KindEnv, ConstructorEnv)
 inConstructorEnv f (e1, e2, e3, e4) = (e1, e2, e3, f e4)
 
+lookupClassInstance
+  :: (MonadError Error m)
+  => Name
+  -> Type
+  -> ClassEnv
+  -> m (ClassInfo Type (Ast (TypeInfo ())))
+lookupClassInstance tc ty env = do
+    (ClassInfo{..}, insts) <- liftMaybe (MissingClass tc) (Env.lookup tc env)
+    msum [tryMatch i | i <- insts] &
+        maybe (throwError (MissingInstance tc ty)) pure
+  where
+    tryMatch info@ClassInfo{..} =
+        case matchTypes (predicateType classSignature) ty of
+            Left{}       -> Nothing
+            Right (t, k) -> Just (apply2 (t, k, ()) info)
+
 -- >>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>
 
 data TypeInfoT e t = TypeInfo
@@ -114,7 +138,7 @@ data TypeInfoT e t = TypeInfo
 
 type TypeInfo e = TypeInfoT e Type
 
--- Type class instances for TypeInfo
+-- Type class instances 
 
 deriving instance (Show e, Show t) => 
     Show (TypeInfoT e t)
@@ -138,6 +162,19 @@ instance Typed () where
 
 instance FreeIn TypeEnv where
     free = free . Env.elems
+
+instance (Substitutable Type a) => Substitutable (TypeInfo e) a where
+    apply sub = \case
+        TypeInfo ty ps e -> TypeInfo (apply sub ty) (apply sub ps) e
+
+instance Substitutable TypeEnv Type where
+    apply = Env.map . apply 
+
+instance (Substitutable Type t) => Substitutable (ClassInfo Type (Ast (TypeInfo e))) t where
+    apply sub ClassInfo{..} =
+        ClassInfo{ classSuper     = apply sub classSuper
+                 , classSignature = apply sub classSignature
+                 , .. }
 
 -- >>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>
 

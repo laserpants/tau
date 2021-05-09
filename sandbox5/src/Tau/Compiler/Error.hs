@@ -4,7 +4,6 @@ module Tau.Compiler.Error where
 
 import Data.Text (Text)
 import Tau.Lang
-import Tau.Prog
 import Tau.Tool
 import Tau.Type
 

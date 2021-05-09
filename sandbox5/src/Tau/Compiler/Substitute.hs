@@ -12,7 +12,6 @@ import Data.Map.Strict (Map)
 import Prelude hiding (null)
 import Tau.Compiler.Error
 import Tau.Lang
-import Tau.Prog
 import Tau.Tool
 import Tau.Type
 import qualified Data.Map.Strict as Map
@@ -133,10 +132,6 @@ instance (Substitutable t a) => Substitutable (Op2 t) a where
         OStrc  t             -> OStrc  (apply sub t)
         ONdiv  t             -> ONdiv  (apply sub t)
 
-instance (Substitutable Type a) => Substitutable (TypeInfo e) a where
-    apply sub = \case
-        TypeInfo ty ps e     -> TypeInfo (apply sub ty) (apply sub ps) e
-
 instance (Substitutable t a) => Substitutable (Ast t) a where
     apply sub = \case
         Ast ast              -> Ast (apply sub ast)
@@ -144,9 +139,6 @@ instance (Substitutable t a) => Substitutable (Ast t) a where
 instance Substitutable Scheme Type where
     apply sub = \case
         Forall ks ps pt      -> Forall ks ps (apply sub pt)
-
-instance Substitutable TypeEnv Type where
-    apply = Env.map . apply 
 
 -- >>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>
 

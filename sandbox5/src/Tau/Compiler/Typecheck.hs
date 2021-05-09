@@ -570,22 +570,22 @@ propagateClasses ty ps =
         ClassInfo{ classSuper = preds } <- lookupClassInstance name ty env
         sequence_ [propagateClasses t (Set.singleton a) | InClass a t <- preds]
 
-lookupClassInstance
-  :: ( MonadState (Substitution Type, Substitution Kind, Context) m
-     , MonadError Error m )
-  => Name
-  -> Type
-  -> ClassEnv
-  -> m (ClassInfo Type (Ast (TypeInfo ())))
-lookupClassInstance tc ty env = do
-    (ClassInfo{..}, insts) <- liftMaybe (MissingClass tc) (Env.lookup tc env)
-    msum [tryMatch i | i <- insts] &
-        maybe (throwError (MissingInstance tc ty)) pure
-  where
-    tryMatch info@ClassInfo{..} =
-        case matchTypes (predicateType classSignature) ty of
-            Left{}       -> Nothing
-            Right (t, k) -> Just (apply2 (t, k, ()) info)
+--lookupClassInstance
+--  :: ( MonadState (Substitution Type, Substitution Kind, Context) m
+--     , MonadError Error m )
+--  => Name
+--  -> Type
+--  -> ClassEnv
+--  -> m (ClassInfo Type (Ast (TypeInfo ())))
+--lookupClassInstance tc ty env = do
+--    (ClassInfo{..}, insts) <- liftMaybe (MissingClass tc) (Env.lookup tc env)
+--    msum [tryMatch i | i <- insts] &
+--        maybe (throwError (MissingInstance tc ty)) pure
+--  where
+--    tryMatch info@ClassInfo{..} =
+--        case matchTypes (predicateType classSignature) ty of
+--            Left{}       -> Nothing
+--            Right (t, k) -> Just (apply2 (t, k, ()) info)
 
 -- >>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>
 
@@ -641,11 +641,11 @@ instance (Typed t) => Typed (Op2 t) where
 instance (Typed t) => Typed (Ast t) where
     typeOf = typeOf . astTag
 
-instance (Substitutable Type t) => Substitutable (ClassInfo Type (Ast (TypeInfo e))) t where
-    apply sub ClassInfo{..} =
-        ClassInfo{ classSuper     = apply sub classSuper
-                 , classSignature = apply sub classSignature
-                 , .. }
+--instance (Substitutable Type t) => Substitutable (ClassInfo Type (Ast (TypeInfo e))) t where
+--    apply sub ClassInfo{..} =
+--        ClassInfo{ classSuper     = apply sub classSuper
+--                 , classSignature = apply sub classSignature
+--                 , .. }
 
 -- >>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>
 
