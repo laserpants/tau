@@ -464,10 +464,15 @@ test2 = do -- case fromJust (runInfer mempty testClassEnv testTypeEnv testConstr
     ee :: Ast (TypeInfo [Error])
     ee = (apply sub a)
 
-    --xx = simplifyExpr yyyy -- (getAst ee)
-    xx = simplifyExpr (getAst ee)
+    eee :: Ast (TypeInfoT [Error] (Maybe Type))
+    eee = fmap (fmap Just) ee
 
-    yyyy = mapAst (const ()) (getAst ee)
+    --xx = simplifyExpr yyyy -- (getAst ee)
+    --xx = simplifyExpr (getAst ee)
+    xx :: Stage1Expr (TypeInfoT [Error] (Maybe Type))
+    xx = stage1 (getAst eee)
+
+--    yyyy = mapAst (const ()) (getAst ee)
 
     yy = exprTree xx
     zz = unpack . renderDoc <$> yy
@@ -507,7 +512,10 @@ test2 = do -- case fromJust (runInfer mempty testClassEnv testTypeEnv testConstr
 
 --    expr = inferAst (Ast (funExpr () [ Clause () [conPat () "Some" [varPat () "x"]] [Guard [] (litExpr () (TBool True))] ]))
 
+
     expr = inferAst (Ast (letExpr () (BLet () (varPat () "id")) (lamExpr () [varPat () "x"] (varExpr () "x")) (tupleExpr () [appExpr () [varExpr () "id", litExpr () (TInt 5)], appExpr () [varExpr () "id", litExpr () (TBool True)]])))
+
+--    expr = inferAst (Ast (listExpr () [litExpr () (TInt 1), litExpr () (TInt 2), litExpr () (TInt 3), litExpr () (TInt 4)]))
 
 
 test3 = u :: Either UnificationError (Substitution Type, Substitution Kind)

@@ -140,6 +140,11 @@ deriving instance Ord Scheme
 instance Typed Type where
     typeOf = id
 
+---- TODO
+instance Typed (Maybe Type) where
+    typeOf (Just t) = t
+    typeOf Nothing  = tVar (kVar "k") "a"
+
 -- FreeIn instances
 
 instance (FreeIn t) => FreeIn [t] where

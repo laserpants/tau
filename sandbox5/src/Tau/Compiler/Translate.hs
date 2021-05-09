@@ -8,7 +8,7 @@
 {-# LANGUAGE TemplateHaskell       #-}
 module Tau.Compiler.Translate where
 
-import Control.Arrow ((<<<), (>>>), (***), second)
+import Control.Arrow ((<<<), (>>>), (***), (&&&), second)
 import Control.Monad
 import Control.Monad.Except (MonadError, catchError, throwError)
 import Control.Monad.Reader
@@ -516,7 +516,9 @@ desugarLet t bind e1 e2 = patExpr t [e] [SimplifiedClause t [p] [] e2]
 --  :: ProgExpr t 
 --  -> Expr t t t t t t t t t Void Void Void Void Void Void (Binding t (ProgPattern t)) [ProgPattern t] (SimplifiedClause t (ProgPattern t))
 
-stage1 :: (InfoTag t) => ProgExpr (TypeInfo t) -> Stage1Expr (TypeInfo t)
+type Stage1Expr t = Expr t t t t t t t t t Void Void Void Void Void Void (Binding t (ProgPattern t)) [ProgPattern t] (SimplifiedClause t (ProgPattern t))
+
+stage1 :: ProgExpr (TypeInfoT [Error] (Maybe Type)) -> Stage1Expr (TypeInfoT [Error] (Maybe Type))
 stage1 = cata $ \case
 
     -- Translate tuples, lists, and records
@@ -528,6 +530,10 @@ stage1 = cata $ \case
     EOp1    t op a       -> appExpr t [prefixOp1 op, a]
     EOp2    t op a b     -> appExpr t [prefixOp2 op, a, b]
 
+    -- Expand pattern clause guards
+    EPat    t es cs      -> patExpr t es (expandClause =<< cs)
+    EFun    t cs         -> translateFunExpr t (expandClause =<< cs)
+
     -- Other exprs. do not change
     EVar    t var        -> varExpr t var
     ECon    t con es     -> conExpr t con es
@@ -536,10 +542,7 @@ stage1 = cata $ \case
     EFix    t name e1 e2 -> fixExpr t name e1 e2
     ELam    t ps e       -> lamExpr t ps e
     EIf     t e1 e2 e3   -> ifExpr  t e1 e2 e3
-    EPat    t es cs      -> patExpr t es (expandClause =<< cs)
-    EFun    t cs         -> translateFunExpr t (expandClause =<< cs)
     ELet    t bind e1 e2 -> letExpr t bind e1 e2
-
   where
     prefixOp1 (ONeg t) = varExpr t "negate"
     prefixOp1 (ONot t) = varExpr t "not"
@@ -548,73 +551,73 @@ stage1 = cata $ \case
 
     expandClause (Clause t ps gs) = [SimplifiedClause t ps es e | Guard es e <- gs]
 
-    translateFunExpr t = lamExpr t [varPat t1 "#0"] . patExpr t2 [varExpr t1 "#0"] 
+    translateFunExpr t = lamExpr t [varPat t1 "#0"] <<< patExpr t2 [varExpr t1 "#0"] 
       where
-        t1 = undefined
-        t2 = undefined
-        -- === TODO ===
---        t1 = updateType (const a) t
---        t2 = updateType (const b) t
---        Fix (TArr a b) = tagToType t
+        t1 = TypeInfo (get cod) (nodePredicates t) []
+        t2 = TypeInfo (get dom) (nodePredicates t) []
+
+        get :: (TypeF Kind Void Type -> Type) -> Maybe Type
+        get f = fmap (f . project) (nodeType t)
+
+        cod (TArr t1 _) = t1
+        dom (TArr _ t2) = t2
 
 -- >>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>
 
-type Stage1Expr t = Expr t t t t t t t t t Void Void Void Void Void Void (Binding t (ProgPattern t)) [ProgPattern t] (SimplifiedClause t (ProgPattern t))
-
-compileClasses
-  :: ( MonadSupply Name m
-     , MonadReader (ClassEnv, TypeEnv, KindEnv, ConstructorEnv) m
-     , MonadError Error m ) 
-  => Stage1Expr (TypeInfo t) 
-  -> StateT [(Name, Type)] m (Stage1Expr (TypeInfo t))
-compileClasses expr = 
-    insertDictArgs <$> run expr <*> (nub <$> pluck)
-  where
-    run 
-      :: ( MonadSupply Name m
-         , MonadReader (ClassEnv, TypeEnv, KindEnv, ConstructorEnv) m
-         , MonadError Error m ) 
-      => Stage1Expr (TypeInfo t) 
-      -> StateT [(Name, Type)] m (Stage1Expr (TypeInfo t))
-    run = cata $ \case
-
-        ELet t pat expr1 expr2 -> do
-            e1 <- expr1
-            vs <- nub <$> pluck
-            letExpr t pat (insertDictArgs e1 vs) <$> expr2
-
-        EVar t var -> 
-            foldrM applyDicts (varExpr (stripNodePredicates t) var) (nodePredicates t)
-
-        e -> 
-            embed <$> sequence e
-
-insertDictArgs :: Stage1Expr (TypeInfo t) -> [(Name, Type)] -> Stage1Expr (TypeInfo t)
-insertDictArgs expr = 
-    undefined
-
-applyDicts 
-  :: ( MonadSupply Name m
-     , MonadReader (ClassEnv, TypeEnv, KindEnv, ConstructorEnv) m
-     , MonadError Error m ) 
-  => Predicate 
-  -> Stage1Expr (TypeInfo t) 
-  -> StateT [(Name, Type)] m (Stage1Expr (TypeInfo t))
-applyDicts (InClass name ty) expr 
-
-    | isVar ty = do
-        tv <- Text.replace "a" "$d" <$> supply
-        undefined
-
-    | otherwise = do
-        env <- askClassEnv
-        case classMethods <$> lookupClassInstance name ty env of
-            Left e -> throwError e
-            Right methods -> do
-                undefined
-
-setNodePredicates :: [Predicate] -> TypeInfo t -> TypeInfo t
-setNodePredicates ps info = info{ nodePredicates = ps }
-
-stripNodePredicates :: TypeInfo t -> TypeInfo t
-stripNodePredicates = setNodePredicates []
+-- compileClasses
+--   :: ( MonadSupply Name m
+--      , MonadReader (ClassEnv, TypeEnv, KindEnv, ConstructorEnv) m
+--      , MonadError Error m ) 
+--   => Stage1Expr (TypeInfo t) 
+--   -> StateT [(Name, Type)] m (Stage1Expr (TypeInfo t))
+-- compileClasses expr = 
+--     insertDictArgs <$> run expr <*> (nub <$> pluck)
+--   where
+--     run 
+--       :: ( MonadSupply Name m
+--          , MonadReader (ClassEnv, TypeEnv, KindEnv, ConstructorEnv) m
+--          , MonadError Error m ) 
+--       => Stage1Expr (TypeInfo t) 
+--       -> StateT [(Name, Type)] m (Stage1Expr (TypeInfo t))
+--     run = cata $ \case
+-- 
+--         ELet t pat expr1 expr2 -> do
+--             e1 <- expr1
+--             vs <- nub <$> pluck
+--             letExpr t pat (insertDictArgs e1 vs) <$> expr2
+-- 
+--         EVar t var -> 
+--             foldrM applyDicts (varExpr (stripNodePredicates t) var) (nodePredicates t)
+-- 
+--         e -> 
+--             embed <$> sequence e
+-- 
+-- insertDictArgs :: Stage1Expr (TypeInfo t) -> [(Name, Type)] -> Stage1Expr (TypeInfo t)
+-- insertDictArgs expr = 
+--     undefined
+-- 
+-- applyDicts 
+--   :: ( MonadSupply Name m
+--      , MonadReader (ClassEnv, TypeEnv, KindEnv, ConstructorEnv) m
+--      , MonadError Error m ) 
+--   => Predicate 
+--   -> Stage1Expr (TypeInfo t) 
+--   -> StateT [(Name, Type)] m (Stage1Expr (TypeInfo t))
+-- applyDicts (InClass name ty) expr 
+-- 
+--     | isVar ty = do
+--         tv <- Text.replace "a" "$d" <$> supply
+--         undefined
+-- 
+--     | otherwise = do
+--         env <- askClassEnv
+--         case classMethods <$> lookupClassInstance name ty env of
+--             Left e -> throwError e
+--             Right methods -> do
+--                 undefined
+-- 
+-- setNodePredicates :: [Predicate] -> TypeInfo t -> TypeInfo t
+-- setNodePredicates ps info = info{ nodePredicates = ps }
+-- 
+-- stripNodePredicates :: TypeInfo t -> TypeInfo t
+-- stripNodePredicates = setNodePredicates []

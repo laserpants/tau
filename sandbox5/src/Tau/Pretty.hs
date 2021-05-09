@@ -14,6 +14,7 @@ import Data.Text.Prettyprint.Doc
 import Data.Text.Prettyprint.Doc.Render.Text
 import Data.Tree
 import Data.Tree.View (showTree)
+import Data.Maybe (fromJust)
 import Tau.Compiler.Error
 import Tau.Compiler.Substitute hiding (null)
 import Tau.Compiler.Translate
@@ -470,7 +471,8 @@ exprTree = para $ \case
     ECon    t con es     -> Node (annotated t con) (snd <$> es)
     ELit    t prim       -> Node (annotated t prim) []
     EApp    t es         -> Node (annotated t ("@" :: Text)) (snd <$> es)
-    ELet    t bind e1 e2 -> Node (annotated t ("let" :: Text)) [Node (annotated (bindingTypeInfo bind) (printLetBinding bind) <+> equals) [snd e1], Node "in" [snd e2]]
+    ELet    t bind e1 e2 -> Node (annotated t ("let" :: Text)) [Node (annotated (typeOf bind) (printLetBinding bind) <+> equals) [snd e1], Node "in" [snd e2]]
+--    ELet    t bind e1 e2 -> Node (annotated t ("let" :: Text)) [Node (annotated (bindingTypeInfo bind) (printLetBinding bind) <+> equals) [snd e1], Node "in" [snd e2]]
     --EPat    t es cs      -> Node ("match" <+> commaSep (withTag . fst <$> es) <+> "with") (treeClause <$> (fst <$$> cs))
     --EPat    t [e] cs      -> Node ("match" <+> exprTree e <+> "with") (treeClause <$> (fst <$$> cs))
 
@@ -479,9 +481,13 @@ exprTree = para $ \case
 
     EOp1    _ op a       -> Node (pretty op) [snd a]
     EOp2    _ op a b     -> Node ("(" <> pretty op  <> ")" <+> pretty (typeOf (op2Tag op))) [snd a, snd b]
-    ELam    t lam a      -> Node ("(" <> pretty lam <> ") =>") [snd a, Node (colon <+> "(" <> pretty t <> ")") []]
+--    ELam    t lam a      -> Node ("(" <> pretty lam <> ") =>") [snd a, Node (colon <+> "(" <> pretty t <> ")") []]
+    ELam    t lam a      -> Node ("(" <> pretty (xx (prettyPrint lam)) <> ")" <+> "=>") [snd a, Node (colon <+> "(" <> pretty t <> ")") []]
     ETuple  t es         -> Node (annotated t (tupleCon (length es))) (snd <$> es)
     _                    -> Node "*TODO" []
+
+xx = Text.stripSuffix "]" <=< Text.stripPrefix "["
+
 
 treeClause :: (Functor (c1 t11 (Pattern p1 p2 p3 p4 p5 p6 p7 p8 p9)), Typed bind, Typed t22, LetBinding bind, Pretty bind, Pretty lam, Pretty t12, Pretty t13, Pretty t14, Pretty t15, Pretty t16, Pretty t10, Pretty t18, Pretty t19, Pretty t20, Pretty t21, Pretty t22, Pretty t23, PatternClause c1 t11 (Pattern p1 p2 p3 p4 p5 p6 p7 p8 p9) (Expr t12 t13 t14 t15 t17 t18 t19 t16 t20 t10 t21 t22 t23 t24 t25 bind lam (c1 t11 (Pattern p1 p2 p3 p4 p5 p6 p7 p8 p9))), PatternClause c2 t26 (Pattern t27 t28 t29 t30 t31 t32 t33 t34 t35) (Expr t12 t13 t14 t15 t17 t18 t19 t16 t20 t10 t21 t22 t23 t24 t25 bind lam (c1 t11 (Pattern p1 p2 p3 p4 p5 p6 p7 p8 p9)))) => c2 t26 (Pattern t27 t28 t29 t30 t31 t32 t33 t34 t35) (Expr t12 t13 t14 t15 t17 t18 t19 t16 t20 t10 t21 t22 t23 t24 t25 bind lam (c1 t11 (Pattern p1 p2 p3 p4 p5 p6 p7 p8 p9))) -> Data.Tree.Tree (Doc ann)
 treeClause c = clauseTree (clauseLhs c) (clauseRhs c)
@@ -595,14 +601,20 @@ class LetBinding b where
     printLetBinding :: b -> Text
     bindingTypeInfo :: b -> TypeInfo [Error]
 
-instance (Pretty b) => LetBinding (Binding (TypeInfoT [Error] Type) b) where
+--instance (Pretty b) => LetBinding (Binding (TypeInfoT [Error] Type) b) where
+instance (Typed t, Pretty b) => LetBinding (Binding (TypeInfoT [Error] t) b) where
     printLetBinding = prettyPrint
-    bindingTypeInfo (BLet t _)   = t
-    bindingTypeInfo (BFun t _ _) = t
+    bindingTypeInfo (BLet t _)   = undefined -- (nodeType t)
+    bindingTypeInfo (BFun t _ _) = undefined -- t
+
+--instance (Pretty b) => LetBinding (Binding (TypeInfoT [Error] (Maybe Type)) b) where
+--    printLetBinding = prettyPrint
+--    bindingTypeInfo (BLet t _)   = fmap fromJust t
+--    bindingTypeInfo (BFun t _ _) = fmap fromJust t
 
 instance LetBinding Void where
     printLetBinding = const ""
-    bindingTypeInfo _ = TypeInfo (tVar kTyp "a") [] []
+    bindingTypeInfo _ = undefined -- TypeInfo (tVar kTyp "a") [] []
 
 --letTree
 --  :: (Pretty t, Typed b, LetBinding b)
@@ -664,7 +676,7 @@ annotated t p = pretty p <+> colon <+> pretty t
 --        , Node "else" [e3]
 --        ]
 
-instance Pretty (TypeInfoT [Error] Type) where
+instance (Pretty t) => Pretty (TypeInfoT [Error] t) where
     pretty (TypeInfo t ps es) = pretty t <> preds <> errs
       where
         preds | null ps   = ""
