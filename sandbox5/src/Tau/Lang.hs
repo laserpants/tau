@@ -98,19 +98,17 @@ data Binding t p
 
 -- >>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>
 
---data ExprF t1 t2 t3 t4 t5 t6 t7 t8 t9 t10 t11 t12 t13 t14 t15 z1 z2 z3 a
-
-data ExprF t1 t2 t3 t4 t5 t6 t7 t8 t9 t10 t11 t12 t13 t14 t15 bind lam clause a
+data ExprF t1 t2 t3 t4 t5 t6 t7 t8 t9 t10 t11 t12 t13 t14 t15 e1 e2 e3 a
     = EVar    t1  Name                   -- ^ Variable
     | ECon    t2  Name [a]               -- ^ Data constructor
     | ELit    t3  Prim                   -- ^ Literal value
     | EApp    t4  [a]                    -- ^ Function application
     | EFix    t5  Name a a               -- ^ Recursive let
-    | ELam    t6  lam a                  -- ^ Lambda abstraction
-    | EIf     t7  a a a                  -- ^ If-clause
-    | ELet    t8  bind a a               -- ^ Let expression
-    | EPat    t9  [a] [clause a]         -- ^ Match expressions
-    | EFun    t10 [clause a]             -- ^ Fun expression
+    | ELam    t6  e2 a                   -- ^ Lambda abstraction
+    | EIf     t7  a a a                  -- ^ If-e3
+    | ELet    t8  e1 a a                 -- ^ Let expression
+    | EPat    t9  [a] [e3 a]             -- ^ Match expressions
+    | EFun    t10 [e3 a]                 -- ^ Fun expression
     | EOp1    t11 (Op1 t11) a            -- ^ Unary operator
     | EOp2    t12 (Op2 t12) a a          -- ^ Binary operator
     | ETuple  t13 [a]                    -- ^ Tuple
@@ -118,8 +116,8 @@ data ExprF t1 t2 t3 t4 t5 t6 t7 t8 t9 t10 t11 t12 t13 t14 t15 bind lam clause a
 --    | ERecord t15 (Row a)                -- ^ Record
 
 -- | Language expression
-type Expr t1 t2 t3 t4 t5 t6 t7 t8 t9 t10 t11 t12 t13 t14 t15 bind lam clause = 
-    Fix (ExprF t1 t2 t3 t4 t5 t6 t7 t8 t9 t10 t11 t12 t13 t14 t15 bind lam clause)
+type Expr t1 t2 t3 t4 t5 t6 t7 t8 t9 t10 t11 t12 t13 t14 t15 e1 e2 e3 = 
+    Fix (ExprF t1 t2 t3 t4 t5 t6 t7 t8 t9 t10 t11 t12 t13 t14 t15 e1 e2 e3)
 
 type ProgExpr t = Expr t t t t t t t t t t t t t t t (Binding t (ProgPattern t)) [ProgPattern t] (Clause t (ProgPattern t))
 
@@ -138,13 +136,13 @@ deriving instance Ord  Prim
 -- Type class instances for Pattern
 
 deriving instance (Show t1, Show t2, Show t3, Show t4, Show t5, Show t6, Show t7, Show t8, Show t9, Show a) => 
-    Show (PatternF  t1 t2 t3 t4 t5 t6 t7 t8 t9 a)
+    Show (PatternF t1 t2 t3 t4 t5 t6 t7 t8 t9 a)
 
 deriving instance (Eq t1, Eq t2, Eq t3, Eq t4, Eq t5, Eq t6, Eq t7, Eq t8, Eq t9, Eq a) => 
-    Eq (PatternF  t1 t2 t3 t4 t5 t6 t7 t8 t9 a)
+    Eq (PatternF t1 t2 t3 t4 t5 t6 t7 t8 t9 a)
 
 deriving instance (Ord t1, Ord t2, Ord t3, Ord t4, Ord t5, Ord t6, Ord t7, Ord t8, Ord t9, Ord a) => 
-    Ord (PatternF  t1 t2 t3 t4 t5 t6 t7 t8 t9 a)
+    Ord (PatternF t1 t2 t3 t4 t5 t6 t7 t8 t9 a)
 
 deriveShow1 ''PatternF
 deriveEq1   ''PatternF
@@ -214,22 +212,22 @@ deriveOrd1  ''Binding
 
 -- Type class instances for Expr
 
-deriving instance (Show t1, Show t2, Show t3, Show t4, Show t5, Show t6, Show t7, Show t8, Show t9, Show t10, Show t11, Show t12, Show t13, Show t14, Show t15, Show bind, Show lam, Show a, Show (clause a)) =>
-    Show (ExprF t1 t2 t3 t4 t5 t6 t7 t8 t9 t10 t11 t12 t13 t14 t15 bind lam clause a)
+deriving instance (Show t1, Show t2, Show t3, Show t4, Show t5, Show t6, Show t7, Show t8, Show t9, Show t10, Show t11, Show t12, Show t13, Show t14, Show t15, Show e1, Show e2, Show a, Show (e3 a)) =>
+    Show (ExprF t1 t2 t3 t4 t5 t6 t7 t8 t9 t10 t11 t12 t13 t14 t15 e1 e2 e3 a)
 
-deriving instance (Eq t1, Eq t2, Eq t3, Eq t4, Eq t5, Eq t6, Eq t7, Eq t8, Eq t9, Eq t10, Eq t11, Eq t12, Eq t13, Eq t14, Eq t15, Eq bind, Eq lam, Eq a, Eq (clause a)) =>
-    Eq (ExprF t1 t2 t3 t4 t5 t6 t7 t8 t9 t10 t11 t12 t13 t14 t15 bind lam clause a)
+deriving instance (Eq t1, Eq t2, Eq t3, Eq t4, Eq t5, Eq t6, Eq t7, Eq t8, Eq t9, Eq t10, Eq t11, Eq t12, Eq t13, Eq t14, Eq t15, Eq e1, Eq e2, Eq a, Eq (e3 a)) =>
+    Eq (ExprF t1 t2 t3 t4 t5 t6 t7 t8 t9 t10 t11 t12 t13 t14 t15 e1 e2 e3 a)
 
-deriving instance (Ord t1, Ord t2, Ord t3, Ord t4, Ord t5, Ord t6, Ord t7, Ord t8, Ord t9, Ord t10, Ord t11, Ord t12, Ord t13, Ord t14, Ord t15, Ord bind, Ord lam, Ord a, Ord (clause a)) =>
-    Ord (ExprF t1 t2 t3 t4 t5 t6 t7 t8 t9 t10 t11 t12 t13 t14 t15 bind lam clause a)
+deriving instance (Ord t1, Ord t2, Ord t3, Ord t4, Ord t5, Ord t6, Ord t7, Ord t8, Ord t9, Ord t10, Ord t11, Ord t12, Ord t13, Ord t14, Ord t15, Ord e1, Ord e2, Ord a, Ord (e3 a)) =>
+    Ord (ExprF t1 t2 t3 t4 t5 t6 t7 t8 t9 t10 t11 t12 t13 t14 t15 e1 e2 e3 a)
 
 deriveShow1 ''ExprF
 deriveEq1   ''ExprF
 deriveOrd1  ''ExprF
 
-deriving instance (Functor     clause) => Functor     (ExprF t1 t2 t3 t4 t5 t6 t7 t8 t9 t10 t11 t12 t13 t14 t15 bind lam clause)
-deriving instance (Foldable    clause) => Foldable    (ExprF t1 t2 t3 t4 t5 t6 t7 t8 t9 t10 t11 t12 t13 t14 t15 bind lam clause)
-deriving instance (Traversable clause) => Traversable (ExprF t1 t2 t3 t4 t5 t6 t7 t8 t9 t10 t11 t12 t13 t14 t15 bind lam clause)
+deriving instance (Functor     e3) => Functor     (ExprF t1 t2 t3 t4 t5 t6 t7 t8 t9 t10 t11 t12 t13 t14 t15 e1 e2 e3)
+deriving instance (Foldable    e3) => Foldable    (ExprF t1 t2 t3 t4 t5 t6 t7 t8 t9 t10 t11 t12 t13 t14 t15 e1 e2 e3)
+deriving instance (Traversable e3) => Traversable (ExprF t1 t2 t3 t4 t5 t6 t7 t8 t9 t10 t11 t12 t13 t14 t15 e1 e2 e3)
 
 -- >>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>
 
@@ -304,7 +302,7 @@ instance Functor Ast where
 
 -- >>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>
 
-exprTag :: (Functor clause) => Expr t t t t t t t t t t t t t t t bind lam clause -> t
+exprTag :: (Functor e3) => Expr t t t t t t t t t t t t t t t e1 e2 e3 -> t
 exprTag = cata $ \case
     EVar    t _     -> t
     ECon    t _ _   -> t
@@ -473,28 +471,54 @@ op2Symbol = \case
 
 -- Pattern
 
-varPat :: t1 -> Name -> Pattern t1 t2 t3 t4 t5 t6 t7 t8 t9
+varPat 
+  :: t1 
+  -> Name 
+  -> Pattern t1 t2 t3 t4 t5 t6 t7 t8 t9
 varPat = embed2 PVar
 
-conPat :: t2 -> Name -> [Pattern t1 t2 t3 t4 t5 t6 t7 t8 t9] -> Pattern t1 t2 t3 t4 t5 t6 t7 t8 t9
+conPat 
+  :: t2 
+  -> Name 
+  -> [Pattern t1 t2 t3 t4 t5 t6 t7 t8 t9] 
+  -> Pattern t1 t2 t3 t4 t5 t6 t7 t8 t9
 conPat = embed3 PCon
 
-asPat :: t3 -> Name -> Pattern t1 t2 t3 t4 t5 t6 t7 t8 t9 -> Pattern t1 t2 t3 t4 t5 t6 t7 t8 t9
+asPat 
+  :: t3 
+  -> Name 
+  -> Pattern t1 t2 t3 t4 t5 t6 t7 t8 t9 
+  -> Pattern t1 t2 t3 t4 t5 t6 t7 t8 t9
 asPat = embed3 PAs
 
-litPat :: t4 -> Prim -> Pattern t1 t2 t3 t4 t5 t6 t7 t8 t9
+litPat 
+  :: t4 
+  -> Prim 
+  -> Pattern t1 t2 t3 t4 t5 t6 t7 t8 t9
 litPat = embed2 PLit
 
-orPat :: t5 -> Pattern t1 t2 t3 t4 t5 t6 t7 t8 t9 -> Pattern t1 t2 t3 t4 t5 t6 t7 t8 t9 -> Pattern t1 t2 t3 t4 t5 t6 t7 t8 t9
+orPat 
+  :: t5 
+  -> Pattern t1 t2 t3 t4 t5 t6 t7 t8 t9 
+  -> Pattern t1 t2 t3 t4 t5 t6 t7 t8 t9 
+  -> Pattern t1 t2 t3 t4 t5 t6 t7 t8 t9
 orPat = embed3 POr
 
-anyPat :: t6 -> Pattern t1 t2 t3 t4 t5 t6 t7 t8 t9
+anyPat 
+  :: t6 
+  -> Pattern t1 t2 t3 t4 t5 t6 t7 t8 t9
 anyPat = embed1 PAny
 
-tuplePat :: t7 -> [Pattern t1 t2 t3 t4 t5 t6 t7 t8 t9] -> Pattern t1 t2 t3 t4 t5 t6 t7 t8 t9
+tuplePat 
+  :: t7 
+  -> [Pattern t1 t2 t3 t4 t5 t6 t7 t8 t9] 
+  -> Pattern t1 t2 t3 t4 t5 t6 t7 t8 t9
 tuplePat = embed2 PTuple
 
-listPat :: t8 -> [Pattern t1 t2 t3 t4 t5 t6 t7 t8 t9] -> Pattern t1 t2 t3 t4 t5 t6 t7 t8 t9
+listPat 
+  :: t8 
+  -> [Pattern t1 t2 t3 t4 t5 t6 t7 t8 t9] 
+  -> Pattern t1 t2 t3 t4 t5 t6 t7 t8 t9
 listPat = embed2 PList
 
 --recordPat :: t9 -> Row (Pattern t1 t2 t3 t4 t5 t6 t7 t8 t9) -> Pattern t1 t2 t3 t4 t5 t6 t7 t8 t9
@@ -502,55 +526,132 @@ listPat = embed2 PList
 
 -- Expr
 
-varExpr :: (Functor clause) => t1 -> Name -> Expr t1 t2 t3 t4 t5 t6 t7 t8 t9 t10 t11 t12 t13 t14 t15 bind lam clause 
+varExpr 
+  :: (Functor e3) 
+  => t1 
+  -> Name 
+  -> Expr t1 t2 t3 t4 t5 t6 t7 t8 t9 t10 t11 t12 t13 t14 t15 e1 e2 e3 
 varExpr = embed2 EVar
 
-conExpr :: (Functor clause) => t2 -> Name -> [Expr t1 t2 t3 t4 t5 t6 t7 t8 t9 t10 t11 t12 t13 t14 t15 bind lam clause] -> Expr t1 t2 t3 t4 t5 t6 t7 t8 t9 t10 t11 t12 t13 t14 t15 bind lam clause 
+conExpr 
+  :: (Functor e3) 
+  => t2 
+  -> Name 
+  -> [Expr t1 t2 t3 t4 t5 t6 t7 t8 t9 t10 t11 t12 t13 t14 t15 e1 e2 e3] 
+  -> Expr t1 t2 t3 t4 t5 t6 t7 t8 t9 t10 t11 t12 t13 t14 t15 e1 e2 e3 
 conExpr = embed3 ECon
 
-litExpr :: (Functor clause) => t3 -> Prim -> Expr t1 t2 t3 t4 t5 t6 t7 t8 t9 t10 t11 t12 t13 t14 t15 bind lam clause 
+litExpr 
+  :: (Functor e3) 
+  => t3 
+  -> Prim 
+  -> Expr t1 t2 t3 t4 t5 t6 t7 t8 t9 t10 t11 t12 t13 t14 t15 e1 e2 e3 
 litExpr = embed2 ELit
 
-appExpr :: (Functor clause) => t4 -> [Expr t1 t2 t3 t4 t5 t6 t7 t8 t9 t10 t11 t12 t13 t14 t15 bind lam clause] -> Expr t1 t2 t3 t4 t5 t6 t7 t8 t9 t10 t11 t12 t13 t14 t15 bind lam clause 
+appExpr 
+  :: (Functor e3) 
+  => t4 
+  -> [Expr t1 t2 t3 t4 t5 t6 t7 t8 t9 t10 t11 t12 t13 t14 t15 e1 e2 e3] 
+  -> Expr t1 t2 t3 t4 t5 t6 t7 t8 t9 t10 t11 t12 t13 t14 t15 e1 e2 e3 
 appExpr = embed2 EApp
 
-fixExpr :: (Functor clause) => t5 -> Name -> Expr t1 t2 t3 t4 t5 t6 t7 t8 t9 t10 t11 t12 t13 t14 t15 bind lam clause -> Expr t1 t2 t3 t4 t5 t6 t7 t8 t9 t10 t11 t12 t13 t14 t15 bind lam clause -> Expr t1 t2 t3 t4 t5 t6 t7 t8 t9 t10 t11 t12 t13 t14 t15 bind lam clause
+fixExpr 
+  :: (Functor e3) 
+  => t5 
+  -> Name 
+  -> Expr t1 t2 t3 t4 t5 t6 t7 t8 t9 t10 t11 t12 t13 t14 t15 e1 e2 e3 
+  -> Expr t1 t2 t3 t4 t5 t6 t7 t8 t9 t10 t11 t12 t13 t14 t15 e1 e2 e3 
+  -> Expr t1 t2 t3 t4 t5 t6 t7 t8 t9 t10 t11 t12 t13 t14 t15 e1 e2 e3
 fixExpr = embed4 EFix
 
-lamExpr :: (Functor clause) => t6 -> lam -> Expr t1 t2 t3 t4 t5 t6 t7 t8 t9 t10 t11 t12 t13 t14 t15 bind lam clause -> Expr t1 t2 t3 t4 t5 t6 t7 t8 t9 t10 t11 t12 t13 t14 t15 bind lam clause
+lamExpr 
+  :: (Functor e3) 
+  => t6 
+  -> e2 
+  -> Expr t1 t2 t3 t4 t5 t6 t7 t8 t9 t10 t11 t12 t13 t14 t15 e1 e2 e3 
+  -> Expr t1 t2 t3 t4 t5 t6 t7 t8 t9 t10 t11 t12 t13 t14 t15 e1 e2 e3
 lamExpr = embed3 ELam
 
-ifExpr :: (Functor clause) => t7 -> Expr t1 t2 t3 t4 t5 t6 t7 t8 t9 t10 t11 t12 t13 t14 t15 bind lam clause -> Expr t1 t2 t3 t4 t5 t6 t7 t8 t9 t10 t11 t12 t13 t14 t15 bind lam clause -> Expr t1 t2 t3 t4 t5 t6 t7 t8 t9 t10 t11 t12 t13 t14 t15 bind lam clause -> Expr t1 t2 t3 t4 t5 t6 t7 t8 t9 t10 t11 t12 t13 t14 t15 bind lam clause
+ifExpr 
+  :: (Functor e3) 
+  => t7 
+  -> Expr t1 t2 t3 t4 t5 t6 t7 t8 t9 t10 t11 t12 t13 t14 t15 e1 e2 e3 
+  -> Expr t1 t2 t3 t4 t5 t6 t7 t8 t9 t10 t11 t12 t13 t14 t15 e1 e2 e3 
+  -> Expr t1 t2 t3 t4 t5 t6 t7 t8 t9 t10 t11 t12 t13 t14 t15 e1 e2 e3 
+  -> Expr t1 t2 t3 t4 t5 t6 t7 t8 t9 t10 t11 t12 t13 t14 t15 e1 e2 e3
 ifExpr = embed4 EIf
 
-letExpr :: (Functor clause) => t8 -> bind -> Expr t1 t2 t3 t4 t5 t6 t7 t8 t9 t10 t11 t12 t13 t14 t15 bind lam clause -> Expr t1 t2 t3 t4 t5 t6 t7 t8 t9 t10 t11 t12 t13 t14 t15 bind lam clause -> Expr t1 t2 t3 t4 t5 t6 t7 t8 t9 t10 t11 t12 t13 t14 t15 bind lam clause
+letExpr 
+  :: (Functor e3) 
+  => t8 
+  -> e1 
+  -> Expr t1 t2 t3 t4 t5 t6 t7 t8 t9 t10 t11 t12 t13 t14 t15 e1 e2 e3 
+  -> Expr t1 t2 t3 t4 t5 t6 t7 t8 t9 t10 t11 t12 t13 t14 t15 e1 e2 e3 
+  -> Expr t1 t2 t3 t4 t5 t6 t7 t8 t9 t10 t11 t12 t13 t14 t15 e1 e2 e3
 letExpr = embed4 ELet
 
-patExpr :: (Functor clause) => t9 -> [Expr t1 t2 t3 t4 t5 t6 t7 t8 t9 t10 t11 t12 t13 t14 t15 bind lam clause] -> [clause (Expr t1 t2 t3 t4 t5 t6 t7 t8 t9 t10 t11 t12 t13 t14 t15 bind lam clause)] -> Expr t1 t2 t3 t4 t5 t6 t7 t8 t9 t10 t11 t12 t13 t14 t15 bind lam clause
+patExpr 
+  :: (Functor e3) 
+  => t9 
+  -> [Expr t1 t2 t3 t4 t5 t6 t7 t8 t9 t10 t11 t12 t13 t14 t15 e1 e2 e3] 
+  -> [e3 (Expr t1 t2 t3 t4 t5 t6 t7 t8 t9 t10 t11 t12 t13 t14 t15 e1 e2 e3)] 
+  -> Expr t1 t2 t3 t4 t5 t6 t7 t8 t9 t10 t11 t12 t13 t14 t15 e1 e2 e3
 patExpr = embed3 EPat
 
-funExpr :: (Functor clause) => t10 -> [clause (Expr t1 t2 t3 t4 t5 t6 t7 t8 t9 t10 t11 t12 t13 t14 t15 bind lam clause)] -> Expr t1 t2 t3 t4 t5 t6 t7 t8 t9 t10 t11 t12 t13 t14 t15 bind lam clause
+funExpr 
+  :: (Functor e3) 
+  => t10 
+  -> [e3 (Expr t1 t2 t3 t4 t5 t6 t7 t8 t9 t10 t11 t12 t13 t14 t15 e1 e2 e3)] 
+  -> Expr t1 t2 t3 t4 t5 t6 t7 t8 t9 t10 t11 t12 t13 t14 t15 e1 e2 e3
 funExpr = embed2 EFun
 
-op1Expr :: (Functor clause) => t11 -> Op1 t11 -> Expr t1 t2 t3 t4 t5 t6 t7 t8 t9 t10 t11 t12 t13 t14 t15 bind lam clause -> Expr t1 t2 t3 t4 t5 t6 t7 t8 t9 t10 t11 t12 t13 t14 t15 bind lam clause
+op1Expr 
+  :: (Functor e3) 
+  => t11 
+  -> Op1 t11 
+  -> Expr t1 t2 t3 t4 t5 t6 t7 t8 t9 t10 t11 t12 t13 t14 t15 e1 e2 e3 
+  -> Expr t1 t2 t3 t4 t5 t6 t7 t8 t9 t10 t11 t12 t13 t14 t15 e1 e2 e3
 op1Expr = embed3 EOp1
 
-op2Expr :: (Functor clause) => t12 -> Op2 t12 -> Expr t1 t2 t3 t4 t5 t6 t7 t8 t9 t10 t11 t12 t13 t14 t15 bind lam clause -> Expr t1 t2 t3 t4 t5 t6 t7 t8 t9 t10 t11 t12 t13 t14 t15 bind lam clause -> Expr t1 t2 t3 t4 t5 t6 t7 t8 t9 t10 t11 t12 t13 t14 t15 bind lam clause 
+op2Expr 
+  :: (Functor e3) 
+  => t12 
+  -> Op2 t12 
+  -> Expr t1 t2 t3 t4 t5 t6 t7 t8 t9 t10 t11 t12 t13 t14 t15 e1 e2 e3 
+  -> Expr t1 t2 t3 t4 t5 t6 t7 t8 t9 t10 t11 t12 t13 t14 t15 e1 e2 e3 
+  -> Expr t1 t2 t3 t4 t5 t6 t7 t8 t9 t10 t11 t12 t13 t14 t15 e1 e2 e3 
 op2Expr = embed4 EOp2
 
-tupleExpr :: (Functor clause) => t13 -> [Expr t1 t2 t3 t4 t5 t6 t7 t8 t9 t10 t11 t12 t13 t14 t15 bind lam clause] -> Expr t1 t2 t3 t4 t5 t6 t7 t8 t9 t10 t11 t12 t13 t14 t15 bind lam clause
+tupleExpr 
+  :: (Functor e3) 
+  => t13 
+  -> [Expr t1 t2 t3 t4 t5 t6 t7 t8 t9 t10 t11 t12 t13 t14 t15 e1 e2 e3] 
+  -> Expr t1 t2 t3 t4 t5 t6 t7 t8 t9 t10 t11 t12 t13 t14 t15 e1 e2 e3
 tupleExpr = embed2 ETuple
 
-listExpr :: (Functor clause) => t14 -> [Expr t1 t2 t3 t4 t5 t6 t7 t8 t9 t10 t11 t12 t13 t14 t15 bind lam clause] -> Expr t1 t2 t3 t4 t5 t6 t7 t8 t9 t10 t11 t12 t13 t14 t15 bind lam clause
+listExpr 
+  :: (Functor e3) 
+  => t14 
+  -> [Expr t1 t2 t3 t4 t5 t6 t7 t8 t9 t10 t11 t12 t13 t14 t15 e1 e2 e3] 
+  -> Expr t1 t2 t3 t4 t5 t6 t7 t8 t9 t10 t11 t12 t13 t14 t15 e1 e2 e3
 listExpr = embed2 EList
 
---recordExpr :: (Functor clause) => t15 -> Row (Expr t1 t2 t3 t4 t5 t6 t7 t8 t9 t10 t11 t12 t13 t14 t15 bind lam clause) -> Expr t1 t2 t3 t4 t5 t6 t7 t8 t9 t10 t11 t12 t13 t14 t15 bind lam clause
+--recordExpr :: (Functor e3) => t15 -> Row (Expr t1 t2 t3 t4 t5 t6 t7 t8 t9 t10 t11 t12 t13 t14 t15 e1 e2 e3) -> Expr t1 t2 t3 t4 t5 t6 t7 t8 t9 t10 t11 t12 t13 t14 t15 e1 e2 e3
 --recordExpr = embed2 ERecord
 
 -- List cons constructors
 
-listExprCons :: (Functor clause) => t2 -> Expr t1 t2 t3 t4 t5 t6 t7 t8 t9 t10 t11 t12 t13 t14 t15 bind lam clause -> Expr t1 t2 t3 t4 t5 t6 t7 t8 t9 t10 t11 t12 t13 t14 t15 bind lam clause -> Expr t1 t2 t3 t4 t5 t6 t7 t8 t9 t10 t11 t12 t13 t14 t15 bind lam clause
+listExprCons 
+  :: (Functor e3) 
+  => t2 
+  -> Expr t1 t2 t3 t4 t5 t6 t7 t8 t9 t10 t11 t12 t13 t14 t15 e1 e2 e3 
+  -> Expr t1 t2 t3 t4 t5 t6 t7 t8 t9 t10 t11 t12 t13 t14 t15 e1 e2 e3 
+  -> Expr t1 t2 t3 t4 t5 t6 t7 t8 t9 t10 t11 t12 t13 t14 t15 e1 e2 e3
 listExprCons t hd tl = conExpr t "(::)" [hd, tl]
 
-listPatCons :: t2 -> Pattern t1 t2 t3 t4 t5 t6 t7 t8 t9 -> Pattern t1 t2 t3 t4 t5 t6 t7 t8 t9 -> Pattern t1 t2 t3 t4 t5 t6 t7 t8 t9
+listPatCons 
+  :: t2 
+  -> Pattern t1 t2 t3 t4 t5 t6 t7 t8 t9 
+  -> Pattern t1 t2 t3 t4 t5 t6 t7 t8 t9 
+  -> Pattern t1 t2 t3 t4 t5 t6 t7 t8 t9
 listPatCons t hd tl = conPat t "(::)" [hd, tl]
