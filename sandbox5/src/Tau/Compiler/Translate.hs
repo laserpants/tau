@@ -8,9 +8,9 @@
 {-# LANGUAGE TemplateHaskell       #-}
 module Tau.Compiler.Translate where
 
-import Control.Monad.Except (MonadError, catchError, throwError)
 import Control.Arrow ((<<<), (>>>), (***), second)
 import Control.Monad
+import Control.Monad.Except (MonadError, catchError, throwError)
 import Control.Monad.Reader
 import Control.Monad.State
 import Control.Monad.Supply
@@ -25,6 +25,7 @@ import Tau.Row
 import Tau.Tool
 import Tau.Type
 import qualified Data.Map.Strict as Map
+import qualified Data.Text as Text
 
 --data Prep t = RCon t Name [Name]
 --    deriving (Show, Eq)
@@ -515,16 +516,17 @@ desugarLet t bind e1 e2 = patExpr t [e] [SimplifiedClause t [p] [] e2]
 --  :: ProgExpr t 
 --  -> Expr t t t t t t t t t Void Void Void Void Void Void (Binding t (ProgPattern t)) [ProgPattern t] (SimplifiedClause t (ProgPattern t))
 
-stage1 :: ProgExpr (TypeInfo t) -> Foo (TypeInfo t)
+stage1 :: ProgExpr (TypeInfo t) -> Stage1Expr (TypeInfo t)
 stage1 = cata $ \case
 
     -- Translate tuples, lists, and records
     ETuple  t exprs      -> conExpr t (tupleCon (length exprs)) exprs
     EList   t exprs      -> foldr (listExprCons t) (conExpr t "[]" []) exprs
+    -- ERecord TODO
 
     -- Translate operators to prefix form
     EOp1    t op a       -> appExpr t [prefixOp1 op, a]
-    EOp2    t op a b     -> appExpr t [varExpr (op2Tag op) ("(" <> op2Symbol op <> ")"), a, b]
+    EOp2    t op a b     -> appExpr t [prefixOp2 op, a, b]
 
     -- Other exprs. do not change
     EVar    t var        -> varExpr t var
@@ -542,25 +544,29 @@ stage1 = cata $ \case
     prefixOp1 (ONeg t) = varExpr t "negate"
     prefixOp1 (ONot t) = varExpr t "not"
 
+    prefixOp2 op = varExpr (op2Tag op) ("(" <> op2Symbol op <> ")")
+
     expandClause (Clause t ps gs) = [SimplifiedClause t ps es e | Guard es e <- gs]
 
 -- >>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>
 
-type Foo t = Expr t t t t t t t t t Void Void Void Void Void Void (Binding t (ProgPattern t)) [ProgPattern t] (SimplifiedClause t (ProgPattern t))
+type Stage1Expr t = Expr t t t t t t t t t Void Void Void Void Void Void (Binding t (ProgPattern t)) [ProgPattern t] (SimplifiedClause t (ProgPattern t))
 
 compileClasses
-  :: ( MonadReader (ClassEnv, TypeEnv, KindEnv, ConstructorEnv) m
+  :: ( MonadSupply Name m
+     , MonadReader (ClassEnv, TypeEnv, KindEnv, ConstructorEnv) m
      , MonadError Error m ) 
-  => Foo (TypeInfo t) 
-  -> StateT [(Name, Type)] m (Foo (TypeInfo t))
+  => Stage1Expr (TypeInfo t) 
+  -> StateT [(Name, Type)] m (Stage1Expr (TypeInfo t))
 compileClasses expr = 
     insertDictArgs <$> run expr <*> (nub <$> pluck)
   where
     run 
-      :: ( MonadReader (ClassEnv, TypeEnv, KindEnv, ConstructorEnv) m
+      :: ( MonadSupply Name m
+         , MonadReader (ClassEnv, TypeEnv, KindEnv, ConstructorEnv) m
          , MonadError Error m ) 
-      => Foo (TypeInfo t) 
-      -> StateT [(Name, Type)] m (Foo (TypeInfo t))
+      => Stage1Expr (TypeInfo t) 
+      -> StateT [(Name, Type)] m (Stage1Expr (TypeInfo t))
     run = cata $ \case
 
         ELet t pat expr1 expr2 -> do
@@ -574,25 +580,29 @@ compileClasses expr =
         e -> 
             embed <$> sequence e
 
-insertDictArgs :: Foo (TypeInfo t) -> [(Name, Type)] -> Foo (TypeInfo t)
+insertDictArgs :: Stage1Expr (TypeInfo t) -> [(Name, Type)] -> Stage1Expr (TypeInfo t)
 insertDictArgs expr = 
     undefined
 
 applyDicts 
-  :: ( MonadReader (ClassEnv, TypeEnv, KindEnv, ConstructorEnv) m
+  :: ( MonadSupply Name m
+     , MonadReader (ClassEnv, TypeEnv, KindEnv, ConstructorEnv) m
      , MonadError Error m ) 
   => Predicate 
-  -> Foo (TypeInfo t) 
-  -> StateT [(Name, Type)] m (Foo (TypeInfo t))
+  -> Stage1Expr (TypeInfo t) 
+  -> StateT [(Name, Type)] m (Stage1Expr (TypeInfo t))
 applyDicts (InClass name ty) expr 
 
     | isVar ty = do
+        tv <- Text.replace "a" "$d" <$> supply
         undefined
 
     | otherwise = do
         env <- askClassEnv
-        case lookupClassInstance name ty env of
+        case classMethods <$> lookupClassInstance name ty env of
             Left e -> throwError e
+            Right methods -> do
+                undefined
 
 setNodePredicates :: [Predicate] -> TypeInfo t -> TypeInfo t
 setNodePredicates ps info = info{ nodePredicates = ps }
