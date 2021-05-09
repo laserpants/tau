@@ -10,7 +10,10 @@ module Tau.Compiler.Translate where
 
 import Control.Arrow ((<<<), (>>>), (***), second)
 import Control.Monad
+import Control.Monad.State
 import Control.Monad.Supply
+import Data.Foldable (foldrM)
+import Data.List (nub)
 import Data.Maybe (fromMaybe)
 import Data.Void
 import Tau.Compiler.Error
@@ -62,13 +65,13 @@ deriveOrd1  ''SimplifiedClause
 simplifyExpr 
   :: (Typed t, InfoTag t) 
   => ProgExpr t 
-  -> Expr t t t t t t t t Void Void Void Void Void Void Void Void Name (SimplifiedClause t (ProgPattern t))
+  -> Expr t t t t t t t Void t Void Void Void Void Void Void Void Name (SimplifiedClause t (ProgPattern t))
 simplifyExpr = cata $ \case
 
     -- Translate tuples, lists, and records
     ETuple  t exprs      -> conExpr t (tupleCon (length exprs)) exprs
     EList   t exprs      -> foldr (listExprCons t) (conExpr t "[]" []) exprs
---    ERecord t row        -> conExpr t "#Record" [desugarRow row]
+    --    ERecord t row        -> conExpr t "#Record" [desugarRow row]
     -- Translate operators to prefix form
     EOp1    t op a       -> appExpr t [prefixOp1 op, a]
     EOp2    t op a b     -> appExpr t [varExpr (op2Tag op) ("(" <> op2Symbol op <> ")"), a, b]
@@ -101,8 +104,8 @@ split t = (updateType (const t1) t, updateType (const t2) t)
 unrollLambda 
   :: (Typed t, InfoTag t) 
   => [ProgPattern t] 
-  -> Expr t t t t t t t t Void Void Void Void Void Void Void Void Name (SimplifiedClause t (ProgPattern t)) 
-  -> Expr t t t t t t t t Void Void Void Void Void Void Void Void Name (SimplifiedClause t (ProgPattern t))
+  -> Expr t t t t t t t Void t Void Void Void Void Void Void Void Name (SimplifiedClause t (ProgPattern t)) 
+  -> Expr t t t t t t t Void t Void Void Void Void Void Void Void Name (SimplifiedClause t (ProgPattern t))
 unrollLambda ps e = fst (foldr f (e, tag e) ps)
   where
     f p (e, t) =
@@ -117,15 +120,15 @@ unrollLambda ps e = fst (foldr f (e, tag e) ps)
         EFix t _ _ _ -> t
         ELam t _ _   -> t
         EIf  t _ _ _ -> t
-        EPat t _ _   -> t
+--        EPat t _ _   -> t
 
 desugarLet 
   :: (Typed t, InfoTag t) 
   => t
   -> Binding t (ProgPattern t)
-  -> Expr t t t t t t t t Void Void Void Void Void Void Void Void Name (SimplifiedClause t (ProgPattern t))
-  -> Expr t t t t t t t t Void Void Void Void Void Void Void Void Name (SimplifiedClause t (ProgPattern t)) 
-  -> Expr t t t t t t t t Void Void Void Void Void Void Void Void Name (SimplifiedClause t (ProgPattern t))
+  -> Expr t t t t t t t Void t Void Void Void Void Void Void Void Name (SimplifiedClause t (ProgPattern t))
+  -> Expr t t t t t t t Void t Void Void Void Void Void Void Void Name (SimplifiedClause t (ProgPattern t)) 
+  -> Expr t t t t t t t Void t Void Void Void Void Void Void Void Name (SimplifiedClause t (ProgPattern t))
 desugarLet t bind e1 e2 = patExpr t [e] [SimplifiedClause t [p] [] e2]
   where
     (e, p) = case bind of
@@ -501,3 +504,83 @@ desugarLet t bind e1 e2 = patExpr t [e] [SimplifiedClause t [p] [] e2]
 ----    PAny{}    -> Variable eq
 ----    PLit{}    -> Variable eq
 ----    PAs _ _ q -> q
+
+-- >>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>
+-- >>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>
+-- >>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>
+
+stage1
+  :: ProgExpr t 
+  -> Expr t t t t t t t t t Void Void Void Void Void Void (Binding t (ProgPattern t)) [ProgPattern t] (SimplifiedClause t (ProgPattern t))
+stage1 = cata $ \case
+
+    -- Translate tuples, lists, and records
+    ETuple  t exprs      -> conExpr t (tupleCon (length exprs)) exprs
+    EList   t exprs      -> foldr (listExprCons t) (conExpr t "[]" []) exprs
+
+    -- Translate operators to prefix form
+    EOp1    t op a       -> appExpr t [prefixOp1 op, a]
+    EOp2    t op a b     -> appExpr t [varExpr (op2Tag op) ("(" <> op2Symbol op <> ")"), a, b]
+
+    -- Other exprs. do not change
+    EVar    t var        -> varExpr t var
+    ECon    t con es     -> conExpr t con es
+    ELit    t prim       -> litExpr t prim
+    EApp    t es         -> appExpr t es
+    EFix    t name e1 e2 -> fixExpr t name e1 e2
+    ELam    t ps e       -> lamExpr t ps e
+    EIf     t e1 e2 e3   -> ifExpr  t e1 e2 e3
+    EPat    t es cs      -> patExpr t es (expandClause =<< cs)
+    EFun    t cs         -> lamExpr t [varPat undefined "#0"] (patExpr undefined [varExpr undefined "#0"] (expandClause =<< cs))
+    ELet    t bind e1 e2 -> letExpr t bind e1 e2
+
+  where
+    prefixOp1 (ONeg t) = varExpr t "negate"
+    prefixOp1 (ONot t) = varExpr t "not"
+
+    expandClause (Clause t ps gs) = [SimplifiedClause t ps es e | Guard es e <- gs]
+
+compileClasses 
+--  :: Expr t1 t2 t3 t4 t5 t6 t7 t8 t9 Void Void Void Void Void Void bind lam clause 
+--  -> StateT [(Name, Type)] m (Expr t1 t2 t3 t4 t5 t6 t7 t8 t9 Void Void Void Void Void Void bind lam clause)
+
+  :: (Monad m) 
+  => Expr t t t t t t t t t Void Void Void Void Void Void (Binding t (ProgPattern t)) [ProgPattern t] (SimplifiedClause t (ProgPattern t))
+  -> StateT [(Name, Type)] m (Expr t t t t t t t t t Void Void Void Void Void Void (Binding t (ProgPattern t)) [ProgPattern t] (SimplifiedClause t (ProgPattern t)))
+compileClasses expr = 
+    insertDictArgs <$> run expr <*> (nub <$> pluck)
+  where
+    run
+      :: (Monad m)
+      => Expr t t t t t t t t t Void Void Void Void Void Void (Binding t (ProgPattern t)) [ProgPattern t] (SimplifiedClause t (ProgPattern t))
+      -> StateT [(Name, Type)] m (Expr t t t t t t t t t Void Void Void Void Void Void (Binding t (ProgPattern t)) [ProgPattern t] (SimplifiedClause t (ProgPattern t)))
+    run = cata $ \case
+
+        ELet t pat expr1 expr2 -> do
+            e1 <- expr1
+            vs <- nub <$> pluck
+            letExpr t pat (insertDictArgs e1 vs) <$> expr2
+
+        EVar t var -> 
+            undefined
+            --foldrM applyDicts (varExpr (stripNodePredicates t) var) (nodePredicates t)
+
+        e -> 
+            embed <$> sequence e
+
+
+insertDictArgs = 
+    undefined
+
+
+applyDicts = 
+    undefined
+
+
+setNodePredicates :: [Predicate] -> TypeInfo a -> TypeInfo a
+setNodePredicates ps ti = ti{ nodePredicates = ps }
+
+stripNodePredicates :: TypeInfo a -> TypeInfo a
+stripNodePredicates = setNodePredicates []
+
+

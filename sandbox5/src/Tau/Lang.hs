@@ -106,9 +106,9 @@ data ExprF t1 t2 t3 t4 t5 t6 t7 t8 t9 t10 t11 t12 t13 t14 t15 bind lam clause a
     | EFix    t5  Name a a               -- ^ Recursive let
     | ELam    t6  lam a                  -- ^ Lambda abstraction
     | EIf     t7  a a a                  -- ^ If-clause
-    | EPat    t8  [a] [clause a]         -- ^ Match expressions
-    | EFun    t9  [clause a]             -- ^ Fun expression
-    | ELet    t10 bind a a               -- ^ Let expression
+    | ELet    t8  bind a a               -- ^ Let expression
+    | EPat    t9  [a] [clause a]         -- ^ Match expressions
+    | EFun    t10 [clause a]             -- ^ Fun expression
     | EOp1    t11 (Op1 t11) a            -- ^ Unary operator
     | EOp2    t12 (Op2 t12) a a          -- ^ Binary operator
     | ETuple  t13 [a]                    -- ^ Tuple
@@ -521,14 +521,14 @@ lamExpr = embed3 ELam
 ifExpr :: (Functor clause) => t7 -> Expr t1 t2 t3 t4 t5 t6 t7 t8 t9 t10 t11 t12 t13 t14 t15 bind lam clause -> Expr t1 t2 t3 t4 t5 t6 t7 t8 t9 t10 t11 t12 t13 t14 t15 bind lam clause -> Expr t1 t2 t3 t4 t5 t6 t7 t8 t9 t10 t11 t12 t13 t14 t15 bind lam clause -> Expr t1 t2 t3 t4 t5 t6 t7 t8 t9 t10 t11 t12 t13 t14 t15 bind lam clause
 ifExpr = embed4 EIf
 
-patExpr :: (Functor clause) => t8 -> [Expr t1 t2 t3 t4 t5 t6 t7 t8 t9 t10 t11 t12 t13 t14 t15 bind lam clause] -> [clause (Expr t1 t2 t3 t4 t5 t6 t7 t8 t9 t10 t11 t12 t13 t14 t15 bind lam clause)] -> Expr t1 t2 t3 t4 t5 t6 t7 t8 t9 t10 t11 t12 t13 t14 t15 bind lam clause
+letExpr :: (Functor clause) => t8 -> bind -> Expr t1 t2 t3 t4 t5 t6 t7 t8 t9 t10 t11 t12 t13 t14 t15 bind lam clause -> Expr t1 t2 t3 t4 t5 t6 t7 t8 t9 t10 t11 t12 t13 t14 t15 bind lam clause -> Expr t1 t2 t3 t4 t5 t6 t7 t8 t9 t10 t11 t12 t13 t14 t15 bind lam clause
+letExpr = embed4 ELet
+
+patExpr :: (Functor clause) => t9 -> [Expr t1 t2 t3 t4 t5 t6 t7 t8 t9 t10 t11 t12 t13 t14 t15 bind lam clause] -> [clause (Expr t1 t2 t3 t4 t5 t6 t7 t8 t9 t10 t11 t12 t13 t14 t15 bind lam clause)] -> Expr t1 t2 t3 t4 t5 t6 t7 t8 t9 t10 t11 t12 t13 t14 t15 bind lam clause
 patExpr = embed3 EPat
 
-funExpr :: (Functor clause) => t9 -> [clause (Expr t1 t2 t3 t4 t5 t6 t7 t8 t9 t10 t11 t12 t13 t14 t15 bind lam clause)] -> Expr t1 t2 t3 t4 t5 t6 t7 t8 t9 t10 t11 t12 t13 t14 t15 bind lam clause
+funExpr :: (Functor clause) => t10 -> [clause (Expr t1 t2 t3 t4 t5 t6 t7 t8 t9 t10 t11 t12 t13 t14 t15 bind lam clause)] -> Expr t1 t2 t3 t4 t5 t6 t7 t8 t9 t10 t11 t12 t13 t14 t15 bind lam clause
 funExpr = embed2 EFun
-
-letExpr :: (Functor clause) => t10 -> bind -> Expr t1 t2 t3 t4 t5 t6 t7 t8 t9 t10 t11 t12 t13 t14 t15 bind lam clause -> Expr t1 t2 t3 t4 t5 t6 t7 t8 t9 t10 t11 t12 t13 t14 t15 bind lam clause -> Expr t1 t2 t3 t4 t5 t6 t7 t8 t9 t10 t11 t12 t13 t14 t15 bind lam clause
-letExpr = embed4 ELet
 
 op1Expr :: (Functor clause) => t11 -> Op1 t11 -> Expr t1 t2 t3 t4 t5 t6 t7 t8 t9 t10 t11 t12 t13 t14 t15 bind lam clause -> Expr t1 t2 t3 t4 t5 t6 t7 t8 t9 t10 t11 t12 t13 t14 t15 bind lam clause
 op1Expr = embed3 EOp1
