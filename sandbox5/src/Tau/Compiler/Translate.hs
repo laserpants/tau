@@ -516,7 +516,7 @@ desugarLet t bind e1 e2 = patExpr t [e] [SimplifiedClause t [p] [] e2]
 --  :: ProgExpr t 
 --  -> Expr t t t t t t t t t Void Void Void Void Void Void (Binding t (ProgPattern t)) [ProgPattern t] (SimplifiedClause t (ProgPattern t))
 
-stage1 :: ProgExpr (TypeInfo t) -> Stage1Expr (TypeInfo t)
+stage1 :: (InfoTag t) => ProgExpr (TypeInfo t) -> Stage1Expr (TypeInfo t)
 stage1 = cata $ \case
 
     -- Translate tuples, lists, and records
@@ -537,7 +537,7 @@ stage1 = cata $ \case
     ELam    t ps e       -> lamExpr t ps e
     EIf     t e1 e2 e3   -> ifExpr  t e1 e2 e3
     EPat    t es cs      -> patExpr t es (expandClause =<< cs)
-    EFun    t cs         -> lamExpr t [varPat undefined "#0"] (patExpr undefined [varExpr undefined "#0"] (expandClause =<< cs))
+    EFun    t cs         -> translateFunExpr t (expandClause =<< cs)
     ELet    t bind e1 e2 -> letExpr t bind e1 e2
 
   where
@@ -547,6 +547,15 @@ stage1 = cata $ \case
     prefixOp2 op = varExpr (op2Tag op) ("(" <> op2Symbol op <> ")")
 
     expandClause (Clause t ps gs) = [SimplifiedClause t ps es e | Guard es e <- gs]
+
+    translateFunExpr t = lamExpr t [varPat t1 "#0"] . patExpr t2 [varExpr t1 "#0"] 
+      where
+        t1 = undefined
+        t2 = undefined
+        -- === TODO ===
+--        t1 = updateType (const a) t
+--        t2 = updateType (const b) t
+--        Fix (TArr a b) = tagToType t
 
 -- >>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>
 
