@@ -85,13 +85,13 @@ unifyTypes t u = fn (project t) (project u)
     fn _ _                                    = throwError IncompatibleTypes
 
 matchTypes :: (MonadError UnificationError m) => Type -> Type -> m (Substitution Type, Substitution Kind)
-matchTypes t u = undefined -- fn (project t) (project u)
---  where
---    fn (TArr t1 t2) (TArr u1 u2)              = matchTypePairs (t1, t2) (u1, u2)
---    fn (TApp _ t1 t2) (TApp _ u1 u2)          = matchTypePairs (t1, t2) (u1, u2)
---    fn (TVar kind name) _                     = bindType name kind u
---    fn _ _ | t == u                           = pure (joinSubs mempty mempty)
---    fn _ _                                    = throwError IncompatibleTypes
+matchTypes t u = fn (project t) (project u)
+  where
+    fn (TArr t1 t2) (TArr u1 u2)              = matchTypePairs (t1, t2) (u1, u2)
+    fn (TApp _ t1 t2) (TApp _ u1 u2)          = matchTypePairs (t1, t2) (u1, u2)
+    fn (TVar kind name) _                     = bindType name kind u
+    fn _ _ | t == u                           = pure mempty
+    fn _ _                                    = throwError IncompatibleTypes
 
 unifyTypePairs :: (MonadError UnificationError m) => (Type, Type) -> (Type, Type) -> m (Substitution Type, Substitution Kind)
 unifyTypePairs (t1, t2) (u1, u2) = do
@@ -100,11 +100,13 @@ unifyTypePairs (t1, t2) (u1, u2) = do
     pure (typeSub2 <> typeSub1, kindSub2 <> kindSub1)
 
 matchTypePairs :: (MonadError UnificationError m) => (Type, Type) -> (Type, Type) -> m (Substitution Type, Substitution Kind)
-matchTypePairs = undefined
---matchTypePairs (t1, t2) (u1, u2) = do
---    sub1 <- matchTypes t1 u1
---    sub2 <- matchTypes t2 u2
---    merge sub1 sub2 & maybe (throwError MergeFailed) pure
+matchTypePairs (t1, t2) (u1, u2) = do
+    (typeSub1, kindSub1) <- matchTypes t1 u1
+    (typeSub2, kindSub2) <- matchTypes t2 u2
+    (,) <$> fn typeSub1 typeSub2 <*> fn kindSub1 kindSub2
+  where
+    fn sub1 sub2 = maybe (throwError MergeFailed) pure (merge sub1 sub2)
+
 
 --data RowType a
 --    = RNil 

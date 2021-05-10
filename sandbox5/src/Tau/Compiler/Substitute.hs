@@ -190,14 +190,14 @@ typeSubstitute sub = cata $ \case
     TArr t1 t2    -> tArr t1 t2
     ty            -> embed ty
 
-merge :: Substitution Type -> Substitution Type -> Maybe (Substitution Type)
+merge :: (Eq a) => Substitution a -> Substitution a -> Maybe (Substitution a)
 merge s1 s2 
     | allEqual  = Just (Sub (getSub s1 `Map.union` getSub s2))
     | otherwise = Nothing
   where
     allEqual = all (\v -> appV s1 v == appV s2 v) (domain s1 `intersect` domain s2)
 
-    appV :: Substitution Type -> Name -> Maybe Type
+    appV :: Substitution a -> Name -> Maybe a
     appV sub var = Map.lookup var (getSub sub)
 
 normalizer :: [(Name, Kind)] -> Substitution Type
