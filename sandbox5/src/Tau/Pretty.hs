@@ -468,7 +468,7 @@ exprTree
 exprTree = para $ \case
 
     EVar    t var        -> Node (annotated t var) []
-    ECon    t con es     -> Node (annotated t con) (snd <$> es)
+    ECon    t con es     -> Node ("Con" <+> annotated t con) (snd <$> es)
     ELit    t prim       -> Node (annotated t prim) []
     EApp    t es         -> Node (annotated t ("@" :: Text)) (snd <$> es)
     ELet    t bind e1 e2 -> Node (annotated t ("let" :: Text)) [Node (annotated (typeOf bind) (printLetBinding bind) <+> equals) [snd e1], Node "in" [snd e2]]

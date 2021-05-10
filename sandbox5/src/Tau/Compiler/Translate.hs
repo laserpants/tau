@@ -19,6 +19,7 @@ import Data.List (nub)
 import Data.Maybe (fromMaybe)
 import Data.Void
 import Tau.Compiler.Error
+import Tau.Core
 import Tau.Lang
 import Tau.Prog
 import Tau.Row
@@ -85,12 +86,16 @@ simplifyExpr = cata $ \case
     ELam    t ps e       -> unrollLambda ps e
     -- Translate let expressions
     ELet    t bind e1 e2 -> desugarLet t bind e1 e2
+
+    -- TODO TODO
+    EFix    t name e1 e2 -> desugarLet t (BLet t (varPat t name)) e1 e2
+
     -- Remaining values are unchanged
     EVar    t var        -> varExpr t var
     ECon    t con es     -> conExpr t con es
     ELit    t prim       -> litExpr t prim
     EApp    t es         -> appExpr t es
-    EFix    t name e1 e2 -> fixExpr t name e1 e2
+--    EFix    t name e1 e2 -> fixExpr t name e1 e2
     EIf     t e1 e2 e3   -> ifExpr  t e1 e2 e3
 
   where
@@ -512,10 +517,6 @@ desugarLet t bind e1 e2 = patExpr t [e] [SimplifiedClause t [p] [] e2]
 -- >>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>
 -- >>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>
 
---stage1
---  :: ProgExpr t 
---  -> Expr t t t t t t t t t Void Void Void Void Void Void (Binding t (ProgPattern t)) [ProgPattern t] (SimplifiedClause t (ProgPattern t))
-
 type Stage1Expr t = Expr t t t t t t t t t Void Void Void Void Void Void (Binding t (ProgPattern t)) [ProgPattern t] (SimplifiedClause t (ProgPattern t))
 
 stage1 :: ProgExpr (TypeInfoT [Error] (Maybe Type)) -> Stage1Expr (TypeInfoT [Error] (Maybe Type))
@@ -564,60 +565,85 @@ stage1 = cata $ \case
 
 -- >>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>
 
--- compileClasses
---   :: ( MonadSupply Name m
---      , MonadReader (ClassEnv, TypeEnv, KindEnv, ConstructorEnv) m
---      , MonadError Error m ) 
---   => Stage1Expr (TypeInfo t) 
---   -> StateT [(Name, Type)] m (Stage1Expr (TypeInfo t))
--- compileClasses expr = 
---     insertDictArgs <$> run expr <*> (nub <$> pluck)
---   where
---     run 
---       :: ( MonadSupply Name m
---          , MonadReader (ClassEnv, TypeEnv, KindEnv, ConstructorEnv) m
---          , MonadError Error m ) 
---       => Stage1Expr (TypeInfo t) 
---       -> StateT [(Name, Type)] m (Stage1Expr (TypeInfo t))
---     run = cata $ \case
--- 
---         ELet t pat expr1 expr2 -> do
---             e1 <- expr1
---             vs <- nub <$> pluck
---             letExpr t pat (insertDictArgs e1 vs) <$> expr2
--- 
---         EVar t var -> 
---             foldrM applyDicts (varExpr (stripNodePredicates t) var) (nodePredicates t)
--- 
---         e -> 
---             embed <$> sequence e
--- 
--- insertDictArgs :: Stage1Expr (TypeInfo t) -> [(Name, Type)] -> Stage1Expr (TypeInfo t)
--- insertDictArgs expr = 
---     undefined
--- 
--- applyDicts 
---   :: ( MonadSupply Name m
---      , MonadReader (ClassEnv, TypeEnv, KindEnv, ConstructorEnv) m
---      , MonadError Error m ) 
---   => Predicate 
---   -> Stage1Expr (TypeInfo t) 
---   -> StateT [(Name, Type)] m (Stage1Expr (TypeInfo t))
--- applyDicts (InClass name ty) expr 
--- 
---     | isVar ty = do
---         tv <- Text.replace "a" "$d" <$> supply
---         undefined
--- 
---     | otherwise = do
---         env <- askClassEnv
---         case classMethods <$> lookupClassInstance name ty env of
---             Left e -> throwError e
---             Right methods -> do
---                 undefined
--- 
--- setNodePredicates :: [Predicate] -> TypeInfo t -> TypeInfo t
--- setNodePredicates ps info = info{ nodePredicates = ps }
--- 
--- stripNodePredicates :: TypeInfo t -> TypeInfo t
--- stripNodePredicates = setNodePredicates []
+compileClasses
+  :: ( MonadSupply Name m
+     , MonadReader (ClassEnv, TypeEnv, KindEnv, ConstructorEnv) m
+     , MonadError Error m ) 
+  => Stage1Expr (TypeInfo t) 
+  -> StateT [(Name, Type)] m (Stage1Expr (TypeInfo t))
+compileClasses expr = 
+    insertDictArgs <$> run expr <*> (nub <$> pluck)
+  where
+    run 
+      :: ( MonadSupply Name m
+         , MonadReader (ClassEnv, TypeEnv, KindEnv, ConstructorEnv) m
+         , MonadError Error m ) 
+      => Stage1Expr (TypeInfo t) 
+      -> StateT [(Name, Type)] m (Stage1Expr (TypeInfo t))
+    run = cata $ \case
+
+        ELet t pat expr1 expr2 -> do
+            e1 <- expr1
+            vs <- nub <$> pluck
+            letExpr t pat (insertDictArgs e1 vs) <$> expr2
+
+        EVar t var -> 
+            foldrM applyDicts (varExpr (stripNodePredicates t) var) (nodePredicates t)
+
+        e -> 
+            embed <$> sequence e
+
+insertDictArgs :: Stage1Expr (TypeInfo t) -> [(Name, Type)] -> Stage1Expr (TypeInfo t)
+insertDictArgs expr = 
+    undefined
+
+applyDicts 
+  :: ( MonadSupply Name m
+     , MonadReader (ClassEnv, TypeEnv, KindEnv, ConstructorEnv) m
+     , MonadError Error m ) 
+  => Predicate 
+  -> Stage1Expr (TypeInfo t) 
+  -> StateT [(Name, Type)] m (Stage1Expr (TypeInfo t))
+applyDicts (InClass name ty) expr 
+
+    | isVar ty = do
+        tv <- Text.replace "a" "$d" <$> supply
+        undefined
+
+    | otherwise = do
+        env <- askClassEnv
+        case classMethods <$> lookupClassInstance name ty env of
+            Left e -> throwError e
+            Right methods -> do
+                undefined
+
+setNodePredicates :: [Predicate] -> TypeInfo t -> TypeInfo t
+setNodePredicates ps info = info{ nodePredicates = ps }
+
+stripNodePredicates :: TypeInfo t -> TypeInfo t
+stripNodePredicates = setNodePredicates []
+
+-- >>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>
+
+-- >>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>
+
+toCore 
+  :: (Monad m)
+  => Stage1Expr t
+  -> m Core
+toCore = cata $ \case
+
+    EVar _ var       -> pure (cVar var)
+    ELit _ lit       -> pure (cLit lit)
+    EIf  _ e1 e2 e3  -> cIf <$> e1 <*> e2 <*> e3
+    EApp _ exs       -> sequenceExs exs
+    ECon _ con exs   -> sequenceExs (pure (cVar con):exs)
+--    ELet _ var e1 e2 -> cLet var <$> e1 <*> e2
+--    EFix _ var e1 e2 -> cLet var <$> e1 <*> e2
+--    ELam _ var e1    -> cLam var <$> e1
+
+sequenceExs :: (Monad m) => [m Core] -> m Core
+sequenceExs = (fun <$>) . sequence where 
+    fun = \case 
+        [e] -> e
+        es  -> cApp es
