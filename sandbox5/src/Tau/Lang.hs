@@ -105,8 +105,8 @@ data ExprF t1 t2 t3 t4 t5 t6 t7 t8 t9 t10 t11 t12 t13 t14 t15 e1 e2 e3 a
     | EFix    t5  Name a a               -- ^ Recursive let
     | ELam    t6  e2 a                   -- ^ Lambda abstraction
     | EIf     t7  a a a                  -- ^ If-clause
-    | ELet    t8  e1 a a                 -- ^ Let expression
-    | EPat    t9  [a] [e3 a]             -- ^ Match expressions
+    | EPat    t8  [a] [e3 a]             -- ^ Match expressions
+    | ELet    t9  e1 a a                 -- ^ Let expression
     | EFun    t10 [e3 a]                 -- ^ Fun expression
     | EOp1    t11 (Op1 t11) a            -- ^ Unary operator
     | EOp2    t12 (Op2 t12) a a          -- ^ Binary operator
@@ -585,22 +585,22 @@ ifExpr
   -> Expr t1 t2 t3 t4 t5 t6 t7 t8 t9 t10 t11 t12 t13 t14 t15 e1 e2 e3
 ifExpr = embed4 EIf
 
-letExpr 
+patExpr 
   :: (Functor e3) 
   => t8 
+  -> [Expr t1 t2 t3 t4 t5 t6 t7 t8 t9 t10 t11 t12 t13 t14 t15 e1 e2 e3] 
+  -> [e3 (Expr t1 t2 t3 t4 t5 t6 t7 t8 t9 t10 t11 t12 t13 t14 t15 e1 e2 e3)] 
+  -> Expr t1 t2 t3 t4 t5 t6 t7 t8 t9 t10 t11 t12 t13 t14 t15 e1 e2 e3
+patExpr = embed3 EPat
+
+letExpr 
+  :: (Functor e3) 
+  => t9 
   -> e1 
   -> Expr t1 t2 t3 t4 t5 t6 t7 t8 t9 t10 t11 t12 t13 t14 t15 e1 e2 e3 
   -> Expr t1 t2 t3 t4 t5 t6 t7 t8 t9 t10 t11 t12 t13 t14 t15 e1 e2 e3 
   -> Expr t1 t2 t3 t4 t5 t6 t7 t8 t9 t10 t11 t12 t13 t14 t15 e1 e2 e3
 letExpr = embed4 ELet
-
-patExpr 
-  :: (Functor e3) 
-  => t9 
-  -> [Expr t1 t2 t3 t4 t5 t6 t7 t8 t9 t10 t11 t12 t13 t14 t15 e1 e2 e3] 
-  -> [e3 (Expr t1 t2 t3 t4 t5 t6 t7 t8 t9 t10 t11 t12 t13 t14 t15 e1 e2 e3)] 
-  -> Expr t1 t2 t3 t4 t5 t6 t7 t8 t9 t10 t11 t12 t13 t14 t15 e1 e2 e3
-patExpr = embed3 EPat
 
 funExpr 
   :: (Functor e3) 

@@ -13,7 +13,7 @@ data CoreF a
     = CVar Name                 -- ^ Variable
     | CLit Prim                 -- ^ Primitive value
     | CApp [a]                  -- ^ Function application
---    | CLet Name a a             -- ^ Let expression
+    | CLet Name a a             -- ^ Let expression
     | CLam Name a               -- ^ Lambda abstraction
     | CIf  a ~a ~a              -- ^ If-clause
     | CPat a (CMatrix a)        -- ^ Pattern matching clause matrix
@@ -50,8 +50,8 @@ cLit = embed1 CLit
 cApp :: [Core] -> Core
 cApp = embed1 CApp
 
---cLet :: Name -> Core -> Core -> Core
---cLet = embed3 CLet
+cLet :: Name -> Core -> Core -> Core
+cLet = embed3 CLet
 
 cLam :: Name -> Core -> Core
 cLam = embed2 CLam

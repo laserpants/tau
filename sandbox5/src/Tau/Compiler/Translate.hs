@@ -44,7 +44,7 @@ class InfoTag t where
 instance InfoTag (TypeInfo [e]) where
     typeToTag t  = TypeInfo t [] []
     tagToType it = nodeType it
-    updateType   = fmap 
+    updateType   = fmap
 
 instance InfoTag () where
     typeToTag _    = ()
@@ -66,10 +66,10 @@ deriveOrd1  ''SimplifiedClause
 --type SimplifiedPattern t = Pattern t t t Void Void Void Void Void Void
 --type SimplifiedExpr t = Expr t t t t t t t t Void Void Void Void Void Void Void Void Name (SimplifiedClause t (SimplifiedPattern t))
 
-simplifyExpr 
-  :: (Typed t, InfoTag t) 
-  => ProgExpr t 
-  -> Expr t t t t t t t Void t Void Void Void Void Void Void Void Name (SimplifiedClause t (ProgPattern t))
+simplifyExpr
+  :: (Typed t, InfoTag t)
+  => ProgExpr t
+  -> Expr t t t t t t t t Void Void Void Void Void Void Void Void Name (SimplifiedClause t (ProgPattern t))
 simplifyExpr = cata $ \case
 
     -- Translate tuples, lists, and records
@@ -88,7 +88,7 @@ simplifyExpr = cata $ \case
     ELet    t bind e1 e2 -> desugarLet t bind e1 e2
 
     -- TODO TODO
-    EFix    t name e1 e2 -> desugarLet t (BLet t (varPat t name)) e1 e2
+--    EFix    t name e1 e2 -> desugarLet t (BLet t (varPat t name)) e1 e2
 
     -- Remaining values are unchanged
     EVar    t var        -> varExpr t var
@@ -109,11 +109,11 @@ split t = (updateType (const t1) t, updateType (const t2) t)
   where
     Fix (TArr t1 t2) = tagToType t
 
-unrollLambda 
-  :: (Typed t, InfoTag t) 
-  => [ProgPattern t] 
-  -> Expr t t t t t t t Void t Void Void Void Void Void Void Void Name (SimplifiedClause t (ProgPattern t)) 
-  -> Expr t t t t t t t Void t Void Void Void Void Void Void Void Name (SimplifiedClause t (ProgPattern t))
+unrollLambda
+  :: (Typed t, InfoTag t)
+  => [ProgPattern t]
+  -> Expr t t t t t t t t Void Void Void Void Void Void Void Void Name (SimplifiedClause t (ProgPattern t))
+  -> Expr t t t t t t t t Void Void Void Void Void Void Void Void Name (SimplifiedClause t (ProgPattern t))
 unrollLambda ps e = fst (foldr f (e, tag e) ps)
   where
     f p (e, t) =
@@ -130,13 +130,14 @@ unrollLambda ps e = fst (foldr f (e, tag e) ps)
         EIf  t _ _ _ -> t
 --        EPat t _ _   -> t
 
-desugarLet 
-  :: (Typed t, InfoTag t) 
+desugarLet
+  :: (Typed t, InfoTag t)
   => t
   -> Binding t (ProgPattern t)
-  -> Expr t t t t t t t Void t Void Void Void Void Void Void Void Name (SimplifiedClause t (ProgPattern t))
-  -> Expr t t t t t t t Void t Void Void Void Void Void Void Void Name (SimplifiedClause t (ProgPattern t)) 
-  -> Expr t t t t t t t Void t Void Void Void Void Void Void Void Name (SimplifiedClause t (ProgPattern t))
+  -> Expr t t t t t t t t Void Void Void Void Void Void Void Void Name (SimplifiedClause t (ProgPattern t))
+  -> Expr t t t t t t t t Void Void Void Void Void Void Void Void Name (SimplifiedClause t (ProgPattern t))
+  -> Expr t t t t t t t t Void Void Void Void Void Void Void Void Name (SimplifiedClause t (ProgPattern t))
+desugarLet t (BLet _ (Fix (PVar _ var))) e1 e2 = fixExpr t var e1 e2
 desugarLet t bind e1 e2 = patExpr t [e] [SimplifiedClause t [p] [] e2]
   where
     (e, p) = case bind of
@@ -144,10 +145,10 @@ desugarLet t bind e1 e2 = patExpr t [e] [SimplifiedClause t [p] [] e2]
         BFun _ f ps  -> (unrollLambda ps e1, varPat t f)
 
 --unrollLambda2
---  :: (Typed t, InfoTag t) 
---  => t 
---  -> [ProgPattern t] 
---  -> Expr t t t t t t t t Void Void Void Void Void Void Void Void Name (SimplifiedClause t (ProgPattern t)) 
+--  :: (Typed t, InfoTag t)
+--  => t
+--  -> [ProgPattern t]
+--  -> Expr t t t t t t t t Void Void Void Void Void Void Void Void Name (SimplifiedClause t (ProgPattern t))
 --  -> Expr t t t t t t t t Void Void Void Void Void Void Void Void Name (SimplifiedClause t (ProgPattern t))
 --unrollLambda2 = undefined
 
@@ -221,7 +222,7 @@ desugarLet t bind e1 e2 = patExpr t [e] [SimplifiedClause t [p] [] e2]
 --faz = undefined
 --
 --desugarRow
---  :: (Functor clause, InfoTag t) 
+--  :: (Functor clause, InfoTag t)
 --  => Row (Expr t t t t t t t t Void Void Void Void Void Void Void bind lam clause)
 --  -> Expr t t t t t t t t Void Void Void Void Void Void Void bind lam clause
 --desugarRow (Row map r) =
@@ -299,7 +300,7 @@ desugarLet t bind e1 e2 = patExpr t [e] [SimplifiedClause t [p] [] e2]
 ----        EIf     t _ _ _  -> t
 ------        EPat    t _ _    -> t
 ----
-------removeFunExprs 
+------removeFunExprs
 ------  :: (Tag t, MonadSupply Name m)
 ------  => Expr t t t t t t t t t Void Void Void Void Void Void Void Name (SimplifiedClause t (ProgPattern t))
 ------  -> m (Expr t t t t t t t t Void Void Void Void Void Void Void Void Name (SimplifiedClause t (ProgPattern t)))
@@ -415,7 +416,7 @@ desugarLet t bind e1 e2 = patExpr t [e] [SimplifiedClause t [p] [] e2]
 ----    EPat    t es cs      -> patExpr t <$> sequence es <*> traverse expandPatterns cs
 ----
 ----expandPatterns
-----  :: (Tag t, MonadSupply Name m) 
+----  :: (Tag t, MonadSupply Name m)
 ----  => SimplifiedClause t (DesugaredPattern t) (m (Expr t t t t t t t t Void Void Void Void Void Void Void Void Name (SimplifiedClause t (SimplifiedPattern t))))
 ----  -> m (SimplifiedClause t (SimplifiedPattern t) (Expr t t t t t t t t Void Void Void Void Void Void Void Void Name (SimplifiedClause t (SimplifiedPattern t))))
 ----expandPatterns clause = do
@@ -431,8 +432,8 @@ desugarLet t bind e1 e2 = patExpr t [e] [SimplifiedClause t [p] [] e2]
 --------expandPatterns
 --------  :: [SimplifiedClause t (DesugaredPattern t) (Expr t t t t t t t t t Void Void Void Void Void Void Void Name (SimplifiedClause t (SimplifiedPattern t)))]
 --------  -> [SimplifiedClause t (SimplifiedPattern t) (Expr t t t t t t t t t Void Void Void Void Void Void Void Name (SimplifiedClause t (SimplifiedPattern t)))]
-------expandPatterns 
-------  :: (Tag t, MonadSupply Name m) 
+------expandPatterns
+------  :: (Tag t, MonadSupply Name m)
 ------  => [SimplifiedClause t (DesugaredPattern t) (m (Expr t t t t t t t t Void Void Void Void Void Void Void Void Name (SimplifiedClause t (SimplifiedPattern t))))]
 ------  -> m [SimplifiedClause t (SimplifiedPattern t) (Expr t t t t t t t t Void Void Void Void Void Void Void Void Name (SimplifiedClause t (SimplifiedPattern t)))]
 ------expandPatterns xs = do
@@ -440,9 +441,9 @@ desugarLet t bind e1 e2 = patExpr t [e] [SimplifiedClause t [p] [] e2]
 ------    foo <- traverse bobbo zoom
 ------    pure (concat foo)
 ----
-------bobbo 
-------  :: (MonadSupply Name m) 
-------  => SimplifiedClause t0 (DesugaredPattern t) a 
+------bobbo
+------  :: (MonadSupply Name m)
+------  => SimplifiedClause t0 (DesugaredPattern t) a
 ------  -> m [SimplifiedClause t0 (SimplifiedPattern t) a]
 ------bobbo (SimplifiedClause t ps es e) = do
 ------    qs <- concat <$> traverse splitOrs ps
@@ -450,15 +451,15 @@ desugarLet t bind e1 e2 = patExpr t [e] [SimplifiedClause t [p] [] e2]
 ----
 ------    pure [SimplifiedClause t qs es e] -- [SimplifiedClause t qs es e | qs <- traverse splitOrs ps]
 ----
-------data Clause t p a = Clause t [p] [Guard a] 
+------data Clause t p a = Clause t [p] [Guard a]
 ----
 ------expandPatterns = concatMap $ \(SimplifiedClause t ps es e) -> do
 ------    undefined
 ------    [SimplifiedClause t qs es e | qs <- traverse splitOrs ps]
 ----
-----splitOrs 
-----  :: (MonadSupply Name m) 
-----  => DesugaredPattern t 
+----splitOrs
+----  :: (MonadSupply Name m)
+----  => DesugaredPattern t
 ----  -> m [SimplifiedPattern t]
 ----splitOrs = cata $ \case
 ----    PVar    t var        -> pure [varPat t var]
@@ -519,13 +520,14 @@ desugarLet t bind e1 e2 = patExpr t [e] [SimplifiedClause t [p] [] e2]
 
 type Stage1Expr t = Expr t t t t t t t t t Void Void Void Void Void Void (Binding t (ProgPattern t)) [ProgPattern t] (SimplifiedClause t (ProgPattern t))
 
-stage1 :: ProgExpr (TypeInfoT [Error] (Maybe Type)) -> Stage1Expr (TypeInfoT [Error] (Maybe Type))
+stage1 
+  :: ProgExpr (TypeInfoT [Error] (Maybe Type)) 
+  -> Stage1Expr (TypeInfoT [Error] (Maybe Type))
 stage1 = cata $ \case
 
     -- Translate tuples, lists, and records
     ETuple  t exprs      -> conExpr t (tupleCon (length exprs)) exprs
     EList   t exprs      -> foldr (listExprCons t) (conExpr t "[]" []) exprs
-    -- ERecord TODO
 
     -- Translate operators to prefix form
     EOp1    t op a       -> appExpr t [prefixOp1 op, a]
@@ -552,7 +554,7 @@ stage1 = cata $ \case
 
     expandClause (Clause t ps gs) = [SimplifiedClause t ps es e | Guard es e <- gs]
 
-    translateFunExpr t = lamExpr t [varPat t1 "#0"] <<< patExpr t2 [varExpr t1 "#0"] 
+    translateFunExpr t = lamExpr t [varPat t1 "#0"] <<< patExpr t2 [varExpr t1 "#0"]
       where
         t1 = TypeInfo (get cod) (nodePredicates t) []
         t2 = TypeInfo (get dom) (nodePredicates t) []
@@ -565,21 +567,27 @@ stage1 = cata $ \case
 
 -- >>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>
 
+-- TODO
+type Stage2Expr t = Stage1Expr t
+
+stage2 
+  :: Stage1Expr (TypeInfoT [Error] (Maybe Type)) 
+  -> Stage2Expr (TypeInfoT [Error] (Maybe Type))
+stage2 = undefined
+
 compileClasses
   :: ( MonadSupply Name m
-     , MonadReader (ClassEnv, TypeEnv, KindEnv, ConstructorEnv) m
-     , MonadError Error m ) 
-  => Stage1Expr (TypeInfo t) 
-  -> StateT [(Name, Type)] m (Stage1Expr (TypeInfo t))
-compileClasses expr = 
+     , MonadReader (ClassEnv, TypeEnv, KindEnv, ConstructorEnv) m )
+  => Stage1Expr (TypeInfoT [e] t)
+  -> StateT [(Name, Type)] m (Stage1Expr (TypeInfoT [e] t))
+compileClasses expr =
     insertDictArgs <$> run expr <*> (nub <$> pluck)
   where
-    run 
+    run
       :: ( MonadSupply Name m
-         , MonadReader (ClassEnv, TypeEnv, KindEnv, ConstructorEnv) m
-         , MonadError Error m ) 
-      => Stage1Expr (TypeInfo t) 
-      -> StateT [(Name, Type)] m (Stage1Expr (TypeInfo t))
+         , MonadReader (ClassEnv, TypeEnv, KindEnv, ConstructorEnv) m )
+      => Stage1Expr (TypeInfoT [e] t)
+      -> StateT [(Name, Type)] m (Stage1Expr (TypeInfoT [e] t))
     run = cata $ \case
 
         ELet t pat expr1 expr2 -> do
@@ -587,24 +595,34 @@ compileClasses expr =
             vs <- nub <$> pluck
             letExpr t pat (insertDictArgs e1 vs) <$> expr2
 
-        EVar t var -> 
+--        EFix t var expr1 expr2 -> do
+--            undefined
+
+        EVar t var ->
             foldrM applyDicts (varExpr (stripNodePredicates t) var) (nodePredicates t)
 
-        e -> 
+--        ELit t lit ->
+--            undefined
+
+        e ->
             embed <$> sequence e
 
-insertDictArgs :: Stage1Expr (TypeInfo t) -> [(Name, Type)] -> Stage1Expr (TypeInfo t)
-insertDictArgs expr = 
-    undefined
+insertDictArgs
+  :: Stage1Expr (TypeInfoT [e] t)
+  -> [(Name, Type)]
+  -> Stage1Expr (TypeInfoT [e] t)
+insertDictArgs expr _ =
+    expr
+    -- TODO
+--    undefined
 
-applyDicts 
+applyDicts
   :: ( MonadSupply Name m
-     , MonadReader (ClassEnv, TypeEnv, KindEnv, ConstructorEnv) m
-     , MonadError Error m ) 
-  => Predicate 
-  -> Stage1Expr (TypeInfo t) 
-  -> StateT [(Name, Type)] m (Stage1Expr (TypeInfo t))
-applyDicts (InClass name ty) expr 
+     , MonadReader (ClassEnv, TypeEnv, KindEnv, ConstructorEnv) m )
+  => Predicate
+  -> Stage1Expr (TypeInfoT [e] t)
+  -> StateT [(Name, Type)] m (Stage1Expr (TypeInfoT [e] t))
+applyDicts (InClass name ty) expr
 
     | isVar ty = do
         tv <- Text.replace "a" "$d" <$> supply
@@ -613,37 +631,118 @@ applyDicts (InClass name ty) expr
     | otherwise = do
         env <- askClassEnv
         case classMethods <$> lookupClassInstance name ty env of
-            Left e -> throwError e
+            Left e -> undefined -- throwError e
             Right methods -> do
                 undefined
 
-setNodePredicates :: [Predicate] -> TypeInfo t -> TypeInfo t
+setNodePredicates :: [Predicate] -> TypeInfoT [e] t -> TypeInfoT [e] t
 setNodePredicates ps info = info{ nodePredicates = ps }
 
-stripNodePredicates :: TypeInfo t -> TypeInfo t
+stripNodePredicates :: TypeInfoT [e] t -> TypeInfoT [e] t
 stripNodePredicates = setNodePredicates []
 
 -- >>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>
 
+type Stage3Expr t = Expr t t t t t t t t Void Void Void Void Void Void Void Void Name (SimplifiedClause t (ProgPattern t))
+
+stage3 
+  :: Stage2Expr (TypeInfoT [Error] (Maybe Type)) 
+  -> Stage3Expr (TypeInfoT [Error] (Maybe Type))
+stage3 = cata $ \case
+
+    ELam    t ps e       -> unrollLambda2 t ps e
+    ELet    t bind e1 e2 -> unrollLet2 t bind e1 e2
+
+--    ELet    t bind e1 e2 -> patExpr t [e] [SimplifiedClause t [p] [] e2]
+--      where
+--        (e, p) = case bind of
+--            BLet _ pat   -> (e1, pat)
+--            BFun _ f ps  -> (unrollLambda2 ps e1, varPat t f)
+
+    EPat    t es cs      -> patExpr t es cs
+    EVar    t var        -> varExpr t var
+    ECon    t con es     -> conExpr t con es
+    ELit    t prim       -> litExpr t prim
+    EApp    t es         -> appExpr t es
+    EFix    t name e1 e2 -> fixExpr t name e1 e2
+    EIf     t e1 e2 e3   -> ifExpr  t e1 e2 e3
+
+unrollLet2
+  :: t
+  -> Binding t (ProgPattern t)
+  -> Stage3Expr t
+  -> Stage3Expr t
+  -> Stage3Expr t
+unrollLet2 t (BLet _ (Fix (PVar _ var))) e1 e2 = fixExpr t var e1 e2
+unrollLet2 t bind e1 e2 = patExpr t [e] [SimplifiedClause t [p] [] e2]
+  where
+    (e, p) = case bind of
+        BLet _ pat   -> (e1, pat)
+        BFun t f ps  -> (unrollLambda2 t ps e1, varPat t f)
+
+unrollLambda2
+  :: t
+  -> [ProgPattern t]
+  -> Stage3Expr t
+  -> Stage3Expr t
+unrollLambda2 t [Fix (PVar _ var)] e = lamExpr t var e
+unrollLambda2 t [p] e = lamExpr t' "#0" (patExpr t [varExpr (patternTag p) "#0"] [SimplifiedClause t [p] [] e])
+  where
+    t' = undefined
+
+unrollLambda2 t (p:ps) e = undefined
+
+
+--unrollLambda2 ps e = fst (foldr f (e, tag e) ps)
+--  where
+--    f p (e, t) =
+--        let t' = t -- TODO undefined -- updateType (tArr (typeOf (patternTag p))) t
+--         in (lamExpr t' "#0" (patExpr t [varExpr (patternTag p) "#0"] [SimplifiedClause t [p] [] e]), t')
+--         --in (lamExpr t' "#0" (undefined), t')
+
+--    tag = cata $ \case
+--        EVar t _     -> t
+--        ECon t _ _   -> t
+--        ELit t _     -> t
+--        EApp t _     -> t
+--        EFix t _ _ _ -> t
+--        ELam t _ _   -> t
+--        EIf  t _ _ _ -> t
+----        EPat t _ _   -> t
+
+--desugarLet
+--  :: (Typed t, InfoTag t)
+--  => t
+--  -> Binding t (ProgPattern t)
+--  -> Expr t t t t t t t Void t Void Void Void Void Void Void Void Name (SimplifiedClause t (ProgPattern t))
+--  -> Expr t t t t t t t Void t Void Void Void Void Void Void Void Name (SimplifiedClause t (ProgPattern t))
+--  -> Expr t t t t t t t Void t Void Void Void Void Void Void Void Name (SimplifiedClause t (ProgPattern t))
+--desugarLet t (BLet _ (Fix (PVar _ var))) e1 e2 = fixExpr t var e1 e2
+--desugarLet t bind e1 e2 = patExpr t [e] [SimplifiedClause t [p] [] e2]
+--  where
+--    (e, p) = case bind of
+--        BLet _ pat   -> (e1, pat)
+--        BFun _ f ps  -> (unrollLambda ps e1, varPat t f)
+
 -- >>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>
 
-toCore 
+toCore
   :: (Monad m)
-  => Stage1Expr t
+  => Stage3Expr t
   -> m Core
 toCore = cata $ \case
 
     EVar _ var       -> pure (cVar var)
     ELit _ lit       -> pure (cLit lit)
-    EIf  _ e1 e2 e3  -> cIf <$> e1 <*> e2 <*> e3
     EApp _ exs       -> sequenceExs exs
+    EFix _ var e1 e2 -> cLet var <$> e1 <*> e2
+    ELam _ var e1    -> cLam var <$> e1
+    EIf  _ e1 e2 e3  -> cIf <$> e1 <*> e2 <*> e3
     ECon _ con exs   -> sequenceExs (pure (cVar con):exs)
---    ELet _ var e1 e2 -> cLet var <$> e1 <*> e2
---    EFix _ var e1 e2 -> cLet var <$> e1 <*> e2
---    ELam _ var e1    -> cLam var <$> e1
 
 sequenceExs :: (Monad m) => [m Core] -> m Core
-sequenceExs = (fun <$>) . sequence where 
-    fun = \case 
+sequenceExs = (fun <$>) . sequence
+  where
+    fun = \case
         [e] -> e
         es  -> cApp es

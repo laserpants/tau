@@ -8,10 +8,10 @@ module Tau.Eval where
 import Control.Monad.Reader
 import Data.Char
 import Tau.Core
-import Tau.Lang
-import Tau.Eval.Prim
-import Tau.Tool
 import Tau.Env (Env(..))
+import Tau.Eval.Prim
+import Tau.Lang
+import Tau.Tool
 import qualified Data.Text as Text
 import qualified Tau.Env as Env
 
@@ -69,9 +69,9 @@ eval = cata $ \case
     CApp exs -> 
         foldl1 evalApp exs
 
---    CLet var e1 e2 -> do
---        val <- e1
---        local (Env.insert var val) e2 
+    CLet var e1 e2 -> do
+        val <- e1
+        local (Env.insert var val) e2 
 
     CLam var e1 ->
         asks (Closure var e1)
@@ -100,7 +100,9 @@ evalVar var =
                 Nothing -> 
                     if isConstructor var 
                         then pure (Data var []) 
-                        else fail "Unbound identifier"
+                        else do 
+                            traceShowM ("Unbound identifier " <> var)
+                            fail "Unbound identifier"
 
 -- TODO
 isConstructor :: Name -> Bool
@@ -111,6 +113,7 @@ isConstructor var
     -- TODO
     | isUpper init    = True
     | "(::)" == var   = True
+    | "(,)" == var    = True
     | "[]" == var     = True
 --    | isTupleCon var  = True
 --    | isRecordCon var = True
@@ -166,3 +169,15 @@ evalPat ((p:ps, e):eqs) val =
 
         _ ->
             evalPat eqs val
+
+--constructor :: (MonadReader (ValueEnv m) m) => Name -> Int -> Value m
+--constructor name 0 = Data name []
+--constructor name n = Closure v val mempty
+--  where
+--    vars@(v:vs) = 
+--        take n (nameSupply "%")
+--    val = (ini & foldr (\fun -> asks . Closure fun)) vs
+--    ini = do
+--        Env env <- ask
+--        let args = fmap (env Map.!) vars
+--        pure (Data name args)

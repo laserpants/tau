@@ -49,10 +49,10 @@ instance Substitutable (TypeT a) (TypeT a) where
 
 instance Substitutable Polytype Type where
     apply sub = cata $ \case
-        TVar kind var -> toPolytype (withDefault (tVar kind var) var sub)
-        TApp k t1 t2  -> tApp k t1 t2
-        TArr t1 t2    -> tArr t1 t2
-        ty            -> embed ty
+        TVar kind var        -> toPolytype (withDefault (tVar kind var) var sub)
+        TApp k t1 t2         -> tApp k t1 t2
+        TArr t1 t2           -> tArr t1 t2
+        ty                   -> embed ty
 
 instance (Substitutable t a) => Substitutable (PredicateT t) a where
     apply = fmap . apply

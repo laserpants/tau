@@ -7,6 +7,8 @@ module Main where
 import Control.Monad.Except
 import Control.Monad.Identity
 import Control.Monad.Supply
+import Control.Monad.Reader
+import Control.Monad.State
 import Control.Monad.Writer
 import Data.Maybe (fromJust)
 import Data.Text (unpack)
@@ -437,6 +439,10 @@ mapAst f e = zz
     zz = getAst yy
 
 
+evalEnv2 = Env.fromList 
+    [ -- ( "(,)" , constructor "(,)" 2 )
+    ]
+
 test2 = do -- case fromJust (runInfer mempty testClassEnv testTypeEnv testConstructorEnv (inferExprType expr1)) of
     print "----------"
     print (apply sub2 (apply sub a))
@@ -446,6 +452,14 @@ test2 = do -- case fromJust (runInfer mempty testClassEnv testTypeEnv testConstr
     print xx
     print "=========="
     putStrLn (showTree zz)
+    print "=========="
+    putStrLn (showTree zz2)
+    print "=========="
+    print xx3
+    print "=========="
+    print (evalExpr xx3 evalEnv2)
+    print "=========="
+    --putStrLn (showTree zz123)
 --    Left e -> error (show e)
 --    Right (expr, sub, context) -> do
 --        print (expr, sub, context)
@@ -472,10 +486,24 @@ test2 = do -- case fromJust (runInfer mempty testClassEnv testTypeEnv testConstr
     xx :: Stage1Expr (TypeInfoT [Error] (Maybe Type))
     xx = stage1 (getAst eee)
 
+    xx2 = stage3 xx
+
+    xx3 :: Core
+    xx3 = runIdentity (toCore xx2)
+
+    xx123 :: Stage1Expr (TypeInfoT [Error] (Maybe Type))
+    xx123 = fromJust (evalSupply (runReaderT (evalStateT (compileClasses xx) []) (testClassEnv, testTypeEnv, testKindEnv, testConstructorEnv)) (nameSupply ""))
+
 --    yyyy = mapAst (const ()) (getAst ee)
 
     yy = exprTree xx
     zz = unpack . renderDoc <$> yy
+
+    yy2 = exprTree xx2
+    zz2 = unpack . renderDoc <$> yy2
+
+    yy123 = exprTree xx123
+    zz123 = unpack . renderDoc <$> yy123
 
     (a, sub, sub2, ctx) = fromJust (runInfer mempty testClassEnv testTypeEnv testKindEnv testConstructorEnv expr)
 --    expr = inferAst (Ast (appExpr () [varExpr () "id", litExpr () (TInt 5)]))
@@ -513,9 +541,14 @@ test2 = do -- case fromJust (runInfer mempty testClassEnv testTypeEnv testConstr
 --    expr = inferAst (Ast (funExpr () [ Clause () [conPat () "Some" [varPat () "x"]] [Guard [] (litExpr () (TBool True))] ]))
 
 
-    expr = inferAst (Ast (letExpr () (BLet () (varPat () "id")) (lamExpr () [varPat () "x"] (varExpr () "x")) (tupleExpr () [appExpr () [varExpr () "id", litExpr () (TInt 5)], appExpr () [varExpr () "id", litExpr () (TBool True)]])))
 
 --    expr = inferAst (Ast (listExpr () [litExpr () (TInt 1), litExpr () (TInt 2), litExpr () (TInt 3), litExpr () (TInt 4)]))
+
+--    expr = inferAst (Ast (letExpr () (BLet () (varPat () "id")) (lamExpr () [varPat () "x"] (varExpr () "x")) (appExpr () [varExpr () "id", litExpr () (TInt 5)])))
+
+    expr = inferAst (Ast (letExpr () (BLet () (varPat () "id")) (lamExpr () [varPat () "x"] (varExpr () "x")) (tupleExpr () [appExpr () [varExpr () "id", litExpr () (TInt 5)], appExpr () [varExpr () "id", litExpr () (TBool True)]])))
+
+--    expr = inferAst (Ast (lamExpr () [varPat () "a", varPat () "b"] (appExpr () [varExpr () "(,)", varExpr () "a", varExpr () "b"])))
 
 
 test3 = u :: Either UnificationError (Substitution Type, Substitution Kind)
