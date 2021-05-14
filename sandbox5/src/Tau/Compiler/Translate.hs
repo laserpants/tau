@@ -866,9 +866,9 @@ toSimpleMatch2
   => Info
   -> [Stage6Expr Info]
   -> Stage6Expr Info
-  -> (Name, Info, [Stage6Pattern Info], [Stage6PatternClause Info (Stage6Expr Info)])
+  -> ConsGroup Info
   -> m (Stage6PrepClause Info (Stage6Expr Info))
-toSimpleMatch2 t us c (consName, consType, consPatterns, consClauses) = do
+toSimpleMatch2 t us c ConsGroup{..} = do
     (_, vars, pats) <- patternInfo (const id) consPatterns
     expr <- matchAlgo (vars <> us) consClauses c
     pure (SimplifiedClause t [RCon consType consName pats] [] expr)
@@ -1042,22 +1042,26 @@ labeledClause eq@(SimplifiedClause _ (p:_) _ _) = flip cata p $ \case
 data ConsGroup t = ConsGroup
     { consName     :: Name
     , consType     :: t
---    , consPatterns :: u[Prep t] -- Pattern t t t t t t Void Void Void] -- Pattern t t t t t t Void Void Void]
---    , consClauses  :: [SimplifiedClause t (Pattern t t t t t t Void Void Void) (Stage5Expr t)] -- SimplifiedClause t (Pattern t t t t t t Void Void Void) (Expr t t t t t t t t Void Void Void Void Void Void Void Void Name (SimplifiedClause t (Prep t)))]
+    , consPatterns :: [Stage6Pattern t]
+    , consClauses  :: [Stage6PatternClause t (Stage6Expr t)]
     } deriving (Show, Eq)
 
 consGroups
   :: Stage6Expr t
   -> [Stage6PatternClause t (Stage6Expr t)]
-  -> [(Name, t, [Stage6Pattern t], [Stage6PatternClause t (Stage6Expr t)])]
+  -> [ConsGroup t]
 consGroups u cs = concatMap group_ (groupSortOn fst (info u <$> cs))
   where
-    group_ all@((con, (t, ps, _)):_) =
-        [ ( con
-          , t
-          , ps
-          , thd3 . snd <$> all
-          ) ]
+    group_ all@((con, (t, ps, _)):_) = 
+        [ConsGroup con t ps (thd3 . snd <$> all)]
+
+--        let zzz = ConsGroup con t ps (thd3 . snd <$> all)
+--        in
+--        [ ( con
+--          , t
+--          , ps
+--          , thd3 . snd <$> all
+--          ) ]
 
 --        [ConsGroup { consName     = con
 --                   , consType     = t
