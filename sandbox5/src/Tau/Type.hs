@@ -50,13 +50,10 @@ data PredicateT a = InClass Name a
 -- | A standalone type class constraint
 type Predicate = PredicateT Type
 
--- | A type class constraint which appears in a type scheme
-type PolyPredicate = PredicateT Int
-
 -- >>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>
 
 -- | Polymorphic type scheme
-data Scheme = Forall [Kind] [PolyPredicate] Polytype
+data Scheme = Forall [Kind] [PredicateT Int] Polytype
 
 -- >>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>
 
@@ -139,12 +136,6 @@ deriving instance Ord Scheme
 
 instance Typed Type where
     typeOf = id
-
----- TODO
-instance Typed (Maybe Type) where
-    typeOf (Just t) = t
-    typeOf Nothing  = tVar (kVar "k") "a"
----- TODO
 
 -- FreeIn instances
 

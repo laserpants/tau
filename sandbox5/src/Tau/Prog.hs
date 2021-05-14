@@ -130,6 +130,20 @@ lookupClassInstance tc ty env = do
             Left{}       -> Nothing
             Right (t, k) -> Just (apply2 (t, k, ()) info)
 
+--lookupClassInstance2
+--  :: Name
+--  -> Type
+--  -> ClassEnv
+--  -> Maybe (ClassInfo Type (Ast (TypeInfo ())))
+--lookupClassInstance2 tc ty env = 
+--    case Env.lookup tc env of
+--        Nothing -> undefined
+--        Just (x, y) -> Just x
+ 
+--type ClassEnv = Env 
+--    ( ClassInfo Name Type                          -- Abstract interface
+--    , List (ClassInfo Type (Ast (TypeInfo ()))) )  -- Instances
+
 -- >>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>
 
 data TypeInfoT e t = TypeInfo
@@ -232,8 +246,8 @@ astTypeVars (Ast expr) = nub (exprTypeVars expr)
         BFun    t _ ps         -> typeVars (typeOf t) <> (patternTypeVars =<< ps)
 
     clauseTypeVars = \case
-        Clause  t ps gs        -> typeVars (typeOf t) <> (patternTypeVars =<< ps) <> (guardTypeVars =<< gs)
-
+        Clause  t ps gs        -> typeVars (typeOf t) <> (patternTypeVars =<< ps) 
+                                                      <> (guardTypeVars =<< gs)
     guardTypeVars = \case
         Guard es e             -> concat es <> e
 

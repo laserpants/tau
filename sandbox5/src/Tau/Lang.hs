@@ -95,6 +95,8 @@ data Binding t p
     = BLet t p                           -- ^ Simple let-binding
     | BFun t Name [p]                    -- ^ Function binding
 
+type ProgBinding t = Binding t (ProgPattern t)
+
 -- >>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>
 
 data ExprF t1 t2 t3 t4 t5 t6 t7 t8 t9 t10 t11 t12 t13 t14 t15 e1 e2 e3 a
@@ -118,7 +120,10 @@ data ExprF t1 t2 t3 t4 t5 t6 t7 t8 t9 t10 t11 t12 t13 t14 t15 e1 e2 e3 a
 type Expr t1 t2 t3 t4 t5 t6 t7 t8 t9 t10 t11 t12 t13 t14 t15 e1 e2 e3 = 
     Fix (ExprF t1 t2 t3 t4 t5 t6 t7 t8 t9 t10 t11 t12 t13 t14 t15 e1 e2 e3)
 
-type ProgExpr t = Expr t t t t t t t t t t t t t t t (Binding t (ProgPattern t)) [ProgPattern t] (Clause t (ProgPattern t))
+type ProgExpr t = Expr t t t t t t t t t t t t t t t 
+    (ProgBinding t) 
+    [ProgPattern t] 
+    (Clause t (ProgPattern t))
 
 -- >>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>
 

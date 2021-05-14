@@ -489,7 +489,7 @@ test2 = do -- case fromJust (runInfer mempty testClassEnv testTypeEnv testConstr
     xx2 = stage3 xx
 
     xx3 :: Core
-    xx3 = runIdentity (toCore xx2)
+    xx3 = undefined -- runIdentity (toCore xx2)
 
     xx123 :: Stage1Expr (TypeInfoT [Error] (Maybe Type))
     xx123 = fromJust (evalSupply (runReaderT (evalStateT (compileClasses xx) []) (testClassEnv, testTypeEnv, testKindEnv, testConstructorEnv)) (nameSupply ""))
