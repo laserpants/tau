@@ -37,8 +37,8 @@ data Datatype = Sum Name [Name] [Product]
 -- >>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>
 
 data ClassInfo p a = ClassInfo 
-    { classSuper     :: List (PredicateT p)
-    , classSignature :: PredicateT p
+    { classSignature :: PredicateT p
+    , classSuper     :: List (PredicateT p)
     , classMethods   :: List (Name, a)
     } deriving (Show, Eq)
 

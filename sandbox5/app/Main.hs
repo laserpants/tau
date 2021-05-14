@@ -598,14 +598,14 @@ testClassEnv :: ClassEnv
 testClassEnv = Env.fromList
     [ ( "Show"
         -- Interface
-      , ( ClassInfo [] (InClass "Show" "a") 
+      , ( ClassInfo (InClass "Show" "a") []  
             [ ( "show", tVar kTyp "a" `tArr` tString )
             ]
         -- Instances
-        , [ ClassInfo [] (InClass "Show" tInt)
+        , [ ClassInfo (InClass "Show" tInt) [] 
               [ ( "show", Ast (varExpr (TypeInfo (tInt `tArr` tString) [] ()) "@Int.Show") )
               ]
-          , ClassInfo [] (InClass "Show" (tPair (tVar kTyp "a") (tVar kTyp "b")))
+          , ClassInfo (InClass "Show" (tPair (tVar kTyp "a") (tVar kTyp "b"))) [] 
               [ ( "show", Ast (varExpr (TypeInfo (tPair (tVar kTyp "a") (tVar kTyp "b") `tArr` tString) [] ()) "TODO") )
               ]
           ]
@@ -613,7 +613,7 @@ testClassEnv = Env.fromList
       )
     , ( "Ord"
         -- Interface
-      , ( ClassInfo [] (InClass "Ord" "a") 
+      , ( ClassInfo (InClass "Ord" "a") [] 
             [ ( "(>)", tVar kTyp "a" `tArr` tVar kTyp "a" `tArr` tBool ) 
             , ( "(<)", tVar kTyp "a" `tArr` tVar kTyp "a" `tArr` tBool ) 
             , ( "(>=)", tVar kTyp "a" `tArr` tVar kTyp "a" `tArr` tBool ) 
@@ -625,11 +625,11 @@ testClassEnv = Env.fromList
       )
     , ( "Eq"
         -- Interface
-      , ( ClassInfo [InClass "Ord" "a"] (InClass "Eq" "a")
+      , ( ClassInfo (InClass "Eq" "a") [InClass "Ord" "a"] 
             [ ( "(==)", tVar kTyp "a" `tArr` tVar kTyp "a" `tArr` tBool )
             ]
         -- Instances
-        , [ ClassInfo [] (InClass "Eq" tInt)
+        , [ ClassInfo (InClass "Eq" tInt) [] 
             [ ( "(==)", Ast (varExpr (TypeInfo (tInt `tArr` tInt `tArr` tBool) [] ()) "@Int.(==)" ) )
             ]
           ]
@@ -637,7 +637,7 @@ testClassEnv = Env.fromList
       )
     , ( "Num"
         -- Interface
-      , ( ClassInfo [] (InClass "Num" "a") 
+      , ( ClassInfo (InClass "Num" "a") [] 
             [ ( "(+)", tVar kTyp "a" `tArr` tVar kTyp "a" `tArr` tVar kTyp "a" )
             ]
         -- Instances

@@ -1039,6 +1039,13 @@ labeledClause eq@(SimplifiedClause _ (p:_) _ _) = flip cata p $ \case
 
 ----Expr t t t t t t t t Void Void Void Void Void Void Void Void Name (SimplifiedClause t (Prep t))
 
+data ConsGroup t = ConsGroup
+    { consName     :: Name
+    , consType     :: t
+--    , consPatterns :: u[Prep t] -- Pattern t t t t t t Void Void Void] -- Pattern t t t t t t Void Void Void]
+--    , consClauses  :: [SimplifiedClause t (Pattern t t t t t t Void Void Void) (Stage5Expr t)] -- SimplifiedClause t (Pattern t t t t t t Void Void Void) (Expr t t t t t t t t Void Void Void Void Void Void Void Void Name (SimplifiedClause t (Prep t)))]
+    } deriving (Show, Eq)
+
 consGroups
   :: Stage6Expr t
   -> [Stage6PatternClause t (Stage6Expr t)]
