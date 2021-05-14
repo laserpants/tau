@@ -547,7 +547,7 @@ stage1 = cata $ \case
     -- Expand pattern clause guards
     EPat    t es cs      -> patExpr t es (expandClause =<< cs)
     EFun    t cs         -> translateFunExpr t (expandClause =<< cs)
-    -- Other exprs. do not change, except in sub-expressions
+    -- Other expressions do not change, except sub-expressions
     EVar    t var        -> varExpr t var
     ECon    t con es     -> conExpr t con es
     ELit    t prim       -> litExpr t prim
@@ -668,7 +668,7 @@ stage3
 stage3 = cata $ \case
     ELam    t ps e       -> unrollLambda2 t ps e
     ELet    t bind e1 e2 -> unrollLet2 t bind e1 e2
-    -- Other exprs. do not change, except in sub-expressions
+    -- Other expressions do not change, except sub-expressions
     EPat    t es cs      -> patExpr t es cs
     EVar    t var        -> varExpr t var
     ECon    t con es     -> conExpr t con es
@@ -766,11 +766,11 @@ type Stage5Expr t = Expr t t t t t t t t Void Void Void Void Void Void Void
 type Stage6Expr t = Expr t t t t t t t t Void Void Void Void Void Void Void
     Void
     Name
-    (SimplifiedClause t (Pattern t t t t t t Void Void Void))
+    (SimplifiedClause t (Prep t))
 
 stage6 
-  :: (MonadSupply Name m) 
-  => Expr t t t t t t t t Void Void Void Void Void Void Void Void Name (SimplifiedClause t (Pattern t t t t t t t t t))
+  :: (MonadSupply Name m, InfoTag t) 
+  => Expr t t t t t t t t Void Void Void Void Void Void Void Void Name (SimplifiedClause t (Pattern t t t t t t Void Void Void))
   -> m (Expr t t t t t t t t Void Void Void Void Void Void Void Void Name (SimplifiedClause t (Prep t)))
 stage6 = cata $ \case
     EPat t es cs -> do 
@@ -786,21 +786,13 @@ stage6 = cata $ \case
     ELam    t ps e       -> lamExpr t ps <$> e
     EIf     t e1 e2 e3   -> ifExpr  t <$> e1 <*> e2 <*> e3
 
---type Stage6Clause t = SimplifiedClause t (Pattern t t t t t t Void Void Void)
---
---stage6 a = a
---
---compilePatterns
---  :: [x] -- [Stage5Expr t]
---  -> [y] -- [SimplifiedClause t (Pattern t t t t t t Void Void Void) (Stage5Expr t)]
---  -> m (Stage6Expr (TypeInfoT [Error] (Maybe Type)))
 compilePatterns
-  :: (MonadSupply Name m) 
+  :: (MonadSupply Name m, InfoTag t) 
   => [Expr t t t t t t t t Void Void Void Void Void Void Void Void Name (SimplifiedClause t (Prep t))] 
-  -> [SimplifiedClause t (Pattern t t t t t t t t t) (Expr t t t t t t t t Void Void Void Void Void Void Void Void Name (SimplifiedClause t (Prep t)))] 
+  -> [SimplifiedClause t (Pattern t t t t t t Void Void Void) (Expr t t t t t t t t Void Void Void Void Void Void Void Void Name (SimplifiedClause t (Prep t)))] 
   -> m (Expr t t t t t t t t Void Void Void Void Void Void Void Void Name (SimplifiedClause t (Prep t)))
-compilePatterns us qs = -- matchAlgo us qs (varExpr (tVar (kVar "FAIL") "FAIL") "FAIL")
-    matchAlgo us qs undefined
+compilePatterns us qs = 
+    matchAlgo us qs (varExpr (typeToTag (tVar (kVar "FAIL") "FAIL")) "FAIL")
 
 data Labeled a 
     = Constructor a 
@@ -811,25 +803,21 @@ clauses :: Labeled a -> a
 clauses (Constructor eqs) = eqs
 clauses (Variable    eqs) = eqs
 
-andExpr = undefined
-
---type Stage5Expr t = Expr t t t t t t t t Void Void Void Void Void Void Void
---    Void
---    Name
---    (SimplifiedClause t (Pattern t t t t t t Void Void Void))
-
-
---matchAlgo
---  :: (MonadSupply Name m)
---  => [Expr t t t t t t t t Void Void Void Void Void Void Void Void Name (SimplifiedClause t (Pattern t t t t t t Void Void Void))] --[Stage5Expr t]
---  -> [SimplifiedClause t (Pattern t t t t t t Void Void Void) (Expr t t t t t t t t Void Void Void Void Void Void Void Void Name (SimplifiedClause t (Prep t)))] -- SimplifiedClause t (Pattern t t t t t t Void Void Void) (Expr t t t t t t t t Void Void Void Void Void Void Void Void Name (SimplifiedClause t (Pattern t t t t t t Void Void Void)))] --[Stage6Clause t (Stage5Expr t)]
---  -> Expr t t t t t t t t Void Void Void Void Void Void Void Void Name (SimplifiedClause t (Prep t)) --Stage5Expr t
---  -> m (Expr t t t t t t t t Void Void Void Void Void Void Void Void Name (SimplifiedClause t (Prep t))) -- (Expr t t t t t t t t Void Void Void Void Void Void Void Void Name (SimplifiedClause t (Prep t))) --m (Stage5Expr t)
+andExpr 
+  :: (InfoTag t) 
+  => Expr t t t t t t t t Void Void Void Void Void Void Void Void Name (SimplifiedClause t (Prep t)) 
+  -> Expr t t t t t t t t Void Void Void Void Void Void Void Void Name (SimplifiedClause t (Prep t)) 
+  -> Expr t t t t t t t t Void Void Void Void Void Void Void Void Name (SimplifiedClause t (Prep t))
+andExpr a b = 
+    appExpr (typeToTag tBool) 
+        [ varExpr (typeToTag (tArr tBool (tArr tBool tBool))) "@(&&)"
+        , a
+        , b ]
 
 matchAlgo
-  :: (MonadSupply Name m)
+  :: (MonadSupply Name m, InfoTag t)
   => [Expr t t t t t t t t Void Void Void Void Void Void Void Void Name (SimplifiedClause t (Prep t))]
-  -> [SimplifiedClause t (Pattern t t t t t t t t t) (Expr t t t t t t t t Void Void Void Void Void Void Void Void Name (SimplifiedClause t (Prep t)))] -- Expr t t t t t t t t Void Void Void Void Void Void Void Void Name (SimplifiedClause t (Prep t))]
+  -> [SimplifiedClause t (Pattern t t t t t t Void Void Void) (Expr t t t t t t t t Void Void Void Void Void Void Void Void Name (SimplifiedClause t (Prep t)))] -- Expr t t t t t t t t Void Void Void Void Void Void Void Void Name (SimplifiedClause t (Prep t))]
   -> Expr t t t t t t t t Void Void Void Void Void Void Void Void Name (SimplifiedClause t (Prep t))
   -> m (Expr t t t t t t t t Void Void Void Void Void Void Void Void Name (SimplifiedClause t (Prep t)))
 matchAlgo [] []                               c = pure c
@@ -869,11 +857,11 @@ matchAlgo (u:us) qs c =
             foldrM (matchAlgo (u:us)) c (clauses <$> mixed)
 
 toSimpleMatch2
-  :: (MonadSupply Name m) 
+  :: (MonadSupply Name m, InfoTag t) 
   => t
   -> [Expr t t t t t t t t Void Void Void Void Void Void Void Void Name (SimplifiedClause t (Prep t))] 
   -> Expr t t t t t t t t Void Void Void Void Void Void Void Void Name (SimplifiedClause t (Prep t)) 
-  -> (Name, t, [Pattern t t t t t t t t t], [SimplifiedClause t (Pattern t t t t t t t t t) (Expr t t t t t t t t Void Void Void Void Void Void Void Void Name (SimplifiedClause t (Prep t)))]) 
+  -> (Name, t, [Pattern t t t t t t Void Void Void], [SimplifiedClause t (Pattern t t t t t t Void Void Void) (Expr t t t t t t t t Void Void Void Void Void Void Void Void Name (SimplifiedClause t (Prep t)))]) 
   -> m (SimplifiedClause t (Prep t) (Expr t t t t t t t t Void Void Void Void Void Void Void Void Name (SimplifiedClause t (Prep t))))
 toSimpleMatch2 t us c (consName, consType, consPatterns, consClauses) = do
     (_, vars, pats) <- patternInfo (const id) consPatterns
@@ -988,18 +976,22 @@ toSimpleMatch2 t us c (consName, consType, consPatterns, consClauses) = do
 ----    expr <- matchAlgo (vars <> us) consClauses c
 ----    pure (SimplifiedClause t [RCon consType consName pats] [] expr)
 
-stage5ExprTag = undefined
-
---stage5ExprTag :: Stage5Expr t -> t
---stage5ExprTag = cata $ \case
---    EVar t _ -> t
---    -- TODO
-
---clauseGroups = undefined
+stage5ExprTag
+  :: Expr t t t t t t t t Void Void Void Void Void Void Void Void Name (SimplifiedClause t (Prep t))
+  -> t
+stage5ExprTag = cata $ \case
+    EVar    t _     -> t
+    ECon    t _ _   -> t
+    ELit    t _     -> t
+    EApp    t _     -> t
+    EFix    t _ _ _ -> t
+    ELam    t _ _   -> t
+    EIf     t _ _ _ -> t
+    EPat    t _ _   -> t
 
 clauseGroups
-  :: [SimplifiedClause t (Pattern t t t t t t t t t) a]
-  -> [Labeled [SimplifiedClause t (Pattern t t t t t t t t t) a]]
+  :: [SimplifiedClause t (Pattern t t t t t t Void Void Void) a]
+  -> [Labeled [SimplifiedClause t (Pattern t t t t t t Void Void Void) a]]
 clauseGroups = cata alg . fmap labeledClause where
     alg Nil                                        = []
     alg (Cons (Constructor e) (Constructor es:ts)) = Constructor (e:es):ts
@@ -1010,7 +1002,7 @@ clauseGroups = cata alg . fmap labeledClause where
 patternInfo
   :: (MonadSupply Name m)
   => (t -> Name -> a)
-  -> [Pattern t t t t t t t t t]
+  -> [Pattern t t t t t t Void Void Void]
   -> m ([(Text, t)], [Expr t t t t t t t t Void Void Void Void Void Void Void Void Name (SimplifiedClause t (Prep t))], [a])
 patternInfo con pats = do
     vars <- supplies (length pats)
@@ -1027,8 +1019,8 @@ patternInfo con pats = do
        PAny    t     -> t
 
 labeledClause
-  :: SimplifiedClause t (Pattern t t t t t t t t t) a
-  -> Labeled (SimplifiedClause t (Pattern t t t t t t t t t) a)
+  :: SimplifiedClause t (Pattern t t t t t t Void Void Void) a
+  -> Labeled (SimplifiedClause t (Pattern t t t t t t Void Void Void) a)
 labeledClause eq@(SimplifiedClause _ (p:_) _ _) = flip cata p $ \case
     PCon{}    -> Constructor eq
     PVar{}    -> Variable eq
@@ -1050,8 +1042,8 @@ labeledClause eq@(SimplifiedClause _ (p:_) _ _) = flip cata p $ \case
 
 consGroups
   :: Expr t t t t t t t t Void Void Void Void Void Void Void Void Name (SimplifiedClause t (Prep t))
-  -> [SimplifiedClause t (Pattern t t t t t t t t t) (Expr t t t t t t t t Void Void Void Void Void Void Void Void Name (SimplifiedClause t (Prep t)))]
-  -> [(Name, t, [Pattern t t t t t t t t t], [SimplifiedClause t (Pattern t t t t t t t t t) (Expr t t t t t t t t Void Void Void Void Void Void Void Void Name (SimplifiedClause t (Prep t)))])]
+  -> [SimplifiedClause t (Pattern t t t t t t Void Void Void) (Expr t t t t t t t t Void Void Void Void Void Void Void Void Name (SimplifiedClause t (Prep t)))]
+  -> [(Name, t, [Pattern t t t t t t Void Void Void], [SimplifiedClause t (Pattern t t t t t t Void Void Void) (Expr t t t t t t t t Void Void Void Void Void Void Void Void Name (SimplifiedClause t (Prep t)))])]
 consGroups u cs = concatMap group_ (groupSortOn fst (info u <$> cs))
   where
     group_ all@((con, (t, ps, _)):_) =
@@ -1080,11 +1072,11 @@ consGroups u cs = concatMap group_ (groupSortOn fst (info u <$> cs))
 
 info 
   :: Expr t t t t t t t t Void Void Void Void Void Void Void Void Name (SimplifiedClause t (Prep t)) 
-  -> SimplifiedClause t (Pattern t t t t t t t t t) (Expr t t t t t t t t Void Void Void Void Void Void Void Void Name (SimplifiedClause t (Prep t)))
+  -> SimplifiedClause t (Pattern t t t t t t Void Void Void) (Expr t t t t t t t t Void Void Void Void Void Void Void Void Name (SimplifiedClause t (Prep t)))
   -> ( Name
      , ( t
-       , [Pattern t t t t t t t t t]
-       , SimplifiedClause t (Pattern t t t t t t t t t) (Expr t t t t t t t t Void Void Void Void Void Void Void Void Name (SimplifiedClause t (Prep t)))
+       , [Pattern t t t t t t Void Void Void]
+       , SimplifiedClause t (Pattern t t t t t t Void Void Void) (Expr t t t t t t t t Void Void Void Void Void Void Void Void Name (SimplifiedClause t (Prep t)))
        )
      )
 info u (SimplifiedClause t (p:qs) exs e) = 
