@@ -457,6 +457,10 @@ test2 = do -- case fromJust (runInfer mempty testClassEnv testTypeEnv testConstr
     print "=========="
     putStrLn (showTree zz22)
     print "=========="
+    putStrLn (showTree zz222)
+--    print "=========="
+--    print xx222
+--    print "=========="
 --    print xx2
 --    print "=========="
 --    print xx22
@@ -573,7 +577,14 @@ test2 = do -- case fromJust (runInfer mempty testClassEnv testTypeEnv testConstr
 
 --    expr = inferAst (Ast (letExpr () (BLet () (varPat () "id")) (lamExpr () [varPat () "x"] (varExpr () "x")) (tupleExpr () [appExpr () [varExpr () "id", litExpr () (TInt 5)], appExpr () [varExpr () "id", litExpr () (TBool True)]])))
 
-    expr = inferAst (Ast (patExpr () [litExpr () (TInt 5)] [Clause () [litPat () (TInt 5)] [Guard [] (litExpr () (TInt 1))]]))
+--    expr = inferAst (Ast (patExpr () [litExpr () (TInt 5)] [Clause () [litPat () (TInt 5)] [Guard [] (litExpr () (TInt 1))]]))
+
+--    expr = inferAst (Ast (lamExpr () [varPat () "x"] (patExpr () [varExpr () "x"] [Clause () [anyPat ()] [Guard [] (litExpr () (TInt 1))]])))
+
+    expr = inferAst (Ast (lamExpr () [varPat () "x"] (patExpr () [varExpr () "x"] 
+        [ Clause () [varPat () "y"] [Guard [] (litExpr () (TInt 1))] 
+        , Clause () [anyPat ()] [Guard [] (litExpr () (TInt 2))]
+        ])))
 
 
 test3 = u :: Either UnificationError (Substitution Type, Substitution Kind)

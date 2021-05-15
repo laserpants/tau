@@ -769,10 +769,10 @@ type Stage6Expr t = Expr t t t t t t t t Void Void Void Void Void Void Void
     (SimplifiedClause t (Prep t))
 
 type Stage6Pattern t =
-    Pattern t t t t t t Void Void Void
+    Pattern t t t Void Void Void Void Void Void
 
 type Stage6PatternClause t =
-    SimplifiedClause t (Pattern t t t t t t Void Void Void)
+    SimplifiedClause t (Pattern t t t Void Void Void Void Void Void)
 
 type Stage6PrepClause t =
     SimplifiedClause t (Prep t)
@@ -782,7 +782,7 @@ type Info = TypeInfoT [Error] (Maybe Type)
 stage6 :: (MonadSupply Name m) => Stage5Expr Info -> m (Stage6Expr Info)
 stage6 = cata $ \case
     EPat t es cs -> do
-        cs1 <- traverse sequence cs
+        cs1 <- traverse (sequence >=> simplifyClausePatterns) cs
         es1 <- sequence es
         compilePatterns es1 cs1
 
@@ -793,6 +793,33 @@ stage6 = cata $ \case
     EFix    t name e1 e2 -> fixExpr t name <$> e1 <*> e2
     ELam    t ps e       -> lamExpr t ps <$> e
     EIf     t e1 e2 e3   -> ifExpr  t <$> e1 <*> e2 <*> e3
+
+simplifyClausePatterns
+  :: (MonadSupply Name m)
+  => SimplifiedClause t (Pattern t t t t t t Void Void Void) a
+  -> m (SimplifiedClause t (Pattern t t t Void Void Void Void Void Void) a)
+simplifyClausePatterns (SimplifiedClause t ps exs e) = do
+    qs <- traverse simplifyPattern ps
+    pure (SimplifiedClause t qs exs e)
+
+simplifyPattern
+  :: (MonadSupply Name m)
+  => Pattern t t t t t t Void Void Void
+  -> m (Pattern t t t Void Void Void Void Void Void)
+simplifyPattern = cata $ \case
+    PLit t prim -> do
+        var <- supply
+        undefined 
+
+    POr t p q -> do
+        undefined
+
+    PAny t -> 
+        varPat t <$> supply
+
+    PVar    t var        -> pure (varPat t var)
+    PCon    t con ps     -> conPat t con <$> sequence ps
+    PAs     t as p       -> asPat t as <$> p
 
 compilePatterns
   :: (MonadSupply Name m)
@@ -1014,19 +1041,16 @@ patternInfo con pats = do
    pTag = cata $ \case
        PVar    t _   -> t
        PCon    t _ _ -> t
-       PLit    t _   -> t
        PAs     t _ _ -> t
-       POr     t _ _ -> t
-       PAny    t     -> t
 
 labeledClause :: Stage6PatternClause t a -> Labeled (Stage6PatternClause t a)
 labeledClause eq@(SimplifiedClause _ (p:_) _ _) = flip cata p $ \case
     PCon{}    -> Constructor eq
     PVar{}    -> Variable eq
-    PAny{}    -> Variable eq
-    PLit{}    -> Variable eq
     PAs _ _ q -> q
-    POr{}     -> error "Implementation error"
+--    PAny{}    -> Variable eq
+--    PLit{}    -> Variable eq
+--    POr{}     -> error "Implementation error"
 
 --data ConsGroup t = ConsGroup
 --    { consName     :: Name
@@ -1053,7 +1077,12 @@ consGroups
 consGroups u cs = concatMap group_ (groupSortOn fst (info u <$> cs))
   where
     group_ all@((con, (t, ps, _)):_) = 
-        [ConsGroup con t ps (thd3 . snd <$> all)]
+        [ConsGroup { consName     = con
+                   , consType     = t
+                   , consPatterns = ps
+                   , consClauses  = thd3 . snd <$> all }]
+
+--        [ConsGroup con t ps (thd3 . snd <$> all)]
 
 --        let zzz = ConsGroup con t ps (thd3 . snd <$> all)
 --        in
@@ -1063,10 +1092,6 @@ consGroups u cs = concatMap group_ (groupSortOn fst (info u <$> cs))
 --          , thd3 . snd <$> all
 --          ) ]
 
---        [ConsGroup { consName     = con
---                   , consType     = t
---                   , consPatterns = ps
---                   , consClauses  = thd3 . snd <$> all }]
 
 ----consGroups
 ----  :: Stage5Expr t
@@ -1085,7 +1110,7 @@ info
   -> Stage6PatternClause t (Stage6Expr t)
   -> ( Name
      , ( t
-       , [Pattern t t t t t t Void Void Void]
+       , [Stage6Pattern t]
        , Stage6PatternClause t (Stage6Expr t)
        )
      )
