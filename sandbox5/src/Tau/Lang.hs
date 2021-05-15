@@ -28,8 +28,8 @@ data PatternF t1 t2 t3 t4 t5 t6 t7 t8 t9 a
     | PCon    t2 Name [a]                -- ^ Constuctor pattern
     | PAs     t3 Name a                  -- ^ As-pattern
     | PLit    t4 Prim                    -- ^ Literal pattern
-    | POr     t5 a a                     -- ^ Or-pattern
-    | PAny    t6                         -- ^ Wildcard pattern
+    | PAny    t5                         -- ^ Wildcard pattern
+    | POr     t6 a a                     -- ^ Or-pattern
     | PTuple  t7 [a]                     -- ^ Tuple pattern
     | PList   t8 [a]                     -- ^ List pattern
 --    | PRecord t9 (Row a)                 -- ^ Record pattern
@@ -506,17 +506,17 @@ litPat
   -> Pattern t1 t2 t3 t4 t5 t6 t7 t8 t9
 litPat = embed2 PLit
 
-orPat 
+anyPat 
   :: t5 
+  -> Pattern t1 t2 t3 t4 t5 t6 t7 t8 t9
+anyPat = embed1 PAny
+
+orPat 
+  :: t6 
   -> Pattern t1 t2 t3 t4 t5 t6 t7 t8 t9 
   -> Pattern t1 t2 t3 t4 t5 t6 t7 t8 t9 
   -> Pattern t1 t2 t3 t4 t5 t6 t7 t8 t9
 orPat = embed3 POr
-
-anyPat 
-  :: t6 
-  -> Pattern t1 t2 t3 t4 t5 t6 t7 t8 t9
-anyPat = embed1 PAny
 
 tuplePat 
   :: t7 

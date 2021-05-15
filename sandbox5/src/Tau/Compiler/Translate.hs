@@ -800,7 +800,7 @@ stage6 = cata $ \case
 
 expandLitAndAnyPatterns 
   :: (MonadSupply Name m) 
-  => [SimplifiedClause Info (Pattern Info Info Info Info Void Info Void Void Void) (Stage6Expr Info)] 
+  => [SimplifiedClause Info (Pattern Info Info Info Info Info Void Void Void Void) (Stage6Expr Info)] 
   -> m [SimplifiedClause Info (Stage6Pattern Info) (Stage6Expr Info)] 
 expandLitAndAnyPatterns = traverse expandClause
   where
@@ -835,11 +835,11 @@ eqExpr = undefined
 
 expandOrPatterns 
   :: [SimplifiedClause t (Pattern t t t t t t Void Void Void) (Stage6Expr t)] 
-  -> [SimplifiedClause t (Pattern t t t t Void t Void Void Void) (Stage6Expr t)] 
+  -> [SimplifiedClause t (Pattern t t t t t Void Void Void Void) (Stage6Expr t)] 
 expandOrPatterns = concatMap $ \(SimplifiedClause t ps es e) ->
     [SimplifiedClause t qs es e | qs <- traverse fn ps]
   where
-    fn :: Pattern t t t t t t Void Void Void -> [Pattern t t t t Void t Void Void Void]
+    fn :: Pattern t t t t t t Void Void Void -> [Pattern t t t t t Void Void Void Void]
     fn = cata $ \case 
         PVar t var       -> pure (varPat t var)
         PCon t con ps    -> conPat t con <$> sequence ps
