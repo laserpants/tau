@@ -431,7 +431,7 @@ test1 = do -- case fromJust (runInfer mempty testClassEnv testTypeEnv testConstr
     expr = inferAst (Ast (varExpr () "x"))
 
 
-mapAst :: (a -> b) -> ProgExpr a -> ProgExpr b
+--mapAst :: (a -> b) -> ProgExpr a -> ProgExpr b
 mapAst f e = zz
   where
     xx = Ast e
@@ -506,8 +506,11 @@ test2 = do -- case fromJust (runInfer mempty testClassEnv testTypeEnv testConstr
     xx22 :: Stage4Expr (TypeInfoT [Error] (Maybe Type))
     xx22 = stage4 xx2
 
-    xx222 :: Stage6Expr (TypeInfoT [Error] (Maybe Type))
-    xx222 = fromJust $ evalSupply (stage6 xx22) (nameSupply "$")
+    xx22_ :: Stage5Expr (Maybe Type)
+    xx22_ = foo5 nodeType xx22
+
+    xx222 :: Stage6Expr (Maybe Type)
+    xx222 = fromJust $ evalSupply (stage6 xx22_) (nameSupply "$")
 
     xx3 :: Core
     xx3 = undefined -- runIdentity (toCore xx2)
@@ -590,6 +593,28 @@ test2 = do -- case fromJust (runInfer mempty testClassEnv testTypeEnv testConstr
 --        [ Clause () [varPat () "y"] [Guard [] (litExpr () (TInt 1))] 
 --        , Clause () [anyPat ()] [Guard [] (litExpr () (TInt 2))]
 --        ])))
+
+foo5 :: (t -> u) -> Stage5Expr t -> Stage5Expr u
+foo5 f = cata $ \case
+    EVar    t var          -> varExpr    (f t) var
+    ECon    t con es       -> conExpr    (f t) con es
+    ELit    t prim         -> litExpr    (f t) prim
+    EApp    t es           -> appExpr    (f t) es
+    EFix    t name e1 e2   -> fixExpr    (f t) name e1 e2
+    ELam    t ps e         -> lamExpr    (f t) ps e
+    EIf     t e1 e2 e3     -> ifExpr     (f t) e1 e2 e3
+    EPat    t es cs        -> patExpr    (f t) es (mapClause <$> cs)
+  where
+    mapClause = \case
+        SimplifiedClause t ps exs e 
+                           -> SimplifiedClause (f t) (mapPattern <$> ps) exs e
+    mapPattern = cata $ \case
+        PVar    t var      -> varPat     (f t) var
+        PCon    t con ps   -> conPat     (f t) con ps
+        PLit    t prim     -> litPat     (f t) prim
+        PAs     t as p     -> asPat      (f t) as p
+        POr     t p q      -> orPat      (f t) p q
+        PAny    t          -> anyPat     (f t)
 
 
 test3 = u :: Either UnificationError (Substitution Type, Substitution Kind)

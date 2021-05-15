@@ -779,7 +779,7 @@ type Stage6PatternClause t =
 type Stage6PrepClause t =
     SimplifiedClause t (Prep t)
 
-type Info = TypeInfoT [Error] (Maybe Type)
+type Info = Maybe Type -- TypeInfoT [Error] (Maybe Type)
 
 stage6 :: (MonadSupply Name m) => Stage5Expr Info -> m (Stage6Expr Info)
 stage6 = cata $ \case
@@ -811,27 +811,27 @@ expandLitAndAnyPatterns = traverse expandClause
     expandOne = cata $ \case
         PLit t prim -> do
             var <- supply
-            let t1 = case nodeType t of
-                   Nothing -> Nothing
-                   Just ty -> Just (tArr ty (tArr ty tBool))
-            tell [ appExpr (TypeInfo (Just tBool) [] [])
-                   [ varExpr (TypeInfo t1 [] []) ("@" <> literalName prim <> ".(==)")
+            tell [ appExpr (Just tBool)
+                   [ varExpr (ty <$> t) ("@" <> literalName prim <> ".(==)")
                    , varExpr t var
                    , litExpr t prim ]]
+
+            --let t1 = case nodeType t of
+            --       Nothing -> Nothing
+            --       Just ty -> Just (tArr ty (tArr ty tBool))
+--            tell [ appExpr (TypeInfo (Just tBool) [] [])
+--                   [ varExpr (TypeInfo t1 [] []) ("@" <> literalName prim <> ".(==)")
+--                   , varExpr t var
+--                   , litExpr t prim ]]
+
             pure (varPat t var)
+          where
+            ty t = t `tArr` t `tArr` tBool
 
         PAny t           -> varPat t <$> supply
         PVar t var       -> pure (varPat t var)
         PCon t con ps    -> conPat t con <$> sequence ps
         PAs  t as p      -> asPat t as <$> p
-
-eqExpr = undefined
---andExpr :: Stage6Expr Info -> Stage6Expr Info -> Stage6Expr Info
---andExpr a b =
---    appExpr (TypeInfo (Just tBool) [] [])
---        [ varExpr (TypeInfo (Just (tArr tBool (tArr tBool tBool))) [] []) "@(&&)"
---        , a
---        , b ]
 
 expandOrPatterns 
   :: [SimplifiedClause t (Pattern t t t t t t Void Void Void) (Stage6Expr t)] 
@@ -854,7 +854,9 @@ compilePatterns
   -> [Stage6PatternClause Info (Stage6Expr Info)]
   -> m (Stage6Expr Info)
 compilePatterns us qs = 
-    matchAlgo us qs (varExpr (TypeInfo (Just (tVar (kVar "FAIL") "FAIL")) [] []) "FAIL")
+    matchAlgo us qs (varExpr (Just (tVar (kVar "FAIL") "FAIL")) "FAIL")
+
+--    matchAlgo us qs (varExpr (TypeInfo (Just (tVar (kVar "FAIL") "FAIL")) [] []) "FAIL")
 
 data Labeled a
     = Constructor a
@@ -867,10 +869,15 @@ clauses (Variable    eqs) = eqs
 
 andExpr :: Stage6Expr Info -> Stage6Expr Info -> Stage6Expr Info
 andExpr a b =
-    appExpr (TypeInfo (Just tBool) [] [])
-        [ varExpr (TypeInfo (Just (tArr tBool (tArr tBool tBool))) [] []) "@(&&)"
+    appExpr (Just tBool)
+        [ varExpr (Just (tArr tBool (tArr tBool tBool))) "@(&&)"
         , a
         , b ]
+
+--    appExpr (TypeInfo (Just tBool) [] [])
+--        [ varExpr (TypeInfo (Just (tArr tBool (tArr tBool tBool))) [] []) "@(&&)"
+--        , a
+--        , b ]
 
 matchAlgo
   :: (MonadSupply Name m)
