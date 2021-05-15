@@ -9,13 +9,14 @@ import Control.Arrow ((<<<), (>>>))
 import Control.Monad ((<=<))
 import Data.Function ((&))
 import Data.List (null, intersperse)
+import Data.Maybe (fromJust)
 import Data.Text (pack, unpack)
 import Data.Text.Prettyprint.Doc
 import Data.Text.Prettyprint.Doc.Render.Text
 import Data.Tree
 import Data.Tree.View (showTree)
-import Data.Maybe (fromJust)
 import Tau.Compiler.Error
+import Tau.Compiler.Pipeline
 import Tau.Compiler.Substitute hiding (null)
 import Tau.Compiler.Translate
 import Tau.Compiler.Unify

@@ -29,6 +29,7 @@ import Tau.Core
 import Tau.Lang
 import Tau.Prog
 import Tau.Row
+import Tau.Compiler.Pipeline
 import Tau.Tool
 import Tau.Type
 import qualified Data.Map.Strict as Map
@@ -63,12 +64,12 @@ instance Typed (Maybe Type) where
 data Prep t = RCon t Name [Name]
     deriving (Show, Eq)
 
-data SimplifiedClause t p a = SimplifiedClause t [p] (Guard a)
-    deriving (Show, Eq, Functor, Foldable, Traversable)
+--data SimplifiedClause t p a = SimplifiedClause t [p] (Guard a)
+--    deriving (Show, Eq, Functor, Foldable, Traversable)
 
-deriveShow1 ''SimplifiedClause
-deriveEq1   ''SimplifiedClause
-deriveOrd1  ''SimplifiedClause
+--deriveShow1 ''SimplifiedClause
+--deriveEq1   ''SimplifiedClause
+--deriveOrd1  ''SimplifiedClause
 
 --type DesugaredPattern t = Pattern t t t t t t Void Void Void
 --type DesugaredExpr t = Expr t t t t t t t t Void Void Void Void Void Void Void Void Name (SimplifiedClause t (DesugaredPattern t))
