@@ -83,6 +83,8 @@ data Assoc
 -- | Pattern guard
 data Guard a = Guard [a] a
 
+--data XClause t p a = XClause t [p] a
+
 -- | Pattern matching clause
 data Clause t p a = Clause t [p] [Guard a] 
 
@@ -388,7 +390,7 @@ clauseGuards :: Clause t p a -> [Guard a]
 clauseGuards (Clause _ _ gs) = gs
 
 guardToPair :: Guard a -> ([a], a)
-guardToPair (Guard as a) = (as, a)
+guardToPair (Guard es e) = (es, e)
 
 -- >>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>
 

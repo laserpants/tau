@@ -63,7 +63,7 @@ instance Typed (Maybe Type) where
 data Prep t = RCon t Name [Name]
     deriving (Show, Eq)
 
-data SimplifiedClause t p a = SimplifiedClause t [p] [a] a
+data SimplifiedClause t p a = SimplifiedClause t [p] (Guard a)
     deriving (Show, Eq, Functor, Foldable, Traversable)
 
 deriveShow1 ''SimplifiedClause
@@ -112,7 +112,7 @@ simplifyExpr = cata $ \case
     prefixOp1 (ONeg t) = varExpr t "negate"
     prefixOp1 (ONot t) = varExpr t "not"
 
-    expandClause (Clause t ps gs) = [SimplifiedClause t ps es e | Guard es e <- gs]
+    expandClause (Clause t ps gs) = [SimplifiedClause t ps g | g <- gs]
 
 split :: (InfoTag t) => t -> (t, t)
 split t = (updateType (const t1) t, updateType (const t2) t)
@@ -128,7 +128,8 @@ unrollLambda ps e = fst (foldr f (e, tag e) ps)
   where
     f p (e, t) =
         let t' = updateType (tArr (typeOf (patternTag p))) t
-         in (lamExpr t' "#0" (patExpr t [varExpr (patternTag p) "#0"] [SimplifiedClause t [p] [] e]), t')
+         --in (lamExpr t' "#0" (patExpr t [varExpr (patternTag p) "#0"] [SimplifiedClause t [p] [] e]), t')
+         in (lamExpr t' "#0" (patExpr t [varExpr (patternTag p) "#0"] [SimplifiedClause t [p] (Guard [] e)]), t')
 
     tag = cata $ \case
         EVar t _     -> t
@@ -147,7 +148,7 @@ desugarLet
   -> Expr t t t t t t t t Void Void Void Void Void Void Void Void Name (SimplifiedClause t (ProgPattern t))
   -> Expr t t t t t t t t Void Void Void Void Void Void Void Void Name (SimplifiedClause t (ProgPattern t))
 desugarLet t (BLet _ (Fix (PVar _ var))) e1 e2 = fixExpr t var e1 e2
-desugarLet t bind e1 e2 = patExpr t [e] [SimplifiedClause t [p] [] e2]
+desugarLet t bind e1 e2 = patExpr t [e] [SimplifiedClause t [p] (Guard [] e2)]
   where
     (e, p) = case bind of
         BLet _ pat   -> (e1, pat)
@@ -562,7 +563,8 @@ stage1 = cata $ \case
     prefixOp1 (ONot t) = varExpr t "not"
     prefixOp2 op       = varExpr (op2Tag op) ("(" <> op2Symbol op <> ")")
 
-    expandClause (Clause t ps gs) = [SimplifiedClause t ps es e | Guard es e <- gs]
+    --expandClause (Clause t ps gs) = [SimplifiedClause t ps es e | Guard es e <- gs]
+    expandClause (Clause t ps gs) = [SimplifiedClause t ps g | g <- gs]
 
 translateFunExpr
   :: TypeInfoT [Error] (Maybe Type)
@@ -685,7 +687,7 @@ unrollLet2
   -> Stage3Expr t
   -> Stage3Expr t
 unrollLet2 t (BLet _ (Fix (PVar _ var))) e1 e2 = fixExpr t var e1 e2
-unrollLet2 t bind e1 e2 = patExpr t [e] [SimplifiedClause t [p] [] e2]
+unrollLet2 t bind e1 e2 = patExpr t [e] [SimplifiedClause t [p] (Guard [] e2)]
   where
     (e, p) = case bind of
         BLet _ pat   -> (e1, pat)
@@ -697,7 +699,7 @@ unrollLambda2
   -> Stage3Expr t
   -> Stage3Expr t
 unrollLambda2 t [Fix (PVar _ var)] e = lamExpr t var e
-unrollLambda2 t [p] e = lamExpr t' "#0" (patExpr t [varExpr (patternTag p) "#0"] [SimplifiedClause t [p] [] e])
+unrollLambda2 t [p] e = lamExpr t' "#0" (patExpr t [varExpr (patternTag p) "#0"] [SimplifiedClause t [p] (Guard [] e)])
   where
     t' = undefined
 
@@ -726,8 +728,8 @@ stage4 = cata $ \case
     compileClause
       :: SimplifiedClause t (ProgPattern t) a
       -> SimplifiedClause t (Pattern t t t t t t Void Void Void) a
-    compileClause (SimplifiedClause t ps es e) =
-        SimplifiedClause t (stage4Patterns <$> ps) es e
+    compileClause (SimplifiedClause t ps g) =
+        SimplifiedClause t (stage4Patterns <$> ps) g
 
 stage4Patterns :: ProgPattern t -> Pattern t t t t t t Void Void Void
 stage4Patterns = cata $ \case
@@ -804,9 +806,9 @@ expandLitAndAnyPatterns
   -> m [SimplifiedClause Info (Stage6Pattern Info) (Stage6Expr Info)] 
 expandLitAndAnyPatterns = traverse expandClause
   where
-    expandClause (SimplifiedClause t ps exs e) = do
+    expandClause (SimplifiedClause t ps (Guard exs e)) = do
         (qs, exs1) <- runWriterT (traverse expandOne ps)
-        pure (SimplifiedClause t qs (exs <> exs1) e)
+        pure (SimplifiedClause t qs (Guard (exs <> exs1) e))
 
     expandOne = cata $ \case
         PLit t prim -> do
@@ -836,8 +838,8 @@ expandLitAndAnyPatterns = traverse expandClause
 expandOrPatterns 
   :: [SimplifiedClause t (Pattern t t t t t t Void Void Void) (Stage6Expr t)] 
   -> [SimplifiedClause t (Pattern t t t t t Void Void Void Void) (Stage6Expr t)] 
-expandOrPatterns = concatMap $ \(SimplifiedClause t ps es e) ->
-    [SimplifiedClause t qs es e | qs <- traverse fn ps]
+expandOrPatterns = concatMap $ \(SimplifiedClause t ps g) ->
+    [SimplifiedClause t qs g | qs <- traverse fn ps]
   where
     fn :: Pattern t t t t t t Void Void Void -> [Pattern t t t t t Void Void Void Void]
     fn = cata $ \case 
@@ -885,17 +887,17 @@ matchAlgo
   -> [Stage6PatternClause Info (Stage6Expr Info)]
   -> Stage6Expr Info
   -> m (Stage6Expr Info)
-matchAlgo [] []                               c = pure c
-matchAlgo [] (SimplifiedClause _ [] []  e:_)  _ = pure e
-matchAlgo [] (SimplifiedClause _ [] exs e:qs) c =
+matchAlgo [] []                                       c = pure c
+matchAlgo [] (SimplifiedClause _ [] (Guard [] e):_)   _ = pure e
+matchAlgo [] (SimplifiedClause _ [] (Guard exs e):qs) c =
     ifExpr (stage6ExprTag e) (foldr1 andExpr exs) e <$> matchAlgo [] qs c
 matchAlgo (u:us) qs c =
     case clauseGroups qs of
         [Variable eqs] ->
             matchAlgo us (runSubst <$> eqs) c
           where
-            runSubst (SimplifiedClause t (p:ps) exs e) =
-                let clause = SimplifiedClause t ps exs e
+            runSubst (SimplifiedClause t (p:ps) g) =
+                let clause = SimplifiedClause t ps g
                  in case project p of
                     PVar t1 name ->
                         substitute name u <$> clause
@@ -906,9 +908,9 @@ matchAlgo (u:us) qs c =
                     -- The remaining case is for wildcard and literal patterns
                     _ -> clause
 
-        [Constructor eqs@(SimplifiedClause t _ _ e:_)] -> do
+        [Constructor eqs@(SimplifiedClause t _ (Guard _ e):_)] -> do
             qs' <- traverse (toSimpleMatch2 t us c) (consGroups u eqs)
-            let rs = [SimplifiedClause t [RCon (stage6ExprTag u) "$_" []] [] c | not (isError c)]
+            let rs = [SimplifiedClause t [RCon (stage6ExprTag u) "$_" []] (Guard [] c) | not (isError c)]
             pure $ case qs' <> rs of
                 []   -> c
                 qs'' -> patExpr (stage6ExprTag e) [u] qs''
@@ -931,7 +933,7 @@ toSimpleMatch2
 toSimpleMatch2 t us c ConsGroup{..} = do
     (_, vars, pats) <- patternInfo (const id) consPatterns
     expr <- matchAlgo (vars <> us) consClauses c
-    pure (SimplifiedClause t [RCon consType consName pats] [] expr)
+    pure (SimplifiedClause t [RCon consType consName pats] (Guard [] expr))
 
 stage6ExprTag :: Stage6Expr t -> t
 stage6ExprTag = cata $ \case
@@ -969,7 +971,7 @@ patternInfo con pats = do
        PAs     t _ _ -> t
 
 labeledClause :: Stage6PatternClause t a -> Labeled (Stage6PatternClause t a)
-labeledClause eq@(SimplifiedClause _ (p:_) _ _) = flip cata p $ \case
+labeledClause eq@(SimplifiedClause _ (p:_) _) = flip cata p $ \case
     PCon{}    -> Constructor eq
     PVar{}    -> Variable eq
     PAs _ _ q -> q
@@ -1002,10 +1004,10 @@ info
        , Stage6PatternClause t (Stage6Expr t)
        )
      )
-info u (SimplifiedClause t (p:qs) exs e) =
+info u (SimplifiedClause t (p:qs) (Guard exs e)) =
     case project p of
-        PCon _ con ps -> (con, (t, ps, SimplifiedClause t (ps <> qs) exs e))
-        PAs  _ as q   -> info u (SimplifiedClause t (q:qs) exs (substitute as u e))
+        PCon _ con ps -> (con, (t, ps, SimplifiedClause t (ps <> qs) (Guard exs e)))
+        PAs  _ as q   -> info u (SimplifiedClause t (q:qs) (Guard exs (substitute as u e)))
 
 -- >>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>
 
@@ -1058,7 +1060,7 @@ substitute name subst = para $ \case
         substEq
           :: SimplifiedClause t (Prep t) (Stage6Expr t, Stage6Expr t)
           -> SimplifiedClause t (Prep t) (Stage6Expr t)
-        substEq eq@(SimplifiedClause _ ps _ _)
+        substEq eq@(SimplifiedClause _ ps _)
             | name `elem` (pats =<< ps) = fst <$> eq
             | otherwise                 = snd <$> eq
         pats (RCon _ _ ps) = ps

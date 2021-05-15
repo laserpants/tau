@@ -606,8 +606,8 @@ foo5 f = cata $ \case
     EPat    t es cs        -> patExpr    (f t) es (mapClause <$> cs)
   where
     mapClause = \case
-        SimplifiedClause t ps exs e 
-                           -> SimplifiedClause (f t) (mapPattern <$> ps) exs e
+        SimplifiedClause t ps g
+                           -> SimplifiedClause (f t) (mapPattern <$> ps) g
     mapPattern = cata $ \case
         PVar    t var      -> varPat     (f t) var
         PCon    t con ps   -> conPat     (f t) con ps

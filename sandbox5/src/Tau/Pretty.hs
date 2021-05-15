@@ -458,8 +458,8 @@ instance PatternClause Clause t p (Expr t1 t2 t3 t4 t5 t6 t7 t8 t9 t10 t11 t12 t
     clauseRhs = (guardToPair <$>) . clauseGuards
 
 instance PatternClause SimplifiedClause t p (Expr t1 t2 t3 t4 t5 t6 t7 t8 t9 t10 t11 t12 t13 t14 t15 e1 e2 e3) where
-    clauseLhs (SimplifiedClause _ ps _ _) = ps
-    clauseRhs (SimplifiedClause _ _ es e) = [(es, e)]
+    clauseLhs (SimplifiedClause _ ps _) = ps
+    clauseRhs (SimplifiedClause _ _  g) = [guardToPair g]
 
 exprTree
   :: (PatternClause c t (Pattern p1 p2 p3 p4 p5 p6 p7 p8 p9) (Expr t1 t2 t3 t4 t5 t6 t7 t8 t9 t10 t11 t12 t13 t14 t15 e1 e2 (c t (Pattern p1 p2 p3 p4 p5 p6 p7 p8 p9))), Functor (c t (Pattern p1 p2 p3 p4 p5 p6 p7 p8 p9)), Typed e1, Typed t12, LetBinding e1, Pretty e2, Pretty e1, Pretty t1, Pretty t2, Pretty t3, Pretty t4, Pretty t5, Pretty t6, Pretty t7, Pretty t8, Pretty t9, Pretty t10, Pretty t11, Pretty t12, Pretty t13, Pretty t15)
