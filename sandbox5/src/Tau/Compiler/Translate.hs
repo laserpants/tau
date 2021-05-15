@@ -782,7 +782,8 @@ type Info = TypeInfoT [Error] (Maybe Type)
 stage6 :: (MonadSupply Name m) => Stage5Expr Info -> m (Stage6Expr Info)
 stage6 = cata $ \case
     EPat t es cs -> do
-        cs1 <- traverse (sequence >=> simplifyClausePatterns) cs
+        let foo = expandOrPatterns cs
+        cs1 <- traverse (sequence >=> simplifyClausePatterns) foo
         es1 <- sequence es
         compilePatterns es1 cs1
 
@@ -796,7 +797,8 @@ stage6 = cata $ \case
 
 simplifyClausePatterns
   :: (MonadSupply Name m)
-  => SimplifiedClause t (Pattern t t t t t t Void Void Void) a
+--  => SimplifiedClause t (Pattern t t t Void Void t Void Void Void) a
+  => SimplifiedClause t (Pattern t t t t Void t Void Void Void) a
   -> m (SimplifiedClause t (Pattern t t t Void Void Void Void Void Void) a)
 simplifyClausePatterns (SimplifiedClause t ps exs e) = do
     qs <- traverse simplifyPattern ps
@@ -804,15 +806,16 @@ simplifyClausePatterns (SimplifiedClause t ps exs e) = do
 
 simplifyPattern
   :: (MonadSupply Name m)
-  => Pattern t t t t t t Void Void Void
+--  => Pattern t t t Void Void t Void Void Void
+  => Pattern t t t t Void t Void Void Void
   -> m (Pattern t t t Void Void Void Void Void Void)
 simplifyPattern = cata $ \case
-    PLit t prim -> do
-        var <- supply
-        undefined 
+--    PLit t prim -> do
+--        var <- supply
+--        undefined 
 
-    POr t p q -> do
-        undefined
+--    POr t p q -> do
+--        undefined
 
     PAny t -> 
         varPat t <$> supply
@@ -820,6 +823,16 @@ simplifyPattern = cata $ \case
     PVar    t var        -> pure (varPat t var)
     PCon    t con ps     -> conPat t con <$> sequence ps
     PAs     t as p       -> asPat t as <$> p
+
+expandLitPatterns = undefined
+
+expandOrPatterns = undefined
+--expandOrPatterns :: [SimplifiedClause t p a] -> [SimplifiedClause t p a]
+--expandOrPatterns = concatMap $ \(SimplifiedClause t ps es e) ->
+--    [SimplifiedClause t qs es e | qs <- traverse fork ps]
+--  where
+----    fork :: Pattern t t t t t t t t t -> [Pattern t t t t t t t t t]
+--    fork = undefined
 
 compilePatterns
   :: (MonadSupply Name m)
