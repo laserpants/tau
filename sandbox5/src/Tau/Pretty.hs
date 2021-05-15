@@ -485,15 +485,17 @@ exprTree = para $ \case
     ELam    t lam a      -> Node ("(" <> pretty lam <> ")" <+> "=>") [snd a, Node (colon <+> "(" <> pretty t <> ")") []]
     ETuple  t es         -> Node (annotated t (tupleCon (length es))) (snd <$> es)
     EFix    t bind e1 e2 -> Node (annotated t ("fix" :: Text)) [Node (pretty bind <+> "=") [snd e1, Node "in" [snd e2]]]
+    EIf     t e1 e2 e3   -> Node ("if" <+> colon <+> pretty t) [snd e1, prefix ("then" :: Text) (snd e2), prefix ("else" :: Text) (snd e3)]
     _                    -> Node "*TODO" []
 
+prefix txt (Node label forest) = Node (pretty txt <+> label) forest
 
 --exprTree3
 --  :: (PatternClause c t (Prep t) (Expr t1 t2 t3 t4 t5 t6 t7 t8 t9 t10 t11 t12 t13 t14 t15 e1 e2 (c t ())), Functor (c t (Pattern p1 p2 p3 p4 p5 p6 p7 p8 p9)), Typed e1, Typed t12, LetBinding e1, Pretty e2, Pretty e1, Pretty t1, Pretty t2, Pretty t3, Pretty t4, Pretty t5, Pretty t6, Pretty t7, Pretty t8, Pretty t9, Pretty t10, Pretty t11, Pretty t12, Pretty t13, Pretty t15)
 --  => Expr t1 t2 t3 t4 t5 t6 t7 t8 t9 t10 t11 t12 t13 t14 t15 e1 e2 (c t (Pattern p1 p2 p3 p4 p5 p6 p7 p8 p9))
 --  -> Tree (Doc a)
 exprTree3 
-  :: (Pretty t) => Stage6Expr t -> Tree (Doc a)
+  :: (Show t, Pretty t) => Stage6Expr t -> Tree (Doc a)
 exprTree3 = para $ \case
 
     EVar    t var        -> Node (annotated t var) []
@@ -502,8 +504,9 @@ exprTree3 = para $ \case
     EApp    t es         -> Node (annotated t ("@" :: Text)) (snd <$> es)
     EFix    t bind e1 e2 -> Node (annotated t ("fix" :: Text)) [Node (pretty bind <+> "=") [snd e1, Node "in" [snd e2]]]
     ELam    t lam a      -> Node ("(" <> pretty lam <> ") =>") [snd a, Node (colon <+> "(" <> pretty t <> ")") []]
-
     EPat    t [e] cs     -> Node ("match" <+> colon <+> pretty t) ([exprTree3 (fst e)] <> [Node "with" (treeClause3 <$> (fst <$$> cs))])
+    EIf     t e1 e2 e3   -> Node ("if" <+> colon <+> pretty t) [snd e1, prefix ("then" :: Text) (snd e2), prefix ("else" :: Text) (snd e3)]
+    e                    -> Node (pretty (show e)) []
 
 
 instance Pretty (Prep t) where

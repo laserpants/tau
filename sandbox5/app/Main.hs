@@ -579,12 +579,17 @@ test2 = do -- case fromJust (runInfer mempty testClassEnv testTypeEnv testConstr
 
 --    expr = inferAst (Ast (patExpr () [litExpr () (TInt 5)] [Clause () [litPat () (TInt 5)] [Guard [] (litExpr () (TInt 1))]]))
 
+    expr = inferAst (Ast (patExpr () [litExpr () (TInt 4)] 
+             [ Clause () [litPat () (TInt 5)] [Guard [] (litExpr () (TInt 1))]
+             , Clause () [anyPat ()] [Guard [] (litExpr () (TInt 2))]
+             ]))
+
 --    expr = inferAst (Ast (lamExpr () [varPat () "x"] (patExpr () [varExpr () "x"] [Clause () [anyPat ()] [Guard [] (litExpr () (TInt 1))]])))
 
-    expr = inferAst (Ast (lamExpr () [varPat () "x"] (patExpr () [varExpr () "x"] 
-        [ Clause () [varPat () "y"] [Guard [] (litExpr () (TInt 1))] 
-        , Clause () [anyPat ()] [Guard [] (litExpr () (TInt 2))]
-        ])))
+--    expr = inferAst (Ast (lamExpr () [varPat () "x"] (patExpr () [varExpr () "x"] 
+--        [ Clause () [varPat () "y"] [Guard [] (litExpr () (TInt 1))] 
+--        , Clause () [anyPat ()] [Guard [] (litExpr () (TInt 2))]
+--        ])))
 
 
 test3 = u :: Either UnificationError (Substitution Type, Substitution Kind)
