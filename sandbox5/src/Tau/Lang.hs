@@ -83,8 +83,6 @@ data Assoc
 -- | Pattern guard
 data Guard a = Guard [a] a
 
---data XClause t p a = XClause t [p] a
-
 -- | Pattern matching clause
 data Clause t p a = Clause t [p] [Guard a] 
 
