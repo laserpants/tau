@@ -455,10 +455,20 @@ test2 = do -- case fromJust (runInfer mempty testClassEnv testTypeEnv testConstr
     print "=========="
     putStrLn (showTree zz2)
     print "=========="
-    print xx3
+    putStrLn (showTree zz22)
     print "=========="
-    print (evalExpr xx3 evalEnv2)
-    print "=========="
+--    print xx2
+--    print "=========="
+--    print xx22
+--    print "=========="
+--    print xx222
+--    print "=========="
+    --putStrLn (showTree zz22)
+    --print "=========="
+--    print xx3
+--    print "=========="
+--    print (evalExpr xx3 evalEnv2)
+--    print "=========="
     --putStrLn (showTree zz123)
 --    Left e -> error (show e)
 --    Right (expr, sub, context) -> do
@@ -486,7 +496,14 @@ test2 = do -- case fromJust (runInfer mempty testClassEnv testTypeEnv testConstr
     xx :: Stage1Expr (TypeInfoT [Error] (Maybe Type))
     xx = stage1 (getAst eee)
 
+    xx2 :: Stage3Expr (TypeInfoT [Error] (Maybe Type))
     xx2 = stage3 xx
+
+    xx22 :: Stage4Expr (TypeInfoT [Error] (Maybe Type))
+    xx22 = stage4 xx2
+
+    xx222 :: Stage6Expr (TypeInfoT [Error] (Maybe Type))
+    xx222 = fromJust $ evalSupply (stage6 xx22) (nameSupply "$")
 
     xx3 :: Core
     xx3 = undefined -- runIdentity (toCore xx2)
@@ -501,6 +518,12 @@ test2 = do -- case fromJust (runInfer mempty testClassEnv testTypeEnv testConstr
 
     yy2 = exprTree xx2
     zz2 = unpack . renderDoc <$> yy2
+
+    yy22 = exprTree xx22
+    zz22 = unpack . renderDoc <$> yy22
+
+    yy222 = exprTree3 xx222
+    zz222 = unpack . renderDoc <$> yy222
 
     yy123 = exprTree xx123
     zz123 = unpack . renderDoc <$> yy123
@@ -546,9 +569,11 @@ test2 = do -- case fromJust (runInfer mempty testClassEnv testTypeEnv testConstr
 
 --    expr = inferAst (Ast (letExpr () (BLet () (varPat () "id")) (lamExpr () [varPat () "x"] (varExpr () "x")) (appExpr () [varExpr () "id", litExpr () (TInt 5)])))
 
-    expr = inferAst (Ast (letExpr () (BLet () (varPat () "id")) (lamExpr () [varPat () "x"] (varExpr () "x")) (tupleExpr () [appExpr () [varExpr () "id", litExpr () (TInt 5)], appExpr () [varExpr () "id", litExpr () (TBool True)]])))
-
 --    expr = inferAst (Ast (lamExpr () [varPat () "a", varPat () "b"] (appExpr () [varExpr () "(,)", varExpr () "a", varExpr () "b"])))
+
+--    expr = inferAst (Ast (letExpr () (BLet () (varPat () "id")) (lamExpr () [varPat () "x"] (varExpr () "x")) (tupleExpr () [appExpr () [varExpr () "id", litExpr () (TInt 5)], appExpr () [varExpr () "id", litExpr () (TBool True)]])))
+
+    expr = inferAst (Ast (patExpr () [litExpr () (TInt 5)] [Clause () [litPat () (TInt 5)] [Guard [] (litExpr () (TInt 1))]]))
 
 
 test3 = u :: Either UnificationError (Substitution Type, Substitution Kind)

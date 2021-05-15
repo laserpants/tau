@@ -487,7 +487,64 @@ exprTree = para $ \case
     EFix    t bind e1 e2 -> Node (annotated t ("fix" :: Text)) [Node (pretty bind <+> "=") [snd e1, Node "in" [snd e2]]]
     _                    -> Node "*TODO" []
 
+
+--exprTree3
+--  :: (PatternClause c t (Prep t) (Expr t1 t2 t3 t4 t5 t6 t7 t8 t9 t10 t11 t12 t13 t14 t15 e1 e2 (c t ())), Functor (c t (Pattern p1 p2 p3 p4 p5 p6 p7 p8 p9)), Typed e1, Typed t12, LetBinding e1, Pretty e2, Pretty e1, Pretty t1, Pretty t2, Pretty t3, Pretty t4, Pretty t5, Pretty t6, Pretty t7, Pretty t8, Pretty t9, Pretty t10, Pretty t11, Pretty t12, Pretty t13, Pretty t15)
+--  => Expr t1 t2 t3 t4 t5 t6 t7 t8 t9 t10 t11 t12 t13 t14 t15 e1 e2 (c t (Pattern p1 p2 p3 p4 p5 p6 p7 p8 p9))
+--  -> Tree (Doc a)
+exprTree3 
+  :: (Pretty t) => Stage6Expr t -> Tree (Doc a)
+exprTree3 = para $ \case
+
+    EVar    t var        -> Node (annotated t var) []
+    ECon    t con es     -> Node ("Con" <+> annotated t con) (snd <$> es)
+    ELit    t prim       -> Node (annotated t prim) []
+    EApp    t es         -> Node (annotated t ("@" :: Text)) (snd <$> es)
+    EFix    t bind e1 e2 -> Node (annotated t ("fix" :: Text)) [Node (pretty bind <+> "=") [snd e1, Node "in" [snd e2]]]
+    ELam    t lam a      -> Node ("(" <> pretty lam <> ") =>") [snd a, Node (colon <+> "(" <> pretty t <> ")") []]
+
+    EPat    t [e] cs     -> Node ("match" <+> colon <+> pretty t) ([exprTree3 (fst e)] <> [Node "with" (treeClause3 <$> (fst <$$> cs))])
+
+
+instance Pretty (Prep t) where
+    pretty = \case
+        RCon t con [] -> pretty con
+        RCon t con rs -> pretty con <+> foldr patternConx "" rs -- (fst <$> rs)
+
+--        PCon _ con ps -> pretty con <+> foldr patternCon "" (fst <$> ps)
+
 --xx = Text.stripSuffix "]" <=< Text.stripPrefix "["
+treeClause3 c = clauseTree3 (clauseLhs c) (clauseRhs c)
+
+clauseTree3 :: [Prep t] -> [([Stage6Expr t], Stage6Expr t)] -> Tree (Doc a)
+clauseTree3 ps gs = Node "" []
+  where
+    pats | 1 == length ps = pretty (head ps)
+         | otherwise      = "xxxx" -- foldr patternConx "" ps
+
+patternConx :: Name -> Doc a -> Doc a
+patternConx pat doc = pretty pat <+> doc
+--patternCon :: Pattern t1 t2 t3 t4 t5 t6 t7 t8 t9 -> Doc a -> Doc a
+--patternCon pat doc = lhs <> rhs
+--  where
+--    lhs = parensIf useLeft (pretty pat)
+--    rhs = if "" == show doc then "" else space <> doc
+--    useLeft = case project pat of
+--        PCon _ _ ps | not (null ps) -> True
+--        PAs{}                       -> True
+--        POr{}                       -> True
+--        _                           -> False
+
+
+
+--clauseTree ps gs = Node (pats <+> "=>") (guard <$> gs)
+--  where
+--    pats | 1 == length ps = pretty (head ps)
+--         | otherwise      = foldr patternCon "" ps
+--    guard ([], e)    = exprTree e
+--    guard (es, e)    = Node (commaSep (iff <$> es)) [exprTree e]
+--    iff e = "iff" <+> pretty e
+
 
 
 treeClause 
