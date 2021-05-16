@@ -1,4 +1,4 @@
-{-# LANGUAGE LambdaCase        #-}
+{-# LANGUAGE LambdaCase #-}
 module Tau.Compiler.Pipeline.Stage1 where
 
 import Data.Void

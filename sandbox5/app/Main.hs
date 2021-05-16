@@ -16,8 +16,11 @@ import Data.Tree.View (showTree)
 import Tau.Compiler.Error
 import Tau.Compiler.Pipeline
 import Tau.Compiler.Pipeline.Stage1
+import Tau.Compiler.Pipeline.Stage2
+import Tau.Compiler.Pipeline.Stage3
+import Tau.Compiler.Pipeline.Stage4
+import Tau.Compiler.Pipeline.Stage5
 import Tau.Compiler.Pipeline.Stage6
-import Tau.Compiler.Pipeline.Stage7
 import Tau.Compiler.Substitute
 import Tau.Compiler.Translate
 import Tau.Compiler.Typecheck
