@@ -23,7 +23,7 @@ translate = cata $ \case
     ELam _ var e1    -> cLam var <$> e1
     EIf  _ e1 e2 e3  -> cIf <$> e1 <*> e2 <*> e3
     ECon _ con exs   -> sequenceExs (pure (cVar con):exs)
-    EPat _ _ _       -> undefined
+    EPat _ es cs      -> undefined
 
 sequenceExs :: (Monad m) => [m Core] -> m Core
 sequenceExs = (fun <$>) . sequence

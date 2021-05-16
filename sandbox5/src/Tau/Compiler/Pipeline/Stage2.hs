@@ -30,7 +30,52 @@ expandTypeClasses
      , MonadReader (ClassEnv, TypeEnv, KindEnv, ConstructorEnv) m )
   => SourceExpr (TypeInfoT [e] t)
   -> StateT [(Name, Type)] m (SourceExpr t)
-expandTypeClasses =
+expandTypeClasses expr =
+    insertDictArgs <$> run expr <*> (nub <$> pluck)
+  where
+    run
+      :: ( MonadSupply Name m
+         , MonadReader (ClassEnv, TypeEnv, KindEnv, ConstructorEnv) m )
+      => SourceExpr (TypeInfoT [e] t)
+      -> StateT [(Name, Type)] m (SourceExpr t)
+    run = cata $ \case
+        ELet t pat expr1 expr2 -> do
+            undefined
+
+        EFix t var expr1 expr2 -> do
+            undefined
+
+        EVar t var ->
+            undefined
+
+        ELit t lit ->
+            undefined
+
+        ECon   t con es   -> conExpr undefined con <$> sequence es
+        EApp   t es       -> appExpr undefined <$> sequence es
+        ELam   t ps e     -> undefined           
+        EIf    t e1 e2 e3 -> ifExpr undefined <$> e1 <*> e2 <*> e3
+        EPat   t exprs clauses -> do
+            es <- sequence exprs
+            cs <- translateClauses <$$> traverse sequence clauses
+            pure (patExpr undefined es cs)
+
+    translateClauses = \case
+        SimplifiedClause t ps g -> SimplifiedClause (nodeType t) (translatePatterns <$> ps) g
+
+    translatePatterns :: ProgPattern (TypeInfoT [e] t) -> ProgPattern t
+    translatePatterns = cata $ \case
+        PVar    t var    -> varPat   (nodeType t) var
+        PCon    t con ps -> conPat   (nodeType t) con ps
+        PAs     t as p   -> asPat    (nodeType t) as p
+        PLit    t prim   -> litPat   (nodeType t) prim
+        PAny    t        -> anyPat   (nodeType t)
+        POr     t p q    -> orPat    (nodeType t) p q
+        PTuple  t ps     -> tuplePat (nodeType t) ps
+        PList   t ps     -> listPat  (nodeType t) ps
+
+insertDictArgs :: SourceExpr t -> [(Name, Type)] -> SourceExpr t
+insertDictArgs =
     undefined
 
 --expandTypeClasses
@@ -110,6 +155,8 @@ expandTypeClasses =
 --stripNodePredicates :: TypeInfoT [e] t -> TypeInfoT [e] t
 --stripNodePredicates = setNodePredicates []
 
+-- >>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>
+
 mapExpr :: (t -> u) -> SourceExpr t -> SourceExpr u
 mapExpr f = cata $ \case
     EVar    t var          -> varExpr    (f t) var
@@ -123,19 +170,19 @@ mapExpr f = cata $ \case
     ELet    t bind e1 e2   -> letExpr    (f t) (mapBind bind) e1 e2
   where
     mapBind = \case
-        BLet    t p          -> BLet       (f t) (mapPattern p)
-        BFun    t name ps    -> BFun       (f t) name (mapPattern <$> ps)
+        BLet    t p          -> BLet     (f t) (mapPattern p)
+        BFun    t name ps    -> BFun     (f t) name (mapPattern <$> ps)
 
     mapClause = \case
         SimplifiedClause t ps g -> SimplifiedClause (f t) (mapPattern <$> ps) g
 
     mapPattern = cata $ \case
-        PVar    t var        -> varPat     (f t) var
-        PCon    t con ps     -> conPat     (f t) con ps
-        PLit    t prim       -> litPat     (f t) prim
-        PAs     t as p       -> asPat      (f t) as p
-        POr     t p q        -> orPat      (f t) p q
-        PAny    t            -> anyPat     (f t)
-        PTuple  t ps         -> tuplePat   (f t) ps
-        PList   t ps         -> listPat    (f t) ps
+        PVar    t var        -> varPat   (f t) var
+        PCon    t con ps     -> conPat   (f t) con ps
+        PLit    t prim       -> litPat   (f t) prim
+        PAs     t as p       -> asPat    (f t) as p
+        POr     t p q        -> orPat    (f t) p q
+        PAny    t            -> anyPat   (f t)
+        PTuple  t ps         -> tuplePat (f t) ps
+        PList   t ps         -> listPat  (f t) ps
 --            PRecord t row        -> recordPat  (f t) row
