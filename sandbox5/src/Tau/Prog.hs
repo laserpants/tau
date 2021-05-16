@@ -147,9 +147,10 @@ lookupClassInstance tc ty env = do
 -- >>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>
 
 data TypeInfoT e t = TypeInfo
-    { nodeType       :: t
+    { nodeErrors     :: e 
+    , nodeType       :: t
     , nodePredicates :: List Predicate
-    , nodeErrors     :: e }
+    }
 
 type TypeInfo e = TypeInfoT e Type
 
@@ -180,7 +181,7 @@ instance FreeIn TypeEnv where
 
 instance (Substitutable Type a) => Substitutable (TypeInfo e) a where
     apply sub = \case
-        TypeInfo ty ps e -> TypeInfo (apply sub ty) (apply sub ps) e
+        TypeInfo e ty ps -> TypeInfo e (apply sub ty) (apply sub ps)
 
 instance Substitutable TypeEnv Type where
     apply = Env.map . apply 
@@ -212,7 +213,7 @@ constructorEnv :: [(Name, ([Name], Int))] -> ConstructorEnv
 constructorEnv = Env.fromList . (first Set.fromList <$$>)
 
 simplifyPredicates :: TypeInfo e -> TypeInfo e
-simplifyPredicates (TypeInfo ty ps e) = TypeInfo ty (nub (filter relevant ps)) e
+simplifyPredicates (TypeInfo e ty ps) = TypeInfo e ty (nub (filter relevant ps))
   where
     freeVars = free ty
     relevant (InClass _ (Fix (TVar _ var))) 

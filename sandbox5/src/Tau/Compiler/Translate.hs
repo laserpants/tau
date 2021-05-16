@@ -46,7 +46,7 @@ class InfoTag t where
     updateType :: (Type -> Type) -> t -> t
 
 instance InfoTag (TypeInfo [e]) where
-    typeToTag t  = TypeInfo t [] []
+    typeToTag t  = TypeInfo [] t [] 
     tagToType it = nodeType it
     updateType   = fmap
 
@@ -572,8 +572,8 @@ translateFunExpr
 translateFunExpr t =
     lamExpr t [varPat t1 "#0"] <<< patExpr t2 [varExpr t1 "#0"]
   where
-    t1 = TypeInfo (get cod) (nodePredicates t) []
-    t2 = TypeInfo (get dom) (nodePredicates t) []
+    t1 = TypeInfo [] (get cod) (nodePredicates t) 
+    t2 = TypeInfo [] (get dom) (nodePredicates t) 
 
     get :: (TypeF Kind Void Type -> Type) -> Maybe Type
     get f = fmap (f . project) (nodeType t)

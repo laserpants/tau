@@ -29,78 +29,86 @@ expandTypeClasses
   :: ( MonadSupply Name m
      , MonadReader (ClassEnv, TypeEnv, KindEnv, ConstructorEnv) m )
   => SourceExpr (TypeInfoT [e] t)
-  -> StateT [(Name, Type)] m (SourceExpr (TypeInfoT [e] t))
-expandTypeClasses expr = 
-    insertDictArgs <$> run expr <*> (nub <$> pluck)
-  where
-    run
-      :: ( MonadSupply Name m
-         , MonadReader (ClassEnv, TypeEnv, KindEnv, ConstructorEnv) m )
-      => SourceExpr (TypeInfoT [e] t)
-      -> StateT [(Name, Type)] m (SourceExpr (TypeInfoT [e] t))
-    run = cata $ \case
-        ELet t pat expr1 expr2 -> do
-            e1 <- expr1
-            vs <- nub <$> pluck
-            letExpr t pat (insertDictArgs e1 vs) <$> expr2
+  -> StateT [(Name, Type)] m (SourceExpr t)
+expandTypeClasses =
+    undefined
 
-        EFix t var expr1 expr2 -> do
-            e1 <- expr1
-            vs <- nub <$> pluck
-            fixExpr t var (insertDictArgs e1 vs) <$> expr2
-
-        EVar t var ->
-            foldrM applyDicts (varExpr (stripNodePredicates t) var) (nodePredicates t)
-
-        ELit t lit ->
-            case lit of
-                TInt     n -> undefined
-                TInteger n -> undefined
-                TFloat   f -> undefined
-                TDouble  f -> undefined
-                _          -> pure (litExpr t lit)
-
-        e ->
-            embed <$> sequence e
-
-insertDictArgs
-  :: SourceExpr (TypeInfoT [e] t)
-  -> [(Name, Type)]
-  -> SourceExpr (TypeInfoT [e] t)
-insertDictArgs expr = foldr fun expr
-  where
-    fun 
-      :: (Name, Type) 
-      -> SourceExpr (TypeInfoT [e] t) 
-      -> SourceExpr (TypeInfoT [e] t)
-    fun (var, ty) = lamExpr undefined [varPat undefined var] 
-
---    fun (a, b) = lamExpr (NodeInfo (tArr b (typeOf expr)) []) [varPat (NodeInfo b []) a] 
-
-applyDicts
-  :: ( MonadSupply Name m
-     , MonadReader (ClassEnv, TypeEnv, KindEnv, ConstructorEnv) m )
-  => Predicate
-  -> SourceExpr (TypeInfoT [e] t)
-  -> StateT [(Name, Type)] m (SourceExpr (TypeInfoT [e] t))
-applyDicts (InClass name ty) expr
-
-    | isVar ty = do
-        tv <- Text.replace "a" "$d" <$> supply
-        undefined
-
-    | otherwise = do
-        env <- askClassEnv
-        case classMethods <$> lookupClassInstance name ty env of
-            Left e -> undefined -- throwError e
-            Right methods -> do
-                undefined
-
-setNodePredicates :: [Predicate] -> TypeInfoT [e] t -> TypeInfoT [e] t
-setNodePredicates ps info = info{ nodePredicates = ps }
-
-stripNodePredicates :: TypeInfoT [e] t -> TypeInfoT [e] t
-stripNodePredicates = setNodePredicates []
+--expandTypeClasses
+--  :: ( MonadSupply Name m
+--     , MonadReader (ClassEnv, TypeEnv, KindEnv, ConstructorEnv) m )
+--  => SourceExpr (TypeInfoT [e] t)
+--  -> StateT [(Name, Type)] m (SourceExpr (TypeInfoT [e] t))
+--expandTypeClasses expr = 
+--    insertDictArgs <$> run expr <*> (nub <$> pluck)
+--  where
+--    run
+--      :: ( MonadSupply Name m
+--         , MonadReader (ClassEnv, TypeEnv, KindEnv, ConstructorEnv) m )
+--      => SourceExpr (TypeInfoT [e] t)
+--      -> StateT [(Name, Type)] m (SourceExpr (TypeInfoT [e] t))
+--    run = cata $ \case
+--        ELet t pat expr1 expr2 -> do
+--            e1 <- expr1
+--            vs <- nub <$> pluck
+--            letExpr t pat (insertDictArgs e1 vs) <$> expr2
+--
+--        EFix t var expr1 expr2 -> do
+--            e1 <- expr1
+--            vs <- nub <$> pluck
+--            fixExpr t var (insertDictArgs e1 vs) <$> expr2
+--
+--        EVar t var ->
+--            foldrM applyDicts (varExpr (stripNodePredicates t) var) (nodePredicates t)
+--
+--        ELit t lit ->
+--            case lit of
+--                TInt     n -> undefined
+--                TInteger n -> undefined
+--                TFloat   f -> undefined
+--                TDouble  f -> undefined
+--                _          -> pure (litExpr t lit)
+--
+--        e ->
+--            embed <$> sequence e
+--
+--insertDictArgs
+--  :: SourceExpr (TypeInfoT [e] t)
+--  -> [(Name, Type)]
+--  -> SourceExpr (TypeInfoT [e] t)
+--insertDictArgs expr = foldr fun expr
+--  where
+--    fun 
+--      :: (Name, Type) 
+--      -> SourceExpr (TypeInfoT [e] t) 
+--      -> SourceExpr (TypeInfoT [e] t)
+--    fun (var, ty) = lamExpr undefined [varPat undefined var] 
+--
+----    fun (a, b) = lamExpr (NodeInfo (tArr b (typeOf expr)) []) [varPat (NodeInfo b []) a] 
+--
+--applyDicts
+--  :: ( MonadSupply Name m
+--     , MonadReader (ClassEnv, TypeEnv, KindEnv, ConstructorEnv) m )
+--  => Predicate
+--  -> SourceExpr (TypeInfoT [e] t)
+--  -> StateT [(Name, Type)] m (SourceExpr (TypeInfoT [e] t))
+--applyDicts (InClass name ty) expr
+--
+--    | isVar ty = do
+--        tv <- Text.replace "a" "$d" <$> supply
+--        undefined
+--
+--    | otherwise = do
+--        env <- askClassEnv
+--        case classMethods <$> lookupClassInstance name ty env of
+--            Left e -> undefined -- throwError e
+--            Right methods -> do
+--                undefined
+--
+--setNodePredicates :: [Predicate] -> TypeInfoT [e] t -> TypeInfoT [e] t
+--setNodePredicates ps info = info{ nodePredicates = ps }
+--
+--stripNodePredicates :: TypeInfoT [e] t -> TypeInfoT [e] t
+--stripNodePredicates = setNodePredicates []
 
 mapExpr :: (t -> u) -> SourceExpr t -> SourceExpr u
 mapExpr f = cata $ \case

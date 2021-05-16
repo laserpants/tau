@@ -740,7 +740,7 @@ annotated t p = pretty p <+> colon <+> pretty t
 --        ]
 
 instance (Pretty t) => Pretty (TypeInfoT [Error] t) where
-    pretty (TypeInfo t ps es) = pretty t <> preds <> errs
+    pretty (TypeInfo es t ps) = pretty t <> preds <> errs
       where
         preds | null ps   = ""
               | otherwise = space <> pretty ps

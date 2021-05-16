@@ -384,7 +384,7 @@ opType
   -> WriterT Node m a
 opType op scheme = do
     (t, (_, _, ps, es)) <- listen (instantiate scheme)
-    pure (op (TypeInfo t ps es))
+    pure (op (TypeInfo es t ps))
 
 inferOp1Type
   :: ( MonadSupply Name m
@@ -662,7 +662,7 @@ inferNodeType t w = do
     errs <- lefts <$> mapM (runUnify t) ts
     sub <- gets fst3
     t' <- inferKind (apply sub t)
-    pure (a, TypeInfo t' (nub (apply sub ps)) (err <> errs), vs)
+    pure (a, TypeInfo (err <> errs) t' (nub (apply sub ps)), vs)
 
 runUnify
   :: ( MonadSupply Name m
