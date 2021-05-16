@@ -5,6 +5,7 @@ module Tau.Compiler.Pipeline.Stage2 where
 import Control.Monad.Reader
 import Control.Monad.State
 import Control.Monad.Supply
+import Data.Foldable (foldrM)
 import Data.List (nub)
 import Tau.Compiler.Error
 import Tau.Compiler.Pipeline
@@ -39,13 +40,25 @@ expandTypeClasses expr =
       -> StateT [(Name, Type)] m (SourceExpr (TypeInfoT [e] t))
     run = cata $ \case
         ELet t pat expr1 expr2 -> do
-            undefined
+            e1 <- expr1
+            vs <- nub <$> pluck
+            letExpr t pat (insertDictArgs e1 vs) <$> expr2
+
+        EFix t var expr1 expr2 -> do
+            e1 <- expr1
+            vs <- nub <$> pluck
+            fixExpr t var (insertDictArgs e1 vs) <$> expr2
 
         EVar t var ->
-            undefined
+            foldrM applyDicts (varExpr (stripNodePredicates t) var) (nodePredicates t)
 
         ELit t lit ->
-            undefined
+            case lit of
+                TInt     n -> undefined
+                TInteger n -> undefined
+                TFloat   f -> undefined
+                TDouble  f -> undefined
+                _          -> pure (litExpr t lit)
 
         e ->
             embed <$> sequence e
@@ -54,10 +67,15 @@ insertDictArgs
   :: SourceExpr (TypeInfoT [e] t)
   -> [(Name, Type)]
   -> SourceExpr (TypeInfoT [e] t)
-insertDictArgs expr _ =
-    expr
-    -- TODO
---    undefined
+insertDictArgs expr = foldr fun expr
+  where
+    fun 
+      :: (Name, Type) 
+      -> SourceExpr (TypeInfoT [e] t) 
+      -> SourceExpr (TypeInfoT [e] t)
+    fun (var, ty) = lamExpr undefined [varPat undefined var] 
+
+--    fun (a, b) = lamExpr (NodeInfo (tArr b (typeOf expr)) []) [varPat (NodeInfo b []) a] 
 
 applyDicts
   :: ( MonadSupply Name m
@@ -77,6 +95,12 @@ applyDicts (InClass name ty) expr
             Left e -> undefined -- throwError e
             Right methods -> do
                 undefined
+
+setNodePredicates :: [Predicate] -> TypeInfoT [e] t -> TypeInfoT [e] t
+setNodePredicates ps info = info{ nodePredicates = ps }
+
+stripNodePredicates :: TypeInfoT [e] t -> TypeInfoT [e] t
+stripNodePredicates = setNodePredicates []
 
 mapExpr :: (t -> u) -> SourceExpr t -> SourceExpr u
 mapExpr f = cata $ \case
