@@ -6,8 +6,10 @@ module Tau.Compiler.Pipeline where
 import Tau.Lang
 import Tau.Tool
 
+-- BasicClause?
 data SimplifiedClause t p a = SimplifiedClause t [p] (Guard a) 
 
+-- BasicPattern?
 data SimplifiedPattern t = SCon t Name [Name]
 
 -- >>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>
