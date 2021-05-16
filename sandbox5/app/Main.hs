@@ -37,6 +37,13 @@ import Tau.Type
 import qualified Tau.Compiler.Substitute as Sub
 import qualified Tau.Env as Env
 
+import qualified Tau.Compiler.Pipeline.Stage1 as Stage1
+import qualified Tau.Compiler.Pipeline.Stage2 as Stage2
+import qualified Tau.Compiler.Pipeline.Stage3 as Stage3
+import qualified Tau.Compiler.Pipeline.Stage4 as Stage4
+import qualified Tau.Compiler.Pipeline.Stage5 as Stage5
+import qualified Tau.Compiler.Pipeline.Stage6 as Stage6
+
 ---- ----test3 = unifyRows (typeToRowX r1) (typeToRowX r2) :: Either UnificationError TypeSubstitution
 ---- ----  where
 ---- ----    r1 = tRowExtend "name" tString (tRowExtend "id" tInt tEmptyRow)
@@ -599,6 +606,34 @@ test2 = do -- case fromJust (runInfer mempty testClassEnv testTypeEnv testConstr
 --        [ Clause () [varPat () "y"] [Guard [] (litExpr () (TInt 1))] 
 --        , Clause () [anyPat ()] [Guard [] (litExpr () (TInt 2))]
 --        ])))
+
+test123 = do
+    putStrLn "---------------"
+    putStrLn (showTree h)
+    putStrLn "---------------"
+--    xx2
+  where
+    ee :: Ast (TypeInfo [Error])
+    ee = apply sub a
+
+    eee :: Ast (TypeInfoT [Error] (Maybe Type))
+    eee = fmap (fmap Just) ee
+
+    xx :: Stage1Expr (TypeInfoT [Error] (Maybe Type))
+    xx = Stage1.translate (getAst eee)
+
+    h = unpack . renderDoc <$> g
+    g = exprTree xx2
+
+    xx2 :: Stage3Expr (Maybe Type)
+    xx2 = Stage3.translate (Stage2.mapExpr nodeType xx)
+
+    (a, sub, sub2, ctx) = fromJust (runInfer mempty testClassEnv testTypeEnv testKindEnv testConstructorEnv prog)
+
+    prog = inferAst (Ast expr)
+
+    expr :: ProgExpr ()
+    expr = lamExpr () [varPat () "x", varPat () "y"] (appExpr () [varExpr () "(+)", varExpr () "x", varExpr () "y"])
 
 foo5 :: (t -> u) -> Stage5Expr t -> Stage5Expr u
 foo5 f = cata $ \case

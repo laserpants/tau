@@ -28,18 +28,23 @@ translate = cata $ \case
     EIf     t e1 e2 e3   -> ifExpr  t e1 e2 e3
 
 translateLambda
-  :: t
-  -> [ProgPattern t]
-  -> TargetExpr t
-  -> TargetExpr t
-translateLambda = undefined
+  :: Maybe Type
+  -> [ProgPattern (Maybe Type)]
+  -> TargetExpr (Maybe Type)
+  -> TargetExpr (Maybe Type)
+translateLambda t [Fix (PVar _ var)] e = lamExpr t var e
+translateLambda t ps e = fst (foldr fn (e, targetExprTag e) ps)
+  where
+    fn p (e, t) =
+        let t' = tArr <$> patternTag p <*> t
+         in (lamExpr t' "#0" (patExpr t [varExpr (patternTag p) "#0"] [SimplifiedClause t [p] (Guard [] e)]), t')
 
 translateLet
-  :: t
-  -> ProgBinding t
-  -> TargetExpr t
-  -> TargetExpr t
-  -> TargetExpr t
+  :: Maybe Type
+  -> ProgBinding (Maybe Type)
+  -> TargetExpr (Maybe Type)
+  -> TargetExpr (Maybe Type)
+  -> TargetExpr (Maybe Type)
 translateLet t (BLet _ (Fix (PVar _ var))) e1 e2 = fixExpr t var e1 e2
 translateLet t bind e1 e2 = 
     patExpr t [e] [SimplifiedClause t [p] (Guard [] e2)]
@@ -47,3 +52,13 @@ translateLet t bind e1 e2 =
     (e, p) = case bind of
         BLet _ pat   -> (e1, pat)
         BFun t f ps  -> (translateLambda t ps e1, varPat t f)
+
+targetExprTag :: TargetExpr t -> t
+targetExprTag = cata $ \case
+    EVar t _     -> t
+    ECon t _ _   -> t
+    ELit t _     -> t
+    EApp t _     -> t
+    EFix t _ _ _ -> t
+    ELam t _ _   -> t
+    EIf  t _ _ _ -> t
