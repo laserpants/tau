@@ -25,6 +25,7 @@ module Tau.Tool
 --  , first3M
 --  , second3M
 --  , third3M
+  , module Control.Arrow
   , module Data.Eq.Deriving
   , module Data.Fix
   , module Data.Functor.Foldable
@@ -37,6 +38,7 @@ module Tau.Tool
   , module Text.Show.Deriving
   ) where
 
+import Control.Arrow ((<<<), (>>>), (***), (&&&))
 import Control.Monad.Except
 import Control.Monad.State
 import Data.Eq.Deriving

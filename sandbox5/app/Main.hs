@@ -15,6 +15,7 @@ import Data.Text (unpack)
 import Data.Tree.View (showTree)
 import Tau.Compiler.Error
 import Tau.Compiler.Pipeline
+import Tau.Compiler.Pipeline.Stage1
 import Tau.Compiler.Pipeline.Stage6
 import Tau.Compiler.Substitute
 import Tau.Compiler.Translate
