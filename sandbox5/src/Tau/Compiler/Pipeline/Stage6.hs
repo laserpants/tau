@@ -119,12 +119,6 @@ compilePatterns
 compilePatterns us qs = 
     compileMatch us qs (varExpr (Just (tVar (kVar "FAIL") "FAIL")) "FAIL")
   where
-    compileMatch
-      :: (MonadSupply Name m)
-      => [TargetExpr (Maybe Type)]
-      -> [TargetPatternClause (Maybe Type) (TargetExpr (Maybe Type))]
-      -> TargetExpr (Maybe Type)
-      -> m (TargetExpr (Maybe Type))
     compileMatch [] []                                       c = pure c
     compileMatch [] (SimplifiedClause _ [] (Guard [] e):_)   _ = pure e
     compileMatch [] (SimplifiedClause _ [] (Guard exs e):qs) c =
