@@ -4,7 +4,7 @@
 {-# LANGUAGE LambdaCase            #-}
 {-# LANGUAGE MultiParamTypeClasses #-}
 {-# LANGUAGE OverloadedStrings     #-}
-{-# LANGUAGE RecordWildCards      #-}
+{-# LANGUAGE RecordWildCards       #-}
 {-# LANGUAGE StrictData            #-}
 {-# LANGUAGE TemplateHaskell       #-}
 module Tau.Compiler.Translate where

@@ -16,8 +16,8 @@ type TargetExpr t = Expr t t t t t t t t Void Void Void Void Void Void Void
 
 translate :: SourceExpr (Maybe Type) -> TargetExpr (Maybe Type)
 translate = cata $ \case
-    ELam    t ps e       -> undefined -- unrollLambda2 t ps e
-    ELet    t bind e1 e2 -> undefined -- unrollLet2 t bind e1 e2
+    ELam    t ps e       -> translateLambda t ps e
+    ELet    t bind e1 e2 -> translateLet t bind e1 e2
     -- Other expressions do not change, except sub-expressions
     EPat    t es cs      -> patExpr t es cs
     EVar    t var        -> varExpr t var
@@ -27,3 +27,23 @@ translate = cata $ \case
     EFix    t name e1 e2 -> fixExpr t name e1 e2
     EIf     t e1 e2 e3   -> ifExpr  t e1 e2 e3
 
+translateLambda
+  :: t
+  -> [ProgPattern t]
+  -> TargetExpr t
+  -> TargetExpr t
+translateLambda = undefined
+
+translateLet
+  :: t
+  -> ProgBinding t
+  -> TargetExpr t
+  -> TargetExpr t
+  -> TargetExpr t
+translateLet t (BLet _ (Fix (PVar _ var))) e1 e2 = fixExpr t var e1 e2
+translateLet t bind e1 e2 = 
+    patExpr t [e] [SimplifiedClause t [p] (Guard [] e2)]
+  where
+    (e, p) = case bind of
+        BLet _ pat   -> (e1, pat)
+        BFun t f ps  -> (translateLambda t ps e1, varPat t f)
