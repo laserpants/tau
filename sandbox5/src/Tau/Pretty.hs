@@ -492,7 +492,7 @@ exprTree = para $ \case
 prefix txt (Node label forest) = Node (pretty txt <+> label) forest
 
 --exprTree3
---  :: (PatternClause c t (Prep t) (Expr t1 t2 t3 t4 t5 t6 t7 t8 t9 t10 t11 t12 t13 t14 t15 e1 e2 (c t ())), Functor (c t (Pattern p1 p2 p3 p4 p5 p6 p7 p8 p9)), Typed e1, Typed t12, LetBinding e1, Pretty e2, Pretty e1, Pretty t1, Pretty t2, Pretty t3, Pretty t4, Pretty t5, Pretty t6, Pretty t7, Pretty t8, Pretty t9, Pretty t10, Pretty t11, Pretty t12, Pretty t13, Pretty t15)
+--  :: (PatternClause c t (SimplifiedPattern t) (Expr t1 t2 t3 t4 t5 t6 t7 t8 t9 t10 t11 t12 t13 t14 t15 e1 e2 (c t ())), Functor (c t (Pattern p1 p2 p3 p4 p5 p6 p7 p8 p9)), Typed e1, Typed t12, LetBinding e1, Pretty e2, Pretty e1, Pretty t1, Pretty t2, Pretty t3, Pretty t4, Pretty t5, Pretty t6, Pretty t7, Pretty t8, Pretty t9, Pretty t10, Pretty t11, Pretty t12, Pretty t13, Pretty t15)
 --  => Expr t1 t2 t3 t4 t5 t6 t7 t8 t9 t10 t11 t12 t13 t14 t15 e1 e2 (c t (Pattern p1 p2 p3 p4 p5 p6 p7 p8 p9))
 --  -> Tree (Doc a)
 exprTree3 
@@ -510,17 +510,17 @@ exprTree3 = para $ \case
     e                    -> Node (pretty (show e)) []
 
 
-instance Pretty (Prep t) where
+instance Pretty (SimplifiedPattern t) where
     pretty = \case
-        RCon t con [] -> pretty con
-        RCon t con rs -> pretty con <+> foldr patternConx "" rs -- (fst <$> rs)
+        SCon t con [] -> pretty con
+        SCon t con rs -> pretty con <+> foldr patternConx "" rs -- (fst <$> rs)
 
 --        PCon _ con ps -> pretty con <+> foldr patternCon "" (fst <$> ps)
 
 --xx = Text.stripSuffix "]" <=< Text.stripPrefix "["
 treeClause3 c = clauseTree3 (clauseLhs c) (clauseRhs c)
 
-clauseTree3 :: [Prep t] -> [([Stage6Expr t], Stage6Expr t)] -> Tree (Doc a)
+clauseTree3 :: [SimplifiedPattern t] -> [([Stage6Expr t], Stage6Expr t)] -> Tree (Doc a)
 clauseTree3 ps gs = Node "" []
   where
     pats | 1 == length ps = pretty (head ps)

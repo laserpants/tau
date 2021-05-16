@@ -61,8 +61,6 @@ instance Typed (Maybe Type) where
 
 -- >>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>
 
-data Prep t = RCon t Name [Name]
-    deriving (Show, Eq)
 
 --data SimplifiedClause t p a = SimplifiedClause t [p] (Guard a)
 --    deriving (Show, Eq, Functor, Foldable, Traversable)
@@ -771,7 +769,7 @@ type Stage5Expr t = Expr t t t t t t t t Void Void Void Void Void Void Void
 type Stage6Expr t = Expr t t t t t t t t Void Void Void Void Void Void Void
     Void
     Name
-    (SimplifiedClause t (Prep t))
+    (SimplifiedClause t (SimplifiedPattern t))
 
 type Stage6Pattern t =
     Pattern t t t Void Void Void Void Void Void
@@ -779,8 +777,8 @@ type Stage6Pattern t =
 type Stage6PatternClause t =
     SimplifiedClause t (Pattern t t t Void Void Void Void Void Void)
 
-type Stage6PrepClause t =
-    SimplifiedClause t (Prep t)
+type Stage6SimplifiedPatternClause t =
+    SimplifiedClause t (SimplifiedPattern t)
 
 type Info = Maybe Type -- TypeInfoT [Error] (Maybe Type)
 
@@ -808,10 +806,10 @@ expandLitAndAnyPatterns
 expandLitAndAnyPatterns = traverse expandClause
   where
     expandClause (SimplifiedClause t ps (Guard exs e)) = do
-        (qs, exs1) <- runWriterT (traverse expandOne ps)
+        (qs, exs1) <- runWriterT (traverse expandPatterns ps)
         pure (SimplifiedClause t qs (Guard (exs <> exs1) e))
 
-    expandOne = cata $ \case
+    expandPatterns = cata $ \case
         PLit t prim -> do
             var <- supply
             tell [ appExpr (Just tBool)
@@ -911,7 +909,7 @@ matchAlgo (u:us) qs c =
 
         [Constructor eqs@(SimplifiedClause t _ (Guard _ e):_)] -> do
             qs' <- traverse (toSimpleMatch2 t us c) (consGroups u eqs)
-            let rs = [SimplifiedClause t [RCon (stage6ExprTag u) "$_" []] (Guard [] c) | not (isError c)]
+            let rs = [SimplifiedClause t [SCon (stage6ExprTag u) "$_" []] (Guard [] c) | not (isError c)]
             pure $ case qs' <> rs of
                 []   -> c
                 qs'' -> patExpr (stage6ExprTag e) [u] qs''
@@ -930,11 +928,11 @@ toSimpleMatch2
   -> [Stage6Expr Info]
   -> Stage6Expr Info
   -> ConsGroup Info
-  -> m (Stage6PrepClause Info (Stage6Expr Info))
+  -> m (Stage6SimplifiedPatternClause Info (Stage6Expr Info))
 toSimpleMatch2 t us c ConsGroup{..} = do
     (_, vars, pats) <- patternInfo (const id) consPatterns
     expr <- matchAlgo (vars <> us) consClauses c
-    pure (SimplifiedClause t [RCon consType consName pats] (Guard [] expr))
+    pure (SimplifiedClause t [SCon consType consName pats] (Guard [] expr))
 
 stage6ExprTag :: Stage6Expr t -> t
 stage6ExprTag = cata $ \case
@@ -1030,7 +1028,7 @@ toCore = cata $ \case
 --            [expr] -> cPat expr <$> traverse desugarClause exs
 --            _      -> error "Implementation error"
 --  where
---    desugarClause (SimplifiedClause t [RCon _ con ps] [] e) = do -- (Clause [RCon _ con ps] [Guard [] e]) =
+--    desugarClause (SimplifiedClause t [SCon _ con ps] [] e) = do -- (Clause [SCon _ con ps] [Guard [] e]) =
 --        foo <- e
 --        pure (con:ps, e)
 
@@ -1059,12 +1057,12 @@ substitute name subst = para $ \case
         patExpr t (snd <$> exs) (substEq <$> eqs)
       where
         substEq
-          :: SimplifiedClause t (Prep t) (Stage6Expr t, Stage6Expr t)
-          -> SimplifiedClause t (Prep t) (Stage6Expr t)
+          :: SimplifiedClause t (SimplifiedPattern t) (Stage6Expr t, Stage6Expr t)
+          -> SimplifiedClause t (SimplifiedPattern t) (Stage6Expr t)
         substEq eq@(SimplifiedClause _ ps _)
             | name `elem` (pats =<< ps) = fst <$> eq
             | otherwise                 = snd <$> eq
-        pats (RCon _ _ ps) = ps
+        pats (SCon _ _ ps) = ps
 
     expr -> snd <$> expr & \case
         EVar t var
