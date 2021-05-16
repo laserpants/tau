@@ -1,12 +1,18 @@
-{-# LANGUAGE LambdaCase #-}
+{-# LANGUAGE LambdaCase       #-}
+{-# LANGUAGE FlexibleContexts #-}
 module Tau.Compiler.Pipeline.Stage2 where
 
+import Control.Monad.Reader
+import Control.Monad.State
+import Control.Monad.Supply
+import Data.List (nub)
 import Tau.Compiler.Error
 import Tau.Compiler.Pipeline
 import Tau.Lang
 import Tau.Prog
 import Tau.Tool
 import Tau.Type
+import qualified Data.Text as Text
 
 type SourceExpr t = Expr t t t t t t t t t Void Void Void Void Void Void
     (ProgBinding t) [ProgPattern t] (SimplifiedClause t (ProgPattern t))
@@ -17,6 +23,60 @@ translate
   :: SourceExpr (TypeInfoT [Error] (Maybe Type))
   -> SourceExpr (Maybe Type)
 translate = undefined
+
+expandTypeClasses
+  :: ( MonadSupply Name m
+     , MonadReader (ClassEnv, TypeEnv, KindEnv, ConstructorEnv) m )
+  => SourceExpr (TypeInfoT [e] t)
+  -> StateT [(Name, Type)] m (SourceExpr (TypeInfoT [e] t))
+expandTypeClasses expr = 
+    insertDictArgs <$> run expr <*> (nub <$> pluck)
+  where
+    run
+      :: ( MonadSupply Name m
+         , MonadReader (ClassEnv, TypeEnv, KindEnv, ConstructorEnv) m )
+      => SourceExpr (TypeInfoT [e] t)
+      -> StateT [(Name, Type)] m (SourceExpr (TypeInfoT [e] t))
+    run = cata $ \case
+        ELet t pat expr1 expr2 -> do
+            undefined
+
+        EVar t var ->
+            undefined
+
+        ELit t lit ->
+            undefined
+
+        e ->
+            embed <$> sequence e
+
+insertDictArgs
+  :: SourceExpr (TypeInfoT [e] t)
+  -> [(Name, Type)]
+  -> SourceExpr (TypeInfoT [e] t)
+insertDictArgs expr _ =
+    expr
+    -- TODO
+--    undefined
+
+applyDicts
+  :: ( MonadSupply Name m
+     , MonadReader (ClassEnv, TypeEnv, KindEnv, ConstructorEnv) m )
+  => Predicate
+  -> SourceExpr (TypeInfoT [e] t)
+  -> StateT [(Name, Type)] m (SourceExpr (TypeInfoT [e] t))
+applyDicts (InClass name ty) expr
+
+    | isVar ty = do
+        tv <- Text.replace "a" "$d" <$> supply
+        undefined
+
+    | otherwise = do
+        env <- askClassEnv
+        case classMethods <$> lookupClassInstance name ty env of
+            Left e -> undefined -- throwError e
+            Right methods -> do
+                undefined
 
 mapExpr :: (t -> u) -> SourceExpr t -> SourceExpr u
 mapExpr f = cata $ \case
