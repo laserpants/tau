@@ -240,27 +240,27 @@ compilePatterns us qs =
             PCon _ con ps -> (con, (t, ps, SimplifiedClause t (ps <> qs) (Guard exs e)))
             PAs  _ as q   -> info u (SimplifiedClause t (q:qs) (Guard exs (substitute as u e)))
 
-    substitute :: Name -> TargetExpr t -> TargetExpr t -> TargetExpr t
-    substitute name subst = para $ \case
-        ELam t pat e1 -> lamExpr t pat e1'
-          where
-            e1' | name == pat = fst e1
-                | otherwise   = snd e1
+substitute :: Name -> TargetExpr t -> TargetExpr t -> TargetExpr t
+substitute name subst = para $ \case
+    ELam t pat e1 -> lamExpr t pat e1'
+      where
+        e1' | name == pat = fst e1
+            | otherwise   = snd e1
 
-        EPat t exs eqs ->
-            patExpr t (snd <$> exs) (substEq <$> eqs)
-          where
-            substEq
-              :: TargetSimplifiedPatternClause t (TargetExpr t, TargetExpr t)
-              -> TargetSimplifiedPatternClause t (TargetExpr t)
-            substEq eq@(SimplifiedClause _ ps _)
-                | name `elem` (pats =<< ps) = fst <$> eq
-                | otherwise                 = snd <$> eq
-            pats (SCon _ _ ps) = ps
+    EPat t exs eqs ->
+        patExpr t (snd <$> exs) (substEq <$> eqs)
+      where
+        substEq
+          :: TargetSimplifiedPatternClause t (TargetExpr t, TargetExpr t)
+          -> TargetSimplifiedPatternClause t (TargetExpr t)
+        substEq eq@(SimplifiedClause _ ps _)
+            | name `elem` (pats =<< ps) = fst <$> eq
+            | otherwise                 = snd <$> eq
+        pats (SCon _ _ ps) = ps
 
-        expr -> snd <$> expr & \case
-            EVar t var
-                | name == var -> subst
-                | otherwise   -> varExpr t var
+    expr -> snd <$> expr & \case
+        EVar t var
+            | name == var -> subst
+            | otherwise   -> varExpr t var
 
-            e -> embed e
+        e -> embed e
