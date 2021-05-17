@@ -612,31 +612,82 @@ test123 = do
     putStrLn "---------------"
     putStrLn (showTree h)
     putStrLn "---------------"
---    xx2
+    putStrLn (showTree h1)
+    putStrLn "---------------"
+    print eh
+
+--    putStrLn "---------------"
+----    xx2
   where
     ee :: Ast (TypeInfo [Error])
-    ee = apply sub a
+    ee = apply sub2 (apply sub a)
 
     eee :: Ast (TypeInfoT [Error] (Maybe Type))
     eee = fmap (fmap Just) ee
 
-    xx :: Stage1Expr (TypeInfoT [Error] (Maybe Type))
-    xx = Stage1.translate (getAst eee)
+    ef = Stage1.translate (getAst eee)
 
+    eg = Stage2.translate ef
+
+    eh = fromJust (evalSupply (runReaderT (evalStateT eg []) (testClassEnv, testTypeEnv, testKindEnv, testConstructorEnv)) (nameSupply "a"))
+
+--    xx :: Stage1Expr (TypeInfoT [Error] (Maybe Type))
+--    xx = Stage1.translate (getAst eee)
+
+--    h2 = unpack . renderDoc <$> g2
+    --g2 = exprTree3 eh
+
+--    xx22_ :: Stage5Expr (Maybe Type)
+--    xx22_ = foo5 nodeType eh
+
+    h1 = unpack . renderDoc <$> g1
+    g1 = exprTree ef
+--
     h = unpack . renderDoc <$> g
-    g = exprTree xx2
-
-    xx2 :: Stage3Expr (Maybe Type)
-    xx2 = Stage3.translate (Stage2.mapExpr nodeType xx)
+    g = exprTree (getAst ee)
+--
+--    xx2 :: Stage3Expr (Maybe Type)
+--    xx2 = Stage3.translate (mapExpr2 nodeType xx)
 
     (a, sub, sub2, ctx) = fromJust (runInfer mempty testClassEnv testTypeEnv testKindEnv testConstructorEnv prog)
 
     prog = inferAst (Ast expr)
 
-    expr :: ProgExpr ()
-    --expr = lamExpr () [varPat () "x", varPat () "y"] (appExpr () [varExpr () "(+)", varExpr () "x", varExpr () "y"])
+--    expr :: ProgExpr ()
+--    --expr = lamExpr () [varPat () "x", varPat () "y"] (appExpr () [varExpr () "(+)", varExpr () "x", varExpr () "y"])
 
-    expr = litExpr () (TInt 5)
+    expr :: ProgExpr ()
+    expr = op2Expr () (OAdd ()) (litExpr () (TInt 1)) (litExpr () (TInt 2))
+
+mapExpr2 :: (t -> u) -> WorkingExpr t -> WorkingExpr u
+mapExpr2 f = cata $ \case
+    EVar    t var          -> varExpr    (f t) var
+    ECon    t con es       -> conExpr    (f t) con es
+    ELit    t prim         -> litExpr    (f t) prim
+    EApp    t es           -> appExpr    (f t) es
+    EFix    t name e1 e2   -> fixExpr    (f t) name e1 e2
+    ELam    t ps e         -> lamExpr    (f t) (mapPattern <$> ps) e
+    EIf     t e1 e2 e3     -> ifExpr     (f t) e1 e2 e3
+    EPat    t es cs        -> patExpr    (f t) es (mapClause <$> cs)
+    ELet    t bind e1 e2   -> letExpr    (f t) (mapBind bind) e1 e2
+  where
+    mapBind = \case
+        BLet    t p          -> BLet     (f t) (mapPattern p)
+        BFun    t name ps    -> BFun     (f t) name (mapPattern <$> ps)
+
+    mapClause = \case
+        SimplifiedClause t ps g -> SimplifiedClause (f t) (mapPattern <$> ps) g
+
+    mapPattern = cata $ \case
+        PVar    t var        -> varPat   (f t) var
+        PCon    t con ps     -> conPat   (f t) con ps
+        PLit    t prim       -> litPat   (f t) prim
+        PAs     t as p       -> asPat    (f t) as p
+        POr     t p q        -> orPat    (f t) p q
+        PAny    t            -> anyPat   (f t)
+        PTuple  t ps         -> tuplePat (f t) ps
+        PList   t ps         -> listPat  (f t) ps
+--            PRecord t row        -> recordPat  (f t) row
 
 
 foo5 :: (t -> u) -> Stage5Expr t -> Stage5Expr u

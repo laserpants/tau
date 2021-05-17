@@ -54,7 +54,11 @@ expandTypeClasses expr =
 
         ELit t lit ->
             case lit of
-                TInt     n -> undefined
+                TInt n -> 
+                    pure (appExpr (nodeType t) 
+                        [ varExpr (tArr tInt <$> nodeType t) "fromInt"
+                        , litExpr (Just tInt) lit ])
+
                 TInteger n -> undefined
                 TFloat   f -> undefined
                 TDouble  f -> undefined
@@ -94,11 +98,6 @@ insertDictArgs expr = foldr fun expr
         (tArr <$> Just ty <*> workingExprTag expr) 
         [varPat (Just ty) var] 
 
--- alen : (Show a) -> a -> Int
--- alen x = length (show x)
-
--- alen x = length (show x)
-
 applyDicts
   :: ( MonadSupply Name m
      , MonadReader (ClassEnv, TypeEnv, KindEnv, ConstructorEnv) m )
@@ -109,12 +108,10 @@ applyDicts (InClass name ty) expr
 
     | isVar ty = do
         tv <- Text.replace "a" "$d" <$> supply
-        let t = undefined -- tApp undefined (tCon (kArr kTyp (kindOf ty)) name) ty
-            dict = varExpr (Just t) tv
-        modify ((tv, t) :)
+        modify ((tv, t1) :)
         pure (appExpr (workingExprTag expr) 
-          [ setWorkingExprTag undefined expr
-          , dict ])
+          [ setWorkingExprTag (tArr t1 <$> workingExprTag expr) expr
+          , varExpr (Just t1) tv ])
 
     | otherwise = do
         env <- askClassEnv
@@ -124,6 +121,8 @@ applyDicts (InClass name ty) expr
                 map <- traverse (secondM translateMethod) methods
                 pure (fromMaybe (buildDict map) (findIn map expr))
   where
+    t1 = tApp kTyp (tCon (kArr kTyp kClass) name) ty
+
     translateMethod = expandTypeClasses 
                     . Stage1.translate 
                     . getAst 
@@ -136,14 +135,14 @@ applyDicts (InClass name ty) expr
         EVar _ var -> lookup var map
         _          -> Nothing
 
-buildDict :: [(Name, WorkingExpr (Maybe Type))] -> WorkingExpr (Maybe Type)
-buildDict map = 
-    undefined  -- conExpr -- (tApp kTyp (tCon (kArr kRow kTyp) "#") <$> workingExprTag row) "#" [row]
-  where 
-    row = foldr fn (conExpr (Just tRowNil) "{}" []) map
-    fn (name, expr) e = 
-        let row = tRowExtend name <$> workingExprTag expr <*> workingExprTag e
-         in rowCons row name expr e
+    buildDict :: [(Name, WorkingExpr (Maybe Type))] -> WorkingExpr (Maybe Type)
+    buildDict map = 
+        conExpr (Just t1) "#" [row]
+      where 
+        row = foldr fn (conExpr (Just tRowNil) "{}" []) map
+        fn (name, expr) e = 
+            let row = tRowExtend name <$> workingExprTag expr <*> workingExprTag e
+             in rowCons row name expr e
 
 setWorkingExprTag :: t -> WorkingExpr t -> WorkingExpr t
 setWorkingExprTag t = cata $ \case
@@ -169,119 +168,3 @@ workingExprTag = cata $ \case
     ELam t _ _   -> t
     EIf  t _ _ _ -> t
     EPat t _ _   -> t
-
-    --translateMethod
-    --  :: ( MonadSupply Name m
-    --     , MonadReader (ClassEnv, TypeEnv, KindEnv, ConstructorEnv) m )
-    --  => Ast (TypeInfoT () Type)
-    --  -> StateT [(Name, Type)] m (WorkingExpr (Maybe Type))
-
---expandTypeClasses
---  :: ( MonadSupply Name m
---     , MonadReader (ClassEnv, TypeEnv, KindEnv, ConstructorEnv) m )
---  => WorkingExpr (TypeInfoT [e] t)
---  -> StateT [(Name, Type)] m (WorkingExpr (TypeInfoT [e] t))
---expandTypeClasses expr = 
---    insertDictArgs <$> run expr <*> (nub <$> pluck)
---  where
---    run
---      :: ( MonadSupply Name m
---         , MonadReader (ClassEnv, TypeEnv, KindEnv, ConstructorEnv) m )
---      => WorkingExpr (TypeInfoT [e] t)
---      -> StateT [(Name, Type)] m (WorkingExpr (TypeInfoT [e] t))
---    run = cata $ \case
---        ELet t pat expr1 expr2 -> do
---            e1 <- expr1
---            vs <- nub <$> pluck
---            letExpr t pat (insertDictArgs e1 vs) <$> expr2
---
---        EFix t var expr1 expr2 -> do
---            e1 <- expr1
---            vs <- nub <$> pluck
---            fixExpr t var (insertDictArgs e1 vs) <$> expr2
---
---        EVar t var ->
---            foldrM applyDicts (varExpr (stripNodePredicates t) var) (nodePredicates t)
---
---        ELit t lit ->
---            case lit of
---                TInt     n -> undefined
---                TInteger n -> undefined
---                TFloat   f -> undefined
---                TDouble  f -> undefined
---                _          -> pure (litExpr t lit)
---
---        e ->
---            embed <$> sequence e
---
---insertDictArgs
---  :: WorkingExpr (TypeInfoT [e] t)
---  -> [(Name, Type)]
---  -> WorkingExpr (TypeInfoT [e] t)
---insertDictArgs expr = foldr fun expr
---  where
---    fun 
---      :: (Name, Type) 
---      -> WorkingExpr (TypeInfoT [e] t) 
---      -> WorkingExpr (TypeInfoT [e] t)
---    fun (var, ty) = lamExpr undefined [varPat undefined var] 
---
-----    fun (a, b) = lamExpr (NodeInfo (tArr b (typeOf expr)) []) [varPat (NodeInfo b []) a] 
---
---applyDicts
---  :: ( MonadSupply Name m
---     , MonadReader (ClassEnv, TypeEnv, KindEnv, ConstructorEnv) m )
---  => Predicate
---  -> WorkingExpr (TypeInfoT [e] t)
---  -> StateT [(Name, Type)] m (WorkingExpr (TypeInfoT [e] t))
---applyDicts (InClass name ty) expr
---
---    | isVar ty = do
---        tv <- Text.replace "a" "$d" <$> supply
---        undefined
---
---    | otherwise = do
---        env <- askClassEnv
---        case classMethods <$> lookupClassInstance name ty env of
---            Left e -> undefined -- throwError e
---            Right methods -> do
---                undefined
---
---setNodePredicates :: [Predicate] -> TypeInfoT [e] t -> TypeInfoT [e] t
---setNodePredicates ps info = info{ nodePredicates = ps }
---
---stripNodePredicates :: TypeInfoT [e] t -> TypeInfoT [e] t
---stripNodePredicates = setNodePredicates []
-
--- >>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>
-
-mapExpr :: (t -> u) -> WorkingExpr t -> WorkingExpr u
-mapExpr f = cata $ \case
-    EVar    t var          -> varExpr    (f t) var
-    ECon    t con es       -> conExpr    (f t) con es
-    ELit    t prim         -> litExpr    (f t) prim
-    EApp    t es           -> appExpr    (f t) es
-    EFix    t name e1 e2   -> fixExpr    (f t) name e1 e2
-    ELam    t ps e         -> lamExpr    (f t) (mapPattern <$> ps) e
-    EIf     t e1 e2 e3     -> ifExpr     (f t) e1 e2 e3
-    EPat    t es cs        -> patExpr    (f t) es (mapClause <$> cs)
-    ELet    t bind e1 e2   -> letExpr    (f t) (mapBind bind) e1 e2
-  where
-    mapBind = \case
-        BLet    t p          -> BLet     (f t) (mapPattern p)
-        BFun    t name ps    -> BFun     (f t) name (mapPattern <$> ps)
-
-    mapClause = \case
-        SimplifiedClause t ps g -> SimplifiedClause (f t) (mapPattern <$> ps) g
-
-    mapPattern = cata $ \case
-        PVar    t var        -> varPat   (f t) var
-        PCon    t con ps     -> conPat   (f t) con ps
-        PLit    t prim       -> litPat   (f t) prim
-        PAs     t as p       -> asPat    (f t) as p
-        POr     t p q        -> orPat    (f t) p q
-        PAny    t            -> anyPat   (f t)
-        PTuple  t ps         -> tuplePat (f t) ps
-        PList   t ps         -> listPat  (f t) ps
---            PRecord t row        -> recordPat  (f t) row
-

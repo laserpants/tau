@@ -262,7 +262,7 @@ instance Functor Ast where
             EOp2    t op a b     -> op2Expr    (f t) (mapOp2 op) a b
             ETuple  t es         -> tupleExpr  (f t) es
             EList   t es         -> listExpr   (f t) es
---            ERecord t row        -> recordExpr (f t) row
+            ERecord t row        -> recordExpr (f t) row
 
         mapBind = \case
             BLet    t p          -> BLet       (f t) (mapPattern p)
@@ -280,7 +280,7 @@ instance Functor Ast where
             PAny    t            -> anyPat     (f t)
             PTuple  t ps         -> tuplePat   (f t) ps
             PList   t ps         -> listPat    (f t) ps
---            PRecord t row        -> recordPat  (f t) row
+            PRecord t row        -> recordPat  (f t) row
 
         mapOp1 = \case
             ONeg    t            -> ONeg       (f t)
