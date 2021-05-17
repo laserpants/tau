@@ -43,8 +43,8 @@ translate = cata $ \case
     prefixOp1 (ONeg t) = varExpr t "negate"
     prefixOp1 (ONot t) = varExpr t "not"
     prefixOp2 op       = varExpr (op2Tag op) ("(" <> op2Symbol op <> ")")
-
-    expandClause (Clause t ps gs) = [SimplifiedClause t ps g | g <- gs]
+    expandClause (Clause t ps gs) 
+                       = [SimplifiedClause t ps g | g <- gs]
 
 translateFunExpr
   :: TypeInfoT [Error] (Maybe Type)
