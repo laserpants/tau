@@ -32,7 +32,7 @@ data PatternF t1 t2 t3 t4 t5 t6 t7 t8 t9 a
     | POr     t6 a a                     -- ^ Or-pattern
     | PTuple  t7 [a]                     -- ^ Tuple pattern
     | PList   t8 [a]                     -- ^ List pattern
---    | PRecord t9 (Row a)                 -- ^ Record pattern
+--    | PRecord t9 a                 -- ^ Record pattern
 
 -- | Pattern
 type Pattern t1 t2 t3 t4 t5 t6 t7 t8 t9 = Fix (PatternF t1 t2 t3 t4 t5 t6 t7 t8 t9)
@@ -114,7 +114,7 @@ data ExprF t1 t2 t3 t4 t5 t6 t7 t8 t9 t10 t11 t12 t13 t14 t15 e1 e2 e3 a
     | EOp2    t12 (Op2 t12) a a          -- ^ Binary operator
     | ETuple  t13 [a]                    -- ^ Tuple
     | EList   t14 [a]                    -- ^ List literal
---    | ERecord t15 (Row a)                -- ^ Record
+--    | ERecord t15 a                -- ^ Record
 
 -- | Language expression
 type Expr t1 t2 t3 t4 t5 t6 t7 t8 t9 t10 t11 t12 t13 t14 t15 e1 e2 e3 = 
@@ -664,3 +664,14 @@ listPatCons
   -> Pattern t1 t2 t3 t4 t5 t6 t7 t8 t9 
   -> Pattern t1 t2 t3 t4 t5 t6 t7 t8 t9
 listPatCons t hd tl = conPat t "(::)" [hd, tl]
+
+-- Row constructor
+
+rowCons
+  :: (Functor e3)
+  => t2
+  -> Name
+  -> Expr t1 t2 t3 t4 t5 t6 t7 t8 t9 t10 t11 t12 t13 t14 t15 e1 e2 e3
+  -> Expr t1 t2 t3 t4 t5 t6 t7 t8 t9 t10 t11 t12 t13 t14 t15 e1 e2 e3
+  -> Expr t1 t2 t3 t4 t5 t6 t7 t8 t9 t10 t11 t12 t13 t14 t15 e1 e2 e3
+rowCons t label expr row = conExpr t ("{" <> label <> "}") [expr, row]
