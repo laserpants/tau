@@ -503,7 +503,7 @@ test2 = do -- case fromJust (runInfer mempty testClassEnv testTypeEnv testConstr
     f = typeOf <$> (apply sub a)
 
     ee :: Ast (TypeInfo [Error])
-    ee = (apply sub a)
+    ee = apply sub a
 
     eee :: Ast (TypeInfoT [Error] (Maybe Type))
     eee = fmap (fmap Just) ee
@@ -666,7 +666,10 @@ test123 = do
 --    --expr = lamExpr () [varPat () "x", varPat () "y"] (appExpr () [varExpr () "(+)", varExpr () "x", varExpr () "y"])
 
     expr :: ProgExpr ()
-    expr = op2Expr () (OAdd ()) (litExpr () (TInt 1)) (litExpr () (TInt 2))
+    --expr = op2Expr () (OAdd ()) (litExpr () (TInt 1)) (litExpr () (TInt 2))
+
+    expr = letExpr () (BLet () (varPat () "v")) (op2Expr () (OAdd ()) (litExpr () (TInt 1)) (litExpr () (TInt 2))) ((op2Expr () (OAdd ()) (varExpr () "v") (litExpr () (TInt 2))))
+
 
 mapExpr2 :: (t -> u) -> WorkingExpr t -> WorkingExpr u
 mapExpr2 f = cata $ \case

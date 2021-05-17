@@ -48,24 +48,24 @@ inferKind = cata $ \case
         pure (tVar k var)
 
     TCon k con -> do
-        kind <- lookupKind con
-        traceShowM "****************"
-        traceShowM "***** TODO *****"
-        traceShowM "****************"
-        traceShowM kind
+--        kind <- lookupKind con
+--        traceShowM "****************"
+--        traceShowM "***** TODO *****"
+--        traceShowM "****************"
+--        traceShowM kind
         pure (tCon k con)
 
     TArr ty1 ty2 -> do
         t1 <- ty1 
         t2 <- ty2 
-        runUnifyKinds kTyp (kindOf t1) -- >>= undefined --saveErrors
-        runUnifyKinds kTyp (kindOf t2) 
+--        runUnifyKinds kTyp (kindOf t1) -- >>= undefined --saveErrors
+--        runUnifyKinds kTyp (kindOf t2) 
         pure (tArr t1 t2)
 
     TApp k ty1 ty2 -> do
         t1 <- ty1 
         t2 <- ty2 
-        runUnifyKinds (kArr (kindOf t2) k) (kindOf t1)
+--        runUnifyKinds (kArr (kindOf t2) k) (kindOf t1)
         pure (tApp k t1 t2)
 
 lookupKind
@@ -772,7 +772,7 @@ unifyWith a b = do
     let t1 = typeOf (apply sub a)
         t2 = typeOf (apply sub b)
     runUnify t1 t2 >>= saveErrors
-    runUnifyKinds (kindOf t1) (kindOf t2) >>= saveErrors
+--    runUnifyKinds (kindOf t1) (kindOf t2) >>= saveErrors
   where
     saveErrors = whenLeft (insertErrors . pure)
 

@@ -35,13 +35,13 @@ unifyKinds
   => Kind 
   -> Kind 
   -> m (Substitution Kind)
-unifyKinds k l = fn (project k) (project l)
-  where
-    fn (KArr k1 k2) (KArr l1 l2)              = unifyKindPairs (k1, k2) (l1, l2)
-    fn (KVar name) _                          = bindKind name l
-    fn _ (KVar name)                          = bindKind name k
-    fn _ _ | k == l                           = pure mempty
-    fn _ _                                    = throwError IncompatibleKinds
+unifyKinds k l = pure mempty -- fn (project k) (project l)
+--  where
+--    fn (KArr k1 k2) (KArr l1 l2)              = unifyKindPairs (k1, k2) (l1, l2)
+--    fn (KVar name) _                          = bindKind name l
+--    fn _ (KVar name)                          = bindKind name k
+--    fn _ _ | k == l                           = pure mempty
+--    fn _ _                                    = throwError IncompatibleKinds
 
 unifyKindPairs 
   :: (MonadError UnificationError m) 

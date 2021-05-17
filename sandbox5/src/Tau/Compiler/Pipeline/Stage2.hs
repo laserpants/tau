@@ -43,6 +43,7 @@ translateLiterals = cata $ \case
     ELam    t ps e       -> lamExpr t ps <$> e
     EIf     t e1 e2 e3   -> ifExpr  t <$> e1 <*> e2 <*> e3
     EPat    t es cs      -> patExpr t <$> sequence es <*> traverse sequence cs
+    ELet    t bind e1 e2 -> letExpr t bind <$> e1 <*> e2
 
     ELit t (TInt n) -> 
         pure (appExpr t 
