@@ -632,13 +632,13 @@ test123 = do
     eg = Stage2.translate ef
 
     eh :: Stage2.WorkingExpr (Maybe Type)
-    eh = fromJust (evalSupply (runReaderT (evalStateT eg []) (testClassEnv, testTypeEnv, testKindEnv, testConstructorEnv)) (nameSupply ""))
+    eh = fromJust (evalSupply (runReaderT (evalStateT eg []) (testClassEnv, testTypeEnv, testKindEnv, testConstructorEnv)) (numSupply "a"))
 
     ei = Stage3.translate eh
 
     ej = Stage4.translate ei
 
-    ek = fromJust (evalSupply (Stage5.translate ej) (nameSupply ""))
+    ek = fromJust (evalSupply (Stage5.translate ej) (numSupply "a"))
 
 --    xx :: Stage1Expr (TypeInfoT [Error] (Maybe Type))
 --    xx = Stage1.translate (getAst eee)
@@ -671,8 +671,6 @@ test123 = do
 mapExpr2 :: (t -> u) -> WorkingExpr t -> WorkingExpr u
 mapExpr2 f = cata $ \case
     EVar    t var          -> varExpr    (f t) var
-    ECon    t con es       -> conExpr    (f t) con es
-    ELit    t prim         -> litExpr    (f t) prim
     EApp    t es           -> appExpr    (f t) es
     EFix    t name e1 e2   -> fixExpr    (f t) name e1 e2
     ELam    t ps e         -> lamExpr    (f t) (mapPattern <$> ps) e
