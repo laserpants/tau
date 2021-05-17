@@ -614,6 +614,8 @@ test123 = do
     putStrLn "---------------"
     putStrLn (showTree h1)
     putStrLn "---------------"
+    putStrLn (showTree h2)
+    putStrLn "---------------"
     print eh
 
 --    putStrLn "---------------"
@@ -629,16 +631,23 @@ test123 = do
 
     eg = Stage2.translate ef
 
-    eh = fromJust (evalSupply (runReaderT (evalStateT eg []) (testClassEnv, testTypeEnv, testKindEnv, testConstructorEnv)) (nameSupply "a"))
+    eh :: Stage2.WorkingExpr (Maybe Type)
+    eh = fromJust (evalSupply (runReaderT (evalStateT eg []) (testClassEnv, testTypeEnv, testKindEnv, testConstructorEnv)) (nameSupply ""))
+
+    ei = Stage3.translate eh
+
+    ej = Stage4.translate ei
+
+    ek = fromJust (evalSupply (Stage5.translate ej) (nameSupply ""))
 
 --    xx :: Stage1Expr (TypeInfoT [Error] (Maybe Type))
 --    xx = Stage1.translate (getAst eee)
 
---    h2 = unpack . renderDoc <$> g2
-    --g2 = exprTree3 eh
+    h2 = unpack . renderDoc <$> g2
+    g2 = exprTree3 ek
 
 --    xx22_ :: Stage5Expr (Maybe Type)
---    xx22_ = foo5 nodeType eh
+--    xx22_ = foo5 nodeType ek
 
     h1 = unpack . renderDoc <$> g1
     g1 = exprTree ef
