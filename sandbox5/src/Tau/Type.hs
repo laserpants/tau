@@ -348,4 +348,4 @@ tRowNil :: TypeT a
 tRowNil = tCon kRow "{}"
 
 tRowExtend :: Name -> TypeT a -> TypeT a -> TypeT a
-tRowExtend label ty = tApp kRow (tApp (kRow `kArr` kRow) (tRowCon label) ty) 
+tRowExtend label ty = tApp kRow (tApp (kRow `kArr` kRow) (tRowCon label) ty)

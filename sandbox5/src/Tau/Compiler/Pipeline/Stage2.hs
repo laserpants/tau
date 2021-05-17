@@ -94,7 +94,6 @@ insertDictArgs expr = foldr fun expr
         (tArr <$> Just ty <*> workingExprTag expr) 
         [varPat (Just ty) var] 
 
-
 -- alen : (Show a) -> a -> Int
 -- alen x = length (show x)
 
@@ -110,7 +109,12 @@ applyDicts (InClass name ty) expr
 
     | isVar ty = do
         tv <- Text.replace "a" "$d" <$> supply
-        undefined
+        let t = undefined -- tApp undefined (tCon (kArr kTyp (kindOf ty)) name) ty
+            dict = varExpr (Just t) tv
+        modify ((tv, t) :)
+        pure (appExpr (workingExprTag expr) 
+          [ setWorkingExprTag undefined expr
+          , dict ])
 
     | otherwise = do
         env <- askClassEnv
@@ -133,11 +137,26 @@ applyDicts (InClass name ty) expr
         _          -> Nothing
 
 buildDict :: [(Name, WorkingExpr (Maybe Type))] -> WorkingExpr (Maybe Type)
-buildDict map = undefined -- funExpr undefined (fmap fn map)
+buildDict map = 
+    undefined  -- conExpr -- (tApp kTyp (tCon (kArr kRow kTyp) "#") <$> workingExprTag row) "#" [row]
+  where 
+    row = foldr fn (conExpr (Just tRowNil) "{}" []) map
+    fn (name, expr) e = 
+        let row = tRowExtend name <$> workingExprTag expr <*> workingExprTag e
+         in rowCons row name expr e
 
---    fn (name, expr) = SimplifiedClause (workingExprTag expr)
---        [litPat (Just tString) (TString name)]
---        (Guard [] expr)
+setWorkingExprTag :: t -> WorkingExpr t -> WorkingExpr t
+setWorkingExprTag t = cata $ \case
+    EVar _ a     -> varExpr t a
+    ECon _ a b   -> conExpr t a b
+    ELit _ a     -> litExpr t a
+    EApp _ a     -> appExpr t a
+    ELet _ p a b -> letExpr t p a b
+    EFix _ n a b -> fixExpr t n a b
+    ELam _ p a   -> lamExpr t p a
+    EIf  _ a b c -> ifExpr  t a b c
+    EPat _ o a   -> patExpr t o a
+
 
 workingExprTag :: WorkingExpr t -> t
 workingExprTag = cata $ \case
