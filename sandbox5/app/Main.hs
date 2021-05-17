@@ -608,6 +608,7 @@ test2 = do -- case fromJust (runInfer mempty testClassEnv testTypeEnv testConstr
 --        ])))
 
 test123 = do
+    print ee
     putStrLn "---------------"
     putStrLn (showTree h)
     putStrLn "---------------"
@@ -633,7 +634,10 @@ test123 = do
     prog = inferAst (Ast expr)
 
     expr :: ProgExpr ()
-    expr = lamExpr () [varPat () "x", varPat () "y"] (appExpr () [varExpr () "(+)", varExpr () "x", varExpr () "y"])
+    --expr = lamExpr () [varPat () "x", varPat () "y"] (appExpr () [varExpr () "(+)", varExpr () "x", varExpr () "y"])
+
+    expr = litExpr () (TInt 5)
+
 
 foo5 :: (t -> u) -> Stage5Expr t -> Stage5Expr u
 foo5 f = cata $ \case

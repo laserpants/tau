@@ -338,3 +338,14 @@ tPair t1 t2 = tTuple [t1, t2]
 
 tTriple :: TypeT a -> TypeT a -> TypeT a -> TypeT a
 tTriple t1 t2 t3 = tTuple [t1, t2, t3]
+
+-- Rows
+
+tRowCon :: Name -> TypeT a
+tRowCon label = tCon (kTyp `kArr` kRow `kArr` kRow) ("{" <> label <> "}")
+
+tRowNil :: TypeT a
+tRowNil = tCon kRow "{}"
+
+tRowExtend :: Name -> TypeT a -> TypeT a -> TypeT a
+tRowExtend label ty = tApp kRow (tApp (kRow `kArr` kRow) (tRowCon label) ty) 

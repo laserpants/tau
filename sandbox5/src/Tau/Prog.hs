@@ -114,12 +114,12 @@ inConstructorEnv
   -> (ClassEnv, TypeEnv, KindEnv, ConstructorEnv)
 inConstructorEnv f (e1, e2, e3, e4) = (e1, e2, e3, f e4)
 
-lookupClassInstance
-  :: (MonadError Error m)
-  => Name
-  -> Type
-  -> ClassEnv
-  -> m (ClassInfo Type (Ast (TypeInfo ())))
+--lookupClassInstance
+--  :: (MonadError Error m)
+--  => Name
+--  -> Type
+--  -> ClassEnv
+--  -> m (ClassInfo Type (Ast (TypeInfo ())))
 lookupClassInstance tc ty env = do
     (ClassInfo{..}, insts) <- liftMaybe (MissingClass tc) (Env.lookup tc env)
     msum [tryMatch i | i <- insts] &
