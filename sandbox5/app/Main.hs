@@ -678,15 +678,15 @@ test123 = do
 
 --    expr = litExpr () (TInt 2)
 
---    expr = inferAst (Ast (varExpr () "(+)"))
+--    expr = varExpr () "(+)"
 
 --    expr = litExpr () (TInt 5)
 
 --    expr = letExpr () (BLet () (varPat () "x")) (litExpr () (TInt 5)) (varExpr () "x")
 
-    expr = letExpr () (BFun  () "f" [varPat () "x"]) (litExpr () (TInt 5)) (varExpr () "f")
+--    expr = letExpr () (BFun  () "f" [varPat () "x"]) (litExpr () (TInt 5)) (varExpr () "f")
 
---    expr = inferAst (Ast (letExpr () (BFun  () "f" [varPat () "x"]) (litExpr () (TInt 5)) (appExpr () [varExpr () "f", litExpr () TUnit])))
+    expr = letExpr () (BFun  () "f" [varPat () "x"]) (litExpr () (TInt 5)) (appExpr () [varExpr () "f", litExpr () TUnit])
 
 --    expr = inferAst (Ast (varExpr () "(::)"))
 

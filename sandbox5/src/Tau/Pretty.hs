@@ -491,7 +491,7 @@ exprTree = para $ \case
     --EOp2    _ op a b     -> Node ("(" <> pretty op  <> ")" <+> pretty (typeOf (op2Tag op))) [snd a, snd b]
     EOp2    _ op a b     -> Node (annotated (op2Tag op) (("(" <> op2Symbol op <> ")") :: Text)) [snd a, snd b]
 --    ELam    t lam a      -> Node ("(" <> pretty lam <> ") =>") [snd a, Node (colon <+> "(" <> pretty t <> ")") []]
-    ELam    t lam a      -> Node ("(" <> pretty lam <> ")" <+> "=>") [snd a, Node (colon <+> "(" <> pretty t <> ")") []]
+    ELam    t lam a      -> Node ("(" <> pretty lam <> ")" <+> "=>") [snd a] -- , Node (colon <+> "(" <> pretty t <> ")") []]
     ETuple  t es         -> Node (annotated t (tupleCon (length es))) (snd <$> es)
     EFix    t bind e1 e2 -> Node (annotated t ("fix" :: Text)) [Node (pretty bind <+> "=") [snd e1, Node "in" [snd e2]]]
     EIf     t e1 e2 e3   -> Node ("if" <+> colon <+> pretty t) [snd e1, prefix ("then" :: Text) (snd e2), prefix ("else" :: Text) (snd e3)]
@@ -512,7 +512,7 @@ exprTree3 = para $ \case
     ELit    t prim       -> Node (annotated t prim) []
     EApp    t es         -> Node (annotated t ("@" :: Text)) (snd <$> es)
     EFix    t bind e1 e2 -> Node (annotated t ("fix" :: Text)) [Node (pretty bind <+> "=") [snd e1, Node "in" [snd e2]]]
-    ELam    t lam a      -> Node ("(" <> pretty lam <> ") =>") [snd a, Node (colon <+> "(" <> pretty t <> ")") []]
+    ELam    t lam a      -> Node ("(" <> pretty lam <> ") =>") [snd a] -- , Node (colon <+> "(" <> pretty t <> ")") []]
     EPat    t [e] cs     -> Node ("match" <+> colon <+> pretty t) ([exprTree3 (fst e)] <> [Node "with" (treeClause3 <$> (fst <$$> cs))])
     EIf     t e1 e2 e3   -> Node ("if" <+> colon <+> pretty t) [snd e1, prefix ("then" :: Text) (snd e2), prefix ("else" :: Text) (snd e3)]
     e                    -> Node (pretty (show e)) []

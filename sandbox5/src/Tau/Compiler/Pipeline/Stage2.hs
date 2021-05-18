@@ -36,6 +36,13 @@ translateLiterals
   => WorkingExpr (TypeInfoT [e] (Maybe Type))
   -> StateT [(Name, Type)] m (WorkingExpr (TypeInfoT [e] (Maybe Type)))
 translateLiterals = cata $ \case
+
+    ELit t (TInt n) -> 
+        pure (appExpr t 
+            [ varExpr (t{ nodeType = tArr tInteger <$> nodeType t }) "fromInteger"
+            , litExpr (TypeInfo [] (Just tInteger) []) (TInteger (fromIntegral n)) ])
+
+    ELit    t prim       -> pure (litExpr t prim)
     EVar    t var        -> pure (varExpr t var)
     ECon    t con exs    -> conExpr t con <$> sequence exs
     EApp    t es         -> appExpr t <$> sequence es
@@ -45,10 +52,6 @@ translateLiterals = cata $ \case
     EPat    t es cs      -> patExpr t <$> sequence es <*> traverse sequence cs
     ELet    t bind e1 e2 -> letExpr t bind <$> e1 <*> e2
 
-    ELit t (TInt n) -> 
-        pure (appExpr t 
-            [ varExpr (t{ nodeType = tArr tInteger <$> nodeType t }) "fromInteger"
-            , litExpr (TypeInfo [] (Just tInteger) []) (TInteger (fromIntegral n)) ])
 
 expandTypeClasses
   :: ( MonadSupply Name m
