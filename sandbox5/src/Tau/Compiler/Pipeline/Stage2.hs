@@ -52,7 +52,6 @@ translateLiterals = cata $ \case
     EPat    t es cs      -> patExpr t <$> sequence es <*> traverse sequence cs
     ELet    t bind e1 e2 -> letExpr t bind <$> e1 <*> e2
 
-
 expandTypeClasses
   :: ( MonadSupply Name m
      , MonadReader (ClassEnv, TypeEnv, KindEnv, ConstructorEnv) m )

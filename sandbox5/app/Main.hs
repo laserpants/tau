@@ -620,9 +620,11 @@ test123 = do
     putStrLn "---------------"
     putStrLn (showTree h1)
     putStrLn "---------------"
-    putStrLn (showTree h2)
+    putStrLn (showTree h3)
     putStrLn "---------------"
-    print eh
+--    putStrLn (showTree h2)
+--    putStrLn "---------------"
+--    print eh
 
 --    putStrLn "---------------"
 ----    xx2
@@ -645,6 +647,9 @@ test123 = do
     ej = Stage4.translate ei
 
     ek = fromJust (evalSupply (Stage5.translate ej) (numSupply "a"))
+
+    h3 = unpack . renderDoc <$> g3
+    g3 = exprTree eh
 
 --    xx :: Stage1Expr (TypeInfoT [Error] (Maybe Type))
 --    xx = Stage1.translate (getAst eee)

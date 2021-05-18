@@ -678,13 +678,17 @@ instance (Typed t, Pretty t, Pretty b) => LetBinding (Binding (TypeInfoT [Error]
     bindingTypeInfo (BLet t _)   = undefined -- (nodeType t)
     bindingTypeInfo (BFun t _ _) = undefined -- t
 
+instance LetBinding (ProgBinding (Maybe Type)) where
+    printLetBinding = prettyPrint
+    bindingTypeInfo _ = undefined -- TypeInfo (tVar kTyp "a") [] []
+
 --instance (Pretty b) => LetBinding (Binding (TypeInfoT [Error] (Maybe Type)) b) where
 --    printLetBinding = prettyPrint
 --    bindingTypeInfo (BLet t _)   = fmap fromJust t
 --    bindingTypeInfo (BFun t _ _) = fmap fromJust t
 
 instance LetBinding Void where
-    printLetBinding = const ""
+    printLetBinding = prettyPrint
     bindingTypeInfo _ = undefined -- TypeInfo (tVar kTyp "a") [] []
 
 --letTree
