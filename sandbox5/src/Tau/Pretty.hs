@@ -27,6 +27,13 @@ import Tau.Tool
 import Tau.Type
 import qualified Data.Map.Strict as Map
 import qualified Data.Text as Text
+import qualified Tau.Compiler.Pipeline.Stage1 as Stage1
+import qualified Tau.Compiler.Pipeline.Stage2 as Stage2
+import qualified Tau.Compiler.Pipeline.Stage3 as Stage3
+import qualified Tau.Compiler.Pipeline.Stage4 as Stage4
+import qualified Tau.Compiler.Pipeline.Stage5 as Stage5
+import qualified Tau.Compiler.Pipeline.Stage6 as Stage6
+
 
 -- >>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>
 
@@ -227,9 +234,9 @@ isTuple con = Just True == (allCommas <$> stripped con)
 
 -- >>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>
 
-instance (Pretty b) => Pretty (Binding t b) where
+instance (Pretty t, Pretty b) => Pretty (Binding t b) where
     pretty = \case
-        BLet _ pat  -> pretty pat
+        BLet t pat  -> annotated t pat
         BFun _ f ps -> pretty f <> prettyTuple (pretty <$> ps)
 
 instance (Pretty e1, Functor e3) => Pretty (Expr t1 t2 t3 t4 t5 t6 t7 t8 t9 t10 t11 t12 t13 t14 t15 e1 e2 e3) where
@@ -497,7 +504,7 @@ prefix txt (Node label forest) = Node (pretty txt <+> label) forest
 --  => Expr t1 t2 t3 t4 t5 t6 t7 t8 t9 t10 t11 t12 t13 t14 t15 e1 e2 (c t (Pattern p1 p2 p3 p4 p5 p6 p7 p8 p9))
 --  -> Tree (Doc a)
 exprTree3 
-  :: (Show t, Pretty t) => Stage6Expr t -> Tree (Doc a)
+  :: (Show t, Pretty t) => Stage6.SourceExpr t -> Tree (Doc a)
 exprTree3 = para $ \case
 
     EVar    t var        -> Node (annotated t var) []
@@ -521,7 +528,7 @@ instance Pretty (SimplifiedPattern t) where
 --xx = Text.stripSuffix "]" <=< Text.stripPrefix "["
 treeClause3 c = clauseTree3 (clauseLhs c) (clauseRhs c)
 
-clauseTree3 :: [SimplifiedPattern t] -> [([Stage6Expr t], Stage6Expr t)] -> Tree (Doc a)
+clauseTree3 :: [SimplifiedPattern t] -> [([Stage6.SourceExpr t], Stage6.SourceExpr t)] -> Tree (Doc a)
 clauseTree3 ps gs = Node "" []
   where
     pats | 1 == length ps = pretty (head ps)
@@ -666,7 +673,7 @@ class LetBinding b where
     bindingTypeInfo :: b -> TypeInfo [Error]
 
 --instance (Pretty b) => LetBinding (Binding (TypeInfoT [Error] Type) b) where
-instance (Typed t, Pretty b) => LetBinding (Binding (TypeInfoT [Error] t) b) where
+instance (Typed t, Pretty t, Pretty b) => LetBinding (Binding (TypeInfoT [Error] t) b) where
     printLetBinding = prettyPrint
     bindingTypeInfo (BLet t _)   = undefined -- (nodeType t)
     bindingTypeInfo (BFun t _ _) = undefined -- t

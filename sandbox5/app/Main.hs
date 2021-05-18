@@ -456,99 +456,99 @@ evalEnv2 = Env.fromList
     [ -- ( "(,)" , constructor "(,)" 2 )
     ]
 
-test2 = do -- case fromJust (runInfer mempty testClassEnv testTypeEnv testConstructorEnv (inferExprType expr1)) of
-    print "----------"
-    print (apply sub2 (apply sub a))
-    print "----------"
-    putStrLn (showTree h)
-    print "=========="
-    print xx
-    print "=========="
-    putStrLn (showTree zz)
-    print "=========="
-    putStrLn (showTree zz2)
-    print "=========="
-    putStrLn (showTree zz22)
-    print "=========="
-    putStrLn (showTree zz222)
+--test2 = do -- case fromJust (runInfer mempty testClassEnv testTypeEnv testConstructorEnv (inferExprType expr1)) of
+--    print "----------"
+--    print (apply sub2 (apply sub a))
+--    print "----------"
+--    putStrLn (showTree h)
 --    print "=========="
---    print xx222
+--    print xx
 --    print "=========="
---    print xx2
+--    putStrLn (showTree zz)
 --    print "=========="
---    print xx22
+--    putStrLn (showTree zz2)
 --    print "=========="
---    print xx222
+--    putStrLn (showTree zz22)
 --    print "=========="
-    --putStrLn (showTree zz22)
-    --print "=========="
---    print xx3
---    print "=========="
---    print (evalExpr xx3 evalEnv2)
---    print "=========="
-    --putStrLn (showTree zz123)
---    Left e -> error (show e)
---    Right (expr, sub, context) -> do
---        print (expr, sub, context)
---        print "..."
---        print (apply sub expr)
-  where
---    e :: ProgExpr (TypeInfo [Error])
---    e = getAst (apply sub a)
-
-    h = unpack . renderDoc <$> g
-    g = exprTree (getAst ee)
-
-    f :: Ast Type
-    f = typeOf <$> (apply sub a)
-
-    ee :: Ast (TypeInfo [Error])
-    ee = apply sub a
-
-    eee :: Ast (TypeInfoT [Error] (Maybe Type))
-    eee = fmap (fmap Just) ee
-
-    --xx = simplifyExpr yyyy -- (getAst ee)
-    --xx = simplifyExpr (getAst ee)
-    xx :: Stage1Expr (TypeInfoT [Error] (Maybe Type))
-    xx = stage1 (getAst eee)
-
-    xx2 :: Stage3Expr (TypeInfoT [Error] (Maybe Type))
-    xx2 = stage3 xx
-
-    xx22 :: Stage4Expr (TypeInfoT [Error] (Maybe Type))
-    xx22 = stage4 xx2
-
-    xx22_ :: Stage5Expr (Maybe Type)
-    xx22_ = foo5 nodeType xx22
-
-    xx222 :: Stage6Expr (Maybe Type)
-    xx222 = fromJust $ evalSupply (stage6 xx22_) (nameSupply "$")
-
-    xx3 :: Core
-    xx3 = undefined -- runIdentity (toCore xx2)
-
-    xx123 :: Stage1Expr (TypeInfoT [Error] (Maybe Type))
-    xx123 = fromJust (evalSupply (runReaderT (evalStateT (compileClasses xx) []) (testClassEnv, testTypeEnv, testKindEnv, testConstructorEnv)) (nameSupply ""))
-
---    yyyy = mapAst (const ()) (getAst ee)
-
-    yy = exprTree xx
-    zz = unpack . renderDoc <$> yy
-
-    yy2 = exprTree xx2
-    zz2 = unpack . renderDoc <$> yy2
-
-    yy22 = exprTree xx22
-    zz22 = unpack . renderDoc <$> yy22
-
-    yy222 = exprTree3 xx222
-    zz222 = unpack . renderDoc <$> yy222
-
-    yy123 = exprTree xx123
-    zz123 = unpack . renderDoc <$> yy123
-
-    (a, sub, sub2, ctx) = fromJust (runInfer mempty testClassEnv testTypeEnv testKindEnv testConstructorEnv expr)
+--    putStrLn (showTree zz222)
+----    print "=========="
+----    print xx222
+----    print "=========="
+----    print xx2
+----    print "=========="
+----    print xx22
+----    print "=========="
+----    print xx222
+----    print "=========="
+--    --putStrLn (showTree zz22)
+--    --print "=========="
+----    print xx3
+----    print "=========="
+----    print (evalExpr xx3 evalEnv2)
+----    print "=========="
+--    --putStrLn (showTree zz123)
+----    Left e -> error (show e)
+----    Right (expr, sub, context) -> do
+----        print (expr, sub, context)
+----        print "..."
+----        print (apply sub expr)
+--  where
+----    e :: ProgExpr (TypeInfo [Error])
+----    e = getAst (apply sub a)
+--
+--    h = unpack . renderDoc <$> g
+--    g = exprTree (getAst ee)
+--
+--    f :: Ast Type
+--    f = typeOf <$> (apply sub a)
+--
+--    ee :: Ast (TypeInfo [Error])
+--    ee = apply sub a
+--
+--    eee :: Ast (TypeInfoT [Error] (Maybe Type))
+--    eee = fmap (fmap Just) ee
+--
+--    --xx = simplifyExpr yyyy -- (getAst ee)
+--    --xx = simplifyExpr (getAst ee)
+----    xx :: Stage1Expr (TypeInfoT [Error] (Maybe Type))
+--    xx = stage1 (getAst eee)
+--
+----    xx2 :: Stage3Expr (TypeInfoT [Error] (Maybe Type))
+--    xx2 = stage3 xx
+--
+--    xx22 :: Stage4Expr (TypeInfoT [Error] (Maybe Type))
+--    xx22 = stage4 xx2
+--
+--    xx22_ :: Stage5Expr (Maybe Type)
+--    xx22_ = foo5 nodeType xx22
+--
+--    xx222 :: Stage6Expr (Maybe Type)
+--    xx222 = fromJust $ evalSupply (stage6 xx22_) (nameSupply "$")
+--
+--    xx3 :: Core
+--    xx3 = undefined -- runIdentity (toCore xx2)
+--
+--    xx123 :: Stage1Expr (TypeInfoT [Error] (Maybe Type))
+--    xx123 = fromJust (evalSupply (runReaderT (evalStateT (compileClasses xx) []) (testClassEnv, testTypeEnv, testKindEnv, testConstructorEnv)) (nameSupply ""))
+--
+----    yyyy = mapAst (const ()) (getAst ee)
+--
+--    yy = exprTree xx
+--    zz = unpack . renderDoc <$> yy
+--
+--    yy2 = exprTree xx2
+--    zz2 = unpack . renderDoc <$> yy2
+--
+--    yy22 = exprTree xx22
+--    zz22 = unpack . renderDoc <$> yy22
+--
+--    yy222 = exprTree3 xx222
+--    zz222 = unpack . renderDoc <$> yy222
+--
+--    yy123 = exprTree xx123
+--    zz123 = unpack . renderDoc <$> yy123
+--
+--    (a, sub, sub2, ctx) = fromJust (runInfer mempty testClassEnv testTypeEnv testKindEnv testConstructorEnv expr)
 --    expr = inferAst (Ast (appExpr () [varExpr () "id", litExpr () (TInt 5)]))
 
 --    expr = inferAst (Ast (varExpr () "(+)"))
@@ -595,10 +595,10 @@ test2 = do -- case fromJust (runInfer mempty testClassEnv testTypeEnv testConstr
 
 --    expr = inferAst (Ast (patExpr () [litExpr () (TInt 5)] [Clause () [litPat () (TInt 5)] [Guard [] (litExpr () (TInt 1))]]))
 
-    expr = inferAst (Ast (patExpr () [litExpr () (TInt 4)] 
-             [ Clause () [litPat () (TInt 5)] [Guard [] (litExpr () (TInt 1))]
-             , Clause () [anyPat ()] [Guard [] (litExpr () (TInt 2))]
-             ]))
+--    expr = inferAst (Ast (patExpr () [litExpr () (TInt 4)] 
+--             [ Clause () [litPat () (TInt 5)] [Guard [] (litExpr () (TInt 1))]
+--             , Clause () [anyPat ()] [Guard [] (litExpr () (TInt 2))]
+--             ]))
 
 --    expr = inferAst (Ast (lamExpr () [varPat () "x"] (patExpr () [varExpr () "x"] [Clause () [anyPat ()] [Guard [] (litExpr () (TInt 1))]])))
 
@@ -608,7 +608,13 @@ test2 = do -- case fromJust (runInfer mempty testClassEnv testTypeEnv testConstr
 --        ])))
 
 test123 = do
-    print ee
+--    print a
+--    putStrLn "---------------"
+--    print ee
+--    putStrLn "---------------"
+--    print ef
+--    putStrLn "---------------"
+--    print eh
     putStrLn "---------------"
     putStrLn (showTree h)
     putStrLn "---------------"
@@ -670,6 +676,8 @@ test123 = do
 
     expr = letExpr () (BLet () (varPat () "v")) (op2Expr () (OAdd ()) (litExpr () (TInt 1)) (litExpr () (TInt 2))) ((op2Expr () (OAdd ()) (varExpr () "v") (litExpr () (TInt 2))))
 
+--    expr = litExpr () (TInt 2)
+
 
 mapExpr2 :: (t -> u) -> WorkingExpr t -> WorkingExpr u
 mapExpr2 f = cata $ \case
@@ -700,27 +708,27 @@ mapExpr2 f = cata $ \case
 --            PRecord t row        -> recordPat  (f t) row
 
 
-foo5 :: (t -> u) -> Stage5Expr t -> Stage5Expr u
-foo5 f = cata $ \case
-    EVar    t var          -> varExpr    (f t) var
-    ECon    t con es       -> conExpr    (f t) con es
-    ELit    t prim         -> litExpr    (f t) prim
-    EApp    t es           -> appExpr    (f t) es
-    EFix    t name e1 e2   -> fixExpr    (f t) name e1 e2
-    ELam    t ps e         -> lamExpr    (f t) ps e
-    EIf     t e1 e2 e3     -> ifExpr     (f t) e1 e2 e3
-    EPat    t es cs        -> patExpr    (f t) es (mapClause <$> cs)
-  where
-    mapClause = \case
-        SimplifiedClause t ps g
-                           -> SimplifiedClause (f t) (mapPattern <$> ps) g
-    mapPattern = cata $ \case
-        PVar    t var      -> varPat     (f t) var
-        PCon    t con ps   -> conPat     (f t) con ps
-        PLit    t prim     -> litPat     (f t) prim
-        PAs     t as p     -> asPat      (f t) as p
-        POr     t p q      -> orPat      (f t) p q
-        PAny    t          -> anyPat     (f t)
+--foo5 :: (t -> u) -> Stage5.TargetExpr t -> Stage5.TargetExpr u
+--foo5 f = cata $ \case
+--    EVar    t var          -> varExpr    (f t) var
+--    ECon    t con es       -> conExpr    (f t) con es
+--    ELit    t prim         -> litExpr    (f t) prim
+--    EApp    t es           -> appExpr    (f t) es
+--    EFix    t name e1 e2   -> fixExpr    (f t) name e1 e2
+--    ELam    t ps e         -> lamExpr    (f t) ps e
+--    EIf     t e1 e2 e3     -> ifExpr     (f t) e1 e2 e3
+--    EPat    t es cs        -> patExpr    (f t) es (mapClause <$> cs)
+--  where
+--    mapClause = \case
+--        SimplifiedClause t ps g
+--                           -> SimplifiedClause (f t) (mapPattern <$> ps) g
+--    mapPattern = cata $ \case
+--        PVar    t var      -> varPat     (f t) var
+--        PCon    t con ps   -> conPat     (f t) con ps
+--        PLit    t prim     -> litPat     (f t) prim
+--        PAs     t as p     -> asPat      (f t) as p
+--        POr     t p q      -> orPat      (f t) p q
+--        PAny    t          -> anyPat     (f t)
 
 
 test3 = u :: Either UnificationError (Substitution Type, Substitution Kind)

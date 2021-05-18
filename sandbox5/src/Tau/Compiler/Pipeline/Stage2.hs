@@ -139,7 +139,7 @@ applyDicts (InClass name ty) expr
                 map <- traverse (secondM translateMethod) methods
                 pure (fromMaybe (buildDict map) (findIn map expr))
   where
-    t1 = tApp kTyp (tCon (kArr kTyp kClass) name) ty
+    t1 = tApp kClass (tCon (kArr kTyp kClass) name) ty
 
     translateMethod = expandTypeClasses 
                     . Stage1.translate 
