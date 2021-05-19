@@ -621,10 +621,12 @@ test123 = do
     putStrLn "---------------"
     putStrLn (showTree h3)
     putStrLn "---------------"
-    print eh
+    putStrLn (showTree h31)
     putStrLn "---------------"
---    putStrLn (showTree h2)
---    putStrLn "---------------"
+    putStrLn (showTree h32)
+    putStrLn "---------------"
+    putStrLn (showTree h4)
+    putStrLn "---------------"
 --    print eh
 
 --    putStrLn "---------------"
@@ -652,11 +654,17 @@ test123 = do
     h3 = unpack . renderDoc <$> g3
     g3 = exprTree eh
 
+    h31 = unpack . renderDoc <$> g31
+    g31 = exprTree ei
+
+    h32 = unpack . renderDoc <$> g32
+    g32 = exprTree ej
+
 --    xx :: Stage1Expr (TypeInfoT [Error] (Maybe Type))
 --    xx = Stage1.translate (getAst eee)
 
-    h2 = unpack . renderDoc <$> g2
-    g2 = exprTree3 ek
+    h4 = unpack . renderDoc <$> g4
+    g4 = exprTree3 ek
 
 --    xx22_ :: Stage5Expr (Maybe Type)
 --    xx22_ = foo5 nodeType ek
