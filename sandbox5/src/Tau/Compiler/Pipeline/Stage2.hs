@@ -50,6 +50,12 @@ translateLiterals = cata $ \case
     ELam    t ps e       -> lamExpr t ps <$> e
     EIf     t e1 e2 e3   -> ifExpr  t <$> e1 <*> e2 <*> e3
     EPat    t es cs      -> patExpr t <$> sequence es <*> traverse sequence cs
+
+--    ELet t (BFun u f ps) e1 e2 -> do
+--        let zz = TypeInfo [] (Just tInt) []
+--        eee1 <- lamExpr zz ps <$> e1
+--        letExpr zz (BLet zz (varPat zz f)) eee1 <$> e2
+
     ELet    t bind e1 e2 -> letExpr t bind <$> e1 <*> e2
 
 expandTypeClasses
@@ -58,18 +64,23 @@ expandTypeClasses
   => WorkingExpr (TypeInfoT [e] (Maybe Type))
   -> StateT [(Name, Type)] m (WorkingExpr (Maybe Type))
 expandTypeClasses expr =
-    insertDictArgs <$> run expr <*> (nub <$> pluck)
+    insertArgsExpr <$> run expr <*> (nub <$> pluck)
   where
     run = cata $ \case
+        ELet t bind@BFun{} expr1 expr2 -> do
+            e1 <- expr1
+            vs <- nub <$> pluck
+            letExpr (nodeType t) (insertArgsBinding (translateBinding bind) vs) e1 <$> expr2
+
         ELet t pat expr1 expr2 -> do
             e1 <- expr1
             vs <- nub <$> pluck
-            letExpr (nodeType t) (translateBinding pat) (insertDictArgs e1 vs) <$> expr2
+            letExpr (nodeType t) (translateBinding pat) (insertArgsExpr e1 vs) <$> expr2
 
         EFix t var expr1 expr2 -> do
             e1 <- expr1
             vs <- nub <$> pluck
-            fixExpr (nodeType t) var (insertDictArgs e1 vs) <$> expr2
+            fixExpr (nodeType t) var (insertArgsExpr e1 vs) <$> expr2
 
         EVar t var ->
             foldrM applyDicts (varExpr (nodeType t) var) (nodePredicates t)
@@ -102,12 +113,18 @@ expandTypeClasses expr =
         PTuple  t ps     -> tuplePat (nodeType t) ps
         PList   t ps     -> listPat  (nodeType t) ps
 
-insertDictArgs :: WorkingExpr (Maybe Type) -> [(Name, Type)] -> WorkingExpr (Maybe Type)
-insertDictArgs = foldr fun 
+insertArgsExpr :: WorkingExpr (Maybe Type) -> [(Name, Type)] -> WorkingExpr (Maybe Type)
+insertArgsExpr = foldr fun 
   where
     fun (var, ty) e = 
         lamExpr (tArr <$> Just ty <*> workingExprTag e) 
                 [varPat (Just ty) var] e
+
+insertArgsBinding :: ProgBinding (Maybe Type) -> [(Name, Type)] -> ProgBinding (Maybe Type)
+insertArgsBinding (BFun t name ps) vs = BFun t' name ps'
+  where
+    (t', ps') = foldr fun (t, ps) vs
+    fun (var, ty) (t, ps) = (tArr ty <$> t, varPat (Just ty) var:ps)
 
 dictTVar :: (MonadSupply Name m) => Type -> StateT [(Name, Type)] m Name
 dictTVar ty = do

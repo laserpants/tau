@@ -614,13 +614,14 @@ test123 = do
 --    putStrLn "---------------"
 --    print ef
 --    putStrLn "---------------"
---    print eh
     putStrLn "---------------"
     putStrLn (showTree h)
     putStrLn "---------------"
     putStrLn (showTree h1)
     putStrLn "---------------"
     putStrLn (showTree h3)
+    putStrLn "---------------"
+    print eh
     putStrLn "---------------"
 --    putStrLn (showTree h2)
 --    putStrLn "---------------"
