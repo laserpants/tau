@@ -1,10 +1,13 @@
-{-# LANGUAGE LambdaCase #-}
+{-# LANGUAGE FlexibleContexts #-}
+{-# LANGUAGE LambdaCase       #-}
 module Tau.Compiler.Pipeline.Stage3 where
 
+import Control.Monad.Supply
+import Data.Foldable (foldrM)
 import Tau.Compiler.Pipeline
 import Tau.Lang
-import Tau.Type
 import Tau.Tool
+import Tau.Type
 
 type SourceExpr t = Expr t t t t t t t t t Void Void Void Void Void Void
     (ProgBinding t) [ProgPattern t] (SimplifiedClause t (ProgPattern t))
@@ -14,44 +17,58 @@ type TargetExpr t = Expr t t t t t t t t Void Void Void Void Void Void Void
 
 -- >>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>
 
-translate :: SourceExpr (Maybe Type) -> TargetExpr (Maybe Type)
+translate :: (MonadSupply Name m) => SourceExpr (Maybe Type) -> m (TargetExpr (Maybe Type))
 translate = cata $ \case
-    ELam    t ps e       -> translateLambda t ps e
-    ELet    t bind e1 e2 -> translateLet t bind e1 e2
+    ELam t ps expr -> do
+        e <- expr
+        translateLambda t ps e
+
+    ELet t bind expr1 expr2 -> do
+        e1 <- expr1
+        e2 <- expr2
+        translateLet t bind e1 e2
+
     -- Other expressions do not change, except sub-expressions
-    EPat    t es cs      -> patExpr t es cs
-    EVar    t var        -> varExpr t var
-    ECon    t con es     -> conExpr t con es
-    ELit    t prim       -> litExpr t prim
-    EApp    t es         -> appExpr t es
-    EFix    t name e1 e2 -> fixExpr t name e1 e2
-    EIf     t e1 e2 e3   -> ifExpr  t e1 e2 e3
+    EPat    t es cs      -> patExpr t <$> sequence es <*> traverse sequence cs
+    EVar    t var        -> pure (varExpr t var)
+    ECon    t con es     -> conExpr t con <$> sequence es
+    ELit    t prim       -> pure (litExpr t prim)
+    EApp    t es         -> appExpr t <$> sequence es
+    EFix    t name e1 e2 -> fixExpr t name <$> e1 <*> e2
+    EIf     t e1 e2 e3   -> ifExpr t <$> e1 <*> e2 <*> e3
 
 translateLambda
-  :: Maybe Type
+  :: (MonadSupply Name m) 
+  => Maybe Type
   -> [ProgPattern (Maybe Type)]
   -> TargetExpr (Maybe Type)
-  -> TargetExpr (Maybe Type)
-translateLambda t [Fix (PVar _ var)] e = lamExpr t var e
-translateLambda t ps e = fst (foldr fn (e, targetExprTag e) ps)
+  -> m (TargetExpr (Maybe Type))
+translateLambda t [Fix (PVar _ var)] e = pure (lamExpr t var e)
+translateLambda t ps e = do
+    fst <$> foldrM fn (e, targetExprTag e) ps
   where
-    fn p (e, t) =
+    fn p (e, t) = do
         let t' = tArr <$> patternTag p <*> t
-         in (lamExpr t' "#0" (patExpr t [varExpr (patternTag p) "#0"] [SimplifiedClause t [p] (Guard [] e)]), t')
+        var <- supply
+        pure (lamExpr t' var (patExpr t 
+                 [varExpr (patternTag p) var] 
+                 [SimplifiedClause t [p] (Guard [] e)]), t')
 
 translateLet
-  :: Maybe Type
+  :: (MonadSupply Name m) 
+  => Maybe Type
   -> ProgBinding (Maybe Type)
   -> TargetExpr (Maybe Type)
   -> TargetExpr (Maybe Type)
-  -> TargetExpr (Maybe Type)
-translateLet t (BLet _ (Fix (PVar _ var))) e1 e2 = fixExpr t var e1 e2
-translateLet t bind e1 e2 = 
-    patExpr t [e] [SimplifiedClause t [p] (Guard [] e2)]
-  where
-    (e, p) = case bind of
-        BLet _ pat   -> (e1, pat)
-        BFun t f ps  -> (translateLambda t ps e1, varPat t f)
+  -> m (TargetExpr (Maybe Type))
+translateLet t (BLet _ (Fix (PVar _ var))) e1 e2 = pure (fixExpr t var e1 e2)
+translateLet t bind e1 e2 = do
+    (e, p) <- case bind of
+                  BLet _ pat  -> pure (e1, pat)
+                  BFun t f ps -> do
+                      e <- translateLambda t ps e1
+                      pure (e, varPat t f)
+    pure (patExpr t [e] [SimplifiedClause t [p] (Guard [] e2)])
 
 targetExprTag :: TargetExpr t -> t
 targetExprTag = cata $ \case

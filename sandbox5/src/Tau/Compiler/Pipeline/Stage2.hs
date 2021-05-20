@@ -172,7 +172,8 @@ applyDicts (InClass name ty) expr
       where 
         row = foldr fn (conExpr (Just tRowNil) "{}" []) map
         fn (name, expr) e = 
-            let row = tRowExtend name <$> workingExprTag expr <*> workingExprTag e
+            let row = tRowExtend name <$> workingExprTag expr 
+                                      <*> workingExprTag e
              in rowCons row name expr e
 
 setWorkingExprTag :: t -> WorkingExpr t -> WorkingExpr t

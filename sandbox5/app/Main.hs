@@ -627,6 +627,10 @@ test123 = do
     putStrLn "---------------"
     putStrLn (showTree h4)
     putStrLn "---------------"
+    print el
+    putStrLn "---------------"
+    print em
+    putStrLn "---------------"
 --    print eh
 
 --    putStrLn "---------------"
@@ -645,11 +649,15 @@ test123 = do
     eh :: Stage2.WorkingExpr (Maybe Type)
     eh = fromJust (evalSupply (runReaderT (evalStateT eg []) (testClassEnv, testTypeEnv, testKindEnv, testConstructorEnv)) (numSupply "a"))
 
-    ei = Stage3.translate eh
+    ei = fromJust (evalSupply (Stage3.translate eh) (numSupply "#"))
 
     ej = Stage4.translate ei
 
     ek = fromJust (evalSupply (Stage5.translate ej) (numSupply "a"))
+
+    el = runIdentity (Stage6.translate ek)
+
+    em = evalExpr el evalEnv2
 
     h3 = unpack . renderDoc <$> g3
     g3 = exprTree eh
