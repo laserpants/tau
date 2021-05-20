@@ -50,12 +50,6 @@ translateLiterals = cata $ \case
     ELam    t ps e       -> lamExpr t ps <$> e
     EIf     t e1 e2 e3   -> ifExpr  t <$> e1 <*> e2 <*> e3
     EPat    t es cs      -> patExpr t <$> sequence es <*> traverse sequence cs
-
---    ELet t (BFun u f ps) e1 e2 -> do
---        let zz = TypeInfo [] (Just tInt) []
---        eee1 <- lamExpr zz ps <$> e1
---        letExpr zz (BLet zz (varPat zz f)) eee1 <$> e2
-
     ELet    t bind e1 e2 -> letExpr t bind <$> e1 <*> e2
 
 expandTypeClasses
