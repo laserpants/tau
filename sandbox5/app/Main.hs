@@ -708,14 +708,14 @@ test123 = do
 
 --    expr = letExpr () (BFun  () "f" [varPat () "x"]) (litExpr () (TInt 5)) (varExpr () "f")
 
---    expr = letExpr () (BFun  () "f" [varPat () "x"]) (litExpr () (TInt 5)) (appExpr () [varExpr () "f", litExpr () TUnit])
+    expr = letExpr () (BFun  () "f" [varPat () "x"]) (litExpr () (TInt 5)) (appExpr () [varExpr () "f", litExpr () TUnit])
 
 --    expr = appExpr () 
 --        [ letExpr () (BFun  () "f" [varPat () "x"]) (litExpr () (TInt 5)) (appExpr () [varExpr () "f", litExpr () TUnit])
 --        , recordExpr () (rowCons () "fromInteger" (lamExpr () [varPat () "x"] (litExpr () (TInt 55))) (conExpr () "{}" [])) 
 --        ]
 
-    expr = recordExpr () (rowCons () "fromInteger" (lamExpr () [varPat () "x"] (litExpr () (TInt 55))) (conExpr () "{}" [])) 
+--    expr = recordExpr () (rowCons () "fromInteger" (lamExpr () [varPat () "x"] (litExpr () (TInt 55))) (conExpr () "{}" [])) 
 
 --    expr = inferAst (Ast (varExpr () "(::)"))
 
