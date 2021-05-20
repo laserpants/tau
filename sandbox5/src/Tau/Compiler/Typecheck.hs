@@ -262,9 +262,20 @@ inferExprType = cata $ \case
         pure es
 
 --    ERecord _ row -> inferExprNode recordExpr $ do
---        fs <- traverse exprNode row
---        unfiyWithNode (tRecord (rowToType (typeOf <$> fs)))
+--        fs <- inferRowType row
+--        traceShowM fs
+----        unfiyWithNode (tApp kTyp (tCon (kArr kRow kTyp) "#") (typeOf fs))
 --        pure fs
+--
+--inferRowType 
+--  :: ( MonadSupply Name m
+--     , MonadReader (ClassEnv, TypeEnv, KindEnv, ConstructorEnv) m
+--     , MonadState (Substitution Type, Substitution Kind, Context) m )
+--  => m (ProgExpr (TypeInfo [Error]))
+--  -> WriterT Node m (ProgExpr (TypeInfo [Error]))
+--inferRowType expr = do
+--    e <- lift expr
+--    pure e
 
 inferPatternType
   :: ( MonadSupply Name m

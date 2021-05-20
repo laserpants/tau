@@ -137,7 +137,7 @@ compilePatterns us qs =
                             substitute name u . substitute as (varExpr t1 name) <$> clause
                         PAs _ as (Fix (PAny t)) ->
                             substitute as u <$> clause
-                        -- The remaining case is for wildcard and literal patterns
+                        -- The remaining case is for wildcards and literal patterns
                         _ -> clause
 
             [Constructor eqs@(SimplifiedClause t _ (Guard _ e):_)] -> do
