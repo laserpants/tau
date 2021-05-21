@@ -32,7 +32,7 @@ data PatternF t1 t2 t3 t4 t5 t6 t7 t8 t9 a
     | POr     t6 a a                     -- ^ Or-pattern
     | PTuple  t7 [a]                     -- ^ Tuple pattern
     | PList   t8 [a]                     -- ^ List pattern
-    | PRecord t9 a                       -- ^ Record pattern
+--    | PRecord t9 a                       -- ^ Record pattern
 
 -- | Pattern
 type Pattern t1 t2 t3 t4 t5 t6 t7 t8 t9 = Fix (PatternF t1 t2 t3 t4 t5 t6 t7 t8 t9)
@@ -114,7 +114,8 @@ data ExprF t1 t2 t3 t4 t5 t6 t7 t8 t9 t10 t11 t12 t13 t14 t15 e1 e2 e3 a
     | EOp2    t12 (Op2 t12) a a          -- ^ Binary operator
     | ETuple  t13 [a]                    -- ^ Tuple
     | EList   t14 [a]                    -- ^ List literal
-    | ERecord t15 a                      -- ^ Record
+--    | ERecord t15 a                      -- ^ Record
+    | ERow    t15 [(Name, a)]            -- ^ Row expression
 
 -- | Language expression
 type Expr t1 t2 t3 t4 t5 t6 t7 t8 t9 t10 t11 t12 t13 t14 t15 e1 e2 e3 = 
@@ -262,7 +263,7 @@ instance Functor Ast where
             EOp2    t op a b     -> op2Expr    (f t) (mapOp2 op) a b
             ETuple  t es         -> tupleExpr  (f t) es
             EList   t es         -> listExpr   (f t) es
-            ERecord t row        -> recordExpr (f t) row
+--            ERecord t row        -> recordExpr (f t) row
 
         mapBind = \case
             BLet    t p          -> BLet       (f t) (mapPattern p)
@@ -280,7 +281,7 @@ instance Functor Ast where
             PAny    t            -> anyPat     (f t)
             PTuple  t ps         -> tuplePat   (f t) ps
             PList   t ps         -> listPat    (f t) ps
-            PRecord t row        -> recordPat  (f t) row
+--            PRecord t row        -> recordPat  (f t) row
 
         mapOp1 = \case
             ONeg    t            -> ONeg       (f t)
@@ -530,11 +531,11 @@ listPat
   -> Pattern t1 t2 t3 t4 t5 t6 t7 t8 t9
 listPat = embed2 PList
 
-recordPat 
-  :: t9 
-  -> Pattern t1 t2 t3 t4 t5 t6 t7 t8 t9 
-  -> Pattern t1 t2 t3 t4 t5 t6 t7 t8 t9
-recordPat = embed2 PRecord
+--recordPat 
+--  :: t9 
+--  -> Pattern t1 t2 t3 t4 t5 t6 t7 t8 t9 
+--  -> Pattern t1 t2 t3 t4 t5 t6 t7 t8 t9
+--recordPat = embed2 PRecord
 
 -- Expr
 
@@ -648,12 +649,12 @@ listExpr
   -> Expr t1 t2 t3 t4 t5 t6 t7 t8 t9 t10 t11 t12 t13 t14 t15 e1 e2 e3
 listExpr = embed2 EList
 
-recordExpr 
-  :: (Functor e3) 
-  => t15 
-  -> Expr t1 t2 t3 t4 t5 t6 t7 t8 t9 t10 t11 t12 t13 t14 t15 e1 e2 e3
-  -> Expr t1 t2 t3 t4 t5 t6 t7 t8 t9 t10 t11 t12 t13 t14 t15 e1 e2 e3
-recordExpr = embed2 ERecord
+--recordExpr 
+--  :: (Functor e3) 
+--  => t15 
+--  -> Expr t1 t2 t3 t4 t5 t6 t7 t8 t9 t10 t11 t12 t13 t14 t15 e1 e2 e3
+--  -> Expr t1 t2 t3 t4 t5 t6 t7 t8 t9 t10 t11 t12 t13 t14 t15 e1 e2 e3
+--recordExpr = embed2 ERecord
 
 -- List cons constructors
 

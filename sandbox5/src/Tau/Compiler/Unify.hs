@@ -1,4 +1,5 @@
 {-# LANGUAGE FlexibleContexts  #-}
+{-# LANGUAGE LambdaCase        #-}
 {-# LANGUAGE OverloadedStrings #-}
 {-# LANGUAGE StrictData        #-}
 module Tau.Compiler.Unify where
@@ -10,6 +11,7 @@ import Data.Foldable (foldrM)
 import Data.Function ((&))
 import Data.List (intersect)
 import Data.Map.Strict (Map, (!))
+import Data.Maybe (fromJust)
 import Data.Tuple.Extra (both)
 import Tau.Compiler.Error
 import Tau.Compiler.Substitute hiding (null)
@@ -35,13 +37,13 @@ unifyKinds
   => Kind 
   -> Kind 
   -> m (Substitution Kind)
-unifyKinds k l = pure mempty -- fn (project k) (project l)
---  where
---    fn (KArr k1 k2) (KArr l1 l2)              = unifyKindPairs (k1, k2) (l1, l2)
---    fn (KVar name) _                          = bindKind name l
---    fn _ (KVar name)                          = bindKind name k
---    fn _ _ | k == l                           = pure mempty
---    fn _ _                                    = throwError IncompatibleKinds
+unifyKinds k l = fn (project k) (project l)
+  where
+    fn (KArr k1 k2) (KArr l1 l2)              = unifyKindPairs (k1, k2) (l1, l2)
+    fn (KVar name) _                          = bindKind name l
+    fn _ (KVar name)                          = bindKind name k
+    fn _ _ | k == l                           = pure mempty
+    fn _ _                                    = throwError IncompatibleKinds
 
 unifyKindPairs 
   :: (MonadError UnificationError m) 
@@ -75,7 +77,14 @@ unifyTypes
   => Type 
   -> Type 
   -> m (Substitution Type, Substitution Kind)
-unifyTypes t u = fn (project t) (project u)
+unifyTypes t u = unifyTypesImpl (canonicalizeRowTypes t) (canonicalizeRowTypes u)
+
+unifyTypesImpl
+  :: (MonadError UnificationError m) 
+  => Type 
+  -> Type 
+  -> m (Substitution Type, Substitution Kind)
+unifyTypesImpl t u = fn (project t) (project u)
   where
     fn (TArr t1 t2) (TArr u1 u2)              = unifyTypePairs (t1, t2) (u1, u2)
     fn (TApp _ t1 t2) (TApp _ u1 u2)          = unifyTypePairs (t1, t2) (u1, u2)
@@ -84,8 +93,19 @@ unifyTypes t u = fn (project t) (project u)
     fn _ _ | t == u                           = pure mempty
     fn _ _                                    = throwError IncompatibleTypes
 
-matchTypes :: (MonadError UnificationError m) => Type -> Type -> m (Substitution Type, Substitution Kind)
-matchTypes t u = fn (project t) (project u)
+matchTypes 
+  :: (MonadError UnificationError m) 
+  => Type 
+  -> Type 
+  -> m (Substitution Type, Substitution Kind)
+matchTypes t u = matchTypesImpl (canonicalizeRowTypes t) (canonicalizeRowTypes u)
+
+matchTypesImpl 
+  :: (MonadError UnificationError m) 
+  => Type 
+  -> Type 
+  -> m (Substitution Type, Substitution Kind)
+matchTypesImpl t u = fn (project t) (project u)
   where
     fn (TArr t1 t2) (TArr u1 u2)              = matchTypePairs (t1, t2) (u1, u2)
     fn (TApp _ t1 t2) (TApp _ u1 u2)          = matchTypePairs (t1, t2) (u1, u2)
@@ -93,28 +113,89 @@ matchTypes t u = fn (project t) (project u)
     fn _ _ | t == u                           = pure mempty
     fn _ _                                    = throwError IncompatibleTypes
 
-unifyTypePairs :: (MonadError UnificationError m) => (Type, Type) -> (Type, Type) -> m (Substitution Type, Substitution Kind)
+unifyTypePairs 
+  :: (MonadError UnificationError m) 
+  => (Type, Type) 
+  -> (Type, Type) 
+  -> m (Substitution Type, Substitution Kind)
 unifyTypePairs (t1, t2) (u1, u2) = do
-    (typeSub1, kindSub1) <- unifyTypes t1 u1
-    (typeSub2, kindSub2) <- unifyTypes (apply kindSub1 (apply typeSub1 t2)) (apply kindSub1 (apply typeSub1 u2))
+    (typeSub1, kindSub1) <- unifyTypesImpl t1 u1
+    (typeSub2, kindSub2) <- unifyTypesImpl (apply kindSub1 (apply typeSub1 t2)) 
+                                           (apply kindSub1 (apply typeSub1 u2))
     pure (typeSub2 <> typeSub1, kindSub2 <> kindSub1)
 
-matchTypePairs :: (MonadError UnificationError m) => (Type, Type) -> (Type, Type) -> m (Substitution Type, Substitution Kind)
+matchTypePairs 
+  :: (MonadError UnificationError m) 
+  => (Type, Type) 
+  -> (Type, Type) 
+  -> m (Substitution Type, Substitution Kind)
 matchTypePairs (t1, t2) (u1, u2) = do
-    (typeSub1, kindSub1) <- matchTypes t1 u1
-    (typeSub2, kindSub2) <- matchTypes t2 u2
+    (typeSub1, kindSub1) <- matchTypesImpl t1 u1
+    (typeSub2, kindSub2) <- matchTypesImpl t2 u2
     (,) <$> fn typeSub1 typeSub2 <*> fn kindSub1 kindSub2
   where
     fn sub1 sub2 = maybe (throwError MergeFailed) pure (merge sub1 sub2)
 
+canonicalizeRowTypes :: Type -> Type
+canonicalizeRowTypes = para $ \case
+    TVar k var  -> tVar k var
+    TCon k con  -> tCon k con
+    TApp k (t, a) (_, b) | leftmostIsCon t -> normalized (tApp k t b)
+                         | otherwise       -> tApp k a b
+    TArr a b    -> tArr (snd a) (snd b)
+  where
+    normalized = fromMap . toMap
 
---data RowType a
+    toMap :: Type -> (Map Name [Type], Maybe Name)
+    toMap = para $ \case
+        TApp _ (Fix (TCon _ con), _) (b, (_, c)) -> (Map.singleton (withoutBraces con) [b], c)
+        TApp _ (_, (a, _)) (_, (b, c))           -> (Map.unionWith (<>) a b, c)
+        TVar _ var                               -> (mempty, Just var)
+        TCon{}                                   -> mempty
+      where
+        withoutBraces = fromJust <<< Text.stripSuffix "}" <=< Text.stripPrefix "{"
+
+    fromMap :: (Map Name [Type], Maybe Name) -> Type
+    fromMap (map, var) = 
+        Map.foldrWithKey (flip . foldr . tRowExtend) initl map
+      where
+        initl = case var of 
+            Nothing  -> tRowNil
+            Just var -> tVar kRow var
+
+--canonicalizeRowTypes :: Type -> Type
+--canonicalizeRowTypes ty
+--    | Just True == (isRowCon <$> leftmostTypeCon ty) = fromMap (toMap ty)
+--    | otherwise = ty
+--  where
+--    isRowCon :: Name -> Bool
+--    isRowCon con 
+--      | Text.null con = False
+--      | otherwise     = '{' == Text.head con && '}' == Text.last con
+--
+--    normalized = 
+--        fromJust <<< Text.stripSuffix "}" <=< Text.stripPrefix "{"
+--
+--    toMap = para $ \case
+--        TApp _ (Fix (TCon _ con), _) (b, (_, c)) -> (Map.singleton (normalized con) [b], c)
+--        TApp _ (_, (a, _)) (_, (b, c))           -> (Map.unionWith (<>) a b, c)
+--        TVar _ var                               -> (mempty, Just var)
+--        TCon{}                                   -> mempty
+--
+--    fromMap (map, var) = 
+--        Map.foldrWithKey (flip . foldr . tRowExtend) initl map
+--      where
+--        initl = case var of 
+--            Nothing  -> tRowNil
+--            Just var -> tVar kRow var
+
+--data RowTypes a
 --    = RNil 
 --    | RVar a
 --    | RExt
 --    deriving (Show, Eq)
 --
---rowType :: Row Type -> RowType Name
+--rowType :: Row Type -> RowTypes Name
 --rowType (Row m Nothing)  | null m = RNil
 --rowType (Row m (Just r)) | null m = RVar (unsafeGetTypeVar r)
 --rowType _                         = RExt
@@ -139,7 +220,7 @@ matchTypePairs (t1, t2) (u1, u2) = do
 --
 --unify :: (MonadError UnificationError m) => Type -> Type -> m TypeSubstitution
 --unify t u
---    | isRow t || isRow u                      = unifyRowTypes t u
+--    | isRow t || isRow u                      = unifyRowTypess t u
 --    | otherwise                               = fn (project t) (project u)
 --  where
 --    fn (TArr t1 t2) (TArr u1 u2)              = unifyTypePairs (t1, t2) (u1, u2)
@@ -151,7 +232,7 @@ matchTypePairs (t1, t2) (u1, u2) = do
 --
 --match :: (MonadError UnificationError m) => Type -> Type -> m TypeSubstitution
 --match t u
---    | isRow t || isRow u                      = matchRowTypes t u
+--    | isRow t || isRow u                      = matchRowTypess t u
 --    | otherwise                               = fn (project t) (project u)
 --  where
 --    fn (TArr t1 t2) (TArr u1 u2)              = matchTypePairs (t1, t2) (u1, u2)
@@ -160,8 +241,8 @@ matchTypePairs (t1, t2) (u1, u2) = do
 --    fn _ _ | t == u                           = pure mempty
 --    fn _ _                                    = throwError IncompatibleTypes
 --
---unifyRowTypes :: (MonadError UnificationError m) => Type -> Type -> m TypeSubstitution
---unifyRowTypes t u = fn (rowType r) (rowType s)
+--unifyRowTypess :: (MonadError UnificationError m) => Type -> Type -> m TypeSubstitution
+--unifyRowTypess t u = fn (rowType r) (rowType s)
 --  where
 --    fn RNil RNil                              = pure mempty
 --    fn (RVar var) _                           = bind var kRow u
@@ -170,8 +251,8 @@ matchTypePairs (t1, t2) (u1, u2) = do
 --    r                                         = typeToRow t
 --    s                                         = typeToRow u
 --
---matchRowTypes :: (MonadError UnificationError m) => Type -> Type -> m TypeSubstitution
---matchRowTypes t u = fn (rowType r) (rowType s)
+--matchRowTypess :: (MonadError UnificationError m) => Type -> Type -> m TypeSubstitution
+--matchRowTypess t u = fn (rowType r) (rowType s)
 --  where
 --    fn RNil RNil                              = pure mempty
 --    fn (RVar var) _                           = bind var kRow u

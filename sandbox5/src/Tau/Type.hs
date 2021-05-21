@@ -175,14 +175,21 @@ getTypeVar = project >>> \case
     TVar _ var   -> Just var
     _            -> Nothing
 
-getTypeCon :: Type -> Maybe Name
-getTypeCon = project >>> \case
-    TCon _ con   -> Just con
-    _            -> Nothing
-
 getTypeIndex :: Polytype -> Maybe Int
 getTypeIndex = project >>> \case
     TGen i       -> Just i
+    _            -> Nothing
+
+leftmostIsCon :: Type -> Bool
+leftmostIsCon = cata $ \case 
+    TApp _ a b   -> a
+    TCon{}       -> True
+    _            -> False
+
+leftmostTypeCon :: Type -> Maybe Name
+leftmostTypeCon = cata $ \case
+    TCon _ con   -> Just con
+    TApp _ a _   -> a
     _            -> Nothing
 
 kindOf :: Type -> Kind

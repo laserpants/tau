@@ -9,6 +9,7 @@ import Control.Arrow ((<<<), (>>>))
 import Control.Monad ((<=<))
 import Data.Function ((&))
 import Data.List (null, intersperse)
+import Data.Map.Strict (Map)
 import Data.Maybe (fromJust)
 import Data.Text (pack, unpack)
 import Data.Text.Prettyprint.Doc
@@ -91,7 +92,7 @@ instance Pretty Kind where
 
 instance Pretty Type where
     pretty ty =
-        case innermostCon ty of
+        case leftmostTypeCon ty of
             Just con | isTuple con -> prettyTupleType ty
 --            Just "#Record"         -> prettyRecordType ty
             _                      -> prettyType ty
@@ -183,17 +184,47 @@ unfoldApp = para $ \case
     TCon kind con        -> [tCon kind con]
     TVar kind var        -> [tVar kind var]
 
-innermostCon :: Type -> Maybe Name
-innermostCon = cata $ \case
-    TCon _ con -> Just con
-    TApp _ a _ -> a
-    _          -> Nothing
-
 isTuple :: Name -> Bool
 isTuple con = Just True == (allCommas <$> stripped con)
   where
     allCommas = Text.all (== ',')
     stripped  = Text.stripSuffix ")" <=< Text.stripPrefix "("
+
+
+--canonicalizeRowType :: Type -> Type
+--canonicalizeRowType ty
+--    | Just True == (isRowCon <$> leftmostTypeCon ty) = fromMap (toMap ty)
+--    | otherwise = ty
+--  where
+--    isRowCon :: Name -> Bool
+--    isRowCon con 
+--      | Text.null con = False
+--      | otherwise     = '{' == Text.head con && '}' == Text.last con
+--
+--    normalized = fromJust <<< Text.stripSuffix "}" <=< Text.stripPrefix "{"
+--
+--    toMap = para $ \case
+--        TApp _ (Fix (TCon _ con), _) (b, (_, c)) -> (Map.singleton (normalized con) [b], c)
+--        TApp _ (_, (a, _)) (_, (b, c))           -> (Map.unionWith (<>) a b, c)
+--        TVar _ var                               -> (mempty, Just var)
+--        TCon{}                                   -> mempty
+--
+--    fromMap (map, var) = 
+--        Map.foldrWithKey (flip . foldr . tRowExtend) initl map
+--      where
+--        initl = case var of 
+--            Nothing  -> tRowNil
+--            Just var -> tVar kRow var
+
+
+--yyy :: Type -> Map Name [Type]
+--yyy (Fix (TApp _ a b)) = undefined
+--yyy (Fix (TCon _ con)) = undefined
+
+
+--  where
+--    stripped  = Text.stripSuffix ")" <=< Text.stripPrefix "("
+
 
 ---- >>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>
 --
