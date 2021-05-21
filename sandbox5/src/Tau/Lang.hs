@@ -33,6 +33,7 @@ data PatternF t1 t2 t3 t4 t5 t6 t7 t8 t9 a
     | PTuple  t7 [a]                     -- ^ Tuple pattern
     | PList   t8 [a]                     -- ^ List pattern
 --    | PRecord t9 a                       -- ^ Record pattern
+    | PRow    t9 [(Name, a)]             -- ^ Row pattern
 
 -- | Pattern
 type Pattern t1 t2 t3 t4 t5 t6 t7 t8 t9 = Fix (PatternF t1 t2 t3 t4 t5 t6 t7 t8 t9)
