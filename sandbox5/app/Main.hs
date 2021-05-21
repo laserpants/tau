@@ -702,13 +702,13 @@ test123 = do
 
 --    expr = varExpr () "(+)"
 
---    expr = litExpr () (TInt 5)
+    expr = litExpr () (TInt 5)
 
 --    expr = letExpr () (BLet () (varPat () "x")) (litExpr () (TInt 5)) (varExpr () "x")
 
 --    expr = letExpr () (BFun  () "f" [varPat () "x"]) (litExpr () (TInt 5)) (varExpr () "f")
 
-    expr = letExpr () (BFun  () "f" [varPat () "x"]) (litExpr () (TInt 5)) (appExpr () [varExpr () "f", litExpr () TUnit])
+--    expr = letExpr () (BFun  () "f" [varPat () "x"]) (litExpr () (TInt 5)) (appExpr () [varExpr () "f", litExpr () TUnit])
 
 --    expr = appExpr () 
 --        [ letExpr () (BFun  () "f" [varPat () "x"]) (litExpr () (TInt 5)) (appExpr () [varExpr () "f", litExpr () TUnit])
