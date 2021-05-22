@@ -84,6 +84,7 @@ expandTypeClasses expr =
         EApp   t es       -> appExpr (nodeType t) <$> sequence es
         ELam   t ps e     -> lamExpr (nodeType t) (translatePatterns <$> ps) <$> e
         EIf    t e1 e2 e3 -> ifExpr  (nodeType t) <$> e1 <*> e2 <*> e3
+
         EPat   t exprs clauses -> do
             es <- sequence exprs
             cs <- translateClauses <$$> traverse sequence clauses
