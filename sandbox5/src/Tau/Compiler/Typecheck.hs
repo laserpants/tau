@@ -373,7 +373,9 @@ inferPatternType = cata $ \case
 
     PRow t pats -> inferPatternNode rowPat $ do
         ps <- traverse inferPatternRowType pats
-        undefined
+        let fn (label, pat) = tRowExtend label (typeOf pat) 
+        unfiyWithNode (foldr fn tRowNil ps)
+        pure ps
 
 --        es <- traverse inferRowType exprs
 --        let fn (label, expr) = tRowExtend label (typeOf expr) 
@@ -386,7 +388,15 @@ inferPatternType = cata $ \case
 --        unfiyWithNode (tRecord (rowToType (typeOf <$> fs)))
 --        pure fs
 
-inferPatternRowType = undefined
+inferPatternRowType
+  :: ( MonadSupply Name m
+     , MonadReader (ClassEnv, TypeEnv, KindEnv, ConstructorEnv) m
+     , MonadState (Substitution Type, Substitution Kind, Context) m )
+  => (Name, m (ProgPattern (TypeInfo [Error]), [(Name, Type)]))
+  -> WriterT Node m (Name, ProgPattern (TypeInfo [Error]))
+inferPatternRowType (label, pat) = do
+    p <- patternNode pat
+    pure (label, p)
 
 --inferRowType
 --  :: ( MonadSupply Name m
@@ -398,8 +408,6 @@ inferPatternRowType = undefined
 --    e <- lift expr
 --    insertPredicates (exprPredicates e)
 --    pure (label, e)
-
-
 
 patternNode
   :: ( MonadSupply Name m
