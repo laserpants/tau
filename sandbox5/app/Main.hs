@@ -607,6 +607,15 @@ evalEnv2 = Env.fromList
 --        , Clause () [anyPat ()] [Guard [] (litExpr () (TInt 2))]
 --        ])))
 
+test555, test556 :: Type
+--test555 = Fix (TApp (Fix (KCon "Row")) (Fix (TApp (Fix (KArr (Fix (KCon "Row")) (Fix (KCon "Row")))) (Fix (TCon (Fix (KArr (Fix (KCon "*")) (Fix (KArr (Fix (KCon "Row")) (Fix (KCon "Row")))))) "{a}")) (Fix (TVar (Fix (KCon "*")) "a5")))) (Fix (TApp (Fix (KCon "Row")) (Fix (TApp (Fix (KArr (Fix (KCon "Row")) (Fix (KCon "Row")))) (Fix (TCon (Fix (KArr (Fix (KCon "*")) (Fix (KArr (Fix (KCon "Row")) (Fix (KCon "Row")))))) "{b}")) (Fix (TArr (Fix (TVar (Fix (KVar "k10")) "a11")) (Fix (TVar (Fix (KVar "k10")) "a11")))))) (Fix (TCon (Fix (KCon "Row")) "{}")))))
+
+test555 = tRowExtend "b" tInt (tRowExtend "a" tString (tRowExtend "c" tBool tRowNil))
+
+test556 = tRowExtend "b" tInt (tRowExtend "a" tString (tRowExtend "c" tBool (tVar kRow "x")))
+
+--test555 = Fix (TApp (Fix (KCon "Row")) (Fix (TApp (Fix (KArr (Fix (KCon "Row")) (Fix (KCon "Row")))) (Fix (TCon (Fix (KArr (Fix (KCon "*")) (Fix (KArr (Fix (KCon "Row")) (Fix (KCon "Row")))))) "{b}")) (Fix (TCon (Fix (KCon "*")) "Int")))) (Fix (TCon (Fix (KCon "Row")) "{}")))
+
 test123 = do
 --    print a
 --    putStrLn "---------------"
@@ -702,7 +711,9 @@ test123 = do
 
 --    expr = varExpr () "(+)"
 
-    expr = litExpr () (TInt 5)
+--    expr = litExpr () (TInt 5)
+
+    expr = Fix (ERow () [("a", litExpr () (TInt 5)), ("b", lamExpr () [varPat () "x"] (varExpr () "x"))])
 
 --    expr = letExpr () (BLet () (varPat () "x")) (litExpr () (TInt 5)) (varExpr () "x")
 

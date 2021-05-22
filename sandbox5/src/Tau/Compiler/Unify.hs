@@ -12,7 +12,7 @@ import Data.Function ((&))
 import Data.List (intersect)
 import Data.Map.Strict (Map, (!))
 import Data.Maybe (fromJust)
-import Data.Tuple.Extra (both)
+import Data.Tuple.Extra (first)
 import Tau.Compiler.Error
 import Tau.Compiler.Substitute hiding (null)
 import Tau.Lang
@@ -138,22 +138,27 @@ matchTypePairs (t1, t2) (u1, u2) = do
 
 canonicalizeRowTypes :: Type -> Type
 canonicalizeRowTypes = para $ \case
-    TVar k var  -> tVar k var
-    TCon k con  -> tCon k con
-    TApp k (t, a) (_, b) | leftmostIsCon t -> normalized (tApp k t b)
+    TApp k (a, _) (b, _) | leftmostIsCon a -> fromMap (toMap (tApp k a b))
                          | otherwise       -> tApp k a b
-    TArr a b    -> tArr (snd a) (snd b)
-  where
-    normalized = fromMap . toMap
+    TArr a b   -> tArr (snd a) (snd b)
+    TVar k var -> tVar k var
+    TCon k con -> tCon k con
 
+  where
     toMap :: Type -> (Map Name [Type], Maybe Name)
-    toMap = para $ \case
-        TApp _ (Fix (TCon _ con), _) (b, (_, c)) -> (Map.singleton (withoutBraces con) [b], c)
-        TApp _ (_, (a, _)) (_, (b, c))           -> (Map.unionWith (<>) a b, c)
-        TVar _ var                               -> (mempty, Just var)
-        TCon{}                                   -> mempty
+    toMap t = 
+        first (foldr (\(name, ty) -> Map.insertWith (<>) (withoutBraces name) [ty]) mempty) 
+              (foldType t)
       where
         withoutBraces = fromJust <<< Text.stripSuffix "}" <=< Text.stripPrefix "{"
+
+        foldType :: Type -> ([(Name, Type)], Maybe Name)
+        foldType = para $ \case
+            (TApp _ (Fix (TCon _ con), _) (t, (_, v))) -> ([(con, t)], v)
+            (TApp _ (_, (as, v)) (_, (bs, w)))         -> (as <> bs, v <|> w)
+            (TArr (_, (as, v)) (_, (bs, w)))           -> (as <> bs, v <|> w)
+            (TVar _ var)                               -> ([], Just var)
+            _                                          -> ([], Nothing)
 
     fromMap :: (Map Name [Type], Maybe Name) -> Type
     fromMap (map, var) = 
@@ -162,32 +167,6 @@ canonicalizeRowTypes = para $ \case
         initl = case var of 
             Nothing  -> tRowNil
             Just var -> tVar kRow var
-
---canonicalizeRowTypes :: Type -> Type
---canonicalizeRowTypes ty
---    | Just True == (isRowCon <$> leftmostTypeCon ty) = fromMap (toMap ty)
---    | otherwise = ty
---  where
---    isRowCon :: Name -> Bool
---    isRowCon con 
---      | Text.null con = False
---      | otherwise     = '{' == Text.head con && '}' == Text.last con
---
---    normalized = 
---        fromJust <<< Text.stripSuffix "}" <=< Text.stripPrefix "{"
---
---    toMap = para $ \case
---        TApp _ (Fix (TCon _ con), _) (b, (_, c)) -> (Map.singleton (normalized con) [b], c)
---        TApp _ (_, (a, _)) (_, (b, c))           -> (Map.unionWith (<>) a b, c)
---        TVar _ var                               -> (mempty, Just var)
---        TCon{}                                   -> mempty
---
---    fromMap (map, var) = 
---        Map.foldrWithKey (flip . foldr . tRowExtend) initl map
---      where
---        initl = case var of 
---            Nothing  -> tRowNil
---            Just var -> tVar kRow var
 
 --data RowTypes a
 --    = RNil 

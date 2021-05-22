@@ -264,6 +264,7 @@ instance Functor Ast where
             EOp2    t op a b     -> op2Expr    (f t) (mapOp2 op) a b
             ETuple  t es         -> tupleExpr  (f t) es
             EList   t es         -> listExpr   (f t) es
+            ERow    t es         -> rowExpr    (f t) es
 --            ERecord t row        -> recordExpr (f t) row
 
         mapBind = \case
@@ -656,6 +657,13 @@ listExpr = embed2 EList
 --  -> Expr t1 t2 t3 t4 t5 t6 t7 t8 t9 t10 t11 t12 t13 t14 t15 e1 e2 e3
 --  -> Expr t1 t2 t3 t4 t5 t6 t7 t8 t9 t10 t11 t12 t13 t14 t15 e1 e2 e3
 --recordExpr = embed2 ERecord
+
+rowExpr
+  :: (Functor e3)
+  => t15
+  -> [(Name, Expr t1 t2 t3 t4 t5 t6 t7 t8 t9 t10 t11 t12 t13 t14 t15 e1 e2 e3)]
+  -> Expr t1 t2 t3 t4 t5 t6 t7 t8 t9 t10 t11 t12 t13 t14 t15 e1 e2 e3
+rowExpr = embed2 ERow
 
 -- List cons constructors
 

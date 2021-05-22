@@ -24,6 +24,7 @@ translate = cata $ \case
     -- Translate tuples, lists, and records
     ETuple  t exprs      -> conExpr t (tupleCon (length exprs)) exprs
     EList   t exprs      -> foldr (listExprCons t) (conExpr t "[]" []) exprs
+    ERow    t es         -> undefined
 --    ERecord t row        -> conExpr t "#" [row]
     -- Translate operators to prefix form
     EOp1    t op a       -> appExpr t [prefixOp1 op, a]

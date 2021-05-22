@@ -101,6 +101,7 @@ instance (Substitutable t a) => Substitutable (ProgExpr t) a where
         EOp2    t op a b     -> op2Expr    (apply sub t) (apply sub op) a b
         ETuple  t es         -> tupleExpr  (apply sub t) es
         EList   t es         -> listExpr   (apply sub t) es
+        ERow    t es         -> rowExpr    (apply sub t) es
 --        ERecord t row        -> recordExpr (apply sub t) row
 
 instance (Substitutable t a) => Substitutable (Op1 t) a where
@@ -195,10 +196,10 @@ merge s1 s2
     | allEqual  = Just (Sub (getSub s1 `Map.union` getSub s2))
     | otherwise = Nothing
   where
-    allEqual = all (\v -> appV s1 v == appV s2 v) (domain s1 `intersect` domain s2)
+    allEqual = all (\v -> applySub s1 v == applySub s2 v) (domain s1 `intersect` domain s2)
 
-    appV :: Substitution a -> Name -> Maybe a
-    appV sub var = Map.lookup var (getSub sub)
+    applySub :: Substitution a -> Name -> Maybe a
+    applySub sub var = Map.lookup var (getSub sub)
 
 normalizer :: [(Name, Kind)] -> Substitution Type
 normalizer vars = fromList (zipWith (\(v, k) a -> (v, tVar k a)) vars letters)
