@@ -25,8 +25,6 @@ translate = cata $ \case
     ETuple  t exprs      -> conExpr t (tupleCon (length exprs)) exprs
     EList   t exprs      -> foldr (listExprCons t) (conExpr t "[]" []) exprs
     ERow    t exprs      -> foldRow t exprs
-
---    ERecord t row        -> conExpr t "#" [row]
     -- Translate operators to prefix form
     EOp1    t op a       -> appExpr t [prefixOp1 op, a]
     EOp2    t op a b     -> appExpr t [prefixOp2 op, a, b]
@@ -58,7 +56,8 @@ foldRow t exprs =
   where
     fn (name, d) (e, ty) =
         let ty1 = tRowExtend name <$> nodeType (targetExprTag d) <*> ty
-         in (rowCons (TypeInfo [] ty1 []) name d e, ty1)
+         -- in (rowCons (TypeInfo [] ty1 []) name d e, ty1)
+         in (rowCons (t{ nodeType = ty1 }) name d e, ty1)
 
 translateFunExpr
   :: TypeInfoT [Error] (Maybe Type)
