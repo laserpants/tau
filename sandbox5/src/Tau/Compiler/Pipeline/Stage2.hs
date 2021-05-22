@@ -107,6 +107,7 @@ expandTypeClasses expr =
         POr     t p q    -> orPat    (nodeType t) p q
         PTuple  t ps     -> tuplePat (nodeType t) ps
         PList   t ps     -> listPat  (nodeType t) ps
+        PRow    t ps     -> rowPat   (nodeType t) ps
 
 insertArgsExpr :: WorkingExpr (Maybe Type) -> [(Name, Type)] -> WorkingExpr (Maybe Type)
 insertArgsExpr = foldr fun 
@@ -175,7 +176,7 @@ applyDicts (InClass name ty) expr
         fn (name, expr) e = 
             let row = tRowExtend name <$> workingExprTag expr 
                                       <*> workingExprTag e
-             in rowCons row name expr e
+             in rowExprCons row name expr e
 
 setWorkingExprTag :: t -> WorkingExpr t -> WorkingExpr t
 setWorkingExprTag t = cata $ \case

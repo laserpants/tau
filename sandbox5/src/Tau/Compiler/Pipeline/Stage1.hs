@@ -21,7 +21,7 @@ translate
   :: ProgExpr (TypeInfoT [Error] (Maybe Type))
   -> TargetExpr (TypeInfoT [Error] (Maybe Type))
 translate = cata $ \case
-    -- Translate tuples, lists, and records
+    -- Translate tuples, lists, and row expressions
     ETuple  t exprs      -> conExpr t (tupleCon (length exprs)) exprs
     EList   t exprs      -> foldr (listExprCons t) (conExpr t "[]" []) exprs
     ERow    t exprs      -> foldRow t exprs
@@ -56,8 +56,8 @@ foldRow t exprs =
   where
     fn (name, d) (e, ty) =
         let ty1 = tRowExtend name <$> nodeType (targetExprTag d) <*> ty
-         -- in (rowCons (TypeInfo [] ty1 []) name d e, ty1)
-         in (rowCons (t{ nodeType = ty1 }) name d e, ty1)
+         -- in (rowExprCons (TypeInfo [] ty1 []) name d e, ty1)
+         in (rowExprCons (t{ nodeType = ty1 }) name d e, ty1)
 
 translateFunExpr
   :: TypeInfoT [Error] (Maybe Type)

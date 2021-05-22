@@ -71,7 +71,10 @@ instance Pretty (Pattern t1 t2 t3 t4 t5 t6 t7 t8 t9) where
             PAny    _        -> "_"
             PTuple  _ ps     -> prettyTuple ps
             PList   _ ps     -> prettyList_ ps
---            PRecord _ row    -> lbrace <+> prettyRow "=" row <+> rbrace
+            PRow    _ ps     -> commaSep (prettyRow <$> ps)
+
+prettyRow :: (Name, Doc a) -> Doc a
+prettyRow (name, doc) = pretty name <+> equals <+> doc
 
 -- >>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>
 

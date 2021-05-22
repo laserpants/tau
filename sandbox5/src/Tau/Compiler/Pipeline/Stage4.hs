@@ -25,17 +25,22 @@ translate = cata $ \case
     EFix    t name e1 e2 -> fixExpr t name e1 e2
     EIf     t e1 e2 e3   -> ifExpr  t e1 e2 e3
   where
-    compileClause
-      :: SimplifiedClause t (ProgPattern t) a
-      -> SimplifiedClause t (Pattern t t t t t t Void Void Void) a
     compileClause (SimplifiedClause t ps g) =
         SimplifiedClause t (translatePatterns <$> ps) g
 
-translatePatterns :: ProgPattern t -> Pattern t t t t t t Void Void Void
+--    compileClause
+--      :: SimplifiedClause t (ProgPattern t) a
+--      -> SimplifiedClause t (Pattern t t t t t t Void Void Void) a
+
+type IntermPattern = Pattern (Maybe Type) (Maybe Type) (Maybe Type) (Maybe Type) (Maybe Type) (Maybe Type) Void Void Void
+
+--translatePatterns :: ProgPattern t -> Pattern t t t t t t Void Void Void
+translatePatterns :: ProgPattern (Maybe Type) -> IntermPattern
 translatePatterns = cata $ \case
-    -- Translate tuples, lists, and record patterns
+    -- Translate tuples, lists, and row patterns
     PTuple  t ps         -> conPat t (tupleCon (length ps)) ps
     PList   t ps         -> foldr (listPatCons t) (conPat t "[]" []) ps
+    PRow    t ps         -> foldRow t ps
     -- Remaining patterns stay the same, except sub-patterns
     PVar    t var        -> varPat   t var
     PCon    t con ps     -> conPat   t con ps
@@ -43,3 +48,11 @@ translatePatterns = cata $ \case
     PAs     t as p       -> asPat    t as p
     POr     t p q        -> orPat    t p q
     PAny    t            -> anyPat   t
+
+foldRow :: Maybe Type -> [(Name, IntermPattern)] -> IntermPattern
+foldRow t pats =
+    fst (foldr fn (conPat undefined "{}" [], Just tRowNil) pats)
+  where
+    fn (name, o) (p, ty) = 
+        let ty1 = undefined
+         in (undefined, ty1)

@@ -32,7 +32,6 @@ data PatternF t1 t2 t3 t4 t5 t6 t7 t8 t9 a
     | POr     t6 a a                     -- ^ Or-pattern
     | PTuple  t7 [a]                     -- ^ Tuple pattern
     | PList   t8 [a]                     -- ^ List pattern
---    | PRecord t9 a                       -- ^ Record pattern
     | PRow    t9 [(Name, a)]             -- ^ Row pattern
 
 -- | Pattern
@@ -689,11 +688,19 @@ listPatCons t hd tl = conPat t "(::)" [hd, tl]
 
 -- Row constructor
 
-rowCons
+rowExprCons
   :: (Functor e3)
   => t2
   -> Name
   -> Expr t1 t2 t3 t4 t5 t6 t7 t8 t9 t10 t11 t12 t13 t14 t15 e1 e2 e3
   -> Expr t1 t2 t3 t4 t5 t6 t7 t8 t9 t10 t11 t12 t13 t14 t15 e1 e2 e3
   -> Expr t1 t2 t3 t4 t5 t6 t7 t8 t9 t10 t11 t12 t13 t14 t15 e1 e2 e3
-rowCons t label expr row = conExpr t ("{" <> label <> "}") [expr, row]
+rowExprCons t label expr row = conExpr t ("{" <> label <> "}") [expr, row]
+
+rowPatCons 
+  :: t2
+  -> Name
+  -> Pattern t1 t2 t3 t4 t5 t6 t7 t8 t9 
+  -> Pattern t1 t2 t3 t4 t5 t6 t7 t8 t9 
+  -> Pattern t1 t2 t3 t4 t5 t6 t7 t8 t9
+rowPatCons t label pat row = conPat t ("{" <> label <> "}") [pat, row]
