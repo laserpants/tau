@@ -625,6 +625,7 @@ test123 = do
 --    putStrLn "---------------"
     putStrLn "---------------"
     putStrLn (showTree h)
+    print ee
     putStrLn "---------------"
     putStrLn (showTree h1)
     putStrLn "---------------"

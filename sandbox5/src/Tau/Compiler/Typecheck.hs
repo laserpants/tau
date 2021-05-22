@@ -375,6 +375,10 @@ inferPatternType = cata $ \case
         ps <- traverse inferPatternRowType pats
         let fn (label, pat) = tRowExtend label (typeOf pat) 
         unfiyWithNode (foldr fn tRowNil ps)
+        traceShowM "MMMMMMMMMMMMMMMMMM"
+        traceShowM (foldr fn tRowNil ps)
+        traceShowM (pretty (foldr fn tRowNil ps))
+        traceShowM "MMMMMMMMMMMMMMMMMM"
         pure ps
 
 --        es <- traverse inferRowType exprs
@@ -395,7 +399,12 @@ inferPatternRowType
   => (Name, m (ProgPattern (TypeInfo [Error]), [(Name, Type)]))
   -> WriterT Node m (Name, ProgPattern (TypeInfo [Error]))
 inferPatternRowType (label, pat) = do
-    p <- patternNode pat
+--    p <- patternNode pat
+
+    (p, vs) <- lift pat
+    insertPredicates (patternPredicates p)
+--    tellVars vs
+
     pure (label, p)
 
 --inferRowType
