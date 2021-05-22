@@ -533,6 +533,12 @@ listPat
   -> Pattern t1 t2 t3 t4 t5 t6 t7 t8 t9
 listPat = embed2 PList
 
+rowPat
+  :: t9
+  -> [(Name, Pattern t1 t2 t3 t4 t5 t6 t7 t8 t9)]
+  -> Pattern t1 t2 t3 t4 t5 t6 t7 t8 t9
+rowPat = embed2 PRow
+
 --recordPat 
 --  :: t9 
 --  -> Pattern t1 t2 t3 t4 t5 t6 t7 t8 t9 
