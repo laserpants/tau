@@ -284,12 +284,6 @@ inferRowType (label, expr) = do
     insertPredicates (exprPredicates e)
     pure (label, e)
 
-    -- do
---    e <- lift expr
---    insertPredicates (exprPredicates e)
---    pure e
-
-
 --inferRowType 
 --  :: ( MonadSupply Name m
 --     , MonadReader (ClassEnv, TypeEnv, KindEnv, ConstructorEnv) m
@@ -375,17 +369,12 @@ inferPatternType = cata $ \case
         ps <- traverse inferPatternRowType pats
         let fn (label, pat) = tRowExtend label (typeOf pat) 
         unfiyWithNode (foldr fn tRowNil ps)
-        traceShowM "MMMMMMMMMMMMMMMMMM"
-        traceShowM (foldr fn tRowNil ps)
-        traceShowM (pretty (foldr fn tRowNil ps))
-        traceShowM "MMMMMMMMMMMMMMMMMM"
         pure ps
 
 --        es <- traverse inferRowType exprs
 --        let fn (label, expr) = tRowExtend label (typeOf expr) 
 --        unfiyWithNode (foldr fn tRowNil es)
 --        pure es
-
 
 --    PRecord t row -> inferPatternNode recordPat $ do
 --        fs <- traverse patternNode row
@@ -399,24 +388,13 @@ inferPatternRowType
   => (Name, m (ProgPattern (TypeInfo [Error]), [(Name, Type)]))
   -> WriterT Node m (Name, ProgPattern (TypeInfo [Error]))
 inferPatternRowType (label, pat) = do
---    p <- patternNode pat
+    p <- patternNode pat
 
-    (p, vs) <- lift pat
-    insertPredicates (patternPredicates p)
+--    (p, vs) <- lift pat
+--    insertPredicates (patternPredicates p)
 --    tellVars vs
 
     pure (label, p)
-
---inferRowType
---  :: ( MonadSupply Name m
---     , MonadReader (ClassEnv, TypeEnv, KindEnv, ConstructorEnv) m
---     , MonadState (Substitution Type, Substitution Kind, Context) m )
---  => (Name, m (ProgExpr (TypeInfo [Error])))
---  -> WriterT Node m (Name, ProgExpr (TypeInfo [Error]))
---inferRowType (label, expr) = do
---    e <- lift expr
---    insertPredicates (exprPredicates e)
---    pure (label, e)
 
 patternNode
   :: ( MonadSupply Name m

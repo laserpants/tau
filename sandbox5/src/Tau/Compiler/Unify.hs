@@ -154,11 +154,11 @@ canonicalizeRowTypes = para $ \case
 
         foldType :: Type -> ([(Name, Type)], Maybe Name)
         foldType = para $ \case
-            (TApp _ (Fix (TCon _ con), _) (t, (_, v))) -> ([(con, t)], v)
-            (TApp _ (_, (as, v)) (_, (bs, w)))         -> (as <> bs, v <|> w)
-            (TArr (_, (as, v)) (_, (bs, w)))           -> (as <> bs, v <|> w)
-            (TVar _ var)                               -> ([], Just var)
-            _                                          -> ([], Nothing)
+            (TApp _ (Fix (TCon _ con), _) t)   -> ([(con, fst t)], Nothing)
+            (TApp _ (_, (as, v)) (_, (bs, w))) -> (as <> bs, v <|> w)
+            (TArr (_, (as, v)) (_, (bs, w)))   -> (as <> bs, v <|> w)
+            (TVar _ var)                       -> ([], Just var)
+            _                                  -> ([], Nothing)
 
     fromMap :: (Map Name [Type], Maybe Name) -> Type
     fromMap (map, var) = 
