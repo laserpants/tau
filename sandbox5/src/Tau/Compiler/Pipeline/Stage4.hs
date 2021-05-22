@@ -51,8 +51,17 @@ translatePatterns = cata $ \case
 
 foldRow :: Maybe Type -> [(Name, IntermPattern)] -> IntermPattern
 foldRow t pats =
-    fst (foldr fn (conPat undefined "{}" [], Just tRowNil) pats)
+    fst (foldr fn (conPat (Just tRowNil) "{}" [], Just tRowNil) pats)
   where
     fn (name, o) (p, ty) = 
-        let ty1 = undefined
-         in (undefined, ty1)
+        let ty1 = tRowExtend name <$> intremPatternTag o <*> ty
+         in (rowPatCons ty1 name o p, ty1)
+
+intremPatternTag :: IntermPattern -> Maybe Type
+intremPatternTag = cata $ \case
+    PVar    t _    -> t
+    PCon    t _ _  -> t 
+    PLit    t _    -> t 
+    PAs     t _ _  -> t 
+    POr     t _ _  -> t 
+    PAny    t      -> t
