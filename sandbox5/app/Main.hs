@@ -713,7 +713,12 @@ test123 = do
 
 --    expr = litExpr () (TInt 5)
 
-    expr = Fix (ERow () [("a", litExpr () (TInt 5)), ("b", lamExpr () [varPat () "x"] (varExpr () "x"))])
+--    expr = Fix (ERow () [("a", litExpr () (TInt 5)), ("b", lamExpr () [varPat () "x"] (varExpr () "x"))])
+
+    expr = patExpr () [ rowExpr () [("name", litExpr () (TString "Bob"))] ] 
+        [ Clause () [rowPat () [("name", varPat () "a")]] [Guard [] (varExpr () "a")] ]
+
+--Guard [] (litExpr () (TInt 123))
 
 --    expr = letExpr () (BLet () (varPat () "x")) (litExpr () (TInt 5)) (varExpr () "x")
 

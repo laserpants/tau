@@ -371,10 +371,35 @@ inferPatternType = cata $ \case
         unfiyWithNode (tList t1)
         pure ps
 
+    PRow t pats -> inferPatternNode rowPat $ do
+        ps <- traverse inferPatternRowType pats
+        undefined
+
+--        es <- traverse inferRowType exprs
+--        let fn (label, expr) = tRowExtend label (typeOf expr) 
+--        unfiyWithNode (foldr fn tRowNil es)
+--        pure es
+
+
 --    PRecord t row -> inferPatternNode recordPat $ do
 --        fs <- traverse patternNode row
 --        unfiyWithNode (tRecord (rowToType (typeOf <$> fs)))
 --        pure fs
+
+inferPatternRowType = undefined
+
+--inferRowType
+--  :: ( MonadSupply Name m
+--     , MonadReader (ClassEnv, TypeEnv, KindEnv, ConstructorEnv) m
+--     , MonadState (Substitution Type, Substitution Kind, Context) m )
+--  => (Name, m (ProgExpr (TypeInfo [Error])))
+--  -> WriterT Node m (Name, ProgExpr (TypeInfo [Error]))
+--inferRowType (label, expr) = do
+--    e <- lift expr
+--    insertPredicates (exprPredicates e)
+--    pure (label, e)
+
+
 
 patternNode
   :: ( MonadSupply Name m

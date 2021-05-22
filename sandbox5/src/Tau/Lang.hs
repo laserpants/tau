@@ -657,19 +657,19 @@ listExpr
   -> Expr t1 t2 t3 t4 t5 t6 t7 t8 t9 t10 t11 t12 t13 t14 t15 e1 e2 e3
 listExpr = embed2 EList
 
---recordExpr 
---  :: (Functor e3) 
---  => t15 
---  -> Expr t1 t2 t3 t4 t5 t6 t7 t8 t9 t10 t11 t12 t13 t14 t15 e1 e2 e3
---  -> Expr t1 t2 t3 t4 t5 t6 t7 t8 t9 t10 t11 t12 t13 t14 t15 e1 e2 e3
---recordExpr = embed2 ERecord
-
 rowExpr
   :: (Functor e3)
   => t15
   -> [(Name, Expr t1 t2 t3 t4 t5 t6 t7 t8 t9 t10 t11 t12 t13 t14 t15 e1 e2 e3)]
   -> Expr t1 t2 t3 t4 t5 t6 t7 t8 t9 t10 t11 t12 t13 t14 t15 e1 e2 e3
 rowExpr = embed2 ERow
+
+--recordExpr 
+--  :: (Functor e3) 
+--  => t15 
+--  -> Expr t1 t2 t3 t4 t5 t6 t7 t8 t9 t10 t11 t12 t13 t14 t15 e1 e2 e3
+--  -> Expr t1 t2 t3 t4 t5 t6 t7 t8 t9 t10 t11 t12 t13 t14 t15 e1 e2 e3
+--recordExpr = embed2 ERecord
 
 -- List cons constructors
 
