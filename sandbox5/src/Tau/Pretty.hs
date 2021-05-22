@@ -568,11 +568,17 @@ instance Pretty (SimplifiedPattern t) where
 --xx = Text.stripSuffix "]" <=< Text.stripPrefix "["
 treeClause3 c = clauseTree3 (clauseLhs c) (clauseRhs c)
 
-clauseTree3 :: [SimplifiedPattern t] -> [([Stage6.SourceExpr t], Stage6.SourceExpr t)] -> Tree (Doc a)
-clauseTree3 ps gs = Node "" []
+clauseTree3 :: (Pretty t, Show t) => [SimplifiedPattern t] -> [([Stage6.SourceExpr t], Stage6.SourceExpr t)] -> Tree (Doc a)
+clauseTree3 ps gs = Node (pats <+> "=>") (guard <$> gs)
   where
     pats | 1 == length ps = pretty (head ps)
          | otherwise      = "xxxx" -- foldr patternConx "" ps
+    guard ([], e) = exprTree3 e
+    guard (es, e) = Node (commaSep (iff <$> es)) [exprTree3 e]
+    iff e = "iff" <+> pretty e
+--    guard ([], e)    = exprTree e
+--    guard (es, e)    = Node (commaSep (iff <$> es)) [exprTree e]
+--    iff e = "iff" <+> pretty e
 
 patternConx :: Name -> Doc a -> Doc a
 patternConx pat doc = pretty pat <+> doc

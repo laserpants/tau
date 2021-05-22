@@ -110,6 +110,7 @@ isConstructor var
     | isLower init    = False
     | '_' == init     = False
     | '$' == init     = False
+    | '{' == init     = True
     -- TODO
     | isUpper init    = True
     | "(::)" == var   = True
