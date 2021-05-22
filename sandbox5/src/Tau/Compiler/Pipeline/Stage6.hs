@@ -23,7 +23,19 @@ translate = cata $ \case
     ELam _ var e1    -> cLam var <$> e1
     EIf  _ e1 e2 e3  -> cIf <$> e1 <*> e2 <*> e3
     ECon _ con exs   -> sequenceExs (pure (cVar con):exs)
-    EPat _ es cs     -> undefined
+    EPat _ eqs cs -> do 
+        sequence eqs >>= \case
+            [expr] -> cPat expr <$> traverse desugarClause cs
+            _      -> error "Implementation error"
+
+desugarClause 
+  :: (Monad m) 
+  => SimplifiedClause t (SimplifiedPattern t) (m Core)
+  -> m ([Name], Core)
+desugarClause (SimplifiedClause t [SCon _ con ps] (Guard [] e)) = 
+    (,) (con:ps) <$> e
+desugarClause _ = 
+    error "Implementation error"
 
 sequenceExs :: (Monad m) => [m Core] -> m Core
 sequenceExs = (fun <$>) . sequence
