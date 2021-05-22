@@ -23,7 +23,7 @@ translate = cata $ \case
     ELam _ var e1    -> cLam var <$> e1
     EIf  _ e1 e2 e3  -> cIf <$> e1 <*> e2 <*> e3
     ECon _ con exs   -> sequenceExs (pure (cVar con):exs)
-    EPat _ eqs cs -> do 
+    EPat _ eqs cs    ->
         sequence eqs >>= \case
             [expr] -> cPat expr <$> traverse desugarClause cs
             _      -> error "Implementation error"
