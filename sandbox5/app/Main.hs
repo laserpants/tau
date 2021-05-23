@@ -719,8 +719,10 @@ test123 = do
 --    expr = patExpr () [ rowExpr () [("name", litExpr () (TString "Bob"))] ] 
 --        [ Clause () [rowPat () [("name", varPat () "a")]] [Guard [] (varExpr () "a")] ]
 
-    expr = patExpr () [ rowExpr () [("name", litExpr () (TString "Bob")), ("id", litExpr () (TBool True))] ] 
-        [ Clause () [rowPat () [("id", varPat () "b"), ("name", varPat () "a")]] [Guard [] (varExpr () "b")] ]
+--    expr = patExpr () [ rowExpr () [("name", litExpr () (TString "Bob")), ("id", litExpr () (TBool True))] ] 
+--        [ Clause () [rowPat () [("id", varPat () "b"), ("name", varPat () "a")]] [Guard [] (varExpr () "b")] ]
+
+    expr = letExpr () (BLet () (varPat () "x")) (rowExpr () [("id", litExpr () (TBool True))]) (rowExpr () [("name", litExpr () (TString "Bob")), ("*", varExpr () "x")])
 
 --Guard [] (litExpr () (TInt 123))
 
