@@ -114,7 +114,6 @@ data ExprF t1 t2 t3 t4 t5 t6 t7 t8 t9 t10 t11 t12 t13 t14 t15 e1 e2 e3 a
     | EOp2    t12 (Op2 t12) a a          -- ^ Binary operator
     | ETuple  t13 [a]                    -- ^ Tuple
     | EList   t14 [a]                    -- ^ List literal
---    | ERecord t15 a                      -- ^ Record
     | ERow    t15 [(Name, a)]            -- ^ Row expression
 
 -- | Language expression
