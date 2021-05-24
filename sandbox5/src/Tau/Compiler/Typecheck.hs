@@ -267,6 +267,14 @@ inferExprType = cata $ \case
         unfiyWithNode (foldr fn tRowNil es)
         pure es
 
+flattenRow :: Type -> Type
+flattenRow = cata $ \case
+    TVar k var -> tVar k var
+    TCon k con -> tCon k con
+    TArr a b   -> tArr a b
+    TApp k (Fix (TCon _ "{*}")) b -> undefined
+    TApp k a b -> undefined
+
 --    ERecord _ row -> inferExprNode recordExpr $ do
 --        fs <- inferRowType row
 --        traceShowM fs

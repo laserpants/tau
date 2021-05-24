@@ -8,6 +8,7 @@
 module Tau.Type where
 
 import Control.Arrow ((>>>))
+import Control.Monad
 import Data.List (nub)
 import Data.Map.Strict (Map)
 import Data.Tuple.Extra (first)
@@ -180,11 +181,24 @@ getTypeIndex = project >>> \case
     TGen i       -> Just i
     _            -> Nothing
 
-leftmostIsCon :: Type -> Bool
-leftmostIsCon = cata $ \case 
-    TApp _ a b   -> a
-    TCon{}       -> True
-    _            -> False
+isListType :: Type -> Bool
+isListType = para $ \case
+    TApp _ (Fix (TCon _ "List"), _) _ -> True
+    _                                 -> False
+
+isRowType :: Type -> Bool
+isRowType = para $ \case
+    TApp _ (Fix (TApp _ (Fix (TCon _ con)) _), _) _ | isRowCon con -> True
+    _                                                              -> False
+  where
+    isRowCon ""  = False
+    isRowCon con = Text.head con == '{' && Text.last con == '}'
+
+isTupleType :: Type -> Bool
+isTupleType ty = Just True == maybeIsTupleCon
+  where
+    maybeIsTupleCon = Text.all (== ',') <$> (stripped <=< leftmostTypeCon) ty
+    stripped        = Text.stripSuffix ")" <=< Text.stripPrefix "("
 
 leftmostTypeCon :: Type -> Maybe Name
 leftmostTypeCon = cata $ \case

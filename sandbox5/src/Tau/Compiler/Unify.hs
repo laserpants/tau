@@ -136,37 +136,85 @@ matchTypePairs (t1, t2) (u1, u2) = do
   where
     fn sub1 sub2 = maybe (throwError MergeFailed) pure (merge sub1 sub2)
 
+--canonicalizeRowTypes :: Type -> Type
+--canonicalizeRowTypes = para $ \case
+--    TApp k (a, _) (b, _) | leftmostIsCon a -> fromMap (toMap (tApp k a b))
+--                         | otherwise       -> tApp k a b
+--    TArr a b   -> tArr (snd a) (snd b)
+--    TVar k var -> tVar k var
+--    TCon k con -> tCon k con
+--
+--  where
+--    toMap :: Type -> (Map Name [Type], Maybe Name)
+--    toMap t = 
+--        first (foldr (\(name, ty) -> Map.insertWith (<>) (withoutBraces name) [ty]) mempty) 
+--              (foldType t)
+--      where
+--        withoutBraces = fromJust <<< Text.stripSuffix "}" <=< Text.stripPrefix "{"
+--
+--        foldType :: Type -> ([(Name, Type)], Maybe Name)
+--        foldType = para $ \case
+--            (TApp _ (Fix (TCon _ con), _) t)   -> ([(con, fst t)], Nothing)
+--            (TApp _ (_, (as, v)) (_, (bs, w))) -> (as <> bs, v <|> w)
+--            (TArr (_, (as, v)) (_, (bs, w)))   -> (as <> bs, v <|> w)
+--            (TVar _ var)                       -> ([], Just var)
+--            _                                  -> ([], Nothing)
+--
+--    fromMap :: (Map Name [Type], Maybe Name) -> Type
+--    fromMap (map, var) = 
+--        Map.foldrWithKey (flip . foldr . tRowExtend) initl map
+--      where
+--        initl = case var of 
+--            Nothing  -> tRowNil
+--            Just var -> tVar kRow var
+--canonicalizeRowTypes :: Type -> Type
+--canonicalizeRowTypes = para $ \case
+--    TApp k (a, _) (b, _) | leftmostIsCon a -> fromMap (flattenMap (toMap (tApp k a b)))
+--                         | otherwise       -> tApp k a b
+--    TArr a b   -> tArr (snd a) (snd b)
+--    TVar k var -> tVar k var
+--    TCon k con -> tCon k con
+
 canonicalizeRowTypes :: Type -> Type
 canonicalizeRowTypes = para $ \case
-    TApp k (a, _) (b, _) | leftmostIsCon a -> fromMap (toMap (tApp k a b))
-                         | otherwise       -> tApp k a b
+    TApp k a b 
+        | isRowType ty -> fromMap (flattenMap (toMap ty))
+        | otherwise    -> tApp k (snd a) (snd b)
+      where
+        ty = tApp k (fst a) (fst b)
     TArr a b   -> tArr (snd a) (snd b)
     TVar k var -> tVar k var
     TCon k con -> tCon k con
 
+toMap :: Type -> Map Name [Type]
+toMap t = 
+    foldr (\(name, ty) -> Map.insertWith (<>) (getLabel name) [ty]) 
+        mempty (foldType t)
   where
-    toMap :: Type -> (Map Name [Type], Maybe Name)
-    toMap t = 
-        first (foldr (\(name, ty) -> Map.insertWith (<>) (withoutBraces name) [ty]) mempty) 
-              (foldType t)
-      where
-        withoutBraces = fromJust <<< Text.stripSuffix "}" <=< Text.stripPrefix "{"
+    getLabel = fromJust <<< Text.stripSuffix "}" <=< Text.stripPrefix "{"
 
-        foldType :: Type -> ([(Name, Type)], Maybe Name)
-        foldType = para $ \case
-            (TApp _ (Fix (TCon _ con), _) t)   -> ([(con, fst t)], Nothing)
-            (TApp _ (_, (as, v)) (_, (bs, w))) -> (as <> bs, v <|> w)
-            (TArr (_, (as, v)) (_, (bs, w)))   -> (as <> bs, v <|> w)
-            (TVar _ var)                       -> ([], Just var)
-            _                                  -> ([], Nothing)
+    foldType :: Type -> [(Name, Type)]
+    foldType = para $ \case
+        TApp _ (Fix (TCon _ con), _) t -> [(con, fst t)]
+        TApp _ a b                     -> snd a <> snd b
+        TArr a b                       -> snd a <> snd b
+        TVar{}                         -> []
+        _                              -> []
 
-    fromMap :: (Map Name [Type], Maybe Name) -> Type
-    fromMap (map, var) = 
-        Map.foldrWithKey (flip . foldr . tRowExtend) initl map
-      where
-        initl = case var of 
-            Nothing  -> tRowNil
-            Just var -> tVar kRow var
+flattenMap :: Map Name [Type] -> Map Name [Type]
+flattenMap tmap = 
+    case Map.lookup "*" tmap of
+        Just [t] -> Map.foldrWithKey
+                        (Map.insertWith (<>)) 
+                        (Map.delete "*" tmap) 
+                        (toMap (canonicalizeRowTypes t))
+        _ -> tmap
+
+fromMap :: Map Name [Type] -> Type
+fromMap = Map.foldrWithKey (flip . foldr . tRowExtend) tRowNil 
+
+
+
 
 --data RowTypes a
 --    = RNil 

@@ -94,11 +94,14 @@ instance Pretty Kind where
 ---- >>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>
 
 instance Pretty Type where
-    pretty ty =
-        case leftmostTypeCon ty of
-            Just con | isTuple con -> prettyTupleType ty
+    pretty ty 
+        | isTupleType ty = prettyTupleType ty
+        | otherwise      = prettyType ty
+
+--        case leftmostTypeCon ty of
+--            Just con | isTuple con -> prettyTupleType ty
 --            Just "#Record"         -> prettyRecordType ty
-            _                      -> prettyType ty
+--            _                      -> prettyType ty
 
 prettyTupleType :: Type -> Doc a
 prettyTupleType ty = let (_:ts) = unfoldApp ty in prettyTuple (pretty <$> ts)
@@ -187,11 +190,11 @@ unfoldApp = para $ \case
     TCon kind con        -> [tCon kind con]
     TVar kind var        -> [tVar kind var]
 
-isTuple :: Name -> Bool
-isTuple con = Just True == (allCommas <$> stripped con)
-  where
-    allCommas = Text.all (== ',')
-    stripped  = Text.stripSuffix ")" <=< Text.stripPrefix "("
+--isTuple :: Name -> Bool
+--isTuple con = Just True == (allCommas <$> stripped con)
+--  where
+--    allCommas = Text.all (== ',')
+--    stripped  = Text.stripSuffix ")" <=< Text.stripPrefix "("
 
 
 --canonicalizeRowType :: Type -> Type

@@ -722,7 +722,12 @@ test123 = do
 --    expr = patExpr () [ rowExpr () [("name", litExpr () (TString "Bob")), ("id", litExpr () (TBool True))] ] 
 --        [ Clause () [rowPat () [("id", varPat () "b"), ("name", varPat () "a")]] [Guard [] (varExpr () "b")] ]
 
-    expr = letExpr () (BLet () (varPat () "x")) (rowExpr () [("id", litExpr () (TBool True))]) (rowExpr () [("name", litExpr () (TString "Bob")), ("*", varExpr () "x")])
+    expr = Fix (ERow () [("a", litExpr () (TInt 5)), ("b", varExpr () "b")])
+
+    -- match { name = "Bob", id = True } with
+    --   | { id = b, name = a } => b
+
+--    expr = letExpr () (BLet () (varPat () "x")) (rowExpr () [("id", litExpr () (TBool True))]) (rowExpr () [("name", litExpr () (TString "Bob")), ("*", varExpr () "x")])
 
 --Guard [] (litExpr () (TInt 123))
 
