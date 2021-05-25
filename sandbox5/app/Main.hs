@@ -44,6 +44,41 @@ import qualified Tau.Compiler.Pipeline.Stage4 as Stage4
 import qualified Tau.Compiler.Pipeline.Stage5 as Stage5
 import qualified Tau.Compiler.Pipeline.Stage6 as Stage6
 
+data TypeFocus
+    = TAppLeft  Kind Type
+    | TAppRight Kind Type
+    | TArrLeft  Type
+    | TArrRight Type
+    deriving (Show, Eq)
+
+type TypeZipper = (Type, [TypeFocus])
+
+tAppLeft :: TypeZipper -> Maybe TypeZipper
+tAppLeft (Fix (TApp k l r), fs) = Just (l, TAppLeft k r:fs)
+tAppLeft _ = Nothing
+
+tAppRight :: TypeZipper -> Maybe TypeZipper
+tAppRight (Fix (TApp k l r), fs) = Just (r, TAppRight k l:fs)
+tAppRight _ = Nothing
+
+tAppUp :: TypeZipper -> Maybe TypeZipper
+tAppUp (t, TAppLeft  k r:fs) = Just (tApp k t r, fs)
+tAppUp (t, TAppRight k l:fs) = Just (tApp k l t, fs)
+tAppUp _ = Nothing
+
+tArrLeft :: TypeZipper -> Maybe TypeZipper
+tArrLeft (Fix (TArr l r), fs) = Just (l, TArrLeft r:fs)
+tArrLeft _ = Nothing
+
+tArrRight :: TypeZipper -> Maybe TypeZipper
+tArrRight (Fix (TArr l r), fs) = Just (r, TArrRight l:fs)
+tArrRight _ = Nothing
+
+tArrUp :: TypeZipper -> Maybe TypeZipper
+tArrUp (t, TArrLeft  r:fs) = Just (tArr t r, fs)
+tArrUp (t, TArrRight l:fs) = Just (tArr l t, fs)
+tArrUp _ = Nothing
+
 ---- ----test3 = unifyRows (typeToRowX r1) (typeToRowX r2) :: Either UnificationError TypeSubstitution
 ---- ----  where
 ---- ----    r1 = tRowExtend "name" tString (tRowExtend "id" tInt tEmptyRow)

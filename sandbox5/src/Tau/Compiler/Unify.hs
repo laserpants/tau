@@ -77,7 +77,7 @@ unifyTypes
   => Type 
   -> Type 
   -> m (Substitution Type, Substitution Kind)
-unifyTypes t u = unifyTypesImpl (canonicalizeRowTypes t) (canonicalizeRowTypes u)
+unifyTypes t u = unifyTypesImpl (canonicalizeRows t) (canonicalizeRows u)
 
 unifyTypesImpl
   :: (MonadError UnificationError m) 
@@ -98,7 +98,7 @@ matchTypes
   => Type 
   -> Type 
   -> m (Substitution Type, Substitution Kind)
-matchTypes t u = matchTypesImpl (canonicalizeRowTypes t) (canonicalizeRowTypes u)
+matchTypes t u = matchTypesImpl (canonicalizeRows t) (canonicalizeRows u)
 
 matchTypesImpl 
   :: (MonadError UnificationError m) 
@@ -136,86 +136,69 @@ matchTypePairs (t1, t2) (u1, u2) = do
   where
     fn sub1 sub2 = maybe (throwError MergeFailed) pure (merge sub1 sub2)
 
---canonicalizeRowTypes :: Type -> Type
---canonicalizeRowTypes = para $ \case
---    TApp k (a, _) (b, _) | leftmostIsCon a -> fromMap (toMap (tApp k a b))
---                         | otherwise       -> tApp k a b
---    TArr a b   -> tArr (snd a) (snd b)
---    TVar k var -> tVar k var
---    TCon k con -> tCon k con
---
---  where
---    toMap :: Type -> (Map Name [Type], Maybe Name)
---    toMap t = 
---        first (foldr (\(name, ty) -> Map.insertWith (<>) (withoutBraces name) [ty]) mempty) 
---              (foldType t)
---      where
---        withoutBraces = fromJust <<< Text.stripSuffix "}" <=< Text.stripPrefix "{"
---
---        foldType :: Type -> ([(Name, Type)], Maybe Name)
---        foldType = para $ \case
---            (TApp _ (Fix (TCon _ con), _) t)   -> ([(con, fst t)], Nothing)
---            (TApp _ (_, (as, v)) (_, (bs, w))) -> (as <> bs, v <|> w)
---            (TArr (_, (as, v)) (_, (bs, w)))   -> (as <> bs, v <|> w)
---            (TVar _ var)                       -> ([], Just var)
---            _                                  -> ([], Nothing)
---
---    fromMap :: (Map Name [Type], Maybe Name) -> Type
---    fromMap (map, var) = 
---        Map.foldrWithKey (flip . foldr . tRowExtend) initl map
---      where
---        initl = case var of 
---            Nothing  -> tRowNil
---            Just var -> tVar kRow var
---canonicalizeRowTypes :: Type -> Type
---canonicalizeRowTypes = para $ \case
---    TApp k (a, _) (b, _) | leftmostIsCon a -> fromMap (flattenMap (toMap (tApp k a b)))
---                         | otherwise       -> tApp k a b
---    TArr a b   -> tArr (snd a) (snd b)
---    TVar k var -> tVar k var
---    TCon k con -> tCon k con
-
-canonicalizeRowTypes :: Type -> Type
-canonicalizeRowTypes = para $ \case
+canonicalizeRows :: Type -> Type
+canonicalizeRows = para $ \case
     TApp k a b 
-        | isRowType ty -> fromMap (flattenMap (toMap ty))
+        | isRowType ty -> Map.foldrWithKey 
+            (flip . foldr . tRowExtend) 
+            (getBaseRow ty) 
+            (toMap ty)
         | otherwise    -> tApp k (snd a) (snd b)
       where
         ty = tApp k (fst a) (fst b)
     TArr a b   -> tArr (snd a) (snd b)
     TVar k var -> tVar k var
     TCon k con -> tCon k con
-
-toMap :: Type -> Map Name [Type]
-toMap t = 
-    foldr (\(name, ty) -> Map.insertWith (<>) (getLabel name) [ty]) 
-        mempty (foldType t)
   where
-    getLabel = fromJust <<< Text.stripSuffix "}" <=< Text.stripPrefix "{"
+    toMap :: Type -> Map Name [Type]
+    toMap t = 
+        foldr (\(name, ty) -> Map.insertWith (<>) (getLabel name) [ty]) 
+            mempty (getRowExts t)
+      where
+        getLabel = fromJust <<< Text.stripSuffix "}" <=< Text.stripPrefix "{"
 
-    foldType :: Type -> [(Name, Type)]
-    foldType = para $ \case
+    getRowExts :: Type -> [(Name, Type)]
+    getRowExts = para $ \case
         TApp _ (Fix (TCon _ con), _) t -> [(con, fst t)]
         TApp _ a b                     -> snd a <> snd b
         TArr a b                       -> snd a <> snd b
         TVar{}                         -> []
         _                              -> []
 
-flattenMap :: Map Name [Type] -> Map Name [Type]
-flattenMap tmap = 
-    case Map.lookup "*" tmap of
-        Just [t] -> Map.foldrWithKey
-                        (Map.insertWith (<>)) 
-                        (Map.delete "*" tmap) 
-                        (toMap (canonicalizeRowTypes t))
-        _ -> tmap
-
-fromMap :: Map Name [Type] -> Type
-fromMap = Map.foldrWithKey (flip . foldr . tRowExtend) tRowNil 
+    getBaseRow :: Type -> Type
+    getBaseRow = cata $ \case
+        TApp _ _ t                     -> t
+        t                              -> embed t
 
 
-
-
+--toMap :: Type -> Map Name [Type]
+--toMap t = 
+--    foldr (\(name, ty) -> Map.insertWith (<>) (getLabel name) [ty]) 
+--        mempty (foldType t)
+--  where
+--    getLabel = fromJust <<< Text.stripSuffix "}" <=< Text.stripPrefix "{"
+--
+--    foldType :: Type -> [(Name, Type)]
+--    foldType = para $ \case
+--        TApp _ (Fix (TCon _ con), _) t -> [(con, fst t)]
+--        TApp _ a b                     -> snd a <> snd b
+--        TArr a b                       -> snd a <> snd b
+--        TVar{}                         -> []
+--        _                              -> []
+--
+--flattenMap :: Map Name [Type] -> Map Name [Type]
+--flattenMap tmap = 
+--    case Map.lookup "*" tmap of
+----        Just [t] -> Map.foldrWithKey
+----                        (Map.insertWith (<>)) 
+----                        (Map.delete "*" tmap) 
+----                        (toMap (canonicalizeRowTypes t))
+--        _ -> tmap
+--
+--fromMap :: Map Name [Type] -> Type
+--fromMap = Map.foldrWithKey (flip . foldr . tRowExtend) tRowNil 
+--
+--
 --data RowTypes a
 --    = RNil 
 --    | RVar a
