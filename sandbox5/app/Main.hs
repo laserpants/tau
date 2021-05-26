@@ -13,7 +13,6 @@ import Control.Monad.Writer
 import Data.Maybe (fromJust)
 import Data.Text (unpack)
 import Data.Tree.View (showTree)
-import Tau.Compiler.Error
 import Tau.Compiler.Pipeline
 import Tau.Compiler.Pipeline.Stage1
 import Tau.Compiler.Pipeline.Stage2
@@ -21,6 +20,7 @@ import Tau.Compiler.Pipeline.Stage3
 import Tau.Compiler.Pipeline.Stage4
 import Tau.Compiler.Pipeline.Stage5
 import Tau.Compiler.Pipeline.Stage6
+import Tau.Compiler.Error
 import Tau.Compiler.Substitute
 import Tau.Compiler.Translate
 import Tau.Compiler.Typecheck
@@ -826,6 +826,39 @@ test123 = do
 --        ])))
 
 
+--test557 :: Either UnificationError (Substitution Type, Substitution Kind)
+--test557 = unifyTypes 
+--    (tRowExtend "name" tString (tVar kRow "r"))
+--    (tRowExtend "name" tString (tRowExtend "id" tInt))
+
+
+test554 :: Either UnificationError (Substitution Type, Substitution Kind)
+test554 = unifyTypes 
+    (tRowExtend "name" tString (tVar kRow "r"))
+    -- { name : String | r }
+    (tRowExtend "id" tInt (tRowExtend "name" tString (tVar kRow "q")))
+    -- { name : String | { id : Int } | q }
+
+test557 :: Either UnificationError (Substitution Type, Substitution Kind)
+test557 = unifyTypes 
+    (tRowExtend "name" tString (tVar kRow "r"))
+    -- { name : String | r }
+    (tRowExtend "name" tString (tRowExtend "id" tInt (tVar kRow "q")))
+    -- { name : String | { id : Int } | q }
+
+test558 :: Either UnificationError (Substitution Type, Substitution Kind)
+test558 = unifyTypes 
+    (tRowExtend "name" tString (tVar kRow "r"))
+    -- { name : String | r }
+    (tRowExtend "name" tString (tRowExtend "id" tInt tRowNil))
+    -- { name : String | { id : Int } | {} }
+
+test559 :: Either UnificationError (Substitution Type, Substitution Kind)
+test559 = unifyTypes 
+    (tRowExtend "id" tInt (tRowExtend "name" tString tRowNil))
+    -- { id : Int | { name : String | {} } }
+    (tRowExtend "name" tString (tRowExtend "id" tInt tRowNil))
+    -- { name : String | { id : Int | {} } }
 
 mapExpr2 :: (t -> u) -> WorkingExpr t -> WorkingExpr u
 mapExpr2 f = cata $ \case
