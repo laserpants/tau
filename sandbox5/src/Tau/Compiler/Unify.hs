@@ -140,38 +140,37 @@ matchTypePairs (t1, t2) (u1, u2) = do
   where
     fn sub1 sub2 = maybe (throwError MergeFailed) pure (merge sub1 sub2)
 
-rowTypesFn :: ((Type, Type) -> (Type, Type) -> t) -> Type -> Type -> t
-rowTypesFn f t u = f (fn t m1) (fn u m2)
+rowFn :: ((Type, Type) -> (Type, Type) -> t) -> Type -> Type -> t
+rowFn f t u = f (go t map1) (go u map2)
   where
-    m1 = toMap t
-    m2 = toMap u
-    keys = Map.keys m1 `intersect` Map.keys m2
-    fn ty tmap = fromMap tRowNil *** fromMap (getBaseRow ty) $
-        Map.partitionWithKey (\k _ -> k `elem` keys) tmap
+    (map1, keys1) = toMap t
+    (map2, keys2) = toMap u
+    go ty = (fromMap tRowNil *** fromMap (getBaseRow ty)) 
+        . Map.partitionWithKey (\k _ -> k `elem` intersect keys1 keys2)
 
 unifyRowTypes
   :: (MonadError UnificationError m)
   => Type
   -> Type
   -> m (Substitution Type, Substitution Kind)
-unifyRowTypes = rowTypesFn unifyTypePairs
+unifyRowTypes = rowFn unifyTypePairs
 
 matchRowTypes
   :: (MonadError UnificationError m)
   => Type
   -> Type
   -> m (Substitution Type, Substitution Kind)
-matchRowTypes = rowTypesFn matchTypePairs
+matchRowTypes = rowFn matchTypePairs
 
 fromMap :: Type -> Map Name [Type] -> Type
 fromMap = Map.foldrWithKey (flip . foldr . tRowExtend)
 
-toMap :: Type -> Map Name [Type]
-toMap t =
-    foldr (\(name, ty) -> Map.insertWith (<>) (getLabel name) [ty])
-        mempty (getRowExts t)
+toMap :: Type -> (Map Name [Type], [Name])
+toMap t = (tmap, Map.keys tmap)
   where
-    getLabel = fromJust <<< Text.stripSuffix "}" <=< Text.stripPrefix "{"
+    tmap      = foldr (uncurry f) mempty (getRowExts t)
+    f name ty = Map.insertWith (<>) (getLabel name) [ty]
+    getLabel  = fromJust <<< Text.stripSuffix "}" <=< Text.stripPrefix "{"
 
 getRowExts :: Type -> [(Name, Type)]
 getRowExts = para $ \case
