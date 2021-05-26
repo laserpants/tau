@@ -140,8 +140,8 @@ matchTypePairs (t1, t2) (u1, u2) = do
   where
     fn sub1 sub2 = maybe (throwError MergeFailed) pure (merge sub1 sub2)
 
-rowFn :: ((Type, Type) -> (Type, Type) -> t) -> Type -> Type -> t
-rowFn f t u = f (go t map1) (go u map2)
+rowUnify :: ((Type, Type) -> (Type, Type) -> t) -> Type -> Type -> t
+rowUnify f t u = f (go t map1) (go u map2)
   where
     (map1, keys1) = toMap t
     (map2, keys2) = toMap u
@@ -153,14 +153,14 @@ unifyRowTypes
   => Type
   -> Type
   -> m (Substitution Type, Substitution Kind)
-unifyRowTypes = rowFn unifyTypePairs
+unifyRowTypes = rowUnify unifyTypePairs
 
 matchRowTypes
   :: (MonadError UnificationError m)
   => Type
   -> Type
   -> m (Substitution Type, Substitution Kind)
-matchRowTypes = rowFn matchTypePairs
+matchRowTypes = rowUnify matchTypePairs
 
 fromMap :: Type -> Map Name [Type] -> Type
 fromMap = Map.foldrWithKey (flip . foldr . tRowExtend)
