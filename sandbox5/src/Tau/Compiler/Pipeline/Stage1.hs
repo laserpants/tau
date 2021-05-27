@@ -13,7 +13,7 @@ import Tau.Tool
 import Tau.Type
 import qualified Data.Map.Strict as Map
 
-type TargetExpr t = Expr t t t t t t t t t Void Void Void Void Void Void
+type TargetExpr t = Expr t t t t t t t t t Void Void Void Void Void Void Void
     (ProgBinding t) [ProgPattern t] (SimplifiedClause t (ProgPattern t))
 
 type TargetSimplifiedClause t = 
@@ -75,6 +75,7 @@ translate1 = cata $ \case
     EOp2    t op a b     -> op2Expr   t op a b
     ETuple  t es         -> tupleExpr t es
     EList   t es         -> listExpr  t es
+    EAnn    t e          -> annExpr   t e
 
 translate2
   :: ProgExpr (TypeInfoT [Error] (Maybe Type))
@@ -99,6 +100,7 @@ translate2 = cata $ \case
     ELam    t ps e       -> lamExpr t ps e
     EIf     t e1 e2 e3   -> ifExpr  t e1 e2 e3
     ELet    t bind e1 e2 -> letExpr t bind e1 e2
+    EAnn    _ e          -> e
   where
     prefixOp1 (ONeg t) = varExpr t "negate"
     prefixOp1 (ONot t) = varExpr t "not"
@@ -112,7 +114,7 @@ foldRow
   -> TargetExpr (TypeInfoT [Error] (Maybe Type))
   -> Maybe (TargetExpr (TypeInfoT [Error] (Maybe Type)))
   -> TargetExpr (TypeInfoT [Error] (Maybe Type))
-foldRow t l a b = conExpr t ("{" <> l <> "}") 
+foldRow t l a b = conExpr t ("{" <> l <> "}")
     [ a
     , fromMaybe (conExpr (TypeInfo [] (Just tRowNil) []) "{}" []) b ]
 

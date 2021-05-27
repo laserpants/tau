@@ -7,10 +7,10 @@ import Tau.Lang
 import Tau.Type
 import Tau.Tool
 
-type SourceExpr t = Expr t t t t t t t t Void Void Void Void Void Void Void
+type SourceExpr t = Expr t t t t t t t t Void Void Void Void Void Void Void Void
     Void Name (SimplifiedClause t (ProgPattern t))
 
-type TargetExpr t = Expr t t t t t t t t Void Void Void Void Void Void Void
+type TargetExpr t = Expr t t t t t t t t Void Void Void Void Void Void Void Void
     Void Name (SimplifiedClause t (Pattern t t t t t t Void Void Void))
 
 -- >>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>

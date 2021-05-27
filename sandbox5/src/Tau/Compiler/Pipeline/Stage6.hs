@@ -6,7 +6,7 @@ import Tau.Core
 import Tau.Lang
 import Tau.Compiler.Pipeline
 
-type SourceExpr t = Expr t t t t t t t t Void Void Void Void Void Void Void
+type SourceExpr t = Expr t t t t t t t t Void Void Void Void Void Void Void Void
     Void Name (SimplifiedClause t (SimplifiedPattern t))
 
 -- >>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>
