@@ -1,6 +1,7 @@
 {-# LANGUAGE LambdaCase #-}
 module Tau.Compiler.Pipeline.Stage4 where
 
+import Data.Maybe (fromMaybe)
 import Tau.Compiler.Pipeline
 import Tau.Lang
 import Tau.Type
@@ -40,7 +41,7 @@ translatePatterns = cata $ \case
     -- Translate tuples, lists, and row patterns
     PTuple  t ps         -> conPat t (tupleCon (length ps)) ps
     PList   t ps         -> foldr (listPatCons t) (conPat t "[]" []) ps
-    PRow    t ps         -> foldRow t ps
+    PRow    t l p q      -> foldRowPattern t l p q
     -- Remaining patterns stay the same, except sub-patterns
     PVar    t var        -> varPat   t var
     PCon    t con ps     -> conPat   t con ps
@@ -49,13 +50,18 @@ translatePatterns = cata $ \case
     POr     t p q        -> orPat    t p q
     PAny    t            -> anyPat   t
 
-foldRow :: Maybe Type -> [(Name, IntermPattern)] -> IntermPattern
-foldRow t pats =
-    fst (foldr fn (conPat (Just tRowNil) "{}" [], Just tRowNil) pats)
-  where
-    fn (name, o) (p, ty) = 
-        let ty1 = tRowExtend name <$> intremPatternTag o <*> ty
-         in (rowPatCons ty1 name o p, ty1)
+foldRowPattern :: Maybe Type -> Name -> IntermPattern -> Maybe IntermPattern -> IntermPattern 
+foldRowPattern t l p q = conPat t ("{" <> l <> "}") 
+    [ p
+    , fromMaybe (conPat (Just tRowNil) "{}" []) q ]
+
+--foldRow :: Maybe Type -> [(Name, IntermPattern)] -> IntermPattern
+--foldRow t pats =
+--    fst (foldr fn (conPat (Just tRowNil) "{}" [], Just tRowNil) pats)
+--  where
+--    fn (name, o) (p, ty) = 
+--        let ty1 = tRowExtend name <$> intremPatternTag o <*> ty
+--         in (rowPatCons ty1 name o p, ty1)
 
 intremPatternTag :: IntermPattern -> Maybe Type
 intremPatternTag = cata $ \case

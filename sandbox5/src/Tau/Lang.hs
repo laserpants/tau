@@ -32,7 +32,7 @@ data PatternF t1 t2 t3 t4 t5 t6 t7 t8 t9 a
     | POr     t6 a a                     -- ^ Or-pattern
     | PTuple  t7 [a]                     -- ^ Tuple pattern
     | PList   t8 [a]                     -- ^ List pattern
-    | PRow    t9 [(Name, a)]             -- ^ Row pattern
+    | PRow    t9 Name a (Maybe a)        -- ^ Row pattern
 
 -- | Pattern
 type Pattern t1 t2 t3 t4 t5 t6 t7 t8 t9 = Fix (PatternF t1 t2 t3 t4 t5 t6 t7 t8 t9)
@@ -114,7 +114,8 @@ data ExprF t1 t2 t3 t4 t5 t6 t7 t8 t9 t10 t11 t12 t13 t14 t15 e1 e2 e3 a
     | EOp2    t12 (Op2 t12) a a          -- ^ Binary operator
     | ETuple  t13 [a]                    -- ^ Tuple
     | EList   t14 [a]                    -- ^ List literal
-    | ERow    t15 [(Name, a)]            -- ^ Row expression
+    | ERow    t15 Name a (Maybe a)       -- ^ Row expression
+--  | EAnn    t16 a
 
 -- | Language expression
 type Expr t1 t2 t3 t4 t5 t6 t7 t8 t9 t10 t11 t12 t13 t14 t15 e1 e2 e3 = 
@@ -262,7 +263,7 @@ instance Functor Ast where
             EOp2    t op a b     -> op2Expr    (f t) (mapOp2 op) a b
             ETuple  t es         -> tupleExpr  (f t) es
             EList   t es         -> listExpr   (f t) es
-            ERow    t es         -> rowExpr    (f t) es
+            ERow    t l a b      -> rowExpr    (f t) l a b  
 
         mapBind = \case
             BLet    t p          -> BLet       (f t) (mapPattern p)
@@ -280,7 +281,7 @@ instance Functor Ast where
             PAny    t            -> anyPat     (f t)
             PTuple  t ps         -> tuplePat   (f t) ps
             PList   t ps         -> listPat    (f t) ps
-            PRow    t ps         -> rowPat     (f t) ps
+            PRow    t l p q      -> rowPat     (f t) l p q
 
         mapOp1 = \case
             ONeg    t            -> ONeg       (f t)
@@ -327,7 +328,7 @@ exprTag = cata $ \case
     EOp2    t _ _ _ -> t
     ETuple  t _     -> t
     EList   t _     -> t
-    ERow    t _     -> t
+    ERow    t _ _ _ -> t
 
 patternTag :: Pattern t t t t t t t t t -> t
 patternTag = cata $ \case
@@ -339,7 +340,7 @@ patternTag = cata $ \case
     PAny    t       -> t
     PTuple  t _     -> t
     PList   t _     -> t
-    PRow    t _     -> t
+    PRow    t _ _ _ -> t
 
 op1Tag :: Op1 t -> t
 op1Tag = \case
@@ -532,15 +533,11 @@ listPat = embed2 PList
 
 rowPat
   :: t9
-  -> [(Name, Pattern t1 t2 t3 t4 t5 t6 t7 t8 t9)]
+  -> Name
   -> Pattern t1 t2 t3 t4 t5 t6 t7 t8 t9
-rowPat = embed2 PRow
-
---recordPat 
---  :: t9 
---  -> Pattern t1 t2 t3 t4 t5 t6 t7 t8 t9 
---  -> Pattern t1 t2 t3 t4 t5 t6 t7 t8 t9
---recordPat = embed2 PRecord
+  -> Maybe (Pattern t1 t2 t3 t4 t5 t6 t7 t8 t9)
+  -> Pattern t1 t2 t3 t4 t5 t6 t7 t8 t9
+rowPat = embed4 PRow
 
 -- Expr
 
@@ -657,16 +654,11 @@ listExpr = embed2 EList
 rowExpr
   :: (Functor e3)
   => t15
-  -> [(Name, Expr t1 t2 t3 t4 t5 t6 t7 t8 t9 t10 t11 t12 t13 t14 t15 e1 e2 e3)]
+  -> Name
   -> Expr t1 t2 t3 t4 t5 t6 t7 t8 t9 t10 t11 t12 t13 t14 t15 e1 e2 e3
-rowExpr = embed2 ERow
-
---recordExpr 
---  :: (Functor e3) 
---  => t15 
---  -> Expr t1 t2 t3 t4 t5 t6 t7 t8 t9 t10 t11 t12 t13 t14 t15 e1 e2 e3
---  -> Expr t1 t2 t3 t4 t5 t6 t7 t8 t9 t10 t11 t12 t13 t14 t15 e1 e2 e3
---recordExpr = embed2 ERecord
+  -> Maybe (Expr t1 t2 t3 t4 t5 t6 t7 t8 t9 t10 t11 t12 t13 t14 t15 e1 e2 e3)
+  -> Expr t1 t2 t3 t4 t5 t6 t7 t8 t9 t10 t11 t12 t13 t14 t15 e1 e2 e3
+rowExpr = embed4 ERow
 
 -- List cons constructors
 

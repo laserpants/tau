@@ -660,7 +660,6 @@ test123 = do
 --    putStrLn "---------------"
     putStrLn "---------------"
     putStrLn (showTree h)
-    print ee
     putStrLn "---------------"
     putStrLn (showTree h1)
     putStrLn "---------------"
@@ -749,6 +748,17 @@ test123 = do
 
 --    expr = litExpr () (TInt 5)
 
+--    expr = rowExpr () "name" (litExpr () (TString "Bob")) (Just (rowExpr () "id" (litExpr () (TInt 5)) Nothing))
+
+--    expr = 
+--        letExpr () (BLet () (varPat () "r")) (rowExpr () "isAdmin" (litExpr () (TBool True)) Nothing)
+--        (rowExpr () "name" (litExpr () (TString "Bob")) (Just (rowExpr () "id" (litExpr () (TBool False)) (Just (varExpr () "r")))))
+
+    expr = 
+        funExpr () 
+            [ Clause () [ rowPat () "name" (varPat () "a") Nothing ] [Guard [] (litExpr () (TBool True))]
+            ]
+
 --    expr = Fix (ERow () [("a", litExpr () (TInt 5)), ("b", lamExpr () [varPat () "x"] (varExpr () "x"))])
 
 --    expr = patExpr () [ rowExpr () [("name", litExpr () (TString "Bob"))] ] 
@@ -757,7 +767,7 @@ test123 = do
 --    expr = patExpr () [ rowExpr () [("name", litExpr () (TString "Bob")), ("id", litExpr () (TBool True))] ] 
 --        [ Clause () [rowPat () [("id", varPat () "b"), ("name", varPat () "a")]] [Guard [] (varExpr () "b")] ]
 
-    expr = Fix (ERow () [("a", litExpr () (TInt 5)), ("b", varExpr () "b")])
+--    expr = Fix (ERow () [("a", litExpr () (TInt 5)), ("b", varExpr () "b")])
 
     -- match { name = "Bob", id = True } with
     --   | { id = b, name = a } => b

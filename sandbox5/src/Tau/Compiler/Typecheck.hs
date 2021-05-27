@@ -261,19 +261,48 @@ inferExprType = cata $ \case
         unfiyWithNode (tList t1)
         pure es
 
-    ERow _ exprs -> inferExprNode rowExpr $ do
-        es <- traverse inferRowType exprs
-        let fn (label, expr) = tRowExtend label (typeOf expr) 
-        unfiyWithNode (foldr fn tRowNil es)
-        pure es
+    ERow _ label expr exprs -> inferExprNode (args3 rowExpr) $ do
+        e  <- exprNode expr
+        es <- traverse exprNode exprs
 
-flattenRow :: Type -> Type
-flattenRow = cata $ \case
-    TVar k var -> tVar k var
-    TCon k con -> tCon k con
-    TArr a b   -> tArr a b
-    TApp k (Fix (TCon _ "{*}")) b -> undefined
-    TApp k a b -> undefined
+        let t1 = case es of
+              Nothing -> tRowNil
+              Just t  -> foldr (uncurry tRowExtend) (exprBaseRow t) (exprRowExts t)
+
+        unfiyWithNode (tRowExtend label (nodeType (exprTag e)) t1)
+        pure (label, e, es)
+
+exprRowExts :: ProgExpr (TypeInfo [Error]) -> [(Name, Type)] 
+exprRowExts = para $ \case
+    ERow t name (e, _) es -> (name, nodeType (exprTag e)):maybe [] snd es
+    _                     -> []
+
+exprBaseRow :: ProgExpr (TypeInfo [Error]) -> Type
+exprBaseRow = para $ \case 
+    ERow    _ _ _ (Just e) -> snd e
+    ERow    _ _ _ Nothing  -> tRowNil
+    EVar    t _            -> nodeType t
+    ECon    t _ _          -> nodeType t
+    ELit    t _            -> nodeType t
+    EApp    t _            -> nodeType t
+    ELet    t _ _ _        -> nodeType t
+    EFix    t _ _ _        -> nodeType t
+    ELam    t _ _          -> nodeType t
+    EIf     t _ _ _        -> nodeType t
+    EPat    t _ _          -> nodeType t
+    EFun    t _            -> nodeType t
+    EOp1    t _ _          -> nodeType t
+    EOp2    t _ _ _        -> nodeType t
+    ETuple  t _            -> nodeType t
+    EList   t _            -> nodeType t
+
+--flattenRow :: Type -> Type
+--flattenRow = cata $ \case
+--    TVar k var -> tVar k var
+--    TCon k con -> tCon k con
+--    TArr a b   -> tArr a b
+--    TApp k (Fix (TCon _ "{*}")) b -> undefined
+--    TApp k a b -> undefined
 
 --    ERecord _ row -> inferExprNode recordExpr $ do
 --        fs <- inferRowType row
@@ -281,16 +310,16 @@ flattenRow = cata $ \case
 ----        unfiyWithNode (tApp kTyp (tCon (kArr kRow kTyp) "#") (typeOf fs))
 --        pure fs
 
-inferRowType
-  :: ( MonadSupply Name m
-     , MonadReader (ClassEnv, TypeEnv, KindEnv, ConstructorEnv) m
-     , MonadState (Substitution Type, Substitution Kind, Context) m )
-  => (Name, m (ProgExpr (TypeInfo [Error])))
-  -> WriterT Node m (Name, ProgExpr (TypeInfo [Error]))
-inferRowType (label, expr) = do
-    e <- lift expr
-    insertPredicates (exprPredicates e)
-    pure (label, e)
+--inferRowType
+--  :: ( MonadSupply Name m
+--     , MonadReader (ClassEnv, TypeEnv, KindEnv, ConstructorEnv) m
+--     , MonadState (Substitution Type, Substitution Kind, Context) m )
+--  => (Name, m (ProgExpr (TypeInfo [Error])))
+--  -> WriterT Node m (Name, ProgExpr (TypeInfo [Error]))
+--inferRowType (label, expr) = do
+--    e <- lift expr
+--    insertPredicates (exprPredicates e)
+--    pure (label, e)
 
 --inferRowType 
 --  :: ( MonadSupply Name m
@@ -373,36 +402,50 @@ inferPatternType = cata $ \case
         unfiyWithNode (tList t1)
         pure ps
 
-    PRow t pats -> inferPatternNode rowPat $ do
-        ps <- traverse inferPatternRowType pats
-        let fn (label, pat) = tRowExtend label (typeOf pat) 
-        unfiyWithNode (foldr fn tRowNil ps)
-        pure ps
+    PRow _ label pat pats -> inferPatternNode (args3 rowPat) $ do
+        p  <- patternNode pat
+        ps <- traverse patternNode pats
+        tv <- ("a" <>) <$> supply
 
---        es <- traverse inferRowType exprs
---        let fn (label, expr) = tRowExtend label (typeOf expr) 
---        unfiyWithNode (foldr fn tRowNil es)
---        pure es
+        let t1 = case ps of
+              Nothing -> tVar kRow tv
+              Just t  -> foldr (uncurry tRowExtend) (patternBaseRow t) (patternRowExts t)
 
---    PRecord t row -> inferPatternNode recordPat $ do
---        fs <- traverse patternNode row
---        unfiyWithNode (tRecord (rowToType (typeOf <$> fs)))
---        pure fs
+        unfiyWithNode (tRowExtend label (nodeType (patternTag p)) t1)
+        pure (label, p, ps)
 
-inferPatternRowType
-  :: ( MonadSupply Name m
-     , MonadReader (ClassEnv, TypeEnv, KindEnv, ConstructorEnv) m
-     , MonadState (Substitution Type, Substitution Kind, Context) m )
-  => (Name, m (ProgPattern (TypeInfo [Error]), [(Name, Type)]))
-  -> WriterT Node m (Name, ProgPattern (TypeInfo [Error]))
-inferPatternRowType (label, pat) = do
-    p <- patternNode pat
+patternRowExts :: ProgPattern (TypeInfo [Error]) -> [(Name, Type)] 
+patternRowExts = para $ \case
+    PRow t name (p, _) ps -> (name, nodeType (patternTag p)):maybe [] snd ps
+    _                     -> []
 
---    (p, vs) <- lift pat
---    insertPredicates (patternPredicates p)
---    tellVars vs
+patternBaseRow :: ProgPattern (TypeInfo [Error]) -> Type
+patternBaseRow = para $ \case
+    PRow    _ _ _ (Just p) -> snd p
+    PRow    _ _ _ Nothing  -> tRowNil
+    PVar    t _            -> nodeType t
+    PCon    t _ _          -> nodeType t
+    PLit    t _            -> nodeType t 
+    PAs     t _ _          -> nodeType t
+    POr     t _ _          -> nodeType t
+    PAny    t              -> nodeType t
+    PTuple  t _            -> nodeType t
+    PList   t _            -> nodeType t
 
-    pure (label, p)
+--inferPatternRowType
+--  :: ( MonadSupply Name m
+--     , MonadReader (ClassEnv, TypeEnv, KindEnv, ConstructorEnv) m
+--     , MonadState (Substitution Type, Substitution Kind, Context) m )
+--  => (Name, m (ProgPattern (TypeInfo [Error]), [(Name, Type)]))
+--  -> WriterT Node m (Name, ProgPattern (TypeInfo [Error]))
+--inferPatternRowType (label, pat) = do
+--    p <- patternNode pat
+--
+----    (p, vs) <- lift pat
+----    insertPredicates (patternPredicates p)
+----    tellVars vs
+--
+--    pure (label, p)
 
 patternNode
   :: ( MonadSupply Name m

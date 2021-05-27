@@ -107,7 +107,7 @@ expandTypeClasses expr =
         POr     t p q    -> orPat    (nodeType t) p q
         PTuple  t ps     -> tuplePat (nodeType t) ps
         PList   t ps     -> listPat  (nodeType t) ps
-        PRow    t ps     -> rowPat   (nodeType t) ps
+        PRow    t l p q  -> rowPat   (nodeType t) l p q 
 
 insertArgsExpr :: WorkingExpr (Maybe Type) -> [(Name, Type)] -> WorkingExpr (Maybe Type)
 insertArgsExpr = foldr fun 

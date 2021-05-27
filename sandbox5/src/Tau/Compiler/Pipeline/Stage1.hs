@@ -3,6 +3,7 @@ module Tau.Compiler.Pipeline.Stage1 where
 
 import Data.Map.Strict (Map)
 import Data.Tuple.Extra (second)
+import Data.Maybe (fromMaybe)
 import Data.Void
 import Tau.Compiler.Error
 import Tau.Compiler.Pipeline
@@ -20,34 +21,37 @@ type TargetSimplifiedClause t =
 
 -- >>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>
 
-rowToMap :: [(Name, ProgExpr t)] -> Map Name [ProgExpr t]
-rowToMap = foldr fn mempty 
-  where
-    fn ("*", Fix (ERow _ exprs)) m = undefined
-    fn (label, expr) m = Map.insertWith (<>) label [expr] m
-
 --rowToMap :: [(Name, ProgExpr t)] -> Map Name [ProgExpr t]
---rowToMap = Map.fromListWith (<>) .  fmap (second pure) 
+--rowToMap = foldr fn mempty 
+--  where
+--    fn = undefined -- TODO 
+----    fn ("*", Fix (ERow _ exprs)) m = undefined
+----    fn (label, expr) m = Map.insertWith (<>) label [expr] m
 --
---flattenMap :: Map Name [ProgExpr t] -> Map Name [ProgExpr t]
---flattenMap tmap = 
---    case Map.lookup "*" tmap of
---        Just [Fix (ERow _ row)] -> 
---            Map.foldrWithKey (Map.insertWith (<>)) 
---                             (Map.delete "*" tmap) 
---                             (rowToMap row)
---        _ -> 
---            tmap
+----rowToMap :: [(Name, ProgExpr t)] -> Map Name [ProgExpr t]
+----rowToMap = Map.fromListWith (<>) .  fmap (second pure) 
+----
+----flattenMap :: Map Name [ProgExpr t] -> Map Name [ProgExpr t]
+----flattenMap tmap = 
+----    case Map.lookup "*" tmap of
+----        Just [Fix (ERow _ row)] -> 
+----            Map.foldrWithKey (Map.insertWith (<>)) 
+----                             (Map.delete "*" tmap) 
+----                             (rowToMap row)
+----        _ -> 
+----            tmap
+--
+--mapToRow :: Map Name [ProgExpr t] -> [(Name, ProgExpr t)]
+--mapToRow rmap = do
+--    (label, exprs) <- Map.toList rmap
+--    expr <- exprs
+--    pure (label, expr)
+--
+--translate
+--  :: ProgExpr (TypeInfoT [Error] (Maybe Type))
+--  -> TargetExpr (TypeInfoT [Error] (Maybe Type))
+--translate = translate2 . translate1
 
-mapToRow :: Map Name [ProgExpr t] -> [(Name, ProgExpr t)]
-mapToRow rmap = do
-    (label, exprs) <- Map.toList rmap
-    expr <- exprs
-    pure (label, expr)
-
-translate
-  :: ProgExpr (TypeInfoT [Error] (Maybe Type))
-  -> TargetExpr (TypeInfoT [Error] (Maybe Type))
 translate = translate2 . translate1
 
 translate1
@@ -55,8 +59,7 @@ translate1
   -> ProgExpr (TypeInfoT [Error] (Maybe Type))
 translate1 = cata $ \case
 
-    ERow t es -> 
-        rowExpr t es
+    ERow    t l a b      -> rowExpr t l a b 
 
     EVar    t var        -> varExpr   t var
     ECon    t con es     -> conExpr   t con es
@@ -80,7 +83,7 @@ translate2 = cata $ \case
     -- Translate tuples, lists, and row expressions
     ETuple  t exprs      -> conExpr t (tupleCon (length exprs)) exprs
     EList   t exprs      -> foldr (listExprCons t) (conExpr t "[]" []) exprs
-    ERow    t exprs      -> foldRow t exprs
+    ERow    t l a b      -> foldRow t l a b
     -- Translate operators to prefix form
     EOp1    t op a       -> appExpr t [prefixOp1 op, a]
     EOp2    t op a b     -> appExpr t [prefixOp2 op, a, b]
@@ -105,15 +108,26 @@ translate2 = cata $ \case
 
 foldRow 
   :: TypeInfoT [Error] (Maybe Type)
-  -> [(Name, TargetExpr (TypeInfoT [Error] (Maybe Type)))]
+  -> Name
   -> TargetExpr (TypeInfoT [Error] (Maybe Type))
-foldRow t exprs =
-    fst (foldr fn (conExpr (t{ nodeType = Just tRowNil }) "{}" [], Just tRowNil) exprs)
-  where
-    fn (name, d) (e, ty) =
-        let ty1 = tRowExtend name <$> nodeType (targetExprTag d) <*> ty
-         -- in (rowExprCons (TypeInfo [] ty1 []) name d e, ty1)
-         in (rowExprCons (t{ nodeType = ty1 }) name d e, ty1)
+  -> Maybe (TargetExpr (TypeInfoT [Error] (Maybe Type)))
+  -> TargetExpr (TypeInfoT [Error] (Maybe Type))
+foldRow t l a b = conExpr t ("{" <> l <> "}") 
+    [ a
+    , fromMaybe (conExpr (TypeInfo [] (Just tRowNil) []) "{}" []) b ]
+
+
+--foldRow 
+--  :: TypeInfoT [Error] (Maybe Type)
+--  -> [(Name, TargetExpr (TypeInfoT [Error] (Maybe Type)))]
+--  -> TargetExpr (TypeInfoT [Error] (Maybe Type))
+--foldRow t exprs =
+--    fst (foldr fn (conExpr (t{ nodeType = Just tRowNil }) "{}" [], Just tRowNil) exprs)
+--  where
+--    fn (name, d) (e, ty) =
+--        let ty1 = tRowExtend name <$> nodeType (targetExprTag d) <*> ty
+--         -- in (rowExprCons (TypeInfo [] ty1 []) name d e, ty1)
+--         in (rowExprCons (t{ nodeType = ty1 }) name d e, ty1)
 
 translateFunExpr
   :: TypeInfoT [Error] (Maybe Type)

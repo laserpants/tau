@@ -71,7 +71,7 @@ instance Pretty (Pattern t1 t2 t3 t4 t5 t6 t7 t8 t9) where
             PAny    _        -> "_"
             PTuple  _ ps     -> prettyTuple ps
             PList   _ ps     -> prettyList_ ps
-            PRow    _ ps     -> commaSep (prettyRow <$> ps)
+            PRow    _ l p q  -> "..."
 
 prettyRow :: (Name, Doc a) -> Doc a
 prettyRow (name, doc) = pretty name <+> equals <+> doc
@@ -532,8 +532,12 @@ exprTree = para $ \case
     ETuple  t es         -> Node (annotated t (tupleCon (length es))) (snd <$> es)
     EFix    t bind e1 e2 -> Node (annotated t ("fix" :: Text)) [Node (pretty bind <+> "=") [snd e1, Node "in" [snd e2]]]
     EIf     t e1 e2 e3   -> Node ("if" <+> colon <+> pretty t) [snd e1, prefix ("then" :: Text) (snd e2), prefix ("else" :: Text) (snd e3)]
-    ERow    t es         -> Node (annotated t ("row" :: Text)) (foo <$> es)
+    ERow    t l a b      -> Node "<row>" [Node (pretty l) [snd a], faa b] -- Node (annotated t ("row" :: Text)) (foo <$> es)
     _                    -> Node "*TODO" []
+
+
+faa :: Maybe (Expr t1 t2 t3 t4 t5 t6 t7 t8 t9 t10 t11 t12 t13 t14 t15 e1 e2 (c t (Pattern p1 p2 p3 p4 p5 p6 p7 p8 p9)), Data.Tree.Tree (Doc a)) -> Data.Tree.Tree (Doc a)
+faa = maybe (Node "{}" []) snd 
 
 
 foo :: (Name, (Expr t0 t1 t2 t3 t4 t5 t6 t7 t8 t9 t10 t11 t12 t13 t14 e0 e1 (c t (Pattern p0 p2 p3 p4 p5 p6 p7 p8 p9)), Tree (Doc a))) -> Tree (Doc a)
