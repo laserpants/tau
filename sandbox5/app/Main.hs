@@ -1014,10 +1014,17 @@ testClassEnv = Env.fromList
             [ ( "(+)", tVar kTyp "a" `tArr` tVar kTyp "a" `tArr` tVar kTyp "a" )
             ]
         -- Instances
-        , []
+        , [ ClassInfo (InClass "Num" tInt) [] 
+            [ ( "fromInteger", Ast (varExpr (TypeInfo () (tInteger `tArr` tInt) []) "@Int.fromInteger") )
+            ]
+          ]
         )
       )
     ]
+
+--        , [ ClassInfo (InClass "Show" tInt) [] 
+--              [ ( "show", Ast (varExpr (TypeInfo () (tInt `tArr` tString) []) "@Int.Show") )
+--              ]
 
 testConstructorEnv :: ConstructorEnv
 testConstructorEnv = constructorEnv
