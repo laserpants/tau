@@ -661,6 +661,13 @@ rowExpr
   -> Expr t1 t2 t3 t4 t5 t6 t7 t8 t9 t10 t11 t12 t13 t14 t15 e1 e2 e3
 rowExpr = embed4 ERow
 
+annExpr
+  :: (Functor e3)
+  => Type
+  -> Expr t1 t2 t3 t4 t5 t6 t7 t8 t9 t10 t11 t12 t13 t14 t15 e1 e2 e3
+  -> Expr t1 t2 t3 t4 t5 t6 t7 t8 t9 t10 t11 t12 t13 t14 t15 e1 e2 e3
+annExpr = embed2 EAnn
+
 -- List cons constructors
 
 listExprCons 
