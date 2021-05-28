@@ -272,6 +272,11 @@ inferExprType = cata $ \case
         unfiyWithNode (tRowExtend label (nodeType (exprTag e)) t1)
         pure (label, e, es)
 
+    EAnn t expr -> do
+        e <- expr
+        void $ inferNodeType t (unfiyWithNode (typeOf e))
+        pure e
+
 exprRowExts :: ProgExpr (TypeInfo [Error]) -> [(Name, Type)] 
 exprRowExts = para $ \case
     ERow t name (e, _) es -> (name, nodeType (exprTag e)):maybe [] snd es

@@ -18,7 +18,7 @@ import Tau.Type
 import qualified Data.Text as Text
 import qualified Tau.Compiler.Pipeline.Stage1 as Stage1
 
-type WorkingExpr t = Expr t t t t t t t t t Void Void Void Void Void Void Void
+type WorkingExpr t = Expr t t t t t t t t t Void Void Void Void Void Void
     (ProgBinding t) [ProgPattern t] (SimplifiedClause t (ProgPattern t))
 
 -- >>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>
@@ -149,7 +149,9 @@ applyDicts (InClass name ty) expr
     | otherwise = do
         env <- askClassEnv
         case classMethods <$> lookupClassInstance name ty env of
-            Left e -> undefined -- throwError e
+            -- TODO
+            Left e -> error ("No instance " <> show name <> " " <> show ty)
+            -- TODO
             Right methods -> do
                 map <- traverse (secondM translateMethod) methods
                 pure (fromMaybe (buildDict map) (findIn map expr))

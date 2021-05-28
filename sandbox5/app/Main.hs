@@ -754,10 +754,12 @@ test123 = do
 --        letExpr () (BLet () (varPat () "r")) (rowExpr () "isAdmin" (litExpr () (TBool True)) Nothing)
 --        (rowExpr () "name" (litExpr () (TString "Bob")) (Just (rowExpr () "id" (litExpr () (TBool False)) (Just (varExpr () "r")))))
 
-    expr = 
-        funExpr () 
-            [ Clause () [ rowPat () "name" (varPat () "a") Nothing ] [Guard [] (litExpr () (TBool True))]
-            ]
+--    expr = 
+--        funExpr () 
+--            [ Clause () [ rowPat () "name" (varPat () "a") Nothing ] [Guard [] (litExpr () (TBool True))]
+--            ]
+
+    expr = Fix (EAnn tInt (litExpr () (TInt 5)))
 
 --    expr = Fix (ERow () [("a", litExpr () (TInt 5)), ("b", lamExpr () [varPat () "x"] (varExpr () "x"))])
 
