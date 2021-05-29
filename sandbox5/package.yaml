@@ -32,6 +32,9 @@ dependencies:
 - transformers
 - tree-view
 - type-iso
+- aeson
+- vector
+- bytestring
 
 library:
   source-dirs: src

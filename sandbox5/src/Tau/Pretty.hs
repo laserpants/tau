@@ -808,8 +808,8 @@ instance (Pretty t) => Pretty (TypeInfoT [Error] t) where
         preds | null ps   = ""
               | otherwise = space <> pretty ps
         errs  | null es   = ""
-              | otherwise = space <> pretty (parens . pretty <$$> es)
+              | otherwise = space <> "TODO" -- <> pretty (parens . pretty <$$> es)
 
 -- TODO
-instance (Show t) => Pretty (ErrorT t) where
+instance Pretty Error where
     pretty = pretty . show

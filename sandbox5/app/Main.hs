@@ -12,6 +12,7 @@ import Control.Monad.Reader
 import Control.Monad.State
 import Control.Monad.Supply
 import Control.Monad.Writer
+import Data.Aeson
 import Data.Maybe (fromJust)
 import Data.Text (unpack)
 import Data.Tree.View (showTree)
@@ -24,6 +25,7 @@ import Tau.Compiler.Pipeline.Stage5
 import Tau.Compiler.Pipeline.Stage6
 import Tau.Compiler.Error
 import Tau.Compiler.Substitute
+import Tau.Serialize
 --import Tau.Compiler.Translate
 import Tau.Compiler.Typecheck
 import Tau.Compiler.Unify
@@ -37,6 +39,7 @@ import Tau.Tool
 import Tau.Type
 import qualified Tau.Compiler.Substitute as Sub
 import qualified Tau.Env as Env
+import qualified Data.ByteString.Lazy as LBS
 
 import qualified Tau.Compiler.Pipeline.Stage1 as Stage1
 import qualified Tau.Compiler.Pipeline.Stage2 as Stage2
@@ -662,6 +665,8 @@ test556 = tRowExtend "b" tInt (tRowExtend "a" tString (tRowExtend "c" tBool (tVa
 --test555 = Fix (TApp (Fix (KCon "Row")) (Fix (TApp (Fix (KArr (Fix (KCon "Row")) (Fix (KCon "Row")))) (Fix (TCon (Fix (KArr (Fix (KCon "*")) (Fix (KArr (Fix (KCon "Row")) (Fix (KCon "Row")))))) "{b}")) (Fix (TCon (Fix (KCon "*")) "Int")))) (Fix (TCon (Fix (KCon "Row")) "{}")))
 
 test123 = do
+    let xx = toRep (getAst ee)
+    LBS.writeFile "/home/laserpants/tmp/tau/out.json" (encode xx)
 --    print a
 --    putStrLn "---------------"
 --    print ee

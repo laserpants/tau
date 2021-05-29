@@ -16,19 +16,19 @@ data UnificationError
 --    | IncompatibleRows
     deriving (Show, Eq)
 
-data ErrorT t
-    = CannotUnify t t UnificationError
+data Error
+    = CannotUnify Type Type UnificationError
     | KindMismatch Kind Kind UnificationError
     | UnboundTypeIdentifier Name
     | MissingDataConstructor Name
 --    | CannotMatch t t UnificationError
     | MissingClass Name
-    | MissingInstance Name t
+    | MissingInstance Name Type
     | ListElemUnficationError
     | ListPatternElemUnficationError
     | ConstructorPatternArityMismatch Name Int Int
     | ConstructorPatternTypeMismatch Name
     | GuardConditionNotABool
-    deriving (Show, Eq, Functor, Foldable, Traversable)
+    deriving (Show, Eq) -- , Functor, Foldable, Traversable)
 
-type Error = ErrorT Type
+--type Error = ErrorT Type

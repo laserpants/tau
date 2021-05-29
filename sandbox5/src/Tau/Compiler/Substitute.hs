@@ -57,8 +57,8 @@ instance Substitutable Polytype Type where
 instance (Substitutable t a) => Substitutable (PredicateT t) a where
     apply = fmap . apply
 
-instance (Substitutable t a) => Substitutable (ErrorT t) a where
-    apply = fmap . apply
+--instance (Substitutable t a) => Substitutable (ErrorT t) a where
+--    apply = fmap . apply
 
 instance (Substitutable t a) => Substitutable (ProgPattern t) a where
     apply sub = cata $ \case
