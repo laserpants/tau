@@ -23,7 +23,6 @@ import Tau.Compiler.Translate
 import Tau.Compiler.Unify
 import Tau.Lang
 import Tau.Prog
-import Tau.Row
 import Tau.Tool
 import Tau.Type
 import qualified Data.Map.Strict as Map

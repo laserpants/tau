@@ -31,7 +31,6 @@ import Tau.Eval
 import Tau.Lang
 import Tau.Pretty
 import Tau.Prog
-import Tau.Row
 import Tau.Tool
 import Tau.Type
 import qualified Tau.Compiler.Substitute as Sub

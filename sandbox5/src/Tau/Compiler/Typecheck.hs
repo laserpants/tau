@@ -28,7 +28,6 @@ import Tau.Env (Env(..))
 import Tau.Lang
 import Tau.Pretty
 import Tau.Prog
-import Tau.Row
 import Tau.Tool
 import Tau.Type
 import qualified Data.Map.Strict as Map

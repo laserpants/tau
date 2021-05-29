@@ -28,7 +28,6 @@ import Tau.Compiler.Error
 import Tau.Core
 import Tau.Lang
 import Tau.Prog
-import Tau.Row
 import Tau.Compiler.Pipeline
 import Tau.Tool
 import Tau.Type
