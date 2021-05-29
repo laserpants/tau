@@ -1,4 +1,4 @@
-[-] Rows/Records
+[x] Rows/Records
 [-] JSON representations
 [-] Tests
 [-] Recursion
