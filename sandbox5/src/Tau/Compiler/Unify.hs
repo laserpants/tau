@@ -140,14 +140,6 @@ matchTypePairs (t1, t2) (u1, u2) = do
   where
     fn sub1 sub2 = maybe (throwError MergeFailed) pure (merge sub1 sub2)
 
-rowUnify :: ((Type, Type) -> (Type, Type) -> t) -> Type -> Type -> t
-rowUnify f t u = f (go t map1) (go u map2)
-  where
-    (map1, keys1) = toMap t
-    (map2, keys2) = toMap u
-    go ty = (fromMap tRowNil *** fromMap (getBaseRow ty)) 
-        . Map.partitionWithKey (\k _ -> k `elem` intersect keys1 keys2)
-
 unifyRowTypes
   :: (MonadError UnificationError m)
   => Type
@@ -162,28 +154,36 @@ matchRowTypes
   -> m (Substitution Type, Substitution Kind)
 matchRowTypes = rowUnify matchTypePairs
 
-fromMap :: Type -> Map Name [Type] -> Type
-fromMap = Map.foldrWithKey (flip . foldr . tRowExtend)
-
-toMap :: Type -> (Map Name [Type], [Name])
-toMap t = (tmap, Map.keys tmap)
+rowUnify :: ((Type, Type) -> (Type, Type) -> t) -> Type -> Type -> t
+rowUnify f t u = f (go t map1) (go u map2)
   where
-    tmap      = foldr (uncurry f) mempty (getRowExts t)
-    f name ty = Map.insertWith (<>) (getLabel name) [ty]
-    getLabel  = fromJust <<< Text.stripSuffix "}" <=< Text.stripPrefix "{"
+    (map1, keys1) = toMap t
+    (map2, keys2) = toMap u
+    go ty = (fromMap tRowNil *** fromMap (getBaseRow ty)) 
+        . Map.partitionWithKey (\k _ -> k `elem` intersect keys1 keys2)
 
-getRowExts :: Type -> [(Name, Type)]
-getRowExts = para $ \case
-    TApp _ (Fix (TCon _ con), _) t -> [(con, fst t)]
-    TApp _ a b                     -> snd a <> snd b
-    TArr a b                       -> snd a <> snd b
-    TVar{}                         -> []
-    _                              -> []
+    fromMap :: Type -> Map Name [Type] -> Type
+    fromMap = Map.foldrWithKey (flip . foldr . tRowExtend)
 
-getBaseRow :: Type -> Type
-getBaseRow = cata $ \case
-    TApp _ _ t                     -> t
-    t                              -> embed t
+    toMap :: Type -> (Map Name [Type], [Name])
+    toMap t = (tmap, Map.keys tmap)
+      where
+        tmap      = foldr (uncurry f) mempty (getRowExts t)
+        f name ty = Map.insertWith (<>) (getLabel name) [ty]
+        getLabel  = fromJust <<< Text.stripSuffix "}" <=< Text.stripPrefix "{"
+
+    getRowExts :: Type -> [(Name, Type)]
+    getRowExts = para $ \case
+        TApp _ (Fix (TCon _ con), _) t -> [(con, fst t)]
+        TApp _ a b                     -> snd a <> snd b
+        TArr a b                       -> snd a <> snd b
+        TVar{}                         -> []
+        _                              -> []
+
+    getBaseRow :: Type -> Type
+    getBaseRow = cata $ \case
+        TApp _ _ t                     -> t
+        t                              -> embed t
 
 --toMap :: Type -> Map Name [Type]
 --toMap t =
