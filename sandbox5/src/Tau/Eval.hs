@@ -82,7 +82,7 @@ eval = cata $ \case
         Value (TBool isTrue) <- e1
         if isTrue then e2 else e3
 
-    CPat expr fields -> do
+    CPat expr fields -> 
 --        e <- expr
 --        foo <- traverse sequence fields
 --        traceShowM "vvvvvvvvvvvvvvv-"
@@ -175,45 +175,62 @@ evalPat
   => [([Name], m (Value m))]
   -> Value m
   -> m (Value m)
-evalPat [] _ = fail "Runtime error (evalPat)"
+evalPat []            _ = fail "Runtime error (evalPat)"
 evalPat [(["$_"], e)] _ = e
-
-evalPat (([p, q, r], e):eqs) val | isRowCon p = do
-    case Map.lookup p zz of
-        Nothing -> 
-            fail "Runtime error (evalPat)"
-
-        Just (v:_) -> do 
-            traceShowM "---------***----------"
-            traceShowM q
-            traceShowM v
-            traceShowM r
-            traceShowM zz2
-            traceShowM "---------***----------"
-            local (Env.inserts [(q, v), (r, zz2)]) e
+evalPat ((ps@[p, _, _], e):_) val 
+    | isRowCon p        = evalRowPat ps val >>= flip local e
   where
-    zz = xxx val mempty
-    zz1 = Map.delete p zz
-    zz2 = yyy zz1
-
     isRowCon ""  = False
     isRowCon con = Text.head con == '{' && Text.last con == '}'
-
 evalPat ((p:ps, e):eqs) val =
     case val of
-
         Data con args | p == con ->
             local (Env.inserts (zip ps args)) e
-
         _ ->
             evalPat eqs val
 
-xxx :: Value m -> Map Name [Value m] -> Map Name [Value m]
-xxx (Data "{}" [])  m = m
-xxx (Data k (v:vs)) m = foldr xxx (Map.insertWith (<>) k [v] m) vs
+--evalPat (([p, q, r], e):eqs) val | isRowCon p = do
+--    case Map.lookup p zz of
+--        Nothing -> 
+--            fail "Runtime error (evalPat)"
+--
+--        Just (v:_) -> 
+--            local (Env.inserts [(q, v), (r, fromMap (Map.delete p zz))]) e
+--  where
+--    zz = toMap val mempty
+--
+--    isRowCon ""  = False
+--    isRowCon con = Text.head con == '{' && Text.last con == '}'
+--
+--    toMap :: Value m -> Map Name [Value m] -> Map Name [Value m]
+--    toMap (Data "{}" [])    m = m
+--    toMap (Data lab (v:vs)) m = foldr toMap (Map.insertWith (<>) lab [v] m) vs
+--
+--    fromMap :: Map Name [Value m] -> Value m
+--    fromMap = Map.foldrWithKey (\k -> flip (foldr (\v m -> Data k [v, m]))) (Data "{}" [])  
 
-yyy :: Map Name [Value m] -> Value m
-yyy = Map.foldrWithKey (\k -> flip (foldr (\v m -> Data k [v, m]))) (Data "{}" [])  
+evalRowPat
+  :: (MonadFail m)
+  => [Name]
+  -> Value m
+  -> m (Env (Value m) -> Env (Value m))
+evalRowPat [p, q, r] val =
+    case Map.lookup p pmap of
+        Nothing -> 
+            fail "Runtime error (evalPat)"
+
+        Just (v:_) -> 
+            pure (Env.inserts [(q, v), (r, fromMap (Map.delete p pmap))]) 
+  where
+    pmap = toMap val mempty
+
+    toMap :: Value m -> Map Name [Value m] -> Map Name [Value m]
+    toMap (Data "{}" [])    m = m
+    toMap (Data lab (v:vs)) m = foldr toMap (Map.insertWith (<>) lab [v] m) vs
+
+    fromMap :: Map Name [Value m] -> Value m
+    fromMap = Map.foldrWithKey (\k -> flip (foldr (\v m -> Data k [v, m]))) (Data "{}" [])  
+
 
 --evalPat [] _ = fail "Runtime error (evalPat)"
 --evalPat [(["$_"], e)] _ = e

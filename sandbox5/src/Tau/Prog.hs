@@ -139,10 +139,6 @@ lookupClassInstance tc ty env = do
 --    case Env.lookup tc env of
 --        Nothing -> undefined
 --        Just (x, y) -> Just x
- 
---type ClassEnv = Env 
---    ( ClassInfo Name Type                          -- Abstract interface
---    , List (ClassInfo Type (Ast (TypeInfo ()))) )  -- Instances
 
 -- >>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>
 
@@ -261,7 +257,7 @@ astTypeVars (Ast expr) = nub (exprTypeVars expr)
         PAny    t              -> typeVars (typeOf t)
         PTuple  t ps           -> typeVars (typeOf t) <> concat ps
         PList   t ps           -> typeVars (typeOf t) <> concat ps
-        PRow    t l p q        -> typeVars (typeOf t) <> p <> concat q
+        PRow    t _ p q        -> typeVars (typeOf t) <> p <> concat q
 
     op1TypeVars = \case
         ONeg    t              -> typeVars (typeOf t)
