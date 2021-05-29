@@ -128,8 +128,8 @@ exprRep = project >>> \case
 
 op1Rep :: (ToRep t) => Op1 t -> Value
 op1Rep = \case
-    ONeg t              -> makeRep "Op1" "ONeg"       [toRep t]
-    ONot t              -> makeRep "Op1" "ONot"       [toRep t]
+    ONeg   t            -> makeRep "Op1" "ONeg"       [toRep t]
+    ONot   t            -> makeRep "Op1" "ONot"       [toRep t]
 
 op2Rep :: (ToRep t) => Op2 t -> Value
 op2Rep = \case
