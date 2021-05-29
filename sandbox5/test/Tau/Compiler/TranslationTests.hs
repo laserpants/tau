@@ -3,11 +3,9 @@ module Tau.Compiler.TranslationTests where
 
 import Data.Void
 import Tau.Compiler.Error
-import Tau.Compiler.Translate
 import Tau.Lang
 import Tau.Pretty
 import Tau.Prog
-import Tau.Row
 import Tau.Tool
 import Tau.Type
 import Test.Hspec hiding (describe, it)

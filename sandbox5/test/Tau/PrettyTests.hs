@@ -4,7 +4,6 @@ module Tau.PrettyTests where
 import Data.Text.Prettyprint.Doc
 import Tau.Lang
 import Tau.Pretty
-import Tau.Row
 import Tau.Type
 import Tau.Tool
 import Test.Hspec hiding (describe, it)

@@ -435,21 +435,6 @@ patternBaseRow = para $ \case
     PTuple  t _            -> nodeType t
     PList   t _            -> nodeType t
 
---inferPatternRowType
---  :: ( MonadSupply Name m
---     , MonadReader (ClassEnv, TypeEnv, KindEnv, ConstructorEnv) m
---     , MonadState (Substitution Type, Substitution Kind, Context) m )
---  => (Name, m (ProgPattern (TypeInfo [Error]), [(Name, Type)]))
---  -> WriterT Node m (Name, ProgPattern (TypeInfo [Error]))
---inferPatternRowType (label, pat) = do
---    p <- patternNode pat
---
-----    (p, vs) <- lift pat
-----    insertPredicates (patternPredicates p)
-----    tellVars vs
---
---    pure (label, p)
-
 patternNode
   :: ( MonadSupply Name m
      , MonadReader (ClassEnv, TypeEnv, KindEnv, ConstructorEnv) m

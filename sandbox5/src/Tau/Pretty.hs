@@ -19,7 +19,6 @@ import Data.Tree.View (showTree)
 import Tau.Compiler.Error
 import Tau.Compiler.Pipeline
 import Tau.Compiler.Substitute hiding (null)
-import Tau.Compiler.Translate
 import Tau.Compiler.Unify
 import Tau.Lang
 import Tau.Prog

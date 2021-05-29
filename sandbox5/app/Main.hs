@@ -1,7 +1,9 @@
-{-# LANGUAGE FlexibleContexts  #-}
-{-# LANGUAGE LambdaCase        #-}
-{-# LANGUAGE OverloadedStrings #-}
-{-# LANGUAGE RecordWildCards   #-}
+{-# LANGUAGE FlexibleContexts      #-}
+{-# LANGUAGE FlexibleInstances     #-}
+{-# LANGUAGE LambdaCase            #-}
+{-# LANGUAGE MultiParamTypeClasses #-}
+{-# LANGUAGE OverloadedStrings     #-}
+{-# LANGUAGE RecordWildCards       #-}
 module Main where
 
 import Control.Monad.Except
@@ -22,7 +24,7 @@ import Tau.Compiler.Pipeline.Stage5
 import Tau.Compiler.Pipeline.Stage6
 import Tau.Compiler.Error
 import Tau.Compiler.Substitute
-import Tau.Compiler.Translate
+--import Tau.Compiler.Translate
 import Tau.Compiler.Typecheck
 import Tau.Compiler.Unify
 import Tau.Core
@@ -42,6 +44,15 @@ import qualified Tau.Compiler.Pipeline.Stage3 as Stage3
 import qualified Tau.Compiler.Pipeline.Stage4 as Stage4
 import qualified Tau.Compiler.Pipeline.Stage5 as Stage5
 import qualified Tau.Compiler.Pipeline.Stage6 as Stage6
+
+
+instance Typed (Maybe Type) where
+    typeOf (Just t) = t
+    typeOf Nothing  = tVar (kVar "k") "a"
+
+--------------------------
+--------------------------
+--------------------------
 
 data TypeFocus
     = TAppLeft  Kind Type
