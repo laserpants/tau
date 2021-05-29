@@ -842,17 +842,17 @@ test123 = do
 
 --    expr = inferAst (Ast (lamExpr () [varPat () "x"] (patExpr () [varExpr () "x"] [Clause () [anyPat ()] [Guard [] (litExpr () (TInt 1))]])))
 
---    -- (\x => match x with | Some y => 1) (Some True)
---    expr = appExpr () [lamExpr () [varPat () "x"] (patExpr () [varExpr () "x"] 
---        [ Clause () [conPat () "Some" [varPat () "y"]] [Guard [] (annExpr tInt (litExpr () (TInt 1)))] 
---        , Clause () [anyPat ()] [Guard [] (litExpr () (TInt 2))]
---        ]), conExpr () "Some" [litExpr () (TBool True)]]
-
-    -- (\x => match x with | Some y => 1) None
+    -- (\x => match x with | Some y => 1) (Some True)
     expr = appExpr () [lamExpr () [varPat () "x"] (patExpr () [varExpr () "x"] 
         [ Clause () [conPat () "Some" [varPat () "y"]] [Guard [] (annExpr tInt (litExpr () (TInt 1)))] 
         , Clause () [anyPat ()] [Guard [] (litExpr () (TInt 2))]
-        ]), conExpr () "None" []]
+        ]), conExpr () "Some" [litExpr () (TBool True)]]
+
+--    -- (\x => match x with | Some y => 1) None
+--    expr = appExpr () [lamExpr () [varPat () "x"] (patExpr () [varExpr () "x"] 
+--        [ Clause () [conPat () "Some" [varPat () "y"]] [Guard [] (annExpr tInt (litExpr () (TInt 1)))] 
+--        , Clause () [anyPat ()] [Guard [] (litExpr () (TInt 2))]
+--        ]), conExpr () "None" []]
 
 
 

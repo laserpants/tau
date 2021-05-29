@@ -99,15 +99,15 @@ expandTypeClasses expr =
         BFun t name ps   -> BFun (nodeType t) name (translatePatterns <$> ps)
 
     translatePatterns = cata $ \case
-        PVar    t var    -> varPat   (nodeType t) var
-        PCon    t con ps -> conPat   (nodeType t) con ps
-        PAs     t as p   -> asPat    (nodeType t) as p
-        PLit    t prim   -> litPat   (nodeType t) prim
-        PAny    t        -> anyPat   (nodeType t)
-        POr     t p q    -> orPat    (nodeType t) p q
-        PTuple  t ps     -> tuplePat (nodeType t) ps
-        PList   t ps     -> listPat  (nodeType t) ps
-        PRow    t l p q  -> rowPat   (nodeType t) l p q 
+        PVar    t var      -> varPat   (nodeType t) var
+        PCon    t con ps   -> conPat   (nodeType t) con ps
+        PAs     t as p     -> asPat    (nodeType t) as p
+        PLit    t prim     -> litPat   (nodeType t) prim
+        PAny    t          -> anyPat   (nodeType t)
+        POr     t p q      -> orPat    (nodeType t) p q
+        PTuple  t ps       -> tuplePat (nodeType t) ps
+        PList   t ps       -> listPat  (nodeType t) ps
+        PRow    t lab p q  -> rowPat   (nodeType t) lab p q 
 
 insertArgsExpr :: WorkingExpr (Maybe Type) -> [(Name, Type)] -> WorkingExpr (Maybe Type)
 insertArgsExpr = foldr fun 
@@ -127,7 +127,7 @@ dictTVar ty = do
     map <- get
     case filter ((==) ty . snd) map of
         p:_ -> pure (fst p)
-        _ -> do 
+        _   -> do 
             var <- Text.replace "a" "$dict" <$> supply
             modify ((var, ty) :)
             pure var

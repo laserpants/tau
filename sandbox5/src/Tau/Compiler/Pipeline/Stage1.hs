@@ -59,7 +59,7 @@ translate1
   -> ProgExpr (TypeInfoT [Error] (Maybe Type))
 translate1 = cata $ \case
 
-    ERow    t l a b      -> rowExpr t l a b 
+    ERow    t lab a b    -> rowExpr   t lab a b 
 
     EVar    t var        -> varExpr   t var
     ECon    t con es     -> conExpr   t con es
@@ -83,7 +83,7 @@ translate2 = cata $ \case
     -- Translate tuples, lists, and row expressions
     ETuple  t exprs      -> conExpr t (tupleCon (length exprs)) exprs
     EList   t exprs      -> foldr (listExprCons t) (conExpr t "[]" []) exprs
-    ERow    t l a b      -> foldRow t l a b
+    ERow    t lab a b    -> foldRow t lab a b
     -- Translate operators to prefix form
     EOp1    t op a       -> appExpr t [prefixOp1 op, a]
     EOp2    t op a b     -> appExpr t [prefixOp2 op, a, b]
