@@ -7,11 +7,13 @@ module Tau.Eval where
 
 import Control.Monad.Reader
 import Data.Char
+import Data.Map.Strict (Map)
 import Tau.Core
 import Tau.Env (Env(..))
 import Tau.Eval.Prim
 import Tau.Lang
 import Tau.Tool
+import qualified Data.Map.Strict as Map
 import qualified Data.Text as Text
 import qualified Tau.Env as Env
 
@@ -80,7 +82,18 @@ eval = cata $ \case
         Value (TBool isTrue) <- e1
         if isTrue then e2 else e3
 
-    CPat expr fields ->
+    CPat expr fields -> do
+--        e <- expr
+--        foo <- traverse sequence fields
+--        traceShowM "vvvvvvvvvvvvvvv-"
+--        traceShowM "vvvvvvvvvvvvvvv"
+--        traceShowM e
+----        traceShowM foo
+--        traceShowM "^^^^^^^^^^^^^^^"
+--        traceShowM "^^^^^^^^^^^^^^^"
+----        evalPat fields e
+--        undefined
+
         expr >>= evalPat fields
 
 evalVar :: (MonadFail m, MonadReader (ValueEnv m) m) => Name -> m (Value m)
@@ -144,6 +157,7 @@ evalApp
   -> m (Value m)
   -> m (Value m)
 evalApp fun arg = fun >>= \case
+
     Closure var body closure -> do
         val <- arg
         local (Env.insert var val closure <>) body
@@ -163,13 +177,54 @@ evalPat
   -> m (Value m)
 evalPat [] _ = fail "Runtime error (evalPat)"
 evalPat [(["$_"], e)] _ = e
+
+evalPat (([p, q, r], e):eqs) val | isRowCon p = do
+    case Map.lookup p zz of
+        Nothing -> 
+            fail "Runtime error (evalPat)"
+
+        Just (v:_) -> do 
+            traceShowM "---------***----------"
+            traceShowM q
+            traceShowM v
+            traceShowM r
+            traceShowM zz2
+            traceShowM "---------***----------"
+            local (Env.inserts [(q, v), (r, zz2)]) e
+  where
+    zz = xxx val mempty
+    zz1 = Map.delete p zz
+    zz2 = yyy zz1
+
+    isRowCon ""  = False
+    isRowCon con = Text.head con == '{' && Text.last con == '}'
+
 evalPat ((p:ps, e):eqs) val =
     case val of
+
         Data con args | p == con ->
             local (Env.inserts (zip ps args)) e
 
         _ ->
             evalPat eqs val
+
+xxx :: Value m -> Map Name [Value m] -> Map Name [Value m]
+xxx (Data "{}" [])  m = m
+xxx (Data k (v:vs)) m = foldr xxx (Map.insertWith (<>) k [v] m) vs
+
+yyy :: Map Name [Value m] -> Value m
+yyy = Map.foldrWithKey (\k -> flip (foldr (\v m -> Data k [v, m]))) (Data "{}" [])  
+
+--evalPat [] _ = fail "Runtime error (evalPat)"
+--evalPat [(["$_"], e)] _ = e
+--evalPat ((p:ps, e):eqs) val =
+--    case val of
+--
+--        Data con args | p == con ->
+--            local (Env.inserts (zip ps args)) e
+--
+--        _ ->
+--            evalPat eqs val
 
 --constructor :: (MonadReader (ValueEnv m) m) => Name -> Int -> Value m
 --constructor name 0 = Data name []

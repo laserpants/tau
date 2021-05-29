@@ -752,19 +752,29 @@ test123 = do
 
 --    expr = 
 --        letExpr () (BLet () (varPat () "r")) (rowExpr () "isAdmin" (litExpr () (TBool True)) Nothing)
---        (rowExpr () "name" (litExpr () (TString "Bob")) (Just (rowExpr () "id" (litExpr () (TBool False)) (Just (varExpr () "r")))))
+--        (rowExpr () "name" (litExpr () (TString "Bob")) (Just (rowExpr () "id" (annExpr tInt (litExpr () (TInt 1))) (Just (varExpr () "r")))))
 
 --    expr = 
 --        funExpr () 
 --            [ Clause () [ rowPat () "name" (varPat () "a") Nothing ] [Guard [] (litExpr () (TBool True))]
 --            ]
 
-    expr = Fix (EAnn tInt (litExpr () (TInt 5)))
+--    expr = Fix (EAnn tInt (litExpr () (TInt 5)))
 
 --    expr = Fix (ERow () [("a", litExpr () (TInt 5)), ("b", lamExpr () [varPat () "x"] (varExpr () "x"))])
 
 --    expr = patExpr () [ rowExpr () [("name", litExpr () (TString "Bob"))] ] 
---        [ Clause () [rowPat () [("name", varPat () "a")]] [Guard [] (varExpr () "a")] ]
+--        [ Clause () [ rowPat () [("name", varPat () "a")] ] [ Guard [] (varExpr () "a") ] ]
+
+    -- match { id = 1, name = "Bob" } with
+    --   | { name = a } => a
+    --
+    --   | { name = a | _ } => a
+    --
+    --expr = patExpr () [ rowExpr () "id" (annExpr tInt (litExpr () (TInt 1))) (Just (rowExpr () "name" (litExpr () (TString "Bob")) Nothing)) ] 
+    expr = patExpr () [ rowExpr () "id" (annExpr tInt (litExpr () (TInt 1))) (Just (rowExpr () "name" (litExpr () (TString "Bob")) Nothing)) ] 
+--            [ Clause () [ rowPat () "name" (varPat () "a") Nothing ] [ Guard [] (varExpr () "a") ] ]
+            [ Clause () [ rowPat () "name" (varPat () "a") (Just (anyPat ())) ] [ Guard [] (varExpr () "a") ] ]
 
 --    expr = patExpr () [ rowExpr () [("name", litExpr () (TString "Bob")), ("id", litExpr () (TBool True))] ] 
 --        [ Clause () [rowPat () [("id", varPat () "b"), ("name", varPat () "a")]] [Guard [] (varExpr () "b")] ]
