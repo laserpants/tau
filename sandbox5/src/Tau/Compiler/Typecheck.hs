@@ -410,10 +410,9 @@ inferPatternType = cata $ \case
     PRow _ label pat pats -> inferPatternNode (args3 rowPat) $ do
         p  <- patternNode pat
         ps <- traverse patternNode pats
---        tv <- ("a" <>) <$> supply
 
         let t1 = case ps of
-              Nothing -> tRowNil -- tVar kRow tv
+              Nothing -> tRowNil
               Just t  -> foldr (uncurry tRowExtend) (patternBaseRow t) (patternRowExts t)
 
         unfiyWithNode (tRowExtend label (nodeType (patternTag p)) t1)
