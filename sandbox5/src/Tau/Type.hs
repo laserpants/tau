@@ -392,3 +392,11 @@ tRowNil = tCon kRow "{}"
 
 tRowExtend :: Name -> TypeT a -> TypeT a -> TypeT a
 tRowExtend label ty = tApp kRow (tApp (kRow `kArr` kRow) (tRowCon label) ty)
+
+-- Records
+
+tRecordCon :: TypeT a
+tRecordCon = tCon (kArr kRow kTyp) "#"
+
+tRecord :: TypeT a -> TypeT a
+tRecord = tApp kTyp tRecordCon 
