@@ -772,9 +772,9 @@ test123 = do
     --   | { name = a | _ } => a
     --
     --expr = patExpr () [ rowExpr () "id" (annExpr tInt (litExpr () (TInt 1))) (Just (rowExpr () "name" (litExpr () (TString "Bob")) Nothing)) ] 
-    expr = patExpr () [ rowExpr () "id" (annExpr tInt (litExpr () (TInt 1))) (Just (rowExpr () "name" (litExpr () (TString "Bob")) Nothing)) ] 
---            [ Clause () [ rowPat () "name" (varPat () "a") Nothing ] [ Guard [] (varExpr () "a") ] ]
-            [ Clause () [ rowPat () "name" (varPat () "a") (Just (anyPat ())) ] [ Guard [] (varExpr () "a") ] ]
+----    expr = patExpr () [ rowExpr () "id" (annExpr tInt (litExpr () (TInt 1))) (Just (rowExpr () "name" (litExpr () (TString "Bob")) Nothing)) ] 
+------            [ Clause () [ rowPat () "name" (varPat () "a") Nothing ] [ Guard [] (varExpr () "a") ] ]
+----            [ Clause () [ rowPat () "name" (varPat () "a") (Just (anyPat ())) ] [ Guard [] (varExpr () "a") ] ]
 
 --    expr = patExpr () [ rowExpr () [("name", litExpr () (TString "Bob")), ("id", litExpr () (TBool True))] ] 
 --        [ Clause () [rowPat () [("id", varPat () "b"), ("name", varPat () "a")]] [Guard [] (varExpr () "b")] ]
@@ -842,10 +842,18 @@ test123 = do
 
 --    expr = inferAst (Ast (lamExpr () [varPat () "x"] (patExpr () [varExpr () "x"] [Clause () [anyPat ()] [Guard [] (litExpr () (TInt 1))]])))
 
---    expr = inferAst (Ast (lamExpr () [varPat () "x"] (patExpr () [varExpr () "x"] 
---        [ Clause () [varPat () "y"] [Guard [] (litExpr () (TInt 1))] 
+--    -- (\x => match x with | Some y => 1) (Some True)
+--    expr = appExpr () [lamExpr () [varPat () "x"] (patExpr () [varExpr () "x"] 
+--        [ Clause () [conPat () "Some" [varPat () "y"]] [Guard [] (annExpr tInt (litExpr () (TInt 1)))] 
 --        , Clause () [anyPat ()] [Guard [] (litExpr () (TInt 2))]
---        ])))
+--        ]), conExpr () "Some" [litExpr () (TBool True)]]
+
+    -- (\x => match x with | Some y => 1) None
+    expr = appExpr () [lamExpr () [varPat () "x"] (patExpr () [varExpr () "x"] 
+        [ Clause () [conPat () "Some" [varPat () "y"]] [Guard [] (annExpr tInt (litExpr () (TInt 1)))] 
+        , Clause () [anyPat ()] [Guard [] (litExpr () (TInt 2))]
+        ]), conExpr () "None" []]
+
 
 
 --test557 :: Either UnificationError (Substitution Type, Substitution Kind)
