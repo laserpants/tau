@@ -65,7 +65,7 @@ instance ToRep Error where
 makeRep :: String -> String -> [Value] -> Value
 makeRep type_ constructor args =
     object 
-        [ "_object"  .= [type_, constructor]
+        [ "object"   .= [type_, constructor]
         , "children" .= args
         ]
 
