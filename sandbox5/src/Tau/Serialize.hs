@@ -6,6 +6,7 @@ module Tau.Serialize where
 import Data.Aeson
 import Data.Aeson.TH
 import Tau.Compiler.Error
+import Tau.Core
 import Tau.Lang
 import Tau.Pretty
 import Tau.Prog
@@ -19,20 +20,20 @@ class ToRep t where
     toRep :: t -> Value
 
 instance (ToRep t) => ToRep [t] where
-    toRep ts = Array (Vector.fromList (toRep <$> ts))
+    toRep ts = array (toRep <$> ts)
 
 instance (ToRep t) => ToRep (Maybe t) where
     toRep Nothing  = Null
     toRep (Just t) = toRep t
 
 instance ToRep Type where 
-    toRep = typeRep
+    toRep = withPretty typeJson
 
 instance ToRep Kind where 
-    toRep = kindRep
+    toRep = withPretty kindJson
 
 instance ToRep Prim where 
-    toRep = primRep
+    toRep = withPretty primJson
 
 instance (ToRep t1, ToRep t2, ToRep t3, ToRep t4, ToRep t5, ToRep t6, ToRep t7, ToRep t8, ToRep t9) => ToRep (Pattern t1 t2 t3 t4 t5 t6 t7 t8 t9) where 
     toRep = patternRep
@@ -64,6 +65,14 @@ instance (ToRep a) => ToRep (PredicateT a) where
 instance ToRep Error where
     toRep = errorRep
 
+instance ToRep Core where
+    toRep = coreRep
+
+-- >>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>
+
+array :: [Value] -> Value
+array = Array . Vector.fromList
+
 makeRep :: String -> String -> [Value] -> Value
 makeRep type_ constructor args =
     object 
@@ -76,9 +85,6 @@ withPretty f p = Object (HM.insert "pretty" (String (prettyPrint p)) obj)
   where
     Object obj = f p
 
-typeRep :: Type -> Value
-typeRep = withPretty typeJson
-
 typeJson :: Type -> Value
 typeJson = project >>> \case
     TVar k var          -> makeRep "Type" "TVar"      [toRep k, String var]
@@ -86,17 +92,14 @@ typeJson = project >>> \case
     TApp k t1 t2        -> makeRep "Type" "TApp"      [toRep k, toRep t1, toRep t2]
     TArr t1 t2          -> makeRep "Type" "TArr"      [toRep t1, toRep t2]
 
-kindRep :: Kind -> Value
-kindRep = withPretty kindJson
-
 kindJson :: Kind -> Value
 kindJson = project >>> \case
     KVar var            -> makeRep "Kind" "KVar"      [String var]
     KCon con            -> makeRep "Kind" "KCon"      [String con]
     KArr k1 k2          -> makeRep "Kind" "KArr"      [toRep k1, toRep k2]
 
-primRep :: Prim -> Value
-primRep = \case
+primJson :: Prim -> Value
+primJson = \case
     TUnit               -> makeRep "Prim" "TUnit"     [String "()"]
     TBool    b          -> makeRep "Prim" "TBool"     [String (if b then "True" else "False")]
     TInt     i          -> makeRep "Prim" "TInt"      [toJSON i]
@@ -192,3 +195,16 @@ predicateRep = \case
 errorRep :: Error -> Value
 errorRep = \case
     _                   -> makeRep "Error" "TODO"     []
+
+coreRep :: Core -> Value
+coreRep = cata $ \case
+    CVar name           -> makeRep "Core" "CVar"      [String name]
+    CLit prim           -> makeRep "Core" "CLit"      [toRep prim]
+    CApp es             -> makeRep "Core" "CApp"      es
+    CLet name e1 e2     -> makeRep "Core" "CLet"      [String name, e1, e2]
+    CLam name e         -> makeRep "Core" "CLam"      [String name, e]
+    CIf  e1 e2 e3       -> makeRep "Core" "CIf"       [e1, e2, e3]
+    CPat e m            -> makeRep "Core" "CPat"      [e, array (clausesRep <$> m)]
+
+clausesRep :: ([Name], Value) -> Value
+clausesRep (names, value) = array [array (String <$> names), value]
