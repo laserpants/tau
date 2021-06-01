@@ -771,7 +771,7 @@ test123 = do
 
     expr = 
         funExpr () 
-            [ Clause () [ rowPat () "name" (varPat () "a") Nothing ] [Guard [] (litExpr () (TBool True))]
+            [ Clause () [ recordPat () (rowPat () "name" (varPat () "a") Nothing) ] [Guard [] (litExpr () (TBool True))]
             ]
 
 --    expr = Fix (EAnn tInt (litExpr () (TInt 5)))

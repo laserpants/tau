@@ -713,8 +713,8 @@ recordExpr
   -> Expr t1 t2 t3 t4 t5 t6 t7 t8 t9 t10 t11 t12 t13 t14 t15 e1 e2 e3
 recordExpr t row = conExpr t "#" [row]
 
-recordPattern
+recordPat
   :: t2 
   -> Pattern t1 t2 t3 t4 t5 t6 t7 t8 t9
   -> Pattern t1 t2 t3 t4 t5 t6 t7 t8 t9
-recordPattern t row = conPat t "#" [row]
+recordPat t row = conPat t "#" [row]
