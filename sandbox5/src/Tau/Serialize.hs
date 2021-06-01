@@ -7,9 +7,11 @@ import Data.Aeson
 import Data.Aeson.TH
 import Tau.Compiler.Error
 import Tau.Lang
+import Tau.Pretty
 import Tau.Prog
 import Tau.Tool
 import Tau.Type
+import qualified Data.HashMap.Strict as HM
 import qualified Data.Text as Text
 import qualified Data.Vector as Vector
 
@@ -69,15 +71,26 @@ makeRep type_ constructor args =
         , "children" .= args
         ]
 
+withPretty :: (Pretty p) => (p -> Value) -> p -> Value
+withPretty f p = Object (HM.insert "pretty" (String (prettyPrint p)) obj)
+  where
+    Object obj = f p
+
 typeRep :: Type -> Value
-typeRep = project >>> \case
+typeRep = withPretty typeJson
+
+typeJson :: Type -> Value
+typeJson = project >>> \case
     TVar k var          -> makeRep "Type" "TVar"      [toRep k, String var]
     TCon k con          -> makeRep "Type" "TCon"      [String con]
     TApp k t1 t2        -> makeRep "Type" "TApp"      [toRep k, toRep t1, toRep t2]
     TArr t1 t2          -> makeRep "Type" "TArr"      [toRep t1, toRep t2]
 
 kindRep :: Kind -> Value
-kindRep = project >>> \case
+kindRep = withPretty kindJson
+
+kindJson :: Kind -> Value
+kindJson = project >>> \case
     KVar var            -> makeRep "Kind" "KVar"      [String var]
     KCon con            -> makeRep "Kind" "KCon"      [String con]
     KArr k1 k2          -> makeRep "Kind" "KArr"      [toRep k1, toRep k2]

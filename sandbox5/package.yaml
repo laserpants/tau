@@ -35,6 +35,7 @@ dependencies:
 - aeson
 - vector
 - bytestring
+- unordered-containers
 
 library:
   source-dirs: src
