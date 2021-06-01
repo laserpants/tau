@@ -204,7 +204,7 @@ coreRep = cata $ \case
     CLet name e1 e2     -> makeRep "Core" "CLet"      [String name, e1, e2]
     CLam name e         -> makeRep "Core" "CLam"      [String name, e]
     CIf  e1 e2 e3       -> makeRep "Core" "CIf"       [e1, e2, e3]
-    CPat e m            -> makeRep "Core" "CPat"      [e, array (clausesRep <$> m)]
+    CPat e m            -> makeRep "Core" "CPat"      [e, array (coreClausesRep <$> m)]
 
-clausesRep :: ([Name], Value) -> Value
-clausesRep (names, value) = array [array (String <$> names), value]
+coreClausesRep :: ([Name], Value) -> Value
+coreClausesRep (names, value) = array [array (String <$> names), value]
