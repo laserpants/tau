@@ -226,7 +226,7 @@ coreRep :: Core -> Value
 coreRep = cata $ \case
     CVar name           -> makeRep "Core" "CVar"      [String name]
     CLit prim           -> makeRep "Core" "CLit"      [toRep prim]
-    CApp es             -> makeRep "Core" "CApp"      es
+    CApp es             -> makeRep "Core" "CApp"      [array es]
     CLet name e1 e2     -> makeRep "Core" "CLet"      [String name, e1, e2]
     CLam name e         -> makeRep "Core" "CLam"      [String name, e]
     CIf  e1 e2 e3       -> makeRep "Core" "CIf"       [e1, e2, e3]

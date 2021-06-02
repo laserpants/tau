@@ -769,7 +769,7 @@ test123 = do
     expr :: ProgExpr ()
     --expr = op2Expr () (OAdd ()) (litExpr () (TInt 1)) (litExpr () (TInt 2))
 
---    expr = letExpr () (BLet () (varPat () "v")) (op2Expr () (OAdd ()) (litExpr () (TInt 1)) (litExpr () (TInt 2))) ((op2Expr () (OAdd ()) (varExpr () "v") (litExpr () (TInt 2))))
+    expr = letExpr () (BLet () (varPat () "v")) (op2Expr () (OAdd ()) (litExpr () (TInt 1)) (litExpr () (TInt 2))) ((op2Expr () (OAdd ()) (varExpr () "v") (litExpr () (TInt 2))))
 
 --    expr = litExpr () (TInt 2)
 
@@ -877,11 +877,11 @@ test123 = do
 --        , Clause () [anyPat ()] [Guard [] (litExpr () (TInt 2))]
 --        ]), conExpr () "Some" [litExpr () (TBool True)]]
 
-    -- (\x => match x with | Some y => 1) None
-    expr = appExpr () [lamExpr () [varPat () "x"] (patExpr () [varExpr () "x"] 
-        [ Clause () [conPat () "Some" [varPat () "y"]] [Guard [] (annExpr tInt (litExpr () (TInt 1)))] 
-        , Clause () [anyPat ()] [Guard [] (litExpr () (TInt 2))]
-        ]), conExpr () "None" []]
+--    -- (\x => match x with | Some y => 1) None
+--    expr = appExpr () [lamExpr () [varPat () "x"] (patExpr () [varExpr () "x"] 
+--        [ Clause () [conPat () "Some" [varPat () "y"]] [Guard [] (annExpr tInt (litExpr () (TInt 1)))] 
+--        , Clause () [anyPat ()] [Guard [] (litExpr () (TInt 2))]
+--        ]), conExpr () "None" []]
 
 
 

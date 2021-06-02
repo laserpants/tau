@@ -15,7 +15,10 @@ data CoreF a
     | CApp [a]                  -- ^ Function application
     | CLet Name a a             -- ^ Let expression
     | CLam Name a               -- ^ Lambda abstraction
+
+    -- TODO: Compile if-statements to match-clauses??
     | CIf  a ~a ~a              -- ^ If-clause
+
     | CPat a (CMatrix a)        -- ^ Pattern matching clause matrix
 
 -- | Core language expression used for evaluation and code generation
