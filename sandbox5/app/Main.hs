@@ -667,6 +667,20 @@ test556 = tRowExtend "b" tInt (tRowExtend "a" tString (tRowExtend "c" tBool (tVa
 test123 = do
     let xx = toRep (getAst ee)
     LBS.writeFile "/home/laserpants/play/ast-folder-tree/ast-folder-tree/src/testData2.json" (encode xx)
+    let xx1 = toRep ef
+    LBS.writeFile "/home/laserpants/play/ast-folder-tree/ast-folder-tree/src/testData3.json" (encode xx1)
+    let xx2 = toRep eh
+    LBS.writeFile "/home/laserpants/play/ast-folder-tree/ast-folder-tree/src/testData4.json" (encode xx2)
+    let xx3 = toRep ei
+    LBS.writeFile "/home/laserpants/play/ast-folder-tree/ast-folder-tree/src/testData5.json" (encode xx3)
+    let xx4 = toRep ej
+    LBS.writeFile "/home/laserpants/play/ast-folder-tree/ast-folder-tree/src/testData6.json" (encode xx4)
+    let xx5 = toRep ek
+    LBS.writeFile "/home/laserpants/play/ast-folder-tree/ast-folder-tree/src/testData7.json" (encode xx5)
+    let xx6 = toRep el
+    LBS.writeFile "/home/laserpants/play/ast-folder-tree/ast-folder-tree/src/testData8.json" (encode xx6)
+    let xx7 = toRep em
+    LBS.writeFile "/home/laserpants/play/ast-folder-tree/ast-folder-tree/src/testData9.json" (encode xx7)
 --    print a
 --    putStrLn "---------------"
 --    print ee

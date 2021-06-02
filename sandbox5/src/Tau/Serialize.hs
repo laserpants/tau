@@ -6,7 +6,9 @@ module Tau.Serialize where
 import Data.Aeson
 import Data.Aeson.TH
 import Tau.Compiler.Error
+import Tau.Compiler.Pipeline
 import Tau.Core
+import Tau.Eval (Eval)
 import Tau.Lang
 import Tau.Pretty
 import Tau.Prog
@@ -15,6 +17,7 @@ import Tau.Type
 import qualified Data.HashMap.Strict as HM
 import qualified Data.Text as Text
 import qualified Data.Vector as Vector
+import qualified Tau.Eval as Tau
 
 class ToRep t where
     toRep :: t -> Value
@@ -38,6 +41,9 @@ instance ToRep Prim where
 instance (ToRep t1, ToRep t2, ToRep t3, ToRep t4, ToRep t5, ToRep t6, ToRep t7, ToRep t8, ToRep t9) => ToRep (Pattern t1 t2 t3 t4 t5 t6 t7 t8 t9) where 
     toRep = patternRep
 
+instance (ToRep t) => ToRep (SimplifiedPattern t) where 
+    toRep = simplifiedPatternRep
+
 instance (Functor e3, ToRep t1, ToRep t2, ToRep t3, ToRep t4, ToRep t5, ToRep t6, ToRep t7, ToRep t8, ToRep t9, ToRep t10, ToRep t11, ToRep t12, ToRep t13, ToRep t14, ToRep t15, ToRep e1, ToRep e2, ToRep (e3 (Expr t1 t2 t3 t4 t5 t6 t7 t8 t9 t10 t11 t12 t13 t14 t15 e1 e2 e3))) => ToRep (Expr t1 t2 t3 t4 t5 t6 t7 t8 t9 t10 t11 t12 t13 t14 t15 e1 e2 e3) where
     toRep = exprRep
 
@@ -56,6 +62,9 @@ instance (ToRep a) => ToRep (Guard a) where
 instance (ToRep t, ToRep p, ToRep a) => ToRep (Clause t p a) where
     toRep = clauseRep
 
+instance (ToRep t, ToRep p, ToRep a) => ToRep (SimplifiedClause t p a) where
+    toRep = simplifiedClauseRep
+
 instance (ToRep e, ToRep t) => ToRep (TypeInfoT e t) where
     toRep = typeInfoRep
 
@@ -67,6 +76,15 @@ instance ToRep Error where
 
 instance ToRep Core where
     toRep = coreRep
+
+instance ToRep Void where
+    toRep _ = makeRep "Void" "Void" []
+
+instance ToRep Text where
+    toRep s = makeRep "Name" "Name" [String s]
+
+instance ToRep (Tau.Value Eval) where
+    toRep = valueRep
 
 -- >>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>
 
@@ -120,6 +138,10 @@ patternRep = project >>> \case
     PTuple t ps         -> makeRep "Pattern" "PTuple" [toRep t, toRep ps] 
     PList  t ps         -> makeRep "Pattern" "PList"  [toRep t, toRep ps] 
     PRow   t lab p q    -> makeRep "Pattern" "PRow"   [toRep t, String lab, toRep p, toRep q] 
+
+simplifiedPatternRep :: (ToRep t) => SimplifiedPattern t -> Value
+simplifiedPatternRep = \case
+    SCon   t p ps       -> makeRep "SimplifiedPattern" "SCon" [toRep t, toRep p, toRep ps]
 
 exprRep 
   :: (Functor e3, ToRep t1, ToRep t2, ToRep t3, ToRep t4, ToRep t5, ToRep t6, ToRep t7, ToRep t8, ToRep t9, ToRep t10, ToRep t11, ToRep t12, ToRep t13, ToRep t14, ToRep t15, ToRep e1, ToRep e2, ToRep (e3 (Expr t1 t2 t3 t4 t5 t6 t7 t8 t9 t10 t11 t12 t13 t14 t15 e1 e2 e3))) 
@@ -184,6 +206,10 @@ clauseRep :: (ToRep t, ToRep p, ToRep a) => Clause t p a -> Value
 clauseRep = \case
     Clause t ps e       -> makeRep "Clause" "Clause"  [toRep t, toRep ps, toRep e]
 
+simplifiedClauseRep :: (ToRep t, ToRep p, ToRep a) => SimplifiedClause t p a -> Value
+simplifiedClauseRep = \case
+    SimplifiedClause t ps e -> makeRep "SimplifiedClause" "SimplifiedClause"  [toRep t, toRep ps, toRep e]
+
 typeInfoRep :: (ToRep e, ToRep t) => TypeInfoT e t -> Value
 typeInfoRep = \case
     TypeInfo e t ps     -> makeRep "TypeInfoT" "TypeInfo" [toRep e, toRep t, toRep ps]
@@ -208,3 +234,10 @@ coreRep = cata $ \case
 
 coreClausesRep :: ([Name], Value) -> Value
 coreClausesRep (names, value) = array [array (String <$> names), value]
+
+valueRep :: Tau.Value Eval -> Value
+valueRep = \case
+    Tau.Value prim      -> makeRep "Value" "Prim"     [toRep prim]
+    Tau.Data con args   -> makeRep "Value" "Data"     [String con, toRep args]
+    Tau.PrimFun f _ vs  -> makeRep "Value" "PrimFun"  [String f, String "<<internal>>", toRep vs]
+    Tau.Closure f _ _   -> makeRep "Value" "Closure"  [String f, String "<<internal>>", String "<<internal>>"]
