@@ -59,8 +59,8 @@ instance (ToRep t, ToRep p, ToRep a) => ToRep (Clause t p a) where
 instance (ToRep e, ToRep t) => ToRep (TypeInfoT e t) where
     toRep = typeInfoRep
 
-instance (ToRep a) => ToRep (PredicateT a) where
-    toRep = predicateRep
+instance (Pretty a, ToRep a) => ToRep (PredicateT a) where
+    toRep = withPretty predicateRep
 
 instance ToRep Error where
     toRep = errorRep
@@ -76,7 +76,7 @@ array = Array . Vector.fromList
 makeRep :: String -> String -> [Value] -> Value
 makeRep type_ constructor args =
     object 
-        [ "object"   .= [type_, constructor]
+        [ "_meta"    .= [type_, constructor]
         , "children" .= args
         ]
 

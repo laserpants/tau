@@ -666,7 +666,7 @@ test556 = tRowExtend "b" tInt (tRowExtend "a" tString (tRowExtend "c" tBool (tVa
 
 test123 = do
     let xx = toRep (getAst ee)
-    LBS.writeFile "/home/laserpants/tmp/tau/out.json" (encode xx)
+    LBS.writeFile "/home/laserpants/play/ast-folder-tree/ast-folder-tree/src/testData2.json" (encode xx)
 --    print a
 --    putStrLn "---------------"
 --    print ee
@@ -769,10 +769,10 @@ test123 = do
 --        letExpr () (BLet () (varPat () "r")) (rowExpr () "isAdmin" (litExpr () (TBool True)) Nothing)
 --        (rowExpr () "name" (litExpr () (TString "Bob")) (Just (rowExpr () "id" (annExpr tInt (litExpr () (TInt 1))) (Just (varExpr () "r")))))
 
-    expr = 
-        funExpr () 
-            [ Clause () [ recordPat () (rowPat () "name" (varPat () "a") Nothing) ] [Guard [] (litExpr () (TBool True))]
-            ]
+--    expr = 
+--        funExpr () 
+--            [ Clause () [ recordPat () (rowPat () "name" (varPat () "a") Nothing) ] [Guard [] (litExpr () (TBool True))]
+--            ]
 
 --    expr = Fix (EAnn tInt (litExpr () (TInt 5)))
 
@@ -863,11 +863,11 @@ test123 = do
 --        , Clause () [anyPat ()] [Guard [] (litExpr () (TInt 2))]
 --        ]), conExpr () "Some" [litExpr () (TBool True)]]
 
---    -- (\x => match x with | Some y => 1) None
---    expr = appExpr () [lamExpr () [varPat () "x"] (patExpr () [varExpr () "x"] 
---        [ Clause () [conPat () "Some" [varPat () "y"]] [Guard [] (annExpr tInt (litExpr () (TInt 1)))] 
---        , Clause () [anyPat ()] [Guard [] (litExpr () (TInt 2))]
---        ]), conExpr () "None" []]
+    -- (\x => match x with | Some y => 1) None
+    expr = appExpr () [lamExpr () [varPat () "x"] (patExpr () [varExpr () "x"] 
+        [ Clause () [conPat () "Some" [varPat () "y"]] [Guard [] (annExpr tInt (litExpr () (TInt 1)))] 
+        , Clause () [anyPat ()] [Guard [] (litExpr () (TInt 2))]
+        ]), conExpr () "None" []]
 
 
 
