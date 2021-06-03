@@ -117,7 +117,7 @@ compilePatterns
   -> [TargetPatternClause (Maybe Type) (TargetExpr (Maybe Type))]
   -> m (TargetExpr (Maybe Type))
 compilePatterns us qs = 
-    compileMatch us qs (varExpr (Just (tVar (kVar "FAIL") "FAIL")) "FAIL")
+    compileMatch us qs (varExpr (Just (tVar (kVar "<FAIL>") "<FAIL>")) "<FAIL>")
   where
     compileMatch [] []                                       c = pure c
     compileMatch [] (SimplifiedClause _ [] (Guard [] e):_)   _ = pure e

@@ -21,7 +21,14 @@ translate = cata $ \case
     EApp _ exs       -> sequenceExs exs
     EFix _ var e1 e2 -> cLet var <$> e1 <*> e2
     ELam _ var e1    -> cLam var <$> e1
+
     EIf  _ e1 e2 e3  -> cIf <$> e1 <*> e2 <*> e3
+
+--    EIf  _ e1 e2 e3 -> do
+--        e <- e1
+--        pure (cPat e [
+--        ])
+
     ECon _ con exs   -> sequenceExs (pure (cVar con):exs)
     EPat _ eqs cs    ->
         sequence eqs >>= \case

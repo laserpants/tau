@@ -769,7 +769,7 @@ test123 = do
     expr :: ProgExpr ()
     --expr = op2Expr () (OAdd ()) (litExpr () (TInt 1)) (litExpr () (TInt 2))
 
-    expr = letExpr () (BLet () (varPat () "v")) (op2Expr () (OAdd ()) (litExpr () (TInt 1)) (litExpr () (TInt 2))) ((op2Expr () (OAdd ()) (varExpr () "v") (litExpr () (TInt 2))))
+--    expr = letExpr () (BLet () (varPat () "v")) (op2Expr () (OAdd ()) (litExpr () (TInt 1)) (litExpr () (TInt 2))) ((op2Expr () (OAdd ()) (varExpr () "v") (litExpr () (TInt 2))))
 
 --    expr = litExpr () (TInt 2)
 
@@ -784,6 +784,19 @@ test123 = do
 --        (rowExpr () "name" (litExpr () (TString "Bob")) (Just (rowExpr () "id" (annExpr tInt (litExpr () (TInt 1))) (Just (varExpr () "r")))))
 
 --    expr = 
+--        patExpr () [ litExpr () (TInt 5) ] 
+--            [ Clause () [ litPat () (TInt 3) ] [ Guard [] (litExpr () (TBool True)) ]
+--            , Clause () [ litPat () (TInt 5) ] [ Guard [] (litExpr () (TBool False)) ]
+--            ]
+
+    expr = 
+        patExpr () [ conExpr () "Some" [litExpr () (TBool True)] ] 
+            [ Clause () [ conPat () "Some" [litPat () (TBool True)] ] [ Guard [] (litExpr () (TInt 1)) ]
+            , Clause () [ conPat () "Some" [litPat () (TBool False)] ] [ Guard [] (litExpr () (TInt 2)) ]
+            ]
+
+
+--    expr = 
 --        funExpr () 
 --            [ Clause () [ recordPat () (rowPat () "name" (varPat () "a") Nothing) ] [Guard [] (litExpr () (TBool True))]
 --            ]
@@ -792,7 +805,7 @@ test123 = do
 
 --    expr = Fix (ERow () [("a", litExpr () (TInt 5)), ("b", lamExpr () [varPat () "x"] (varExpr () "x"))])
 
---    expr = patExpr () [ rowExpr () [("name", litExpr () (TString "Bob"))] ] 
+--w    expr = patExpr () [ rowExpr () [("name", litExpr () (TString "Bob"))] ] 
 --        [ Clause () [ rowPat () [("name", varPat () "a")] ] [ Guard [] (varExpr () "a") ] ]
 
     -- match { id = 1, name = "Bob" } with
