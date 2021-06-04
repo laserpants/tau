@@ -102,8 +102,8 @@ fields sep parser = braces $ commaSep $ do
     value <- parser
     pure (label, value)
 
-parseRow :: Parser a -> (() -> Name -> a -> Maybe b -> b) -> Parser b
-parseRow parser rowCon = do
+rowParser :: Parser a -> (() -> Name -> a -> Maybe b -> b) -> Parser b
+rowParser parser rowCon = do
     pairs <- fields "=" parser
     case pairs of
         (label, value):ps -> pure (foldr fn (rowCon () label value Nothing) ps)
@@ -161,7 +161,7 @@ patternParser = makeExprParser parser
     parseList      = listPat () <$> elements patternParser
     parseTuple     = tuplePat () <$> components patternParser
     parseCon       = conPat () <$> constructorParser <*> components patternParser
-    parseRecord    = recordPat () <$> parseRow patternParser rowPat
+    parseRecord    = recordPat () <$> rowParser patternParser rowPat
 
 -- >>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>
 
@@ -182,7 +182,7 @@ exprParser  = makeExprParser parser operator
     parser = parseIf
 --      <|> parseFix
       <|> parseLet
---      <|> parseMatch
+      <|> parseMatch
       <|> parseLam
 --      <|> parseFun
       <|> parseVar
@@ -204,18 +204,40 @@ exprParser  = makeExprParser parser operator
             <*> (symbol "=" *> exprParser)
             <*> (keyword "in" *> exprParser)
 
+    parseMatch = patExpr () 
+        <$> (pure <$> (keyword "match" *> exprParser))
+        <*> (keyword "with" *> some parseClause)
+
+    parseClause = do
+        symbol "|"
+        Clause ()
+            <$> (pure <$> patternParser)
+            <*> (try guarded <|> nonGuarded)
+
+    guarded = do
+        iffs <- some iffClause
+        last <- optional (keyword "otherwise" *> symbol "=>" *> exprParser)
+        pure (iffs <> maybe [] (pure . Guard []) last)
+
+    iffClause = Guard 
+        <$> (keyword "iff" *> (pure <$> exprParser) <* symbol "=>") 
+        <*> exprParser
+
+    nonGuarded = do
+        expr <- symbol "=>" *> exprParser
+        pure [Guard [] expr]
+
     parseFunLet    = BFun () <$> nameParser <*> argParser
     parseNormalLet = BLet () <$> patternParser
     parseLam       = lamExpr () <$> argParser <*> (symbol "=>" *> exprParser)
     parseFix       = undefined
-    parseMatch     = undefined
     parseFun       = undefined
     parseVar       = varExpr () <$> nameParser
     parseLit       = litExpr () <$> primParser
     parseList      = listExpr () <$> elements exprParser
     parseTuple     = tupleExpr () <$> components exprParser
     parseCon       = conExpr () <$> constructorParser <*> components exprParser
-    parseRecord    = recordExpr () <$> parseRow exprParser rowExpr
+    parseRecord    = recordExpr () <$> rowParser exprParser rowExpr
 
 -- >>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>
 
