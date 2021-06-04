@@ -216,7 +216,7 @@ operator =
     ]
 
 exprParser :: Parser (ProgExpr ())
-exprParser  = makeExprParser parser operator
+exprParser = makeExprParser parser operator
   where
     parser = parseIf
       <|> parseFun
