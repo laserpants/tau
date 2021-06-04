@@ -86,7 +86,7 @@ data Assoc
 data Guard a = Guard [a] a
 
 -- | Pattern matching clause
-data Clause t p a = Clause t [p] [Guard a] 
+data Clause t p a = Clause t p [Guard a] 
 
 type ProgClause t = Clause t (ProgPattern t) (ProgExpr t)
 
@@ -109,7 +109,7 @@ data ExprF t1 t2 t3 t4 t5 t6 t7 t8 t9 t10 t11 t12 t13 t14 t15 e1 e2 e3 a
     | EFix    t5  Name a a               -- ^ Recursive let
     | ELam    t6  e2 a                   -- ^ Lambda abstraction
     | EIf     t7  a a a                  -- ^ If-clause
-    | EPat    t8  [a] [e3 a]             -- ^ Match expressions
+    | EPat    t8  a [e3 a]               -- ^ Match expressions
     | ELet    t9  e1 a a                 -- ^ Let expression
     | EFun    t10 [e3 a]                 -- ^ Fun expression
     | EOp1    t11 (Op1 t11) a            -- ^ Unary operator
@@ -259,20 +259,21 @@ instance Functor Ast where
             EFix    t name e1 e2 -> fixExpr    (f t) name e1 e2
             ELam    t ps e       -> lamExpr    (f t) (mapPattern <$> ps) e
             EIf     t e1 e2 e3   -> ifExpr     (f t) e1 e2 e3
-            EPat    t es cs      -> patExpr    (f t) es (mapClause <$> cs)
+            EPat    t e cs       -> patExpr    (f t) e (mapClause <$> cs)
             EFun    t cs         -> funExpr    (f t) (mapClause <$> cs)
             EOp1    t op a       -> op1Expr    (f t) (mapOp1 op) a
             EOp2    t op a b     -> op2Expr    (f t) (mapOp2 op) a b
             ETuple  t es         -> tupleExpr  (f t) es
             EList   t es         -> listExpr   (f t) es
             ERow    t lab a b    -> rowExpr    (f t) lab a b  
+            EAnn    t e          -> annExpr    t e
 
         mapBind = \case
             BLet    t p          -> BLet       (f t) (mapPattern p)
             BFun    t name ps    -> BFun       (f t) name (mapPattern <$> ps)
 
         mapClause = \case
-            Clause  t ps gs      -> Clause     (f t) (mapPattern <$> ps) gs
+            Clause  t p gs       -> Clause     (f t) (mapPattern p) gs
 
         mapPattern = cata $ \case
             PVar    t var        -> varPat     (f t) var
@@ -284,6 +285,7 @@ instance Functor Ast where
             PTuple  t ps         -> tuplePat   (f t) ps
             PList   t ps         -> listPat    (f t) ps
             PRow    t lab p q    -> rowPat     (f t) lab p q
+            PAnn    t p          -> annPat     t p
 
         mapOp1 = \case
             ONeg    t            -> ONeg       (f t)
@@ -384,8 +386,8 @@ astTag = exprTag . getAst
 clauseTag :: Clause t p a -> t
 clauseTag (Clause t _ _) = t
 
-clausePatterns :: Clause t p a -> [p]
-clausePatterns (Clause _ ps _) = ps
+clausePatterns :: Clause t p a -> p
+clausePatterns (Clause _ p _) = p
 
 clauseGuards :: Clause t p a -> [Guard a]
 clauseGuards (Clause _ _ gs) = gs
@@ -607,7 +609,7 @@ ifExpr = embed4 EIf
 patExpr 
   :: (Functor e3) 
   => t8 
-  -> [Expr t1 t2 t3 t4 t5 t6 t7 t8 t9 t10 t11 t12 t13 t14 t15 e1 e2 e3] 
+  -> Expr t1 t2 t3 t4 t5 t6 t7 t8 t9 t10 t11 t12 t13 t14 t15 e1 e2 e3
   -> [e3 (Expr t1 t2 t3 t4 t5 t6 t7 t8 t9 t10 t11 t12 t13 t14 t15 e1 e2 e3)] 
   -> Expr t1 t2 t3 t4 t5 t6 t7 t8 t9 t10 t11 t12 t13 t14 t15 e1 e2 e3
 patExpr = embed3 EPat

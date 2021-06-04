@@ -33,7 +33,6 @@ import qualified Tau.Compiler.Pipeline.Stage4 as Stage4
 import qualified Tau.Compiler.Pipeline.Stage5 as Stage5
 import qualified Tau.Compiler.Pipeline.Stage6 as Stage6
 
-
 -- >>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>
 
 instance Pretty Prim where
@@ -281,7 +280,7 @@ instance (Pretty e1, Functor e3) => Pretty (Expr t1 t2 t3 t4 t5 t6 t7 t8 t9 t10 
         EApp    _ es             -> prettyApp (fst <$> es)
         ELam    _ ps e           -> prettyLam ps (snd e) -- prettyTuple (pretty <$> ps) -- <+> "=>" <+> snd e
 --        EFun    _ cs             -> "fun" <+> pipe <+> prettyClauses (fst <$$> cs)
-        EPat    _ [e] cs         -> "TODO: pat" -- "match" <+> snd e <+> "with" <+> prettyClauses (fst <$$> cs)
+        EPat    _ e cs           -> "TODO: pat" -- "match" <+> snd e <+> "with" <+> prettyClauses (fst <$$> cs)
 
         expr -> snd <$> expr & \case
 
@@ -497,7 +496,7 @@ class PatternClause c t p a where
     clauseRhs :: c t p a -> [([a], a)]
 
 instance PatternClause Clause t p (Expr t1 t2 t3 t4 t5 t6 t7 t8 t9 t10 t11 t12 t13 t14 t15 e1 e2 e3) where
-    clauseLhs = clausePatterns
+    clauseLhs xx = let zz = clausePatterns xx in [zz]
     clauseRhs = (guardToPair <$>) . clauseGuards
 
 instance PatternClause SimplifiedClause t p (Expr t1 t2 t3 t4 t5 t6 t7 t8 t9 t10 t11 t12 t13 t14 t15 e1 e2 e3) where
@@ -519,7 +518,7 @@ exprTree = para $ \case
     --EPat    t es cs      -> Node ("match" <+> commaSep (withTag . fst <$> es) <+> "with") (treeClause <$> (fst <$$> cs))
     --EPat    t [e] cs      -> Node ("match" <+> exprTree e <+> "with") (treeClause <$> (fst <$$> cs))
 
-    EPat    t [e] cs     -> Node ("match" <+> colon <+> pretty t) ([exprTree (fst e)] <> [Node "with" (treeClause <$> (fst <$$> cs))])
+    EPat    t e cs       -> Node "TODO123" [] -- Node ("match" <+> colon <+> pretty t) ([exprTree (fst e)] <> [Node "with" (treeClause <$> (fst <$$> cs))])
     EFun    t cs         -> Node ("fun" <+> colon <+> pretty t) (treeClause <$> (fst <$$> cs))
 
     EOp1    _ op a       -> Node (pretty op) [snd a]
@@ -558,7 +557,7 @@ exprTree3 = para $ \case
     EApp    t es         -> Node (annotated t ("@" :: Text)) (snd <$> es)
     EFix    t bind e1 e2 -> Node (annotated t ("fix" :: Text)) [Node (pretty bind <+> "=") [snd e1, Node "in" [snd e2]]]
     ELam    t lam a      -> Node ("(" <> pretty lam <> ") =>") [snd a] -- , Node (colon <+> "(" <> pretty t <> ")") []]
-    EPat    t [e] cs     -> Node ("match" <+> colon <+> pretty t) ([exprTree3 (fst e)] <> [Node "with" (treeClause3 <$> (fst <$$> cs))])
+    EPat    t e cs       -> Node "TODO456" [] -- Node ("match" <+> colon <+> pretty t) ([exprTree3 (fst e)] <> [Node "with" (treeClause3 <$> (fst <$$> cs))])
     EIf     t e1 e2 e3   -> Node ("if" <+> colon <+> pretty t) [snd e1, prefix ("then" :: Text) (snd e2), prefix ("else" :: Text) (snd e3)]
     e                    -> Node (pretty (show e)) []
 
@@ -667,13 +666,13 @@ withTag e = pretty e <+> colon <+> foo e -- (typeOf (exprTag e)) e
 --  -> [Guard (Expr t1 t2 t3 t4 t5 t6 t7 t8 t9 t10 t11 t12 t13 t14 t15 bind lam clause)]
 --  -> Tree (Doc a)
 clauseTree :: (PatternClause c t (Pattern p1 p2 p3 p4 p5 p6 p7 p8 p9) (Expr t11 t12 t13 t14 t15 t16 t17 t18 t19 t10 t20 t21 t22 t23 t24 bind lam (c t (Pattern p1 p2 p3 p4 p5 p6 p7 p8 p9))), Functor (c t (Pattern p1 p2 p3 p4 p5 p6 p7 p8 p9)), Typed bind, Typed t21, LetBinding bind, Pretty bind, Pretty lam, Pretty t11, Pretty t12, Pretty t13, Pretty t14, Pretty t16, Pretty t18, Pretty t10, Pretty t15, Pretty t17, Pretty t19, Pretty t20, Pretty t21, Pretty t22, Pretty t24, Pretty a) => [Pattern t25 t26 t27 t28 t29 t30 t31 t32 t33] -> [([a], Expr t11 t12 t13 t14 t15 t16 t17 t18 t19 t10 t20 t21 t22 t23 t24 bind lam (c t (Pattern p1 p2 p3 p4 p5 p6 p7 p8 p9)))] -> Data.Tree.Tree (Doc ann)
-clauseTree ps gs = Node (pats <+> "=>") (guard <$> gs)
-  where
-    pats | 1 == length ps = pretty (head ps)
-         | otherwise      = foldr patternCon "" ps
-    guard ([], e)    = exprTree e
-    guard (es, e)    = Node (commaSep (iff <$> es)) [exprTree e]
-    iff e = "iff" <+> pretty e
+clauseTree ps gs = Node "TODO444" [] -- Node (pats <+> "=>") (guard <$> gs)
+--  where
+--    pats | 1 == length ps = pretty (head ps)
+--         | otherwise      = foldr patternCon "" ps
+--    guard ([], e)    = exprTree e
+--    guard (es, e)    = Node (commaSep (iff <$> es)) [exprTree e]
+--    iff e = "iff" <+> pretty e
 
 --clauseTree :: (C clause) => clause (Expr t1 t2 t3 t4 t5 t6 t7 t8 t9 t10 t11 t12 t13 t14 t15 bind lam clause) -> Tree (Doc a)
 --clauseTree c = undefined

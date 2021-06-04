@@ -55,12 +55,10 @@ deriving instance (Eq   t) => Eq   (ConsGroup t)
 
 translate :: (MonadSupply Name m) => SourceExpr (Maybe Type) -> m (TargetExpr (Maybe Type))
 translate = cata $ \case
-    EPat t exprs clauses -> do
-        cs <- traverse sequence clauses 
-            >>= expandLitAndAnyPatterns 
-              . expandOrPatterns 
-        es <- sequence exprs
-        compilePatterns es cs
+    EPat t expr clauses -> do
+        e <- expr
+        cs <- traverse sequence clauses >>= expandLitAndAnyPatterns . expandOrPatterns 
+        compilePatterns e cs
 
     EVar    t var        -> pure (varExpr t var)
     ELit    t prim       -> pure (litExpr t prim)
@@ -114,11 +112,11 @@ translate = cata $ \case
 
 compilePatterns
   :: (MonadSupply Name m)
-  => [TargetExpr (Maybe Type)]
+  => TargetExpr (Maybe Type)
   -> [TargetPatternClause (Maybe Type) (TargetExpr (Maybe Type))]
   -> m (TargetExpr (Maybe Type))
-compilePatterns us qs = 
-    compileMatch us qs (varExpr (Just (tVar (kVar "<FAIL>") "<FAIL>")) "<FAIL>")
+compilePatterns u qs = 
+    compileMatch [u] qs (varExpr (Just (tVar (kVar "<FAIL>") "<FAIL>")) "<FAIL>")
   where
     compileMatch [] []                                       c = pure c
     compileMatch [] (SimplifiedClause _ [] (Guard [] e):_)   _ = pure e
@@ -144,9 +142,9 @@ compilePatterns us qs =
             [Constructor eqs@(SimplifiedClause t _ (Guard _ e):_)] -> do
                 qs' <- traverse (toSimpleMatch t us c) (consGroups u eqs)
                 let rs = [SimplifiedClause t [SCon (stage6ExprTag u) "$_" []] (Guard [] c) | not (isError c)]
-                pure $ case qs' <> rs of
+                pure $ case qs' <> rs of 
                     []   -> c
-                    qs'' -> patExpr (stage6ExprTag e) [u] qs''
+                    qs'' -> patExpr (stage6ExprTag e) u qs''
               where
                 isError :: TargetExpr t -> Bool
                 isError = cata $ \case
@@ -248,8 +246,8 @@ substitute name subst = para $ \case
         e1' | name == pat = fst e1
             | otherwise   = snd e1
 
-    EPat t exs eqs ->
-        patExpr t (snd <$> exs) (substEq <$> eqs)
+    EPat t ex eqs ->
+        patExpr t (snd ex) (substEq <$> eqs)
       where
         substEq
           :: TargetSimplifiedPatternClause t (TargetExpr t, TargetExpr t)

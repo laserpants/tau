@@ -89,7 +89,7 @@ translate2 = cata $ \case
     EOp1    t op a       -> appExpr t [prefixOp1 op, a]
     EOp2    t op a b     -> appExpr t [prefixOp2 op, a, b]
     -- Expand pattern clause guards
-    EPat    t es cs      -> patExpr t es (expandClause =<< cs)
+    EPat    t e cs       -> patExpr t e (expandClause =<< cs)
     EFun    t cs         -> translateFunExpr t (expandClause =<< cs)
     -- Other expressions do not change, except sub-expressions
     EVar    t var        -> varExpr t var
@@ -101,11 +101,10 @@ translate2 = cata $ \case
     EIf     t e1 e2 e3   -> ifExpr  t e1 e2 e3
     ELet    t bind e1 e2 -> letExpr t bind e1 e2
   where
-    prefixOp1 (ONeg t) = varExpr t "negate"
-    prefixOp1 (ONot t) = varExpr t "not"
-    prefixOp2 op       = varExpr (op2Tag op) ("(" <> op2Symbol op <> ")")
-    expandClause (Clause t ps gs) 
-                       = [SimplifiedClause t ps g | g <- gs]
+    prefixOp1 (ONeg t)    = varExpr t "negate"
+    prefixOp1 (ONot t)    = varExpr t "not"
+    prefixOp2 op          = varExpr (op2Tag op) ("(" <> op2Symbol op <> ")")
+    expandClause (Clause t p gs) = [SimplifiedClause t [p] g | g <- gs]
 
 foldRow 
   :: TypeInfoT [Error] (Maybe Type)
@@ -135,7 +134,7 @@ translateFunExpr
   -> [TargetSimplifiedClause (TypeInfoT [Error] (Maybe Type))]
   -> TargetExpr (TypeInfoT [Error] (Maybe Type))
 translateFunExpr t =
-    lamExpr t [varPat t1 "#0"] <<< patExpr t2 [varExpr t1 "#0"]
+    lamExpr t [varPat t1 "#0"] <<< patExpr t2 (varExpr t1 "#0")
   where
     t1 = TypeInfo [] (get cod) (nodePredicates t)
     t2 = TypeInfo [] (get dom) (nodePredicates t)

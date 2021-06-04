@@ -239,12 +239,12 @@ exprParser = makeExprParser parser operator
             <*> (keyword "in" *> exprParser)
 
     parseMatch = patExpr () 
-        <$> (pure <$> (keyword "match" *> exprParser))
+        <$> (keyword "match" *> exprParser)
         <*> (keyword "with" *> some parseClause)
 
     parseClause = 
         symbol "|" >> Clause ()
-            <$> (pure <$> patternParser)
+            <$> patternParser
             <*> (try guarded <|> nonGuarded)
 
     guarded = do

@@ -29,7 +29,7 @@ translate = cata $ \case
         translateLet t bind e1 e2
 
     -- Other expressions do not change, except sub-expressions
-    EPat    t es cs      -> patExpr t <$> sequence es <*> traverse sequence cs
+    EPat    t e cs       -> patExpr t <$> e <*> traverse sequence cs
     EVar    t var        -> pure (varExpr t var)
     ECon    t con es     -> conExpr t con <$> sequence es
     ELit    t prim       -> pure (litExpr t prim)
@@ -51,7 +51,7 @@ translateLambda t ps e = do
         let t' = tArr <$> patternTag p <*> t
         var <- supply
         pure (lamExpr t' var (patExpr t 
-                 [varExpr (patternTag p) var] 
+                 (varExpr (patternTag p) var)
                  [SimplifiedClause t [p] (Guard [] e)]), t')
 
 translateLet
@@ -68,7 +68,7 @@ translateLet t bind e1 e2 = do
                   BFun t f ps -> do
                       e <- translateLambda t ps e1
                       pure (e, varPat t f)
-    pure (patExpr t [e] [SimplifiedClause t [p] (Guard [] e2)])
+    pure (patExpr t e [SimplifiedClause t [p] (Guard [] e2)])
 
 targetExprTag :: TargetExpr t -> t
 targetExprTag = cata $ \case

@@ -198,33 +198,59 @@ inferExprType = cata $ \case
         unfiyWithNode (typeOf e2)
         pure (e1, e2, e3)
 
-    EPat _ exprs eqs -> inferExprNode (args2 patExpr) $ do
-        es1 <- traverse exprNode exprs
-        es2 <- lift (traverse (inferClauseType (typeOf <$> es1)) eqs)
+    EPat _ expr eqs -> inferExprNode (args2 patExpr) $ do
+        e1  <- exprNode expr
+        es2 <- lift (traverse (inferClauseType (typeOf e1)) eqs)
         insertPredicates (clausePredicates =<< es2)
         -- Unify pattern clauses
-        forM_ es2 $ \(Clause t ps gs) -> do
+        forM_ es2 $ \(Clause t p gs) -> do
             forM_ gs (\(Guard _ e) -> unfiyWithNode (typeOf e))
             unfiyWithNode (typeOf t)
-            forM_ (zip ps (typeOf <$> es1)) (uncurry unifyWith)
+            unifyWith (typeOf e1) p
 
-        pure (es1, es2)
+        pure (e1, es2)
 
-    EFun _ eqs@(Clause _ ps _:_) -> inferExprNode funExpr $ do
+--        es1 <- traverse exprNode exprs
+--        es2 <- lift (traverse (inferClauseType (typeOf <$> es1)) eqs)
+--        insertPredicates (clausePredicates =<< es2)
+--        -- Unify pattern clauses
+--        forM_ es2 $ \(Clause t ps gs) -> do
+--            forM_ gs (\(Guard _ e) -> unfiyWithNode (typeOf e))
+--            unfiyWithNode (typeOf t)
+--            forM_ (zip ps (typeOf <$> es1)) (uncurry unifyWith)
+--
+--        pure (es1, es2)
+
+    EFun _ eqs@(Clause _ p _:_) -> inferExprNode funExpr $ do
         ty <- newTVar 
-        ts <- newTVars (length ps)
-        es <- lift (traverse (inferClauseType ts) eqs)
+        t1 <- newTVar 
+        es <- lift (traverse (inferClauseType t1) eqs)
+
         -- Unify return type with r.h.s. of arrow in clauses
         forM_ (clauseGuards =<< es) (\(Guard _ e) -> e ## (ty :: Type))
         -- Also unify return type with the type of clause itself
         forM_ es (unifyWith (ty :: Type) . clauseTag)
         -- Check pattern types
-        forM_ (clausePatterns <$> es)
-            (\ps -> forM_ (zip ps ts) (uncurry unifyWith))
+        forM_ (clausePatterns <$> es) (unifyWith t1)
 
         insertPredicates (clausePredicates =<< es)
-        unfiyWithNode (foldr tArr ty ts)
+        unfiyWithNode t1
         pure es
+
+--        ty <- newTVar 
+--        ts <- newTVars (length ps)
+--        es <- lift (traverse (inferClauseType ts) eqs)
+--        -- Unify return type with r.h.s. of arrow in clauses
+--        forM_ (clauseGuards =<< es) (\(Guard _ e) -> e ## (ty :: Type))
+--        -- Also unify return type with the type of clause itself
+--        forM_ es (unifyWith (ty :: Type) . clauseTag)
+--        -- Check pattern types
+--        forM_ (clausePatterns <$> es)
+--            (\ps -> forM_ (zip ps ts) (uncurry unifyWith))
+--
+--        insertPredicates (clausePredicates =<< es)
+--        unfiyWithNode (foldr tArr ty ts)
+--        pure es
 
     EOp1 _ op1 expr -> inferExprNode (args2 op1Expr) $ do
         a <- exprNode expr
@@ -514,18 +540,38 @@ inferClauseType
      , MonadSupply Name m
      , MonadReader (ClassEnv, TypeEnv, KindEnv, ConstructorEnv) m
      , MonadState (Substitution Type, Substitution Kind, Context) m )
-  => [Type]
+  => Type
   -> Clause t (ProgPattern t) (m (ProgExpr (TypeInfo [Error])))
   -> m (ProgClause (TypeInfo [Error]))
-inferClauseType tys eq@(Clause _ pats _) = inferExprNode (args2 Clause) $ do
-    (ps, (_, vs, _, _)) <- listen (traverse (patternNode . inferPatternType) pats)
+inferClauseType ty eq@(Clause _ pat _) = inferExprNode (args2 Clause) $ do
+    (p, (_, vs, _, _)) <- listen (patternNode (inferPatternType pat)) 
     let schemes = toScheme <$$> vs
         Clause _ _ guards = local (inTypeEnv (Env.inserts schemes)) <$> eq
         (iffs, es) = unzip (guardToPair <$> guards)
     -- Conditions must be Bool
     forM_ (concat iffs) unifyIffCondition
     gs <- traverse inferGuard guards
-    pure (ps, gs)
+    pure (p, gs)
+
+--inferClauseType
+--  :: ( Monoid t
+--     , Show t
+--     , MonadSupply Name m
+--     , MonadReader (ClassEnv, TypeEnv, KindEnv, ConstructorEnv) m
+--     , MonadState (Substitution Type, Substitution Kind, Context) m )
+--  => [Type]
+--  -> Clause t (ProgPattern t) (m (ProgExpr (TypeInfo [Error])))
+--  -> m (ProgClause (TypeInfo [Error]))
+--inferClauseType = undefined
+--inferClauseType tys eq@(Clause _ pats _) = inferExprNode (args2 Clause) $ do
+--    (ps, (_, vs, _, _)) <- listen (traverse (patternNode . inferPatternType) pats)
+--    let schemes = toScheme <$$> vs
+--        Clause _ _ guards = local (inTypeEnv (Env.inserts schemes)) <$> eq
+--        (iffs, es) = unzip (guardToPair <$> guards)
+--    -- Conditions must be Bool
+--    forM_ (concat iffs) unifyIffCondition
+--    gs <- traverse inferGuard guards
+--    pure (ps, gs)
 
 inferGuard
   :: ( MonadSupply Name m

@@ -200,7 +200,8 @@ guardPredicates :: Guard (ProgExpr (TypeInfoT e t)) -> [Predicate]
 guardPredicates (Guard es e) = exprPredicates e <> (exprPredicates =<< es)
 
 clausePredicates :: ProgClause (TypeInfoT e t) -> [Predicate]
-clausePredicates (Clause _ ps gs) = concat ((patternPredicates <$> ps) <> (guardPredicates <$> gs))
+clausePredicates (Clause _ p gs) = concat ((guardPredicates <$> gs))
+--  where (patternPredicates <$> ps) <> 
 
 astPredicates :: Ast (TypeInfoT e t) -> [Predicate]
 astPredicates = exprPredicates . getAst
@@ -230,7 +231,7 @@ astTypeVars (Ast expr) = nub (exprTypeVars expr)
         EFix    t _ a1 a2      -> typeVars (typeOf t) <> a1 <> a2
         ELam    t ps a         -> typeVars (typeOf t) <> (patternTypeVars =<< ps) <> a
         EIf     t a1 a2 a3     -> typeVars (typeOf t) <> a1 <> a2 <> a3
-        EPat    t as clauses   -> typeVars (typeOf t) <> concat as <> (clauseTypeVars =<< clauses)
+        EPat    t a clauses    -> typeVars (typeOf t) <> a <> (clauseTypeVars =<< clauses)
         EFun    t clauses      -> typeVars (typeOf t) <> (clauseTypeVars =<< clauses)
         EOp1    t op a         -> typeVars (typeOf t) <> op1TypeVars op <> a
         EOp2    t op a b       -> typeVars (typeOf t) <> op2TypeVars op <> a <> b
@@ -244,7 +245,7 @@ astTypeVars (Ast expr) = nub (exprTypeVars expr)
         BFun    t _ ps         -> typeVars (typeOf t) <> (patternTypeVars =<< ps)
 
     clauseTypeVars = \case
-        Clause  t ps gs        -> typeVars (typeOf t) <> (patternTypeVars =<< ps) 
+        Clause  t p gs         -> typeVars (typeOf t) <> patternTypeVars p
                                                       <> (guardTypeVars =<< gs)
     guardTypeVars = \case
         Guard es e             -> concat es <> e

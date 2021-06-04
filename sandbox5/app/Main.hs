@@ -791,9 +791,9 @@ test123 = do
 --            ]
 
     expr = 
-        patExpr () [ conExpr () "Some" [litExpr () (TBool True)] ] 
-            [ Clause () [ conPat () "Some" [litPat () (TBool True)] ] [ Guard [] (annExpr tInt (litExpr () (TInt 1))) ]
-            , Clause () [ conPat () "Some" [litPat () (TBool False)] ] [ Guard [] (litExpr () (TInt 2)) ]
+        patExpr () ( conExpr () "Some" [litExpr () (TBool True)] ) 
+            [ Clause () ( conPat () "Some" [litPat () (TBool True)] ) [ Guard [] (annExpr tInt (litExpr () (TInt 1))) ]
+            , Clause () ( conPat () "Some" [litPat () (TBool False)] ) [ Guard [] (litExpr () (TInt 2)) ]
             ]
 
 

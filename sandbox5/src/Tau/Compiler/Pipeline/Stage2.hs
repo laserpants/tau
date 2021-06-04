@@ -50,7 +50,7 @@ translateLiterals = cata $ \case
     EFix    t name e1 e2 -> fixExpr t name <$> e1 <*> e2
     ELam    t ps e       -> lamExpr t ps <$> e
     EIf     t e1 e2 e3   -> ifExpr  t <$> e1 <*> e2 <*> e3
-    EPat    t es cs      -> patExpr t <$> sequence es <*> traverse sequence cs
+    EPat    t e cs       -> patExpr t <$> e <*> traverse sequence cs
     ELet    t bind e1 e2 -> letExpr t bind <$> e1 <*> e2
 
 expandTypeClasses
@@ -85,11 +85,7 @@ expandTypeClasses expr =
         EApp   t es       -> appExpr (nodeType t) <$> sequence es
         ELam   t ps e     -> lamExpr (nodeType t) (translatePatterns <$> ps) <$> e
         EIf    t e1 e2 e3 -> ifExpr  (nodeType t) <$> e1 <*> e2 <*> e3
-
-        EPat   t exprs clauses -> do
-            es <- sequence exprs
-            cs <- translateClauses <$$> traverse sequence clauses
-            pure (patExpr (nodeType t) es cs)
+        EPat   t expr cs  -> patExpr (nodeType t) <$> expr <*> (translateClauses <$$> traverse sequence cs)
 
     translateClauses = \case
         SimplifiedClause t ps g -> 
