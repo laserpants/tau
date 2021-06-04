@@ -98,11 +98,8 @@ components :: Parser a -> Parser [a]
 components = parens . commaSep 
 
 fields :: Name -> Parser a -> Parser [(Name, a)]
-fields sep parser = braces $ commaSep $ do
-    label <- nameParser
-    symbol sep
-    value <- parser
-    pure (label, value)
+fields sep parser = 
+    braces $ commaSep $ (,) <$> nameParser <*> (symbol sep *> parser)
 
 rowParser :: Parser a -> (() -> Name -> a -> Maybe b -> b) -> Parser b
 rowParser parser rowCon = do
@@ -236,9 +233,8 @@ exprParser = makeExprParser parser operator
         <*> (keyword "then" *> exprParser)
         <*> (keyword "else" *> exprParser)
 
-    parseLet = do
-        keyword "let"
-        letExpr () 
+    parseLet = 
+        keyword "let" >> letExpr () 
             <$> (try parseFunLet <|> parseNormalLet)
             <*> (symbol "=" *> exprParser)
             <*> (keyword "in" *> exprParser)
@@ -247,9 +243,8 @@ exprParser = makeExprParser parser operator
         <$> (pure <$> (keyword "match" *> exprParser))
         <*> (keyword "with" *> some parseClause)
 
-    parseClause = do
-        symbol "|"
-        Clause ()
+    parseClause = 
+        symbol "|" >> Clause ()
             <$> (pure <$> patternParser)
             <*> (try guarded <|> nonGuarded)
 
