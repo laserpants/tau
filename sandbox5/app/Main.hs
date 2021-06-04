@@ -23,6 +23,7 @@ import Tau.Compiler.Pipeline.Stage3
 import Tau.Compiler.Pipeline.Stage4
 import Tau.Compiler.Pipeline.Stage5
 import Tau.Compiler.Pipeline.Stage6
+import Tau.Parser
 import Tau.Compiler.Error
 import Tau.Compiler.Substitute
 import Tau.Serialize

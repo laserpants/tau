@@ -189,11 +189,6 @@ isListType = project >>> \case
             _ -> False
     _         -> False
 
---isListType :: Type -> Bool
---isListType = para $ \case
---    TApp _ (Fix (TCon _ "List"), _) _ -> True
---    _                                 -> False
-
 isRowType :: Type -> Bool
 isRowType = project >>> \case
     TApp _ a _ ->
@@ -207,14 +202,6 @@ isRowType = project >>> \case
   where
     isRowCon ""  = False
     isRowCon con = Text.head con == '{' && Text.last con == '}'
-
---isRowType :: Type -> Bool
---isRowType = para $ \case
---    TApp _ (Fix (TApp _ (Fix (TCon _ con)) _), _) _ | isRowCon con -> True
---    _                                                              -> False
---  where
---    isRowCon ""  = False
---    isRowCon con = Text.head con == '{' && Text.last con == '}'
 
 isTupleType :: Type -> Bool
 isTupleType ty = Just True == maybeIsTupleCon

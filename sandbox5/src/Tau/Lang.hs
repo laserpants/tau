@@ -34,6 +34,7 @@ data PatternF t1 t2 t3 t4 t5 t6 t7 t8 t9 a
     | PTuple  t7 [a]                     -- ^ Tuple pattern
     | PList   t8 [a]                     -- ^ List pattern
     | PRow    t9 Name a (Maybe a)        -- ^ Row pattern
+    | PAnn    Type a                     -- ^ Explicit type annotation
 
 -- | Pattern
 type Pattern t1 t2 t3 t4 t5 t6 t7 t8 t9 = Fix (PatternF t1 t2 t3 t4 t5 t6 t7 t8 t9)
@@ -539,6 +540,12 @@ rowPat
   -> Maybe (Pattern t1 t2 t3 t4 t5 t6 t7 t8 t9)
   -> Pattern t1 t2 t3 t4 t5 t6 t7 t8 t9
 rowPat = embed4 PRow
+
+annPat
+  :: Type
+  -> Pattern t1 t2 t3 t4 t5 t6 t7 t8 t9
+  -> Pattern t1 t2 t3 t4 t5 t6 t7 t8 t9
+annPat = embed2 PAnn
 
 -- Expr
 

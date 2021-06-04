@@ -237,6 +237,7 @@ astTypeVars (Ast expr) = nub (exprTypeVars expr)
         ETuple  t as           -> typeVars (typeOf t) <> concat as
         EList   t as           -> typeVars (typeOf t) <> concat as
         ERow    t _ a b        -> typeVars (typeOf t) <> a <> concat b
+        EAnn    t _            -> typeVars (typeOf t)
 
     bindingTypeVars = \case
         BLet    t p            -> typeVars (typeOf t) <> patternTypeVars p
