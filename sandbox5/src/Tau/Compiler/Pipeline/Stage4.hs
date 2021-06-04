@@ -1,4 +1,5 @@
-{-# LANGUAGE LambdaCase #-}
+{-# LANGUAGE LambdaCase        #-}
+{-# LANGUAGE OverloadedStrings #-}
 module Tau.Compiler.Pipeline.Stage4 where
 
 import Data.Maybe (fromMaybe)

@@ -59,7 +59,6 @@ reserved =
     [ "and"
     , "as"
     , "else"
-    , "forall"
     , "fun"
     , "if"
     , "iff"

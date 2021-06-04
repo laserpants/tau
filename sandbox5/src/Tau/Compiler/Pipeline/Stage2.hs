@@ -1,5 +1,6 @@
-{-# LANGUAGE LambdaCase       #-}
-{-# LANGUAGE FlexibleContexts #-}
+{-# LANGUAGE FlexibleContexts  #-}
+{-# LANGUAGE LambdaCase        #-}
+{-# LANGUAGE OverloadedStrings #-}
 module Tau.Compiler.Pipeline.Stage2 where
 
 import Control.Monad.Reader

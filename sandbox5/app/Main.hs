@@ -1010,7 +1010,9 @@ test3 = u :: Either UnificationError (Substitution Type, Substitution Kind)
 --    pure ()
 
 main :: IO ()
-main = print "Main"
+main = do
+    pure ()
+-- print "Main"
 
 testKindEnv :: KindEnv
 testKindEnv = Env.fromList
