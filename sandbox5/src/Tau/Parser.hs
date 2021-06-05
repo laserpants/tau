@@ -109,8 +109,8 @@ rowParser parser rowCon = do
   where
     fn a = uncurry (rowCon ()) a . Just
 
-argParser :: Parser [ProgPattern ()]
-argParser = components patternParser >>= \case 
+argParser :: Parser p -> Parser [p]
+argParser parser = components parser >>= \case 
     [] -> fail "Expected at least one function argument"
     ps -> pure ps
 
@@ -208,38 +208,52 @@ operator =
     , [ InfixL (op2Expr () (OFpipe ()) <$ symbol "|>")
       , InfixR (op2Expr () (OBpipe ()) <$ symbol "<|")
       ]
-    , [ Postfix (symbol ":" *> (annExpr <$> typeParser)) ]
+    , [ Postfix postfixFunArgParser
+      ]
     ]
 
+postfixFunArgParser :: Parser (ProgExpr () -> ProgExpr ())
+postfixFunArgParser = do
+    args <- argParser annExprParser
+    pure (\fun -> appExpr () (fun:args))
+
+annExprParser :: Parser (ProgExpr ())
+annExprParser = makeExprParser (try lambdaParser <|> try (parens annExprParser) <|> exprParser)
+    [[ Postfix (symbol ":" *> (annExpr <$> typeParser)) ]]
+
 exprParser :: Parser (ProgExpr ())
-exprParser = makeExprParser parser operator
+exprParser = makeExprParser (try lambdaParser <|> try (parens exprParser) <|> parser) operator
   where
     parser = parseIf
       <|> parseFun
 --      <|> parseFix
       <|> parseLet
       <|> parseMatch
-      <|> parseLam
       <|> parseVar
       <|> parseLit
       <|> parseCon
       <|> parseList
-      <|> try (parens exprParser) <|> parseTuple
+      <|> parseTuple
       <|> parseRecord
 
+    parseApp = do
+        fun  <- nameParser
+        args <- argParser annExprParser
+        pure (appExpr () (varExpr () fun:args))
+
     parseIf = ifExpr () 
-        <$> (keyword "if"   *> exprParser)
-        <*> (keyword "then" *> exprParser)
-        <*> (keyword "else" *> exprParser)
+        <$> (keyword "if"   *> annExprParser)
+        <*> (keyword "then" *> annExprParser)
+        <*> (keyword "else" *> annExprParser)
 
     parseLet = 
         keyword "let" >> letExpr () 
             <$> (try parseFunLet <|> parseNormalLet)
-            <*> (symbol "=" *> exprParser)
-            <*> (keyword "in" *> exprParser)
+            <*> (symbol "=" *> annExprParser)
+            <*> (keyword "in" *> annExprParser)
 
     parseMatch = patExpr () 
-        <$> (keyword "match" *> exprParser)
+        <$> (keyword "match" *> annExprParser)
         <*> (keyword "with" *> some parseClause)
 
     parseClause = 
@@ -260,17 +274,19 @@ exprParser = makeExprParser parser operator
         expr <- symbol "=>" *> exprParser
         pure [Guard [] expr]
 
-    parseFunLet    = BFun () <$> nameParser <*> argParser
+    parseFunLet    = BFun () <$> nameParser <*> argParser patternParser
     parseNormalLet = BLet () <$> patternParser
-    parseLam       = lamExpr () <$> argParser <*> (symbol "=>" *> exprParser)
-    parseFix       = undefined
+--    parseFix       = undefined
     parseFun       = keyword "fun" *> (funExpr () <$> some parseClause)
     parseVar       = varExpr () <$> nameParser
     parseLit       = litExpr () <$> primParser
-    parseList      = listExpr () <$> elements exprParser
+    parseList      = listExpr () <$> elements annExprParser
     parseTuple     = tupleExpr () <$> components exprParser
     parseCon       = conExpr () <$> constructorParser <*> components exprParser
-    parseRecord    = recordExpr () <$> rowParser exprParser rowExpr
+    parseRecord    = recordExpr () <$> rowParser annExprParser rowExpr
+
+lambdaParser :: Parser (ProgExpr ())
+lambdaParser = lamExpr () <$> argParser patternParser <*> (symbol "=>" *> annExprParser)
 
 -- >>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>
 

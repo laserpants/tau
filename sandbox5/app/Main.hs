@@ -683,6 +683,10 @@ test123 expr = do
     let xx6 = toRep el
     LBS.writeFile "/home/laserpants/play/ast-folder-tree/ast-folder-tree/src/testData8.json" (encode xx6)
     let xx7 = toRep em
+    print "***********"
+    print "***********"
+    print "***********"
+    print xx7
     LBS.writeFile "/home/laserpants/play/ast-folder-tree/ast-folder-tree/src/testData9.json" (encode xx7)
 --    print a
 --    putStrLn "---------------"

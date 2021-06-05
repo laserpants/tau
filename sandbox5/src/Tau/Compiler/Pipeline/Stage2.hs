@@ -43,6 +43,13 @@ translateLiterals = cata $ \case
             [ varExpr (t{ nodeType = tArr tInteger <$> nodeType t }) "fromInteger"
             , litExpr (TypeInfo [] (Just tInteger) []) (TInteger (fromIntegral n)) ])
 
+    ELit t (TInteger n) -> 
+        pure (appExpr t 
+            [ varExpr (t{ nodeType = tArr tInteger <$> nodeType t }) "fromInteger"
+            , litExpr (TypeInfo [] (Just tInteger) []) (TInteger (fromIntegral n)) ])
+
+    -- TODO: FLoat, Double, etc.
+
     ELit    t prim       -> pure (litExpr t prim)
     EVar    t var        -> pure (varExpr t var)
     ECon    t con exs    -> conExpr t con <$> sequence exs

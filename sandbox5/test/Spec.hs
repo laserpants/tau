@@ -3,6 +3,7 @@ import Tau.Compiler.SubstitutionTests
 import Tau.Compiler.TranslationTests
 import Tau.Compiler.TypecheckTests
 import Tau.Compiler.UnificationTests
+import Tau.ParserTests
 import Tau.PrettyTests
 import Tau.TypeTests
 import Test.Hspec hiding (describe, it)
@@ -44,3 +45,9 @@ main =
         describe "Tau.Pretty (Kind)"                       testPrettyKind
 --        describe "Tau.Pretty (Pattern)"                    testPrettyPattern
         describe "Tau.Pretty (Predicates)"                 testPrettyPredicates
+
+        describe "Tau.Parser (exprParser)"                 testExprParser
+        describe "Tau.Parser (annExprParser)"              testAnnExprParser
+        describe "Tau.Parser (match)"                      testExprParserMatch
+        describe "Tau.Parser (patternParser)"              testPatternParser
+

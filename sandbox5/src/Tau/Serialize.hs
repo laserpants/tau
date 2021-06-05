@@ -27,7 +27,7 @@ instance (ToRep t) => ToRep [t] where
     toRep ts = array (toRep <$> ts)
 
 instance (ToRep t) => ToRep (Maybe t) where
-    toRep Nothing  = Null
+    toRep Nothing  = object []
     toRep (Just t) = toRep t
 
 instance ToRep Type where 

@@ -160,3 +160,28 @@ map (\x => x + 1) xs
 
 foo(())
 
+
+
+let x = fun | Some(y) => y | None => 123 in x(Some(3)) 
+
+let withDefault(val) = fun | Some(y) => y | None => val in Some(3).withDefault(5)
+
+let withDefault(val) | Some(y) = y | None = val in Some(3).withDefault(5)
+
+
+let 
+  withDefault(val) 
+    | Some(y) = y 
+    | None    = val 
+  in 
+    Some(3).withDefault(5)
+
+
+let 
+  withDefault(val) = fun
+    | Some(y) = y 
+    | None    = val 
+  in 
+    Some(3).withDefault(5)
+
+
