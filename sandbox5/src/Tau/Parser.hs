@@ -136,6 +136,10 @@ primParser = parseUnit
 
 -- >>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>
 
+annPatternParser :: Parser (ProgPattern ())
+annPatternParser = makeExprParser (try (parens annPatternParser) <|> patternParser)
+    [[ Postfix (symbol ":" *> (annPat <$> typeParser)) ]]
+
 patternParser :: Parser (ProgPattern ())
 patternParser = makeExprParser parser
     [ [ InfixR (orPat () <$ symbol "or") ]

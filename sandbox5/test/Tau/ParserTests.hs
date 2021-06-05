@@ -55,6 +55,45 @@ testPatternParser = do
         "{ x = 5 } as y"
         (asPat () "y" (recordPat () (rowPat () "x" (litPat () (TInteger 5)) Nothing)))
 
+testAnnPatternParser :: SpecWith ()
+testAnnPatternParser = do
+
+    suceedParse annPatternParser
+        "x : Int"
+        (annPat tInt (varPat () "x"))
+
+    suceedParse annPatternParser
+        "5 : Int"
+        (annPat tInt (litPat () (TInteger 5)))
+
+    suceedParse annPatternParser
+        "_ : Int"
+        (annPat tInt (anyPat ()))
+
+    suceedParse annPatternParser
+        "(4, 3) : Int"
+        (annPat tInt (tuplePat () [litPat () (TInteger 4), litPat () (TInteger 3)]))
+
+    suceedParse annPatternParser
+        "(x or 5) : Int"
+        (annPat tInt (orPat () (varPat () "x") (litPat () (TInteger 5))))
+
+    suceedParse annPatternParser
+        "x or 5 : Int"
+        (annPat tInt (orPat () (varPat () "x") (litPat () (TInteger 5))))
+
+    suceedParse annPatternParser
+        "x or (5 : Int)"
+        (orPat () (varPat () "x") (annPat tInt (litPat () (TInteger 5))))
+
+    suceedParse annPatternParser
+        "(x or 5 : Int)"
+        (annPat tInt (orPat () (varPat () "x") (litPat () (TInteger 5))))
+
+    suceedParse annPatternParser
+        "((x or 5 : Int))"
+        (annPat tInt (orPat () (varPat () "x") (litPat () (TInteger 5))))
+
 testExprParser :: SpecWith ()
 testExprParser = do
 
