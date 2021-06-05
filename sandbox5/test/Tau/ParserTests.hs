@@ -36,6 +36,14 @@ testPatternParser = do
         (litPat () (TInteger 5))
 
     suceedParse patternParser
+        "Some(x)"
+        (conPat () "Some" [varPat () "x"])
+
+    suceedParse patternParser
+        "None"
+        (conPat () "None" [])
+
+    suceedParse patternParser
         "_"
         (anyPat ())
 
@@ -108,6 +116,14 @@ testExprParser = do
     suceedParse exprParser
         "x"
         (varExpr () "x")
+
+    suceedParse exprParser
+        "Some(x)"
+        (conExpr () "Some" [varExpr () "x"])
+
+    suceedParse exprParser
+        "None"
+        (conExpr () "None" [])
 
     suceedParse exprParser
         "(4, 3)"
@@ -203,6 +219,24 @@ testExprParser = do
         (letExpr () (BLet () (varPat () "f")) 
             (lamExpr () [varPat () "x"] (op2Expr () (OAdd ()) (varExpr () "x") (litExpr () (TInteger 1))))
             (varExpr () "y"))
+
+    suceedParse exprParser
+        "let withDefault | Some(y) => y | None => 0 in Some(3)"
+        (letExpr () (BLet () (varPat () "withDefault")) 
+            (funExpr ()
+                [ Clause () (conPat () "Some" [varPat () "y"]) [Guard [] (varExpr () "y")]
+                , Clause () (conPat () "None" []) [Guard [] (litExpr () (TInteger 0))] 
+                ])
+            (conExpr () "Some" [litExpr () (TInteger 3)]))
+
+    suceedParse exprParser
+        "let withDefault(val) | Some(y) => y | None => val in Some(3)"
+        (letExpr () (BFun () "withDefault" [varPat () "val"]) 
+            (funExpr ()
+                [ Clause () (conPat () "Some" [varPat () "y"]) [Guard [] (varExpr () "y")]
+                , Clause () (conPat () "None" []) [Guard [] (varExpr () "val")] 
+                ])
+            (conExpr () "Some" [litExpr () (TInteger 3)]))
 
 testExprParserMatch :: SpecWith ()
 testExprParserMatch = do

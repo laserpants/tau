@@ -5,6 +5,7 @@ module Tau.Parser where
 import Control.Monad
 import Control.Monad.Combinators.Expr
 import Data.Functor (($>))
+import Data.Maybe (fromMaybe)
 import Data.Text (Text, pack, unpack)
 import Tau.Lang
 import Tau.Tool hiding (parens, brackets, braces, commaSep)
@@ -161,7 +162,8 @@ patternParser = makeExprParser (try (parens patternParser) <|> parser)
     parseLit       = litPat () <$> primParser
     parseList      = listPat () <$> elements annPatternParser
     parseTuple     = tuplePat () <$> components annPatternParser
-    parseCon       = conPat () <$> constructorParser <*> components annPatternParser
+    parseCon       = conPat () <$> constructorParser 
+                               <*> (fromMaybe [] <$> optional (components annPatternParser))
     parseRecord    = recordPat () <$> rowParser annPatternParser rowPat
 
 -- >>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>
@@ -249,11 +251,14 @@ exprParser = makeExprParser (try lambdaParser <|> try (parens exprParser) <|> pa
         <*> (keyword "then" *> annExprParser)
         <*> (keyword "else" *> annExprParser)
 
-    parseLet = 
-        keyword "let" >> letExpr () 
-            <$> (try parseFunLet <|> parseNormalLet)
-            <*> (symbol "=" *> annExprParser)
-            <*> (keyword "in" *> annExprParser)
+    parseLet = do
+        keyword "let"
+        bind <- try parseFunLet <|> parseNormalLet
+        expr <- parseLetRhs <* symbol "in"
+        letExpr () bind expr <$> annExprParser
+
+    parseLetRhs = try (funExpr () <$> some parseClause) 
+      <|> (symbol "=" *> annExprParser)
 
     parseMatch = patExpr () 
         <$> (keyword "match" *> annExprParser)
@@ -278,14 +283,15 @@ exprParser = makeExprParser (try lambdaParser <|> try (parens exprParser) <|> pa
         pure [Guard [] expr]
 
     parseFunLet    = BFun () <$> nameParser <*> argParser annPatternParser
-    parseNormalLet = BLet () <$> patternParser
+    parseNormalLet = BLet () <$> annPatternParser
 --    parseFix       = undefined
     parseFun       = keyword "fun" *> (funExpr () <$> some parseClause)
     parseVar       = varExpr () <$> nameParser
     parseLit       = litExpr () <$> primParser
     parseList      = listExpr () <$> elements annExprParser
     parseTuple     = tupleExpr () <$> components exprParser
-    parseCon       = conExpr () <$> constructorParser <*> components exprParser
+    parseCon       = conExpr () <$> constructorParser 
+                                <*> (fromMaybe [] <$> optional (components annExprParser))
     parseRecord    = recordExpr () <$> rowParser annExprParser rowExpr
 
 lambdaParser :: Parser (ProgExpr ())
