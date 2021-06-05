@@ -73,7 +73,7 @@ instance (Pretty a, ToRep a) => ToRep (PredicateT a) where
     toRep = withPretty predicateRep
 
 instance ToRep Error where
-    toRep = errorRep
+    toRep = withPretty errorRep
 
 instance ToRep Core where
     toRep = coreRep
@@ -241,4 +241,3 @@ valueRep = \case
     Tau.Value prim      -> makeRep "Value" "Prim"     [toRep prim]
     Tau.Data con args   -> makeRep "Value" "Data"     [String con, toRep args]
     Tau.PrimFun f _ vs  -> makeRep "Value" "PrimFun"  [String f, String "<<internal>>", toRep vs]
-    Tau.Closure f _ _   -> makeRep "Value" "Closure"  [String f, String "<<internal>>", String "<<internal>>"]

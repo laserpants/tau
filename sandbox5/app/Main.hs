@@ -6,6 +6,7 @@
 {-# LANGUAGE RecordWildCards       #-}
 module Main where
 
+import System.Environment 
 import Control.Monad.Except
 import Control.Monad.Identity
 import Control.Monad.Reader
@@ -38,6 +39,7 @@ import Tau.Pretty
 import Tau.Prog
 import Tau.Tool
 import Tau.Type
+import Text.Megaparsec
 import qualified Tau.Compiler.Substitute as Sub
 import qualified Tau.Env as Env
 import qualified Data.ByteString.Lazy as LBS
@@ -665,7 +667,7 @@ test556 = tRowExtend "b" tInt (tRowExtend "a" tString (tRowExtend "c" tBool (tVa
 
 --test555 = Fix (TApp (Fix (KCon "Row")) (Fix (TApp (Fix (KArr (Fix (KCon "Row")) (Fix (KCon "Row")))) (Fix (TCon (Fix (KArr (Fix (KCon "*")) (Fix (KArr (Fix (KCon "Row")) (Fix (KCon "Row")))))) "{b}")) (Fix (TCon (Fix (KCon "*")) "Int")))) (Fix (TCon (Fix (KCon "Row")) "{}")))
 
-test123 = do
+test123 expr = do
     let xx = toRep (getAst ee)
     LBS.writeFile "/home/laserpants/play/ast-folder-tree/ast-folder-tree/src/testData2.json" (encode xx)
     let xx1 = toRep ef
@@ -767,7 +769,7 @@ test123 = do
 --    expr :: ProgExpr ()
 --    --expr = lamExpr () [varPat () "x", varPat () "y"] (appExpr () [varExpr () "(+)", varExpr () "x", varExpr () "y"])
 
-    expr :: ProgExpr ()
+--    expr :: ProgExpr ()
     --expr = op2Expr () (OAdd ()) (litExpr () (TInt 1)) (litExpr () (TInt 2))
 
 --    expr = letExpr () (BLet () (varPat () "v")) (op2Expr () (OAdd ()) (litExpr () (TInt 1)) (litExpr () (TInt 2))) ((op2Expr () (OAdd ()) (varExpr () "v") (litExpr () (TInt 2))))
@@ -789,13 +791,13 @@ test123 = do
 --            [ Clause () [ litPat () (TInt 3) ] [ Guard [] (litExpr () (TBool True)) ]
 --            , Clause () [ litPat () (TInt 5) ] [ Guard [] (litExpr () (TBool False)) ]
 --            ]
-
-    expr = 
-        patExpr () ( conExpr () "Some" [litExpr () (TBool True)] ) 
-            [ Clause () ( conPat () "Some" [litPat () (TBool True)] ) [ Guard [] (annExpr tInt (litExpr () (TInt 1))) ]
-            , Clause () ( conPat () "Some" [litPat () (TBool False)] ) [ Guard [] (litExpr () (TInt 2)) ]
-            ]
-
+--
+--    expr = 
+--        patExpr () ( conExpr () "Some" [litExpr () (TBool True)] ) 
+--            [ Clause () ( conPat () "Some" [litPat () (TBool True)] ) [ Guard [] (annExpr tInt (litExpr () (TInt 1))) ]
+--            , Clause () ( conPat () "Some" [litPat () (TBool False)] ) [ Guard [] (litExpr () (TInt 2)) ]
+--            ]
+--
 
 --    expr = 
 --        funExpr () 
@@ -1011,7 +1013,11 @@ test3 = u :: Either UnificationError (Substitution Type, Substitution Kind)
 
 main :: IO ()
 main = do
-    pure ()
+    [a] <- getArgs
+    case doParse (pack a) of
+        Right e -> test123 e
+  where
+    doParse a = runParser exprParser "" a
 -- print "Main"
 
 testKindEnv :: KindEnv
