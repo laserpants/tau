@@ -59,9 +59,6 @@ translate1
   :: ProgExpr (TypeInfoT [Error] (Maybe Type))
   -> ProgExpr (TypeInfoT [Error] (Maybe Type))
 translate1 = cata $ \case
-
-    ERow    t lab a b    -> rowExpr   t lab a b 
-
     EVar    t var        -> varExpr   t var
     ECon    t con es     -> conExpr   t con es
     ELit    t prim       -> litExpr   t prim
@@ -76,6 +73,7 @@ translate1 = cata $ \case
     EOp2    t op a b     -> op2Expr   t op a b
     ETuple  t es         -> tupleExpr t es
     EList   t es         -> listExpr  t es
+    ERow    t lab a b    -> rowExpr   t lab a b 
 
 translate2
   :: ProgExpr (TypeInfoT [Error] (Maybe Type))

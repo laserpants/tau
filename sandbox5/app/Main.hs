@@ -1018,6 +1018,7 @@ test3 = u :: Either UnificationError (Substitution Type, Substitution Kind)
 main :: IO ()
 main = do
     [a] <- getArgs
+    --let a = "{ a = 6 }" 
     case doParse (pack a) of
         Right e -> test123 e
   where
@@ -1038,6 +1039,7 @@ testTypeEnv = Env.fromList
     , ( "(::)"   , Forall [kTyp] [] (tGen 0 `tArr` tList (tGen 0) `tArr` tList (tGen 0)) )
     , ( "[]"     , Forall [kTyp] [] (tList (tGen 0)) )
     , ( "(+)"    , Forall [kTyp] [InClass "Num" 0] (tGen 0 `tArr` tGen 0 `tArr` tGen 0) )
+    , ( "#"      , Forall [kRow] [] (tGen 0 `tArr` tApp kTyp tRecordCon (tGen 0)) )
     ]
 
 testClassEnv :: ClassEnv
