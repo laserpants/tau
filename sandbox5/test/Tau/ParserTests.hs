@@ -83,16 +83,24 @@ testAnnPatternParser = do
         (annPat tInt (orPat () (varPat () "x") (litPat () (TInteger 5))))
 
     suceedParse annPatternParser
-        "x or (5 : Int)"
-        (orPat () (varPat () "x") (annPat tInt (litPat () (TInteger 5))))
-
-    suceedParse annPatternParser
         "(x or 5 : Int)"
         (annPat tInt (orPat () (varPat () "x") (litPat () (TInteger 5))))
 
     suceedParse annPatternParser
         "((x or 5 : Int))"
         (annPat tInt (orPat () (varPat () "x") (litPat () (TInteger 5))))
+
+    suceedParse annExprParser
+        "let f(x : Int) = x in f"
+        (letExpr () (BFun () "f" [annPat tInt (varPat () "x")]) (varExpr () "x") (varExpr () "f"))
+
+    suceedParse annPatternParser
+        "_ as x : Int"
+        (annPat tInt (asPat () "x" (anyPat ())))
+
+    suceedParse annPatternParser
+        "((_ as x : Int))"
+        (annPat tInt (asPat () "x" (anyPat ())))
 
 testExprParser :: SpecWith ()
 testExprParser = do

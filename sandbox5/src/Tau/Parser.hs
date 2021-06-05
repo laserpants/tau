@@ -137,15 +137,14 @@ primParser = parseUnit
 -- >>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>
 
 annPatternParser :: Parser (ProgPattern ())
-annPatternParser = makeExprParser (try (parens annPatternParser) <|> patternParser)
+annPatternParser = makeExprParser (try (parens annPatternParser) <|> patternParser) 
     [[ Postfix (symbol ":" *> (annPat <$> typeParser)) ]]
 
 patternParser :: Parser (ProgPattern ())
-patternParser = makeExprParser parser
+patternParser = makeExprParser (try (parens patternParser) <|> parser)
     [ [ InfixR (orPat () <$ symbol "or") ]
     , [ Postfix parseAsPattern ]
     , [ InfixR (listPatCons () <$ symbol "::") ]
-    , [ Postfix (symbol ":" *> (annPat <$> typeParser)) ]
     ]
   where
     parser = parseWildcard
@@ -153,17 +152,17 @@ patternParser = makeExprParser parser
       <|> parseLit
       <|> parseCon
       <|> parseList
-      <|> try (parens patternParser) <|> parseTuple
+      <|> parseTuple
       <|> parseRecord
 
     parseWildcard  = symbol "_" $> anyPat ()
     parseAsPattern = keyword "as" >> asPat () <$> nameParser
     parseVar       = varPat () <$> nameParser
     parseLit       = litPat () <$> primParser
-    parseList      = listPat () <$> elements patternParser
-    parseTuple     = tuplePat () <$> components patternParser
-    parseCon       = conPat () <$> constructorParser <*> components patternParser
-    parseRecord    = recordPat () <$> rowParser patternParser rowPat
+    parseList      = listPat () <$> elements annPatternParser
+    parseTuple     = tuplePat () <$> components annPatternParser
+    parseCon       = conPat () <$> constructorParser <*> components annPatternParser
+    parseRecord    = recordPat () <$> rowParser annPatternParser rowPat
 
 -- >>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>
 
@@ -278,7 +277,7 @@ exprParser = makeExprParser (try lambdaParser <|> try (parens exprParser) <|> pa
         expr <- symbol "=>" *> exprParser
         pure [Guard [] expr]
 
-    parseFunLet    = BFun () <$> nameParser <*> argParser patternParser
+    parseFunLet    = BFun () <$> nameParser <*> argParser annPatternParser
     parseNormalLet = BLet () <$> patternParser
 --    parseFix       = undefined
     parseFun       = keyword "fun" *> (funExpr () <$> some parseClause)
