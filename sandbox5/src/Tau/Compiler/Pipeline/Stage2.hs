@@ -87,20 +87,20 @@ expandTypeClasses expr =
         EVar t var ->
             foldrM applyDicts (varExpr (nodeType t) var) (nodePredicates t)
 
-        ELit   t lit      -> pure (litExpr (nodeType t) lit)
-        ECon   t con es   -> conExpr (nodeType t) con <$> sequence es
-        EApp   t es       -> appExpr (nodeType t) <$> sequence es
-        ELam   t ps e     -> lamExpr (nodeType t) (translatePatterns <$> ps) <$> e
-        EIf    t e1 e2 e3 -> ifExpr  (nodeType t) <$> e1 <*> e2 <*> e3
-        EPat   t expr cs  -> patExpr (nodeType t) <$> expr <*> (translateClauses <$$> traverse sequence cs)
+        ELit   t lit       -> pure (litExpr (nodeType t) lit)
+        ECon   t con es    -> conExpr (nodeType t) con <$> sequence es
+        EApp   t es        -> appExpr (nodeType t) <$> sequence es
+        ELam   t ps e      -> lamExpr (nodeType t) (translatePatterns <$> ps) <$> e
+        EIf    t e1 e2 e3  -> ifExpr  (nodeType t) <$> e1 <*> e2 <*> e3
+        EPat   t expr cs   -> patExpr (nodeType t) <$> expr <*> (translateClauses <$$> traverse sequence cs)
 
     translateClauses = \case
         SimplifiedClause t ps g -> 
             SimplifiedClause (nodeType t) (translatePatterns <$> ps) g
 
     translateBinding = \case
-        BLet t p         -> BLet (nodeType t) (translatePatterns p)
-        BFun t name ps   -> BFun (nodeType t) name (translatePatterns <$> ps)
+        BLet t p           -> BLet (nodeType t) (translatePatterns p)
+        BFun t name ps     -> BFun (nodeType t) name (translatePatterns <$> ps)
 
     translatePatterns = cata $ \case
         PVar    t var      -> varPat   (nodeType t) var

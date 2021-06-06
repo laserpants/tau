@@ -950,21 +950,22 @@ mapExpr2 f = cata $ \case
     ELet    t bind e1 e2   -> letExpr    (f t) (mapBind bind) e1 e2
   where
     mapBind = \case
-        BLet    t p          -> BLet     (f t) (mapPattern p)
-        BFun    t name ps    -> BFun     (f t) name (mapPattern <$> ps)
+        BLet    t p        -> BLet       (f t) (mapPattern p)
+        BFun    t name ps  -> BFun       (f t) name (mapPattern <$> ps)
 
     mapClause = \case
         SimplifiedClause t ps g -> SimplifiedClause (f t) (mapPattern <$> ps) g
 
     mapPattern = cata $ \case
-        PVar    t var        -> varPat   (f t) var
-        PCon    t con ps     -> conPat   (f t) con ps
-        PLit    t prim       -> litPat   (f t) prim
-        PAs     t as p       -> asPat    (f t) as p
-        POr     t p q        -> orPat    (f t) p q
-        PAny    t            -> anyPat   (f t)
-        PTuple  t ps         -> tuplePat (f t) ps
-        PList   t ps         -> listPat  (f t) ps
+        PVar    t var      -> varPat     (f t) var
+        PCon    t con ps   -> conPat     (f t) con ps
+        PLit    t prim     -> litPat     (f t) prim
+        PAs     t as p     -> asPat      (f t) as p
+        POr     t p q      -> orPat      (f t) p q
+        PAny    t          -> anyPat     (f t)
+        PTuple  t ps       -> tuplePat   (f t) ps
+        PList   t ps       -> listPat    (f t) ps
+        PRow    t lab p q  -> rowPat     (f t) lab p q
 --            PRecord t row        -> recordPat  (f t) row
 
 
@@ -1018,7 +1019,8 @@ test3 = u :: Either UnificationError (Substitution Type, Substitution Kind)
 main :: IO ()
 main = do
     --[a] <- getArgs
-    let a = "let f | Some(x) => x | None => 0 in 123" -- f(Some(5))" 
+    --let a = "let f | Some(x) => x | None => 0 in 123" -- f(Some(5))" 
+    let a = "let f({ name = n }) = n in f({ name = \"Bob\" })" -- f(Some(5))" 
     case doParse (pack a) of
         Right e -> test123 e
   where
