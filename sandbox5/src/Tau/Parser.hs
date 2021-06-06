@@ -100,7 +100,11 @@ components = parens . commaSep
 fields :: Name -> Parser a -> Parser [(Name, a)]
 fields sep parser = commaSep $ (,) <$> nameParser <*> (symbol sep *> parser)
 
-rowParser :: Parser a -> (() -> Name -> a -> Maybe b -> b) -> (() -> Name -> b) -> Parser b
+rowParser 
+  :: Parser a 
+  -> (() -> Name -> a -> Maybe b -> b) 
+  -> (() -> Name -> b) 
+  -> Parser b
 rowParser parser rowCon varCon = braces $ do
     pairs <- fields "=" parser
     rest  <- optional (symbol "|" *> nameParser)
@@ -265,7 +269,7 @@ exprParser = makeExprParser (try lambdaParser <|> try (parens exprParser) <|> pa
         letExpr () bind expr <$> annExprParser
 
     parseLetRhs = try (funExpr () <$> some parseClause) 
-      <|> (symbol "=" *> annExprParser)
+        <|> (symbol "=" *> annExprParser)
 
     parseMatch = patExpr () 
         <$> (keyword "match" *> annExprParser)
