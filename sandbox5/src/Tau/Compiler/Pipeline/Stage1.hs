@@ -141,6 +141,7 @@ translateFunExpr t =
     get f = fmap (f . project) (nodeType t)
 
     cod (TArr t1 _) = t1
+    cod x = traceShow x $ undefined
     dom (TArr _ t2) = t2
 
 targetExprTag :: TargetExpr t -> t

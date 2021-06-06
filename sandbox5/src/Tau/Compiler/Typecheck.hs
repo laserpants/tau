@@ -199,16 +199,16 @@ inferExprType = cata $ \case
         pure (e1, e2, e3)
 
     EPat _ expr eqs -> inferExprNode (args2 patExpr) $ do
-        e1  <- exprNode expr
-        es2 <- lift (traverse (inferClauseType (typeOf e1)) eqs)
-        insertPredicates (clausePredicates =<< es2)
+        e1 <- exprNode expr
+        cs <- lift (traverse (inferClauseType (typeOf e1)) eqs)
+        insertPredicates (clausePredicates =<< cs)
         -- Unify pattern clauses
-        forM_ es2 $ \(Clause t p gs) -> do
+        forM_ cs $ \(Clause t p gs) -> do
             forM_ gs (\(Guard _ e) -> unfiyWithNode (typeOf e))
             unfiyWithNode (typeOf t)
             unifyWith (typeOf e1) p
 
-        pure (e1, es2)
+        pure (e1, cs)
 
 --        es1 <- traverse exprNode exprs
 --        es2 <- lift (traverse (inferClauseType (typeOf <$> es1)) eqs)
@@ -221,21 +221,32 @@ inferExprType = cata $ \case
 --
 --        pure (es1, es2)
 
-    EFun _ eqs@(Clause _ p _:_) -> inferExprNode funExpr $ do
+    EFun _ eqs -> inferExprNode funExpr $ do
         ty <- newTVar 
-        t1 <- newTVar 
-        es <- lift (traverse (inferClauseType t1) eqs)
+        t1 <- thisNodeType
+        cs <- lift (traverse (inferClauseType t1) eqs)
+        insertPredicates (clausePredicates =<< cs)
+        -- Unify pattern clauses
+        forM_ cs $ \(Clause t p gs) -> do
+            forM_ gs (\(Guard _ e) -> t ## e >> t1 ## (ty `tArr` typeOf e))
+            p ## ty
 
-        -- Unify return type with r.h.s. of arrow in clauses
-        forM_ (clauseGuards =<< es) (\(Guard _ e) -> e ## (ty :: Type))
-        -- Also unify return type with the type of clause itself
-        forM_ es (unifyWith (ty :: Type) . clauseTag)
-        -- Check pattern types
-        forM_ (clausePatterns <$> es) (unifyWith t1)
+        pure cs
 
-        insertPredicates (clausePredicates =<< es)
-        unfiyWithNode t1
-        pure es
+----        ty <- newTVar 
+----        t1 <- newTVar 
+----        es <- lift (traverse (inferClauseType t1) eqs)
+----
+----        -- Unify return type with r.h.s. of arrow in clauses
+----        forM_ (clauseGuards =<< es) (\(Guard _ e) -> e ## (ty :: Type))
+----        -- Also unify return type with the type of clause itself
+----        forM_ es (unifyWith (ty :: Type) . clauseTag)
+----        -- Check pattern types
+----        forM_ (clausePatterns <$> es) (unifyWith t1)
+----
+----        insertPredicates (clausePredicates =<< es)
+------        unfiyWithNode t1
+----        pure es
 
 --        ty <- newTVar 
 --        ts <- newTVars (length ps)
@@ -548,7 +559,7 @@ inferClauseType ty eq@(Clause _ pat _) = inferExprNode (args2 Clause) $ do
     let schemes = toScheme <$$> vs
         Clause _ _ guards = local (inTypeEnv (Env.inserts schemes)) <$> eq
         (iffs, es) = unzip (guardToPair <$> guards)
-    -- Conditions must be Bool
+    -- Iff-conditions must be Bool
     forM_ (concat iffs) unifyIffCondition
     gs <- traverse inferGuard guards
     pure (p, gs)

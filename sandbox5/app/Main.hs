@@ -1017,8 +1017,8 @@ test3 = u :: Either UnificationError (Substitution Type, Substitution Kind)
 
 main :: IO ()
 main = do
-    -- [a] <- getArgs
-    let a = "{ a = 6 }" 
+    --[a] <- getArgs
+    let a = "let f | Some(x) => x | None => 0 in 123" -- f(Some(5))" 
     case doParse (pack a) of
         Right e -> test123 e
   where

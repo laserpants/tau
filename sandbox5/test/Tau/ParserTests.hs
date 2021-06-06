@@ -274,6 +274,9 @@ testExprParserMatch = do
                   ]
             ])
 
+--    suceedParse exprParser
+--        "x.y"
+
 testAnnExprParser :: SpecWith ()
 testAnnExprParser = do
 
