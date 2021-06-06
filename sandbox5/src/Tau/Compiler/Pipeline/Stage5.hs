@@ -83,7 +83,7 @@ translate = cata $ \case
             PLit t prim -> do
                 var <- supply
                 tell [ appExpr (Just tBool)
-                       [ varExpr (ty <$> t) ("@" <> literalName prim <> ".(==)")
+                       [ varExpr (ty <$> t) ("@" <> primName prim <> ".(==)")
                        , varExpr t var
                        , litExpr t prim ]]
                 pure (varPat t var)

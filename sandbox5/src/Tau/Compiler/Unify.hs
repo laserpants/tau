@@ -2,6 +2,7 @@
 {-# LANGUAGE LambdaCase        #-}
 {-# LANGUAGE OverloadedStrings #-}
 {-# LANGUAGE StrictData        #-}
+{-# LANGUAGE TupleSections     #-}
 module Tau.Compiler.Unify where
 
 import Control.Applicative ((<|>))
@@ -105,12 +106,12 @@ bindType name kind ty
 unifyTypes t u = fn (project t) (project u)
   where
     fn (TArr t1 t2) (TArr u1 u2)              = unifyTypePairs (t1, t2) (u1, u2)
---    fn TApp{} TApp{} | isRowType t 
---                    && isRowType u            = unifyRowTypes t u
     fn (TApp _ t1 t2) (TApp _ u1 u2)          = unifyTypePairs (t1, t2) (u1, u2)
+    fn (TRow lab1 t1 t2) (TRow lab2 u1 u2)    = undefined
     fn (TVar kind name) _                     = bindType name kind u
     fn _ (TVar kind name)                     = bindType name kind t
-    fn _ _ | t == u                           = pure mempty
+    fn _ _ | t == u                           = pure mempty -- TODO only compare types without kind
+--    fn (TVar k1 a) (TVar k2 b) | a == b       = (mempty ,) <$> unifyKinds k1 k2
     fn _ _                                    = throwError IncompatibleTypes
 
 --unifyTypes

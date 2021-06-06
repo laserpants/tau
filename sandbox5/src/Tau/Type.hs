@@ -29,15 +29,15 @@ type Kind = Fix KindF
 data TypeF k i a 
     = TVar k Name             -- ^ Type variable
     | TCon k Name             -- ^ Type constructor
+    | TRow Name a a           -- ^ Row type
     | TApp k a a              -- ^ Type application
     | TArr a a                -- ^ Function type
---    | TRow Name a
     | TGen i                  -- ^ Quantified type variable
 
 -- | Type 
 type TypeT i = Fix (TypeF Kind i)
 
--- | Standalone type (a type that is not part of a type scheme)
+-- | Standalone type (a type that is not embedded in a type scheme)
 type Type = TypeT Void
 
 -- | A type which appears in a type scheme and therefore may contain quantified 
@@ -59,13 +59,13 @@ data Scheme = Forall [Kind] [PredicateT Int] Polytype
 
 -- >>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>
 
--- | Class of types that carry type information
+-- | Class of data types that carry type information
 class Typed a where
     typeOf :: a -> Type
 
 -- >>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>
 
--- | Class of types that contain free type variables
+-- | Class of data types that contain free type variables
 class FreeIn t where
     free :: t -> [(Name, Kind)]
 
@@ -218,10 +218,11 @@ leftmostTypeCon = cata $ \case
 
 kindOf :: Type -> Kind
 kindOf = project >>> \case
-    TVar k _     -> k
-    TCon k _     -> k
-    TApp k _ _   -> k
-    TArr _ _     -> kTyp
+    TVar o _     -> o
+    TCon o _     -> o
+    TApp o _ _   -> o
+    TArr{}       -> kTyp
+    TRow{}       -> kRow
 
 kindVars :: Kind -> [Name]
 kindVars = nub . cata (\case

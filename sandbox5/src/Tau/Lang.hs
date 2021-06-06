@@ -45,8 +45,8 @@ type ProgPattern t = Pattern t t t t t t t t t
 
 -- | Unary operators
 data Op1 t
-    = ONeg t                             -- ^ Unary negation
-    | ONot t                             -- ^ Logical NOT
+    = ONeg   t                           -- ^ Unary negation
+    | ONot   t                           -- ^ Logical NOT
 
 -- >>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>
 
@@ -117,6 +117,7 @@ data ExprF t1 t2 t3 t4 t5 t6 t7 t8 t9 t10 t11 t12 t13 t14 t15 e1 e2 e3 a
     | ETuple  t13 [a]                    -- ^ Tuple
     | EList   t14 [a]                    -- ^ List literal
     | ERow    t15 Name a (Maybe a)       -- ^ Row expression
+--    | ERow    t15 Name a a       
     | EAnn    Type a                     -- ^ Explicit type annotation
 
 -- | Language expression
@@ -333,6 +334,7 @@ exprTag = cata $ \case
     ETuple  t _     -> t
     EList   t _     -> t
     ERow    t _ _ _ -> t
+    EAnn    _ e     -> e
 
 patternTag :: Pattern t t t t t t t t t -> t
 patternTag = cata $ \case
@@ -345,6 +347,7 @@ patternTag = cata $ \case
     PTuple  t _     -> t
     PList   t _     -> t
     PRow    t _ _ _ -> t
+    PAnn    _ p     -> p
 
 op1Tag :: Op1 t -> t
 op1Tag = \case
@@ -397,8 +400,8 @@ guardToPair (Guard es e) = (es, e)
 
 -- >>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>
 
-literalName :: Prim -> Name
-literalName = \case
+primName :: Prim -> Name
+primName = \case
     TUnit        -> "Unit"
     (TBool    _) -> "Bool"
     (TInt     _) -> "Int"
