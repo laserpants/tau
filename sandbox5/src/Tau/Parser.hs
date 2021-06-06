@@ -282,15 +282,15 @@ exprParser = makeExprParser (try lambdaParser <|> try (parens exprParser) <|> pa
 
     guarded = do
         iffs <- some iffClause
-        last <- optional (keyword "otherwise" *> symbol "=>" *> exprParser)
+        last <- optional (keyword "otherwise" *> symbol "=>" *> annExprParser)
         pure (iffs <> maybe [] (pure . Guard []) last)
 
     iffClause = Guard 
         <$> (keyword "iff" *> (pure <$> exprParser) <* symbol "=>") 
-        <*> exprParser
+        <*> annExprParser
 
     nonGuarded = do
-        expr <- symbol "=>" *> exprParser
+        expr <- symbol "=>" *> annExprParser
         pure [Guard [] expr]
 
     parseFunLet    = BFun () <$> nameParser <*> argParser annPatternParser

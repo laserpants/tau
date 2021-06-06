@@ -26,6 +26,7 @@ data Value m
     | Data Name [Value m]
     | PrimFun Name Fun [Value m]
     | Closure Name (m (Value m)) ~(ValueEnv m)
+    | Fail String -- TODO temp
 
 instance Show (Value m) where
     show (Value lit) = 
@@ -36,6 +37,8 @@ instance Show (Value m) where
         "PrimFun " <> show name <> " " <> show args
     show Closure{} =
         "<<function>>"
+    show (Fail err) =
+        err
 
 instance Eq (Value m) where
     (==) (Value v) (Value w)             = v == w
@@ -104,7 +107,8 @@ evalVar var =
                 Just fun -> evalPrim prim fun []
                 Nothing  -> do
                     traceShowM ("No primitive function " <> Text.unpack prim)
-                    fail ("No primitive function " <> Text.unpack prim)
+                    -- fail ("No primitive function " <> Text.unpack prim)
+                    pure (Fail ("No primitive function " <> Text.unpack prim))
 
         _ -> 
             asks (Env.lookup var) >>= \case
@@ -115,7 +119,8 @@ evalVar var =
                         then pure (Data var []) 
                         else do 
                             traceShowM ("Unbound identifier " <> var)
-                            fail "Unbound identifier"
+                            -- fail "Unbound identifier"
+                            pure (Fail "Unbound identifier")
 
 -- TODO
 isConstructor :: Name -> Bool
@@ -151,6 +156,7 @@ evalPrim name fun args
   where
     literal (Value lit) = pure lit
     literal _           = fail "Runtime error (evalPrim)"
+    --literal _           = pure (Fail "Runtime error (evalPrim)")
 
 evalApp
   :: (MonadFail m, MonadReader (ValueEnv m) m)
@@ -176,7 +182,8 @@ evalPat
   => [([Name], m (Value m))]
   -> Value m
   -> m (Value m)
-evalPat []            _ = fail "Runtime error (evalPat)"
+--evalPat []            _ = fail "Runtime error (evalPat)"
+evalPat []            _ = pure (Fail "Runtime error (evalPat)")
 evalPat [(["$_"], e)] _ = e
 evalPat ((ps@[p, _, _], e):_) val 
     | isRowCon p        = evalRowPat ps val >>= flip local e
@@ -210,15 +217,12 @@ evalPat ((p:ps, e):eqs) val =
 --    fromMap :: Map Name [Value m] -> Value m
 --    fromMap = Map.foldrWithKey (\k -> flip (foldr (\v m -> Data k [v, m]))) (Data "{}" [])  
 
-evalRowPat
-  :: (MonadFail m)
-  => [Name]
-  -> Value m
-  -> m (Env (Value m) -> Env (Value m))
+evalRowPat :: (MonadFail m) => [Name] -> Value m -> m (Env (Value m) -> Env (Value m))
 evalRowPat [p, q, r] val =
     case Map.lookup p pmap of
         Nothing -> 
             fail "Runtime error (evalPat)"
+            --pure (Fail "Runtime error (evalPat)")
 
         Just (v:_) -> 
             pure (Env.inserts [(q, v), (r, fromMap (Map.delete p pmap))]) 

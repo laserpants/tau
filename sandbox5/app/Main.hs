@@ -1019,8 +1019,14 @@ test3 = u :: Either UnificationError (Substitution Type, Substitution Kind)
 main :: IO ()
 main = do
     --[a] <- getArgs
-    --let a = "let f | Some(x) => x | None => 0 in 123" -- f(Some(5))" 
+    --let a = "let f | Some(x) => x | None => 0 in f(Some(5))" -- f(Some(5))" 
+    --let a = "let f | Some(x) => x | None => 0 : Int in f(Some(123))" -- f(Some(5))" 
+    --let a = "let f | Some(x) => x | None => 0 : Int in Some(123).f" -- f(Some(5))" 
+    --let a = "let f(val) | Some(x) => x | None => val : Int in Some(123).f(5)" -- f(Some(5))" 
+    --let a = "let f(val) | Some(x) => x | None => val : Int in None.f(5)" -- f(Some(5))" 
     let a = "let f({ name = n | a }) = n in f({ name = \"Bob\", id = 1 : Int })" -- f(Some(5))" 
+    --let a = "let b = { wat = \"not\" } in { a = True | b }" -- f(Some(5))" 
+    --let a = "let f({ name = n | a }) = a in f({ name = \"Bob\", id = 1 : Int })" -- f(Some(5))" 
     case doParse (pack a) of
         Right e -> test123 e
   where

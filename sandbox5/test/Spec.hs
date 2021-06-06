@@ -19,7 +19,7 @@ main =
 --
 --        describe "Tau.Compiler.Unification.bind"           testBind
 --        describe "Tau.Compiler.Unification.isRow"          testIsRow
---        describe "Tau.Compiler.Unification.unify"          testUnify
+        describe "Tau.Compiler.Unification.unify"          testUnify
 --        describe "Tau.Compiler.Unification.match"          testMatch
 --        describe "Tau.Compiler.Unification.unifyPairs"     testUnifyPairs
 --        describe "Tau.Compiler.Unification.matchPairs"     testMatchPairs

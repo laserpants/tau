@@ -150,6 +150,9 @@ applyDicts (InClass name ty) expr
           [ setWorkingExprTag (tArr t1 <$> workingExprTag expr) expr
           , varExpr (Just t1) tv ])
 
+--    | otherwise = 
+--        pure expr  -- ???????????????? TODO
+
     | otherwise = do
         env <- askClassEnv
         case classMethods <$> lookupClassInstance name ty env of

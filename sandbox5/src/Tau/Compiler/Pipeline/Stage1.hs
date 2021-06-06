@@ -134,14 +134,13 @@ translateFunExpr
 translateFunExpr t =
     lamExpr t [varPat t1 "#0"] <<< patExpr t2 (varExpr t1 "#0")
   where
-    t1 = TypeInfo [] (get cod) (nodePredicates t)
-    t2 = TypeInfo [] (get dom) (nodePredicates t)
+    t1 = TypeInfo [] (get cod) []
+    t2 = TypeInfo [] (get dom) []
 
     get :: (TypeF Kind Void Type -> Type) -> Maybe Type
     get f = fmap (f . project) (nodeType t)
 
     cod (TArr t1 _) = t1
-    cod x = traceShow x $ undefined
     dom (TArr _ t2) = t2
 
 targetExprTag :: TargetExpr t -> t

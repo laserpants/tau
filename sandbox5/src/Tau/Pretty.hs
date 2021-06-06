@@ -811,4 +811,10 @@ instance (Pretty t) => Pretty (TypeInfoT [Error] t) where
 
 -- TODO
 instance Pretty Error where
-    pretty = pretty . show
+    pretty = \case 
+        CannotUnify t1 t2 err -> ("CannotUnify [" <> pretty t1 <> "] ~ [" <> pretty t2 <> "] " <> pretty err)
+        e -> pretty (show e)
+
+instance Pretty UnificationError where
+    pretty = \case 
+        e -> pretty (show e)

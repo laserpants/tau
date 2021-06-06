@@ -31,6 +31,7 @@ data TypeF k i a
     | TCon k Name             -- ^ Type constructor
     | TApp k a a              -- ^ Type application
     | TArr a a                -- ^ Function type
+--    | TRow Name a
     | TGen i                  -- ^ Quantified type variable
 
 -- | Type 
