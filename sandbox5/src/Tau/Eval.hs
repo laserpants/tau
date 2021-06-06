@@ -129,6 +129,7 @@ isConstructor var
     | "(::)" == var   = True
     | "(,)" == var    = True
     | "[]" == var     = True
+    | "#" == var      = True
 --    | isTupleCon var  = True
 --    | isRecordCon var = True
     -- TODO
@@ -149,7 +150,7 @@ evalPrim name fun args
         pure (PrimFun name fun args)
   where
     literal (Value lit) = pure lit
-    literal _ = fail "Runtime error (evalPrim)"
+    literal _           = fail "Runtime error (evalPrim)"
 
 evalApp
   :: (MonadFail m, MonadReader (ValueEnv m) m)

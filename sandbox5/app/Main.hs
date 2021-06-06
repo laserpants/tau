@@ -1111,6 +1111,7 @@ testConstructorEnv = constructorEnv
     , ("(::)"     , ( ["[]", "(::)"], 2 ))
     , ("(,)"      , ( ["(,)"], 2 ))
     , ("Foo"      , ( ["Foo"], 2 ))
+    , ("#"        , ( ["#"], 1 ))
     ]
 
 --foz1 = case \x -> 1 of
