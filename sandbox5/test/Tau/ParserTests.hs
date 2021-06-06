@@ -274,8 +274,17 @@ testExprParserMatch = do
                   ]
             ])
 
---    suceedParse exprParser
---        "x.y"
+    suceedParse exprParser
+        "x.f"
+        (appExpr () [varExpr () "f", varExpr () "x"])
+
+    suceedParse exprParser
+        "xs.map(f)"
+        (appExpr () [appExpr () [varExpr () "map", varExpr () "f"], varExpr () "xs"]) 
+
+    suceedParse exprParser
+        "xs.map((x) => x + 1)"
+        (appExpr () [appExpr () [varExpr () "map", lamExpr () [varPat () "x"] (op2Expr () (OAdd ()) (varExpr () "x") (litExpr () (TInteger 1)))], varExpr () "xs"]) 
 
 testAnnExprParser :: SpecWith ()
 testAnnExprParser = do

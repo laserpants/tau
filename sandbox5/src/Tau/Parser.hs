@@ -215,7 +215,14 @@ operator =
       ]
     , [ Postfix postfixFunArgParser
       ]
+    , [ Postfix postfixDotAppParser
+      ]
     ]
+
+postfixDotAppParser :: Parser (ProgExpr () -> ProgExpr ())
+postfixDotAppParser = do
+    fun <- symbol "." *> annExprParser
+    pure (\expr -> appExpr () [fun, expr])
 
 postfixFunArgParser :: Parser (ProgExpr () -> ProgExpr ())
 postfixFunArgParser = do
