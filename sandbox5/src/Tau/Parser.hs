@@ -98,14 +98,14 @@ components :: Parser a -> Parser [a]
 components = parens . commaSep 
 
 fields :: Name -> Parser a -> Parser [(Name, a)]
-fields sep parser = 
-    braces $ commaSep $ (,) <$> nameParser <*> (symbol sep *> parser)
+fields sep parser = commaSep $ (,) <$> nameParser <*> (symbol sep *> parser)
 
-rowParser :: Parser a -> (() -> Name -> a -> Maybe b -> b) -> Parser b
-rowParser parser rowCon = do
+rowParser :: Parser a -> (() -> Name -> a -> Maybe b -> b) -> (() -> Name -> b) -> Parser b
+rowParser parser rowCon varCon = braces $ do
     pairs <- fields "=" parser
+    rest  <- optional (symbol "|" *> nameParser)
     case pairs of
-        (label, value):ps -> pure (foldr fn (rowCon () label value Nothing) ps)
+        (label, value):ps -> pure (foldr fn (rowCon () label value (varCon () <$> rest)) ps)
         _                 -> fail "Empty record"
   where
     fn a = uncurry (rowCon ()) a . Just
@@ -164,7 +164,7 @@ patternParser = makeExprParser (try (parens patternParser) <|> parser)
     parseTuple     = tuplePat () <$> components annPatternParser
     parseCon       = conPat () <$> constructorParser 
                                <*> (fromMaybe [] <$> optional (components annPatternParser))
-    parseRecord    = recordPat () <$> rowParser annPatternParser rowPat
+    parseRecord    = recordPat () <$> rowParser annPatternParser rowPat varPat
 
 -- >>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>
 
@@ -299,7 +299,7 @@ exprParser = makeExprParser (try lambdaParser <|> try (parens exprParser) <|> pa
     parseTuple     = tupleExpr () <$> components exprParser
     parseCon       = conExpr () <$> constructorParser 
                                 <*> (fromMaybe [] <$> optional (components annExprParser))
-    parseRecord    = recordExpr () <$> rowParser annExprParser rowExpr
+    parseRecord    = recordExpr () <$> rowParser annExprParser rowExpr varExpr
 
 lambdaParser :: Parser (ProgExpr ())
 lambdaParser = lamExpr () <$> argParser patternParser <*> (symbol "=>" *> annExprParser)

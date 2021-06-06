@@ -1020,7 +1020,7 @@ main :: IO ()
 main = do
     --[a] <- getArgs
     --let a = "let f | Some(x) => x | None => 0 in 123" -- f(Some(5))" 
-    let a = "let f({ name = n }) = n in f({ name = \"Bob\" })" -- f(Some(5))" 
+    let a = "let f({ name = n | a }) = n in f({ name = \"Bob\", id = 1 : Int })" -- f(Some(5))" 
     case doParse (pack a) of
         Right e -> test123 e
   where
