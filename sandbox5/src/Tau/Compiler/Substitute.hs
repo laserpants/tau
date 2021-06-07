@@ -157,6 +157,7 @@ instance Substitutable (TypeT a) Kind where
         TCon k con           -> tCon (apply sub k) con
         TApp k t1 t2         -> tApp (apply sub k) t1 t2
         TArr t1 t2           -> tArr t1 t2
+        TRow label t1 t2     -> tRow label t1 t2
 
 -- >>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>
 

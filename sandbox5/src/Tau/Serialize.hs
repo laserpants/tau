@@ -110,6 +110,7 @@ typeJson = project >>> \case
     TCon k con          -> makeRep "Type" "TCon"      [String con]
     TApp k t1 t2        -> makeRep "Type" "TApp"      [toRep k, toRep t1, toRep t2]
     TArr t1 t2          -> makeRep "Type" "TArr"      [toRep t1, toRep t2]
+    TRow label t1 t2    -> makeRep "Type" "TRow"      [String label, toRep t1, toRep t2]
 
 kindJson :: Kind -> Value
 kindJson = project >>> \case

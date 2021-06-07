@@ -190,20 +190,6 @@ isListType = project >>> \case
             _ -> False
     _         -> False
 
-isRowType :: Type -> Bool
-isRowType = project >>> \case
-    TApp _ a _ ->
-        case project a of
-            TApp _ b _ ->
-                case project b of
-                    TCon _ con | isRowCon con -> True
-                    _ -> False
-            _         -> False
-    _                 -> False
-  where
-    isRowCon ""  = False
-    isRowCon con = Text.head con == '{' && Text.last con == '}'
-
 isTupleType :: Type -> Bool
 isTupleType ty = Just True == maybeIsTupleCon
   where
@@ -218,9 +204,9 @@ leftmostTypeCon = cata $ \case
 
 kindOf :: Type -> Kind
 kindOf = project >>> \case
-    TVar o _     -> o
-    TCon o _     -> o
-    TApp o _ _   -> o
+    TVar a _     -> a
+    TCon a _     -> a
+    TApp a _ _   -> a
     TArr{}       -> kTyp
     TRow{}       -> kRow
 
@@ -243,6 +229,7 @@ toPolytype = cata $ \case
     TCon k con   -> tCon k con
     TApp k t1 t2 -> tApp k t1 t2
     TArr t1 t2   -> tArr t1 t2
+    TRow n t1 t2 -> tRow n t1 t2 
 
 fromPolytype :: [Type] -> Polytype -> Type
 fromPolytype ts = cata $ \case
@@ -251,6 +238,7 @@ fromPolytype ts = cata $ \case
     TVar k var   -> tVar k var
     TCon k con   -> tCon k con
     TArr t1 t2   -> tArr t1 t2
+    TRow n t1 t2 -> tRow n t1 t2
 
 toScheme :: Type -> Scheme
 toScheme = Forall [] [] . toPolytype
@@ -315,6 +303,9 @@ infixr 1 `tArr`
 tApp :: Kind -> TypeT a -> TypeT a -> TypeT a
 tApp = embed3 TApp
 
+tRow :: Name -> TypeT a -> TypeT a -> TypeT a
+tRow = embed3 TRow
+
 typ :: Name -> TypeT a
 typ = tCon kTyp
 
@@ -373,14 +364,8 @@ tTriple t1 t2 t3 = tTuple [t1, t2, t3]
 
 -- Rows
 
-tRowCon :: Name -> TypeT a
-tRowCon label = tCon (kTyp `kArr` kRow `kArr` kRow) ("{" <> label <> "}")
-
 tRowNil :: TypeT a
 tRowNil = tCon kRow "{}"
-
-tRowExtend :: Name -> TypeT a -> TypeT a -> TypeT a
-tRowExtend label ty = tApp kRow (tApp (kRow `kArr` kRow) (tRowCon label) ty)
 
 -- Records
 

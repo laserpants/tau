@@ -67,6 +67,11 @@ inferKind = cata $ \case
 --        runUnifyKinds (kArr (kindOf t2) k) (kindOf t1)
         pure (tApp k t1 t2)
 
+    TRow label ty1 ty2 -> do
+        t1 <- ty1 
+        t2 <- ty2 
+        pure (tRow label t1 t2)
+
 lookupKind
   :: ( MonadReader (ClassEnv, TypeEnv, KindEnv, ConstructorEnv) m
      , MonadState (a1, Substitution a2, c) m
@@ -303,9 +308,9 @@ inferExprType = cata $ \case
 
         let t1 = case es of
               Nothing -> tRowNil
-              Just t  -> foldr (uncurry tRowExtend) (exprBaseRow t) (exprRowExts t)
+              Just t  -> foldr (uncurry tRow) (exprBaseRow t) (exprRowExts t)
 
-        unfiyWithNode (tRowExtend label (nodeType (exprTag e)) t1)
+        unfiyWithNode (tRow label (nodeType (exprTag e)) t1)
         pure (label, e, es)
 
     EAnn t expr -> do
@@ -449,9 +454,9 @@ inferPatternType = cata $ \case
 
         let t1 = case ps of
               Nothing -> tRowNil
-              Just t  -> foldr (uncurry tRowExtend) (patternBaseRow t) (patternRowExts t)
+              Just t  -> foldr (uncurry tRow) (patternBaseRow t) (patternRowExts t)
 
-        unfiyWithNode (tRowExtend label (nodeType (patternTag p)) t1)
+        unfiyWithNode (tRow label (nodeType (patternTag p)) t1)
         pure (label, p, ps)
 
 patternRowExts :: ProgPattern (TypeInfo [Error]) -> [(Name, Type)] 

@@ -131,6 +131,9 @@ prettyType = para $ \case
     TVar _ var -> pretty var
     TCon _ con -> pretty con
 
+    TRow label t1 t2 -> 
+        "{" <> pretty label <> "}" <+> snd t1 <+> "(" <> snd t2 <> ")"
+
 -- >>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>
 
 instance (Pretty a) => Pretty (PredicateT a) where

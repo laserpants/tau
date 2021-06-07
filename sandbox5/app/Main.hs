@@ -97,23 +97,23 @@ tArrUp _ = Nothing
 
 ---- ----test3 = unifyRows (typeToRowX r1) (typeToRowX r2) :: Either UnificationError TypeSubstitution
 ---- ----  where
----- ----    r1 = tRowExtend "name" tString (tRowExtend "id" tInt tEmptyRow)
----- ----    r2 = tRowExtend "id" tString (tRowExtend "name" tInt tEmptyRow)
+---- ----    r1 = tRow "name" tString (tRow "id" tInt tEmptyRow)
+---- ----    r2 = tRow "id" tString (tRow "name" tInt tEmptyRow)
 ---- ----
 ---- ----test4 = unifyRows (typeToRowX r1) (typeToRowX r2) :: Either UnificationError TypeSubstitution
 ---- ----  where
----- ----    r1 = tRowExtend "name" tString (tRowExtend "id" tInt tEmptyRow)
----- ----    r2 = tRowExtend "id" tInt (tRowExtend "name" tString tEmptyRow)
+---- ----    r1 = tRow "name" tString (tRow "id" tInt tEmptyRow)
+---- ----    r2 = tRow "id" tInt (tRow "name" tString tEmptyRow)
 ---- ----
 ---- ----test5 = unifyRows (typeToRowX r1) (typeToRowX r2) :: Either UnificationError TypeSubstitution
 ---- ----  where
----- ----    r1 = tRowExtend "x" tInt (tVar kRow "r")
----- ----    r2 = tRowExtend "x" tInt (tVar kRow "r")
+---- ----    r1 = tRow "x" tInt (tVar kRow "r")
+---- ----    r2 = tRow "x" tInt (tVar kRow "r")
 ---- ----
 ---- ----test6 = unifyRows (typeToRowX r1) (typeToRowX r2) :: Either UnificationError TypeSubstitution
 ---- ----
----- ----r1 = tRowExtend "x" tInt (tVar kRow "r")
----- ----r2 = tRowExtend "y" tInt (tVar kRow "r")
+---- ----r1 = tRow "x" tInt (tVar kRow "r")
+---- ----r2 = tRow "y" tInt (tVar kRow "r")
 ---- ----
 ---- ----
 ---- ----pattern1 = recordPat () (rExt "id" (varPat () "id") (rExt "name" (varPat () "name") rNil)) 
@@ -661,9 +661,9 @@ evalEnv2 = Env.fromList
 test555, test556 :: Type
 --test555 = Fix (TApp (Fix (KCon "Row")) (Fix (TApp (Fix (KArr (Fix (KCon "Row")) (Fix (KCon "Row")))) (Fix (TCon (Fix (KArr (Fix (KCon "*")) (Fix (KArr (Fix (KCon "Row")) (Fix (KCon "Row")))))) "{a}")) (Fix (TVar (Fix (KCon "*")) "a5")))) (Fix (TApp (Fix (KCon "Row")) (Fix (TApp (Fix (KArr (Fix (KCon "Row")) (Fix (KCon "Row")))) (Fix (TCon (Fix (KArr (Fix (KCon "*")) (Fix (KArr (Fix (KCon "Row")) (Fix (KCon "Row")))))) "{b}")) (Fix (TArr (Fix (TVar (Fix (KVar "k10")) "a11")) (Fix (TVar (Fix (KVar "k10")) "a11")))))) (Fix (TCon (Fix (KCon "Row")) "{}")))))
 
-test555 = tRowExtend "b" tInt (tRowExtend "a" tString (tRowExtend "c" tBool tRowNil))
+test555 = tRow "b" tInt (tRow "a" tString (tRow "c" tBool tRowNil))
 
-test556 = tRowExtend "b" tInt (tRowExtend "a" tString (tRowExtend "c" tBool (tVar kRow "x")))
+test556 = tRow "b" tInt (tRow "a" tString (tRow "c" tBool (tVar kRow "x")))
 
 --test555 = Fix (TApp (Fix (KCon "Row")) (Fix (TApp (Fix (KArr (Fix (KCon "Row")) (Fix (KCon "Row")))) (Fix (TCon (Fix (KArr (Fix (KCon "*")) (Fix (KArr (Fix (KCon "Row")) (Fix (KCon "Row")))))) "{b}")) (Fix (TCon (Fix (KCon "*")) "Int")))) (Fix (TCon (Fix (KCon "Row")) "{}")))
 
@@ -907,36 +907,36 @@ test123 expr = do
 
 --test557 :: Either UnificationError (Substitution Type, Substitution Kind)
 --test557 = unifyTypes 
---    (tRowExtend "name" tString (tVar kRow "r"))
---    (tRowExtend "name" tString (tRowExtend "id" tInt))
+--    (tRow "name" tString (tVar kRow "r"))
+--    (tRow "name" tString (tRow "id" tInt))
 
 
 test554 :: Either UnificationError (Substitution Type, Substitution Kind)
 test554 = unifyTypes 
-    (tRowExtend "name" tString (tVar kRow "r"))
+    (tRow "name" tString (tVar kRow "r"))
     -- { name : String | r }
-    (tRowExtend "id" tInt (tRowExtend "name" tString (tVar kRow "q")))
+    (tRow "id" tInt (tRow "name" tString (tVar kRow "q")))
     -- { name : String | { id : Int } | q }
 
 test557 :: Either UnificationError (Substitution Type, Substitution Kind)
 test557 = unifyTypes 
-    (tRowExtend "name" tString (tVar kRow "r"))
+    (tRow "name" tString (tVar kRow "r"))
     -- { name : String | r }
-    (tRowExtend "name" tString (tRowExtend "id" tInt (tVar kRow "q")))
+    (tRow "name" tString (tRow "id" tInt (tVar kRow "q")))
     -- { name : String | { id : Int } | q }
 
 test558 :: Either UnificationError (Substitution Type, Substitution Kind)
 test558 = unifyTypes 
-    (tRowExtend "name" tString (tVar kRow "r"))
+    (tRow "name" tString (tVar kRow "r"))
     -- { name : String | r }
-    (tRowExtend "name" tString (tRowExtend "id" tInt tRowNil))
+    (tRow "name" tString (tRow "id" tInt tRowNil))
     -- { name : String | { id : Int } | {} }
 
 test559 :: Either UnificationError (Substitution Type, Substitution Kind)
 test559 = unifyTypes 
-    (tRowExtend "id" tInt (tRowExtend "name" tString tRowNil))
+    (tRow "id" tInt (tRow "name" tString tRowNil))
     -- { id : Int | { name : String | {} } }
-    (tRowExtend "name" tString (tRowExtend "id" tInt tRowNil))
+    (tRow "name" tString (tRow "id" tInt tRowNil))
     -- { name : String | { id : Int | {} } }
 
 mapExpr2 :: (t -> u) -> WorkingExpr t -> WorkingExpr u
