@@ -1048,6 +1048,7 @@ testTypeEnv = Env.fromList
     , ( "[]"     , Forall [kTyp] [] (tList (tGen 0)) )
     , ( "(+)"    , Forall [kTyp] [InClass "Num" 0] (tGen 0 `tArr` tGen 0 `tArr` tGen 0) )
     , ( "#"      , Forall [kRow] [] (tGen 0 `tArr` tApp kTyp tRecordCon (tGen 0)) )
+    , ( "{}"     , Forall [] [] tRowNil )
     ]
 
 testClassEnv :: ClassEnv
@@ -1118,6 +1119,7 @@ testConstructorEnv = constructorEnv
     , ("(,)"      , ( ["(,)"], 2 ))
     , ("Foo"      , ( ["Foo"], 2 ))
     , ("#"        , ( ["#"], 1 ))
+    , ("{}"       , ( ["{}"], 0 ))
     ]
 
 --foz1 = case \x -> 1 of
