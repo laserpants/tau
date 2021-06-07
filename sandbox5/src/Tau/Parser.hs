@@ -102,17 +102,20 @@ fields sep parser = commaSep $ (,) <$> nameParser <*> (symbol sep *> parser)
 
 rowParser 
   :: Parser a 
-  -> (() -> Name -> a -> Maybe b -> b) 
-  -> (() -> Name -> b) 
-  -> Parser b
-rowParser parser rowCon varCon = braces $ do
+  -> (() -> Name -> a -> a -> a) 
+  -> (() -> Name -> a) 
+  -> (() -> a) 
+  -> Parser a
+rowParser parser rowCon varCon empty = braces $ do
     pairs <- fields "=" parser
     rest  <- optional (symbol "|" *> nameParser)
+    let next = maybe (empty ()) (varCon ()) rest
     case pairs of
-        (label, value):ps -> pure (foldr fn (rowCon () label value (varCon () <$> rest)) ps)
-        _                 -> fail "Empty record"
-  where
-    fn a = uncurry (rowCon ()) a . Just
+        (label, value):row -> 
+            pure (foldr (uncurry (rowCon ())) (rowCon () label value next) row)
+
+        _ -> 
+            fail "Empty record"
 
 argParser :: Parser p -> Parser [p]
 argParser parser = components parser >>= \case 
@@ -168,7 +171,7 @@ patternParser = makeExprParser (try (parens patternParser) <|> parser)
     parseTuple     = tuplePat () <$> components annPatternParser
     parseCon       = conPat () <$> constructorParser 
                                <*> (fromMaybe [] <$> optional (components annPatternParser))
-    parseRecord    = recordPat () <$> rowParser annPatternParser rowPat varPat
+    parseRecord    = recordPat () <$> rowParser annPatternParser rowPat varPat emptyRowPat
 
 -- >>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>
 
@@ -303,7 +306,7 @@ exprParser = makeExprParser (try lambdaParser <|> try (parens exprParser) <|> pa
     parseTuple     = tupleExpr () <$> components exprParser
     parseCon       = conExpr () <$> constructorParser 
                                 <*> (fromMaybe [] <$> optional (components annExprParser))
-    parseRecord    = recordExpr () <$> rowParser annExprParser rowExpr varExpr
+    parseRecord    = recordExpr () <$> rowParser annExprParser rowExpr varExpr emptyRowExpr
 
 lambdaParser :: Parser (ProgExpr ())
 lambdaParser = lamExpr () <$> argParser patternParser <*> (symbol "=>" *> annExprParser)

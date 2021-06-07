@@ -51,10 +51,12 @@ translatePatterns = cata $ \case
     POr     t p q        -> orPat    t p q
     PAny    t            -> anyPat   t
 
-foldRowPattern :: Maybe Type -> Name -> IntermPattern -> Maybe IntermPattern -> IntermPattern 
-foldRowPattern t lab p q = conPat t ("{" <> lab <> "}") 
-    [ p
-    , fromMaybe (conPat (Just tRowNil) "{}" []) q ]
+foldRowPattern :: Maybe Type -> Name -> IntermPattern -> IntermPattern -> IntermPattern 
+foldRowPattern t label p q = conPat t ("{" <> label <> "}") [p, q]
+
+-- conPat t ("{" <> lab <> "}") 
+--    [ p
+--    , fromMaybe (conPat (Just tRowNil) "{}" []) q ]
 
 --foldRow :: Maybe Type -> [(Name, IntermPattern)] -> IntermPattern
 --foldRow t pats =

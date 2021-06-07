@@ -33,7 +33,7 @@ data PatternF t1 t2 t3 t4 t5 t6 t7 t8 t9 a
     | POr     t6 a a                     -- ^ Or-pattern
     | PTuple  t7 [a]                     -- ^ Tuple pattern
     | PList   t8 [a]                     -- ^ List pattern
-    | PRow    t9 Name a (Maybe a)        -- ^ Row pattern
+    | PRow    t9 Name a a                -- ^ Row pattern
     | PAnn    Type a                     -- ^ Explicit type annotation
 
 -- | Pattern
@@ -116,8 +116,7 @@ data ExprF t1 t2 t3 t4 t5 t6 t7 t8 t9 t10 t11 t12 t13 t14 t15 e1 e2 e3 a
     | EOp2    t12 (Op2 t12) a a          -- ^ Binary operator
     | ETuple  t13 [a]                    -- ^ Tuple
     | EList   t14 [a]                    -- ^ List literal
-    | ERow    t15 Name a (Maybe a)       -- ^ Row expression
---    | ERow    t15 Name a a       
+    | ERow    t15 Name a a               -- ^ Row expression
     | EAnn    Type a                     -- ^ Explicit type annotation
 
 -- | Language expression
@@ -542,7 +541,7 @@ rowPat
   :: t9
   -> Name
   -> Pattern t1 t2 t3 t4 t5 t6 t7 t8 t9
-  -> Maybe (Pattern t1 t2 t3 t4 t5 t6 t7 t8 t9)
+  -> Pattern t1 t2 t3 t4 t5 t6 t7 t8 t9
   -> Pattern t1 t2 t3 t4 t5 t6 t7 t8 t9
 rowPat = embed4 PRow
 
@@ -669,7 +668,7 @@ rowExpr
   => t15
   -> Name
   -> Expr t1 t2 t3 t4 t5 t6 t7 t8 t9 t10 t11 t12 t13 t14 t15 e1 e2 e3
-  -> Maybe (Expr t1 t2 t3 t4 t5 t6 t7 t8 t9 t10 t11 t12 t13 t14 t15 e1 e2 e3)
+  -> Expr t1 t2 t3 t4 t5 t6 t7 t8 t9 t10 t11 t12 t13 t14 t15 e1 e2 e3
   -> Expr t1 t2 t3 t4 t5 t6 t7 t8 t9 t10 t11 t12 t13 t14 t15 e1 e2 e3
 rowExpr = embed4 ERow
 
@@ -715,6 +714,15 @@ rowPatCons
   -> Pattern t1 t2 t3 t4 t5 t6 t7 t8 t9 
   -> Pattern t1 t2 t3 t4 t5 t6 t7 t8 t9
 rowPatCons t label pat row = conPat t ("{" <> label <> "}") [pat, row]
+
+emptyRowExpr 
+  :: (Functor e3) 
+  => t2 
+  -> Expr t1 t2 t3 t4 t5 t6 t7 t8 t9 t10 t11 t12 t13 t14 t15 e1 e2 e3
+emptyRowExpr t = conExpr t "{}" []
+
+emptyRowPat :: t2 -> Pattern t1 t2 t3 t4 t5 t6 t7 t8 t9
+emptyRowPat t = conPat t "{}" []
 
 -- Records
 

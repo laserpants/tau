@@ -139,15 +139,7 @@ patternRep = project >>> \case
     PAny   t            -> makeRep "Pattern" "PAny"   [toRep t] 
     PTuple t ps         -> makeRep "Pattern" "PTuple" [toRep t, toRep ps] 
     PList  t ps         -> makeRep "Pattern" "PList"  [toRep t, toRep ps] 
-    PRow   t lab a b    -> makeRep "Pattern" "PRow"   [toRep t, String lab, toRep a, patternRowRep b]
-
-patternRowRep
-  :: (ToRep t1, ToRep t2, ToRep t3, ToRep t4, ToRep t5, ToRep t6, ToRep t7, ToRep t8, ToRep t9) 
-  => Maybe (Pattern t1 t2 t3 t4 t5 t6 t7 t8 t9)
-  -> Value
-patternRowRep = \case
-    Nothing             -> makeRep "Pattern" "PRow"   []
-    Just row            -> toRep row
+    PRow   t lab a b    -> makeRep "Pattern" "PRow"   [toRep t, String lab, toRep a, toRep b]
 
 simplifiedPatternRep :: (ToRep t) => SimplifiedPattern t -> Value
 simplifiedPatternRep = \case
@@ -171,16 +163,8 @@ exprRep = project >>> \case
     EOp2   t op a b     -> makeRep "Expr" "EOp2"      [toRep t, toRep op, toRep a, toRep b]
     ETuple t es         -> makeRep "Expr" "ETuple"    [toRep t, toRep es]
     EList  t es         -> makeRep "Expr" "EList"     [toRep t, toRep es]
-    ERow   t lab a b    -> makeRep "Expr" "ERow"      [toRep t, String lab, toRep a, exprRowRep b]
+    ERow   t lab a b    -> makeRep "Expr" "ERow"      [toRep t, String lab, toRep a, toRep b]
     EAnn   t a          -> makeRep "Expr" "EAnn"      [toRep t, toRep a]
-
-exprRowRep 
-  :: (Functor e3, ToRep t1, ToRep t2, ToRep t3, ToRep t4, ToRep t5, ToRep t6, ToRep t7, ToRep t8, ToRep t9, ToRep t10, ToRep t11, ToRep t12, ToRep t13, ToRep t14, ToRep t15, ToRep e1, ToRep e2, ToRep (e3 (Expr t1 t2 t3 t4 t5 t6 t7 t8 t9 t10 t11 t12 t13 t14 t15 e1 e2 e3))) 
-  => Maybe (Expr t1 t2 t3 t4 t5 t6 t7 t8 t9 t10 t11 t12 t13 t14 t15 e1 e2 e3) 
-  -> Value
-exprRowRep = \case
-    Nothing             -> makeRep "Expr" "ERow"      []
-    Just row            -> toRep row
 
 op1Rep :: (ToRep t) => Op1 t -> Value
 op1Rep = \case

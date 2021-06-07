@@ -108,12 +108,13 @@ foldRow
   :: TypeInfoT [Error] (Maybe Type)
   -> Name
   -> TargetExpr (TypeInfoT [Error] (Maybe Type))
-  -> Maybe (TargetExpr (TypeInfoT [Error] (Maybe Type)))
   -> TargetExpr (TypeInfoT [Error] (Maybe Type))
-foldRow t lab a b = conExpr t ("{" <> lab <> "}") 
-    [ a
-    , fromMaybe (conExpr (TypeInfo [] (Just tRowNil) []) "{}" []) b ]
+  -> TargetExpr (TypeInfoT [Error] (Maybe Type))
+foldRow t label a b = conExpr t ("{" <> label <> "}") [a, b]
 
+--    [ a
+--    , b -- undefined -- fromMaybe (conExpr (TypeInfo [] (Just tRowNil) []) "{}" []) b ]
+--    ]
 
 --foldRow 
 --  :: TypeInfoT [Error] (Maybe Type)
