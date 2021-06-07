@@ -1025,8 +1025,8 @@ main = do
     --let a = "let f(val) | Some(x) => x | None => val : Int in Some(123).f(5)" -- f(Some(5))" 
     --let a = "let f(val) | Some(x) => x | None => val : Int in None.f(5)" -- f(Some(5))" 
     --let a = "let f({ name = n | a }) = n in f({ name = \"Bob\", id = 1 : Int })" -- f(Some(5))" 
-    --let a = "let b = { wat = \"not\" } in { a = True | b }" -- f(Some(5))" 
-    let a = "let f({ name = n | a }) = a in f({ name = \"Bob\", id = 1 : Int })" -- f(Some(5))" 
+    let a = "let b = { wat = \"not\" } in { a = True | b }" -- f(Some(5))" 
+    --let a = "let f({ name = n | a }) = a in f({ name = \"Bob\", id = 1 : Int })" -- f(Some(5))" 
     case doParse (pack a) of
         Right e -> test123 e
   where
