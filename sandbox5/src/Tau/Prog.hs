@@ -9,9 +9,10 @@
 {-# LANGUAGE StrictData            #-}
 module Tau.Prog where
 
-import Control.Monad.Except (MonadError, catchError, throwError)
+import Control.Monad.Except (MonadError, catchError, throwError, runExceptT)
 import Control.Monad.Reader
 import Control.Monad.State
+import Control.Monad.Supply
 import Data.Function ((&))
 import Data.List (nub)
 import Data.Set.Monad (Set)
@@ -114,21 +115,35 @@ inConstructorEnv
   -> (ClassEnv, TypeEnv, KindEnv, ConstructorEnv)
 inConstructorEnv f (e1, e2, e3, e4) = (e1, e2, e3, f e4)
 
---lookupClassInstance
---  :: (MonadError Error m)
---  => Name
---  -> Type
---  -> ClassEnv
---  -> m (ClassInfo Type (Ast (TypeInfo ())))
+--gork :: (MonadSupply Name m) => Name -> Type -> ClassEnv -> m (Either Error (ClassInfo Type (Ast (TypeInfo ()))))
+--gork a b c = runExceptT (lookupClassInstance a b c)
+
+lookupClassInstance
+  :: ( MonadSupply Name m 
+     , MonadError Error m )
+  => Name
+  -> Type
+  -> ClassEnv
+  -> m (ClassInfo Type (Ast (TypeInfo ())))
 lookupClassInstance tc ty env = do
     (ClassInfo{..}, insts) <- liftMaybe (MissingClass tc) (Env.lookup tc env)
-    msum [tryMatch i | i <- insts] &
-        maybe (throwError (MissingInstance tc ty)) pure
+    xx <- sequence [tryMatch i | i <- insts]
+    msum xx & maybe (throwError (MissingInstance tc ty)) pure
   where
-    tryMatch info@ClassInfo{..} =
-        case matchTypes (predicateType classSignature) ty of
+    tryMatch :: (MonadSupply Name m) => ClassInfo Type (Ast (TypeInfo ())) -> m (Maybe (ClassInfo Type (Ast (TypeInfo ()))))
+    tryMatch info@ClassInfo{..} = 
+        foo <$> runExceptT (matchTypes (predicateType classSignature) ty)
+      where
+        foo = \case
             Left{}       -> Nothing
-            Right (t, k) -> Just (apply2 (t, k, ()) info)
+            Right (t, k) -> (Just (apply2 (t, k, ()) info))
+            
+        --pure (apply2 (t, k, ()) info)
+        --pure (apply2 (t, k, ()) info)
+        --undefined
+        --case matchTypes (predicateType classSignature) ty of
+        --    Left{}       -> Nothing
+        --    Right (t, k) -> Just (apply2 (t, k, ()) info)
 
 --lookupClassInstance2
 --  :: Name

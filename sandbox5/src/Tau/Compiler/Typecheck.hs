@@ -813,21 +813,26 @@ runUnifyKinds = runExceptT <$$> (\k1 k2 -> do
     sub <- applyAnd unifyKinds (gets snd3) KindMismatch k1 k2
     modify (second3 (sub <>)))
 
-applyAnd
-  :: ( Substitutable t1 a
-     , Substitutable t2 a
-     , MonadError e m )
-  => (t1 -> t2 -> Except t3 sub)
-  -> m (Substitution a)
-  -> (t1 -> t2 -> t3 -> e)
-  -> t1
-  -> t2
-  -> m sub
-applyAnd unify getSub toError a b = do
+--applyAnd
+--  :: ( Substitutable t1 a
+--     , Substitutable t2 a
+--     , MonadError e m 
+--     , MonadSupply Name m
+--     )
+--  => (t1 -> t2 -> Except t3 sub)
+--  -> m (Substitution a)
+--  -> (t1 -> t2 -> t3 -> e)
+--  -> t1
+--  -> t2
+--  -> m sub
+applyAnd unify getSub toError t1 t2 = do
     sub1 <- getSub
-    case runExcept (unify (apply sub1 a) (apply sub1 b)) of
-        Left err  -> throwError (toError a b err)
+    runExceptT (unify (apply sub1 t1) (apply sub1 t2)) >>= \case
+        Left err  -> throwError (toError t1 t2 err)
         Right sub -> pure sub
+    --case runExcept (unify (apply sub1 a) (apply sub1 b)) of
+    --    Left err  -> throwError (toError a b err)
+    --    Right sub -> pure sub
 
 --unifiedT
 --  :: ( MonadSupply Name m

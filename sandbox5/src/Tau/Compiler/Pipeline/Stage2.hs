@@ -3,6 +3,7 @@
 {-# LANGUAGE OverloadedStrings #-}
 module Tau.Compiler.Pipeline.Stage2 where
 
+import Control.Monad.Except 
 import Control.Monad.Reader
 import Control.Monad.State
 import Control.Monad.Supply
@@ -155,13 +156,25 @@ applyDicts (InClass name ty) expr
 
     | otherwise = do
         env <- askClassEnv
-        case classMethods <$> lookupClassInstance name ty env of
-            -- TODO
-            Left e -> error ("No instance " <> show name <> " " <> show ty)
-            -- TODO
+        xx <- runExceptT (lookupClassInstance name ty env)
+        case classMethods <$> xx of
+            Left{} -> error ("No instance " <> show name <> " " <> show ty)
             Right methods -> do
                 map <- traverse (secondM translateMethod) methods
                 pure (fromMaybe (buildDict map) (findIn map expr))
+        --methods <-- classMethods foo
+        --map <- traverse (secondM translateMethod) methods
+        --pure (fromMaybe (buildDict map) (findIn map expr))
+
+--        case classMethods <$> lookupClassInstance name ty env of
+--            Left e -> undefined
+--        case classMethods <$> lookupClassInstance name ty env of
+--        --    -- TODO
+--        --    Left e -> error ("No instance " <> show name <> " " <> show ty)
+--        --    -- TODO
+--            Right methods -> do
+--                map <- traverse (secondM translateMethod) methods
+--                pure (fromMaybe (buildDict map) (findIn map expr))
   where
     t1 = tApp kClass (tCon (kArr kTyp kClass) name) ty
 

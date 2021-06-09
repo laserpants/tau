@@ -1,8 +1,10 @@
-{-# LANGUAGE OverloadedStrings #-}
 {-# LANGUAGE LambdaCase        #-}
+{-# LANGUAGE OverloadedStrings #-}
 module Tau.Compiler.UnificationTests where
 
 import Control.Monad
+import Control.Monad.Except
+import Control.Monad.Supply
 import Data.Either (isLeft, isRight)
 import Data.List (intersect, (\\))
 import Data.Map.Strict (Map)
@@ -24,7 +26,7 @@ testDescription t1 t2 = "The types " <> prettyText t1 <> " and " <> prettyText t
 
 succeedUnifyTypes :: Type -> Type -> SpecWith ()
 succeedUnifyTypes t1 t2 = do
-    let result = unifyTypes t1 t2
+    let result = runUnify (unifyTypes t1 t2)
     describe (testDescription t1 t2) $ do
         it "✔ yields a substitution" $
             isRight result
@@ -87,10 +89,13 @@ toCanonicalType t = fromMap (baseRow t) (foldr (uncurry f) mempty (rowFields t))
 
 failUnifyTypes :: Type -> Type -> SpecWith ()
 failUnifyTypes t1 t2 = do
-    let result = unifyTypes t1 t2
+    let result = runUnify (unifyTypes t1 t2)
     describe (testDescription t1 t2) $
         it "✗ fails to unify" $
             isLeft result
+
+runUnify :: SupplyT Name (ExceptT err Maybe) a -> Either err a
+runUnify x = fromJust (runExceptT (evalSupplyT x (numSupply "")))
 
 --import Data.Either (isLeft, isRight)
 --import Data.Text (Text)
@@ -239,91 +244,91 @@ testUnify = do
 --        pure ()
 --
 ---- >>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>
---
---testUnifyRowTypes :: SpecWith ()
---testUnifyRowTypes = do
---
---    failUnifyTypes
---        (tRow "name" tString (tRow "id" tInt tEmptyRow))
---        (tRow "id" tString (tRow "name" tInt tEmptyRow))
---
---    succeedUnifyTypes
---        (tRow "name" tString (tRow "id" tInt tEmptyRow))
---        (tRow "id" tInt (tRow "name" tString tEmptyRow))
---
---    succeedUnifyTypes
---        (tRow "x" tInt (tVar kRow "r"))
---        (tRow "x" tInt (tVar kRow "r"))
---
---    failUnifyTypes
---        (tRow "x" tInt (tVar kRow "r"))
---        (tRow "y" tInt (tVar kRow "r"))
---
+
+testUnifyRowTypes :: SpecWith ()
+testUnifyRowTypes = do
+
+    failUnifyTypes
+        (tRow "name" tString (tRow "id" tInt tRowNil))
+        (tRow "id" tString (tRow "name" tInt tRowNil))
+
+    succeedUnifyTypes
+        (tRow "name" tString (tRow "id" tInt tRowNil))
+        (tRow "id" tInt (tRow "name" tString tRowNil))
+
+    succeedUnifyTypes
+        (tRow "x" tInt (tVar kRow "r"))
+        (tRow "x" tInt (tVar kRow "r"))
+
+    failUnifyTypes
+        (tRow "x" tInt (tVar kRow "r"))
+        (tRow "y" tInt (tVar kRow "r"))
+
 --    succeedUnifyTypes
 --        (tRow "x" tInt (tVar kRow "r"))
 --        (tRow "x" tInt (tVar kRow "s"))
 --
 --    succeedUnifyTypes
 --        (tRow "id" tInt (tVar kRow "r"))
---        (tRow "id" tInt (tRow "name" tString tEmptyRow))
+--        (tRow "id" tInt (tRow "name" tString tRowNil))
 --
 --    succeedUnifyTypes
---        (tRow "id" tInt (tRow "name" tString tEmptyRow))
+--        (tRow "id" tInt (tRow "name" tString tRowNil))
 --        (tRow "id" tInt (tVar kRow "r"))
 --
 --    succeedUnifyTypes
---        (tRow "id" tInt (tRow "password" tString (tRow "name" tString tEmptyRow)))
+--        (tRow "id" tInt (tRow "password" tString (tRow "name" tString tRowNil)))
 --        (tRow "id" tInt (tVar kRow "r"))
 --
 --    succeedUnifyTypes
---        (tRow "id" tInt (tRow "password" tString (tRow "name" tString tEmptyRow)))
+--        (tRow "id" tInt (tRow "password" tString (tRow "name" tString tRowNil)))
 --        (tVar kRow "r")
 --
 --    failUnifyTypes
---        (tRow "id" tInt (tRow "password" tString (tRow "name" tString tEmptyRow)))
+--        (tRow "id" tInt (tRow "password" tString (tRow "name" tString tRowNil)))
 --        (tVar kTyp "r")  --- Note: Not a row kind!
 --
 --    succeedUnifyTypes
---        (tRow "name" tString (tRow "id" tInt (tRow "shoeSize" tFloat tEmptyRow)))
---        (tRow "shoeSize" tFloat (tRow "id" tInt (tRow "name" tString tEmptyRow)))
+--        (tRow "name" tString (tRow "id" tInt (tRow "shoeSize" tFloat tRowNil)))
+--        (tRow "shoeSize" tFloat (tRow "id" tInt (tRow "name" tString tRowNil)))
 --
 --    succeedUnifyTypes
 --        -- { name : String, shoeSize : Float }
---        (tRow "name" tString (tRow "shoeSize" tFloat tEmptyRow))
+--        (tRow "name" tString (tRow "shoeSize" tFloat tRowNil))
 --        -- { shoeSize : Float | r }
 --        (tRow "shoeSize" tFloat (tVar kRow "r"))
 --
 --    succeedUnifyTypes
 --        -- { name : String, id : Int, shoeSize : Float }
---        (tRow "name" tString (tRow "id" tInt (tRow "shoeSize" tFloat tEmptyRow)))
+--        (tRow "name" tString (tRow "id" tInt (tRow "shoeSize" tFloat tRowNil)))
 --        -- { shoeSize : Float, id : Int | r }
 --        (tRow "shoeSize" tFloat (tRow "id" tInt (tVar kRow "r")))
 --
 --    succeedUnifyTypes
 --        -- { name : String, id : Int, shoeSize : Float }
---        (tRow "name" tString (tRow "id" tInt (tRow "shoeSize" tFloat tEmptyRow)))
+--        (tRow "name" tString (tRow "id" tInt (tRow "shoeSize" tFloat tRowNil)))
 --        -- { shoeSize : Float | r }
 --        (tRow "shoeSize" tFloat (tVar kRow "r"))
 --
 --    succeedUnifyTypes
 --        (tRow "shoeSize" tFloat (tVar kRow "r"))
---        (tRow "name" tString (tRow "shoeSize" tFloat tEmptyRow))
+--        (tRow "name" tString (tRow "shoeSize" tFloat tRowNil))
 --
 --    succeedUnifyTypes
 --        (tRow "shoeSize" tFloat (tRow "id" tInt (tVar kRow "r")))
---        (tRow "name" tString (tRow "id" tInt (tRow "shoeSize" tFloat tEmptyRow)))
+--        (tRow "name" tString (tRow "id" tInt (tRow "shoeSize" tFloat tRowNil)))
 --
 --    succeedUnifyTypes
---        (tRow "name" tString (tRow "id" tInt (tRow "shoeSize" tFloat tEmptyRow)))
+--        (tRow "name" tString (tRow "id" tInt (tRow "shoeSize" tFloat tRowNil)))
 --        (tRow "name" tString (tRow "id" tInt (tVar kRow "r")))
 --
 --    succeedUnifyTypes
---        (tRow "name" tString (tRow "id" tInt tEmptyRow))
---        (tRow "name" tString (tRow "id" (tVar kTyp "a") tEmptyRow))
+--        (tRow "name" tString (tRow "id" tInt tRowNil))
+--        (tRow "name" tString (tRow "id" (tVar kTyp "a") tRowNil))
 --
 --    succeedUnifyTypes
---        (tRow "name" tString (tRow "id" (tVar kTyp "a") tEmptyRow))
---        (tRow "name" tString (tRow "id" tInt tEmptyRow))
+--        (tRow "name" tString (tRow "id" (tVar kTyp "a") tRowNil))
+--        (tRow "name" tString (tRow "id" tInt tRowNil))
 --
 ---- >>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>
 --
@@ -349,11 +354,11 @@ testUnify = do
 --        (rVar (tVar kRow "r"))
 --
 --    succeedTypeToRow 
---        tEmptyRow
+--        tRowNil
 --        rNil
 --
 --    succeedTypeToRow 
---        (tRow "id" tInt tEmptyRow)
+--        (tRow "id" tInt tRowNil)
 --        (rExt "id" tInt rNil)
 --
 --    succeedTypeToRow 
@@ -365,5 +370,5 @@ testUnify = do
 --        (rExt "name" tString (rExt "id" tInt (rVar (tVar kRow "r"))))
 --
 --    succeedTypeToRow 
---        (tRow "name" tString (tRow "id" tInt tEmptyRow))
+--        (tRow "name" tString (tRow "id" tInt tRowNil))
 --        (rExt "name" tString (rExt "id" tInt rNil))

@@ -8,12 +8,13 @@ module Tau.Compiler.Unify where
 import Control.Applicative ((<|>))
 import Control.Arrow ((<<<), (>>>))
 import Control.Monad.Except
+import Control.Monad.Supply
 import Data.Foldable (foldrM)
 import Data.Function ((&))
 import Data.List (intersect, (\\))
 import Data.Map.Strict (Map, (!))
 import Data.Maybe (fromJust)
-import Data.Tuple.Extra (first)
+import Data.Tuple.Extra (first, second)
 import Tau.Compiler.Error
 import Tau.Compiler.Substitute hiding (null)
 import Tau.Lang
@@ -104,7 +105,8 @@ bindType name kind ty
         pure (sub, kindSub)
 
 unifyTypes
-  :: (MonadError UnificationError m)
+  :: ( MonadSupply Name m
+     , MonadError UnificationError m )
   => Type
   -> Type
   -> m (Substitution Type, Substitution Kind)
@@ -112,7 +114,6 @@ unifyTypes t u = fn (project t) (project u)
   where
     fn (TArr t1 t2) (TArr u1 u2)              = unifyTypePairs (t1, t2) (u1, u2)
     fn (TApp _ t1 t2) (TApp _ u1 u2)          = unifyTypePairs (t1, t2) (u1, u2)
-    fn (TRow a t1 t2) (TRow b u1 u2) | a == b = unifyTypePairs (t1, t2) (u1, u2)
     fn TRow{} TRow{}                          = unifyRowTypes unifyTypePairs t u
     fn (TVar kind name) _                     = bindType name kind u
     fn _ (TVar kind name)                     = bindType name kind t
@@ -133,48 +134,6 @@ unifyTypes t u = fn (project t) (project u)
 --    pure (typeSub2 <> typeSub1, kindSub2 <> kindSub1)
 
 --matchRowTypes = undefined
-
-unifyRowTypes 
-  :: (MonadError UnificationError m)
-  => ((Type, Type) -> (Type, Type) -> m (Substitution Type, Substitution Kind))
-  -> Type
-  -> Type
-  -> m (Substitution Type, Substitution Kind)
-unifyRowTypes g t u = g zzz1 zzz2
-  where
-    a1 = rowFields t
-    b1 = baseRow t
-    keys1 = fst <$> a1
-    m1 :: Map Name [Type]
-    m1 = foldr (uncurry f) mempty a1
-    (x1, y1) = foo m1
-    zzz1 :: (Type, Type)
-    zzz1 = (fromMap tRowNil x1, fromMap b1 y1)
-
-    a2 = rowFields u
-    b2 = baseRow u
-    keys2 = fst <$> a2
-    m2 :: Map Name [Type]
-    m2 = foldr (uncurry f) mempty a2
-    (x2, y2) = foo m2
-    zzz2 :: (Type, Type)
-    zzz2 = (fromMap tRowNil x2, fromMap b2 y2)
-
-    foo = Map.partitionWithKey (\k _ -> k `elem` intersect keys1 keys2)
-    f name ty = Map.insertWith (<>) name [ty]
-
-fromMap :: Type -> Map Name [Type] -> Type
-fromMap = Map.foldrWithKey (flip . foldr . tRow)
-
-rowFields :: Type -> [(Name, Type)]
-rowFields = para $ \case
-    TRow label ty rest             -> (label, fst ty):snd rest
-    _                              -> []
-
-baseRow :: Type -> Type
-baseRow = cata $ \case
-    TRow _ _ r                     -> r
-    t                              -> embed t
 
 --unifyTypes
 --  :: (MonadError UnificationError m)
@@ -200,7 +159,8 @@ baseRow = cata $ \case
 --    fn _ _                                    = throwError IncompatibleTypes
 
 matchTypes
-  :: (MonadError UnificationError m)
+  :: ( MonadSupply Name m
+     , MonadError UnificationError m )
   => Type
   -> Type
   -> m (Substitution Type, Substitution Kind)
@@ -208,14 +168,14 @@ matchTypes t u = fn (project t) (project u)
   where
     fn (TArr t1 t2) (TArr u1 u2)              = matchTypePairs (t1, t2) (u1, u2)
     fn (TApp _ t1 t2) (TApp _ u1 u2)          = matchTypePairs (t1, t2) (u1, u2)
-    fn (TRow a t1 t2) (TRow b u1 u2) | a == b = matchTypePairs (t1, t2) (u1, u2)
     fn TRow{} TRow{}                          = unifyRowTypes matchTypePairs t u
     fn (TVar kind name) _                     = bindType name kind u
     fn _ _ | t == u                           = pure mempty
     fn _ _                                    = throwError IncompatibleTypes
 
 unifyTypePairs
-  :: (MonadError UnificationError m)
+  :: ( MonadSupply Name m
+     , MonadError UnificationError m )
   => (Type, Type)
   -> (Type, Type)
   -> m (Substitution Type, Substitution Kind)
@@ -226,7 +186,8 @@ unifyTypePairs (t1, t2) (u1, u2) = do
     pure (typeSub2 <> typeSub1, kindSub2 <> kindSub1)
 
 matchTypePairs
-  :: (MonadError UnificationError m)
+  :: ( MonadSupply Name m
+     , MonadError UnificationError m )
   => (Type, Type)
   -> (Type, Type)
   -> m (Substitution Type, Substitution Kind)
@@ -236,6 +197,124 @@ matchTypePairs (t1, t2) (u1, u2) = do
     (,) <$> fn typeSub1 typeSub2 <*> fn kindSub1 kindSub2
   where
     fn sub1 sub2 = maybe (throwError MergeFailed) pure (merge sub1 sub2)
+
+unifyRowTypes 
+  :: ( MonadSupply Name m
+     , MonadError UnificationError m )
+  => ((Type, Type) -> (Type, Type) -> m (Substitution Type, Substitution Kind))
+  -> Type
+  -> Type
+  -> m (Substitution Type, Substitution Kind)
+unifyRowTypes unifyPairs t u = 
+    unifyRowTypes_ (mapRep t, final t) (mapRep u, final u)
+  where
+    mapRep = foldr (uncurry (Map.insertWith (<>))) mempty 
+        . (second pure <$>) 
+        . rowFields 
+
+unifyRowTypes_
+  :: ( MonadSupply Name m
+     , MonadError UnificationError m )
+  => (Map Name [Type], Type)
+  -> (Map Name [Type], Type)
+  -> m (Substitution Type, Substitution Kind)
+unifyRowTypes_ (m1, j) (m2, k) 
+    | Map.null m1 && Map.null m2 = unifyTypes j k
+    | Map.null m1 = unifyTypes j (Map.foldrWithKey (flip . foldr . tRow) k m2)
+    | otherwise = 
+        case Map.lookup a m2 of
+            Just (u:us) -> do
+                (typeSub1, kindSub1) <- unifyRowTypes_ (updateMap m1 ts, j) (updateMap m2 us, k)
+                (typeSub2, kindSub2) <- unifyTypes (apply kindSub1 (apply typeSub1 t)) (apply kindSub1 (apply typeSub1 u))
+                pure (typeSub2 <> typeSub1, kindSub2 <> kindSub1)
+
+            _ -> do
+                ta <- newTVar_
+                when (k == j) $ throwError IncompatibleTypes
+                let q = tRow a t ta
+                (typeSub1, kindSub1) <- unifyRowTypes_ (updateMap m1 ts, j) (m2, ta)
+                (typeSub2, kindSub2) <- unifyTypes (apply kindSub1 (apply typeSub1 k)) q 
+                pure (typeSub2 <> typeSub1, kindSub2 <> kindSub1)
+
+  where
+    (a, t:ts) = Map.elemAt 0 m1
+    updateMap m = \case
+        [] -> Map.delete a m
+        ts -> Map.insert a ts m
+
+newTVar_ :: (MonadSupply Name m) => m (TypeT a)
+newTVar_ = do
+    k <- ("k" <>) <$> supply
+    t <- ("a" <>) <$> supply
+    pure (tVar (kVar k) t)
+
+--unifyRowTypes unifyPairs t u = fn (project t) (project u)
+--  where
+--    fn (TRow a t1 t2) (TRow b u1 u2) | a == b = unifyPairs (t1, t2) (u1, u2)
+--    fn (TRow a t1 t2) (TRow b u1 u2) = do
+--        case (t1:gork t2, gork u2) of
+--            _ ->
+--                undefined
+----        case Map.lookup a mapRep of
+----            -Just (t:ts) ->
+----            --    unifyPairs (t1, t2) (t, fromMap (final u2) (Map.insert a ts mapRep)) -- yyy (Map.delete a xxx)) -- yyy (Map.delete a xxx)
+----            Nothing -> 
+----                undefined
+----        --case lookup a (foldr (Map.insertWith (<>)) mempty (rowFields u2)) of
+----        --    Just t -> undefined -- unifyPairs (t1, t2) (t, filter (\x -> fst x /= a) u2)
+----        --    Nothing -> undefined
+----      where
+----        mapRep = foldr (uncurry f) mempty (rowFields u2)
+----        f name ty = Map.insertWith (<>) name [ty]
+----        fromMap = Map.foldrWithKey (flip . foldr . tRow)
+--      where
+--        gork t = snd <$> filter ((== a) . fst) (rowFields t)
+
+--unifyRowTypes 
+--  :: (MonadError UnificationError m)
+--  => ((Type, Type) -> (Type, Type) -> m (Substitution Type, Substitution Kind))
+--  -> Type
+--  -> Type
+--  -> m (Substitution Type, Substitution Kind)
+--unifyRowTypes g t u = do
+--    traceShowM zzz1
+--    traceShowM zzz2
+--    traceShowM "-----------"
+--    g zzz1 zzz2
+--  where
+--    a1 = rowFields t
+--    b1 = baseRow t
+--    keys1 = fst <$> a1
+--    m1 :: Map Name [Type]
+--    m1 = foldr (uncurry f) mempty a1
+--    (x1, y1) = foo m1
+--    zzz1 :: (Type, Type)
+--    zzz1 = (fromMap tRowNil x1, fromMap b1 y1)
+--
+--    a2 = rowFields u
+--    b2 = baseRow u
+--    keys2 = fst <$> a2
+--    m2 :: Map Name [Type]
+--    m2 = foldr (uncurry f) mempty a2
+--    (x2, y2) = foo m2
+--    zzz2 :: (Type, Type)
+--    zzz2 = (fromMap tRowNil x2, fromMap b2 y2)
+--
+--    foo = Map.partitionWithKey (\k _ -> k `elem` intersect keys1 keys2)
+--    f name ty = Map.insertWith (<>) name [ty]
+--
+--fromMap :: Type -> Map Name [Type] -> Type
+--fromMap = Map.foldrWithKey (flip . foldr . tRow)
+
+rowFields :: Type -> [(Name, Type)]
+rowFields = para $ \case
+    TRow label ty rest             -> (label, fst ty):snd rest
+    _                              -> []
+
+final :: Type -> Type
+final = cata $ \case
+    TRow _ _ r                     -> r
+    t                              -> embed t
 
 --unifyRowTypes
 --  :: (MonadError UnificationError m)

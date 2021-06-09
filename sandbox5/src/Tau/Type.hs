@@ -18,6 +18,7 @@ import qualified Data.Text as Text
 
 data KindF a
     = KVar Name
+--    | KHole -- 
     | KCon Name
     | KArr a a 
 

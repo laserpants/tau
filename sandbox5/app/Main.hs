@@ -56,6 +56,16 @@ instance Typed (Maybe Type) where
     typeOf (Just t) = t
     typeOf Nothing  = tVar (kVar "k") "a"
 
+
+xxx5 :: Either UnificationError (Substitution Type, Substitution Kind)
+xxx5 = fromJust (runExceptT (evalSupplyT xxx1 (numSupply "")))
+
+--xxx1 :: (MonadFail m, MonadError UnificationError m) => m (Substitution Type, Substitution Kind)
+xxx1 = unifyTypes 
+        (tRow "id" tInt (tVar kRow "r"))
+        (tRow "id" tInt (tRow "name" tString tRowNil))
+
+
 --------------------------
 --------------------------
 --------------------------
@@ -911,33 +921,33 @@ test123 expr = do
 --    (tRow "name" tString (tRow "id" tInt))
 
 
-test554 :: Either UnificationError (Substitution Type, Substitution Kind)
-test554 = unifyTypes 
-    (tRow "name" tString (tVar kRow "r"))
-    -- { name : String | r }
-    (tRow "id" tInt (tRow "name" tString (tVar kRow "q")))
-    -- { name : String | { id : Int } | q }
-
-test557 :: Either UnificationError (Substitution Type, Substitution Kind)
-test557 = unifyTypes 
-    (tRow "name" tString (tVar kRow "r"))
-    -- { name : String | r }
-    (tRow "name" tString (tRow "id" tInt (tVar kRow "q")))
-    -- { name : String | { id : Int } | q }
-
-test558 :: Either UnificationError (Substitution Type, Substitution Kind)
-test558 = unifyTypes 
-    (tRow "name" tString (tVar kRow "r"))
-    -- { name : String | r }
-    (tRow "name" tString (tRow "id" tInt tRowNil))
-    -- { name : String | { id : Int } | {} }
-
-test559 :: Either UnificationError (Substitution Type, Substitution Kind)
-test559 = unifyTypes 
-    (tRow "id" tInt (tRow "name" tString tRowNil))
-    -- { id : Int | { name : String | {} } }
-    (tRow "name" tString (tRow "id" tInt tRowNil))
-    -- { name : String | { id : Int | {} } }
+--test554 :: Either UnificationError (Substitution Type, Substitution Kind)
+--test554 = unifyTypes 
+--    (tRow "name" tString (tVar kRow "r"))
+--    -- { name : String | r }
+--    (tRow "id" tInt (tRow "name" tString (tVar kRow "q")))
+--    -- { name : String | { id : Int } | q }
+--
+--test557 :: Either UnificationError (Substitution Type, Substitution Kind)
+--test557 = unifyTypes 
+--    (tRow "name" tString (tVar kRow "r"))
+--    -- { name : String | r }
+--    (tRow "name" tString (tRow "id" tInt (tVar kRow "q")))
+--    -- { name : String | { id : Int } | q }
+--
+--test558 :: Either UnificationError (Substitution Type, Substitution Kind)
+--test558 = unifyTypes 
+--    (tRow "name" tString (tVar kRow "r"))
+--    -- { name : String | r }
+--    (tRow "name" tString (tRow "id" tInt tRowNil))
+--    -- { name : String | { id : Int } | {} }
+--
+--test559 :: Either UnificationError (Substitution Type, Substitution Kind)
+--test559 = unifyTypes 
+--    (tRow "id" tInt (tRow "name" tString tRowNil))
+--    -- { id : Int | { name : String | {} } }
+--    (tRow "name" tString (tRow "id" tInt tRowNil))
+--    -- { name : String | { id : Int | {} } }
 
 mapExpr2 :: (t -> u) -> WorkingExpr t -> WorkingExpr u
 mapExpr2 f = cata $ \case
@@ -992,29 +1002,29 @@ mapExpr2 f = cata $ \case
 --        PAny    t          -> anyPat     (f t)
 
 
-test3 = u :: Either UnificationError (Substitution Type, Substitution Kind)
-  where
---    u = unifyTypes (tVar (kVar "k1") "a1") tInt
-
---    u = unifyTypes (tVar kTyp "a1") tInt
---    u = unifyTypes (tVar kTyp "a1") (tVar kTyp "a1" `tArr` tVar kTyp "a1")
-
-    u = unifyTypes (tVar (kArr (kVar "k1") (kVar "k1")) "a1") (tVar (kVar "k1") "a1")
-
----- --test4 = do
----- --    print "----------"
----- --    print (apply sub x)
----- --    print (pretty (normalized (apply sub x)))
----- --    print "=========="
----- --  where
----- --    (x, sub, ctx) = fromJust (runInfer mempty testClassEnv testTypeEnv testConstructorEnv e)
----- --    e = inferAst (Ast (appExpr () [varExpr () "id", litExpr () (TInt 5)]))
-
---abc123 :: (MonadError UnificationError m) => m ()
---abc123 = do
---    sub <- unifyTypes tInt tInt
---    let x = apply sub (tVar kTyp "a")
---    pure ()
+--test3 = u :: Either UnificationError (Substitution Type, Substitution Kind)
+--  where
+----    u = unifyTypes (tVar (kVar "k1") "a1") tInt
+--
+----    u = unifyTypes (tVar kTyp "a1") tInt
+----    u = unifyTypes (tVar kTyp "a1") (tVar kTyp "a1" `tArr` tVar kTyp "a1")
+--
+--    u = unifyTypes (tVar (kArr (kVar "k1") (kVar "k1")) "a1") (tVar (kVar "k1") "a1")
+--
+------ --test4 = do
+------ --    print "----------"
+------ --    print (apply sub x)
+------ --    print (pretty (normalized (apply sub x)))
+------ --    print "=========="
+------ --  where
+------ --    (x, sub, ctx) = fromJust (runInfer mempty testClassEnv testTypeEnv testConstructorEnv e)
+------ --    e = inferAst (Ast (appExpr () [varExpr () "id", litExpr () (TInt 5)]))
+--
+----abc123 :: (MonadError UnificationError m) => m ()
+----abc123 = do
+----    sub <- unifyTypes tInt tInt
+----    let x = apply sub (tVar kTyp "a")
+----    pure ()
 
 main :: IO ()
 main = do

@@ -23,7 +23,7 @@ main =
 --        describe "Tau.Compiler.Unification.match"          testMatch
 --        describe "Tau.Compiler.Unification.unifyPairs"     testUnifyPairs
 --        describe "Tau.Compiler.Unification.matchPairs"     testMatchPairs
---        describe "Tau.Compiler.Unification.unifyRowTypes"  testUnifyRowTypes
+        describe "Tau.Compiler.Unification.unifyRowTypes"  testUnifyRowTypes
 --        describe "Tau.Compiler.Unification.matchRowTypes"  testMatchRowTypes
 --        describe "Tau.Compiler.Unification.unfoldRow"      testTypeToRow
 --
