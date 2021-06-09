@@ -826,13 +826,10 @@ runUnifyKinds = runExceptT <$$> (\k1 k2 -> do
 --  -> t2
 --  -> m sub
 applyAnd unify getSub toError t1 t2 = do
-    sub1 <- getSub
-    runExceptT (unify (apply sub1 t1) (apply sub1 t2)) >>= \case
+    sub <- getSub
+    runExceptT (unify (apply sub t1) (apply sub t2)) >>= \case
         Left err  -> throwError (toError t1 t2 err)
         Right sub -> pure sub
-    --case runExcept (unify (apply sub1 a) (apply sub1 b)) of
-    --    Left err  -> throwError (toError a b err)
-    --    Right sub -> pure sub
 
 --unifiedT
 --  :: ( MonadSupply Name m
