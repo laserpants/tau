@@ -233,7 +233,7 @@ unifyRowTypes_ (m1, j) (m2, k)
                 when (k == j) $ throwError IncompatibleTypes
                 let q = tRow a t ta
                 (typeSub1, kindSub1) <- unifyRowTypes_ (updateMap m1 ts, j) (m2, ta)
-                (typeSub2, kindSub2) <- unifyTypes (apply kindSub1 (apply typeSub1 k)) q 
+                (typeSub2, kindSub2) <- unifyTypes (apply kindSub1 (apply typeSub1 k)) (apply kindSub1 (apply typeSub1 q)) 
                 pure (typeSub2 <> typeSub1, kindSub2 <> kindSub1)
 
   where

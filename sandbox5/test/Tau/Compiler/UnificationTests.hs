@@ -264,72 +264,72 @@ testUnifyRowTypes = do
         (tRow "x" tInt (tVar kRow "r"))
         (tRow "y" tInt (tVar kRow "r"))
 
---    succeedUnifyTypes
---        (tRow "x" tInt (tVar kRow "r"))
---        (tRow "x" tInt (tVar kRow "s"))
---
---    succeedUnifyTypes
---        (tRow "id" tInt (tVar kRow "r"))
---        (tRow "id" tInt (tRow "name" tString tRowNil))
---
---    succeedUnifyTypes
---        (tRow "id" tInt (tRow "name" tString tRowNil))
---        (tRow "id" tInt (tVar kRow "r"))
---
---    succeedUnifyTypes
---        (tRow "id" tInt (tRow "password" tString (tRow "name" tString tRowNil)))
---        (tRow "id" tInt (tVar kRow "r"))
---
---    succeedUnifyTypes
---        (tRow "id" tInt (tRow "password" tString (tRow "name" tString tRowNil)))
---        (tVar kRow "r")
---
---    failUnifyTypes
---        (tRow "id" tInt (tRow "password" tString (tRow "name" tString tRowNil)))
---        (tVar kTyp "r")  --- Note: Not a row kind!
---
---    succeedUnifyTypes
---        (tRow "name" tString (tRow "id" tInt (tRow "shoeSize" tFloat tRowNil)))
---        (tRow "shoeSize" tFloat (tRow "id" tInt (tRow "name" tString tRowNil)))
---
---    succeedUnifyTypes
---        -- { name : String, shoeSize : Float }
---        (tRow "name" tString (tRow "shoeSize" tFloat tRowNil))
---        -- { shoeSize : Float | r }
---        (tRow "shoeSize" tFloat (tVar kRow "r"))
---
---    succeedUnifyTypes
---        -- { name : String, id : Int, shoeSize : Float }
---        (tRow "name" tString (tRow "id" tInt (tRow "shoeSize" tFloat tRowNil)))
---        -- { shoeSize : Float, id : Int | r }
---        (tRow "shoeSize" tFloat (tRow "id" tInt (tVar kRow "r")))
---
---    succeedUnifyTypes
---        -- { name : String, id : Int, shoeSize : Float }
---        (tRow "name" tString (tRow "id" tInt (tRow "shoeSize" tFloat tRowNil)))
---        -- { shoeSize : Float | r }
---        (tRow "shoeSize" tFloat (tVar kRow "r"))
---
---    succeedUnifyTypes
---        (tRow "shoeSize" tFloat (tVar kRow "r"))
---        (tRow "name" tString (tRow "shoeSize" tFloat tRowNil))
---
---    succeedUnifyTypes
---        (tRow "shoeSize" tFloat (tRow "id" tInt (tVar kRow "r")))
---        (tRow "name" tString (tRow "id" tInt (tRow "shoeSize" tFloat tRowNil)))
---
---    succeedUnifyTypes
---        (tRow "name" tString (tRow "id" tInt (tRow "shoeSize" tFloat tRowNil)))
---        (tRow "name" tString (tRow "id" tInt (tVar kRow "r")))
---
---    succeedUnifyTypes
---        (tRow "name" tString (tRow "id" tInt tRowNil))
---        (tRow "name" tString (tRow "id" (tVar kTyp "a") tRowNil))
---
---    succeedUnifyTypes
---        (tRow "name" tString (tRow "id" (tVar kTyp "a") tRowNil))
---        (tRow "name" tString (tRow "id" tInt tRowNil))
---
+    succeedUnifyTypes
+        (tRow "x" tInt (tVar kRow "r"))
+        (tRow "x" tInt (tVar kRow "s"))
+
+    succeedUnifyTypes
+        (tRow "id" tInt (tVar kRow "r"))
+        (tRow "id" tInt (tRow "name" tString tRowNil))
+
+    succeedUnifyTypes
+        (tRow "id" tInt (tRow "name" tString tRowNil))
+        (tRow "id" tInt (tVar kRow "r"))
+
+    succeedUnifyTypes
+        (tRow "id" tInt (tRow "password" tString (tRow "name" tString tRowNil)))
+        (tRow "id" tInt (tVar kRow "r"))
+
+    succeedUnifyTypes
+        (tRow "id" tInt (tRow "password" tString (tRow "name" tString tRowNil)))
+        (tVar kRow "r")
+
+    failUnifyTypes
+        (tRow "id" tInt (tRow "password" tString (tRow "name" tString tRowNil)))
+        (tVar kTyp "r")  --- Note: Not a row kind!
+
+    succeedUnifyTypes
+        (tRow "name" tString (tRow "id" tInt (tRow "shoeSize" tFloat tRowNil)))
+        (tRow "shoeSize" tFloat (tRow "id" tInt (tRow "name" tString tRowNil)))
+
+    succeedUnifyTypes
+        -- { name : String, shoeSize : Float }
+        (tRow "name" tString (tRow "shoeSize" tFloat tRowNil))
+        -- { shoeSize : Float | r }
+        (tRow "shoeSize" tFloat (tVar kRow "r"))
+
+    succeedUnifyTypes
+        -- { name : String, id : Int, shoeSize : Float }
+        (tRow "name" tString (tRow "id" tInt (tRow "shoeSize" tFloat tRowNil)))
+        -- { shoeSize : Float, id : Int | r }
+        (tRow "shoeSize" tFloat (tRow "id" tInt (tVar kRow "r")))
+
+    succeedUnifyTypes
+        -- { name : String, id : Int, shoeSize : Float }
+        (tRow "name" tString (tRow "id" tInt (tRow "shoeSize" tFloat tRowNil)))
+        -- { shoeSize : Float | r }
+        (tRow "shoeSize" tFloat (tVar kRow "r"))
+
+    succeedUnifyTypes
+        (tRow "shoeSize" tFloat (tVar kRow "r"))
+        (tRow "name" tString (tRow "shoeSize" tFloat tRowNil))
+
+    succeedUnifyTypes
+        (tRow "shoeSize" tFloat (tRow "id" tInt (tVar kRow "r")))
+        (tRow "name" tString (tRow "id" tInt (tRow "shoeSize" tFloat tRowNil)))
+
+    succeedUnifyTypes
+        (tRow "name" tString (tRow "id" tInt (tRow "shoeSize" tFloat tRowNil)))
+        (tRow "name" tString (tRow "id" tInt (tVar kRow "r")))
+
+    succeedUnifyTypes
+        (tRow "name" tString (tRow "id" tInt tRowNil))
+        (tRow "name" tString (tRow "id" (tVar kTyp "a") tRowNil))
+
+    succeedUnifyTypes
+        (tRow "name" tString (tRow "id" (tVar kTyp "a") tRowNil))
+        (tRow "name" tString (tRow "id" tInt tRowNil))
+
 ---- >>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>
 --
 --testMatchRowTypes :: SpecWith ()

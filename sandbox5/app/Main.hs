@@ -62,8 +62,8 @@ xxx5 = fromJust (runExceptT (evalSupplyT xxx1 (numSupply "")))
 
 --xxx1 :: (MonadFail m, MonadError UnificationError m) => m (Substitution Type, Substitution Kind)
 xxx1 = unifyTypes 
-        (tRow "id" tInt (tVar kRow "r"))
-        (tRow "id" tInt (tRow "name" tString tRowNil))
+        (tRow "name" tString (tRow "id" tInt (tRow "shoeSize" tFloat tRowNil)))
+        (tRow "shoeSize" tFloat (tRow "id" tInt (tVar kRow "r")))
 
 
 --------------------------
