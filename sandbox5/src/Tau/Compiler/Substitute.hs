@@ -71,6 +71,7 @@ instance (Substitutable t a) => Substitutable (ProgPattern t) a where
         PTuple  t ps         -> tuplePat  (apply sub t) ps
         PList   t ps         -> listPat   (apply sub t) ps
         PRow    t lab p q    -> rowPat    (apply sub t) lab p q 
+        PAnn    t p          -> annPat    t p
 
 instance (Substitutable t a, Substitutable p a) => Substitutable (Binding t p) a where
     apply sub = \case
@@ -102,6 +103,7 @@ instance (Substitutable t a) => Substitutable (ProgExpr t) a where
         ETuple  t es         -> tupleExpr  (apply sub t) es
         EList   t es         -> listExpr   (apply sub t) es
         ERow    t lab a b    -> rowExpr    (apply sub t) lab a b 
+        EAnn    t e          -> annExpr    t e
 
 instance (Substitutable t a) => Substitutable (Op1 t) a where
     apply sub = \case
