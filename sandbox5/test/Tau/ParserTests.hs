@@ -4,7 +4,7 @@ module Tau.ParserTests where
 import Data.Either (isLeft)
 import Tau.Lang
 import Tau.Parser
-import Tau.Tool
+import Tau.Tooling
 import Tau.Type
 import Test.Hspec hiding (describe, it)
 import Text.Megaparsec

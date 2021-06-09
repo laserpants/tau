@@ -13,7 +13,7 @@ import Tau.Eval (Eval)
 import Tau.Lang
 import Tau.Pretty
 import Tau.Prog
-import Tau.Tool
+import Tau.Tooling
 import Tau.Type
 import qualified Data.HashMap.Strict as HM
 import qualified Data.Text as Text

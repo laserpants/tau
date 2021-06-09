@@ -41,7 +41,7 @@ main = pure ()
 -- import Tau.Lang
 -- import Tau.Pretty
 -- import Tau.Prog
--- import Tau.Tool
+-- import Tau.Tooling
 -- import Tau.Type
 -- import Text.Megaparsec
 -- import qualified Tau.Compiler.Substitute as Sub

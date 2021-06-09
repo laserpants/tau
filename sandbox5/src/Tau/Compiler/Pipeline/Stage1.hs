@@ -10,7 +10,7 @@ import Tau.Compiler.Error
 import Tau.Compiler.Pipeline
 import Tau.Lang
 import Tau.Prog
-import Tau.Tool
+import Tau.Tooling
 import Tau.Type
 import qualified Data.Map.Strict as Map
 

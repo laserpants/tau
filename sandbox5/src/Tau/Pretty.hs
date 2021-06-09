@@ -22,7 +22,7 @@ import Tau.Compiler.Substitute hiding (null)
 import Tau.Compiler.Unify
 import Tau.Lang
 import Tau.Prog
-import Tau.Tool
+import Tau.Tooling
 import Tau.Type
 import qualified Data.Map.Strict as Map
 import qualified Data.Text as Text

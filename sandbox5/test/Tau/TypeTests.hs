@@ -4,7 +4,7 @@ module Tau.TypeTests where
 import Data.Text (Text)
 import Data.Text.Prettyprint.Doc
 import Tau.Pretty
-import Tau.Tool
+import Tau.Tooling
 import Tau.Type
 import Test.Hspec hiding (describe, it)
 import Utils

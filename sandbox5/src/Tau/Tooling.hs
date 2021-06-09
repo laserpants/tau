@@ -1,6 +1,6 @@
 {-# LANGUAGE FlexibleInstances     #-}
 {-# LANGUAGE MultiParamTypeClasses #-}
-module Tau.Tool 
+module Tau.Tooling
   ( Name
   , Algebra
   , List

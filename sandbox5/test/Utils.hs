@@ -13,7 +13,7 @@ import Data.Text (Text, unpack)
 import Data.Text.Prettyprint.Doc
 import Data.Text.Prettyprint.Doc.Render.Text
 import Debug.Trace
-import Tau.Tool
+import Tau.Tooling
 import Tau.Type
 import Test.Hspec hiding (describe, it) 
 import qualified Test.Hspec as Hspec

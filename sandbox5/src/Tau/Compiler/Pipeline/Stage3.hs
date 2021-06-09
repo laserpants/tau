@@ -6,7 +6,7 @@ import Control.Monad.Supply
 import Data.Foldable (foldrM)
 import Tau.Compiler.Pipeline
 import Tau.Lang
-import Tau.Tool
+import Tau.Tooling
 import Tau.Type
 
 type SourceExpr t = Expr t t t t t t t t t Void Void Void Void Void Void

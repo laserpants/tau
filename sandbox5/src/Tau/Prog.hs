@@ -22,7 +22,7 @@ import Tau.Compiler.Substitute
 import Tau.Compiler.Unify
 import Tau.Env (Env(..))
 import Tau.Lang
-import Tau.Tool
+import Tau.Tooling
 import Tau.Type
 import qualified Data.Set.Monad as Set
 import qualified Tau.Env as Env

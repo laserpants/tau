@@ -6,7 +6,7 @@ import Data.Maybe (isNothing)
 import Data.Text (pack)
 import Tau.Compiler.Substitute
 import Tau.Pretty
-import Tau.Tool
+import Tau.Tooling
 import Tau.Type
 import Test.Hspec hiding (describe, it)
 import Utils

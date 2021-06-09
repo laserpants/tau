@@ -18,7 +18,7 @@ import Data.Tuple.Extra (first, second)
 import Tau.Compiler.Error
 import Tau.Compiler.Substitute hiding (null)
 import Tau.Lang
-import Tau.Tool
+import Tau.Tooling
 import Tau.Type
 import qualified Data.Map.Strict as Map
 import qualified Data.Text as Text

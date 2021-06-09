@@ -4,7 +4,7 @@
 module Tau.Compiler.Pipeline where
 
 import Tau.Lang
-import Tau.Tool
+import Tau.Tooling
 
 -- BasicClause?
 data SimplifiedClause t p a = SimplifiedClause t [p] (Guard a) 

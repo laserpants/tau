@@ -12,7 +12,7 @@ import Data.Map.Strict (Map)
 import Prelude hiding (null)
 import Tau.Compiler.Error
 import Tau.Lang
-import Tau.Tool
+import Tau.Tooling
 import Tau.Type
 import qualified Data.Map.Strict as Map
 import qualified Tau.Env as Env

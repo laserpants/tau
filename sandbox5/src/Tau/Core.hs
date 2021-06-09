@@ -5,7 +5,7 @@
 module Tau.Core where
 
 import Tau.Lang (Prim)
-import Tau.Tool
+import Tau.Tooling
 
 type CMatrix a = List ([Name], a)
 

@@ -28,7 +28,7 @@ import Tau.Env (Env(..))
 import Tau.Lang
 import Tau.Pretty
 import Tau.Prog
-import Tau.Tool
+import Tau.Tooling
 import Tau.Type
 import qualified Data.Map.Strict as Map
 import qualified Data.Set.Monad as Set

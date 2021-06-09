@@ -20,7 +20,7 @@ module Tau.Compiler.TypecheckTests where
 --import Tau.Pretty
 --import Tau.Prog
 --import Tau.Row
---import Tau.Tool
+--import Tau.Tooling
 --import Tau.Type
 --import Test.Hspec hiding (describe, it)
 --import Utils

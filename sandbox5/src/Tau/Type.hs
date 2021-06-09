@@ -12,7 +12,7 @@ import Control.Monad
 import Data.List (nub)
 import Data.Map.Strict (Map)
 import Data.Tuple.Extra (first)
-import Tau.Tool
+import Tau.Tooling
 import qualified Data.Map.Strict as Map
 import qualified Data.Text as Text
 

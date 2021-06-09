@@ -5,7 +5,7 @@ import Data.Text.Prettyprint.Doc
 import Tau.Lang
 import Tau.Pretty
 import Tau.Type
-import Tau.Tool
+import Tau.Tooling
 import Test.Hspec hiding (describe, it)
 import Utils
 import qualified Data.Text as Text

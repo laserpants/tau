@@ -4,7 +4,7 @@ module Tau.Compiler.Error where
 
 import Data.Text (Text)
 import Tau.Lang
-import Tau.Tool
+import Tau.Tooling
 import Tau.Type
 
 data UnificationError

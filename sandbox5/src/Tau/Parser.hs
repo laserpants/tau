@@ -8,7 +8,7 @@ import Data.Functor (($>))
 import Data.Maybe (fromMaybe)
 import Data.Text (Text, pack, unpack)
 import Tau.Lang
-import Tau.Tool hiding (parens, brackets, braces, commaSep)
+import Tau.Tooling hiding (parens, brackets, braces, commaSep)
 import Tau.Type
 import Text.Megaparsec
 import Text.Megaparsec.Char

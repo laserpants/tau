@@ -6,7 +6,7 @@ module Tau.Eval.Prim where
 
 import Data.Text (Text)
 import Tau.Lang
-import Tau.Tool
+import Tau.Tooling
 import Tau.Env (Env)
 import qualified Data.Text as Text
 import qualified Tau.Env as Env
