@@ -252,7 +252,7 @@ astTypeVars (Ast expr) = nub (exprTypeVars expr)
         ETuple  t as           -> typeVars (typeOf t) <> concat as
         EList   t as           -> typeVars (typeOf t) <> concat as
         ERow    t _ a b        -> typeVars (typeOf t) <> a <> b
-        EAnn    t _            -> typeVars (typeOf t)
+        EAnn    _ a            -> a
 
     bindingTypeVars = \case
         BLet    t p            -> typeVars (typeOf t) <> patternTypeVars p
@@ -274,6 +274,7 @@ astTypeVars (Ast expr) = nub (exprTypeVars expr)
         PTuple  t ps           -> typeVars (typeOf t) <> concat ps
         PList   t ps           -> typeVars (typeOf t) <> concat ps
         PRow    t _ p q        -> typeVars (typeOf t) <> p <> q
+        PAnn    _ p            -> p
 
     op1TypeVars = \case
         ONeg    t              -> typeVars (typeOf t)
