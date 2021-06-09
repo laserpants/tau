@@ -215,8 +215,7 @@ guardPredicates :: Guard (ProgExpr (TypeInfoT e t)) -> [Predicate]
 guardPredicates (Guard es e) = exprPredicates e <> (exprPredicates =<< es)
 
 clausePredicates :: ProgClause (TypeInfoT e t) -> [Predicate]
-clausePredicates (Clause _ p gs) = concat ((guardPredicates <$> gs))
---  where (patternPredicates <$> ps) <> 
+clausePredicates (Clause _ p gs) = patternPredicates p <> (guardPredicates =<< gs)
 
 astPredicates :: Ast (TypeInfoT e t) -> [Predicate]
 astPredicates = exprPredicates . getAst

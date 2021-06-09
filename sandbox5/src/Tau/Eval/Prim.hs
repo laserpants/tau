@@ -133,6 +133,7 @@ primEnv = Env.fromList
     , ( "Double.(<)"        , fun2 ((<) :: Double -> Double -> Bool ) )
     , ( "Char.(<)"          , fun2 ((<) :: Char -> Char -> Bool ) )
     , ( "String.(<)"        , fun2 ((<) :: Text -> Text -> Bool ) )
+    , ( "Unit.(<)"          , fun2 ((<) :: () -> () -> Bool ) )
 
     , ( "Bool.(>)"          , fun2 ((>) :: Bool -> Bool -> Bool ) )
     , ( "Int.(>)"           , fun2 ((>) :: Int -> Int -> Bool ) )
@@ -141,6 +142,7 @@ primEnv = Env.fromList
     , ( "Double.(>)"        , fun2 ((>) :: Double -> Double -> Bool ) )
     , ( "Char.(>)"          , fun2 ((>) :: Char -> Char -> Bool ) )
     , ( "String.(>)"        , fun2 ((>) :: Text -> Text -> Bool ) )
+    , ( "Unit.(>)"          , fun2 ((>) :: () -> () -> Bool ) )
 
     , ( "Bool.show"         , fun1 (Text.pack . show :: Bool -> Text ) )
     , ( "Int.show"          , fun1 (Text.pack . show :: Int -> Text ) )
@@ -148,9 +150,13 @@ primEnv = Env.fromList
     , ( "Float.show"        , fun1 (Text.pack . show :: Float -> Text ) )
     , ( "Double.show"       , fun1 (Text.pack . show :: Double -> Text ) )
     , ( "Char.show"         , fun1 (Text.pack . show :: Char -> Text ) )
+    , ( "Unit.show"         , fun1 (Text.pack . show :: () -> Text ) )
     , ( "String.show"       , fun1 (id :: Text -> Text) )
 
-    , ( "Int.fromInteger"   , fun1 (fromInteger :: Integer -> Int) )
+    , ( "Int.fromInteger"     , fun1 (fromInteger :: Integer -> Int) )
+    , ( "Integer.fromInteger" , fun1 (fromInteger :: Integer -> Integer) )
+    , ( "Float.fromInteger"   , fun1 (fromInteger :: Integer -> Float) )
+    , ( "Double.fromInteger"  , fun1 (fromInteger :: Integer -> Double) )
 
     , ( "String.length"     , fun1 (Text.length :: Text -> Int ) )
 

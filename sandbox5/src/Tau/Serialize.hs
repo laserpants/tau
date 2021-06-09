@@ -39,13 +39,45 @@ instance ToRep Kind where
 instance ToRep Prim where 
     toRep = withPretty primJson
 
-instance (ToRep t1, ToRep t2, ToRep t3, ToRep t4, ToRep t5, ToRep t6, ToRep t7, ToRep t8, ToRep t9) => ToRep (Pattern t1 t2 t3 t4 t5 t6 t7 t8 t9) where 
+instance 
+    ( ToRep t1
+    , ToRep t2
+    , ToRep t3
+    , ToRep t4
+    , ToRep t5
+    , ToRep t6
+    , ToRep t7
+    , ToRep t8
+    , ToRep t9
+    ) => ToRep (Pattern t1 t2 t3 t4 t5 t6 t7 t8 t9) 
+  where 
     toRep = patternRep
 
 instance (ToRep t) => ToRep (SimplifiedPattern t) where 
     toRep = simplifiedPatternRep
 
-instance (Functor e3, ToRep t1, ToRep t2, ToRep t3, ToRep t4, ToRep t5, ToRep t6, ToRep t7, ToRep t8, ToRep t9, ToRep t10, ToRep t11, ToRep t12, ToRep t13, ToRep t14, ToRep t15, ToRep e1, ToRep e2, ToRep (e3 (Expr t1 t2 t3 t4 t5 t6 t7 t8 t9 t10 t11 t12 t13 t14 t15 e1 e2 e3))) => ToRep (Expr t1 t2 t3 t4 t5 t6 t7 t8 t9 t10 t11 t12 t13 t14 t15 e1 e2 e3) where
+instance 
+    ( Functor e3
+    , ToRep t1
+    , ToRep t2
+    , ToRep t3
+    , ToRep t4
+    , ToRep t5
+    , ToRep t6
+    , ToRep t7
+    , ToRep t8
+    , ToRep t9
+    , ToRep t10
+    , ToRep t11
+    , ToRep t12
+    , ToRep t13
+    , ToRep t14
+    , ToRep t15
+    , ToRep e1
+    , ToRep e2
+    , ToRep (e3 (Expr t1 t2 t3 t4 t5 t6 t7 t8 t9 t10 t11 t12 t13 t14 t15 e1 e2 e3))
+    ) => ToRep (Expr t1 t2 t3 t4 t5 t6 t7 t8 t9 t10 t11 t12 t13 t14 t15 e1 e2 e3) 
+  where
     toRep = exprRep
 
 instance (ToRep a) => ToRep (Op1 a) where 
@@ -93,11 +125,9 @@ array :: [Value] -> Value
 array = Array . Vector.fromList
 
 makeRep :: String -> String -> [Value] -> Value
-makeRep type_ constructor args =
-    object 
-        [ "_meta"    .= [type_, constructor]
-        , "children" .= args
-        ]
+makeRep type_ constructor args = object 
+    [ "_meta"    .= [type_, constructor]
+    , "children" .= args ]
 
 withPretty :: (Pretty p) => (p -> Value) -> p -> Value
 withPretty f p = Object (HM.insert "pretty" (String (prettyPrint p)) obj)
@@ -129,7 +159,18 @@ primJson = \case
     TChar    c          -> makeRep "Prim" "TChar"     [toJSON c]
     TString  t          -> makeRep "Prim" "TString"   [toJSON t]
 
-patternRep :: (ToRep t1, ToRep t2, ToRep t3, ToRep t4, ToRep t5, ToRep t6, ToRep t7, ToRep t8, ToRep t9) => Pattern t1 t2 t3 t4 t5 t6 t7 t8 t9 -> Value
+patternRep 
+  :: ( ToRep t1
+     , ToRep t2
+     , ToRep t3
+     , ToRep t4
+     , ToRep t5
+     , ToRep t6
+     , ToRep t7
+     , ToRep t8
+     , ToRep t9 ) 
+  => Pattern t1 t2 t3 t4 t5 t6 t7 t8 t9 
+  -> Value
 patternRep = project >>> \case
     PVar   t var        -> makeRep "Pattern" "PVar"   [toRep t, String var]
     PCon   t con ps     -> makeRep "Pattern" "PCon"   [toRep t, String con, toRep ps] 
@@ -143,11 +184,31 @@ patternRep = project >>> \case
 
 simplifiedPatternRep :: (ToRep t) => SimplifiedPattern t -> Value
 simplifiedPatternRep = \case
-    SCon   t p ps       -> makeRep "SimplifiedPattern" "SCon" [toRep t, toRep p, toRep ps]
+    SCon   t p ps       -> makeRep "SimplifiedPattern" "SCon" 
+                                                      [toRep t, toRep p, toRep ps]
 
-exprRep 
-  :: (Functor e3, ToRep t1, ToRep t2, ToRep t3, ToRep t4, ToRep t5, ToRep t6, ToRep t7, ToRep t8, ToRep t9, ToRep t10, ToRep t11, ToRep t12, ToRep t13, ToRep t14, ToRep t15, ToRep e1, ToRep e2, ToRep (e3 (Expr t1 t2 t3 t4 t5 t6 t7 t8 t9 t10 t11 t12 t13 t14 t15 e1 e2 e3))) 
-  => Expr t1 t2 t3 t4 t5 t6 t7 t8 t9 t10 t11 t12 t13 t14 t15 e1 e2 e3 -> Value
+exprRep
+  :: ( Functor e3
+     , ToRep t1
+     , ToRep t2
+     , ToRep t3
+     , ToRep t4
+     , ToRep t5
+     , ToRep t6
+     , ToRep t7
+     , ToRep t8
+     , ToRep t9
+     , ToRep t10
+     , ToRep t11
+     , ToRep t12
+     , ToRep t13
+     , ToRep t14
+     , ToRep t15
+     , ToRep e1
+     , ToRep e2
+     , ToRep (e3 (Expr t1 t2 t3 t4 t5 t6 t7 t8 t9 t10 t11 t12 t13 t14 t15 e1 e2 e3)) ) 
+  => Expr t1 t2 t3 t4 t5 t6 t7 t8 t9 t10 t11 t12 t13 t14 t15 e1 e2 e3 
+  -> Value
 exprRep = project >>> \case
     EVar   t var        -> makeRep "Expr" "EVar"      [toRep t, String var]
     ECon   t con es     -> makeRep "Expr" "ECon"      [toRep t, String con, toRep es]
@@ -210,15 +271,18 @@ clauseRep = \case
 
 simplifiedClauseRep :: (ToRep t, ToRep p, ToRep a) => SimplifiedClause t p a -> Value
 simplifiedClauseRep = \case
-    SimplifiedClause t ps e -> makeRep "SimplifiedClause" "SimplifiedClause" [toRep t, toRep ps, toRep e]
+    SimplifiedClause t ps e -> makeRep "SimplifiedClause" "SimplifiedClause" 
+                                                      [toRep t, toRep ps, toRep e]
 
 typeInfoRep :: (ToRep e, ToRep t) => TypeInfoT e t -> Value
 typeInfoRep = \case
-    TypeInfo e t ps     -> makeRep "TypeInfoT" "TypeInfo" [toRep e, toRep t, toRep ps]
+    TypeInfo e t ps     -> makeRep "TypeInfoT" "TypeInfo" 
+                                                      [toRep e, toRep t, toRep ps]
 
 predicateRep :: (ToRep a) => PredicateT a -> Value
 predicateRep = \case
-    InClass name a      -> makeRep "PredicateT" "InClass" [String name, toRep a]
+    InClass name a      -> makeRep "PredicateT" "InClass" 
+                                                      [String name, toRep a]
 
 errorRep :: Error -> Value
 errorRep = \case

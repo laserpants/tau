@@ -155,53 +155,53 @@ instance FreeIn Scheme where
 
 getKindVar :: Kind -> Maybe Name
 getKindVar = project >>> \case
-    KVar var     -> Just var
-    _            -> Nothing
+    KVar v   -> Just v
+    _        -> Nothing
 
 getKindCon :: Kind -> Maybe Name
 getKindCon = project >>> \case
-    KCon con     -> Just con
-    _            -> Nothing
+    KCon c   -> Just c
+    _        -> Nothing
 
 isVar :: Type -> Bool
 isVar = project >>> \case
-    TVar{}       -> True
-    _            -> False
+    TVar{}   -> True
+    _        -> False
 
 isCon :: Type -> Bool
 isCon = project >>> \case
-    TCon{}       -> True
-    _            -> False
+    TCon{}   -> True
+    _        -> False
 
 getTypeVar :: Type -> Maybe Name
 getTypeVar = project >>> \case
-    TVar _ var   -> Just var
-    _            -> Nothing
+    TVar _ v -> Just v
+    _        -> Nothing
 
 getTypeIndex :: Polytype -> Maybe Int
 getTypeIndex = project >>> \case
-    TGen i       -> Just i
-    _            -> Nothing
+    TGen i   -> Just i
+    _        -> Nothing
 
-isListType :: Type -> Bool
-isListType = project >>> \case
-    TApp _ a _ -> 
-        case project a of
-            TCon _ "List" -> True
-            _ -> False
-    _         -> False
-
-isTupleType :: Type -> Bool
-isTupleType ty = Just True == maybeIsTupleCon
-  where
-    maybeIsTupleCon = Text.all (== ',') <$> (stripped <=< leftmostTypeCon) ty
-    stripped        = Text.stripSuffix ")" <=< Text.stripPrefix "("
-
-leftmostTypeCon :: Type -> Maybe Name
-leftmostTypeCon = cata $ \case
-    TCon _ con   -> Just con
-    TApp _ a _   -> a
-    _            -> Nothing
+--isListType :: Type -> Bool
+--isListType = project >>> \case
+--    TApp _ a _ -> 
+--        case project a of
+--            TCon _ "List" -> True
+--            _ -> False
+--    _         -> False
+--
+--isTupleType :: Type -> Bool
+--isTupleType ty = Just True == maybeIsTupleCon
+--  where
+--    maybeIsTupleCon = Text.all (== ',') <$> (stripped <=< leftmost) ty
+--    stripped        = Text.stripSuffix ")" <=< Text.stripPrefix "("
+--
+--    leftmost :: Type -> Maybe Name
+--    leftmost = cata $ \case
+--        TCon _ con   -> Just con
+--        TApp _ a _   -> a
+--        _            -> Nothing
 
 kindOf :: Type -> Kind
 kindOf = project >>> \case
@@ -352,10 +352,11 @@ tList = tApp kTyp tListCon
 
 -- Tuples
 
+tTupleCon :: Int -> TypeT a
+tTupleCon n = tCon (foldr kArr kTyp (replicate n kTyp)) (tupleCon n)
+
 tTuple :: [TypeT a] -> TypeT a
-tTuple types = foldl (tApp kTyp) (tCon kind (tupleCon (length types))) types
-  where
-    kind = foldr (const (kArr kTyp)) kTyp types
+tTuple types = foldl (tApp kTyp) (tTupleCon (length types)) types
 
 tPair :: TypeT a -> TypeT a -> TypeT a
 tPair t1 t2 = tTuple [t1, t2]

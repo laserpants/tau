@@ -91,14 +91,26 @@ instance Pretty Kind where
 ---- >>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>
 
 instance Pretty Type where
-    pretty ty 
-        | isTupleType ty = prettyTupleType ty
-        | otherwise      = prettyType ty
+    pretty ty
+       | isTupleType ty = prettyTupleType ty
+       | otherwise      = prettyType ty
 
---        case leftmostTypeCon ty of
---            Just con | isTuple con -> prettyTupleType ty
---            Just "#Record"         -> prettyRecordType ty
---            _                      -> prettyType ty
+--       case leftmostTypeCon ty of
+--           Just con | isTuple con -> prettyTupleType ty
+--           Just "#Record"         -> prettyRecordType ty
+--           _                      -> prettyType ty
+
+isTupleType :: Type -> Bool
+isTupleType ty = Just True == maybeIsTupleCon
+  where
+    maybeIsTupleCon = Text.all (== ',') <$> (stripped <=< leftmost) ty
+    stripped        = Text.stripSuffix ")" <=< Text.stripPrefix "("
+
+    leftmost :: Type -> Maybe Name
+    leftmost = cata $ \case
+        TCon _ con   -> Just con
+        TApp _ a _   -> a
+        _            -> Nothing
 
 prettyTupleType :: Type -> Doc a
 prettyTupleType ty = let (_:ts) = unfoldApp ty in prettyTuple (pretty <$> ts)
