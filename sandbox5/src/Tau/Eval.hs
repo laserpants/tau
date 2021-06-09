@@ -86,17 +86,6 @@ eval = cata $ \case
         if isTrue then e2 else e3
 
     CPat expr fields -> 
---        e <- expr
---        foo <- traverse sequence fields
---        traceShowM "vvvvvvvvvvvvvvv-"
---        traceShowM "vvvvvvvvvvvvvvv"
---        traceShowM e
-----        traceShowM foo
---        traceShowM "^^^^^^^^^^^^^^^"
---        traceShowM "^^^^^^^^^^^^^^^"
-----        evalPat fields e
---        undefined
-
         expr >>= evalPat fields
 
 evalVar :: (MonadFail m, MonadReader (ValueEnv m) m) => Name -> m (Value m)
