@@ -1,5 +1,6 @@
-[x] Rows/Records
 [x] JSON representations
+[-] Rows/Records
+[-] Kinds
 [-] Tests
 [-] Recursion
 [-] Modules
