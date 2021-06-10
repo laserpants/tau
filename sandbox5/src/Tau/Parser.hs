@@ -110,13 +110,14 @@ fields :: Name -> Parser a -> Parser [(Name, a)]
 fields sep parser = commaSep $ (,) <$> nameParser <*> (symbol sep *> parser)
 
 rowParser 
-  :: Parser a 
+  :: Text
+  -> Parser a 
   -> (() -> Name -> a -> a -> a) 
   -> (() -> Name -> a) 
   -> (() -> a) 
   -> Parser a
-rowParser parser rowCon varCon empty = braces $ do
-    pairs <- fields "=" parser
+rowParser sep parser rowCon varCon empty = braces $ do
+    pairs <- fields sep parser
     rest  <- optional (symbol "|" *> nameParser)
     let next = maybe (empty ()) (varCon ()) rest
     case pairs of
@@ -180,7 +181,7 @@ patternParser = makeExprParser (try (parens patternParser) <|> parser)
     parseTuple     = tuplePat () <$> components annPatternParser
     parseCon       = conPat () <$> constructorParser 
                                <*> (fromMaybe [] <$> optional (components annPatternParser))
-    parseRecord    = recordPat () <$> rowParser annPatternParser rowPat varPat emptyRowPat
+    parseRecord    = recordPat () <$> rowParser "=" annPatternParser rowPat varPat emptyRowPat
 
 -- >>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>
 
@@ -315,33 +316,28 @@ exprParser = makeExprParser (try lambdaParser <|> try (parens exprParser) <|> pa
     parseTuple     = tupleExpr () <$> components exprParser
     parseCon       = conExpr () <$> constructorParser 
                                 <*> (fromMaybe [] <$> optional (components annExprParser))
-    parseRecord    = recordExpr () <$> rowParser annExprParser rowExpr varExpr emptyRowExpr
+    parseRecord    = recordExpr () <$> rowParser "=" annExprParser rowExpr varExpr emptyRowExpr
 
 lambdaParser :: Parser (ProgExpr ())
 lambdaParser = lamExpr () <$> argParser patternParser <*> (symbol "=>" *> annExprParser)
 
 -- >>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>
 
--- TODO
 typeParser :: Parser Type
 typeParser = makeExprParser (try (parens typeParser) <|> parser) 
     [[ InfixR (tArr <$ symbol "->") ]]
   where
     parser = do
         (t:ts) <- some typeFragmentParser
-        foldlM foo t ts
-
-    foo s t = do
-        k <- kind
-        pure (tApp k s t)
+        foldlM (\s t -> kind >>= \k -> pure (tApp k s t)) t ts
 
     typeFragmentParser :: Parser Type
-    typeFragmentParser = do
+    typeFragmentParser = 
         tVar <$> kind <*> nameParser
-        <|> builtIn
-        <|> tCon <$> kind <*> constructorParser
-        -- tuple
-        -- record
+          <|> builtIn
+          <|> tCon <$> kind <*> constructorParser
+          <|> tTuple <$> components typeParser
+          <|> tRecord <$> rowParser ":" typeParser (const tRow) (const (tVar kRow)) (const tRowNil)
 
     kind = lift (kVar . ("k" <>) <$> supply)
 
@@ -354,7 +350,9 @@ builtIn = builtInType "Integer" kTyp
       <|> builtInType "Double"  kTyp
       <|> builtInType "Char"    kTyp
       <|> builtInType "String"  kTyp
+      <|> builtInType "Nat"     kTyp
       <|> builtInType "List"    kFun
+      <|> builtInType "Option"  kFun
 
 builtInType :: Name -> Kind -> Parser Type
 builtInType name kind = keyword name $> tCon kind name

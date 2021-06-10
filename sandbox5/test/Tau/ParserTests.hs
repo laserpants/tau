@@ -247,47 +247,72 @@ testExprParser = do
                 ])
             (conExpr () "Some" [litExpr () (TInteger 3)]))
 
-    -- Types
+testTypeParser :: SpecWith ()
+testTypeParser = do
 
     succeedParseType typeParser 
         "Int"
-        (tInt :: Type)
+        tInt 
 
     succeedParseType typeParser
         "Int -> Int"
-        (tInt `tArr` tInt :: Type)
+        (tInt `tArr` tInt)
 
     succeedParseType typeParser 
         "List Int"
-        (tList tInt :: Type)
+        (tList tInt)
 
---    succeedParseType typeParser "a type"
---        "List (List Int)"
---        (tApp (tCon (kArr kTyp kTyp) "List") (tApp (tCon (kArr kTyp kTyp) "List") tInt) :: Type)
---
---    succeedParseType typeParser "a type"
---        "List a"
---        (tApp (tCon (kArr kTyp kTyp) "List") (tVar kTyp "a") :: Type)
---
---    succeedParseType typeParser "a type"
---        "m a"
---        (tApp (tVar (kArr kTyp kTyp) "m") (tVar kTyp "a") :: Type)
---
---    succeedParseType typeParser "a type"
---        "List Int -> a"
---        (tApp (tCon (kArr kTyp kTyp) "List") tInt `tArr` tVar kTyp "a" :: Type)
---
---    succeedParseType typeParser "an expression"
---        "A B C"
---        (tApp (tApp (tCon (kArr kTyp (kArr kTyp kTyp)) "A") (tCon kTyp "B")) (tCon kTyp "C") :: Type)
---
---    succeedParseType typeParser "an expression"
---        "A b c"
---        (tApp (tApp (tCon (kArr kTyp (kArr kTyp kTyp)) "A") (tVar kTyp "b")) (tVar kTyp "c") :: Type)
---
---    succeedParseType typeParser "an exprssion"
---        "A (B C) D"
---        (tApp (tApp (tCon (kArr kTyp (kArr kTyp kTyp)) "A") (tApp (tCon (kArr kTyp kTyp) "B") (tCon kTyp "C"))) (tCon kTyp "D") :: Type)
+    succeedParseType typeParser 
+        "List (List Int)"
+        (tApp kTyp (tCon (kArr kTyp kTyp) "List") (tApp kTyp (tCon (kArr kTyp kTyp) "List") tInt))
+
+    succeedParseType typeParser
+        "List a"
+        (tApp kTyp (tCon (kArr kTyp kTyp) "List") (tVar kTyp "a"))
+
+    succeedParseType typeParser
+        "m a"
+        (tApp kTyp (tVar (kArr kTyp kTyp) "m") (tVar kTyp "a"))
+
+    succeedParseType typeParser
+        "List Int -> a"
+        (tApp kTyp (tCon (kArr kTyp kTyp) "List") tInt `tArr` tVar kTyp "a")
+
+    succeedParseType typeParser
+        "A B C"
+        (tApp kTyp (tApp (kArr kTyp kTyp) (tCon (kArr kTyp (kArr kTyp kTyp)) "A") (tCon kTyp "B")) (tCon kTyp "C") :: Type)
+
+    succeedParseType typeParser
+        "A b c"
+        (tApp kTyp (tApp (kArr kTyp kTyp) (tCon (kArr kTyp (kArr kTyp kTyp)) "A") (tVar kTyp "b")) (tVar kTyp "c") :: Type)
+
+    succeedParseType typeParser
+        "A (B C) D"
+        (tApp kTyp (tApp (kArr kTyp kTyp) (tCon (kArr kTyp (kArr kTyp kTyp)) "A") (tApp kTyp (tCon (kArr kTyp kTyp) "B") (tCon kTyp "C"))) (tCon kTyp "D") :: Type)
+
+    -- Tuple types
+
+    succeedParseType typeParser
+        "(Int, Int)"
+        (tTuple [tInt, tInt])
+
+    succeedParseType typeParser
+        "(Int, a)"
+        (tTuple [tInt, tVar kTyp "a"])
+
+    -- Record types
+
+    succeedParseType typeParser
+        "{ a : Int }"
+        (tRecord (tRow "a" tInt tRowNil))
+
+    succeedParseType typeParser
+        "{ a : Int, b : a }"
+        (tRecord (tRow "a" tInt (tRow "b" (tVar kTyp "a") tRowNil)))
+
+    succeedParseType typeParser
+        "{ a : Int, b : a | c }"
+        (tRecord (tRow "a" tInt (tRow "b" (tVar kTyp "a") (tVar kRow "c"))))
 
 testExprParserMatch :: SpecWith ()
 testExprParserMatch = do
