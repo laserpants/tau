@@ -315,6 +315,27 @@ lambdaParser = lamExpr () <$> argParser patternParser <*> (symbol "=>" *> annExp
 
 -- TODO
 typeParser :: Parser Type
-typeParser = do
-    symbol "Int"
-    pure tInt
+typeParser = makeExprParser (try (parens typeParser) <|> parser) 
+    [[ InfixR (tArr <$ symbol "->") ]]
+  where
+    parser = do
+        ts <- some typeFragmentParser
+        --let kind = foldr1 kArr (fromJust . kindOf <$> ts)
+        -- TODO
+        pure (foldl1 foo ts)
+
+foo = undefined
+
+typeFragmentParser :: Parser Type
+typeFragmentParser = tVar undefined <$> nameParser
+    <|> tCon undefined <$> constructorParser
+    -- tuple
+    -- record
+
+--setKind :: Kind -> TypeT a -> TypeT a
+--setKind k = project >>> \case
+--    TVar _ var   -> tVar k var
+----    TCon _ con   -> tCon con
+----    TRow _ a b   -> tRow kRow a b
+----    TApp _ t1 t2 -> tApp k t1 t2
+----    TArr   t1 t2 -> tArr t1 t2
