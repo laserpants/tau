@@ -26,16 +26,17 @@ testDescription t1 t2 = "The types " <> prettyText t1 <> " and " <> prettyText t
 
 succeedUnifyTypes :: Type -> Type -> SpecWith ()
 succeedUnifyTypes t1 t2 = do
-    let result = runUnify (unifyTypes t1 t2)
-    describe (testDescription t1 t2) $ do
-        it "✔ yields a substitution" $
-            isRight result
-
-        it "✔ and it unifies the two types" $ do
-            let Right (typeSub, kindSub) = result
-                r1 = apply kindSub (apply typeSub t1)
-                r2 = apply kindSub (apply typeSub t2)
-            canon r1 == canon r2
+    undefined
+--    let result = runUnify (unifyTypes t1 t2)
+--    describe (testDescription t1 t2) $ do
+--        it "✔ yields a substitution" $
+--            isRight result
+--
+--        it "✔ and it unifies the two types" $ do
+--            let Right (typeSub, kindSub) = result
+--                r1 = apply kindSub (apply typeSub t1)
+--                r2 = apply kindSub (apply typeSub t2)
+--            canon r1 == canon r2
 
 canon :: Type -> Type
 canon = cata $ \case

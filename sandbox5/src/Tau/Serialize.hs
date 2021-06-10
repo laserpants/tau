@@ -151,13 +151,13 @@ kindJson = project >>> \case
 primJson :: Prim -> Value
 primJson = \case
     TUnit               -> makeRep "Prim" "TUnit"     [String "()"]
-    TBool    b          -> makeRep "Prim" "TBool"     [String (if b then "True" else "False")]
-    TInt     i          -> makeRep "Prim" "TInt"      [toJSON i]
-    TInteger i          -> makeRep "Prim" "TInteger"  [toJSON i]
-    TFloat   f          -> makeRep "Prim" "TFloat"    [toJSON f]
-    TDouble  d          -> makeRep "Prim" "TDouble"   [toJSON d]
-    TChar    c          -> makeRep "Prim" "TChar"     [toJSON c]
-    TString  t          -> makeRep "Prim" "TString"   [toJSON t]
+    TBool    a          -> makeRep "Prim" "TBool"     [String (if a then "True" else "False")]
+    TInt     a          -> makeRep "Prim" "TInt"      [toJSON a]
+    TInteger a          -> makeRep "Prim" "TInteger"  [toJSON a]
+    TFloat   a          -> makeRep "Prim" "TFloat"    [toJSON a]
+    TDouble  a          -> makeRep "Prim" "TDouble"   [toJSON a]
+    TChar    a          -> makeRep "Prim" "TChar"     [toJSON a]
+    TString  a          -> makeRep "Prim" "TString"   [toJSON a]
 
 patternRep 
   :: ( ToRep t1

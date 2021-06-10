@@ -57,9 +57,6 @@ instance Substitutable Polytype Type where
 instance (Substitutable t a) => Substitutable (PredicateT t) a where
     apply = fmap . apply
 
---instance (Substitutable t a) => Substitutable (ErrorT t) a where
---    apply = fmap . apply
-
 instance (Substitutable t a) => Substitutable (ProgPattern t) a where
     apply sub = cata $ \case
         PVar    t var        -> varPat    (apply sub t) var
@@ -198,7 +195,8 @@ merge s1 s2
     | allEqual  = Just (Sub (getSub s1 `Map.union` getSub s2))
     | otherwise = Nothing
   where
-    allEqual = all (\v -> applySub s1 v == applySub s2 v) (domain s1 `intersect` domain s2)
+    allEqual = all (\v -> applySub s1 v == applySub s2 v) 
+        (domain s1 `intersect` domain s2)
 
     applySub :: Substitution a -> Name -> Maybe a
     applySub sub var = Map.lookup var (getSub sub)
@@ -213,9 +211,9 @@ normalize ty = apply (normalizer (typeVars ty)) ty
 
 kindSubstitute :: Substitution Kind -> Kind -> Kind
 kindSubstitute sub = cata $ \case 
-    KVar var   -> withDefault (kVar var) var sub
-    KArr k1 k2 -> kArr k1 k2
-    ty         -> embed ty
+   KVar var   -> withDefault (kVar var) var sub
+   KArr k1 k2 -> kArr k1 k2
+   ty         -> embed ty
 
 apply2
   :: ( Substitutable t Type

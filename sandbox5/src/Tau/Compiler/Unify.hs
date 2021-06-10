@@ -65,13 +65,11 @@ bindType
   -> Type
   -> m (Substitution Type, Substitution Kind)
 bindType name kind ty
-    | getTypeVar ty == Just name              = withTypeSub mempty
+    | getTypeVar ty == Just name              = (,) mempty <$> kindSub
     | name `elem` (fst <$> free ty)           = throwError InfiniteType
-    | otherwise                               = withTypeSub (name `mapsTo` ty)
+    | otherwise                               = (,) (name `mapsTo` ty) <$> kindSub
   where
-    withTypeSub sub = do
-        kindSub <- unifyKinds kind (kindOf ty)
-        pure (sub, kindSub)
+    kindSub = unifyKinds kind (kindOf ty)
 
 unifyTypes
   :: ( MonadSupply Name m
@@ -101,7 +99,7 @@ matchTypes t u = fn (project t) (project u)
     fn (TApp _ t1 t2) (TApp _ u1 u2)          = matchTypePairs (t1, t2) (u1, u2)
     fn TRow{} TRow{}                          = unifyRows matchTypes matchTypePairs t u
     fn (TVar kind name) _                     = bindType name kind u
-    fn _ _ | t == u                           = pure mempty
+    fn (TCon k1 a) (TCon k2 b) | a == b       = (mempty ,) <$> unifyKinds k1 k2
     fn _ _                                    = throwError IncompatibleTypes
 
 unifyTypePairs
@@ -146,18 +144,15 @@ unifyRows combineTypes combinePairs t u =
         . (second pure <$>) 
         . rowFields 
 
-    rowFields :: Type -> [(Name, Type)]
-    rowFields = para $ \case
-        TRow label ty rest             -> (label, fst ty):snd rest
-        _                              -> []
-
-    final :: Type -> Type
-    final = cata $ \case
-        TRow _ _ r                     -> r
-        t                              -> embed t
-
-    fromMap :: Type -> Map Name [Type] -> Type
     fromMap = Map.foldrWithKey (flip . foldr . tRow)
+
+    rowFields = para $ \case
+        TRow label ty rest -> (label, fst ty):snd rest
+        _                  -> []
+
+    final = cata $ \case
+        TRow _ _ r         -> r
+        t                  -> embed t
 
     fn (m1, j) (m2, k) 
         | Map.null m1 && Map.null m2 = combineTypes j k
@@ -169,19 +164,14 @@ unifyRows combineTypes combinePairs t u =
                         (fromMap j (updateMap m1 ts), t) 
                         (fromMap k (updateMap m2 us), u)
                 _ -> do
-                    ta <- newTVar_
                     when (k == j) $ throwError IncompatibleTypes
+                    tv <- tVar <$> (kVar . ("k" <>) <$> supply) 
+                               <*> (("a" <>) <$> supply)
                     combinePairs 
                         (fromMap j (updateMap m1 ts), k) 
-                        (fromMap ta m2, tRow a t ta)
+                        (fromMap tv m2, tRow a t tv)
       where
         (a, t:ts) = Map.elemAt 0 m1
         updateMap m = \case
             [] -> Map.delete a m
             ts -> Map.insert a ts m
-
-newTVar_ :: (MonadSupply Name m) => m (TypeT a)
-newTVar_ = do
-    k <- ("k" <>) <$> supply
-    t <- ("a" <>) <$> supply
-    pure (tVar (kVar k) t)
