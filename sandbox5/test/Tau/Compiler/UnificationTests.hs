@@ -26,17 +26,16 @@ testDescription t1 t2 = "The types " <> prettyText t1 <> " and " <> prettyText t
 
 succeedUnifyTypes :: Type -> Type -> SpecWith ()
 succeedUnifyTypes t1 t2 = do
-    undefined
---    let result = runUnify (unifyTypes t1 t2)
---    describe (testDescription t1 t2) $ do
---        it "✔ yields a substitution" $
---            isRight result
---
---        it "✔ and it unifies the two types" $ do
---            let Right (typeSub, kindSub) = result
---                r1 = apply kindSub (apply typeSub t1)
---                r2 = apply kindSub (apply typeSub t2)
---            canon r1 == canon r2
+    let result = runUnify (unifyTypes t1 t2)
+    describe (testDescription t1 t2) $ do
+        it "✔ yields a substitution" $
+            isRight result
+
+        it "✔ and it unifies the two types" $ do
+            let Right (typeSub, kindSub) = result
+                r1 = apply kindSub (apply typeSub t1)
+                r2 = apply kindSub (apply typeSub t2)
+            canon r1 == canon r2
 
 canon :: Type -> Type
 canon = cata $ \case
@@ -44,10 +43,10 @@ canon = cata $ \case
     TCon k con       -> tCon k con
     TApp k t1 t2     -> tApp k t1 t2
     TArr t1 t2       -> tArr t1 t2
-    TRow label t1 t2 -> toCanonicalType (tRow label t1 t2)
+    TRow label t1 t2 -> toCanonicalRow (tRow label t1 t2)
 
-toCanonicalType :: Type -> Type
-toCanonicalType t = fromMap (baseRow t) (foldr (uncurry f) mempty (rowFields t))
+toCanonicalRow :: Type -> Type
+toCanonicalRow t = fromMap (baseRow t) (foldr (uncurry f) mempty (rowFields t))
   where
     fromMap :: Type -> Map Name [Type] -> Type
     fromMap = Map.foldrWithKey (flip . foldr . tRow)
@@ -64,7 +63,7 @@ toCanonicalType t = fromMap (baseRow t) (foldr (uncurry f) mempty (rowFields t))
 
     f name ty = Map.insertWith (<>) name [ty]
 
---toCanonicalType = uncurry fromMap . toMap
+--toCanonicalRow = uncurry fromMap . toMap
 --  where
 --    fromMap :: Type -> Map Name [Type] -> Type
 --    fromMap = Map.foldrWithKey (flip . foldr . tRow)
