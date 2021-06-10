@@ -9,6 +9,9 @@ module Utils where
 --  , prettyText
 --  ) where
 
+import Control.Monad.Except
+import Control.Monad.Supply
+import Data.Maybe (fromJust)
 import Data.Text (Text, unpack)
 import Data.Text.Prettyprint.Doc
 import Data.Text.Prettyprint.Doc.Render.Text
@@ -35,3 +38,8 @@ _c = tVar kTyp "c"
 
 prettyText :: (Pretty p) => p -> Text
 prettyText = renderDoc . pretty
+
+runUnify :: SupplyT Name (ExceptT err Maybe) a -> Either err a
+runUnify e = fromJust (runExceptT (evalSupplyT e (numSupply "")))
+
+

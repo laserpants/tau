@@ -4,7 +4,6 @@ module Tau.Compiler.UnificationTests where
 
 import Control.Monad
 import Control.Monad.Except
-import Control.Monad.Supply
 import Data.Either (isLeft, isRight)
 import Data.List (intersect, (\\))
 import Data.Map.Strict (Map)
@@ -93,9 +92,6 @@ failUnifyTypes t1 t2 = do
     describe (testDescription t1 t2) $
         it "✗ fails to unify" $
             isLeft result
-
-runUnify :: SupplyT Name (ExceptT err Maybe) a -> Either err a
-runUnify x = fromJust (runExceptT (evalSupplyT x (numSupply "")))
 
 --import Data.Either (isLeft, isRight)
 --import Data.Text (Text)
