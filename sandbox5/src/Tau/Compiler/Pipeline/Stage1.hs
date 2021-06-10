@@ -53,33 +53,33 @@ type TargetSimplifiedClause t =
 --  -> TargetExpr (TypeInfoT [Error] (Maybe Type))
 --translate = translate2 . translate1
 
-translate = translate2 . translate1
+--translate = translate2 . translate1
+--
+---- TODO ???
+--translate1
+--  :: ProgExpr (TypeInfoT [Error] (Maybe Type))
+--  -> ProgExpr (TypeInfoT [Error] (Maybe Type))
+--translate1 = cata $ \case
+--    EVar    t var        -> varExpr   t var
+--    ECon    t con es     -> conExpr   t con es
+--    ELit    t prim       -> litExpr   t prim
+--    EApp    t es         -> appExpr   t es
+--    ELet    t bind e1 e2 -> letExpr   t bind e1 e2
+--    EFix    t name e1 e2 -> fixExpr   t name e1 e2
+--    ELam    t ps e       -> lamExpr   t ps e
+--    EIf     t e1 e2 e3   -> ifExpr    t e1 e2 e3
+--    EPat    t es cs      -> patExpr   t es cs
+--    EFun    t cs         -> funExpr   t cs
+--    EOp1    t op a       -> op1Expr   t op a
+--    EOp2    t op a b     -> op2Expr   t op a b
+--    ETuple  t es         -> tupleExpr t es
+--    EList   t es         -> listExpr  t es
+--    ERow    t lab a b    -> rowExpr   t lab a b 
 
--- TODO ???
-translate1
-  :: ProgExpr (TypeInfoT [Error] (Maybe Type))
-  -> ProgExpr (TypeInfoT [Error] (Maybe Type))
-translate1 = cata $ \case
-    EVar    t var        -> varExpr   t var
-    ECon    t con es     -> conExpr   t con es
-    ELit    t prim       -> litExpr   t prim
-    EApp    t es         -> appExpr   t es
-    ELet    t bind e1 e2 -> letExpr   t bind e1 e2
-    EFix    t name e1 e2 -> fixExpr   t name e1 e2
-    ELam    t ps e       -> lamExpr   t ps e
-    EIf     t e1 e2 e3   -> ifExpr    t e1 e2 e3
-    EPat    t es cs      -> patExpr   t es cs
-    EFun    t cs         -> funExpr   t cs
-    EOp1    t op a       -> op1Expr   t op a
-    EOp2    t op a b     -> op2Expr   t op a b
-    ETuple  t es         -> tupleExpr t es
-    EList   t es         -> listExpr  t es
-    ERow    t lab a b    -> rowExpr   t lab a b 
-
-translate2
+translate
   :: ProgExpr (TypeInfoT [Error] (Maybe Type))
   -> TargetExpr (TypeInfoT [Error] (Maybe Type))
-translate2 = cata $ \case
+translate = cata $ \case
     -- Translate tuples, lists, and row expressions
     ETuple  t exprs      -> conExpr t (tupleCon (length exprs)) exprs
     EList   t exprs      -> foldr (listExprCons t) (conExpr t "[]" []) exprs
