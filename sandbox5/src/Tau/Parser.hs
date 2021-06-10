@@ -4,8 +4,11 @@ module Tau.Parser where
 
 import Control.Monad
 import Control.Monad.Combinators.Expr
+import Control.Monad.Supply
+import Control.Monad.Trans (lift)
+import Data.Foldable (foldlM)
 import Data.Functor (($>))
-import Data.Maybe (fromMaybe)
+import Data.Maybe (fromMaybe, fromJust)
 import Data.Text (Text, pack, unpack)
 import Tau.Lang
 import Tau.Tooling hiding (parens, brackets, braces, commaSep)
@@ -15,7 +18,14 @@ import Text.Megaparsec.Char
 import qualified Text.Megaparsec.Char as Megaparsec
 import qualified Text.Megaparsec.Char.Lexer as Lexer
 
-type Parser = Parsec Void Text
+type Parser = ParsecT Void Text (Supply Name)
+
+runParserStack 
+  :: ParsecT Void Text (Supply Name) a 
+  -> String 
+  -> Text 
+  -> Either (ParseErrorBundle Text Void) a
+runParserStack p s t = fromJust (evalSupply (runParserT p s t) (numSupply ""))
 
 -- >>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>
 
@@ -50,10 +60,9 @@ withInitial :: Parser Char -> Parser Text
 withInitial parser = pack <$> ((:) <$> parser <*> many validChar)
 
 keyword :: Text -> Parser ()
-keyword tok =
-    Megaparsec.string tok
-        *> notFollowedBy alphaNumChar
-        *> spaces
+keyword tok = Megaparsec.string tok
+    *> notFollowedBy alphaNumChar
+    *> spaces
 
 reserved :: [Text]
 reserved =
@@ -319,23 +328,33 @@ typeParser = makeExprParser (try (parens typeParser) <|> parser)
     [[ InfixR (tArr <$ symbol "->") ]]
   where
     parser = do
-        ts <- some typeFragmentParser
-        --let kind = foldr1 kArr (fromJust . kindOf <$> ts)
-        -- TODO
-        pure (foldl1 foo ts)
+        (t:ts) <- some typeFragmentParser
+        foldlM foo t ts
 
-foo = undefined
+    foo s t = do
+        k <- kind
+        pure (tApp k s t)
 
-typeFragmentParser :: Parser Type
-typeFragmentParser = tVar undefined <$> nameParser
-    <|> tCon undefined <$> constructorParser
-    -- tuple
-    -- record
+    typeFragmentParser :: Parser Type
+    typeFragmentParser = do
+        tVar <$> kind <*> nameParser
+        <|> builtIn
+        <|> tCon <$> kind <*> constructorParser
+        -- tuple
+        -- record
 
---setKind :: Kind -> TypeT a -> TypeT a
---setKind k = project >>> \case
---    TVar _ var   -> tVar k var
-----    TCon _ con   -> tCon con
-----    TRow _ a b   -> tRow kRow a b
-----    TApp _ t1 t2 -> tApp k t1 t2
-----    TArr   t1 t2 -> tArr t1 t2
+    kind = lift (kVar . ("k" <>) <$> supply)
+
+builtIn :: Parser Type
+builtIn = builtInType "Integer" kTyp
+      <|> builtInType "Int"     kTyp
+      <|> builtInType "Unit"    kTyp
+      <|> builtInType "Bool"    kTyp
+      <|> builtInType "Float"   kTyp
+      <|> builtInType "Double"  kTyp
+      <|> builtInType "Char"    kTyp
+      <|> builtInType "String"  kTyp
+      <|> builtInType "List"    kFun
+
+builtInType :: Name -> Kind -> Parser Type
+builtInType name kind = keyword name $> tCon kind name

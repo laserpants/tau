@@ -16,13 +16,13 @@ succeedParse parser input expected =
         it "✔ parses to ...TODO..." $
             result == expected
   where
-    Right result = runParser parser "" input
+    Right result = runParserStack parser "" input
 
 failParse :: (Eq a) => Parser a -> Text -> SpecWith ()
 failParse parser input =
     describe input $
         it "✗ fails to parse" $
-            isLeft (runParser parser "" input)
+            isLeft (runParserStack parser "" input)
 
 testPatternParser :: SpecWith ()
 testPatternParser = do
