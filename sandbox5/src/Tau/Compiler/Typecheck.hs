@@ -45,7 +45,13 @@ inferExprType = cata $ \case
         pure (varExpr ti a)
 
     ECon _ con exprs -> do
-        undefined
+        (es, ti, _) <- runNode $ do
+            ty <- lookupScheme con >>= instantiate
+            es <- traverse exprNode exprs
+            t1 <- thisNodeType
+            doUnify ty (foldr tArr t1 (typeOf <$> es)) >>= tellErrors 
+            pure es
+        pure (conExpr ti con es)
 
     ELit _ prim -> do
         undefined
@@ -203,6 +209,27 @@ primType = \case
     TInteger{} -> Forall [kTyp] [InClass "Num" 0] (tGen 0)
     TFloat{}   -> Forall [kTyp] [InClass "Fractional" 0] (tGen 0)
     TDouble{}  -> Forall [kTyp] [InClass "Fractional" 0] (tGen 0)
+
+exprNode
+  :: ( MonadSupply Name m
+     , MonadReader (ClassEnv, TypeEnv, KindEnv, ConstructorEnv) m
+     , MonadState (Substitution Type, Substitution Kind, Context) m )
+  => m (ProgExpr (TypeInfo [Error]))
+  -> WriterT Node m (ProgExpr (TypeInfo [Error]))
+exprNode expr = do
+    e <- lift expr
+    tellPredicates (exprPredicates e)
+    pure e
+
+thisNodeType
+  :: ( MonadSupply Name m
+     , MonadReader (ClassEnv, TypeEnv, KindEnv, ConstructorEnv) m
+     , MonadState (Substitution Type, Substitution Kind, Context) m )
+  => WriterT Node m Type
+thisNodeType = do
+    t <- newTVar 
+    unfiyWithNode t
+    pure t
 
 -- >>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>
 

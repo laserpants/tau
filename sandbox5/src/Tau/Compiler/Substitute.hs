@@ -157,6 +157,7 @@ instance Substitutable (TypeT a) Kind where
         TApp k t1 t2         -> tApp (apply sub k) t1 t2
         TArr t1 t2           -> tArr t1 t2
         TRow label t1 t2     -> tRow label t1 t2
+        TGen i               -> tGen i
 
 instance Substitutable Scheme Kind where
     apply sub = \case

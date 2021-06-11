@@ -18,7 +18,9 @@ example1 :: (ProgExpr (TypeInfo [Error]), Substitution Type, Substitution Kind, 
 example1 = runInfer mempty testClassEnv testTypeEnv testKindEnv testConstructorEnv (inferExprType expr)
   where
     expr :: ProgExpr ()
-    expr = varExpr () "x"
+    --expr = varExpr () "x"
+
+    expr = conExpr () "Some" [varExpr () "x"]
 
 -- {-# LANGUAGE FlexibleContexts      #-}
 -- {-# LANGUAGE FlexibleInstances     #-}

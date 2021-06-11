@@ -289,7 +289,7 @@ kFun2 = kTyp `kArr` kTyp `kArr` kTyp
 tVar :: Kind -> Name -> TypeT a
 tVar = embed2 TVar
 
-tGen :: Int -> Polytype
+tGen :: a -> TypeT a
 tGen = embed1 TGen
 
 tCon :: Kind -> Name -> TypeT a
