@@ -154,10 +154,10 @@ unifyRows combineTypes combinePairs t u =
         TRow _ _ r         -> r
         t                  -> embed t
 
-    fn (m1, j) (m2, k) 
+    fn (m1, j) (m2, k)
         | Map.null m1 && Map.null m2 = combineTypes j k
         | Map.null m1 = combineTypes j (fromMap k m2)
-        | otherwise = 
+        | otherwise =
             case Map.lookup a m2 of
                 Just (u:us) -> 
                     combinePairs 
