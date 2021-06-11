@@ -44,6 +44,156 @@ inferExprType = cata $ \case
             pure var
         pure (varExpr ti a)
 
+    ECon _ con exprs -> do
+        undefined
+
+    ELit _ prim -> do
+        undefined
+
+    EApp _ exprs -> do
+        undefined
+
+    EFix _ name expr1 expr2 ->
+        undefined
+
+    ELam _ pats expr ->
+        undefined
+
+    EIf _ expr1 expr2 expr3 ->
+        undefined
+
+    EPat _ expr eqs ->
+        undefined
+
+    ELet _ (BLet _ pat) expr1 expr2 ->
+        undefined
+
+    ELet _ (BFun _ f pats) expr1 expr2 ->
+        undefined
+
+    EFun _ eqs ->
+        undefined
+
+    EOp1 _ op1 expr ->
+        undefined
+
+    EOp2 _ op2 expr1 expr2 ->
+        undefined
+
+    ETuple _ exprs -> 
+        undefined
+
+    EList _ exprs -> 
+        undefined
+
+    ERow _ label expr row -> 
+        undefined
+
+    EAnn t expr -> do
+        e <- expr
+        _ <- runNode $ unfiyWithNode (typeOf e)
+        pure e
+
+inferPatternType
+  :: ( MonadSupply Name m
+     , MonadReader (ClassEnv, TypeEnv, KindEnv, ConstructorEnv) m
+     , MonadState (Substitution Type, Substitution Kind, Context) m )
+  => ProgPattern t
+  -> m (ProgPattern (TypeInfo [Error]), [(Name, Type)])
+inferPatternType = cata $ \case
+
+    PVar _ var -> 
+        undefined
+
+    PCon _ con pats -> 
+        undefined
+
+    PAs _ var pat -> 
+        undefined
+
+    PLit _ prim -> 
+        undefined
+
+    PAny _ ->
+        undefined
+
+    POr _ pat1 pat2 -> 
+        undefined
+
+    PTuple t pats -> 
+        undefined
+
+    PList t pats -> 
+        undefined
+
+    PRow _ label pat row -> 
+        undefined
+
+    PAnn t pat -> do
+        p <- pat
+        _ <- runNode $ unfiyWithNode (typeOf (fst p))
+        pure p
+
+opType
+  :: ( MonadSupply Name m
+     , MonadReader (ClassEnv, TypeEnv, KindEnv, ConstructorEnv) m
+     , MonadState (Substitution Type, Substitution Kind, Context) m )
+  => (TypeInfo [Error] -> a)
+  -> Scheme
+  -> WriterT Node m a
+opType op scheme = do
+    (t, (_, _, ps, es)) <- listen (instantiate scheme)
+    pure (op (TypeInfo es t ps))
+
+inferOp1Type
+  :: ( MonadSupply Name m
+     , MonadReader (ClassEnv, TypeEnv, KindEnv, ConstructorEnv) m
+     , MonadState (Substitution Type, Substitution Kind, Context) m )
+  => Op1 t
+  -> WriterT Node m (Op1 (TypeInfo [Error]))
+inferOp1Type = \case
+    ONeg _ -> opType ONeg (Forall [kTyp] [InClass "Num" 0] (tGen 0 `tArr` tGen 0))
+    ONot _ -> opType ONot (Forall [] [] (tBool `tArr` tBool))
+
+inferOp2Type
+  :: ( MonadSupply Name m
+     , MonadReader (ClassEnv, TypeEnv, KindEnv, ConstructorEnv) m
+     , MonadState (Substitution Type, Substitution Kind, Context) m )
+  => Op2 t
+  -> WriterT Node m (Op2 (TypeInfo [Error]))
+inferOp2Type =
+    undefined
+
+inferClauseType
+  :: ( MonadSupply Name m
+     , MonadReader (ClassEnv, TypeEnv, KindEnv, ConstructorEnv) m
+     , MonadState (Substitution Type, Substitution Kind, Context) m )
+  => Type
+  -> Clause t (ProgPattern t) (m (ProgExpr (TypeInfo [Error])))
+  -> m (ProgClause (TypeInfo [Error]))
+inferClauseType =
+    undefined
+
+inferGuard
+  :: ( MonadSupply Name m
+     , MonadReader (ClassEnv, TypeEnv, KindEnv, ConstructorEnv) m
+     , MonadState (Substitution Type, Substitution Kind, Context) m )
+  => Guard (m (ProgExpr (TypeInfo [Error])))
+  -> WriterT Node m (Guard (ProgExpr (TypeInfo [Error])))
+inferGuard =
+    undefined
+
+primType :: Prim -> Scheme
+primType = \case
+    TUnit      -> Forall [] [] tUnit
+    TBool{}    -> Forall [] [] tBool
+    TChar{}    -> Forall [] [] tChar
+    TString{}  -> Forall [] [] tString
+    TInt{}     -> Forall [kTyp] [InClass "Num" 0] (tGen 0)
+    TInteger{} -> Forall [kTyp] [InClass "Num" 0] (tGen 0)
+    TFloat{}   -> Forall [kTyp] [InClass "Fractional" 0] (tGen 0)
+    TDouble{}  -> Forall [kTyp] [InClass "Fractional" 0] (tGen 0)
+
 -- >>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>
 
 lookupScheme
