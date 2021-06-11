@@ -158,6 +158,10 @@ instance Substitutable (TypeT a) Kind where
         TArr t1 t2           -> tArr t1 t2
         TRow label t1 t2     -> tRow label t1 t2
 
+instance Substitutable Scheme Kind where
+    apply sub = \case
+        Forall ks ps pt      -> Forall (apply sub ks) ps (apply sub pt)
+
 -- >>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>
 
 null :: Substitution a
@@ -215,10 +219,10 @@ kindSubstitute sub = cata $ \case
    KArr k1 k2 -> kArr k1 k2
    ty         -> embed ty
 
-apply2
+applyBoth
   :: ( Substitutable t Type
      , Substitutable t Kind ) 
-  => (Substitution Type, Substitution Kind, a) 
+  => (Substitution Type, Substitution Kind) 
   -> t 
   -> t
-apply2 (typeSub, kindSub, _) = apply kindSub . apply typeSub
+applyBoth (typeSub, kindSub) = apply kindSub . apply typeSub

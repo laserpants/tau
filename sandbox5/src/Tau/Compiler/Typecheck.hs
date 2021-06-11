@@ -6,6 +6,205 @@
 {-# LANGUAGE StrictData            #-}
 module Tau.Compiler.Typecheck where
 
+import Control.Monad.Except 
+import Control.Monad.Identity
+import Control.Monad.Reader
+import Control.Monad.State
+import Control.Monad.Supply
+import Control.Monad.Trans.Maybe
+import Control.Monad.Writer
+import Data.Either (fromLeft, lefts)
+import Data.Either.Extra (mapLeft)
+import Data.Maybe (fromJust)
+import Data.Set.Monad (Set)
+import Data.Tuple.Extra
+import Tau.Compiler.Error
+import Tau.Compiler.Substitute
+import Tau.Compiler.Unify
+import Tau.Lang
+import Tau.Prog
+import Tau.Tooling
+import Tau.Type
+import qualified Data.Map.Strict as Map
+import qualified Data.Set.Monad as Set
+import qualified Tau.Env as Env
+
+inferExprType
+  :: ( MonadSupply Name m
+     , MonadReader (ClassEnv, TypeEnv, KindEnv, ConstructorEnv) m
+     , MonadState (Substitution Type, Substitution Kind, Context) m )
+  => ProgExpr t
+  -> m (ProgExpr (TypeInfo [Error]))
+inferExprType = cata $ \case
+
+    EVar _ var -> do 
+        (a, ti, _) <- runNode $ do
+            ty <- lookupScheme var >>= instantiate
+            unfiyWithNode ty
+            pure var
+        pure (varExpr ti a)
+
+-- >>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>
+
+lookupScheme
+  :: ( MonadSupply Name m
+     , MonadReader (ClassEnv, TypeEnv, KindEnv, ConstructorEnv) m
+     , MonadState (Substitution Type, Substitution Kind, Context) m )
+  => Name
+  -> WriterT Node m Scheme
+lookupScheme name = do
+    env <- asks getTypeEnv
+    sub <- lift subs
+    case Env.lookup name env of
+        Nothing -> do
+            tellErrors [NotInScope name]
+            toScheme <$> newTVar 
+
+        Just ty ->
+            pure (applyBoth sub ty)
+
+lookupPredicates
+  :: ( MonadSupply Name m
+     , MonadReader (ClassEnv, TypeEnv, KindEnv, ConstructorEnv) m
+     , MonadState (Substitution Type, Substitution Kind, Context) m )
+  => [Name]
+  -> m [(Name, Name)]
+lookupPredicates vars = do
+    env <- gets thd3
+    pure $ do
+        v  <- vars
+        tc <- Set.toList (Env.findWithDefault mempty v env)
+        [(v, tc)]
+
+instantiate
+  :: ( MonadSupply Name m
+     , MonadReader (ClassEnv, TypeEnv, KindEnv, ConstructorEnv) m
+     , MonadState (Substitution Type, Substitution Kind, Context) m )
+  => Scheme
+  -> WriterT Node m Type
+instantiate (Forall kinds preds ty) = do
+    names <- ("a" <>) <$$> supplies (length kinds)
+    let ts = zipWith tVar kinds names
+        (pairs, ps) = unzip (fn <$> preds)
+        fn p@(InClass tc ix) =
+            ( (names !! ix, Set.singleton tc)
+            , fromPolytype ts <$> (tGen <$> p) )
+    addToContext pairs
+    tellPredicates ps
+    pure (fromPolytype ts ty)
+
+generalize
+  :: ( MonadSupply Name m
+     , MonadReader (ClassEnv, TypeEnv, KindEnv, ConstructorEnv) m
+     , MonadState (Substitution Type, Substitution Kind, Context) m )
+  => Type
+  -> m Scheme
+generalize ty = do
+     env <- askTypeEnv
+     sub <- subs
+     let ty1 = applyBoth sub ty
+         frees = fst <$> free (applyBoth sub env)
+         (vs, ks) = unzip $ filter ((`notElem` frees) . fst) (typeVars ty1)
+         ixd = Map.fromList (zip vs [0..])
+     ps <- lookupPredicates vs
+     pure (Forall ks (toPred ixd <$> ps) (apply (Sub (tGen <$> ixd)) (toPolytype ty1)))
+  where
+    toPred map (var, tc) = InClass tc (fromJust (Map.lookup var map))
+
+-- >>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>
+
+-- Type class instances
+
+instance (Typed t) => Typed (ProgExpr t) where
+    typeOf = typeOf . exprTag
+
+instance (Typed t) => Typed (ProgPattern t) where
+    typeOf = typeOf . patternTag
+
+instance (Typed t) => Typed (Op1 t) where
+    typeOf = typeOf . op1Tag
+
+instance (Typed t) => Typed (Op2 t) where
+    typeOf = typeOf . op2Tag
+
+instance (Typed t) => Typed (Ast t) where
+    typeOf = typeOf . astTag
+
+-- >>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>
+
+type Node = 
+    ( List Type           -- Types to unify with the node's type
+    , List (Name, Type)   -- Pattern variables
+    , List Predicate      -- Class predicates
+    , List Error          -- Errors
+    )
+
+unfiyWithNode :: (MonadWriter Node m) => Type -> m ()
+unfiyWithNode ty = tell ([ty], mempty, mempty, mempty)
+
+tellVars :: (MonadWriter Node m) => [(Name, Type)] -> m ()
+tellVars vs = tell (mempty, vs, mempty, mempty)
+
+tellPredicates :: (MonadWriter Node m) => [Predicate] -> m ()
+tellPredicates ps = tell (mempty, mempty, ps, mempty)
+
+tellErrors :: (MonadWriter Node m) => [Error] -> m ()
+tellErrors es = tell (mempty, mempty, mempty, es)
+
+newTVar :: (MonadSupply Name m) => m (TypeT a)
+newTVar = do
+    k <- ("k" <>) <$> supply
+    t <- ("a" <>) <$> supply
+    pure (tVar (kVar k) t)
+
+insertAll :: Context -> [(Name, Set Name)] -> Context
+insertAll = foldr (uncurry (Env.insertWith Set.union))
+
+addToContext :: (MonadState (a, b, Context) m) => [(Name, Set Name)] -> m ()
+addToContext ps = modify (third3 (`insertAll` ps))
+
+runNode
+  :: ( MonadSupply Name m
+     , MonadReader (ClassEnv, TypeEnv, KindEnv, ConstructorEnv) m
+     , MonadState (Substitution Type, Substitution Kind, Context) m )
+  => WriterT Node m a
+  -> m (a, TypeInfo [Error], [(Name, Type)])
+runNode writer = do
+    t <- newTVar
+    (a, (ts, vs, ps, es)) <- runWriterT writer
+    es2 <- concat <$> mapM (doUnify t) ts
+    -- inferKind???
+    sub <- subs
+    pure (a, simplifyPredicates (TypeInfo (es <> es2) (applyBoth sub t) (applyBoth sub ps)), vs)
+
+doUnify 
+  :: ( MonadSupply Name m
+     , MonadReader (ClassEnv, TypeEnv, KindEnv, ConstructorEnv) m
+     , MonadState (Substitution Type, Substitution Kind, Context) m )
+  => Type
+  -> Type 
+  -> m [Error]
+doUnify t1 t2 = do
+    sub <- subs
+    runExceptT (unifyTypes (applyBoth sub t1) (applyBoth sub t2)) >>= \case
+        Left err -> 
+            pure [CannotUnify t1 t2 err]
+
+        Right (typeSub, kindSub) -> do
+            modify (first3 (typeSub <>))
+            modify (second3 (kindSub <>))
+--            unify kinds
+            pure [] 
+
+subs
+  :: (MonadState (Substitution Type, Substitution Kind, a) m)
+  => m (Substitution Type, Substitution Kind)
+subs = do
+    (typeSub, kindSub, _) <- get
+    pure (typeSub, kindSub)
+
+-- >>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>
+
 --import Control.Arrow ((<<<), (>>>))
 --import Control.Monad.Except (MonadError, catchError, throwError)
 --import Control.Monad.Reader
@@ -777,7 +976,7 @@ module Tau.Compiler.Typecheck where
 --     sub <- gets fst3
 --     t' <- inferKind (apply sub t)
 --     pure (a, TypeInfo (err <> errs) t' (nub (apply sub ps)), vs)
--- 
+
 -- runUnify
 --   :: ( MonadSupply Name m
 --      , MonadReader (ClassEnv, TypeEnv, KindEnv, ConstructorEnv) m
@@ -904,36 +1103,49 @@ module Tau.Compiler.Typecheck where
 --   -> b
 --   -> WriterT Node m ()
 -- (##) = unifyWith
--- 
--- -- >>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>
--- 
--- -- Monad transformer stack
--- 
--- type InferState   = StateT (Substitution Type, Substitution Kind, Context)
--- type InferReader  = ReaderT (ClassEnv, TypeEnv, KindEnv, ConstructorEnv)
--- type InferSupply  = SupplyT Name
--- type InferStack a = InferReader (InferState (InferSupply a))
--- 
--- runInferState :: (Monad m) => Context -> InferState m a -> m (a, (Substitution Type, Substitution Kind, Context))
--- runInferState context = flip runStateT (mempty, mempty, context)
--- 
--- runInferReader :: (Monad m) => ClassEnv -> TypeEnv -> KindEnv -> ConstructorEnv -> InferReader m r -> m r
--- runInferReader e1 e2 e3 e4 = flip runReaderT (e1, e2, e3, e4)
--- 
--- runInferSupply :: (Monad m) => InferSupply m a -> m a
--- runInferSupply = flip evalSupplyT (numSupply "")
--- 
--- runInfer
---   :: (Monad m)
---   => Context
---   -> ClassEnv
---   -> TypeEnv
---   -> KindEnv
---   -> ConstructorEnv
---   -> InferStack m a
---   -> m (a, Substitution Type, Substitution Kind, Context)
--- runInfer context classEnv typeEnv kindEnv constructorEnv =
---     runInferReader classEnv typeEnv kindEnv constructorEnv
---     >>> runInferState context
---     >>> runInferSupply
---     >>> fmap to
+
+-- >>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>
+
+-- Monad transformer stack
+
+type InferState   = StateT (Substitution Type, Substitution Kind, Context)
+type InferReader  = ReaderT (ClassEnv, TypeEnv, KindEnv, ConstructorEnv)
+type InferSupply  = SupplyT Name
+type InferStack a = InferReader (InferState (InferSupply (MaybeT a)))
+
+runInferState :: (Monad m) => Context -> InferState m a -> m (a, (Substitution Type, Substitution Kind, Context))
+runInferState context = flip runStateT (mempty, mempty, context)
+
+runInferReader :: (Monad m) => ClassEnv -> TypeEnv -> KindEnv -> ConstructorEnv -> InferReader m r -> m r
+runInferReader e1 e2 e3 e4 = flip runReaderT (e1, e2, e3, e4)
+
+runInferSupply :: (Monad m) => InferSupply m a -> m a
+runInferSupply = flip evalSupplyT (numSupply "")
+
+runInferT
+  :: (Monad m) 
+  => Context
+  -> ClassEnv
+  -> TypeEnv
+  -> KindEnv
+  -> ConstructorEnv
+  -> InferStack m a
+  -> m (a, Substitution Type, Substitution Kind, Context)
+runInferT context classEnv typeEnv kindEnv constructorEnv =
+    runInferReader classEnv typeEnv kindEnv constructorEnv
+    >>> runInferState context
+    >>> runInferSupply
+    >>> runMaybeT
+    >>> fmap (to <$>)
+    >>> fmap fromJust
+
+runInfer
+  :: Context
+  -> ClassEnv
+  -> TypeEnv
+  -> KindEnv
+  -> ConstructorEnv
+  -> InferStack Identity a
+  -> (a, Substitution Type, Substitution Kind, Context)
+runInfer context classEnv typeEnv kindEnv constructorEnv = 
+    runIdentity . runInferT context classEnv typeEnv kindEnv constructorEnv

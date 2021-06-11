@@ -194,7 +194,7 @@ instance (Substitutable Type a) => Substitutable (TypeInfo e) a where
     apply sub = \case
         TypeInfo e ty ps -> TypeInfo e (apply sub ty) (apply sub ps)
 
-instance Substitutable TypeEnv Type where
+instance (Substitutable Scheme t) => Substitutable TypeEnv t where
     apply = Env.map . apply 
 
 instance (Substitutable Type t) => Substitutable (ClassInfo Type (Ast (TypeInfo e))) t where

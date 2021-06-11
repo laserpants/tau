@@ -19,7 +19,7 @@ data UnificationError
 data Error
     = CannotUnify Type Type UnificationError
     | KindMismatch Kind Kind UnificationError
-    | UnboundTypeIdentifier Name
+    | NotInScope Name
     | MissingDataConstructor Name
 --    | CannotMatch t t UnificationError
     | MissingClass Name

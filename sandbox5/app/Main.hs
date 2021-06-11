@@ -1,6 +1,23 @@
 module Main where
 
+import Control.Monad.Identity
+import Data.Maybe
+import Tau.Compiler.Error
+import Tau.Lang
+import Tau.Prog
+import Tau.Tooling
+import Tau.Type
+import Tau.Compiler.Typecheck
+import Tau.Compiler.Substitute
+import qualified Tau.Env as Env
+
 main = pure ()
+
+example1 :: (ProgExpr (TypeInfo [Error]), Substitution Type, Substitution Kind, Context)
+example1 = runInfer mempty testClassEnv testTypeEnv testKindEnv testConstructorEnv (inferExprType expr)
+  where
+    expr :: ProgExpr ()
+    expr = varExpr () "x"
 
 -- {-# LANGUAGE FlexibleContexts      #-}
 -- {-# LANGUAGE FlexibleInstances     #-}
@@ -1046,96 +1063,88 @@ main = pure ()
 --   where
 --     doParse a = runParser exprParser "" a
 -- -- print "Main"
--- 
--- testKindEnv :: KindEnv
--- testKindEnv = Env.fromList
---     [ ( "Num" , kArr kTyp kClass )
---     ]
--- 
--- testTypeEnv :: TypeEnv
--- testTypeEnv = Env.fromList
---     [ ( "None"   , Forall [kTyp] [] (tApp kTyp (tCon kFun "Option") (tGen 0)) )
---     , ( "Some"   , Forall [kTyp] [] (tGen 0 `tArr` tApp kTyp (tCon kFun "Option") (tGen 0)) )
---     , ( "Foo"    , Forall [] [] (tInt `tArr` tInt `tArr` tCon kTyp "Foo") )
---     , ( "id"     , Forall [kTyp] [] (tGen 0 `tArr` tGen 0) )
---     , ( "(::)"   , Forall [kTyp] [] (tGen 0 `tArr` tList (tGen 0) `tArr` tList (tGen 0)) )
---     , ( "[]"     , Forall [kTyp] [] (tList (tGen 0)) )
---     , ( "(+)"    , Forall [kTyp] [InClass "Num" 0] (tGen 0 `tArr` tGen 0 `tArr` tGen 0) )
---     , ( "#"      , Forall [kRow] [] (tGen 0 `tArr` tApp kTyp tRecordCon (tGen 0)) )
---     , ( "{}"     , Forall [] [] tRowNil )
---     ]
--- 
--- testClassEnv :: ClassEnv
--- testClassEnv = Env.fromList
---     [ ( "Show"
---         -- Interface
---       , ( ClassInfo (InClass "Show" "a") []  
---             [ ( "show", tVar kTyp "a" `tArr` tString )
---             ]
---         -- Instances
---         , [ ClassInfo (InClass "Show" tInt) [] 
---               [ ( "show", Ast (varExpr (TypeInfo () (tInt `tArr` tString) []) "@Int.Show") )
---               ]
---           , ClassInfo (InClass "Show" (tPair (tVar kTyp "a") (tVar kTyp "b"))) [] 
---               [ ( "show", Ast (varExpr (TypeInfo () (tPair (tVar kTyp "a") (tVar kTyp "b") `tArr` tString) []) "TODO") )
---               ]
---           ]
---         )
---       )
---     , ( "Ord"
---         -- Interface
---       , ( ClassInfo (InClass "Ord" "a") [] 
---             [ ( "(>)", tVar kTyp "a" `tArr` tVar kTyp "a" `tArr` tBool ) 
---             , ( "(<)", tVar kTyp "a" `tArr` tVar kTyp "a" `tArr` tBool ) 
---             , ( "(>=)", tVar kTyp "a" `tArr` tVar kTyp "a" `tArr` tBool ) 
---             , ( "(<=)", tVar kTyp "a" `tArr` tVar kTyp "a" `tArr` tBool ) 
---             ]
---         -- Instances
---         , []
---         )
---       )
---     , ( "Eq"
---         -- Interface
---       , ( ClassInfo (InClass "Eq" "a") [InClass "Ord" "a"] 
---             [ ( "(==)", tVar kTyp "a" `tArr` tVar kTyp "a" `tArr` tBool )
---             ]
---         -- Instances
---         , [ ClassInfo (InClass "Eq" tInt) [] 
---             [ ( "(==)", Ast (varExpr (TypeInfo () (tInt `tArr` tInt `tArr` tBool) []) "@Int.(==)" ) )
---             ]
---           ]
---         )
---       )
---     , ( "Num"
---         -- Interface
---       , ( ClassInfo (InClass "Num" "a") [] 
---             [ ( "(+)", tVar kTyp "a" `tArr` tVar kTyp "a" `tArr` tVar kTyp "a" )
---             ]
---         -- Instances
---         , [ ClassInfo (InClass "Num" tInt) [] 
---             [ ( "fromInteger", Ast (varExpr (TypeInfo () (tInteger `tArr` tInt) []) "@Int.fromInteger") )
---             ]
---           ]
---         )
---       )
---     ]
--- 
--- --        , [ ClassInfo (InClass "Show" tInt) [] 
--- --              [ ( "show", Ast (varExpr (TypeInfo () (tInt `tArr` tString) []) "@Int.Show") )
--- --              ]
--- 
--- testConstructorEnv :: ConstructorEnv
--- testConstructorEnv = constructorEnv
---     [ ("Some"     , ( ["Some", "None"], 1 ))
---     , ("None"     , ( ["Some", "None"], 0 ))
---     , ("[]"       , ( ["[]", "(::)"], 0 ))
---     , ("(::)"     , ( ["[]", "(::)"], 2 ))
---     , ("(,)"      , ( ["(,)"], 2 ))
---     , ("Foo"      , ( ["Foo"], 2 ))
---     , ("#"        , ( ["#"], 1 ))
---     , ("{}"       , ( ["{}"], 0 ))
---     ]
--- 
--- --foz1 = case \x -> 1 of
--- --    f -> f ()
--- --
+
+testKindEnv :: KindEnv
+testKindEnv = Env.fromList
+    [ ( "Num" , kArr kTyp kClass )
+    ]
+
+testTypeEnv :: TypeEnv
+testTypeEnv = Env.fromList
+    [ ( "None"   , Forall [kTyp] [] (tApp kTyp (tCon kFun "Option") (tGen 0)) )
+    , ( "Some"   , Forall [kTyp] [] (tGen 0 `tArr` tApp kTyp (tCon kFun "Option") (tGen 0)) )
+    , ( "Foo"    , Forall [] [] (tInt `tArr` tInt `tArr` tCon kTyp "Foo") )
+    , ( "id"     , Forall [kTyp] [] (tGen 0 `tArr` tGen 0) )
+    , ( "(::)"   , Forall [kTyp] [] (tGen 0 `tArr` tList (tGen 0) `tArr` tList (tGen 0)) )
+    , ( "[]"     , Forall [kTyp] [] (tList (tGen 0)) )
+    , ( "(+)"    , Forall [kTyp] [InClass "Num" 0] (tGen 0 `tArr` tGen 0 `tArr` tGen 0) )
+    , ( "#"      , Forall [kRow] [] (tGen 0 `tArr` tApp kTyp tRecordCon (tGen 0)) )
+    , ( "{}"     , Forall [] [] tRowNil )
+    ]
+
+testClassEnv :: ClassEnv
+testClassEnv = Env.fromList
+    [ ( "Show"
+        -- Interface
+      , ( ClassInfo (InClass "Show" "a") []  
+            [ ( "show", tVar kTyp "a" `tArr` tString )
+            ]
+        -- Instances
+        , [ ClassInfo (InClass "Show" tInt) [] 
+              [ ( "show", Ast (varExpr (TypeInfo () (tInt `tArr` tString) []) "@Int.Show") )
+              ]
+          , ClassInfo (InClass "Show" (tPair (tVar kTyp "a") (tVar kTyp "b"))) [] 
+              [ ( "show", Ast (varExpr (TypeInfo () (tPair (tVar kTyp "a") (tVar kTyp "b") `tArr` tString) []) "TODO") )
+              ]
+          ]
+        )
+      )
+    , ( "Ord"
+        -- Interface
+      , ( ClassInfo (InClass "Ord" "a") [] 
+            [ ( "(>)", tVar kTyp "a" `tArr` tVar kTyp "a" `tArr` tBool ) 
+            , ( "(<)", tVar kTyp "a" `tArr` tVar kTyp "a" `tArr` tBool ) 
+            , ( "(>=)", tVar kTyp "a" `tArr` tVar kTyp "a" `tArr` tBool ) 
+            , ( "(<=)", tVar kTyp "a" `tArr` tVar kTyp "a" `tArr` tBool ) 
+            ]
+        -- Instances
+        , []
+        )
+      )
+    , ( "Eq"
+        -- Interface
+      , ( ClassInfo (InClass "Eq" "a") [InClass "Ord" "a"] 
+            [ ( "(==)", tVar kTyp "a" `tArr` tVar kTyp "a" `tArr` tBool )
+            ]
+        -- Instances
+        , [ ClassInfo (InClass "Eq" tInt) [] 
+            [ ( "(==)", Ast (varExpr (TypeInfo () (tInt `tArr` tInt `tArr` tBool) []) "@Int.(==)" ) )
+            ]
+          ]
+        )
+      )
+    , ( "Num"
+        -- Interface
+      , ( ClassInfo (InClass "Num" "a") [] 
+            [ ( "(+)", tVar kTyp "a" `tArr` tVar kTyp "a" `tArr` tVar kTyp "a" )
+            ]
+        -- Instances
+        , [ ClassInfo (InClass "Num" tInt) [] 
+            [ ( "fromInteger", Ast (varExpr (TypeInfo () (tInteger `tArr` tInt) []) "@Int.fromInteger") )
+            ]
+          ]
+        )
+      )
+    ]
+
+testConstructorEnv :: ConstructorEnv
+testConstructorEnv = constructorEnv
+    [ ("Some"     , ( ["Some", "None"], 1 ))
+    , ("None"     , ( ["Some", "None"], 0 ))
+    , ("[]"       , ( ["[]", "(::)"], 0 ))
+    , ("(::)"     , ( ["[]", "(::)"], 2 ))
+    , ("(,)"      , ( ["(,)"], 2 ))
+    , ("Foo"      , ( ["Foo"], 2 ))
+    , ("#"        , ( ["#"], 1 ))
+    , ("{}"       , ( ["{}"], 0 ))
+    ]

@@ -10,7 +10,7 @@ import Control.Arrow ((<<<), (>>>))
 import Control.Monad.Except
 import Control.Monad.Supply
 import Data.Foldable (foldrM)
-import Data.Function ((&))
+import Data.Function ((&), on)
 import Data.List (intersect, (\\))
 import Data.Map.Strict (Map, (!))
 import Data.Maybe (fromJust)
@@ -109,10 +109,9 @@ unifyTypePairs
   -> (Type, Type)
   -> m (Substitution Type, Substitution Kind)
 unifyTypePairs (t1, t2) (u1, u2) = do
-    (typeSub1, kindSub1) <- unifyTypes t1 u1
-    (typeSub2, kindSub2) <- unifyTypes (apply kindSub1 (apply typeSub1 t2))
-                                       (apply kindSub1 (apply typeSub1 u2))
-    pure (typeSub2 <> typeSub1, kindSub2 <> kindSub1)
+    subs1 <- unifyTypes t1 u1
+    subs2 <- unifyTypes (applyBoth subs1 t2) (applyBoth subs1 u2)
+    pure (subs2 <> subs1)
 
 matchTypePairs
   :: ( MonadSupply Name m
@@ -123,9 +122,9 @@ matchTypePairs
 matchTypePairs (t1, t2) (u1, u2) = do
     (typeSub1, kindSub1) <- matchTypes t1 u1
     (typeSub2, kindSub2) <- matchTypes t2 u2
-    (,) <$> fn typeSub1 typeSub2 <*> fn kindSub1 kindSub2
+    (,) <$> mergeSubs typeSub1 typeSub2 <*> mergeSubs kindSub1 kindSub2
   where
-    fn sub1 sub2 = maybe (throwError MergeFailed) pure (merge sub1 sub2)
+    mergeSubs sub1 sub2 = maybe (throwError MergeFailed) pure (merge sub1 sub2)
 
 -- >>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>
 
@@ -144,7 +143,8 @@ unifyRows combineTypes combinePairs t u =
         . (second pure <$>) 
         . rowFields 
 
-    fromMap = Map.foldrWithKey (flip . foldr . tRow)
+    fromMap = 
+        Map.foldrWithKey (flip . foldr . tRow)
 
     rowFields = para $ \case
         TRow label ty rest -> (label, fst ty):snd rest
