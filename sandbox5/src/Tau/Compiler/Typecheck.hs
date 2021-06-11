@@ -15,7 +15,7 @@ import Control.Monad.Trans.Maybe
 import Control.Monad.Writer
 import Data.Either (fromLeft, lefts)
 import Data.Either.Extra (mapLeft)
-import Data.Maybe (fromJust)
+import Data.Maybe (fromMaybe, fromJust)
 import Data.Set.Monad (Set)
 import Data.Tuple.Extra
 import Tau.Compiler.Error
@@ -161,9 +161,19 @@ inferOp2Type
      , MonadState (Substitution Type, Substitution Kind, Context) m )
   => Op2 t
   -> WriterT Node m (Op2 (TypeInfo [Error]))
-inferOp2Type =
-    undefined
-
+inferOp2Type = \case
+    OEq  _ -> opType OEq  (Forall [kTyp] [InClass "Eq" 0] (tGen 0 `tArr` tGen 0 `tArr` tBool))
+    ONeq _ -> opType ONeq (Forall [kTyp] [InClass "Eq" 0] (tGen 0 `tArr` tGen 0 `tArr` tBool))
+    OAdd _ -> opType OAdd (Forall [kTyp] [InClass "Num" 0] (tGen 0 `tArr` tGen 0 `tArr` tGen 0))
+    OMul _ -> opType OMul (Forall [kTyp] [InClass "Num" 0] (tGen 0 `tArr` tGen 0 `tArr` tGen 0))
+    OSub _ -> opType OSub (Forall [kTyp] [InClass "Num" 0] (tGen 0 `tArr` tGen 0 `tArr` tGen 0))
+    OAnd _ -> opType OAnd (Forall [] [] (tBool `tArr` tBool `tArr` tBool))
+    OOr  _ -> opType OOr  (Forall [] [] (tBool `tArr` tBool `tArr` tBool))
+    OLt  _ -> opType OLt  (Forall [kTyp] [InClass "Ord" 0] (tGen 0 `tArr` tGen 0 `tArr` tBool))
+    OGt  _ -> opType OGt  (Forall [kTyp] [InClass "Ord" 0] (tGen 0 `tArr` tGen 0 `tArr` tBool))
+    OLte _ -> opType OLte (Forall [kTyp] [InClass "Ord" 0] (tGen 0 `tArr` tGen 0 `tArr` tBool))
+    OGte _ -> opType OGte (Forall [kTyp] [InClass "Ord" 0] (tGen 0 `tArr` tGen 0 `tArr` tBool))
+ 
 inferClauseType
   :: ( MonadSupply Name m
      , MonadReader (ClassEnv, TypeEnv, KindEnv, ConstructorEnv) m
@@ -261,6 +271,23 @@ generalize ty = do
   where
     toPred map (var, tc) = InClass tc (fromJust (Map.lookup var map))
 
+propagateClasses
+  :: ( MonadSupply Name m
+     , MonadReader (ClassEnv, TypeEnv, KindEnv, ConstructorEnv) m
+     , MonadState (Substitution Type, Substitution Kind, Context) m
+     , MonadError Error m )
+  => Type
+  -> Set Name
+  -> m ()
+propagateClasses (Fix (TVar _ var)) ps
+    | Set.null ps = pure ()
+    | otherwise   = modify (third3 (Env.insertWith Set.union var ps))
+propagateClasses ty ps =
+    forM_ ps $ \name -> do
+        env <- asks getClassEnv
+        ClassInfo{ classSuper = preds } <- lookupClassInstance name ty env
+        sequence_ [propagateClasses t (Set.singleton a) | InClass a t <- preds]
+
 -- >>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>
 
 -- Type class instances
@@ -323,7 +350,9 @@ runNode writer = do
     t <- newTVar
     (a, (ts, vs, ps, es)) <- runWriterT writer
     es2 <- concat <$> mapM (doUnify t) ts
+    -- TODO
     -- inferKind???
+    -- t' <- inferKind (apply sub t)
     sub <- subs
     pure (a, simplifyPredicates (TypeInfo (es <> es2) (applyBoth sub t) (applyBoth sub ps)), vs)
 
@@ -336,15 +365,17 @@ doUnify
   -> m [Error]
 doUnify t1 t2 = do
     sub <- subs
-    runExceptT (unifyTypes (applyBoth sub t1) (applyBoth sub t2)) >>= \case
-        Left err -> 
-            pure [CannotUnify t1 t2 err]
-
-        Right (typeSub, kindSub) -> do
-            modify (first3 (typeSub <>))
-            modify (second3 (kindSub <>))
---            unify kinds
-            pure [] 
+    either pure (const []) <$> runExceptT (do
+        (typeSub, kindSub) <- withExceptT (CannotUnify t1 t2) (unifyTypes (applyBoth sub t1) (applyBoth sub t2))
+        modify (first3 (typeSub <>))
+        modify (second3 (kindSub <>))
+-- TODO
+-- --        runUnifyKinds (kindOf t1) (kindOf t2)
+        forM_ (Map.toList (getSub typeSub)) (uncurry propagate))
+  where
+    propagate tv ty = do
+        env <- gets thd3
+        propagateClasses ty (fromMaybe mempty (Env.lookup tv env))
 
 subs
   :: (MonadState (Substitution Type, Substitution Kind, a) m)
