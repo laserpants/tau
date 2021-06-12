@@ -218,7 +218,7 @@ inferExprType = cata $ \case
 
     EAnn t expr -> do
         e <- expr
-        _ <- runNode $ unfiyWithNode (typeOf e)
+        _ <- runNode $ e ## t
         pure e
 
 inferPatternType
@@ -310,7 +310,7 @@ inferPatternType = cata $ \case
 
     PAnn t pat -> do
         p <- pat
-        _ <- runNode $ unfiyWithNode (typeOf (fst p))
+        _ <- runNode $ fst p ## t
         pure p
 
 opType
