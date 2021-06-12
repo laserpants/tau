@@ -62,30 +62,6 @@ instance Pretty Kind where
 
 -- >>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>
 
-isTupleType :: Type -> Bool
-isTupleType ty = Just True == maybeIsTupleCon
-  where
-    maybeIsTupleCon = Text.all (== ',') <$> (stripped <=< leftmost) ty
-    stripped        = Text.stripSuffix ")" <=< Text.stripPrefix "("
-
-    leftmost :: Type -> Maybe Name
-    leftmost = cata $ \case
-        TCon _ con         -> Just con
-        TApp _ a _         -> a
-        _                  -> Nothing
-
-prettyRowType :: Type -> Doc a
-prettyRowType ty = "{" <+> commaSep fields <> final <+> "}"
-  where
-    fields = flip para ty $ \case
-        TRow label ty rest -> pretty label <+> ":" <+> pretty (fst ty):snd rest
-        _                  -> []
-
-    final = flip cata ty $ \case
-        TRow _ _ r         -> r
-        TVar _ v           -> " " <> pipe <+> pretty v
-        _                  -> ""
-
 instance Pretty Type where
     pretty = para $ \case
         TArr (t1, doc1) (_, doc2) ->
@@ -124,6 +100,31 @@ instance Pretty Type where
                     TCon _ "{}" -> False
                     TVar{}      -> False
                     _           -> True
+
+isTupleType :: Type -> Bool
+isTupleType ty = Just True == (Text.all (== ',') <$> (stripped =<< leftmost))
+  where
+    stripped = Text.stripSuffix ")" <=< Text.stripPrefix "("
+
+    leftmost :: Maybe Name
+    leftmost = flip cata ty $ \case
+        TCon _ con         -> Just con
+        TApp _ a _         -> a
+        _                  -> Nothing
+
+prettyRowType :: Type -> Doc a
+prettyRowType ty = "{" <+> commaSep fields <> final <+> "}"
+  where
+    fields = flip para ty $ \case
+        TRow label ty rest -> pretty label <+> ":" <+> pretty (fst ty):snd rest
+        _                  -> []
+
+    final = flip cata ty $ \case
+        TRow _ _ r         -> r
+        TVar _ v           -> " " <> pipe <+> pretty v
+        _                  -> ""
+
+-- >>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>
 
 
 
