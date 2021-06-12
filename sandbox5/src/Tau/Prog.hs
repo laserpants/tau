@@ -115,6 +115,7 @@ inConstructorEnv
   -> (ClassEnv, TypeEnv, KindEnv, ConstructorEnv)
 inConstructorEnv f (e1, e2, e3, e4) = (e1, e2, e3, f e4)
 
+-- TODO
 lookupClassInstance
   :: ( MonadSupply Name m 
      , MonadError Error m )
