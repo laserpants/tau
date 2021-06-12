@@ -127,31 +127,19 @@ example1 = do
     --expr = litExpr () (TInt 5)
     --expr = letExpr () (BLet () (varPat () "x")) (litExpr () (TInt 5)) (varExpr () "x")
 
-    ---- let fn(r) = { a = 1 | r } in fn({ b = 2 })
-    --expr = 
-    --    letExpr () 
-    --        (BFun () "fn" [varPat () "r"]) 
-    --        (patExpr () (varExpr () "r") [ 
-    --            Clause () (conPat () "#" [varPat () "q"]) [Guard [] (recordExpr () (rowExpr () "a" (annExpr tInt (litExpr () (TInt 1))) (varExpr () "q")))] 
-    --        ]) 
-    --        (appExpr () [varExpr () "fn", recordExpr () (rowExpr () "b" (annExpr tInt (litExpr () (TInt 2))) (conExpr () "{}" []))])
+    -- let fn(r) = { a = 1 | r } in fn({ b = 2 })
+    expr = 
+        letExpr () 
+            (BFun () "fn" [varPat () "r"]) 
+            (recordExpr () (rowExpr () "a" (annExpr tInt (litExpr () (TInt 1))) (appExpr () [varExpr () "_#", varExpr () "r"])))
+            (appExpr () [varExpr () "fn", recordExpr () (rowExpr () "b" (annExpr tInt (litExpr () (TInt 2))) (conExpr () "{}" []))])
 
-    expr = letExpr () 
-                (BLet () (varPat () "b")) 
-                (recordExpr () (rowExpr () "x" (litExpr () (TBool True)) (conExpr () "{}" [])))
-                (recordExpr () (rowExpr () "a" (litExpr () (TBool True)) (appExpr () [varExpr () "_#", varExpr () "b"])))
+    --expr = letExpr () 
+    --            (BLet () (varPat () "b")) 
+    --            (recordExpr () (rowExpr () "x" (litExpr () (TBool True)) (conExpr () "{}" [])))
+    --            (recordExpr () (rowExpr () "a" (litExpr () (TBool True)) (appExpr () [varExpr () "_#", varExpr () "b"])))
 
 
---            (patExpr () (varExpr () "r") 
---                [ Clause () (conPat () "#" [varPat () "q"]) (Guard [] (
---                    (recordExpr () (rowExpr () "a" (annExpr tInt (litExpr () (TInt 1))) (varExpr () "r"))) 
---                    (appExpr () [varExpr () "fn", recordExpr () (rowExpr () "b" (annExpr tInt (litExpr () (TInt 2))) (conExpr () "{}" []))])))
---                ]))
-
---        (letExpr () 
---            (BLet () (varPat () "x")) 
---            (recordExpr () (rowExpr () "name" (litExpr () (TString "Bob")) (conExpr () "{}" []))) 
---            (appExpr () [varExpr () "#recordExtend", recordExpr () (rowExpr () "id" (litExpr () (TInt 1)) (varExpr () "x")), varExpr () "x"]))
 
 -- {-# LANGUAGE FlexibleContexts      #-}
 -- {-# LANGUAGE FlexibleInstances     #-}

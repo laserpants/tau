@@ -72,6 +72,9 @@ instance Pretty Type where
                     TArr{} -> True
                     _      -> False
 
+        TApp _ (Fix (TCon _ "#"), _) (Fix (TVar _ v), _) ->
+            pretty v
+
         TApp _ (Fix (TCon _ "#"), _) (t2, _) ->
             prettyRowType t2
 
