@@ -316,7 +316,9 @@ exprParser = makeExprParser (try lambdaParser <|> try (parens exprParser) <|> pa
     parseTuple     = tupleExpr () <$> components exprParser
     parseCon       = conExpr () <$> constructorParser 
                                 <*> (fromMaybe [] <$> optional (components annExprParser))
-    parseRecord    = recordExpr () <$> rowParser "=" annExprParser rowExpr varExpr emptyRowExpr
+    parseRecord    = recordExpr () <$> rowParser "=" annExprParser rowExpr varExpr_ emptyRowExpr
+
+    varExpr_ _ var = appExpr () [varExpr () "_#", varExpr () var]
 
 lambdaParser :: Parser (ProgExpr ())
 lambdaParser = lamExpr () <$> argParser patternParser <*> (symbol "=>" *> annExprParser)
