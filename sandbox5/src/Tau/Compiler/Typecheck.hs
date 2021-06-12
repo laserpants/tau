@@ -15,7 +15,7 @@ import Control.Monad.Trans.Maybe
 import Control.Monad.Writer
 import Data.Either (fromLeft, lefts)
 import Data.Either.Extra (mapLeft)
-import Data.Maybe (fromMaybe, fromJust)
+import Data.Maybe (fromMaybe, fromJust, isNothing)
 import Data.Set.Monad (Set)
 import Data.Tuple.Extra
 import Tau.Compiler.Error
@@ -201,9 +201,21 @@ inferPatternType = cata $ \case
         pure (varPat ti var, vs)
 
     PCon _ con pats -> do
-        (a, ti, vs) <- runNode $ do
-            undefined
-        pure undefined
+        (ps, ti, vs) <- runNode $ do
+            lookupConstructor con >>= \case
+                Nothing -> pure ()
+                Just (_, arity) -> do
+                    -- The number of arguments must match arity of constructor
+                    when (arity /= length pats) $
+                        tellErrors [ConstructorPatternArityMismatch con arity (length pats)]
+            ty <- lookupScheme con >>= instantiate
+            ps <- traverse patternNode pats
+            t1 <- thisNodeType
+            (_, node) <- listen (ty ## foldr tArr t1 (typeOf <$> ps))
+            when (nodeHasErrors node) $
+                tellErrors [ConstructorPatternTypeMismatch con]
+            pure ps
+        pure (conPat ti con ps, vs)
 
     PAs _ var pat -> do
         (p, ti, vs) <- runNode $ do
@@ -241,9 +253,17 @@ inferPatternType = cata $ \case
         pure (tuplePat ti ps, vs)
 
     PList t pats -> do
-        (a, ti, vs) <- runNode $ do
-            undefined
-        pure undefined
+        (ps, ti, vs) <- runNode $ do
+            ps <- traverse patternNode pats
+            t1 <- case ps of
+                []    -> newTVar 
+                (p:_) -> pure (typeOf p)
+            -- Unify list elements' types
+            (_, node) <- listen (forM_ ps (## t1))
+            when (nodeHasErrors node) $ tellErrors [ListPatternElemUnficationError]
+            unfiyWithNode (tList t1)
+            pure ps
+        pure (listPat ti ps, vs)
 
     PRow _ label pat row -> do
         ((p, r), ti, vs) <- runNode $ do
@@ -392,6 +412,18 @@ lookupPredicates vars = do
         v  <- vars
         tc <- Set.toList (Env.findWithDefault mempty v env)
         [(v, tc)]
+
+lookupConstructor
+  :: ( MonadSupply Name m
+     , MonadReader (ClassEnv, TypeEnv, KindEnv, ConstructorEnv) m
+     , MonadState (Substitution Type, Substitution Kind, Context) m )
+  => Name
+  -> WriterT Node m (Maybe (Set Name, Int))
+lookupConstructor con = do
+    env <- asks getConstructorEnv
+    let info = Env.lookup con env
+    when (isNothing info) (tellErrors [MissingDataConstructor con])
+    pure info
 
 instantiate
   :: ( MonadSupply Name m
