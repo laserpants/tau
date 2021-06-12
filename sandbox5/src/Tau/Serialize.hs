@@ -307,3 +307,4 @@ valueRep = \case
     Tau.Data con args   -> makeRep "Value" "Data"     [String con, toRep args]
     Tau.PrimFun f _ vs  -> makeRep "Value" "PrimFun"  [String f, String "<<internal>>", toRep vs]
     Tau.Closure f _ _   -> makeRep "Value" "Closure"  [String f, String "<<internal>>", String "<<internal>>"]
+    Tau.Fail err        -> makeRep "Value" "Fail"     [String (pack err)]

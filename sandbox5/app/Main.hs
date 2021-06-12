@@ -11,8 +11,14 @@ import Data.Maybe
 import Tau.Compiler.Error
 import Tau.Compiler.Pipeline.Stage1 
 import Tau.Compiler.Pipeline.Stage2 
+import Tau.Compiler.Pipeline.Stage3 
+import Tau.Compiler.Pipeline.Stage4 
+import Tau.Compiler.Pipeline.Stage5 
+import Tau.Compiler.Pipeline.Stage6 
 import Tau.Compiler.Substitute
 import Tau.Compiler.Typecheck
+import Tau.Core
+import Tau.Eval
 import Tau.Lang
 import Tau.Prog
 import Tau.Serialize
@@ -21,6 +27,10 @@ import Tau.Type
 import qualified Data.ByteString.Lazy as LBS
 import qualified Tau.Compiler.Pipeline.Stage1 as Stage1
 import qualified Tau.Compiler.Pipeline.Stage2 as Stage2
+import qualified Tau.Compiler.Pipeline.Stage3 as Stage3
+import qualified Tau.Compiler.Pipeline.Stage4 as Stage4
+import qualified Tau.Compiler.Pipeline.Stage5 as Stage5
+import qualified Tau.Compiler.Pipeline.Stage6 as Stage6
 import qualified Tau.Env as Env
 
 main = pure ()
@@ -50,7 +60,7 @@ example1 = do
 
         let e2_1 = Stage2.translate e1
 
-        let e2 = runTranslate testClassEnv testTypeEnv testKindEnv testConstructorEnv e2_1
+        let e2 = Stage2.runTranslate testClassEnv testTypeEnv testKindEnv testConstructorEnv e2_1
 
         let r2 = toRep e2
         liftIO $ LBS.writeFile "/home/laserpants/play/ast-folder-tree/ast-folder-tree/src/testData24.json" (encode r2)
@@ -59,7 +69,57 @@ example1 = do
 
         --
 
+        let e3_1 = Stage3.translate e2
+
+        let e3 = Stage3.runTranslate e3_1
+
+        let r3 = toRep e3
+        liftIO $ LBS.writeFile "/home/laserpants/play/ast-folder-tree/ast-folder-tree/src/testData25.json" (encode r3)
+
+        traceShowM e3
+
+        --
+
+        let e4 = Stage4.translate e3
+
+        let r4 = toRep e4
+        liftIO $ LBS.writeFile "/home/laserpants/play/ast-folder-tree/ast-folder-tree/src/testData26.json" (encode r4)
+
+        traceShowM e4
+
+        --
+
+        let e5_1 = Stage5.translate e4
+
+        let e5 = Stage5.runTranslate e5_1
+
+        let r5 = toRep e5
+        liftIO $ LBS.writeFile "/home/laserpants/play/ast-folder-tree/ast-folder-tree/src/testData27.json" (encode r5)
+
+        traceShowM e5
+
+        --
+
+        let e6 = runIdentity (Stage6.translate e5)
+
+        let r6 = toRep e6
+        liftIO $ LBS.writeFile "/home/laserpants/play/ast-folder-tree/ast-folder-tree/src/testData28.json" (encode r6)
+
+        traceShowM e6
+
+        --
+
+        let e7 = evalExpr e6 testEvalEnv
+
+        let r7 = toRep e7
+        liftIO $ LBS.writeFile "/home/laserpants/play/ast-folder-tree/ast-folder-tree/src/testData29.json" (encode r7)
+
+        traceShowM e7
+
+        --
+
         pure e
+
   where
     expr :: ProgExpr ()
     --expr = varExpr () "x"
@@ -607,11 +667,7 @@ example1 = do
 --     yy = fmap f xx
 --     zz = getAst yy
 -- 
--- 
--- evalEnv2 = Env.fromList 
---     [ -- ( "(,)" , constructor "(,)" 2 )
---     ]
--- 
+
 -- --test2 = do -- case fromJust (runInfer mempty testClassEnv testTypeEnv testConstructorEnv (inferExprType expr1)) of
 -- --    print "----------"
 -- --    print (apply sub2 (apply sub a))
@@ -640,7 +696,7 @@ example1 = do
 -- --    --print "=========="
 -- ----    print xx3
 -- ----    print "=========="
--- ----    print (evalExpr xx3 evalEnv2)
+-- ----    print (evalExpr xx3 testEvalEnv)
 -- ----    print "=========="
 -- --    --putStrLn (showTree zz123)
 -- ----    Left e -> error (show e)
@@ -842,7 +898,7 @@ example1 = do
 -- 
 --     el = runIdentity (Stage6.translate ek)
 -- 
---     em = evalExpr el evalEnv2
+--     em = evalExpr el testEvalEnv
 -- 
 --     h3 = unpack . renderDoc <$> g3
 --     g3 = exprTree eh
@@ -1222,4 +1278,10 @@ testConstructorEnv = constructorEnv
     , ("Foo"      , ( ["Foo"], 2 ))
     , ("#"        , ( ["#"], 1 ))
     , ("{}"       , ( ["{}"], 0 ))
+    ]
+
+testEvalEnv :: ValueEnv Eval
+testEvalEnv = Env.fromList 
+    [ -- ( "(,)" , constructor "(,)" 2 )
+      ( "_#", fromJust (evalExpr (cLam "?0" (cPat (cVar "?0") [(["#", "?1"], cVar "?1")])) mempty) ) 
     ]

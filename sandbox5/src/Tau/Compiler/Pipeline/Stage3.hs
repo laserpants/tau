@@ -4,6 +4,7 @@ module Tau.Compiler.Pipeline.Stage3 where
 
 import Control.Monad.Supply
 import Data.Foldable (foldrM)
+import Data.Maybe (fromJust)
 import Tau.Compiler.Pipeline
 import Tau.Lang
 import Tau.Tooling
@@ -16,6 +17,9 @@ type TargetExpr t = Expr t t t t t t t t Void Void Void Void Void Void Void
     Void Name (SimplifiedClause t (ProgPattern t))
 
 -- >>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>
+
+runTranslate :: Supply Name a -> a
+runTranslate expr = fromJust (evalSupply expr (numSupply "#"))
 
 translate :: (MonadSupply Name m) => SourceExpr (Maybe Type) -> m (TargetExpr (Maybe Type))
 translate = cata $ \case

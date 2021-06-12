@@ -8,6 +8,7 @@ module Tau.Eval where
 import Control.Monad.Reader
 import Data.Char
 import Data.Map.Strict (Map)
+import Data.Text (pack, unpack)
 import Tau.Core
 import Tau.Env (Env(..))
 import Tau.Eval.Prim
@@ -109,7 +110,7 @@ evalVar var =
                         else do 
                             traceShowM ("Unbound identifier " <> var)
                             -- fail "Unbound identifier"
-                            pure (Fail "Unbound identifier")
+                            pure (Fail ("Unbound identifier '" <> unpack var <> "'"))
 
 -- TODO
 isConstructor :: Name -> Bool
@@ -165,6 +166,9 @@ evalApp fun arg = fun >>= \case
     Data con args -> do
         a <- arg
         pure (Data con (args <> [a]))
+
+    err -> 
+        pure err
 
 evalPat 
   :: (MonadFail m, MonadReader (ValueEnv m) m)

@@ -10,6 +10,7 @@ import Control.Monad.Writer
 import Data.Foldable (foldrM)
 import Data.Function ((&))
 import Data.List.Extra (groupSortOn)
+import Data.Maybe (fromJust)
 import Data.Tuple.Extra
 import Data.Void
 import Tau.Compiler.Pipeline
@@ -52,6 +53,9 @@ deriving instance (Show t) => Show (ConsGroup t)
 deriving instance (Eq   t) => Eq   (ConsGroup t)
 
 -- >>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>
+
+runTranslate :: Supply Name a -> a
+runTranslate expr = fromJust (evalSupply expr (numSupply "a"))
 
 translate :: (MonadSupply Name m) => SourceExpr (Maybe Type) -> m (TargetExpr (Maybe Type))
 translate = cata $ \case
