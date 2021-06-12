@@ -193,14 +193,6 @@ isTupleType ty = Just True == (Text.all (== ',') <$> (stripped =<< leftmost))
         TApp _ a _         -> a
         _                  -> Nothing
 
---isListType :: Type -> Bool
---isListType = project >>> \case
---    TApp _ a _ -> 
---        case project a of
---            TCon _ "List" -> True
---            _ -> False
---    _         -> False
---
 --isTupleType :: Type -> Bool
 --isTupleType ty = Just True == maybeIsTupleCon
 --  where
