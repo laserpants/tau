@@ -29,6 +29,17 @@ import qualified Data.Map.Strict as Map
 import qualified Data.Set.Monad as Set
 import qualified Tau.Env as Env
 
+inferAstType
+  :: ( MonadSupply Name m
+     , MonadReader (ClassEnv, TypeEnv, KindEnv, ConstructorEnv) m
+     , MonadState (Substitution Type, Substitution Kind, Context) m )
+  => Ast t
+  -> m (Ast (TypeInfo [Error]))
+inferAstType (Ast expr) = do
+    e <- inferExprType expr
+    sub <- subs
+    pure (simplifyPredicates <$> Ast (applyBoth sub e))
+
 inferExprType
   :: ( MonadSupply Name m
      , MonadReader (ClassEnv, TypeEnv, KindEnv, ConstructorEnv) m
@@ -49,51 +60,126 @@ inferExprType = cata $ \case
             ty <- lookupScheme con >>= instantiate
             es <- traverse exprNode exprs
             t1 <- thisNodeType
-            doUnify ty (foldr tArr t1 (typeOf <$> es)) >>= tellErrors 
+            ty ## foldr tArr t1 (typeOf <$> es)
             pure es
         pure (conExpr ti con es)
 
     ELit _ prim -> do
-        undefined
+        (_, ti, _) <- runNode $ do
+            ty <- instantiate (primType prim)
+            unfiyWithNode ty
+        pure (litExpr ti prim)
 
     EApp _ exprs -> do
-        undefined
+        (es, ti, _) <- runNode $ do
+            es <- traverse exprNode exprs
+            case es of
+                [] -> pure ()
+                f:args -> do
+                    t1 <- thisNodeType
+                    f ## foldr tArr t1 (typeOf <$> args)
+            pure es
+        pure (appExpr ti es)
 
-    EFix _ name expr1 expr2 ->
-        undefined
+    EFix _ name expr1 expr2 -> do
+        ((e1, e2), ti, _) <- runNode $ do
+            t1 <- newTVar 
+            e1 <- exprNode (local (inTypeEnv (Env.insert name (toScheme t1))) expr1)
+            e1 ## (t1 :: Type) 
+            scheme <- generalize (typeOf e1)
+            e2 <- exprNode (local (inTypeEnv (Env.insert name scheme)) expr2)
+            unfiyWithNode (typeOf e2)
+            pure (e1, e2)
+        pure (fixExpr ti name e1 e2)
 
-    ELam _ pats expr ->
-        undefined
+    ELam _ pats expr -> do
+        ((ps, e1), ti, _) <- runNode $ do
+            (ps, vs) <- second nodeVars <$> listen (traverse (patternNode . inferPatternType) pats)
+            e1 <- exprNode (local (inTypeEnv (Env.inserts (toScheme <$$> vs))) expr)
+            unfiyWithNode (foldr tArr (typeOf e1) (typeOf <$> ps))
+            pure (ps, e1)
+        pure (lamExpr ti ps e1)
 
-    EIf _ expr1 expr2 expr3 ->
-        undefined
+    EIf _ expr1 expr2 expr3 -> do
+        ((e1, e2, e3), ti, _) <- runNode $ do
+            e1 <- exprNode expr1
+            e2 <- exprNode expr2
+            e3 <- exprNode expr3
+            e1 ## (tBool :: Type)
+            e2 ## e3
+            unfiyWithNode (typeOf e2)
+            pure (e1, e2, e3)
+        pure (ifExpr ti e1 e2 e3)
 
-    EPat _ expr eqs ->
-        undefined
+    EPat _ expr eqs -> do
+        (es, ti, _) <- runNode $ do
+            e1 <- exprNode expr
+            undefined
+        pure undefined
 
-    ELet _ (BLet _ pat) expr1 expr2 ->
-        undefined
+    ELet _ (BLet _ pat) expr1 expr2 -> do
+        (es, ti, _) <- runNode $ do
+            undefined
+        pure undefined
 
-    ELet _ (BFun _ f pats) expr1 expr2 ->
-        undefined
+    ELet _ (BFun _ f pats) expr1 expr2 -> do
+        (es, ti, _) <- runNode $ do
+            undefined
+        pure undefined
 
-    EFun _ eqs ->
-        undefined
+    EFun _ eqs -> do
+        (es, ti, _) <- runNode $ do
+            ty <- newTVar 
+            t1 <- thisNodeType
+            undefined
+        pure undefined
 
-    EOp1 _ op1 expr ->
-        undefined
+    EOp1 _ op1 expr -> do
+        ((op, a), ti, _) <- runNode $ do
+            a <- exprNode expr
+            op <- inferOp1Type op1
+            t1 <- thisNodeType
+            op ## (typeOf a `tArr` t1)
+            pure (op, a)
+        pure (op1Expr ti op a)
 
-    EOp2 _ op2 expr1 expr2 ->
-        undefined
+    EOp2 _ op2 expr1 expr2 -> do
+        ((op, a, b), ti, _) <- runNode $ do
+            a <- exprNode expr1
+            b <- exprNode expr2
+            op <- inferOp2Type op2
+            t1 <- thisNodeType
+            op ## (typeOf a `tArr` typeOf b `tArr` t1) 
+            pure (op, a, b)
+        pure (op2Expr ti op a b)
 
-    ETuple _ exprs -> 
-        undefined
+    ETuple _ exprs -> do
+        (es, ti, _) <- runNode $ do
+            es <- traverse exprNode exprs
+            unfiyWithNode (tTuple (typeOf <$> es))
+            pure es
+        pure (tupleExpr ti es)
 
-    EList _ exprs -> 
-        undefined
+    EList _ exprs -> do
+        (es, ti, _) <- runNode $ do
+            es <- traverse exprNode exprs
+            t1 <- case es of
+                []    -> newTVar 
+                (e:_) -> pure (typeOf e)
+            -- Unify list elements' types
+            (_, node) <- listen (forM_ es (## t1))
+            when (nodeHasErrors node) $ tellErrors [ListElemUnficationError]
+            unfiyWithNode (tList t1)
+            pure es
+        pure (listExpr ti es)
 
-    ERow _ label expr row -> 
-        undefined
+    ERow _ label expr row -> do
+        ((e, r), ti, _) <- runNode $ do
+            e <- exprNode expr
+            r <- exprNode row
+            unfiyWithNode (tRow label (typeOf e) (typeOf r))
+            pure (e, r)
+        pure (rowExpr ti label e r)
 
     EAnn t expr -> do
         e <- expr
@@ -108,32 +194,64 @@ inferPatternType
   -> m (ProgPattern (TypeInfo [Error]), [(Name, Type)])
 inferPatternType = cata $ \case
 
-    PVar _ var -> 
-        undefined
+    PVar _ var -> do
+        (_, ti, vs) <- runNode $ do
+            t <- thisNodeType
+            tellVars [(var, t)]
+        pure (varPat ti var, vs)
 
-    PCon _ con pats -> 
-        undefined
+    PCon _ con pats -> do
+        (a, ti, vs) <- runNode $ do
+            undefined
+        pure undefined
 
-    PAs _ var pat -> 
-        undefined
+    PAs _ var pat -> do
+        (p, ti, vs) <- runNode $ do
+            p <- patternNode pat
+            t <- thisNodeType
+            tellVars [(var, t)]
+            unfiyWithNode (typeOf p)
+            pure p
+        pure (asPat ti var p, vs)
 
-    PLit _ prim -> 
-        undefined
+    PLit _ prim -> do
+        (_, ti, vs) <- runNode $ do
+            t <- instantiate (primType prim)
+            unfiyWithNode t
+        pure (litPat ti prim, vs)
 
-    PAny _ ->
-        undefined
+    PAny _ -> do
+        (_, ti, vs) <- runNode $ pure ()
+        pure (anyPat ti, vs)
 
-    POr _ pat1 pat2 -> 
-        undefined
+    POr _ pat1 pat2 -> do
+        ((p1, p2), ti, vs) <- runNode $ do
+            p1 <- patternNode pat1
+            p2 <- patternNode pat2
+            unfiyWithNode (typeOf p1)
+            unfiyWithNode (typeOf p2)
+            pure (p1, p2)
+        pure (orPat ti p1 p2, vs)
 
-    PTuple t pats -> 
-        undefined
+    PTuple t pats -> do
+        (ps, ti, vs) <- runNode $ do
+            ps <- traverse patternNode pats
+            unfiyWithNode (tTuple (typeOf <$> ps))
+            pure ps
+        pure (tuplePat ti ps, vs)
 
-    PList t pats -> 
-        undefined
+    PList t pats -> do
+        (a, ti, vs) <- runNode $ do
+            undefined
+        pure undefined
 
-    PRow _ label pat row -> 
-        undefined
+    PRow _ label pat row -> do
+        ((p, r), ti, vs) <- runNode $ do
+            p <- patternNode pat
+            r <- patternNode row
+            unfiyWithNode (tRow label (typeOf p) (typeOf r))
+            pure (p, r)
+        pure (rowPat ti label p r, vs)
 
     PAnn t pat -> do
         p <- pat
@@ -220,6 +338,18 @@ exprNode expr = do
     e <- lift expr
     tellPredicates (exprPredicates e)
     pure e
+
+patternNode
+  :: ( MonadSupply Name m
+     , MonadReader (ClassEnv, TypeEnv, KindEnv, ConstructorEnv) m
+     , MonadState (Substitution Type, Substitution Kind, Context) m )
+  => m (ProgPattern (TypeInfo [Error]), [(Name, Type)])
+  -> WriterT Node m (ProgPattern (TypeInfo [Error]))
+patternNode pat = do
+    (p, vs) <- lift pat
+    tellPredicates (patternPredicates p)
+    tellVars vs
+    pure p
 
 thisNodeType
   :: ( MonadSupply Name m
@@ -355,6 +485,12 @@ tellPredicates ps = tell (mempty, mempty, ps, mempty)
 tellErrors :: (MonadWriter Node m) => [Error] -> m ()
 tellErrors es = tell (mempty, mempty, mempty, es)
 
+nodeVars :: Node -> [(Name, Type)]
+nodeVars (_, vs, _, _) = vs
+
+nodeHasErrors :: Node -> Bool
+nodeHasErrors (_, _, _, es) = not (Prelude.null es)
+
 newTVar :: (MonadSupply Name m) => m (TypeT a)
 newTVar = do
     k <- ("k" <>) <$> supply
@@ -403,6 +539,17 @@ doUnify t1 t2 = do
     propagate tv ty = do
         env <- gets thd3
         propagateClasses ty (fromMaybe mempty (Env.lookup tv env))
+
+(##)
+  :: ( MonadSupply Name m
+     , MonadReader (ClassEnv, TypeEnv, KindEnv, ConstructorEnv) m
+     , MonadState (Substitution Type, Substitution Kind, Context) m 
+     , Typed a1
+     , Typed a2 )
+  => a1 
+  -> a2
+  -> WriterT Node m ()
+(##) e1 e2 = doUnify (typeOf e1) (typeOf e2) >>= tellErrors 
 
 subs
   :: (MonadState (Substitution Type, Substitution Kind, a) m)

@@ -1,26 +1,37 @@
 {-# LANGUAGE OverloadedStrings #-}
 module Main where
 
+import Control.Monad.IO.Class
 import Control.Monad.Identity
+import Data.Aeson
 import Data.Maybe
 import Tau.Compiler.Error
+import Tau.Compiler.Substitute
+import Tau.Compiler.Typecheck
 import Tau.Lang
 import Tau.Prog
+import Tau.Serialize
 import Tau.Tooling
 import Tau.Type
-import Tau.Compiler.Typecheck
-import Tau.Compiler.Substitute
+import qualified Data.ByteString.Lazy as LBS
 import qualified Tau.Env as Env
 
 main = pure ()
 
-example1 :: (ProgExpr (TypeInfo [Error]), Substitution Type, Substitution Kind, Context)
-example1 = runInfer mempty testClassEnv testTypeEnv testKindEnv testConstructorEnv (inferExprType expr)
+example1 :: IO () -- (ProgExpr (TypeInfo [Error]), Substitution Type, Substitution Kind, Context)
+example1 = do
+    void $ runInferT mempty testClassEnv testTypeEnv testKindEnv testConstructorEnv $ do
+        Ast e <- inferAstType (Ast expr)
+        let r = toRep e
+        liftIO $ LBS.writeFile "/home/laserpants/play/ast-folder-tree/ast-folder-tree/src/testData22.json" (encode r)
+        traceShowM e
+        pure e
   where
     expr :: ProgExpr ()
     --expr = varExpr () "x"
+    --expr = conExpr () "Some" [varExpr () "x"]
 
-    expr = conExpr () "Some" [varExpr () "x"]
+    expr = litExpr () (TInt 5)
 
 -- {-# LANGUAGE FlexibleContexts      #-}
 -- {-# LANGUAGE FlexibleInstances     #-}
