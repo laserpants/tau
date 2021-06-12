@@ -1,4 +1,5 @@
 {-# LANGUAGE FlexibleInstances     #-}
+{-# LANGUAGE LambdaCase            #-}
 {-# LANGUAGE MultiParamTypeClasses #-}
 module Tau.Tooling
   ( Name
@@ -83,10 +84,9 @@ liftMaybe err Nothing = throwError err
 liftMaybe _ (Just ok) = pure ok
 
 whenLeft :: (Monad m) => (a -> m ()) -> Either a () -> m ()
-whenLeft run val =
-    case val of
-        Left err -> run err
-        Right () -> pure ()
+whenLeft run = \case 
+    Left err -> run err
+    Right () -> pure ()
 
 -- >>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>
 
