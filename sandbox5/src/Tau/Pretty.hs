@@ -16,6 +16,7 @@ import Data.Text.Prettyprint.Doc
 import Data.Text.Prettyprint.Doc.Render.Text
 import Data.Tree
 import Data.Tree.View (showTree)
+import Data.Tuple.Extra
 import Tau.Compiler.Error
 import Tau.Compiler.Pipeline
 import Tau.Compiler.Substitute hiding (null)
@@ -33,8 +34,6 @@ import qualified Tau.Compiler.Pipeline.Stage4 as Stage4
 import qualified Tau.Compiler.Pipeline.Stage5 as Stage5
 import qualified Tau.Compiler.Pipeline.Stage6 as Stage6
 
--- >>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>
-
 instance Pretty Prim where
     pretty = \case
         TUnit      -> "()"
@@ -46,7 +45,93 @@ instance Pretty Prim where
         TChar    a -> squotes (pretty a)
         TString  a -> dquotes (pretty a)
 
----- >>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>
+-- >>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>
+
+instance Pretty Kind where
+    pretty = para $ \case
+        KArr (k1, doc1) (_, doc2) ->
+            parensIf useLeft doc1 <+> "->" <+> doc2
+          where
+            useLeft =
+                case project k1 of
+                    KArr{} -> True
+                    _      -> False
+
+        KVar var -> pretty var
+        KCon con -> pretty con
+
+-- >>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>
+
+isTupleType :: Type -> Bool
+isTupleType ty = Just True == maybeIsTupleCon
+  where
+    maybeIsTupleCon = Text.all (== ',') <$> (stripped <=< leftmost) ty
+    stripped        = Text.stripSuffix ")" <=< Text.stripPrefix "("
+
+    leftmost :: Type -> Maybe Name
+    leftmost = cata $ \case
+        TCon _ con         -> Just con
+        TApp _ a _         -> a
+        _                  -> Nothing
+
+prettyRowType :: Type -> Doc a
+prettyRowType ty = "{" <+> commaSep fields <> final <+> "}"
+  where
+    fields = flip para ty $ \case
+        TRow label ty rest -> pretty label <+> ":" <+> pretty (fst ty):snd rest
+        _                  -> []
+
+    final = flip cata ty $ \case
+        TRow _ _ r         -> r
+        TVar _ v           -> " " <> pipe <+> pretty v
+        _                  -> ""
+
+instance Pretty Type where
+    pretty = para $ \case
+        TArr (t1, doc1) (_, doc2) ->
+            parensIf useLeft doc1 <+> "->" <+> doc2
+          where
+            useLeft =
+                case project t1 of
+                    TArr{} -> True
+                    _      -> False
+
+        TApp _ (Fix (TCon _ "#"), _) (t2, _) ->
+            prettyRowType t2
+
+        TApp k (t1, _) (t2, _) | isTupleType t1 ->
+            let (_:ts) = unfoldApp (tApp k t1 t2)
+             in prettyTuple (pretty <$> ts)
+
+        TApp _ (_, doc1) (t2, doc2) ->
+            doc1 <+> parensIf useRight doc2
+          where
+            useRight =
+                case project t2 of
+                    TApp{} -> True
+                    TArr{} -> True
+                    TRow{} -> True
+                    _      -> False
+
+        TVar _ var -> pretty var
+        TCon _ con -> pretty con
+
+        TRow label (_, doc1) (t2, doc2) ->
+            "{" <> pretty label <> "}" <+> doc1 <+> parensIf useRight doc2
+          where
+            useRight =
+                case project t2 of
+                    TCon _ "{}" -> False
+                    TVar{}      -> False
+                    _           -> True
+
+
+
+
+
+
+
+
 
 --instance (Eq e, Pretty e) => Pretty (Row e) where
 --    pretty (Row map r) | null map = maybe "{}" pretty r
@@ -75,83 +160,35 @@ prettyRow (name, doc) = pretty name <+> equals <+> doc
 
 -- >>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>
 
-instance Pretty Kind where
-    pretty = para $ \case
-        KArr (k1, doc1) (_, doc2) ->
-            parensIf useLeft doc1 <+> "->" <+> doc2
-          where
-            useLeft =
-                case project k1 of
-                    KArr{} -> True
-                    _      -> False
-
-        KVar var -> pretty var
-        KCon con -> pretty con
-
 ---- >>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>
-
-instance Pretty Type where
-    pretty ty
-       | isTupleType ty = prettyTupleType ty
-       | otherwise      = prettyType ty
 
 --       case leftmostTypeCon ty of
 --           Just con | isTuple con -> prettyTupleType ty
 --           Just "#Record"         -> prettyRecordType ty
 --           _                      -> prettyType ty
 
-isTupleType :: Type -> Bool
-isTupleType ty = Just True == maybeIsTupleCon
-  where
-    maybeIsTupleCon = Text.all (== ',') <$> (stripped <=< leftmost) ty
-    stripped        = Text.stripSuffix ")" <=< Text.stripPrefix "("
-
-    leftmost :: Type -> Maybe Name
-    leftmost = cata $ \case
-        TCon _ con   -> Just con
-        TApp _ a _   -> a
-        _            -> Nothing
-
-prettyTupleType :: Type -> Doc a
-prettyTupleType ty = let (_:ts) = unfoldApp ty in prettyTuple (pretty <$> ts)
+--instance Pretty Type where
+--    pretty ty
+--       | isTupleType ty = prettyTupleType ty
+--       | otherwise      = prettyType ty
+--      where
+--        isTupleType ty  = Just True == maybeIsTupleCon
+--        maybeIsTupleCon = Text.all (== ',') <$> (stripped <=< leftmost) ty
+--        stripped        = Text.stripSuffix ")" <=< Text.stripPrefix "("
+--
+--        leftmost :: Type -> Maybe Name
+--        leftmost = cata $ \case
+--            TCon _ con   -> Just con
+--            TApp _ a _   -> a
+--            _            -> Nothing
+--
+--prettyTupleType :: Type -> Doc a
+--prettyTupleType ty = let (_:ts) = unfoldApp ty in prettyTuple (pretty <$> ts)
 
 --prettyRecordType :: Type -> Doc a
 --prettyRecordType = project >>> \case
 --    TApp (Fix (TCon _ "#Record")) row ->
 --        lbrace <+> prettyRow ":" (pretty <$> typeToRow row) <+> rbrace
-
-prettyType :: Type -> Doc a
-prettyType = para $ \case
-
-    TArr (t1, doc1) (_, doc2) ->
-        parensIf useLeft doc1 <+> "->" <+> doc2
-      where
-        useLeft =
-            case project t1 of
-                TArr{} -> True
-                _      -> False
-
-    TApp _ (_, doc1) (t2, doc2) ->
-        doc1 <+> parensIf useRight doc2
-      where
-        useRight =
-            case project t2 of
-                TApp{} -> True
-                TArr{} -> True
-                TRow{} -> True
-                _      -> False
-
-    TVar _ var -> pretty var
-    TCon _ con -> pretty con
-
-    TRow label (_, doc1) (t2, doc2) ->
-        "{" <> pretty label <> "}" <+> doc1 <+> parensIf useRight doc2
-      where
-        useRight =
-            case project t2 of
-                TCon _ "{}" -> False
-                TVar{}      -> False
-                _           -> True
 
 -- >>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>
 
