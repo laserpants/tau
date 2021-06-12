@@ -138,6 +138,7 @@ prettyType = para $ \case
             case project t2 of
                 TApp{} -> True
                 TArr{} -> True
+                TRow{} -> True
                 _      -> False
 
     TVar _ var -> pretty var

@@ -137,7 +137,7 @@ withPretty f p = Object (HM.insert "pretty" (String (prettyPrint p)) obj)
 typeJson :: Type -> Value
 typeJson = project >>> \case
     TVar k var          -> makeRep "Type" "TVar"      [toRep k, String var]
-    TCon k con          -> makeRep "Type" "TCon"      [String con]
+    TCon k con          -> makeRep "Type" "TCon"      [toRep k, String con]
     TApp k t1 t2        -> makeRep "Type" "TApp"      [toRep k, toRep t1, toRep t2]
     TArr t1 t2          -> makeRep "Type" "TArr"      [toRep t1, toRep t2]
     TRow label t1 t2    -> makeRep "Type" "TRow"      [String label, toRep t1, toRep t2]
@@ -181,6 +181,7 @@ patternRep = project >>> \case
     PTuple t ps         -> makeRep "Pattern" "PTuple" [toRep t, toRep ps] 
     PList  t ps         -> makeRep "Pattern" "PList"  [toRep t, toRep ps] 
     PRow   t lab a b    -> makeRep "Pattern" "PRow"   [toRep t, String lab, toRep a, toRep b]
+    PAnn   t p          -> makeRep "Pattern" "PAnn"   [toRep t, toRep p]
 
 simplifiedPatternRep :: (ToRep t) => SimplifiedPattern t -> Value
 simplifiedPatternRep = \case
