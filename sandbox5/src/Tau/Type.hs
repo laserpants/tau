@@ -182,6 +182,17 @@ getTypeIndex = project >>> \case
     TGen i   -> Just i
     _        -> Nothing
 
+isTupleType :: Type -> Bool
+isTupleType ty = Just True == (Text.all (== ',') <$> (stripped =<< leftmost))
+  where
+    stripped = Text.stripSuffix ")" <=< Text.stripPrefix "("
+
+    leftmost :: Maybe Name
+    leftmost = flip cata ty $ \case
+        TCon _ con         -> Just con
+        TApp _ a _         -> a
+        _                  -> Nothing
+
 --isListType :: Type -> Bool
 --isListType = project >>> \case
 --    TApp _ a _ -> 
