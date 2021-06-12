@@ -9,7 +9,7 @@ import Control.Monad.State
 import Control.Monad.Supply
 import Data.Foldable (foldrM)
 import Data.List (nub)
-import Data.Maybe (fromMaybe)
+import Data.Maybe (fromMaybe, fromJust)
 import Data.Tuple.Extra (second)
 import Tau.Compiler.Error
 import Tau.Compiler.Pipeline
@@ -24,6 +24,19 @@ type WorkingExpr t = Expr t t t t t t t t t Void Void Void Void Void Void
     (ProgBinding t) [ProgPattern t] (SimplifiedClause t (ProgPattern t))
 
 -- >>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>
+
+runTranslate 
+  :: ClassEnv 
+  -> TypeEnv 
+  -> KindEnv 
+  -> ConstructorEnv 
+  -> ReaderT (ClassEnv, TypeEnv, KindEnv, ConstructorEnv) (Supply Name) e 
+  -> e
+runTranslate classEnv typeEnv kindEnv constructorEnv expr = 
+--    fromJust (evalSupply (runReaderT expr env) (numSupply "a"))
+    fromJust (evalSupply (runReaderT expr env) (numSupply "$dict"))
+  where
+    env = (classEnv, typeEnv, kindEnv, constructorEnv)
 
 translate 
   :: ( MonadSupply Name m
@@ -133,7 +146,8 @@ dictTVar ty = do
     case filter ((==) ty . snd) map of
         p:_ -> pure (fst p)
         _   -> do 
-            var <- Text.replace "a" "$dict" <$> supply
+            --var <- Text.replace "a" "$dict" <$> supply
+            var <- supply
             modify ((var, ty) :)
             pure var
 
@@ -150,9 +164,6 @@ applyDicts (InClass name ty) expr
         pure (appExpr (workingExprTag expr) 
           [ setWorkingExprTag (tArr t1 <$> workingExprTag expr) expr
           , varExpr (Just t1) tv ])
-
---    | otherwise = 
---        pure expr  -- ???????????????? TODO
 
     | otherwise = do
         env <- askClassEnv

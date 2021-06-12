@@ -3,9 +3,14 @@ module Main where
 
 import Control.Monad.IO.Class
 import Control.Monad.Identity
+import Control.Monad.Reader
+import Control.Monad.State
+import Control.Monad.Supply
 import Data.Aeson
 import Data.Maybe
 import Tau.Compiler.Error
+import Tau.Compiler.Pipeline.Stage1 
+import Tau.Compiler.Pipeline.Stage2 
 import Tau.Compiler.Substitute
 import Tau.Compiler.Typecheck
 import Tau.Lang
@@ -14,6 +19,8 @@ import Tau.Serialize
 import Tau.Tooling
 import Tau.Type
 import qualified Data.ByteString.Lazy as LBS
+import qualified Tau.Compiler.Pipeline.Stage1 as Stage1
+import qualified Tau.Compiler.Pipeline.Stage2 as Stage2
 import qualified Tau.Env as Env
 
 main = pure ()
@@ -24,7 +31,34 @@ example1 = do
         Ast e <- inferAstType (Ast expr)
         let r = toRep e
         liftIO $ LBS.writeFile "/home/laserpants/play/ast-folder-tree/ast-folder-tree/src/testData22.json" (encode r)
+
         traceShowM e
+
+        --
+
+        let Ast e0 = fmap (fmap Just) (Ast e)
+
+        let e1 :: Stage1.TargetExpr (TypeInfoT [Error] (Maybe Type))
+            e1 = Stage1.translate e0 
+        
+        let r1 = toRep e1
+        liftIO $ LBS.writeFile "/home/laserpants/play/ast-folder-tree/ast-folder-tree/src/testData23.json" (encode r1)
+
+        traceShowM e1
+
+        --
+
+        let e2_1 = Stage2.translate e1
+
+        let e2 = runTranslate testClassEnv testTypeEnv testKindEnv testConstructorEnv e2_1
+
+        let r2 = toRep e2
+        liftIO $ LBS.writeFile "/home/laserpants/play/ast-folder-tree/ast-folder-tree/src/testData24.json" (encode r2)
+
+        traceShowM e2
+
+        --
+
         pure e
   where
     expr :: ProgExpr ()
@@ -33,14 +67,20 @@ example1 = do
     --expr = litExpr () (TInt 5)
     --expr = letExpr () (BLet () (varPat () "x")) (litExpr () (TInt 5)) (varExpr () "x")
 
-    -- let fn(r) = { a = 1 | r } in fn({ b = 2 })
-    expr = 
-        letExpr () -- 
-            (BFun () "fn" [varPat () "r"]) 
-            (patExpr () (varExpr () "r") [ 
-                Clause () (conPat () "#" [varPat () "q"]) [Guard [] (recordExpr () (rowExpr () "a" (annExpr tInt (litExpr () (TInt 1))) (varExpr () "q")))] 
-            ]) 
-            (appExpr () [varExpr () "fn", recordExpr () (rowExpr () "b" (annExpr tInt (litExpr () (TInt 2))) (conExpr () "{}" []))])
+    ---- let fn(r) = { a = 1 | r } in fn({ b = 2 })
+    --expr = 
+    --    letExpr () 
+    --        (BFun () "fn" [varPat () "r"]) 
+    --        (patExpr () (varExpr () "r") [ 
+    --            Clause () (conPat () "#" [varPat () "q"]) [Guard [] (recordExpr () (rowExpr () "a" (annExpr tInt (litExpr () (TInt 1))) (varExpr () "q")))] 
+    --        ]) 
+    --        (appExpr () [varExpr () "fn", recordExpr () (rowExpr () "b" (annExpr tInt (litExpr () (TInt 2))) (conExpr () "{}" []))])
+
+    expr = letExpr () 
+                (BLet () (varPat () "b")) 
+                (recordExpr () (rowExpr () "x" (litExpr () (TBool True)) (conExpr () "{}" [])))
+                (recordExpr () (rowExpr () "a" (litExpr () (TBool True)) (appExpr () [varExpr () "_#", varExpr () "b"])))
+
 
 --            (patExpr () (varExpr () "r") 
 --                [ Clause () (conPat () "#" [varPat () "q"]) (Guard [] (
@@ -1114,6 +1154,7 @@ testTypeEnv = Env.fromList
     , ( "(+)"    , Forall [kTyp] [InClass "Num" 0] (tGen 0 `tArr` tGen 0 `tArr` tGen 0) )
     , ( "#"      , Forall [kRow] [] (tGen 0 `tArr` tApp kTyp tRecordCon (tGen 0)) )
     , ( "{}"     , Forall [] [] tRowNil )
+    , ( "_#"     , Forall [kRow] [] (tApp kTyp (tCon (kArr kRow kTyp) "#") (tGen 0) `tArr` tGen 0) )
     ]
 
 testClassEnv :: ClassEnv

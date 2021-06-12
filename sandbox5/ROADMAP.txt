@@ -1,6 +1,7 @@
 [x] JSON representations
 [-] Rows/Records
 [-] Kinds
+[-] Patterns anomalies
 [-] Tests
 [-] Recursion
 [-] Modules/Program

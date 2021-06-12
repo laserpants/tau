@@ -145,14 +145,14 @@ translateFunExpr t =
     cod (TArr t1 _) = t1
     dom (TArr _ t2) = t2
 
-targetExprTag :: TargetExpr t -> t
-targetExprTag = cata $ \case
-    EVar t _     -> t
-    ECon t _ _   -> t
-    ELit t _     -> t
-    EApp t _     -> t
-    EFix t _ _ _ -> t
-    ELam t _ _   -> t
-    EIf  t _ _ _ -> t
-    EPat t _ _   -> t
-    ELet t _ _ _ -> t
+--targetExprTag :: TargetExpr t -> t
+--targetExprTag = cata $ \case
+--    EVar t _     -> t
+--    ECon t _ _   -> t
+--    ELit t _     -> t
+--    EApp t _     -> t
+--    EFix t _ _ _ -> t
+--    ELam t _ _   -> t
+--    EIf  t _ _ _ -> t
+--    EPat t _ _   -> t
+--    ELet t _ _ _ -> t

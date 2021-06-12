@@ -247,6 +247,10 @@ testExprParser = do
                 ])
             (conExpr () "Some" [litExpr () (TInteger 3)]))
 
+    succeedParse exprParser
+        "{ a = True | b }"
+        (recordExpr () (rowExpr () "a" (litExpr () (TBool True)) (appExpr () [varExpr () "_#", varExpr () "b"])))
+
 testTypeParser :: SpecWith ()
 testTypeParser = do
 
@@ -313,6 +317,8 @@ testTypeParser = do
     succeedParseType typeParser
         "{ a : Int, b : a | c }"
         (tRecord (tRow "a" tInt (tRow "b" (tVar kTyp "a") (tVar kRow "c"))))
+
+    --
 
 testExprParserMatch :: SpecWith ()
 testExprParserMatch = do
