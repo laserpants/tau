@@ -17,7 +17,7 @@ import Data.Either (fromLeft, lefts)
 import Data.Either.Extra (mapLeft)
 import Data.Maybe (fromMaybe, fromJust, isNothing)
 import Data.Set.Monad (Set)
-import Data.Tuple.Extra
+import Data.Tuple.Extra (first, second, fst3, snd3, thd3, first3, second3, third3)
 import Tau.Compiler.Error
 import Tau.Compiler.Substitute
 import Tau.Compiler.Unify
@@ -112,27 +112,62 @@ inferExprType = cata $ \case
         pure (ifExpr ti e1 e2 e3)
 
     EPat _ expr eqs -> do
-        (es, ti, _) <- runNode $ do
+        ((e1, cs), ti, _) <- runNode $ do
             e1 <- exprNode expr
-            undefined
-        pure undefined
+            cs <- lift (traverse (inferClauseType (typeOf e1)) eqs)
+            tellPredicates (clausePredicates =<< cs)
+            -- Unify pattern clauses
+            forM_ cs $ \(Clause t p gs) -> do
+                forM_ gs (\(Guard _ e) -> unfiyWithNode (typeOf e))
+                unfiyWithNode (typeOf t)
+                e1 ## p
+            pure (e1, cs)
+        pure (patExpr ti e1 cs)
 
     ELet _ (BLet _ pat) expr1 expr2 -> do
-        (es, ti, _) <- runNode $ do
-            undefined
-        pure undefined
+        ((b, e1, e2), ti, _) <- runNode $ do
+            (p, vs) <- second nodeVars <$> listen (patternNode (inferPatternType pat))
+            e1 <- exprNode expr1
+            -- Unify bound variable with expression
+            p ## e1
+            schemes <- traverse (secondM generalize) vs
+            e2 <- exprNode (local (inTypeEnv (Env.inserts schemes)) expr2)
+            unfiyWithNode (typeOf e2)
+            (_, ti, _) <- runNode $ do
+                unfiyWithNode (typeOf e1)
+                tellPredicates (exprPredicates e1 <> exprPredicates e2)
+                tellPredicates (patternPredicates p)
+            pure (BLet ti p, e1, e2)
+        pure (letExpr ti b e1 e2)
 
     ELet _ (BFun _ f pats) expr1 expr2 -> do
-        (es, ti, _) <- runNode $ do
-            undefined
-        pure undefined
+        ((b, e1, e2), ti, _) <- runNode $ do
+            (ps, vs) <- second nodeVars <$> listen (traverse (patternNode . inferPatternType) pats)
+            e1 <- exprNode (local (inTypeEnv (Env.inserts (toScheme <$$> vs))) expr1)
+            t1 <- newTVar 
+            t1 ## foldr tArr (typeOf e1) (typeOf <$> ps)
+            scheme <- generalize t1
+            e2 <- exprNode (local (inTypeEnv (Env.insert f scheme)) expr2)
+            unfiyWithNode (typeOf e2)
+            (_, ti, _) <- runNode $ do
+                unfiyWithNode t1
+                tellPredicates (exprPredicates e1 <> exprPredicates e2)
+                tellPredicates (patternPredicates =<< ps)
+            pure (BFun ti f ps, e1, e2)
+        pure (letExpr ti b e1 e2)
 
     EFun _ eqs -> do
-        (es, ti, _) <- runNode $ do
+        (cs, ti, _) <- runNode $ do
             ty <- newTVar 
             t1 <- thisNodeType
-            undefined
-        pure undefined
+            cs <- lift (traverse (inferClauseType t1) eqs)
+            tellPredicates (clausePredicates =<< cs)
+            -- Unify pattern clauses
+            forM_ cs $ \(Clause t p gs) -> do
+                forM_ gs (\(Guard _ e) -> t ## e >> t1 ## (ty `tArr` typeOf e))
+                p ## ty
+            pure cs
+        pure (funExpr ti cs)
 
     EOp1 _ op1 expr -> do
         ((op, a), ti, _) <- runNode $ do
@@ -317,7 +352,7 @@ inferOp2Type = \case
     OGt  _ -> opType OGt  (Forall [kTyp] [InClass "Ord" 0] (tGen 0 `tArr` tGen 0 `tArr` tBool))
     OLte _ -> opType OLte (Forall [kTyp] [InClass "Ord" 0] (tGen 0 `tArr` tGen 0 `tArr` tBool))
     OGte _ -> opType OGte (Forall [kTyp] [InClass "Ord" 0] (tGen 0 `tArr` tGen 0 `tArr` tBool))
- 
+
 inferClauseType
   :: ( MonadSupply Name m
      , MonadReader (ClassEnv, TypeEnv, KindEnv, ConstructorEnv) m
@@ -325,8 +360,28 @@ inferClauseType
   => Type
   -> Clause t (ProgPattern t) (m (ProgExpr (TypeInfo [Error])))
   -> m (ProgClause (TypeInfo [Error]))
-inferClauseType =
-    undefined
+inferClauseType ty eq@(Clause _ pat _) = do
+    ((p, gs), ti, _) <- runNode $ do
+        (p, (_, vs, _, _)) <- listen (patternNode (inferPatternType pat)) 
+        let schemes = toScheme <$$> vs
+            Clause _ _ guards = local (inTypeEnv (Env.inserts schemes)) <$> eq
+            (iffs, _) = unzip (guardToPair <$> guards)
+        -- Iff-conditions must be Bool
+        forM_ (concat iffs) unifyIffCondition
+        gs <- traverse inferGuard guards
+        pure (p, gs)
+    pure (Clause ti p gs)
+
+unifyIffCondition
+  :: ( MonadSupply Name m
+     , MonadReader (ClassEnv, TypeEnv, KindEnv, ConstructorEnv) m
+     , MonadState (Substitution Type, Substitution Kind, Context) m )
+  => m (ProgExpr (TypeInfo [Error]))
+  -> WriterT Node m ()
+unifyIffCondition expr = do
+    e <- lift expr
+    (_, node) <- listen (e ## (tBool :: Type))
+    when (nodeHasErrors node) $ tellErrors [GuardConditionNotABool]
 
 inferGuard
   :: ( MonadSupply Name m
@@ -334,8 +389,7 @@ inferGuard
      , MonadState (Substitution Type, Substitution Kind, Context) m )
   => Guard (m (ProgExpr (TypeInfo [Error])))
   -> WriterT Node m (Guard (ProgExpr (TypeInfo [Error])))
-inferGuard =
-    undefined
+inferGuard (Guard es e) = Guard <$> traverse exprNode es <*> exprNode e
 
 primType :: Prim -> Scheme
 primType = \case
