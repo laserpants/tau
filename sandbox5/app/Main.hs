@@ -30,8 +30,9 @@ example1 = do
     expr :: ProgExpr ()
     --expr = varExpr () "x"
     --expr = conExpr () "Some" [varExpr () "x"]
+    --expr = litExpr () (TInt 5)
+    expr = letExpr () (BLet () (varPat () "x")) (litExpr () (TInt 5)) (varExpr () "x")
 
-    expr = litExpr () (TInt 5)
 
 -- {-# LANGUAGE FlexibleContexts      #-}
 -- {-# LANGUAGE FlexibleInstances     #-}
