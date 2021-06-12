@@ -143,8 +143,14 @@ prettyType = para $ \case
     TVar _ var -> pretty var
     TCon _ con -> pretty con
 
-    TRow label t1 t2 -> 
-        "{" <> pretty label <> "}" <+> snd t1 <+> "(" <> snd t2 <> ")"
+    TRow label (_, doc1) (t2, doc2) ->
+        "{" <> pretty label <> "}" <+> doc1 <+> parensIf useRight doc2
+      where
+        useRight =
+            case project t2 of
+                TCon _ "{}" -> False
+                TVar{}      -> False
+                _           -> True
 
 -- >>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>
 
