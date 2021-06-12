@@ -34,6 +34,20 @@ import qualified Tau.Compiler.Pipeline.Stage4 as Stage4
 import qualified Tau.Compiler.Pipeline.Stage5 as Stage5
 import qualified Tau.Compiler.Pipeline.Stage6 as Stage6
 
+parensIf :: Bool -> Doc a -> Doc a
+parensIf yes doc = if yes then parens doc else doc
+
+commaSep :: [Doc a] -> Doc a
+commaSep = hsep . punctuate comma
+
+prettyTuple :: [Doc a] -> Doc a
+prettyTuple = parens . commaSep
+
+prettyList_ :: [Doc a] -> Doc a
+prettyList_ = brackets . commaSep
+
+-- >>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>
+
 instance Pretty Prim where
     pretty = \case
         TUnit      -> "()"
@@ -118,6 +132,11 @@ prettyRowType ty = "{" <+> commaSep fields <> final <+> "}"
 
 -- >>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>
 
+instance (Pretty a) => Pretty (PredicateT a) where
+    pretty (InClass n t) = pretty n <+> pretty t
+
+-- >>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>
+
 
 
 
@@ -185,11 +204,6 @@ prettyRow (name, doc) = pretty name <+> equals <+> doc
 
 -- >>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>
 
-instance (Pretty a) => Pretty (PredicateT a) where
-    pretty (InClass n t) = pretty n <+> pretty t
-
----- >>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>
---
 --instance Pretty Scheme where
 --    pretty _ = "TODO"
 --
@@ -199,18 +213,6 @@ instance (Pretty a) => Pretty (PredicateT a) where
 --    pretty _ = "TODO"
 
 -- >>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>
-
-parensIf :: Bool -> Doc a -> Doc a
-parensIf yes doc = if yes then parens doc else doc
-
-commaSep :: [Doc a] -> Doc a
-commaSep = hsep . punctuate comma
-
-prettyTuple :: [Doc a] -> Doc a
-prettyTuple = parens . commaSep
-
-prettyList_ :: [Doc a] -> Doc a
-prettyList_ = brackets . commaSep
 
 --prettyRow :: Doc a -> Row (Doc a) -> Doc a
 --prettyRow delim row@(Row map r) = body <> leaf

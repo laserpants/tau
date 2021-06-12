@@ -124,15 +124,15 @@ example1 = do
     expr :: ProgExpr ()
     --expr = varExpr () "x"
     --expr = conExpr () "Some" [varExpr () "x"]
-    --expr = litExpr () (TInt 5)
+    expr = litExpr () (TInt 5)
     --expr = letExpr () (BLet () (varPat () "x")) (litExpr () (TInt 5)) (varExpr () "x")
 
-    -- let fn(r) = { a = 1 | r } in fn({ b = 2 })
-    expr = 
-        letExpr () 
-            (BFun () "fn" [varPat () "r"]) 
-            (recordExpr () (rowExpr () "a" (annExpr tInt (litExpr () (TInt 1))) (appExpr () [varExpr () "_#", varExpr () "r"])))
-            (appExpr () [varExpr () "fn", recordExpr () (rowExpr () "b" (annExpr tInt (litExpr () (TInt 2))) (conExpr () "{}" []))])
+    ---- let fn(r) = { a = 1 | r } in fn({ b = 2 })
+    --expr = 
+    --    letExpr () 
+    --        (BFun () "fn" [varPat () "r"]) 
+    --        (recordExpr () (rowExpr () "a" (annExpr tInt (litExpr () (TInt 1))) (appExpr () [varExpr () "_#", varExpr () "r"])))
+    --        (appExpr () [varExpr () "fn", recordExpr () (rowExpr () "b" (annExpr tInt (litExpr () (TInt 2))) (conExpr () "{}" []))])
 
     --expr = letExpr () 
     --            (BLet () (varPat () "b")) 
