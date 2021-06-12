@@ -46,6 +46,7 @@ import Data.Fix (Fix(..))
 import Data.Functor.Foldable
 import Data.Ord.Deriving
 import Data.Text (Text, pack)
+import Data.Tuple.Extra (firstM, secondM)
 import Data.Text.Lazy.Builder (toLazyText)
 import Data.Text.Lazy.Builder.Int (decimal)
 import Data.Text.Prettyprint.Doc
@@ -155,18 +156,18 @@ renderDoc = renderStrict . layoutPretty defaultLayoutOptions
 prettyPrint :: (Pretty p) => p -> Text
 prettyPrint = renderDoc . pretty
 
--- >>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>
-
-firstM :: (Monad m) => (a -> m a1) -> (a, b) -> m (a1, b)
-firstM f (a, b) = do
-    a1 <- f a
-    pure (a1, b)
-
-secondM :: (Monad m) => (b -> m b1) -> (a, b) -> m (a, b1)
-secondM f (a, b) = do
-    b1 <- f b
-    pure (a, b1)
-
+---- >>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>
+--
+--firstM :: (Monad m) => (a -> m a1) -> (a, b) -> m (a1, b)
+--firstM f (a, b) = do
+--    a1 <- f a
+--    pure (a1, b)
+--
+--secondM :: (Monad m) => (b -> m b1) -> (a, b) -> m (a, b1)
+--secondM f (a, b) = do
+--    b1 <- f b
+--    pure (a, b1)
+--
 --first3M :: (Monad m) => (a -> m a1) -> (a, b, c) -> m (a1, b, c)
 --first3M f (a, b, c) = do
 --    a1 <- f a
