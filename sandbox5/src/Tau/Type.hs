@@ -182,16 +182,17 @@ getTypeIndex = project >>> \case
     TGen i   -> Just i
     _        -> Nothing
 
-isTupleType :: Type -> Bool
-isTupleType ty = Just True == (Text.all (== ',') <$> (stripped =<< leftmost))
+isTupleCon :: Name -> Bool
+isTupleCon con = Just True == (allCommas <$> stripped con)
   where
-    stripped = Text.stripSuffix ")" <=< Text.stripPrefix "("
+    allCommas = Text.all (== ',')
+    stripped  = Text.stripSuffix ")" <=< Text.stripPrefix "("
 
-    leftmost :: Maybe Name
-    leftmost = flip cata ty $ \case
-        TCon _ con         -> Just con
-        TApp _ a _         -> a
-        _                  -> Nothing
+isTupleType :: Type -> Bool
+isTupleType = cata $ \case
+    TCon _ con         -> isTupleCon con
+    TApp _ a _         -> a
+    _                  -> False
 
 --isTupleType :: Type -> Bool
 --isTupleType ty = Just True == maybeIsTupleCon
