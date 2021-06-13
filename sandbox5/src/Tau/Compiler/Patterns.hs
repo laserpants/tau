@@ -105,3 +105,8 @@ headCons = (>>= fun)
     prim TChar{}       = "#Char"
     prim TString{}     = "#String"
 
+exhaustive :: (MonadReader ConstructorEnv m) => [[ProgPattern t]] -> m Bool
+exhaustive = undefined
+
+checkExhaustive :: (MonadReader ConstructorEnv m) => Ast t -> m Bool
+checkExhaustive = undefined
