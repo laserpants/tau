@@ -238,6 +238,7 @@ operator =
 
 postfixDotAppParser :: Parser (ProgExpr () -> ProgExpr ())
 postfixDotAppParser = do
+    -- TODO ???
     fun <- symbol "." *> annExprParser
     pure (\expr -> appExpr () [fun, expr])
 
