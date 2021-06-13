@@ -35,6 +35,12 @@ import qualified Tau.Env as Env
 
 main = pure ()
 
+test2 :: ProgExpr ()
+test2 = patExpr () (litExpr () (TInt 4)) 
+           [ Clause () (litPat () (TInt 5)) [Guard [] (litExpr () (TInt 1))]
+           , Clause () (anyPat ()) [Guard [] (litExpr () (TInt 2))]
+           ]
+
 example1 :: IO () -- (ProgExpr (TypeInfo [Error]), Substitution Type, Substitution Kind, Context)
 example1 = do
     void $ runInferT mempty testClassEnv testTypeEnv testKindEnv testConstructorEnv $ do
