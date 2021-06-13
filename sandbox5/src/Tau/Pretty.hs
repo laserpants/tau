@@ -182,6 +182,7 @@ instance (Pretty e1, FunArgs e2, Functor e3, Clauses [e3 (Expr t1 t2 t3 t4 t5 t6
         ECon _ con []                    -> pretty con
         ECon _ con ps                    -> pretty con <> prettyTuple (snd <$> ps)
         EPat    _ e1 cs                  -> "match" <+> snd e1 <+> "with" <+> clauses (fst <$$> cs)
+        EFun    _ cs                     -> clauses (fst <$$> cs)
 
         expr -> snd <$> expr & \case
             EVar    _ var                -> pretty var
@@ -191,7 +192,6 @@ instance (Pretty e1, FunArgs e2, Functor e3, Clauses [e3 (Expr t1 t2 t3 t4 t5 t6
             EIf     _ e1 e2 e3           -> "if" <+> e1 <+> "then" <+> e2 <+> "else" <+> e3
             EFix    _ name e1 e2         -> "fix" <+> pretty name <+> "=" <+> e1 <+> "in" <+> e2
             ELet    _ bind e1 e2         -> "let" <+> pretty bind <+> "=" <+> e1 <+> "in" <+> e2
-            EFun    _ e1                 -> undefined
             EOp1    _ op a               -> pretty op <> a
             EOp2    _ op a b             -> a <+> pretty op <+> b
             ETuple  _ es                 -> prettyTuple es
@@ -229,10 +229,14 @@ instance (Pretty p) => FunArgs [p] where
 class Clauses c where
     clauses :: c -> Doc a
 
-instance Clauses [Clause t p a] where
-    clauses _ = "TODO"
+instance (Pretty p) => Clauses [Clause t p a] where
+    clauses cs = commaSep (pretty <$> cs)
 
+instance (Pretty p) => Pretty (Clause t p a) where
+    pretty (Clause _ p g) = pretty p <+> pretty g
 
+instance Pretty (Guard a) where
+    pretty _ = "TODO"
 
 
 
