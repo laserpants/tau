@@ -5,6 +5,7 @@ import Data.Either (isLeft, isRight)
 import Tau.Compiler.Unify
 import Tau.Lang
 import Tau.Parser
+import Tau.Pretty
 import Tau.Tooling
 import Tau.Type
 import Test.Hspec hiding (describe, it)
@@ -14,15 +15,15 @@ import Utils
 succeedParseType :: Parser Type -> Text -> Type -> SpecWith ()
 succeedParseType parser input expected =
     describe input $
-        it "✔ parses to ...TODO..." $
+        it ("✔ parses to " <> prettyPrint expected) $
             isRight $ do 
                 result <- runParserStack parser "" input
                 pure (runUnify (unifyTypes result expected))
 
-succeedParse :: (Eq a) => Parser a -> Text -> a -> SpecWith ()
+succeedParse :: (Pretty a, Eq a) => Parser a -> Text -> a -> SpecWith ()
 succeedParse parser input expected =
     describe input $
-        it "✔ parses to ...TODO..." $
+        it ("✔ parses to " <> prettyPrint expected) $
             result == expected
   where
     Right result = runParserStack parser "" input
