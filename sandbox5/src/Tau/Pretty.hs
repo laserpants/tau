@@ -229,14 +229,16 @@ instance (Pretty p) => FunArgs [p] where
 class Clauses c where
     clauses :: c -> Doc a
 
-instance (Pretty p) => Clauses [Clause t p a] where
+instance (Pretty p, Pretty a) => Clauses [Clause t p a] where
     clauses cs = commaSep (pretty <$> cs)
 
-instance (Pretty p) => Pretty (Clause t p a) where
-    pretty (Clause _ p g) = pretty p <+> pretty g
+instance (Pretty p, Pretty a) => Pretty (Clause t p a) where
+    pretty (Clause _ p g) = pipe <+> pretty p <+> pretty g
 
-instance Pretty (Guard a) where
-    pretty _ = "TODO"
+instance (Pretty a) => Pretty (Guard a) where
+    pretty (Guard es e) = "TODO" <+> "=>" <+> pretty e
+
+-- >>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>
 
 
 
