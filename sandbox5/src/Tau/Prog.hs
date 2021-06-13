@@ -123,10 +123,10 @@ lookupClassInstance
   -> Type
   -> ClassEnv
   -> m (ClassInfo Type (Ast (TypeInfo ())))
-lookupClassInstance tc ty env = do
-    (ClassInfo{..}, insts) <- liftMaybe (MissingClass tc) (Env.lookup tc env)
+lookupClassInstance name ty env = do
+    (ClassInfo{..}, insts) <- liftMaybe (MissingClass name) (Env.lookup name env)
     info <- sequence [tryMatch i | i <- insts]
-    msum info & maybe (throwError (MissingInstance tc ty)) pure
+    msum info & maybe (throwError (MissingInstance name ty)) pure
   where
     tryMatch info@ClassInfo{..} = do
         sub <- eitherToMaybe <$> runExceptT (matchTypes (predicateType classSignature) ty)
