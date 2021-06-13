@@ -83,7 +83,7 @@ translate = cata $ \case
     -- Translate tuples, lists, and row expressions
     ETuple  t exprs      -> conExpr t (tupleCon (length exprs)) exprs
     EList   t exprs      -> foldr (listExprCons t) (conExpr t "[]" []) exprs
-    ERow    t lab a b    -> foldRow t lab a b
+    ERow    t lab a b    -> foldRowExpr t lab a b
     -- Translate operators to prefix form
     EOp1    t op a       -> appExpr t [prefixOp1 op, a]
     EOp2    t op a b     -> appExpr t [prefixOp2 op, a, b]
@@ -105,13 +105,13 @@ translate = cata $ \case
     prefixOp2 op          = varExpr (op2Tag op) ("(" <> op2Symbol op <> ")")
     expandClause (Clause t p gs) = [SimplifiedClause t [p] g | g <- gs]
 
-foldRow 
-  :: TypeInfoT [Error] (Maybe Type)
-  -> Name
-  -> TargetExpr (TypeInfoT [Error] (Maybe Type))
-  -> TargetExpr (TypeInfoT [Error] (Maybe Type))
-  -> TargetExpr (TypeInfoT [Error] (Maybe Type))
-foldRow t label a b = conExpr t ("{" <> label <> "}") [a, b]
+--foldRow 
+--  :: TypeInfoT [Error] (Maybe Type)
+--  -> Name
+--  -> TargetExpr (TypeInfoT [Error] (Maybe Type))
+--  -> TargetExpr (TypeInfoT [Error] (Maybe Type))
+--  -> TargetExpr (TypeInfoT [Error] (Maybe Type))
+--foldRow t label a b = conExpr t ("{" <> label <> "}") [a, b]
 
 --    [ a
 --    , b -- undefined -- fromMaybe (conExpr (TypeInfo [] (Just tRowNil) []) "{}" []) b ]

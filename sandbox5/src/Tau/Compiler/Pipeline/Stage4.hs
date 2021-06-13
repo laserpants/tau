@@ -42,7 +42,7 @@ translatePatterns = cata $ \case
     -- Translate tuples, lists, and row patterns
     PTuple  t ps         -> conPat t (tupleCon (length ps)) ps
     PList   t ps         -> foldr (listPatCons t) (conPat t "[]" []) ps
-    PRow    t lab p q    -> foldRowPattern t lab p q
+    PRow    t lab p q    -> foldRowPat t lab p q
     -- Remaining patterns stay the same, except sub-patterns
     PVar    t var        -> varPat   t var
     PCon    t con ps     -> conPat   t con ps
@@ -51,8 +51,8 @@ translatePatterns = cata $ \case
     POr     t p q        -> orPat    t p q
     PAny    t            -> anyPat   t
 
-foldRowPattern :: Maybe Type -> Name -> IntermPattern -> IntermPattern -> IntermPattern 
-foldRowPattern t label p q = conPat t ("{" <> label <> "}") [p, q]
+--foldRowPattern :: Maybe Type -> Name -> IntermPattern -> IntermPattern -> IntermPattern 
+--foldRowPattern t label p q = conPat t ("{" <> label <> "}") [p, q]
 
 -- conPat t ("{" <> lab <> "}") 
 --    [ p

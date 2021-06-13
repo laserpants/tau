@@ -726,6 +726,23 @@ emptyRowPat
   -> Pattern t1 t2 t3 t4 t5 t6 t7 t8 t9
 emptyRowPat t = conPat t "{}" []
 
+foldRowExpr
+  :: (Functor e3)
+  => t2
+  -> Name
+  -> Expr t1 t2 t3 t4 t5 t6 t7 t8 t9 t10 t11 t12 t13 t14 t15 e1 e2 e3
+  -> Expr t1 t2 t3 t4 t5 t6 t7 t8 t9 t10 t11 t12 t13 t14 t15 e1 e2 e3
+  -> Expr t1 t2 t3 t4 t5 t6 t7 t8 t9 t10 t11 t12 t13 t14 t15 e1 e2 e3
+foldRowExpr t label a b = conExpr t ("{" <> label <> "}") [a, b]
+
+foldRowPat
+  :: t2
+  -> Name 
+  -> Pattern t1 t2 t3 t4 t5 t6 t7 t8 t9
+  -> Pattern t1 t2 t3 t4 t5 t6 t7 t8 t9
+  -> Pattern t1 t2 t3 t4 t5 t6 t7 t8 t9
+foldRowPat t label p q = conPat t ("{" <> label <> "}") [p, q]
+
 -- Records
 
 recordExpr 

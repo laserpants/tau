@@ -1,8 +1,8 @@
 [x] JSON representations
-[-] Rows/Records
+[x] Rows/Records
+[x] Patterns anomalies
 [-] Record field access
 [-] Kinds
-[-] Patterns anomalies
 [-] Tests
 [-] Recursion
 [-] Modules/Program
