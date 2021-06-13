@@ -14,7 +14,7 @@ import qualified Data.Set.Monad as Set
 import qualified Tau.Env as Env
 
 useful :: (MonadReader ConstructorEnv m) => [[ProgPattern t]] -> [ProgPattern t] -> m Bool
-useful [] _   = pure True   -- Zero rows (0x0 matrix)
+useful [] _ = pure True     -- Zero rows (0x0 matrix)
 useful (p1:_) qs 
     | null p1 = pure False  -- One or more rows but no columns
     | null qs = error "Implementation error (useful)"
