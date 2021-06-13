@@ -13,6 +13,7 @@ import Control.Monad.Except (MonadError, catchError, throwError, runExceptT)
 import Control.Monad.Reader
 import Control.Monad.State
 import Control.Monad.Supply
+import Data.Either.Extra (eitherToMaybe)
 import Data.Function ((&))
 import Data.List (nub)
 import Data.Set.Monad (Set)
@@ -115,7 +116,6 @@ inConstructorEnv
   -> (ClassEnv, TypeEnv, KindEnv, ConstructorEnv)
 inConstructorEnv f (e1, e2, e3, e4) = (e1, e2, e3, f e4)
 
--- TODO
 lookupClassInstance
   :: ( MonadSupply Name m 
      , MonadError Error m )
@@ -129,12 +129,8 @@ lookupClassInstance tc ty env = do
     msum info & maybe (throwError (MissingInstance tc ty)) pure
   where
     tryMatch info@ClassInfo{..} = do
-        applySub <$> runExceptT (matchTypes (predicateType classSignature) ty)
-      where
-        applySub = \case
-            Left{}    -> Nothing
-            Right sub -> Just (applyBoth sub info)
-
+        sub <- eitherToMaybe <$> runExceptT (matchTypes (predicateType classSignature) ty)
+        pure (applyBoth <$> sub <*> pure info)
 
 
 --    tryMatch 
