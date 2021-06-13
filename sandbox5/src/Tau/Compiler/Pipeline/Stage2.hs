@@ -33,7 +33,6 @@ runTranslate
   -> ReaderT (ClassEnv, TypeEnv, KindEnv, ConstructorEnv) (Supply Name) e 
   -> e
 runTranslate classEnv typeEnv kindEnv constructorEnv expr = 
---    fromJust (evalSupply (runReaderT expr env) (numSupply "a"))
     fromJust (evalSupply (runReaderT expr env) (numSupply "$dict"))
   where
     env = (classEnv, typeEnv, kindEnv, constructorEnv)
