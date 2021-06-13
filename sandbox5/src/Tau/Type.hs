@@ -194,18 +194,6 @@ isTupleType = cata $ \case
     TApp _ a _         -> a
     _                  -> False
 
---isTupleType :: Type -> Bool
---isTupleType ty = Just True == maybeIsTupleCon
---  where
---    maybeIsTupleCon = Text.all (== ',') <$> (stripped <=< leftmost) ty
---    stripped        = Text.stripSuffix ")" <=< Text.stripPrefix "("
---
---    leftmost :: Type -> Maybe Name
---    leftmost = cata $ \case
---        TCon _ con   -> Just con
---        TApp _ a _   -> a
---        _            -> Nothing
-
 kindOf :: Type -> Kind
 kindOf = project >>> \case
     TVar a _     -> a
