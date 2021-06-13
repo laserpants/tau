@@ -9,6 +9,7 @@ import Control.Monad.Supply
 import Data.Aeson
 import Data.Maybe
 import Tau.Compiler.Error
+import Tau.Compiler.Patterns
 import Tau.Compiler.Pipeline.Stage1 
 import Tau.Compiler.Pipeline.Stage2 
 import Tau.Compiler.Pipeline.Stage3 
