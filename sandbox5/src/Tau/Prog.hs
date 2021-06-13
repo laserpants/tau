@@ -125,20 +125,23 @@ lookupClassInstance
   -> m (ClassInfo Type (Ast (TypeInfo ())))
 lookupClassInstance tc ty env = do
     (ClassInfo{..}, insts) <- liftMaybe (MissingClass tc) (Env.lookup tc env)
-    xx <- sequence [tryMatch i | i <- insts]
-    msum xx & maybe (throwError (MissingInstance tc ty)) pure
+    info <- sequence [tryMatch i | i <- insts]
+    msum info & maybe (throwError (MissingInstance tc ty)) pure
   where
-    tryMatch 
-      :: (MonadSupply Name m) 
-      => ClassInfo Type (Ast (TypeInfo ())) 
-      -> m (Maybe (ClassInfo Type (Ast (TypeInfo ()))))
-    tryMatch info@ClassInfo{..} = 
-        foo <$> runExceptT (matchTypes (predicateType classSignature) ty)
+    tryMatch info@ClassInfo{..} = do
+        applySub <$> runExceptT (matchTypes (predicateType classSignature) ty)
       where
-        foo = \case
+        applySub = \case
             Left{}    -> Nothing
             Right sub -> Just (applyBoth sub info)
-            
+
+
+
+--    tryMatch 
+--      :: (MonadSupply Name m) 
+--      => ClassInfo Type (Ast (TypeInfo ())) 
+--      -> m (Maybe (ClassInfo Type (Ast (TypeInfo ()))))
+
         --pure (apply2 (t, k, ()) info)
         --pure (apply2 (t, k, ()) info)
         --undefined
