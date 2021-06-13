@@ -1,5 +1,6 @@
 [x] JSON representations
 [-] Rows/Records
+[-] Record field access
 [-] Kinds
 [-] Patterns anomalies
 [-] Tests

@@ -1,8 +1,10 @@
-{-# LANGUAGE FlexibleContexts  #-}
-{-# LANGUAGE FlexibleInstances #-}
-{-# LANGUAGE LambdaCase        #-}
+{-# LANGUAGE FlexibleContexts      #-}
+{-# LANGUAGE FlexibleInstances     #-}
+{-# LANGUAGE GADTs                 #-}
+{-# LANGUAGE LambdaCase            #-}
 {-# LANGUAGE MultiParamTypeClasses #-}
-{-# LANGUAGE OverloadedStrings #-}
+{-# LANGUAGE OverloadedStrings     #-}
+{-# LANGUAGE UndecidableInstances  #-}
 module Tau.Pretty where
 
 import Control.Arrow ((<<<), (>>>))
@@ -89,8 +91,17 @@ instance Pretty Type where
         TApp _ (Fix (TCon _ "#"), _) (Fix (TVar _ v), _) ->
             pretty v
 
-        TApp _ (Fix (TCon _ "#"), _) (t2, _) ->
-            prettyRowType t2
+        TApp _ (Fix (TCon _ "#"), _) (t2, _) -> 
+            "{" <+> commaSep fields <> final <+> "}"
+          where
+            fields = flip para t2 $ \case
+                TRow label ty rest -> pretty label <+> ":" <+> pretty (fst ty):snd rest
+                _                  -> []
+
+            final = flip cata t2 $ \case
+                TRow _ _ r         -> r
+                TVar _ v           -> " " <> pipe <+> pretty v
+                _                  -> ""
 
         TApp k (t1, _) (t2, _) | isTupleType t1 ->
             let (_:ts) = unfoldApp (tApp k t1 t2)
@@ -118,17 +129,12 @@ instance Pretty Type where
                     TVar{}      -> False
                     _           -> True
 
-prettyRowType :: Type -> Doc a
-prettyRowType ty = "{" <+> commaSep fields <> final <+> "}"
-  where
-    fields = flip para ty $ \case
-        TRow label ty rest -> pretty label <+> ":" <+> pretty (fst ty):snd rest
-        _                  -> []
-
-    final = flip cata ty $ \case
-        TRow _ _ r         -> r
-        TVar _ v           -> " " <> pipe <+> pretty v
-        _                  -> ""
+unfoldApp :: Type -> [Type]
+unfoldApp = para $ \case
+    TApp _ (_, a) (_, b) -> a <> b
+    TArr (a, _) (b, _)   -> [tArr a b]
+    TCon kind con        -> [tCon kind con]
+    TVar kind var        -> [tVar kind var]
 
 -- >>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>
 
@@ -137,11 +143,109 @@ instance (Pretty a) => Pretty (PredicateT a) where
 
 -- >>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>
 
+instance Pretty (Pattern t1 t2 t3 t4 t5 t6 t7 t8 t9) where
+    pretty = para $ \case
+
+        PCon _ "#" [(Fix (PVar _ v), _)] -> pretty v
+        PCon _ "#" [(row, _)]            -> "{" <+> commaSep (fields row) <> final row <+> "}"
+        PCon _ con []                    -> pretty con
+        PCon _ con ps                    -> pretty con <> prettyTuple (snd <$> ps)
+
+        expr -> snd <$> expr & \case
+            PVar    _ var                -> pretty var
+            PLit    _ prim               -> pretty prim
+            PAs     _ name p             -> p <+> "as" <+> pretty name
+            POr     _ p q                -> p <+> "or" <+> q
+            PAny    _                    -> "_"
+            PTuple  _ ps                 -> prettyTuple ps
+            PList   _ ps                 -> prettyList_ ps
+            PRow    _ lab a b            -> "<<row>>" 
+            PAnn    t p                  -> p <+> ":" <+> pretty t
+
+      where
+        fields = para $ \case
+            PRow _ label p rest          -> pretty label <+> "=" <+> pretty (fst p):snd rest
+            _                            -> []
+
+        final = cata $ \case
+            PRow _ _ _ r                 -> r
+            PVar _ v                     -> " " <> pipe <+> pretty v
+            _                            -> ""
+
+-- >>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>
+
+instance (Pretty e1, FunArgs e2, Functor e3, Clauses [e3 (Expr t1 t2 t3 t4 t5 t6 t7 t8 t9 t10 t11 t12 t13 t14 t15 e1 e2 e3)]) => Pretty (Expr t1 t2 t3 t4 t5 t6 t7 t8 t9 t10 t11 t12 t13 t14 t15 e1 e2 e3) where
+    pretty = para $ \case
+
+        ECon _ "#" [(Fix (EVar _ v), _)] -> pretty v
+        ECon _ "#" [(row, _)]            -> "{" <+> commaSep (fields row) <> final row <+> "}"
+        ECon _ con []                    -> pretty con
+        ECon _ con ps                    -> pretty con <> prettyTuple (snd <$> ps)
+        EPat    _ e1 cs                  -> "match" <+> snd e1 <+> "with" <+> clauses (fst <$$> cs)
+
+        expr -> snd <$> expr & \case
+            EVar    _ var                -> pretty var
+            ELit    _ prim               -> pretty prim
+            EApp    _ (e:es)             -> e <> prettyTuple es 
+            ELam    _ ps e               -> funArgs ps <+> "=>" <+> e
+            EIf     _ e1 e2 e3           -> "if" <+> e1 <+> "then" <+> e2 <+> "else" <+> e3
+            EFix    _ name e1 e2         -> "fix" <+> pretty name <+> "=" <+> e1 <+> "in" <+> e2
+            ELet    _ bind e1 e2         -> "let" <+> pretty bind <+> "=" <+> e1 <+> "in" <+> e2
+            EFun    _ e1                 -> undefined
+            EOp1    _ op a               -> pretty op <> a
+            EOp2    _ op a b             -> a <+> pretty op <+> b
+            ETuple  _ es                 -> prettyTuple es
+            EList   _ es                 -> prettyList_ es
+            ERow{}                       -> "<<row>>"
+            EAnn    t e                  -> e <+> ":" <+> pretty t
+
+      where
+        fields = para $ \case
+            ERow _ label p rest          -> pretty label <+> "=" <+> pretty (fst p):snd rest
+            _                            -> []
+
+        final = cata $ \case
+            ERow _ _ _ r                 -> r
+            EVar _ v                     -> " " <> pipe <+> pretty v
+            _                            -> ""
+
+instance Pretty (Op1 t) where
+    pretty = \case
+        ONeg    _ -> "-"
+        ONot    _ -> "not"
+
+instance Pretty (Op2 t) where
+    pretty = pretty . op2Symbol
+
+class FunArgs f where
+    funArgs :: f -> Doc a
+
+instance FunArgs Text where
+    funArgs = pretty
+
+instance (Pretty p) => FunArgs [p] where
+    funArgs p = "(" <> commaSep (pretty <$> p) <> ")"
+
+class Clauses c where
+    clauses :: c -> Doc a
+
+instance Clauses [Clause t p a] where
+    clauses _ = "TODO"
 
 
 
 
 
+
+prettyLet :: (Pretty p) => p -> Doc a -> Doc a -> Doc a
+prettyLet bind expr body =
+    group (vsep
+        [ nest 2 (vsep
+            [ "let"
+            , pretty bind <+> equals <+> expr
+            , nest 2 (vsep ["in", body])
+            ])
+        ])
 
 
 
@@ -151,24 +255,30 @@ instance (Pretty a) => Pretty (PredicateT a) where
 
 -- >>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>
 
-instance Pretty (Pattern t1 t2 t3 t4 t5 t6 t7 t8 t9) where
-    pretty = para $ \case
+instance (Pretty t, Pretty b) => Pretty (Binding t b) where
+    pretty = \case
+        BLet t pat  -> annotated t pat
+        BFun _ f ps -> pretty f <> prettyTuple (pretty <$> ps)
 
-        PCon _ con [] -> pretty con
-        PCon _ con ps -> pretty con <+> foldr patternCon "" (fst <$> ps)
 
-        expr -> snd <$> expr & \case
-            PVar    _ var    -> pretty var
-            PLit    _ prim   -> pretty prim
-            PAs     _ name p -> p <+> "as" <+> pretty name
-            POr     _ p q    -> p <+> "or" <+> q
-            PAny    _        -> "_"
-            PTuple  _ ps     -> prettyTuple ps
-            PList   _ ps     -> prettyList_ ps
-            PRow    _ l p q  -> "..."
-
-prettyRow :: (Name, Doc a) -> Doc a
-prettyRow (name, doc) = pretty name <+> equals <+> doc
+--instance Pretty (Pattern t1 t2 t3 t4 t5 t6 t7 t8 t9) where
+--    pretty = para $ \case
+--
+--        PCon _ con [] -> pretty con
+--        PCon _ con ps -> pretty con <+> foldr patternCon "" (fst <$> ps)
+--
+--        expr -> snd <$> expr & \case
+--            PVar    _ var    -> pretty var
+--            PLit    _ prim   -> pretty prim
+--            PAs     _ name p -> p <+> "as" <+> pretty name
+--            POr     _ p q    -> p <+> "or" <+> q
+--            PAny    _        -> "_"
+--            PTuple  _ ps     -> prettyTuple ps
+--            PList   _ ps     -> prettyList_ ps
+--            PRow    _ l p q  -> "..."
+--
+--prettyRow :: (Name, Doc a) -> Doc a
+--prettyRow (name, doc) = pretty name <+> equals <+> doc
 
 -- >>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>
 
@@ -233,13 +343,6 @@ prettyRow (name, doc) = pretty name <+> equals <+> doc
 --rowDoc (Row m Nothing)  | null m = RNil
 --rowDoc (Row m (Just r)) | null m = RVar r
 --rowDoc _                         = RExt
-
-unfoldApp :: Type -> [Type]
-unfoldApp = para $ \case
-    TApp _ (_, a) (_, b) -> a <> b
-    TArr (a, _) (b, _)   -> [tArr a b]
-    TCon kind con        -> [tCon kind con]
-    TVar kind var        -> [tVar kind var]
 
 --isTuple :: Name -> Bool
 --isTuple con = Just True == (allCommas <$> stripped con)
@@ -322,46 +425,31 @@ unfoldApp = para $ \case
 
 -- >>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>
 
-instance (Pretty t, Pretty b) => Pretty (Binding t b) where
-    pretty = \case
-        BLet t pat  -> annotated t pat
-        BFun _ f ps -> pretty f <> prettyTuple (pretty <$> ps)
-
-instance (Pretty e1, Functor e3) => Pretty (Expr t1 t2 t3 t4 t5 t6 t7 t8 t9 t10 t11 t12 t13 t14 t15 e1 e2 e3) where
-    pretty = para $ \case
-        ECon    _ con []         -> pretty con
-        ECon    _ con es         -> pretty con <+> foldr exprCon "" (fst <$> es)
-        EApp    _ es             -> prettyApp (fst <$> es)
-        ELam    _ ps e           -> prettyLam ps (snd e) -- prettyTuple (pretty <$> ps) -- <+> "=>" <+> snd e
---        EFun    _ cs             -> "fun" <+> pipe <+> prettyClauses (fst <$$> cs)
-        EPat    _ e cs           -> "TODO: pat" -- "match" <+> snd e <+> "with" <+> prettyClauses (fst <$$> cs)
-
-        expr -> snd <$> expr & \case
-
-            EVar    _ var        -> pretty var
-            ELit    _ prim       -> pretty prim
-            ELet    _ bind e1 e2 -> prettyLet bind e1 e2 -- "let" <+> pretty bind <+> equals <+> e1 <+> "in" <+> e2
---            EFix    _ name e1 e2 -> "fix" <+> pretty name <+> equals <+> e1 <+> "in" <+> e2
---            EIf     _ e1 e2 e3   -> "if" <+> e1 <+> "then" <+> e2 <+> "else" <+> e3
-            EOp1    _ (ONeg _) a -> "-" <> a
-            EOp1    _ (ONot _) a -> "not" <+> a
-            EOp2    _ op a b     -> a <+> pretty op <+> b
-            ETuple  _ es         -> prettyTuple es
-            EList   _ es         -> prettyList_ es
---            ERecord _ row        -> lbrace <+> prettyRow "=" row <+> rbrace
-            _                    -> "!!TODO" 
+--instance (Pretty e1, Functor e3) => Pretty (Expr t1 t2 t3 t4 t5 t6 t7 t8 t9 t10 t11 t12 t13 t14 t15 e1 e2 e3) where
+--    pretty = para $ \case
+--        ECon    _ con []         -> pretty con
+--        ECon    _ con es         -> pretty con <+> foldr exprCon "" (fst <$> es)
+--        EApp    _ es             -> prettyApp (fst <$> es)
+--        ELam    _ ps e           -> prettyLam ps (snd e) -- prettyTuple (pretty <$> ps) -- <+> "=>" <+> snd e
+----        EFun    _ cs             -> "fun" <+> pipe <+> prettyClauses (fst <$$> cs)
+--        EPat    _ e cs           -> "TODO: pat" -- "match" <+> snd e <+> "with" <+> prettyClauses (fst <$$> cs)
+--
+--        expr -> snd <$> expr & \case
+--
+--            EVar    _ var        -> pretty var
+--            ELit    _ prim       -> pretty prim
+--            ELet    _ bind e1 e2 -> prettyLet bind e1 e2 -- "let" <+> pretty bind <+> equals <+> e1 <+> "in" <+> e2
+----            EFix    _ name e1 e2 -> "fix" <+> pretty name <+> equals <+> e1 <+> "in" <+> e2
+----            EIf     _ e1 e2 e3   -> "if" <+> e1 <+> "then" <+> e2 <+> "else" <+> e3
+--            EOp1    _ (ONeg _) a -> "-" <> a
+--            EOp1    _ (ONot _) a -> "not" <+> a
+--            EOp2    _ op a b     -> a <+> pretty op <+> b
+--            ETuple  _ es         -> prettyTuple es
+--            EList   _ es         -> prettyList_ es
+----            ERecord _ row        -> lbrace <+> prettyRow "=" row <+> rbrace
+--            _                    -> "!!TODO" 
 
 prettyLam ps e = "TODO =>" <+> e
-
-prettyLet :: (Pretty p) => p -> Doc a -> Doc a -> Doc a
-prettyLet bind expr body =
-    group (vsep
-        [ nest 2 (vsep
-            [ "let"
-            , pretty bind <+> equals <+> expr
-            , nest 2 (vsep ["in", body])
-            ])
-        ])
 
 prettyApp :: (Pretty p) => [p] -> Doc a
 prettyApp (f:args) = pretty f <> prettyTuple (pretty <$> args)
@@ -424,14 +512,14 @@ patternCon = prettyCon (project >>> \case
     _                           -> False)
 
 exprCon
-  :: (Pretty e1, Functor e3)
+  :: (FunArgs e2, Pretty e1, Pretty e2, Functor e3)
   => Expr t1 t2 t3 t4 t5 t6 t7 t8 t9 t10 t11 t12 t13 t14 t15 e1 e2 e3
   -> Doc a
   -> Doc a
-exprCon = prettyCon (project >>> \case
-    ECon _ _ es | not (null es) -> True
-    ELam{}                      -> True
-    _                           -> False)
+exprCon = undefined -- prettyCon (project >>> \case
+--    ECon _ _ es | not (null es) -> True
+--    ELam{}                      -> True
+--    _                           -> False)
 
 prettyCon :: (Pretty p) => (p -> Bool) -> p -> Doc a -> Doc a
 prettyCon useParens expr doc = lhs <> rhs
@@ -441,13 +529,13 @@ prettyCon useParens expr doc = lhs <> rhs
 
 -- >>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>
 
-instance Pretty (Op1 t) where
-    pretty = \case
-        ONeg    _ -> "-"
-        ONot    _ -> "not"
-
-instance Pretty (Op2 t) where
-    pretty = pretty . op2Symbol
+--instance Pretty (Op1 t) where
+--    pretty = \case
+--        ONeg    _ -> "-"
+--        ONot    _ -> "not"
+--
+--instance Pretty (Op2 t) where
+--    pretty = pretty . op2Symbol
 
 ---- >>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>
 --
@@ -558,7 +646,7 @@ instance PatternClause SimplifiedClause t p (Expr t1 t2 t3 t4 t5 t6 t7 t8 t9 t10
     clauseRhs (SimplifiedClause _ _  g) = [guardToPair g]
 
 exprTree
-  :: (PatternClause c t (Pattern p1 p2 p3 p4 p5 p6 p7 p8 p9) (Expr t1 t2 t3 t4 t5 t6 t7 t8 t9 t10 t11 t12 t13 t14 t15 e1 e2 (c t (Pattern p1 p2 p3 p4 p5 p6 p7 p8 p9))), Functor (c t (Pattern p1 p2 p3 p4 p5 p6 p7 p8 p9)), Typed e1, Typed t12, LetBinding e1, Pretty e1, Pretty e2, Pretty t1, Pretty t2, Pretty t3, Pretty t4, Pretty t5, Pretty t6, Pretty t7, Pretty t8, Pretty t9, Pretty t10, Pretty t11, Pretty t12, Pretty t13, Pretty t15)
+  :: (FunArgs e2, PatternClause c t (Pattern p1 p2 p3 p4 p5 p6 p7 p8 p9) (Expr t1 t2 t3 t4 t5 t6 t7 t8 t9 t10 t11 t12 t13 t14 t15 e1 e2 (c t (Pattern p1 p2 p3 p4 p5 p6 p7 p8 p9))), Functor (c t (Pattern p1 p2 p3 p4 p5 p6 p7 p8 p9)), Typed e1, Typed t12, LetBinding e1, Pretty e1, Pretty e2, Pretty t1, Pretty t2, Pretty t3, Pretty t4, Pretty t5, Pretty t6, Pretty t7, Pretty t8, Pretty t9, Pretty t10, Pretty t11, Pretty t12, Pretty t13, Pretty t15)
   => Expr t1 t2 t3 t4 t5 t6 t7 t8 t9 t10 t11 t12 t13 t14 t15 e1 e2 (c t (Pattern p1 p2 p3 p4 p5 p6 p7 p8 p9))
   -> Tree (Doc a)
 exprTree = para $ \case
@@ -573,7 +661,7 @@ exprTree = para $ \case
     --EPat    t [e] cs      -> Node ("match" <+> exprTree e <+> "with") (treeClause <$> (fst <$$> cs))
 
     EPat    t e cs       -> Node "TODO123" [] -- Node ("match" <+> colon <+> pretty t) ([exprTree (fst e)] <> [Node "with" (treeClause <$> (fst <$$> cs))])
-    EFun    t cs         -> Node ("fun" <+> colon <+> pretty t) (treeClause <$> (fst <$$> cs))
+    EFun    t cs         -> undefined -- Node ("fun" <+> colon <+> pretty t) (treeClause <$> (fst <$$> cs))
 
     EOp1    _ op a       -> Node (pretty op) [snd a]
     --EOp2    _ op a b     -> Node ("(" <> pretty op  <> ")" <+> pretty (typeOf (op2Tag op))) [snd a, snd b]
@@ -623,17 +711,19 @@ instance Pretty (SimplifiedPattern t) where
 --xx = Text.stripSuffix "]" <=< Text.stripPrefix "["
 treeClause3 c = clauseTree3 (clauseLhs c) (clauseRhs c)
 
-clauseTree3 :: (Pretty t, Show t) => [SimplifiedPattern t] -> [([Stage6.SourceExpr t], Stage6.SourceExpr t)] -> Tree (Doc a)
-clauseTree3 ps gs = Node (pats <+> "=>") (guard <$> gs)
-  where
-    pats | 1 == length ps = pretty (head ps)
-         | otherwise      = "xxxx" -- foldr patternConx "" ps
-    guard ([], e) = exprTree3 e
-    guard (es, e) = Node (commaSep (iff <$> es)) [exprTree3 e]
-    iff e = "iff" <+> pretty e
---    guard ([], e)    = exprTree e
---    guard (es, e)    = Node (commaSep (iff <$> es)) [exprTree e]
+clauseTree3 = undefined
+
+--clauseTree3 :: (Pretty t, Show t) => [SimplifiedPattern t] -> [([Stage6.SourceExpr t], Stage6.SourceExpr t)] -> Tree (Doc a)
+--clauseTree3 ps gs = Node (pats <+> "=>") (guard <$> gs)
+--  where
+--    pats | 1 == length ps = pretty (head ps)
+--         | otherwise      = "xxxx" -- foldr patternConx "" ps
+--    guard ([], e) = exprTree3 e
+--    guard (es, e) = Node (commaSep (iff <$> es)) [exprTree3 e]
 --    iff e = "iff" <+> pretty e
+----    guard ([], e)    = exprTree e
+----    guard (es, e)    = Node (commaSep (iff <$> es)) [exprTree e]
+----    iff e = "iff" <+> pretty e
 
 patternConx :: Name -> Doc a -> Doc a
 patternConx pat doc = pretty pat <+> doc
@@ -661,32 +751,32 @@ patternConx pat doc = pretty pat <+> doc
 
 
 treeClause 
-  :: (Functor (c1 t11 (Pattern p1 p2 p3 p4 p5 p6 p7 p8 p9)), Typed e1, Typed t22, LetBinding e1, Pretty e1, Pretty e2, Pretty t10, Pretty t12, Pretty t13, Pretty t14, Pretty t15, Pretty t16, Pretty t17, Pretty t18, Pretty t19, Pretty t20, Pretty t21, Pretty t22, Pretty t23, Pretty t25, PatternClause c1 t11 (Pattern p1 p2 p3 p4 p5 p6 p7 p8 p9) (Expr t12 t13 t14 t15 t17 t18 t19 t16 t20 t10 t21 t22 t23 t24 t25 e1 e2 (c1 t11 (Pattern p1 p2 p3 p4 p5 p6 p7 p8 p9))), PatternClause c2 t26 (Pattern t27 t28 t29 t30 t31 t32 t33 t34 t35) (Expr t12 t13 t14 t15 t17 t18 t19 t16 t20 t10 t21 t22 t23 t24 t25 e1 e2 (c1 t11 (Pattern p1 p2 p3 p4 p5 p6 p7 p8 p9)))) => c2 t26 (Pattern t27 t28 t29 t30 t31 t32 t33 t34 t35) (Expr t12 t13 t14 t15 t17 t18 t19 t16 t20 t10 t21 t22 t23 t24 t25 e1 e2 (c1 t11 (Pattern p1 p2 p3 p4 p5 p6 p7 p8 p9))) -> Data.Tree.Tree (Doc ann)
+  :: (Clauses [c1 t11 (Pattern p1 p2 p3 p4 p5 p6 p7 p8 p9) (Expr t12 t13 t14 t15 t17 t18 t19 t16 t20 t10 t21 t22 t23 t24 t25 e1 e2 (c1 t11 (Pattern p1 p2 p3 p4 p5 p6 p7 p8 p9)))], FunArgs e2, Functor (c1 t11 (Pattern p1 p2 p3 p4 p5 p6 p7 p8 p9)), Typed e1, Typed t22, LetBinding e1, Pretty e1, Pretty e2, Pretty t10, Pretty t12, Pretty t13, Pretty t14, Pretty t15, Pretty t16, Pretty t17, Pretty t18, Pretty t19, Pretty t20, Pretty t21, Pretty t22, Pretty t23, Pretty t25, PatternClause c1 t11 (Pattern p1 p2 p3 p4 p5 p6 p7 p8 p9) (Expr t12 t13 t14 t15 t17 t18 t19 t16 t20 t10 t21 t22 t23 t24 t25 e1 e2 (c1 t11 (Pattern p1 p2 p3 p4 p5 p6 p7 p8 p9))), PatternClause c2 t26 (Pattern t27 t28 t29 t30 t31 t32 t33 t34 t35) (Expr t12 t13 t14 t15 t17 t18 t19 t16 t20 t10 t21 t22 t23 t24 t25 e1 e2 (c1 t11 (Pattern p1 p2 p3 p4 p5 p6 p7 p8 p9)))) => c2 t26 (Pattern t27 t28 t29 t30 t31 t32 t33 t34 t35) (Expr t12 t13 t14 t15 t17 t18 t19 t16 t20 t10 t21 t22 t23 t24 t25 e1 e2 (c1 t11 (Pattern p1 p2 p3 p4 p5 p6 p7 p8 p9))) -> Data.Tree.Tree (Doc ann)
 treeClause c = clauseTree (clauseLhs c) (clauseRhs c)
 
 withTag
   :: (PatternClause c t (Pattern p1 p2 p3 p4 p5 p6 p7 p8 p9) (Expr t1 t2 t3 t4 t5 t6 t7 t8 t9 t10 t11 t12 t13 t14 t15 e1 e2 (c t (Pattern p1 p2 p3 p4 p5 p6 p7 p8 p9))), Functor (c t (Pattern p1 p2 p3 p4 p5 p6 p7 p8 p9)), Typed e1, LetBinding e1, Pretty e1, Pretty t1, Pretty t2, Pretty t3, Pretty t4, Pretty t7, Pretty t8, Pretty t9, Pretty t10, Pretty t11, Pretty t12)
   => Expr t1 t2 t3 t4 t5 t6 t7 t8 t9 t10 t11 t12 t13 t14 t15 e1 e2 (c t (Pattern p1 p2 p3 p4 p5 p6 p7 p8 p9))
   -> Doc a
-withTag e = pretty e <+> colon <+> foo e -- (typeOf (exprTag e)) e
+withTag e = "" -- pretty e <+> colon <+> foo e -- (typeOf (exprTag e)) e
   where
 --    foo :: Expr t1 t2 t3 t4 t5 t6 t7 t8 t9 t10 t11 t12 t13 t14 t15 bind lam (c t (Pattern p1 p2 p3 p4 p5 p6 p7 p8 p9)) -> Text
-    foo = cata $ \case
-        EVar    t _     -> pretty t
-        ECon    t _ _   -> pretty t
-        ELit    t _     -> pretty t
-        EApp    t _     -> pretty t
-        ELet    t _ _ _ -> pretty t
---        EFix    t _ _ _ -> pretty t
---        ELam    t _ _   -> pretty t
-        EIf     t _ _ _ -> pretty t
-        EPat    t _ _   -> pretty t
---        EFun    t _     -> pretty t
-        EOp1    t _ _   -> pretty t
-        EOp2    t _ _ _ -> pretty t
---        ETuple  t _     -> pretty t
---        EList   t _     -> pretty t
-        _                -> "TODO"
+--    foo = cata $ \case
+--        EVar    t _     -> pretty t
+--        ECon    t _ _   -> pretty t
+--        ELit    t _     -> pretty t
+--        EApp    t _     -> pretty t
+--        ELet    t _ _ _ -> pretty t
+----        EFix    t _ _ _ -> pretty t
+----        ELam    t _ _   -> pretty t
+--        EIf     t _ _ _ -> pretty t
+--        EPat    t _ _   -> pretty t
+----        EFun    t _     -> pretty t
+--        EOp1    t _ _   -> pretty t
+--        EOp2    t _ _ _ -> pretty t
+----        ETuple  t _     -> pretty t
+----        EList   t _     -> pretty t
+--        _                -> "TODO"
 
 --bindingTypeInfo
 --  :: (Pretty bind)
