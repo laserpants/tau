@@ -302,20 +302,17 @@ testPatterns = do
             , [recordPat () (rowPat () "x" (litPat () (TInt 6)) (rowPat () "y" (litPat () (TInt 7)) (conPat () "{}" [])))]
             ]
  
+        -- { x = x | {} }
         patternsAreExhaustive
-            ---[ [recordPat () (rowPat () "x" (litPat () (TInt 3)) (rowPat () "y" (litPat () (TInt 4)) (conPat () "{}" [])))]
-            ---, [recordPat () (rowPat () "x" (litPat () (TInt 6)) (rowPat () "y" (litPat () (TInt 7)) (conPat () "{}" [])))]
-            ---, [recordPat () (rowPat () "x" (anyPat ()) (rowPat () "y" (litPat () (TInt 7)) (conPat () "{}" [])))]
-            [ [rowPat () "x" (varPat () "x") (anyPat ())]
+            [ [rowPat () "x" (varPat () "x") (conPat () "{}" [])]
             ]
 
---        patternsAreExhaustive
---            ---[ [recordPat () (rowPat () "x" (litPat () (TInt 3)) (rowPat () "y" (litPat () (TInt 4)) (conPat () "{}" [])))]
---            ---, [recordPat () (rowPat () "x" (litPat () (TInt 6)) (rowPat () "y" (litPat () (TInt 7)) (conPat () "{}" [])))]
---            ---, [recordPat () (rowPat () "x" (anyPat ()) (rowPat () "y" (litPat () (TInt 7)) (conPat () "{}" [])))]
---            [ [recordPat () (rowPat () "x" (varPat () "x") (rowPat () "y" (anyPat ()) (conPat () "{}" [])))]
---            ]
-
+        patternsAreExhaustive
+            [ [recordPat () (rowPat () "x" (litPat () (TInt 3)) (rowPat () "y" (litPat () (TInt 4)) (conPat () "{}" [])))]
+            , [recordPat () (rowPat () "x" (litPat () (TInt 6)) (rowPat () "y" (litPat () (TInt 7)) (conPat () "{}" [])))]
+            , [recordPat () (rowPat () "x" (anyPat ()) (rowPat () "y" (litPat () (TInt 7)) (conPat () "{}" [])))]
+            , [recordPat () (rowPat () "x" (varPat () "x") (rowPat () "y" (anyPat ()) (conPat () "{}" [])))]
+            ]
 
 -- test35b = runReader (clausesAreExhaustive
 --     [ Clause () (conPat () "(::)" [varPat () "x", conPat () "(::)" [varPat () "y", varPat () "ys"]]) []

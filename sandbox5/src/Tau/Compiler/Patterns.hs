@@ -45,9 +45,8 @@ useful pss (q:qs) =
 
     lookupCon :: Env.Env (Set.Set Name, Int) -> Name -> Set.Set Name
     lookupCon constructors con 
-        | isTupleCon con = Set.singleton con
---        | isRecord ???
-        | otherwise      = maybe mempty fst (Env.lookup con constructors)
+        | isTupleCon con || isRowCon con = Set.singleton con
+        | otherwise = maybe mempty fst (Env.lookup con constructors)
 
     builtIn = constructorEnv
         [ ("#True",     ( ["#True", "#False"], 0 ))

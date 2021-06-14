@@ -11,7 +11,7 @@ import Control.Arrow ((>>>))
 import Control.Monad
 import Data.List (nub)
 import Data.Map.Strict (Map)
-import Data.Tuple.Extra (first)
+import Data.Tuple.Extra (first, both)
 import Tau.Tooling
 import qualified Data.Map.Strict as Map
 import qualified Data.Text as Text
@@ -193,6 +193,12 @@ isTupleType = cata $ \case
     TCon _ con         -> isTupleCon con
     TApp _ a _         -> a
     _                  -> False
+
+isRowCon :: Name -> Bool
+isRowCon con = ("{", "}") == fstLst con
+  where
+    fstLst ""  = ("", "")
+    fstLst con = both Text.singleton (Text.head con, Text.last con)
 
 kindOf :: Type -> Kind
 kindOf = project >>> \case
