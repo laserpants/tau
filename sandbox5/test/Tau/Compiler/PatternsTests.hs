@@ -314,6 +314,12 @@ testPatterns = do
             , [recordPat () (rowPat () "x" (varPat () "x") (rowPat () "y" (anyPat ()) (conPat () "{}" [])))]
             ]
 
+        -- { x = _ | {} }
+        patternsAreExhaustive
+            [ [recordPat () (rowPat () "x" (anyPat ()) (conPat () "{}" []))]
+            ]
+
+
 -- test35b = runReader (clausesAreExhaustive
 --     [ Clause () (conPat () "(::)" [varPat () "x", conPat () "(::)" [varPat () "y", varPat () "ys"]]) []
 --     , Clause () (conPat () "[]" []) []

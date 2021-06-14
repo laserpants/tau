@@ -21,6 +21,7 @@ data Error
     | KindMismatch Kind Kind UnificationError
     | NotInScope Name
     | MissingDataConstructor Name
+    | NonExhaustivePatterns
 --    | CannotMatch t t UnificationError
     | MissingClass Name
     | MissingInstance Name Type

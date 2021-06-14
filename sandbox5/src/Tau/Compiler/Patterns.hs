@@ -150,7 +150,7 @@ exhaustive pss@(ps:_) = not <$> useful pss (anyPat . patternTag <$> ps)
 
 -- | Determine if all patterns in the expression are exhaustive.
 --
-checkExhaustive :: (MonadReader ConstructorEnv m) => ProgExpr () -> m Bool
+checkExhaustive :: (Eq t, MonadReader ConstructorEnv m) => ProgExpr t -> m Bool
 checkExhaustive = para $ \case
 
     EPat _ a clauses -> snd a &&^ clausesAreExhaustive (fst <$$> clauses)
@@ -172,7 +172,7 @@ checkExhaustive = para $ \case
         EAnn   _ e                   -> e
         _                            -> pure True
 
-clausesAreExhaustive :: (MonadReader ConstructorEnv m) => [Clause () (ProgPattern ()) (ProgExpr ())] -> m Bool
+clausesAreExhaustive :: (Eq t, MonadReader ConstructorEnv m) => [Clause t (ProgPattern t) (ProgExpr t)] -> m Bool
 clausesAreExhaustive = exhaustive . fmap toMatrix
   where
     toMatrix (Clause _ p guards)
@@ -181,6 +181,11 @@ clausesAreExhaustive = exhaustive . fmap toMatrix
     toMatrix _ = 
         []
 
-    isCatchAll (Guard [ ] _)             = True
-    isCatchAll (Guard [b] _) | b == true = True where true = litExpr () (TBool True)
-    isCatchAll _                         = False
+    isCatchAll (Guard [ ] _)            = True
+    isCatchAll (Guard [b] _) | isTrue b = True
+    isCatchAll _                        = False
+
+    isTrue :: ProgExpr t -> Bool
+    isTrue = project >>> \case
+        ELit _ (TBool True) -> True
+        _                   -> False

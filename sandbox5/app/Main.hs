@@ -1,4 +1,7 @@
+{-# LANGUAGE FlexibleContexts  #-}
+{-# LANGUAGE LambdaCase        #-}
 {-# LANGUAGE OverloadedStrings #-}
+{-# LANGUAGE RecordWildCards   #-}
 module Main where
 
 import Control.Monad.IO.Class
@@ -8,8 +11,10 @@ import Control.Monad.State
 import Control.Monad.Supply
 import Data.Aeson
 import Data.Maybe
+import Data.Function ((&))
 import Tau.Compiler.Error
 import Tau.Compiler.Patterns
+import Tau.Compiler.Pipeline.Stage0 
 import Tau.Compiler.Pipeline.Stage1 
 import Tau.Compiler.Pipeline.Stage2 
 import Tau.Compiler.Pipeline.Stage3 
@@ -26,6 +31,7 @@ import Tau.Serialize
 import Tau.Tooling
 import Tau.Type
 import qualified Data.ByteString.Lazy as LBS
+import qualified Tau.Compiler.Pipeline.Stage0 as Stage0
 import qualified Tau.Compiler.Pipeline.Stage1 as Stage1
 import qualified Tau.Compiler.Pipeline.Stage2 as Stage2
 import qualified Tau.Compiler.Pipeline.Stage3 as Stage3
@@ -33,6 +39,10 @@ import qualified Tau.Compiler.Pipeline.Stage4 as Stage4
 import qualified Tau.Compiler.Pipeline.Stage5 as Stage5
 import qualified Tau.Compiler.Pipeline.Stage6 as Stage6
 import qualified Tau.Env as Env
+
+
+
+--Clause t (ProgPattern t) (ProgExpr t)
 
 main = pure ()
 
@@ -115,9 +125,6 @@ test38 = runReader (exhaustive
 
 -- 
 --         -- Record patterns
--- 
---         testExhaustive
---             [ [recPat () (fieldSet [Field () "x" (anyPat ())])] ]
 -- 
 --         testExhaustive
 --             [ [recPat () (fieldSet [Field () "x" (anyPat ()), Field () "y" (varPat () "a")])] ]
@@ -332,6 +339,7 @@ test2 = patExpr () (litExpr () (TInt 4))
 example1 :: IO () -- (ProgExpr (TypeInfo [Error]), Substitution Type, Substitution Kind, Context)
 example1 = do
     void $ runInferT mempty testClassEnv testTypeEnv testKindEnv testConstructorEnv $ do
+
         Ast e <- inferAstType (Ast expr)
         let r = toRep e
         liftIO $ LBS.writeFile "/home/laserpants/play/ast-folder-tree/ast-folder-tree/src/testData22.json" (encode r)
@@ -342,8 +350,13 @@ example1 = do
 
         let Ast e0 = fmap (fmap Just) (Ast e)
 
+        let e0_1 :: ProgExpr (TypeInfoT [Error] (Maybe Type))
+            e0_1 = Stage0.runExhaustivePatternsCheck testConstructorEnv e0 
+
+        --
+
         let e1 :: Stage1.TargetExpr (TypeInfoT [Error] (Maybe Type))
-            e1 = Stage1.translate e0 
+            e1 = Stage1.translate e0_1
         
         let r1 = toRep e1
         liftIO $ LBS.writeFile "/home/laserpants/play/ast-folder-tree/ast-folder-tree/src/testData23.json" (encode r1)
