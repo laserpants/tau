@@ -80,7 +80,7 @@ groupPatterns = project >>> \case
     _                -> WildcardPattern
 
 specialized :: Name -> [t] -> [[ProgPattern t]] -> [[ProgPattern t]]
-specialized name ts = concatMap rec 
+specialized name ts = (rec =<<)
   where
     rec [] = error "Implementation error (specialized)"
     rec (p:ps) =
