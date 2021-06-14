@@ -1,4 +1,5 @@
 {-# LANGUAGE OverloadedStrings #-}
+import Tau.Compiler.PatternsTests
 import Tau.Compiler.SubstitutionTests
 import Tau.Compiler.TranslationTests
 import Tau.Compiler.TypecheckTests
@@ -16,7 +17,9 @@ main =
 --        describe "Tau.Type.typeVars"                       testTypeVars
 --        describe "Tau.Type.upgrade"                        testUpgrade
 --        describe "Tau.Type.tupleCon"                       testTupleCon
---
+
+        describe "Tau.Compiler.Patterns"                   testPatterns
+
 --        describe "Tau.Compiler.Unification.bind"           testBind
 --        describe "Tau.Compiler.Unification.isRow"          testIsRow
         describe "Tau.Compiler.Unification.unify"          testUnify
