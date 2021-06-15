@@ -139,15 +139,13 @@ unifyRows
 unifyRows combineTypes combinePairs t u = 
     fn (mapRep t, final t) (mapRep u, final u)
   where
-    mapRep = foldr (uncurry (Map.insertWith (<>))) mempty 
-        . (second pure <$>) 
-        . rowFields 
+    mapRep = foldr (uncurry (Map.insertWith (<>))) mempty . fields 
 
     fromMap = 
         Map.foldrWithKey (flip . foldr . tRow)
 
-    rowFields = para $ \case
-        TRow label ty rest -> (label, fst ty):snd rest
+    fields = para $ \case
+        TRow label ty rest -> (label, [fst ty]):snd rest
         _                  -> []
 
     final = cata $ \case

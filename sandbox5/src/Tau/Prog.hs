@@ -231,6 +231,9 @@ simplifyPredicates (TypeInfo e ty ps) = TypeInfo e ty (nub (filter relevant ps))
         | var `notElem` (fst <$> freeVars) = False
     relevant _                             = True
 
+addErrors :: [e] -> TypeInfoT [e] t -> TypeInfoT [e] t
+addErrors errs TypeInfo{..} = TypeInfo{ nodeErrors = errs <> nodeErrors, .. }
+
 -- >>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>
 
 astTypeVars :: Ast (TypeInfo e) -> [(Name, Kind)]

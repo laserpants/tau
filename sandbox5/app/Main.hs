@@ -46,8 +46,38 @@ import qualified Tau.Env as Env
 
 main = pure ()
 
+test333 :: IO Bool
+test333 = runReaderT (useful
+      [ [conPat () "#False" [], conPat () "#False" []]
+      , [conPat () "#False" [], conPat () "#True" []]
+      , [conPat () "#True" [], conPat () "#False" []]
+      ]
+      [anyPat (), anyPat ()]
+    )
+    testConstructorEnv 
+
+
+test332 :: IO Bool
+test332 = runReaderT (useful
+      [ [litPat () (TBool False), litPat () (TBool False)]
+      , [litPat () (TBool False), litPat () (TBool True)]
+      , [litPat () (TBool True), litPat () (TBool False)]
+      ]
+      [anyPat (), anyPat ()]
+    )
+    testConstructorEnv 
+
+
+test331 = runReader (exhaustive 
+      [ [litPat () (TBool False), litPat () (TBool False)]
+      , [litPat () (TBool False), litPat () (TBool True)]
+      , [litPat () (TBool True), litPat () (TBool False)]
+      ]
+    )
+    testConstructorEnv 
+
 test31 = runReader (exhaustive 
-    [ []
+    [ [] :: [ProgPattern ()]
     ]) 
     testConstructorEnv 
 
@@ -123,66 +153,6 @@ test38 = runReader (exhaustive
     testConstructorEnv 
 
 
--- 
---         -- Record patterns
--- 
---         testExhaustive
---             [ [recPat () (fieldSet [Field () "x" (anyPat ()), Field () "y" (varPat () "a")])] ]
--- 
---         testExhaustive
---             [ [recPat () (fieldSet 
---                   [ Field () "x" (litPat () (TInt 3))
---                   , Field () "y" (recPat () (fieldSet 
---                       [ Field () "a" (litPat () (TInt 3))
---                       ]))
---                   ])]
---             , [recPat () (fieldSet 
---                   [ Field () "x" (litPat () (TInt 6))
---                   , Field () "y" (recPat () (fieldSet 
---                       [ Field () "a" (litPat () (TInt 4))
---                       ]))
---                   ])]
---             , [recPat () (fieldSet 
---                   [ Field () "x" (anyPat ())
---                   , Field () "y" (recPat () (fieldSet 
---                       [ Field () "a" (litPat () (TInt 5))
---                       ]))
---                   ])]
---             , [recPat () (fieldSet 
---                   [ Field () "x" (varPat () "x")
---                   , Field () "y" (recPat () (fieldSet 
---                       [ Field () "a" (anyPat ())
---                       ]))
---                   ])]
---             ]
--- 
---         testNonExhaustive
---             [ [recPat () (fieldSet 
---                   [ Field () "x" (litPat () (TInt 3))
---                   , Field () "y" (recPat () (fieldSet 
---                       [ Field () "a" (litPat () (TInt 3))
---                       ]))
---                   ])]
---             , [recPat () (fieldSet 
---                   [ Field () "x" (litPat () (TInt 6))
---                   , Field () "y" (recPat () (fieldSet 
---                       [ Field () "a" (litPat () (TInt 4))
---                       ]))
---                   ])]
---             , [recPat () (fieldSet 
---                   [ Field () "x" (anyPat ())
---                   , Field () "y" (recPat () (fieldSet 
---                       [ Field () "a" (litPat () (TInt 5))
---                       ]))
---                   ])]
---             , [recPat () (fieldSet 
---                   [ Field () "x" (varPat () "x")
---                   , Field () "y" (recPat () (fieldSet 
---                       [ Field () "a" (litPat () (TInt 6))
---                       ]))
---                   ])]
---             ]
--- 
 --     -- Clauses
 -- 
 --     describe "\nClauses\n" $ do
@@ -343,8 +313,6 @@ example1 = do
         Ast e <- inferAstType (Ast expr)
         let r = toRep e
         liftIO $ LBS.writeFile "/home/laserpants/play/ast-folder-tree/ast-folder-tree/src/testData22.json" (encode r)
-
-        traceShowM e
 
         --
 

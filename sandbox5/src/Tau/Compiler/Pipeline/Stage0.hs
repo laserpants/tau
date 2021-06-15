@@ -52,6 +52,3 @@ exhaustivePatternsCheck = para $ \case
     check clauses ti = do
         exhaustive <- clausesAreExhaustive clauses
         pure (addErrors [NonExhaustivePatterns | not exhaustive] ti)
-
-addErrors :: [e] -> TypeInfoT [e] t -> TypeInfoT [e] t
-addErrors errs TypeInfo{..} = TypeInfo{ nodeErrors = errs <> nodeErrors, .. }

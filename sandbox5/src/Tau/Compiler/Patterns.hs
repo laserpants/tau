@@ -1,4 +1,5 @@
 {-# LANGUAGE FlexibleContexts     #-}
+{-# LANGUAGE FlexibleInstances    #-}
 {-# LANGUAGE LambdaCase           #-}
 {-# LANGUAGE OverloadedStrings    #-}
 {-# LANGUAGE StrictData           #-}
@@ -7,20 +8,23 @@ module Tau.Compiler.Patterns where
 import Control.Monad.Extra
 import Control.Monad.Reader
 import Data.Function ((&))
+import Data.Map.Strict (Map)
 import Data.Maybe (fromMaybe)
+import Data.Tuple.Extra (first, second)
 import Tau.Lang
 import Tau.Prog
 import Tau.Tooling
 import Tau.Type
+import qualified Data.Map.Strict as Map
 import qualified Data.Set.Monad as Set
 import qualified Tau.Env as Env
 
-useful :: (MonadReader ConstructorEnv m) => [[ProgPattern t]] -> [ProgPattern t] -> m Bool
+useful :: (Show t, RowType t, MonadReader ConstructorEnv m) => [[ProgPattern t]] -> [ProgPattern t] -> m Bool
 useful [] _ = pure True     -- Zero rows (0x0 matrix)
 useful (p1:_) qs 
     | null p1 = pure False  -- One or more rows but no columns
     | null qs = error "Implementation error (useful)"
-useful pss (q:qs) =
+useful pss (q:qs) = do
     case groupPatterns q of
         ConGroup con rs  ->
             let special = specialized con (patternTag <$> rs)
@@ -29,7 +33,7 @@ useful pss (q:qs) =
             let cs = headCons pss
             isComplete <- complete (fst <$> cs)
             if isComplete
-                then cs & anyM (\(con, rs) ->
+                then cs & anyM (\(con, rs) -> do
                     let special = specialized con (patternTag <$> rs)
                      in useful (special pss) (head (special [q:qs]))) 
                 else 
@@ -68,18 +72,20 @@ data PatternGroup t
     = ConGroup Name [ProgPattern t] 
     | OrPattern (ProgPattern t) (ProgPattern t)
     | WildcardPattern
+    deriving (Show, Eq)
 
-groupPatterns :: ProgPattern t -> PatternGroup t
+groupPatterns :: (Show t, RowType t) => ProgPattern t -> PatternGroup t
 groupPatterns = project >>> \case
-    PCon _ con rs    -> ConGroup con rs
+    PCon   _ con rs  -> ConGroup con rs
     PTuple t elems   -> groupPatterns (foldTuple t elems)
     PList  t elems   -> groupPatterns (foldList t elems)
-    PRow   t lab p q -> groupPatterns (foldRowPat t lab p q)
-    PAs _ _ a        -> groupPatterns a
-    POr _ a b        -> OrPattern a b
+    row@PRow{}       -> groupPatterns (foldRow (embed row))
+    PLit   t lit     -> groupPatterns (conPat t (prim lit) [])
+    PAs    _ _ a     -> groupPatterns a
+    POr    _ a b     -> OrPattern a b
     _                -> WildcardPattern
 
-specialized :: Name -> [t] -> [[ProgPattern t]] -> [[ProgPattern t]]
+specialized :: (Show t, RowType t) => Name -> [t] -> [[ProgPattern t]] -> [[ProgPattern t]]
 specialized name ts = (rec =<<)
   where
     rec [] = error "Implementation error (specialized)"
@@ -89,11 +95,12 @@ specialized name ts = (rec =<<)
                 | con == name -> [rs <> ps]
                 | otherwise   -> []
 
+            PLit   t lit      -> rec (conPat t (prim lit) []:ps)
             PTuple t elems    -> rec (foldTuple t elems:ps)
             PList  t elems    -> rec (foldList t elems:ps)
-            PRow   t lab p q  -> rec (foldRowPat t lab p q:ps)
-            PAs _ _ q         -> rec (q:ps)
-            POr _ p1 p2       -> rec (p1:ps) <> rec (p2:ps)
+            PRow{}            -> rec (foldRow p:ps)
+            PAs    _ _ q      -> rec (q:ps)
+            POr    _ p1 p2    -> rec (p1:ps) <> rec (p2:ps)
             _                 -> [(anyPat <$> ts) <> ps]
 
 defaultMatrix :: [[ProgPattern t]] -> [[ProgPattern t]]
@@ -102,15 +109,15 @@ defaultMatrix = (fun =<<)
     fun :: [ProgPattern t] -> [[ProgPattern t]]
     fun (p:ps) =
         case project p of
-            PCon{}    -> []
-            PTuple{}  -> []
-            PList{}   -> []
-            PRow{}    -> []
-            PLit{}    -> []
-            PAnn _ p  -> fun (p:ps)
-            PAs _ _ q -> fun (q:ps)
-            POr _ q r -> fun (q:ps) <> fun (r:ps)
-            _         -> [ps]
+            PCon{}     -> []
+            PTuple{}   -> []
+            PList{}    -> []
+            PRow{}     -> []
+            PLit{}     -> []
+            PAnn _ p   -> fun (p:ps)
+            PAs  _ _ q -> fun (q:ps)
+            POr  _ q r -> fun (q:ps) <> fun (r:ps)
+            _          -> [ps]
 
 foldTuple :: t -> [ProgPattern t] -> ProgPattern t
 foldTuple t elems = conPat t (tupleCon (length elems)) elems
@@ -118,10 +125,46 @@ foldTuple t elems = conPat t (tupleCon (length elems)) elems
 foldList :: t -> [ProgPattern t] -> ProgPattern t
 foldList t = foldr (listPatCons t) (conPat t "[]" [])
 
-headCons :: [[ProgPattern t]] -> [(Name, [ProgPattern t])]
+class RowType t where
+    rowType :: Name -> t -> t -> t
+
+instance RowType () where
+    rowType _ _ _ = ()
+
+instance (RowType t) => RowType (Maybe t) where
+    rowType lab a b = rowType lab <$> a <*> b
+
+instance (RowType t) => RowType (TypeInfoT [e] t) where
+    rowType lab a b = TypeInfo [] (rowType lab (nodeType a) (nodeType b)) []
+
+instance RowType Type where
+    rowType = tRow 
+
+foldRow :: (RowType t, Show t) => ProgPattern t -> ProgPattern t
+foldRow r = traceShow r $ traceShow q $ traceShow "***" $ q
+  where
+    q = fromMap final (foldr (uncurry (Map.insertWith (<>))) mempty fields)
+    fromMap :: (RowType t) => ProgPattern t -> Map Name [ProgPattern t] -> ProgPattern t
+    fromMap p ps = 
+        fst (Map.foldrWithKey (flip . foldr . fn) (p, patternTag p) ps)
+      where 
+        fn name p (q, t0) = 
+            let t1 = rowType label (patternTag p) t0
+                label = "{" <> name <> "}"
+             in (conPat t1 label [p, q], t1)
+
+    fields = flip para r $ \case
+        PRow _ label p rest -> (label, [fst p]):snd rest
+        _                   -> []
+
+    final = flip cata r $ \case
+        PRow _ _ _ r        -> r
+        p                   -> embed p
+
+headCons :: (Show t, RowType t) => [[ProgPattern t]] -> [(Name, [ProgPattern t])]
 headCons = (>>= fun) 
   where
-    fun :: [ProgPattern t] -> [(Name, [ProgPattern t])]
+    fun :: (Show t, RowType t) => [ProgPattern t] -> [(Name, [ProgPattern t])]
     fun [] = error "Implementation error (headCons)"
     fun (p:ps) = 
         case project p of
@@ -129,28 +172,29 @@ headCons = (>>= fun)
             PCon   _ name rs         -> [(name, rs)]
             PTuple t elems           -> fun (foldTuple t elems:ps)
             PList  t elems           -> fun (foldList t elems:ps)
-            PRow   t lab p q         -> fun (foldRowPat t lab p q:ps)
+            PRow{}                   -> fun (foldRow p:ps)
             PAs    _ _ q             -> fun (q:ps)
             POr    _ a b             -> fun (a:ps) <> fun (b:ps)
             _                        -> []
 
-    prim (TBool True)  = "#True"
-    prim (TBool False) = "#False"
-    prim TUnit         = "#()"
-    prim TInt{}        = "#Int"
-    prim TInteger{}    = "#Integer"
-    prim TFloat{}      = "#Float"
-    prim TDouble{}     = "#Double"
-    prim TChar{}       = "#Char"
-    prim TString{}     = "#String"
+prim :: Prim -> Name
+prim (TBool True)  = "#True"
+prim (TBool False) = "#False"
+prim TUnit         = "#()"
+prim TInt{}        = "#Int"
+prim TInteger{}    = "#Integer"
+prim TFloat{}      = "#Float"
+prim TDouble{}     = "#Double"
+prim TChar{}       = "#Char"
+prim TString{}     = "#String"
 
-exhaustive :: (MonadReader ConstructorEnv m) => [[ProgPattern t]] -> m Bool
+exhaustive :: (Show t, RowType t, MonadReader ConstructorEnv m) => [[ProgPattern t]] -> m Bool
 exhaustive []         = pure False
 exhaustive pss@(ps:_) = not <$> useful pss (anyPat . patternTag <$> ps)
 
 -- | Determine if all patterns in the expression are exhaustive.
 --
-checkExhaustive :: (Eq t, MonadReader ConstructorEnv m) => ProgExpr t -> m Bool
+checkExhaustive :: (Show t, Eq t, RowType t, MonadReader ConstructorEnv m) => ProgExpr t -> m Bool
 checkExhaustive = para $ \case
 
     EPat _ a clauses -> snd a &&^ clausesAreExhaustive (fst <$$> clauses)
@@ -172,7 +216,7 @@ checkExhaustive = para $ \case
         EAnn   _ e                   -> e
         _                            -> pure True
 
-clausesAreExhaustive :: (Eq t, MonadReader ConstructorEnv m) => [Clause t (ProgPattern t) (ProgExpr t)] -> m Bool
+clausesAreExhaustive :: (Show t, Eq t, RowType t, MonadReader ConstructorEnv m) => [Clause t (ProgPattern t) (ProgExpr t)] -> m Bool
 clausesAreExhaustive = exhaustive . fmap toMatrix
   where
     toMatrix (Clause _ p guards)
