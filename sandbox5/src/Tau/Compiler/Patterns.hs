@@ -53,8 +53,7 @@ useful1 [] _ = pure True     -- Zero rows (0x0 matrix)
 useful1 (p1:_) qs 
     | null p1 = pure False   -- One or more rows but no columns
     | null qs = error "Implementation error (useful1)"
-useful1 pss (q:qs) = do
-    traceShowM pss
+useful1 pss (q:qs) = 
     case groupPatterns q of
         ConGroup con rs  ->
             let special = specialized con (patternTag <$> rs)
