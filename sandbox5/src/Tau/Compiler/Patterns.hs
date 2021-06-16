@@ -29,7 +29,6 @@ xx1 = cata $ \case
     PAny    t            -> anyPat t
     PTuple  t ps         -> tuplePat t ps
     PList   t ps         -> listPat t ps
---    PRow    t lab p q    -> foldRow t lab p q -- conPat t ("{" <> lab <> "}") [p, q] -- p q -- rowPat t lab p q
     p@PRow{}             -> foldRow (embed p)
     PAnn    t p          -> annPat t p
 
@@ -43,7 +42,7 @@ xx2 = cata $ \case
     PAny    t            -> anyPat t
     PTuple  t ps         -> tuplePat t ps
     PList   t ps         -> listPat t ps
-    PRow    t lab p q    -> conPat t ("{" <> lab <> "}") [p, q] -- p q -- conPat t ("{" <> lab <> "}") [p, q] -- p q -- rowPat t lab p q
+    PRow    t lab p q    -> conPat t ("{" <> lab <> "}") [p, q]
     PAnn    t p          -> annPat t p
 
 useful pss ps = useful1 (xx2 . xx1 <$$> pss) (xx2 . xx1 <$> ps)
@@ -109,7 +108,6 @@ groupPatterns = project >>> \case
     PCon   _ con rs  -> ConGroup con rs
     PTuple t elems   -> groupPatterns (foldTuple t elems)
     PList  t elems   -> groupPatterns (foldList t elems)
-    row@PRow{}       -> undefined -- groupPatterns (foldRow (embed row))
     PLit   t lit     -> groupPatterns (conPat t (prim lit) [])
     PAs    _ _ a     -> groupPatterns a
     POr    _ a b     -> OrPattern a b
@@ -128,7 +126,6 @@ specialized name ts = (rec =<<)
             PLit   t lit      -> rec (conPat t (prim lit) []:ps)
             PTuple t elems    -> rec (foldTuple t elems:ps)
             PList  t elems    -> rec (foldList t elems:ps)
-            PRow{}            -> undefined -- rec (foldRow p:ps)
             PAs    _ _ q      -> rec (q:ps)
             POr    _ p1 p2    -> rec (p1:ps) <> rec (p2:ps)
             _                 -> [(anyPat <$> ts) <> ps]
@@ -170,17 +167,10 @@ instance (RowType t) => RowType (TypeInfoT [e] t) where
 instance RowType Type where
     rowType = tRow 
 
---foldRow :: (RowType t, Show t) => ProgPattern t -> ProgPattern t
---foldRow (Fix (PRow t label a b)) = 
---    traceShow rr $ rr
---  where
---    rr = conPat t ("{" <> label <> "}") [foldRow a, foldRow b]
---foldRow x = x
-
-foldRow r = traceShow fields $ q2
+foldRow :: (Show t, RowType t) => ProgPattern t -> ProgPattern t
+foldRow r = fromMap final mapRep
   where
     mapRep = foldr (uncurry (Map.insertWith (<>))) mempty fields
-    q2 = fromMap final mapRep 
 
     fromMap :: (RowType t) => ProgPattern t -> Map Name [ProgPattern t] -> ProgPattern t
     fromMap p ps = 
@@ -211,7 +201,6 @@ headCons = (>>= fun)
             PCon   _ name rs         -> [(name, rs)]
             PTuple t elems           -> fun (foldTuple t elems:ps)
             PList  t elems           -> fun (foldList t elems:ps)
-            PRow{}                   -> undefined -- fun (foldRow p:ps)
             PAs    _ _ q             -> fun (q:ps)
             POr    _ a b             -> fun (a:ps) <> fun (b:ps)
             _                        -> []
