@@ -182,7 +182,7 @@ instance (Pretty e1, FunArgs e2, Functor e3, Clauses [e3 (Expr t1 t2 t3 t4 t5 t6
         ECon _ con []                    -> pretty con
         ECon _ con ps                    -> pretty con <> prettyTuple (snd <$> ps)
         EPat    _ e1 cs                  -> "match" <+> snd e1 <+> "with" <+> clauses (fst <$$> cs)
-        EFun    _ cs                     -> clauses (fst <$$> cs)
+        EFun    _ cs                     -> "fun" <+> clauses (fst <$$> cs)
 
         EApp _ ((e, doc1):es) -> 
             parensIf useLeft doc1 <> prettyTuple (snd <$> es)
@@ -192,13 +192,14 @@ instance (Pretty e1, FunArgs e2, Functor e3, Clauses [e3 (Expr t1 t2 t3 t4 t5 t6
                     EVar{} -> False
                     _      -> True
 
+        ELet _ bind e1 e2                -> prettyLet bind e1 (snd e2)
+
         expr -> snd <$> expr & \case
             EVar    _ var                -> pretty var
             ELit    _ prim               -> pretty prim
             ELam    _ ps e               -> funArgs ps <+> "=>" <+> e
             EIf     _ e1 e2 e3           -> "if" <+> e1 <+> "then" <+> e2 <+> "else" <+> e3
             EFix    _ name e1 e2         -> "fix" <+> pretty name <+> "=" <+> e1 <+> "in" <+> e2
-            ELet    _ bind e1 e2         -> "let" <+> pretty bind <+> "=" <+> e1 <+> "in" <+> e2
             EOp1    _ op a               -> pretty op <> a
             EOp2    _ op a b             -> a <+> pretty op <+> b
             ETuple  _ es                 -> prettyTuple es
@@ -214,7 +215,24 @@ instance (Pretty e1, FunArgs e2, Functor e3, Clauses [e3 (Expr t1 t2 t3 t4 t5 t6
         final = cata $ \case
             ERow _ _ _ r                 -> r
             EVar _ v                     -> " " <> pipe <+> pretty v
+            EApp _ (_:a:_)               -> a
             _                            -> ""
+
+prettyLet 
+  :: (Functor e3, Pretty p, Clauses [e3 (Expr t1 t2 t3 t4 t5 t6 t7 t8 t9 t10 t11 t12 t13 t14 t15 e1 e2 e3)]) 
+  => p 
+  -> (Expr t1 t2 t3 t4 t5 t6 t7 t8 t9 t10 t11 t12 t13 t14 t15 e1 e2 e3, Doc a) 
+  -> Doc a 
+  -> Doc a
+prettyLet bind e1 e2 = "let" <+> pretty bind <+> body <+> "in" <+> e2 where 
+    body = case project (fst e1) of
+        EFun _ cs -> clauses cs
+        _         -> "=" <+> snd e1
+
+instance (Pretty p) => Pretty (Binding t p) where
+    pretty = \case
+        BLet _ p    -> pretty p
+        BFun _ f ps -> pretty f <> prettyTuple (pretty <$> ps)
 
 instance Pretty (Op1 t) where
     pretty = \case
@@ -262,15 +280,15 @@ instance (Pretty a) => Guarded [Guard a] where
 
 
 
-prettyLet :: (Pretty p) => p -> Doc a -> Doc a -> Doc a
-prettyLet bind expr body =
-    group (vsep
-        [ nest 2 (vsep
-            [ "let"
-            , pretty bind <+> equals <+> expr
-            , nest 2 (vsep ["in", body])
-            ])
-        ])
+--prettyLet :: (Pretty p) => p -> Doc a -> Doc a -> Doc a
+--prettyLet bind expr body =
+--    group (vsep
+--        [ nest 2 (vsep
+--            [ "let"
+--            , pretty bind <+> equals <+> expr
+--            , nest 2 (vsep ["in", body])
+--            ])
+--        ])
 
 
 
@@ -280,10 +298,10 @@ prettyLet bind expr body =
 
 -- >>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>
 
-instance (Pretty t, Pretty b) => Pretty (Binding t b) where
-    pretty = \case
-        BLet t pat  -> annotated t pat
-        BFun _ f ps -> pretty f <> prettyTuple (pretty <$> ps)
+--instance (Pretty t, Pretty b) => Pretty (Binding t b) where
+--    pretty = \case
+--        BLet t pat  -> annotated t pat
+--        BFun _ f ps -> pretty f <> prettyTuple (pretty <$> ps)
 
 
 --instance Pretty (Pattern t1 t2 t3 t4 t5 t6 t7 t8 t9) where
