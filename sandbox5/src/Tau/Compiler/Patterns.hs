@@ -33,7 +33,20 @@ xx1 = cata $ \case
     p@PRow{}             -> foldRow (embed p)
     PAnn    t p          -> annPat t p
 
-useful pss ps = useful1 (xx1 <$$> pss) (xx1 <$> ps)
+xx2 :: (Show t, RowType t) => ProgPattern t -> ProgPattern t
+xx2 = cata $ \case
+    PVar    t var        -> varPat t var
+    PCon    t con ps     -> conPat t con ps
+    PLit    t prim       -> litPat t prim
+    PAs     t as p       -> asPat t as p
+    POr     t p q        -> orPat t p q
+    PAny    t            -> anyPat t
+    PTuple  t ps         -> tuplePat t ps
+    PList   t ps         -> listPat t ps
+    PRow    t lab p q    -> conPat t ("{" <> lab <> "}") [p, q] -- p q -- conPat t ("{" <> lab <> "}") [p, q] -- p q -- rowPat t lab p q
+    PAnn    t p          -> annPat t p
+
+useful pss ps = useful1 (xx2 . xx1 <$$> pss) (xx2 . xx1 <$> ps)
 
 useful1 :: (Show t, RowType t, MonadReader ConstructorEnv m) => [[ProgPattern t]] -> [ProgPattern t] -> m Bool
 useful1 [] _ = pure True     -- Zero rows (0x0 matrix)
@@ -164,18 +177,20 @@ instance RowType Type where
 --    rr = conPat t ("{" <> label <> "}") [foldRow a, foldRow b]
 --foldRow x = x
 
-foldRow r = q2
+foldRow r = traceShow fields $ q2
   where
-    q2 = fromMap final (foldr (uncurry (Map.insertWith (<>))) mempty fields)
+    mapRep = foldr (uncurry (Map.insertWith (<>))) mempty fields
+    q2 = fromMap final mapRep 
 
     fromMap :: (RowType t) => ProgPattern t -> Map Name [ProgPattern t] -> ProgPattern t
     fromMap p ps = 
         fst (Map.foldrWithKey (flip . foldr . fn) (p, patternTag p) ps)
       where 
         fn name p (q, t0) = 
-            let t1 = rowType label (patternTag p) t0
-                label = "{" <> name <> "}"
-             in (conPat t1 label [p, q], t1)
+            let t1 = rowType name (patternTag p) t0
+                --label = "{" <> name <> "}"
+             --in (conPat t1 label [p, q], t1)
+             in (rowPat t1 name p q, t1)
 
     fields = flip para r $ \case
         PRow _ label p rest -> (label, [fst p]):snd rest
