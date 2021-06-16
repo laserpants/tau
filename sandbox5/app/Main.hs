@@ -90,18 +90,18 @@ test334b = runReader (useful
     testConstructorEnv 
 
 
-test336 :: IO Bool
-test336 = runReaderT (useful1 (xx1 <$$> 
-    [ [rowPat () "y" (rowPat () "z" (litPat () (TBool False)) (rowPat () "a" (litPat () (TBool False)) (conPat () "{}" []))) (conPat () "{}" [])] 
-    , [rowPat () "y" (rowPat () "z" (litPat () (TBool False)) (rowPat () "a" (litPat () (TBool True)) (conPat () "{}" [])))  (conPat () "{}" [])] 
-    , [rowPat () "y" (rowPat () "z" (litPat () (TBool True))  (rowPat () "a" (litPat () (TBool False)) (conPat () "{}" [])))  (conPat () "{}" [])] 
-    , [rowPat () "y" (rowPat () "z" (litPat () (TBool True))  (rowPat () "a" (litPat () (TBool True)) (conPat () "{}" [])))   (conPat () "{}" [])] 
-    , [rowPat () "y" (rowPat () "z" (litPat () (TBool False)) (rowPat () "a" (litPat () (TBool False)) (conPat () "{}" []))) (conPat () "{}" [])] 
-    , [rowPat () "y" (rowPat () "z" (litPat () (TBool False)) (rowPat () "a" (litPat () (TBool True)) (conPat () "{}" [])))  (conPat () "{}" [])] 
-    , [rowPat () "y" (rowPat () "z" (litPat () (TBool True))  (rowPat () "a" (litPat () (TBool False)) (conPat () "{}" [])))  (conPat () "{}" [])] 
-    , [rowPat () "y" (rowPat () "z" (litPat () (TBool True))  (rowPat () "a" (litPat () (TBool True)) (conPat () "{}" [])))   (conPat () "{}" [])] 
-    ]) [anyPat ()])
-    testConstructorEnv 
+--test336 :: IO Bool
+--test336 = runReaderT (useful1 (xx1 <$$> 
+--    [ [rowPat () "y" (rowPat () "z" (litPat () (TBool False)) (rowPat () "a" (litPat () (TBool False)) (conPat () "{}" []))) (conPat () "{}" [])] 
+--    , [rowPat () "y" (rowPat () "z" (litPat () (TBool False)) (rowPat () "a" (litPat () (TBool True)) (conPat () "{}" [])))  (conPat () "{}" [])] 
+--    , [rowPat () "y" (rowPat () "z" (litPat () (TBool True))  (rowPat () "a" (litPat () (TBool False)) (conPat () "{}" [])))  (conPat () "{}" [])] 
+--    , [rowPat () "y" (rowPat () "z" (litPat () (TBool True))  (rowPat () "a" (litPat () (TBool True)) (conPat () "{}" [])))   (conPat () "{}" [])] 
+--    , [rowPat () "y" (rowPat () "z" (litPat () (TBool False)) (rowPat () "a" (litPat () (TBool False)) (conPat () "{}" []))) (conPat () "{}" [])] 
+--    , [rowPat () "y" (rowPat () "z" (litPat () (TBool False)) (rowPat () "a" (litPat () (TBool True)) (conPat () "{}" [])))  (conPat () "{}" [])] 
+--    , [rowPat () "y" (rowPat () "z" (litPat () (TBool True))  (rowPat () "a" (litPat () (TBool False)) (conPat () "{}" [])))  (conPat () "{}" [])] 
+--    , [rowPat () "y" (rowPat () "z" (litPat () (TBool True))  (rowPat () "a" (litPat () (TBool True)) (conPat () "{}" [])))   (conPat () "{}" [])] 
+--    ]) [anyPat ()])
+--    testConstructorEnv 
 
 
 test334 :: IO Bool
@@ -485,10 +485,12 @@ example1 = do
     --        (recordExpr () (rowExpr () "a" (annExpr tInt (litExpr () (TInt 1))) (appExpr () [varExpr () "_#", varExpr () "r"])))
     --        (appExpr () [varExpr () "fn", recordExpr () (rowExpr () "b" (annExpr tInt (litExpr () (TInt 2))) (conExpr () "{}" []))])
 
-    expr = letExpr () 
-                (BLet () (varPat () "b")) 
-                (recordExpr () (rowExpr () "x" (litExpr () (TBool True)) (conExpr () "{}" [])))
-                (recordExpr () (rowExpr () "a" (litExpr () (TBool True)) (appExpr () [varExpr () "_#", varExpr () "b"])))
+    --expr = letExpr () 
+    --            (BLet () (varPat () "b")) 
+    --            (recordExpr () (rowExpr () "x" (litExpr () (TBool True)) (conExpr () "{}" [])))
+    --            (recordExpr () (rowExpr () "a" (litExpr () (TBool True)) (appExpr () [varExpr () "_#", varExpr () "b"])))
+
+    expr = letExpr () (BLet () (varPat () "x")) (varExpr () "id") (tupleExpr () [appExpr () [varExpr () "id", litExpr () (TString "foo")], appExpr () [varExpr () "id", litExpr () (TInt 1)]])
 
 
 
