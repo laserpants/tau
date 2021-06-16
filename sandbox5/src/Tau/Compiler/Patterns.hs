@@ -19,27 +19,44 @@ import qualified Data.Map.Strict as Map
 import qualified Data.Set.Monad as Set
 import qualified Tau.Env as Env
 
-useful :: (Show t, RowType t, MonadReader ConstructorEnv m) => [[ProgPattern t]] -> [ProgPattern t] -> m Bool
-useful [] _ = pure True     -- Zero rows (0x0 matrix)
-useful (p1:_) qs 
+xx1 :: (Show t, RowType t) => ProgPattern t -> ProgPattern t
+xx1 = cata $ \case
+    PVar    t var        -> varPat t var
+    PCon    t con ps     -> conPat t con ps
+    PLit    t prim       -> litPat t prim
+    PAs     t as p       -> asPat t as p
+    POr     t p q        -> orPat t p q
+    PAny    t            -> anyPat t
+    PTuple  t ps         -> tuplePat t ps
+    PList   t ps         -> listPat t ps
+--    PRow    t lab p q    -> foldRow t lab p q -- conPat t ("{" <> lab <> "}") [p, q] -- p q -- rowPat t lab p q
+    p@PRow{}             -> foldRow (embed p)
+    PAnn    t p          -> annPat t p
+
+useful pss ps = useful1 (xx1 <$$> pss) (xx1 <$> ps)
+
+useful1 :: (Show t, RowType t, MonadReader ConstructorEnv m) => [[ProgPattern t]] -> [ProgPattern t] -> m Bool
+useful1 [] _ = pure True     -- Zero rows (0x0 matrix)
+useful1 (p1:_) qs 
     | null p1 = pure False  -- One or more rows but no columns
-    | null qs = error "Implementation error (useful)"
-useful pss (q:qs) = do
+    | null qs = error "Implementation error (useful1)"
+useful1 pss (q:qs) = do
+    traceShowM pss
     case groupPatterns q of
         ConGroup con rs  ->
             let special = specialized con (patternTag <$> rs)
-             in useful (special pss) (head (special [q:qs]))
+             in useful1 (special pss) (head (special [q:qs]))
         WildcardPattern -> do
             let cs = headCons pss
             isComplete <- complete (fst <$> cs)
             if isComplete
                 then cs & anyM (\(con, rs) -> do
                     let special = specialized con (patternTag <$> rs)
-                     in useful (special pss) (head (special [q:qs]))) 
+                     in useful1 (special pss) (head (special [q:qs]))) 
                 else 
-                    useful (defaultMatrix pss) qs
+                    useful1 (defaultMatrix pss) qs
         OrPattern a b -> 
-            useful pss (a:qs) ||^ useful pss (b:qs)
+            useful1 pss (a:qs) ||^ useful1 pss (b:qs)
   where
     complete :: (MonadReader ConstructorEnv m) => [Name] -> m Bool
     complete [] = pure False
@@ -79,7 +96,7 @@ groupPatterns = project >>> \case
     PCon   _ con rs  -> ConGroup con rs
     PTuple t elems   -> groupPatterns (foldTuple t elems)
     PList  t elems   -> groupPatterns (foldList t elems)
-    row@PRow{}       -> groupPatterns (foldRow (embed row))
+    row@PRow{}       -> undefined -- groupPatterns (foldRow (embed row))
     PLit   t lit     -> groupPatterns (conPat t (prim lit) [])
     PAs    _ _ a     -> groupPatterns a
     POr    _ a b     -> OrPattern a b
@@ -98,7 +115,7 @@ specialized name ts = (rec =<<)
             PLit   t lit      -> rec (conPat t (prim lit) []:ps)
             PTuple t elems    -> rec (foldTuple t elems:ps)
             PList  t elems    -> rec (foldList t elems:ps)
-            PRow{}            -> rec (foldRow p:ps)
+            PRow{}            -> undefined -- rec (foldRow p:ps)
             PAs    _ _ q      -> rec (q:ps)
             POr    _ p1 p2    -> rec (p1:ps) <> rec (p2:ps)
             _                 -> [(anyPat <$> ts) <> ps]
@@ -140,10 +157,17 @@ instance (RowType t) => RowType (TypeInfoT [e] t) where
 instance RowType Type where
     rowType = tRow 
 
-foldRow :: (RowType t, Show t) => ProgPattern t -> ProgPattern t
-foldRow r = traceShow r $ traceShow q $ traceShow "***" $ q
+--foldRow :: (RowType t, Show t) => ProgPattern t -> ProgPattern t
+--foldRow (Fix (PRow t label a b)) = 
+--    traceShow rr $ rr
+--  where
+--    rr = conPat t ("{" <> label <> "}") [foldRow a, foldRow b]
+--foldRow x = x
+
+foldRow r = q2
   where
-    q = fromMap final (foldr (uncurry (Map.insertWith (<>))) mempty fields)
+    q2 = fromMap final (foldr (uncurry (Map.insertWith (<>))) mempty fields)
+
     fromMap :: (RowType t) => ProgPattern t -> Map Name [ProgPattern t] -> ProgPattern t
     fromMap p ps = 
         fst (Map.foldrWithKey (flip . foldr . fn) (p, patternTag p) ps)
@@ -172,7 +196,7 @@ headCons = (>>= fun)
             PCon   _ name rs         -> [(name, rs)]
             PTuple t elems           -> fun (foldTuple t elems:ps)
             PList  t elems           -> fun (foldList t elems:ps)
-            PRow{}                   -> fun (foldRow p:ps)
+            PRow{}                   -> undefined -- fun (foldRow p:ps)
             PAs    _ _ q             -> fun (q:ps)
             POr    _ a b             -> fun (a:ps) <> fun (b:ps)
             _                        -> []

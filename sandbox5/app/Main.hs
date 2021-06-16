@@ -46,6 +46,74 @@ import qualified Tau.Env as Env
 
 main = pure ()
 
+test337 :: IO Bool
+test337 = runReaderT (exhaustive
+            [ [recordPat () (rowPat () "x" (litPat () (TBool False)) (rowPat () "y" (litPat () (TBool False)) (conPat () "{}" [])))] 
+            , [recordPat () (rowPat () "y" (litPat () (TBool True)) (rowPat () "x" (litPat () (TBool False)) (conPat () "{}" [])))] 
+            , [recordPat () (rowPat () "x" (litPat () (TBool True)) (rowPat () "y" (litPat () (TBool False)) (conPat () "{}" [])))] 
+            , [recordPat () (rowPat () "x" (litPat () (TBool True)) (rowPat () "y" (litPat () (TBool True)) (conPat () "{}" [])))] 
+            ]
+    )
+    testConstructorEnv 
+
+test335 = runReader (exhaustive 
+            [ [rowPat () "z" (litPat () (TBool False)) (rowPat () "a" (litPat () (TBool False)) (conPat () "{}" []))] 
+            , [rowPat () "z" (litPat () (TBool False)) (rowPat () "a" (litPat () (TBool True)) (conPat () "{}" []))] 
+            , [rowPat () "z" (litPat () (TBool True)) (rowPat () "a" (litPat () (TBool False)) (conPat () "{}" []))] 
+            , [rowPat () "z" (litPat () (TBool True)) (rowPat () "a" (litPat () (TBool True)) (conPat () "{}" []))] 
+            , [rowPat () "z" (litPat () (TBool False)) (rowPat () "a" (litPat () (TBool False)) (conPat () "{}" []))] 
+            , [rowPat () "z" (litPat () (TBool False)) (rowPat () "a" (litPat () (TBool True)) (conPat () "{}" []))] 
+            , [rowPat () "z" (litPat () (TBool True)) (rowPat () "a" (litPat () (TBool False)) (conPat () "{}" []))] 
+            , [rowPat () "z" (litPat () (TBool True)) (rowPat () "a" (litPat () (TBool True)) (conPat () "{}" []))] 
+            ]
+    )
+    testConstructorEnv 
+
+
+test334b = runReader (useful
+            [ [rowPat () "y" (rowPat () "z" (conPat () "#False" []) (rowPat () "a" (conPat () "#False" []) (conPat () "{}" []))) (conPat () "{}" [])] 
+            , [rowPat () "y" (rowPat () "z" (conPat () "#False" []) (rowPat () "a" (conPat () "#True" []) (conPat () "{}" [])))  (conPat () "{}" [])] 
+            , [rowPat () "y" (rowPat () "z" (conPat () "#True" [])  (rowPat () "a" (conPat () "#False" []) (conPat () "{}" [])))  (conPat () "{}" [])] 
+            , [rowPat () "y" (rowPat () "z" (conPat () "#True" [])  (rowPat () "a" (conPat () "#True" []) (conPat () "{}" [])))   (conPat () "{}" [])] 
+            , [rowPat () "y" (rowPat () "z" (conPat () "#False" []) (rowPat () "a" (conPat () "#False" []) (conPat () "{}" []))) (conPat () "{}" [])] 
+            , [rowPat () "y" (rowPat () "z" (conPat () "#False" []) (rowPat () "a" (conPat () "#True" []) (conPat () "{}" [])))  (conPat () "{}" [])] 
+            , [rowPat () "y" (rowPat () "z" (conPat () "#True" [])  (rowPat () "a" (conPat () "#False" []) (conPat () "{}" [])))  (conPat () "{}" [])] 
+            , [rowPat () "y" (rowPat () "z" (conPat () "#True" [])  (rowPat () "a" (conPat () "#True" []) (conPat () "{}" [])))   (conPat () "{}" [])] 
+            ]
+      [anyPat ()]
+    )
+    testConstructorEnv 
+
+
+test336 :: IO Bool
+test336 = runReaderT (useful1 (xx1 <$$> 
+    [ [rowPat () "y" (rowPat () "z" (litPat () (TBool False)) (rowPat () "a" (litPat () (TBool False)) (conPat () "{}" []))) (conPat () "{}" [])] 
+    , [rowPat () "y" (rowPat () "z" (litPat () (TBool False)) (rowPat () "a" (litPat () (TBool True)) (conPat () "{}" [])))  (conPat () "{}" [])] 
+    , [rowPat () "y" (rowPat () "z" (litPat () (TBool True))  (rowPat () "a" (litPat () (TBool False)) (conPat () "{}" [])))  (conPat () "{}" [])] 
+    , [rowPat () "y" (rowPat () "z" (litPat () (TBool True))  (rowPat () "a" (litPat () (TBool True)) (conPat () "{}" [])))   (conPat () "{}" [])] 
+    , [rowPat () "y" (rowPat () "z" (litPat () (TBool False)) (rowPat () "a" (litPat () (TBool False)) (conPat () "{}" []))) (conPat () "{}" [])] 
+    , [rowPat () "y" (rowPat () "z" (litPat () (TBool False)) (rowPat () "a" (litPat () (TBool True)) (conPat () "{}" [])))  (conPat () "{}" [])] 
+    , [rowPat () "y" (rowPat () "z" (litPat () (TBool True))  (rowPat () "a" (litPat () (TBool False)) (conPat () "{}" [])))  (conPat () "{}" [])] 
+    , [rowPat () "y" (rowPat () "z" (litPat () (TBool True))  (rowPat () "a" (litPat () (TBool True)) (conPat () "{}" [])))   (conPat () "{}" [])] 
+    ]) [anyPat ()])
+    testConstructorEnv 
+
+
+test334 = runReader (useful
+            [ [rowPat () "y" (rowPat () "z" (litPat () (TBool False)) (rowPat () "a" (litPat () (TBool False)) (conPat () "{}" []))) (conPat () "{}" [])] 
+            , [rowPat () "y" (rowPat () "z" (litPat () (TBool False)) (rowPat () "a" (litPat () (TBool True)) (conPat () "{}" [])))  (conPat () "{}" [])] 
+            , [rowPat () "y" (rowPat () "z" (litPat () (TBool True))  (rowPat () "a" (litPat () (TBool False)) (conPat () "{}" [])))  (conPat () "{}" [])] 
+            , [rowPat () "y" (rowPat () "z" (litPat () (TBool True))  (rowPat () "a" (litPat () (TBool True)) (conPat () "{}" [])))   (conPat () "{}" [])] 
+            , [rowPat () "y" (rowPat () "z" (litPat () (TBool False)) (rowPat () "a" (litPat () (TBool False)) (conPat () "{}" []))) (conPat () "{}" [])] 
+            , [rowPat () "y" (rowPat () "z" (litPat () (TBool False)) (rowPat () "a" (litPat () (TBool True)) (conPat () "{}" [])))  (conPat () "{}" [])] 
+            , [rowPat () "y" (rowPat () "z" (litPat () (TBool True))  (rowPat () "a" (litPat () (TBool False)) (conPat () "{}" [])))  (conPat () "{}" [])] 
+            , [rowPat () "y" (rowPat () "z" (litPat () (TBool True))  (rowPat () "a" (litPat () (TBool True)) (conPat () "{}" [])))   (conPat () "{}" [])] 
+            ]
+      [anyPat ()]
+    )
+    testConstructorEnv 
+
+
 test333 :: IO Bool
 test333 = runReaderT (useful
       [ [conPat () "#False" [], conPat () "#False" []]
@@ -55,6 +123,8 @@ test333 = runReaderT (useful
       [anyPat (), anyPat ()]
     )
     testConstructorEnv 
+
+
 
 
 test332 :: IO Bool
