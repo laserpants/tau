@@ -184,10 +184,17 @@ instance (Pretty e1, FunArgs e2, Functor e3, Clauses [e3 (Expr t1 t2 t3 t4 t5 t6
         EPat    _ e1 cs                  -> "match" <+> snd e1 <+> "with" <+> clauses (fst <$$> cs)
         EFun    _ cs                     -> clauses (fst <$$> cs)
 
+        EApp _ ((e, doc1):es) -> 
+            parensIf useLeft doc1 <> prettyTuple (snd <$> es)
+          where
+            useLeft = 
+                case project e of
+                    EVar{} -> False
+                    _      -> True
+
         expr -> snd <$> expr & \case
             EVar    _ var                -> pretty var
             ELit    _ prim               -> pretty prim
-            EApp    _ (e:es)             -> e <> prettyTuple es 
             ELam    _ ps e               -> funArgs ps <+> "=>" <+> e
             EIf     _ e1 e2 e3           -> "if" <+> e1 <+> "then" <+> e2 <+> "else" <+> e3
             EFix    _ name e1 e2         -> "fix" <+> pretty name <+> "=" <+> e1 <+> "in" <+> e2
