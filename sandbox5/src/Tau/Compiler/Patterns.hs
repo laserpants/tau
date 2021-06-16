@@ -19,57 +19,42 @@ import qualified Data.Map.Strict as Map
 import qualified Data.Set.Monad as Set
 import qualified Tau.Env as Env
 
-xx1 :: (Show t, RowType t) => ProgPattern t -> ProgPattern t
-xx1 = cata $ \case
-    PVar    t var        -> varPat t var
-    PCon    t con ps     -> conPat t con ps
-    PLit    t prim       -> litPat t prim
-    PAs     t as p       -> asPat t as p
-    POr     t p q        -> orPat t p q
-    PAny    t            -> anyPat t
-    PTuple  t ps         -> tuplePat t ps
-    PList   t ps         -> listPat t ps
-    p@PRow{}             -> foldRow (embed p)
-    PAnn    t p          -> annPat t p
-
-xx2 :: (Show t, RowType t) => ProgPattern t -> ProgPattern t
-xx2 = cata $ \case
-    PVar    t var        -> varPat t var
-    PCon    t con ps     -> conPat t con ps
-    PLit    t prim       -> litPat t prim
-    PAs     t as p       -> asPat t as p
-    POr     t p q        -> orPat t p q
-    PAny    t            -> anyPat t
-    PTuple  t ps         -> tuplePat t ps
-    PList   t ps         -> listPat t ps
-    PRow    t lab p q    -> conPat t ("{" <> lab <> "}") [p, q]
-    PAnn    t p          -> annPat t p
-
-useful :: (Show t, RowType t, MonadReader ConstructorEnv m) => [[ProgPattern t]] -> [ProgPattern t] -> m Bool
-useful pss ps = useful1 (xx2 . xx1 <$$> pss) (xx2 . xx1 <$> ps)
-
-useful1 :: (Show t, RowType t, MonadReader ConstructorEnv m) => [[ProgPattern t]] -> [ProgPattern t] -> m Bool
-useful1 [] _ = pure True     -- Zero rows (0x0 matrix)
-useful1 (p1:_) qs 
-    | null p1 = pure False   -- One or more rows but no columns
-    | null qs = error "Implementation error (useful1)"
-useful1 pss (q:qs) = 
-    case groupPatterns q of
-        ConGroup con rs  ->
-            let special = specialized con (patternTag <$> rs)
-             in useful1 (special pss) (head (special [q:qs]))
-        WildcardPattern -> do
-            let cs = headCons pss
-            isComplete <- complete (fst <$> cs)
-            if isComplete
-                then cs & anyM (\(con, rs) -> do
-                    let special = specialized con (patternTag <$> rs)
-                     in useful1 (special pss) (head (special [q:qs]))) 
-                else 
-                    useful1 (defaultMatrix pss) qs
-        OrPattern a b -> 
-            useful1 pss (a:qs) ||^ useful1 pss (b:qs)
+useful 
+  :: (Show t, RowType t, MonadReader ConstructorEnv m) 
+  => [[ProgPattern t]] 
+  -> [ProgPattern t] 
+  -> m Bool
+useful pss ps = phase3 (phase2 . phase1 <$$> pss) (phase2 . phase1 <$> ps)
   where
+    phase1 = cata $ \case
+        p@PRow{}       -> foldRow (embed p)
+        p              -> embed p
+
+    phase2 = cata $ \case
+        PRow t lab p q -> conPat t ("{" <> lab <> "}") [p, q]
+        p              -> embed p
+
+    phase3 [] _ = pure True      -- Zero rows (0x0 matrix)
+    phase3 (p1:_) qs 
+        | null p1 = pure False   -- One or more rows but no columns
+        | null qs = error "Implementation error (phase3)"
+    phase3 pss (q:qs) = 
+        case groupPatterns q of
+            ConGroup con rs  ->
+                let special = specialized con (patternTag <$> rs)
+                 in phase3 (special pss) (head (special [q:qs]))
+            WildcardPattern -> do
+                let cs = headCons pss
+                isComplete <- complete (fst <$> cs)
+                if isComplete
+                    then cs & anyM (\(con, rs) -> do
+                        let special = specialized con (patternTag <$> rs)
+                         in phase3 (special pss) (head (special [q:qs]))) 
+                    else 
+                        phase3 (defaultMatrix pss) qs
+            OrPattern a b -> 
+                phase3 pss (a:qs) ||^ phase3 pss (b:qs)
+
     complete :: (MonadReader ConstructorEnv m) => [Name] -> m Bool
     complete [] = pure False
     complete names@(name:_) = do
