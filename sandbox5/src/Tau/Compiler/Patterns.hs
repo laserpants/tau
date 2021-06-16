@@ -45,12 +45,13 @@ xx2 = cata $ \case
     PRow    t lab p q    -> conPat t ("{" <> lab <> "}") [p, q]
     PAnn    t p          -> annPat t p
 
+useful :: (Show t, RowType t, MonadReader ConstructorEnv m) => [[ProgPattern t]] -> [ProgPattern t] -> m Bool
 useful pss ps = useful1 (xx2 . xx1 <$$> pss) (xx2 . xx1 <$> ps)
 
 useful1 :: (Show t, RowType t, MonadReader ConstructorEnv m) => [[ProgPattern t]] -> [ProgPattern t] -> m Bool
 useful1 [] _ = pure True     -- Zero rows (0x0 matrix)
 useful1 (p1:_) qs 
-    | null p1 = pure False  -- One or more rows but no columns
+    | null p1 = pure False   -- One or more rows but no columns
     | null qs = error "Implementation error (useful1)"
 useful1 pss (q:qs) = do
     traceShowM pss
@@ -178,8 +179,6 @@ foldRow r = fromMap final mapRep
       where 
         fn name p (q, t0) = 
             let t1 = rowType name (patternTag p) t0
-                --label = "{" <> name <> "}"
-             --in (conPat t1 label [p, q], t1)
              in (rowPat t1 name p q, t1)
 
     fields = flip para r $ \case
