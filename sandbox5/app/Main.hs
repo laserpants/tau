@@ -492,9 +492,14 @@ example1 = do
 
     --expr = letExpr () (BVar () (varPat () "x")) (varExpr () "id") (tupleExpr () [appExpr () [varExpr () "id", litExpr () (TString "foo")], appExpr () [varExpr () "id", litExpr () (TInt 1)]])
 
+--    expr = letExpr () (BVar () (varPat () "x")) (litExpr () (TBool True))
+--        (letExpr () (BVar () (varPat () "f")) (lamExpr () [varPat () "y"] (varExpr () "y"))
+--            (op2Expr () (ODot ()) (varExpr () "f") (varExpr () "x")))
+
     expr = letExpr () (BVar () (varPat () "x")) (litExpr () (TBool True))
-        (letExpr () (BVar () (varPat () "f")) (lamExpr () [varPat () "y"] (varExpr () "y"))
+        (letExpr () (BFun () "f" [varPat () "y"]) (varExpr () "y")
             (op2Expr () (ODot ()) (varExpr () "f") (varExpr () "x")))
+
 
 
 
