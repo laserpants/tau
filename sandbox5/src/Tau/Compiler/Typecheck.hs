@@ -603,7 +603,9 @@ runNode writer = do
     -- inferKind???
     -- t' <- inferKind (apply sub t)
     sub <- subs
-    pure (a, simplifyPredicates (TypeInfo (es <> es2) (applyBoth sub t) (applyBoth sub ps)), vs)
+    pure ( a
+         , simplifyPredicates (TypeInfo (es <> es2) (applyBoth sub t) (applyBoth sub ps))
+         , vs )
 
 doUnify 
   :: ( MonadSupply Name m

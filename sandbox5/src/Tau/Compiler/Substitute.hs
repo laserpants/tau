@@ -50,8 +50,8 @@ instance Substitutable (TypeT a) (TypeT a) where
 instance Substitutable Polytype Type where
     apply sub = cata $ \case
         TVar kind var        -> toPolytype (withDefault (tVar kind var) var sub)
-        TApp k t1 t2         -> tApp k t1 t2
-        TArr t1 t2           -> tArr t1 t2
+--        TApp k t1 t2         -> tApp k t1 t2
+--        TArr t1 t2           -> tArr t1 t2
         ty                   -> embed ty
 
 instance (Substitutable t a) => Substitutable (PredicateT t) a where
@@ -155,9 +155,10 @@ instance Substitutable (TypeT a) Kind where
         TVar k var           -> tVar (apply sub k) var
         TCon k con           -> tCon (apply sub k) con
         TApp k t1 t2         -> tApp (apply sub k) t1 t2
-        TArr t1 t2           -> tArr t1 t2
-        TRow label t1 t2     -> tRow label t1 t2
-        TGen i               -> tGen i
+        ty                   -> embed ty
+--        TArr t1 t2           -> tArr t1 t2
+--        TRow label t1 t2     -> tRow label t1 t2
+--        TGen i               -> tGen i
 
 instance Substitutable Scheme Kind where
     apply sub = \case
@@ -191,8 +192,8 @@ domain (Sub sub) = Map.keys sub
 typeSubstitute :: Substitution (TypeT a) -> TypeT a -> TypeT a
 typeSubstitute sub = cata $ \case
     TVar kind var -> withDefault (tVar kind var) var sub
-    TApp k t1 t2  -> tApp k t1 t2
-    TArr t1 t2    -> tArr t1 t2
+--    TApp k t1 t2  -> tApp k t1 t2
+--    TArr t1 t2    -> tArr t1 t2
     ty            -> embed ty
 
 merge :: (Eq a) => Substitution a -> Substitution a -> Maybe (Substitution a)
@@ -217,7 +218,7 @@ normalize ty = apply (normalizer (typeVars ty)) ty
 kindSubstitute :: Substitution Kind -> Kind -> Kind
 kindSubstitute sub = cata $ \case 
    KVar var   -> withDefault (kVar var) var sub
-   KArr k1 k2 -> kArr k1 k2
+--   KArr k1 k2 -> kArr k1 k2
    ty         -> embed ty
 
 applyBoth
