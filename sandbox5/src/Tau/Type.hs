@@ -219,6 +219,7 @@ typeVars = nub . cata (\case
     TVar k var   -> [(var, k)]
     TApp _ t1 t2 -> t1 <> t2
     TArr t1 t2   -> t1 <> t2
+    TRow _ t1 t2 -> t1 <> t2
     _            -> [])
 
 toPolytype :: Type -> Polytype
