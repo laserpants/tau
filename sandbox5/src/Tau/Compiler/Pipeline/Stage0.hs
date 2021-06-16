@@ -1,7 +1,6 @@
 {-# LANGUAGE FlexibleContexts  #-}
 {-# LANGUAGE LambdaCase        #-}
 {-# LANGUAGE OverloadedStrings #-}
-{-# LANGUAGE RecordWildCards   #-}
 module Tau.Compiler.Pipeline.Stage0 where
 
 import Control.Monad.Reader
@@ -47,7 +46,7 @@ exhaustivePatternsCheck = para $ \case
         EOp2    t op a b     -> op2Expr t op <$> a <*> b
         ETuple  t es         -> tupleExpr t <$> sequence es
         EList   t es         -> listExpr t <$> sequence es
-        ERow    t lab a b    -> rowExpr t lab <$> a *> b 
+        ERow    t lab a b    -> rowExpr t lab <$> a <*> b 
   where
     check clauses ti = do
         exhaustive <- clausesAreExhaustive clauses
