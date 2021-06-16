@@ -343,19 +343,19 @@ test38 = runReader (exhaustive
 --     describe "\nExpressions\n" $ do
 -- 
 --         testExhaustive 
---             (letExpr () (BLet (varPat () "y")) (litExpr () (TInt 5)) (varExpr () "z") :: ProgExpr)
+--             (letExpr () (BVar (varPat () "y")) (litExpr () (TInt 5)) (varExpr () "z") :: ProgExpr)
 -- 
 --         testExhaustive 
---             (letExpr () (BLet (conPat () "Id" [varPat () "y"])) (conExpr () "Id" [litExpr () (TInt 5)]) (varExpr () "y") :: ProgExpr)
+--             (letExpr () (BVar (conPat () "Id" [varPat () "y"])) (conExpr () "Id" [litExpr () (TInt 5)]) (varExpr () "y") :: ProgExpr)
 -- 
 --         testExhaustive 
---             (letExpr () (BLet (tupPat () [varPat () "x", varPat () "y"])) (tupExpr () [litExpr () (TInt 1), litExpr () (TInt 2)]) (varExpr () "y") :: ProgExpr)
+--             (letExpr () (BVar (tupPat () [varPat () "x", varPat () "y"])) (tupExpr () [litExpr () (TInt 1), litExpr () (TInt 2)]) (varExpr () "y") :: ProgExpr)
 -- 
 --         testNonExhaustive 
---             (letExpr () (BLet (tupPat () [varPat () "x", litPat () (TInt 3)])) (tupExpr () [litExpr () (TInt 1), litExpr () (TInt 2)]) (varExpr () "y") :: ProgExpr)
+--             (letExpr () (BVar (tupPat () [varPat () "x", litPat () (TInt 3)])) (tupExpr () [litExpr () (TInt 1), litExpr () (TInt 2)]) (varExpr () "y") :: ProgExpr)
 -- 
 --         testNonExhaustive 
---             (letExpr () (BLet (conPat () "Some" [varPat () "y"])) (conExpr () "Some" [litExpr () (TInt 5)]) (varExpr () "y") :: ProgExpr)
+--             (letExpr () (BVar (conPat () "Some" [varPat () "y"])) (conExpr () "Some" [litExpr () (TInt 5)]) (varExpr () "y") :: ProgExpr)
 -- 
 --         testNonExhaustive 
 --             (lamExpr () [conPat () "Some" [varPat () "y"]] (varExpr () "y") :: ProgExpr)
@@ -476,7 +476,7 @@ example1 = do
     --expr = varExpr () "x"
     --expr = conExpr () "Some" [varExpr () "x"]
     --expr = litExpr () (TInt 5)
-    --expr = letExpr () (BLet () (varPat () "x")) (litExpr () (TInt 5)) (varExpr () "x")
+    --expr = letExpr () (BVar () (varPat () "x")) (litExpr () (TInt 5)) (varExpr () "x")
 
     ---- let fn(r) = { a = 1 | r } in fn({ b = 2 })
     --expr = 
@@ -486,11 +486,15 @@ example1 = do
     --        (appExpr () [varExpr () "fn", recordExpr () (rowExpr () "b" (annExpr tInt (litExpr () (TInt 2))) (conExpr () "{}" []))])
 
     --expr = letExpr () 
-    --            (BLet () (varPat () "b")) 
+    --            (BVar () (varPat () "b")) 
     --            (recordExpr () (rowExpr () "x" (litExpr () (TBool True)) (conExpr () "{}" [])))
     --            (recordExpr () (rowExpr () "a" (litExpr () (TBool True)) (appExpr () [varExpr () "_#", varExpr () "b"])))
 
-    expr = letExpr () (BLet () (varPat () "x")) (varExpr () "id") (tupleExpr () [appExpr () [varExpr () "id", litExpr () (TString "foo")], appExpr () [varExpr () "id", litExpr () (TInt 1)]])
+    --expr = letExpr () (BVar () (varPat () "x")) (varExpr () "id") (tupleExpr () [appExpr () [varExpr () "id", litExpr () (TString "foo")], appExpr () [varExpr () "id", litExpr () (TInt 1)]])
+
+    expr = letExpr () (BVar () (varPat () "x")) (litExpr () (TBool True))
+        (letExpr () (BVar () (varPat () "f")) (lamExpr () [varPat () "y"] (varExpr () "y"))
+            (op2Expr () (ODot ()) (varExpr () "f") (varExpr () "x")))
 
 
 
@@ -836,7 +840,7 @@ example1 = do
 -- ---- --    print "=========="
 -- ---- --  where
 -- ---- --    (x, sub, ctx) = fromJust (runInfer mempty testClassEnv testTypeEnv testConstructorEnv e)
--- ---- --    e = inferAst (Ast (letExpr () (BLet () (varPat () "x")) (litExpr () (TInt 5)) (varExpr () "x")))
+-- ---- --    e = inferAst (Ast (letExpr () (BVar () (varPat () "x")) (litExpr () (TInt 5)) (varExpr () "x")))
 -- ---- --
 -- ---- --
 -- ---- --test9 = do
@@ -851,7 +855,7 @@ example1 = do
 -- ---- --
 -- ---- --
 -- ---- --test10 =
--- ---- --    Ast (letExpr () (BLet () (varPat () "x")) (litExpr () (TInt 5)) (varExpr () "x"))
+-- ---- --    Ast (letExpr () (BVar () (varPat () "x")) (litExpr () (TInt 5)) (varExpr () "x"))
 -- ---- --
 -- ---- --
 -- ---- --test11 =
@@ -877,7 +881,7 @@ example1 = do
 -- ---- --    print "=========="
 -- ---- --  where
 -- ---- --    (x, sub, ctx) = fromJust (runInfer mempty testClassEnv testTypeEnv testConstructorEnv e)
--- ---- --    e = inferAst (Ast (letExpr () (BLet () (varPat () "x")) (litExpr () (TInt 5)) (varExpr () "x")))
+-- ---- --    e = inferAst (Ast (letExpr () (BVar () (varPat () "x")) (litExpr () (TInt 5)) (varExpr () "x")))
 -- ---- --
 -- ---- --
 -- ---- --test15 = do
@@ -1108,7 +1112,7 @@ example1 = do
 -- 
 -- --    expr = inferAst (Ast (litExpr () (TInt 5)))
 -- 
--- --    expr = inferAst (Ast (letExpr () (BLet () (varPat () "x")) (litExpr () (TInt 5)) (varExpr () "x")))
+-- --    expr = inferAst (Ast (letExpr () (BVar () (varPat () "x")) (litExpr () (TInt 5)) (varExpr () "x")))
 -- 
 -- --    expr = inferAst (Ast (letExpr () (BFun  () "f" [varPat () "x"]) (litExpr () (TInt 5)) (varExpr () "f")))
 -- 
@@ -1118,11 +1122,11 @@ example1 = do
 -- 
 -- --    expr = inferAst (Ast (appExpr () [varExpr () "(::)", litExpr () (TInt 5), conExpr () "[]" []]))
 -- 
--- --    expr = inferAst (Ast (letExpr () (BLet () (varPat () "x")) (litExpr () (TInt 5)) (varExpr () "x")))
+-- --    expr = inferAst (Ast (letExpr () (BVar () (varPat () "x")) (litExpr () (TInt 5)) (varExpr () "x")))
 -- 
--- --    expr = inferAst (Ast (letExpr () (BLet () (varPat () "x")) (varExpr () "id") (tupleExpr () [appExpr () [varExpr () "id", litExpr () (TString "foo")], appExpr () [varExpr () "id", litExpr () (TInt 1)]])))
+-- --    expr = inferAst (Ast (letExpr () (BVar () (varPat () "x")) (varExpr () "id") (tupleExpr () [appExpr () [varExpr () "id", litExpr () (TString "foo")], appExpr () [varExpr () "id", litExpr () (TInt 1)]])))
 -- 
--- --    expr = inferAst (Ast (letExpr () (BLet () (varPat () "x")) (litExpr () (TInt 5)) (op2Expr () (OAdd ()) (varExpr () "x") (litExpr () (TInt 1)))))
+-- --    expr = inferAst (Ast (letExpr () (BVar () (varPat () "x")) (litExpr () (TInt 5)) (op2Expr () (OAdd ()) (varExpr () "x") (litExpr () (TInt 1)))))
 -- 
 -- --    expr = inferAst (Ast (letExpr () (BFun () "f" [varPat () "x"]) (litExpr () (TInt 5)) (appExpr ()  [varExpr () "f", litExpr () (TInt 1)])))
 -- 
@@ -1140,11 +1144,11 @@ example1 = do
 -- 
 -- --    expr = inferAst (Ast (listExpr () [litExpr () (TInt 1), litExpr () (TInt 2), litExpr () (TInt 3), litExpr () (TInt 4)]))
 -- 
--- --    expr = inferAst (Ast (letExpr () (BLet () (varPat () "id")) (lamExpr () [varPat () "x"] (varExpr () "x")) (appExpr () [varExpr () "id", litExpr () (TInt 5)])))
+-- --    expr = inferAst (Ast (letExpr () (BVar () (varPat () "id")) (lamExpr () [varPat () "x"] (varExpr () "x")) (appExpr () [varExpr () "id", litExpr () (TInt 5)])))
 -- 
 -- --    expr = inferAst (Ast (lamExpr () [varPat () "a", varPat () "b"] (appExpr () [varExpr () "(,)", varExpr () "a", varExpr () "b"])))
 -- 
--- --    expr = inferAst (Ast (letExpr () (BLet () (varPat () "id")) (lamExpr () [varPat () "x"] (varExpr () "x")) (tupleExpr () [appExpr () [varExpr () "id", litExpr () (TInt 5)], appExpr () [varExpr () "id", litExpr () (TBool True)]])))
+-- --    expr = inferAst (Ast (letExpr () (BVar () (varPat () "id")) (lamExpr () [varPat () "x"] (varExpr () "x")) (tupleExpr () [appExpr () [varExpr () "id", litExpr () (TInt 5)], appExpr () [varExpr () "id", litExpr () (TBool True)]])))
 -- 
 -- --    expr = inferAst (Ast (patExpr () [litExpr () (TInt 5)] [Clause () [litPat () (TInt 5)] [Guard [] (litExpr () (TInt 1))]]))
 -- 
@@ -1278,7 +1282,7 @@ example1 = do
 -- --    expr :: ProgExpr ()
 --     --expr = op2Expr () (OAdd ()) (litExpr () (TInt 1)) (litExpr () (TInt 2))
 -- 
--- --    expr = letExpr () (BLet () (varPat () "v")) (op2Expr () (OAdd ()) (litExpr () (TInt 1)) (litExpr () (TInt 2))) ((op2Expr () (OAdd ()) (varExpr () "v") (litExpr () (TInt 2))))
+-- --    expr = letExpr () (BVar () (varPat () "v")) (op2Expr () (OAdd ()) (litExpr () (TInt 1)) (litExpr () (TInt 2))) ((op2Expr () (OAdd ()) (varExpr () "v") (litExpr () (TInt 2))))
 -- 
 -- --    expr = litExpr () (TInt 2)
 -- 
@@ -1289,7 +1293,7 @@ example1 = do
 -- --    expr = rowExpr () "name" (litExpr () (TString "Bob")) (Just (rowExpr () "id" (litExpr () (TInt 5)) Nothing))
 -- 
 -- --    expr = 
--- --        letExpr () (BLet () (varPat () "r")) (rowExpr () "isAdmin" (litExpr () (TBool True)) Nothing)
+-- --        letExpr () (BVar () (varPat () "r")) (rowExpr () "isAdmin" (litExpr () (TBool True)) Nothing)
 -- --        (rowExpr () "name" (litExpr () (TString "Bob")) (Just (rowExpr () "id" (annExpr tInt (litExpr () (TInt 1))) (Just (varExpr () "r")))))
 -- 
 -- --    expr = 
@@ -1335,11 +1339,11 @@ example1 = do
 --     -- match { name = "Bob", id = True } with
 --     --   | { id = b, name = a } => b
 -- 
--- --    expr = letExpr () (BLet () (varPat () "x")) (rowExpr () [("id", litExpr () (TBool True))]) (rowExpr () [("name", litExpr () (TString "Bob")), ("*", varExpr () "x")])
+-- --    expr = letExpr () (BVar () (varPat () "x")) (rowExpr () [("id", litExpr () (TBool True))]) (rowExpr () [("name", litExpr () (TString "Bob")), ("*", varExpr () "x")])
 -- 
 -- --Guard [] (litExpr () (TInt 123))
 -- 
--- --    expr = letExpr () (BLet () (varPat () "x")) (litExpr () (TInt 5)) (varExpr () "x")
+-- --    expr = letExpr () (BVar () (varPat () "x")) (litExpr () (TInt 5)) (varExpr () "x")
 -- 
 -- --    expr = letExpr () (BFun  () "f" [varPat () "x"]) (litExpr () (TInt 5)) (varExpr () "f")
 -- 
@@ -1356,11 +1360,11 @@ example1 = do
 -- 
 -- --    expr = inferAst (Ast (appExpr () [varExpr () "(::)", litExpr () (TInt 5), conExpr () "[]" []]))
 -- 
--- --    expr = inferAst (Ast (letExpr () (BLet () (varPat () "x")) (litExpr () (TInt 5)) (varExpr () "x")))
+-- --    expr = inferAst (Ast (letExpr () (BVar () (varPat () "x")) (litExpr () (TInt 5)) (varExpr () "x")))
 -- 
--- --    expr = inferAst (Ast (letExpr () (BLet () (varPat () "x")) (varExpr () "id") (tupleExpr () [appExpr () [varExpr () "id", litExpr () (TString "foo")], appExpr () [varExpr () "id", litExpr () (TInt 1)]])))
+-- --    expr = inferAst (Ast (letExpr () (BVar () (varPat () "x")) (varExpr () "id") (tupleExpr () [appExpr () [varExpr () "id", litExpr () (TString "foo")], appExpr () [varExpr () "id", litExpr () (TInt 1)]])))
 -- 
--- --    expr = inferAst (Ast (letExpr () (BLet () (varPat () "x")) (litExpr () (TInt 5)) (op2Expr () (OAdd ()) (varExpr () "x") (litExpr () (TInt 1)))))
+-- --    expr = inferAst (Ast (letExpr () (BVar () (varPat () "x")) (litExpr () (TInt 5)) (op2Expr () (OAdd ()) (varExpr () "x") (litExpr () (TInt 1)))))
 -- 
 -- --    expr = inferAst (Ast (letExpr () (BFun () "f" [varPat () "x"]) (litExpr () (TInt 5)) (appExpr ()  [varExpr () "f", litExpr () (TInt 1)])))
 -- 
@@ -1378,11 +1382,11 @@ example1 = do
 -- 
 -- --    expr = inferAst (Ast (listExpr () [litExpr () (TInt 1), litExpr () (TInt 2), litExpr () (TInt 3), litExpr () (TInt 4)]))
 -- 
--- --    expr = inferAst (Ast (letExpr () (BLet () (varPat () "id")) (lamExpr () [varPat () "x"] (varExpr () "x")) (appExpr () [varExpr () "id", litExpr () (TInt 5)])))
+-- --    expr = inferAst (Ast (letExpr () (BVar () (varPat () "id")) (lamExpr () [varPat () "x"] (varExpr () "x")) (appExpr () [varExpr () "id", litExpr () (TInt 5)])))
 -- 
 -- --    expr = inferAst (Ast (lamExpr () [varPat () "a", varPat () "b"] (appExpr () [varExpr () "(,)", varExpr () "a", varExpr () "b"])))
 -- 
--- --    expr = inferAst (Ast (letExpr () (BLet () (varPat () "id")) (lamExpr () [varPat () "x"] (varExpr () "x")) (tupleExpr () [appExpr () [varExpr () "id", litExpr () (TInt 5)], appExpr () [varExpr () "id", litExpr () (TBool True)]])))
+-- --    expr = inferAst (Ast (letExpr () (BVar () (varPat () "id")) (lamExpr () [varPat () "x"] (varExpr () "x")) (tupleExpr () [appExpr () [varExpr () "id", litExpr () (TInt 5)], appExpr () [varExpr () "id", litExpr () (TBool True)]])))
 -- 
 -- --    expr = inferAst (Ast (patExpr () [litExpr () (TInt 5)] [Clause () [litPat () (TInt 5)] [Guard [] (litExpr () (TInt 1))]]))
 -- 
@@ -1452,7 +1456,7 @@ example1 = do
 --     ELet    t bind e1 e2   -> letExpr    (f t) (mapBind bind) e1 e2
 --   where
 --     mapBind = \case
---         BLet    t p        -> BLet       (f t) (mapPattern p)
+--         BVar    t p        -> BVar       (f t) (mapPattern p)
 --         BFun    t name ps  -> BFun       (f t) name (mapPattern <$> ps)
 -- 
 --     mapClause = \case
@@ -1624,5 +1628,6 @@ testConstructorEnv = constructorEnv
 testEvalEnv :: ValueEnv Eval
 testEvalEnv = Env.fromList 
     [ -- ( "(,)" , constructor "(,)" 2 )
-      ( "_#", fromJust (evalExpr (cLam "?0" (cPat (cVar "?0") [(["#", "?1"], cVar "?1")])) mempty) ) 
+      ( "_#"  , fromJust (evalExpr (cLam "?0" (cPat (cVar "?0") [(["#", "?1"], cVar "?1")])) mempty) ) 
+    , ( "(.)" , fromJust (evalExpr (cLam "f" (cLam "x" (cApp [cVar "f", cVar "x"]))) mempty) )
     ]

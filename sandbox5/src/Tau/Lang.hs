@@ -73,6 +73,7 @@ data Op2 t
     | OOpt   t                           -- ^ Option default operator
     | OStrc  t                           -- ^ String concatenation operator
     | ONdiv  t                           -- ^ Integral division
+    | ODot   t                           -- ^ Dot operator
 
 -- | Operator associativity
 data Assoc
@@ -94,7 +95,7 @@ type ProgClause t = Clause t (ProgPattern t) (ProgExpr t)
 
 -- | Name binding-part of let expressions
 data Binding t p
-    = BLet t p                           -- ^ Simple let-binding
+    = BVar t p                           -- ^ Simple let-binding
     | BFun t Name [p]                    -- ^ Function binding
 
 type ProgBinding t = Binding t (ProgPattern t)
@@ -269,7 +270,7 @@ instance Functor Ast where
             EAnn    t e          -> annExpr    t e
 
         mapBind = \case
-            BLet    t p          -> BLet       (f t) (mapPattern p)
+            BVar    t p          -> BVar       (f t) (mapPattern p)
             BFun    t name ps    -> BFun       (f t) name (mapPattern <$> ps)
 
         mapClause = \case
@@ -313,6 +314,7 @@ instance Functor Ast where
             OOpt    t            -> OOpt       (f t)
             OStrc   t            -> OStrc      (f t)
             ONdiv   t            -> ONdiv      (f t)
+            ODot    t            -> ODot       (f t)
 
 -- >>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>
 
@@ -376,10 +378,11 @@ op2Tag = \case
     OOpt    t       -> t
     OStrc   t       -> t
     ONdiv   t       -> t
+    ODot    t       -> t 
 
 bindingTag :: Binding t p -> t
 bindingTag = \case
-    BLet    t _     -> t
+    BVar    t _     -> t
     BFun    t _ _   -> t
 
 astTag :: Ast t -> t
@@ -432,6 +435,7 @@ opPrecedence = \case
     OBpipe _ -> 0
     OOpt   _ -> 3
     OStrc  _ -> 5
+    ODot   _ -> 1
 
 -- | Return the associativity of a binary operator
 opAssoc :: Op2 t -> Assoc
@@ -455,6 +459,7 @@ opAssoc = \case
     OBpipe _ -> AssocR
     OOpt   _ -> AssocN
     OStrc  _ -> AssocR
+    ODot   _ -> AssocL
 
 -- | Return the symbolic representation of a binary operator
 op2Symbol :: Op2 t -> Name
@@ -480,6 +485,7 @@ op2Symbol = \case
     OOpt    _ -> "?"
     OStrc   _ -> "++"
     ONdiv   _ -> "//"
+    ODot    _ -> "."
 
 -- >>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>
 -- Constructors

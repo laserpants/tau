@@ -66,10 +66,10 @@ translateLet
   -> TargetExpr (Maybe Type)
   -> TargetExpr (Maybe Type)
   -> m (TargetExpr (Maybe Type))
-translateLet t (BLet _ (Fix (PVar _ var))) e1 e2 = pure (fixExpr t var e1 e2)
+translateLet t (BVar _ (Fix (PVar _ var))) e1 e2 = pure (fixExpr t var e1 e2)
 translateLet t bind e1 e2 = do
     (e, p) <- case bind of
-                  BLet _ pat  -> pure (e1, pat)
+                  BVar _ pat  -> pure (e1, pat)
                   BFun t f ps -> do
                       e <- translateLambda t ps e1
                       pure (e, varPat t f)

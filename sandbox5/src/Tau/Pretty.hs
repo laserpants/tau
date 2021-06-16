@@ -201,6 +201,7 @@ instance (Pretty e1, FunArgs e2, Functor e3, Clauses [e3 (Expr t1 t2 t3 t4 t5 t6
             EIf     _ e1 e2 e3           -> "if" <+> e1 <+> "then" <+> e2 <+> "else" <+> e3
             EFix    _ name e1 e2         -> "fix" <+> pretty name <+> "=" <+> e1 <+> "in" <+> e2
             EOp1    _ op a               -> pretty op <> a
+            EOp2    _ (ODot _) a b       -> b <> "." <> a
             EOp2    _ op a b             -> a <+> pretty op <+> b
             ETuple  _ es                 -> prettyTuple es
             EList   _ es                 -> prettyList_ es
@@ -231,7 +232,7 @@ prettyLet bind e1 e2 = "let" <+> pretty bind <+> body <+> "in" <+> e2 where
 
 instance (Pretty p) => Pretty (Binding t p) where
     pretty = \case
-        BLet _ p    -> pretty p
+        BVar _ p    -> pretty p
         BFun _ f ps -> pretty f <> prettyTuple (pretty <$> ps)
 
 instance Pretty (Op1 t) where
@@ -300,7 +301,7 @@ instance (Pretty a) => Guarded [Guard a] where
 
 --instance (Pretty t, Pretty b) => Pretty (Binding t b) where
 --    pretty = \case
---        BLet t pat  -> annotated t pat
+--        BVar t pat  -> annotated t pat
 --        BFun _ f ps -> pretty f <> prettyTuple (pretty <$> ps)
 
 
@@ -909,7 +910,7 @@ class LetBinding b where
 --instance (Pretty b) => LetBinding (Binding (TypeInfoT [Error] Type) b) where
 instance (Typed t, Pretty t, Pretty b) => LetBinding (Binding (TypeInfoT [Error] t) b) where
     printLetBinding = prettyPrint
-    bindingTypeInfo (BLet t _)   = undefined -- (nodeType t)
+    bindingTypeInfo (BVar t _)   = undefined -- (nodeType t)
     bindingTypeInfo (BFun t _ _) = undefined -- t
 
 instance LetBinding (ProgBinding (Maybe Type)) where
@@ -918,7 +919,7 @@ instance LetBinding (ProgBinding (Maybe Type)) where
 
 --instance (Pretty b) => LetBinding (Binding (TypeInfoT [Error] (Maybe Type)) b) where
 --    printLetBinding = prettyPrint
---    bindingTypeInfo (BLet t _)   = fmap fromJust t
+--    bindingTypeInfo (BVar t _)   = fmap fromJust t
 --    bindingTypeInfo (BFun t _ _) = fmap fromJust t
 
 instance LetBinding Void where

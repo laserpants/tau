@@ -214,7 +214,7 @@ checkExhaustive = para $ \case
     expr -> snd <$> expr & \case
         ECon   _ _ exprs             -> andM exprs
         EApp   _ exprs               -> andM exprs
-        ELet   _ (BLet _ p) e1 e2    -> exhaustive [[p]] &&^ e1 &&^ e2
+        ELet   _ (BVar _ p) e1 e2    -> exhaustive [[p]] &&^ e1 &&^ e2
         ELet   _ (BFun _ _ ps) e1 e2 -> exhaustive [ps] &&^ e1 &&^ e2
         EFix   _ _ e1 e2             -> e1 &&^ e2
         ELam   _ ps e1               -> exhaustive [ps] &&^ e1

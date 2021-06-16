@@ -256,10 +256,11 @@ op2Rep = \case
     OOpt   t            -> makeRep "Op2" "OOpt"       [toRep t]
     OStrc  t            -> makeRep "Op2" "OStrc"      [toRep t]
     ONdiv  t            -> makeRep "Op2" "ONdiv"      [toRep t]
+    ODot   t            -> makeRep "Op2" "ODot"       [toRep t]
 
 bindintRep :: (ToRep t, ToRep p) => Binding t p -> Value
 bindintRep = \case
-    BLet t p            -> makeRep "Binding" "BLet"   [toRep t, toRep p]
+    BVar t p            -> makeRep "Binding" "BVar"   [toRep t, toRep p]
     BFun t name ps      -> makeRep "Binding" "BFun"   [toRep t, String name, toRep ps]
 
 guardRep :: (ToRep a) => Guard a -> Value

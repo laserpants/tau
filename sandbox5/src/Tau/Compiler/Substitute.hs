@@ -72,7 +72,7 @@ instance (Substitutable t a) => Substitutable (ProgPattern t) a where
 
 instance (Substitutable t a, Substitutable p a) => Substitutable (Binding t p) a where
     apply sub = \case
-        BLet t p             -> BLet (apply sub t) (apply sub p)
+        BVar t p             -> BVar (apply sub t) (apply sub p)
         BFun t name ps       -> BFun (apply sub t) name (apply sub ps)
 
 instance (Substitutable t a) => Substitutable (Guard (ProgExpr t)) a where
@@ -130,6 +130,7 @@ instance (Substitutable t a) => Substitutable (Op2 t) a where
         OOpt   t             -> OOpt   (apply sub t)
         OStrc  t             -> OStrc  (apply sub t)
         ONdiv  t             -> ONdiv  (apply sub t)
+        ODot   t             -> ODot   (apply sub t)
 
 instance (Substitutable t a) => Substitutable (Ast t) a where
     apply sub = \case

@@ -224,7 +224,7 @@ operator =
       , Prefix (op1Expr () (ONot ()) <$ (keyword "not" *> spaces))
       ]
       -- 1
-    , [ 
+    , [ Postfix (op2Expr () (ODot ()) <$> (symbol "." *> annExprParser))
       ]
       -- 0
     , [ InfixL (op2Expr () (OFpipe ()) <$ symbol "|>")
@@ -232,15 +232,7 @@ operator =
       ]
     , [ Postfix postfixFunArgParser
       ]
-    , [ Postfix postfixDotAppParser
-      ]
     ]
-
-postfixDotAppParser :: Parser (ProgExpr () -> ProgExpr ())
-postfixDotAppParser = do
-    -- TODO ???
-    fun <- symbol "." *> annExprParser
-    pure (\expr -> appExpr () [fun, expr])
 
 postfixFunArgParser :: Parser (ProgExpr () -> ProgExpr ())
 postfixFunArgParser = do
@@ -308,7 +300,7 @@ exprParser = makeExprParser (try lambdaParser <|> try (parens exprParser) <|> pa
         pure [Guard [] expr]
 
     parseFunLet    = BFun () <$> nameParser <*> argParser annPatternParser
-    parseNormalLet = BLet () <$> annPatternParser
+    parseNormalLet = BVar () <$> annPatternParser
 --    parseFix       = undefined
     parseFun       = keyword "fun" *> (funExpr () <$> some parseClause)
     parseVar       = varExpr () <$> nameParser

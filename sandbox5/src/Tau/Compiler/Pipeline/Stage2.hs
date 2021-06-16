@@ -112,7 +112,7 @@ expandTypeClasses expr =
             SimplifiedClause (nodeType t) (translatePatterns <$> ps) g
 
     translateBinding = \case
-        BLet t p           -> BLet (nodeType t) (translatePatterns p)
+        BVar t p           -> BVar (nodeType t) (translatePatterns p)
         BFun t name ps     -> BFun (nodeType t) name (translatePatterns <$> ps)
 
     translatePatterns = cata $ \case
