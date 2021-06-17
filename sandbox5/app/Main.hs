@@ -382,11 +382,19 @@ test2 = patExpr () (litExpr () (TInt 4))
            , Clause () (anyPat ()) [Guard [] (litExpr () (TInt 2))]
            ]
 
+removeNonVarPredicates :: TypeInfo e -> TypeInfo e
+removeNonVarPredicates (TypeInfo e ty ps) = TypeInfo e ty (filter keep ps)
+  where
+    keep (InClass _ (Fix TVar{})) = True
+    keep _                        = False
+
+
 example1 :: IO () -- (ProgExpr (TypeInfo [Error]), Substitution Type, Substitution Kind, Context)
 example1 = do
     void $ runInferT mempty testClassEnv testTypeEnv testKindEnv testConstructorEnv $ do
 
         Ast e <- inferAstType (Ast expr)
+        --let r = toRep (getAst (removeNonVarPredicates <$> Ast e))
         let r = toRep e
         liftIO $ LBS.writeFile "/home/laserpants/play/ast-folder-tree/ast-folder-tree/src/testData22.json" (encode r)
 
