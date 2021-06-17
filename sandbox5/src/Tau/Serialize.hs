@@ -260,7 +260,7 @@ op2Rep = \case
 
 bindintRep :: (ToRep t, ToRep p) => Binding t p -> Value
 bindintRep = \case
-    BVar t p            -> makeRep "Binding" "BVar"   [toRep t, toRep p]
+    BPat t p            -> makeRep "Binding" "BPat"   [toRep t, toRep p]
     BFun t name ps      -> makeRep "Binding" "BFun"   [toRep t, String name, toRep ps]
 
 guardRep :: (ToRep a) => Guard a -> Value

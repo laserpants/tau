@@ -232,7 +232,7 @@ prettyLet bind e1 e2 = "let" <+> pretty bind <+> body <+> "in" <+> e2 where
 
 instance (Pretty p) => Pretty (Binding t p) where
     pretty = \case
-        BVar _ p    -> pretty p
+        BPat _ p    -> pretty p
         BFun _ f ps -> pretty f <> prettyTuple (pretty <$> ps)
 
 instance Pretty (Op1 t) where
@@ -301,7 +301,7 @@ instance (Pretty a) => Guarded [Guard a] where
 
 --instance (Pretty t, Pretty b) => Pretty (Binding t b) where
 --    pretty = \case
---        BVar t pat  -> annotated t pat
+--        BPat t pat  -> annotated t pat
 --        BFun _ f ps -> pretty f <> prettyTuple (pretty <$> ps)
 
 
@@ -910,7 +910,7 @@ class LetBinding b where
 --instance (Pretty b) => LetBinding (Binding (TypeInfoT [Error] Type) b) where
 instance (Typed t, Pretty t, Pretty b) => LetBinding (Binding (TypeInfoT [Error] t) b) where
     printLetBinding = prettyPrint
-    bindingTypeInfo (BVar t _)   = undefined -- (nodeType t)
+    bindingTypeInfo (BPat t _)   = undefined -- (nodeType t)
     bindingTypeInfo (BFun t _ _) = undefined -- t
 
 instance LetBinding (ProgBinding (Maybe Type)) where
@@ -919,7 +919,7 @@ instance LetBinding (ProgBinding (Maybe Type)) where
 
 --instance (Pretty b) => LetBinding (Binding (TypeInfoT [Error] (Maybe Type)) b) where
 --    printLetBinding = prettyPrint
---    bindingTypeInfo (BVar t _)   = fmap fromJust t
+--    bindingTypeInfo (BPat t _)   = fmap fromJust t
 --    bindingTypeInfo (BFun t _ _) = fmap fromJust t
 
 instance LetBinding Void where

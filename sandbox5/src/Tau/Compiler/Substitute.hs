@@ -72,7 +72,7 @@ instance (Substitutable t a) => Substitutable (ProgPattern t) a where
 
 instance (Substitutable t a, Substitutable p a) => Substitutable (Binding t p) a where
     apply sub = \case
-        BVar t p             -> BVar (apply sub t) (apply sub p)
+        BPat t p             -> BPat (apply sub t) (apply sub p)
         BFun t name ps       -> BFun (apply sub t) name (apply sub ps)
 
 instance (Substitutable t a) => Substitutable (Guard (ProgExpr t)) a where

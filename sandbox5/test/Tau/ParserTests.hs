@@ -184,7 +184,7 @@ testExprParser = do
 
     succeedParse exprParser
         "let x = (1, 2) in z"
-        (letExpr () (BVar () (varPat () "x")) (tupleExpr () [litExpr () (TInteger 1), litExpr () (TInteger 2)]) (varExpr () "z"))
+        (letExpr () (BPat () (varPat () "x")) (tupleExpr () [litExpr () (TInteger 1), litExpr () (TInteger 2)]) (varExpr () "z"))
 
     succeedParse exprParser
         "let f(x) = (1, 2) in z"
@@ -226,13 +226,13 @@ testExprParser = do
 
     succeedParse exprParser
         "let f = (x) => x + 1 in y"
-        (letExpr () (BVar () (varPat () "f")) 
+        (letExpr () (BPat () (varPat () "f")) 
             (lamExpr () [varPat () "x"] (op2Expr () (OAdd ()) (varExpr () "x") (litExpr () (TInteger 1))))
             (varExpr () "y"))
 
     succeedParse exprParser
         "let withDefault | Some(y) => y | None => 0 in Some(3)"
-        (letExpr () (BVar () (varPat () "withDefault")) 
+        (letExpr () (BPat () (varPat () "withDefault")) 
             (funExpr ()
                 [ Clause () (conPat () "Some" [varPat () "y"]) [Guard [] (varExpr () "y")]
                 , Clause () (conPat () "None" []) [Guard [] (litExpr () (TInteger 0))] 
@@ -461,15 +461,15 @@ testAnnExprParser = do
 
     succeedParse exprParser
         "let x = (1, 2) : Int in z"
-        (letExpr () (BVar () (varPat () "x")) (annExpr tInt (tupleExpr () [litExpr () (TInteger 1), litExpr () (TInteger 2)])) (varExpr () "z"))
+        (letExpr () (BPat () (varPat () "x")) (annExpr tInt (tupleExpr () [litExpr () (TInteger 1), litExpr () (TInteger 2)])) (varExpr () "z"))
 
     succeedParse exprParser
         "let x = (1, 2) : Int in z : Int"
-        (letExpr () (BVar () (varPat () "x")) (annExpr tInt (tupleExpr () [litExpr () (TInteger 1), litExpr () (TInteger 2)])) (annExpr tInt (varExpr () "z")))
+        (letExpr () (BPat () (varPat () "x")) (annExpr tInt (tupleExpr () [litExpr () (TInteger 1), litExpr () (TInteger 2)])) (annExpr tInt (varExpr () "z")))
 
     succeedParse annExprParser
         "(let x = (1, 2) : Int in z : Int) : Int"
-        (annExpr tInt (letExpr () (BVar () (varPat () "x")) (annExpr tInt (tupleExpr () [litExpr () (TInteger 1), litExpr () (TInteger 2)])) (annExpr tInt (varExpr () "z"))))
+        (annExpr tInt (letExpr () (BPat () (varPat () "x")) (annExpr tInt (tupleExpr () [litExpr () (TInteger 1), litExpr () (TInteger 2)])) (annExpr tInt (varExpr () "z"))))
 
     succeedParse annExprParser
         "{ x = 5 : Int }"

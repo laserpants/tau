@@ -258,7 +258,7 @@ astTypeVars (Ast expr) = nub (exprTypeVars expr)
         EAnn    _ a            -> a
 
     bindingTypeVars = \case
-        BVar    t p            -> typeVars (typeOf t) <> patternTypeVars p
+        BPat    t p            -> typeVars (typeOf t) <> patternTypeVars p
         BFun    t _ ps         -> typeVars (typeOf t) <> (patternTypeVars =<< ps)
 
     clauseTypeVars = \case

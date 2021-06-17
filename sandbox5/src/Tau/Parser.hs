@@ -300,7 +300,7 @@ exprParser = makeExprParser (try lambdaParser <|> try (parens exprParser) <|> pa
         pure [Guard [] expr]
 
     parseFunLet    = BFun () <$> nameParser <*> argParser annPatternParser
-    parseNormalLet = BVar () <$> annPatternParser
+    parseNormalLet = BPat () <$> annPatternParser
 --    parseFix       = undefined
     parseFun       = keyword "fun" *> (funExpr () <$> some parseClause)
     parseVar       = varExpr () <$> nameParser

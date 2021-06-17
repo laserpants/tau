@@ -95,7 +95,7 @@ type ProgClause t = Clause t (ProgPattern t) (ProgExpr t)
 
 -- | Name binding-part of let expressions
 data Binding t p
-    = BVar t p                           -- ^ Simple let-binding
+    = BPat t p                           -- ^ Simple let-binding
     | BFun t Name [p]                    -- ^ Function binding
 
 type ProgBinding t = Binding t (ProgPattern t)
@@ -270,7 +270,7 @@ instance Functor Ast where
             EAnn    t e          -> annExpr    t e
 
         mapBind = \case
-            BVar    t p          -> BVar       (f t) (mapPattern p)
+            BPat    t p          -> BPat       (f t) (mapPattern p)
             BFun    t name ps    -> BFun       (f t) name (mapPattern <$> ps)
 
         mapClause = \case
@@ -382,7 +382,7 @@ op2Tag = \case
 
 bindingTag :: Binding t p -> t
 bindingTag = \case
-    BVar    t _     -> t
+    BPat    t _     -> t
     BFun    t _ _   -> t
 
 astTag :: Ast t -> t

@@ -124,7 +124,7 @@ inferExprType = cata $ \case
             pure (e1, cs)
         pure (patExpr ti e1 cs)
 
-    ELet _ (BVar _ pat) expr1 expr2 -> do
+    ELet _ (BPat _ pat) expr1 expr2 -> do
         ((b, e1, e2), ti, _) <- runNode $ do
             (p, vs) <- second nodeVars <$> listen (patternNode (inferPatternType pat))
             e1 <- exprNode expr1
@@ -137,7 +137,7 @@ inferExprType = cata $ \case
                 unfiyWithNode (typeOf e1)
                 tellPredicates (exprPredicates e1 <> exprPredicates e2)
                 tellPredicates (patternPredicates p)
-            pure (BVar ti p, e1, e2)
+            pure (BPat ti p, e1, e2)
         pure (letExpr ti b e1 e2)
 
     ELet _ (BFun _ f pats) expr1 expr2 -> do
@@ -785,7 +785,7 @@ subs = do
 --                 f ## foldr tArr t1 (typeOf <$> args)
 --         pure es
 -- 
---     ELet _ (BVar _ pat) expr1 expr2 -> inferExprNode (args3 letExpr) $ do
+--     ELet _ (BPat _ pat) expr1 expr2 -> inferExprNode (args3 letExpr) $ do
 --         (p, vs) <- second nodeVars <$> listen (patternNode (inferPatternType pat))
 --         e1 <- exprNode expr1
 --         -- Unify bound variable with expression
@@ -796,7 +796,7 @@ subs = do
 --         e2 <- exprNode (local (inTypeEnv (Env.inserts schemes)) expr2)
 --         unfiyWithNode (typeOf e2)
 -- 
---         name <- inferExprNode BVar $ do
+--         name <- inferExprNode BPat $ do
 --             unfiyWithNode (typeOf e1)
 --             insertPredicates (exprPredicates e1 <> exprPredicates e2)
 --             insertPredicates (patternPredicates p)
