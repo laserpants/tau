@@ -96,7 +96,7 @@ type ProgClause t = Clause t (ProgPattern t) (ProgExpr t)
 
 -- | Name binding-part of let expressions
 data Binding t p
-    = BPat t p                           -- ^ Simple let-binding
+    = BPat t p                           -- ^ Pattern binding
     | BFun t Name [p]                    -- ^ Function binding
 
 type ProgBinding t = Binding t (ProgPattern t)
