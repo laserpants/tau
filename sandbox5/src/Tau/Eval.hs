@@ -94,13 +94,13 @@ getField name [Data f (v:fs)]
     | f == ("{" <> name <> "}") = pure v
     | otherwise                 = getField name fs
 
-closure :: (Monad m) => Name -> m (Value m) -> m (Value m)
+closure :: (MonadReader (ValueEnv m) m) => Name -> m (Value m) -> m (Value m)
 closure var a = pure (Closure var a mempty)
 
 evalVar :: (MonadFail m, MonadReader (ValueEnv m) m) => Name -> m (Value m)
 evalVar var = 
     case Text.stripPrefix "@" var of
-        Just "#getField" -> 
+        Just "#getField" ->
             closure "?a" $ do 
                 Just (Value (TString name)) <- asks (Env.lookup "?a")
                 closure "?b" $ do
