@@ -177,6 +177,11 @@ getTypeVar = project >>> \case
     TVar _ v -> Just v
     _        -> Nothing
 
+getTypeCon :: Type -> Maybe Name
+getTypeCon = project >>> \case
+    TCon _ c -> Just c
+    _        -> Nothing
+
 getTypeIndex :: Polytype -> Maybe Int
 getTypeIndex = project >>> \case
     TGen i   -> Just i
@@ -193,6 +198,24 @@ isTupleType = cata $ \case
     TCon _ con         -> isTupleCon con
     TApp _ a _         -> a
     _                  -> False
+
+isRecordType :: Type -> Bool
+isRecordType = cata $ \case
+    TCon _ "#"         -> True
+    TApp _ a _         -> a
+    _                  -> False
+
+unpackRecordType :: Type -> Maybe Type
+unpackRecordType = para $ \case
+    TApp _ (Fix (TCon _ "#"), _) (t, _) -> Just t
+    TApp _ (_, a) _                     -> a
+    _                                   -> Nothing
+
+lookupRowType :: Name -> Type -> Maybe Type
+lookupRowType name = para $ \case
+    TRow label (r, _) _ | name == label -> Just r
+    TRow _     _ (_, next)              -> next
+    _                                   -> Nothing
 
 isRowCon :: Name -> Bool
 isRowCon con = ("{", "}") == fstLst con

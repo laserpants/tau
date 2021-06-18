@@ -102,6 +102,7 @@ translate = cata $ \case
   where
     prefixOp1 (ONeg t)    = varExpr t "negate"
     prefixOp1 (ONot t)    = varExpr t "not"
+    prefixOp2 (OField t)  = varExpr t "@#getField"
     prefixOp2 op          = varExpr (op2Tag op) ("(" <> op2Symbol op <> ")")
     expandClause (Clause t p gs) = [SimplifiedClause t [p] g | g <- gs]
 

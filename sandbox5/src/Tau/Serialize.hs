@@ -257,6 +257,7 @@ op2Rep = \case
     OStrc  t            -> makeRep "Op2" "OStrc"      [toRep t]
     ONdiv  t            -> makeRep "Op2" "ONdiv"      [toRep t]
     ODot   t            -> makeRep "Op2" "ODot"       [toRep t]
+    OField t            -> makeRep "Op2" "OField"     [toRep t]
 
 bindintRep :: (ToRep t, ToRep p) => Binding t p -> Value
 bindintRep = \case

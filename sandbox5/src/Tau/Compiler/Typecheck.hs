@@ -180,12 +180,65 @@ inferExprType = cata $ \case
 
     EOp2 _ op2 expr1 expr2 -> do
         ((op, a, b), ti, _) <- runNode $ do
+--            a <- exprNode expr1
+--            b <- exprNode expr2
+--            op <- inferOp2Type op2
+--            t1 <- thisNodeType
+--            op ## (typeOf a `tArr` typeOf b `tArr` t1) 
+--            pure (op, a, b)
+
             a <- exprNode expr1
             b <- exprNode expr2
-            op <- inferOp2Type op2
-            t1 <- thisNodeType
-            op ## (typeOf a `tArr` typeOf b `tArr` t1) 
-            pure (op, a, b)
+
+            let getRowField = case (a, unpackRecordType (typeOf b)) of
+                  (Fix (EVar _ name), Just row) -> do
+                      t <- lookupRowType name row
+                      pure (name, t)
+                  _ -> 
+                      Nothing
+
+            case (op2, getRowField) of
+                (ODot _, Just (name, t)) -> do
+                    unfiyWithNode t
+                    op <- inferOp2Type (OField ())
+                    op ## (typeOf a `tArr` typeOf b `tArr` t) 
+                    pure (op, litExpr (TypeInfo [] tString []) (TString name), b)
+
+                _ -> do
+                    op <- inferOp2Type op2
+                    t1 <- thisNodeType
+                    op ## (typeOf a `tArr` typeOf b `tArr` t1) 
+                    pure (op, a, b)
+
+--            case (a, unpackRecordType (typeOf b)) of
+--                (Fix (EVar _ name), Just row) -> do
+--                    case lookupRowType name row of
+--                        Just t -> do
+--                            unfiyWithNode t
+--                            op <- inferOp2Type (OField ())
+--                            op ## (typeOf a `tArr` typeOf b `tArr` t) 
+--                            pure (op, litExpr (TypeInfo [] tString []) (TString name), b)
+--
+--                        _ -> def
+--                _ -> def
+
+--            a <- exprNode expr1
+--            b <- exprNode expr2
+--
+--            let lookupFn expr r = case (expr, unpackRecordType r) of
+--                  (Fix (EVar _ name), Just row) -> lookupRowType name row
+--                  _                             -> Nothing
+--
+--            op <- case lookupFn a (typeOf b) of
+--                Just t1 -> do
+--                    unfiyWithNode t1
+--                    inferOp2Type (OField ())
+--                _ -> 
+--                    inferOp2Type op2
+--
+--            t1 <- thisNodeType
+--            op ## (typeOf a `tArr` typeOf b `tArr` t1) 
+--            pure (op, a, b)
         pure (op2Expr ti op a b)
 
     ETuple _ exprs -> do
@@ -353,6 +406,7 @@ inferOp2Type = \case
     OLte _ -> opType OLte (Forall [kTyp] [InClass "Ord" 0] (tGen 0 `tArr` tGen 0 `tArr` tBool))
     OGte _ -> opType OGte (Forall [kTyp] [InClass "Ord" 0] (tGen 0 `tArr` tGen 0 `tArr` tBool))
     ODot _ -> opType ODot (Forall [kTyp, kTyp] [] ((tGen 0 `tArr` tGen 1) `tArr` tGen 0 `tArr` tGen 1))
+    OField _ -> opType OField (Forall [kTyp, kTyp] [] (tString `tArr` tGen 1 `tArr` tGen 0))
 
 inferClauseType
   :: ( MonadSupply Name m

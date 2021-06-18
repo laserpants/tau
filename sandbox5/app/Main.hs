@@ -508,14 +508,23 @@ example1 = do
 --        (letExpr () (BFun () "f" [varPat () "y"]) (varExpr () "y")
 --            (op2Expr () (ODot ()) (varExpr () "f") (varExpr () "x")))
 
-    expr = letExpr () (BPat () (varPat () "getA")) (funExpr () [
-            Clause () (conPat () "#" [varPat () "x"]) [Guard [] (patExpr () (varExpr () "x") [
-                Clause () (rowPat () "b" (varPat () "x") (anyPat ())) [Guard [] (varExpr () "x")]
-            ])]
-        ])
-            (letExpr () (BPat () (varPat () "r")) 
+--    expr = letExpr () (BPat () (varPat () "getA")) (funExpr () [
+--            Clause () (conPat () "#" [varPat () "x"]) [Guard [] (patExpr () (varExpr () "x") [
+--                Clause () (rowPat () "b" (varPat () "x") (anyPat ())) [Guard [] (varExpr () "x")]
+--            ])]
+--        ])
+--            (letExpr () (BPat () (varPat () "r")) 
+--                (recordExpr () (rowExpr () "a" (annExpr tInt (litExpr () (TInt 1))) (rowExpr () "b" (annExpr tInt (litExpr () (TInt 2))) (conExpr () "{}" [])))) 
+--                    (appExpr () [varExpr () "getA", varExpr () "r"]))
+
+    expr = 
+            letExpr () (BPat () (varPat () "r")) 
                 (recordExpr () (rowExpr () "a" (annExpr tInt (litExpr () (TInt 1))) (rowExpr () "b" (annExpr tInt (litExpr () (TInt 2))) (conExpr () "{}" [])))) 
-                    (appExpr () [varExpr () "getA", varExpr () "r"]))
+                    (op2Expr () (ODot ()) (varExpr () "b") (varExpr () "r"))
+
+--                    (appExpr () [varExpr () "getA", varExpr () "r"])
+
+
 
 
 

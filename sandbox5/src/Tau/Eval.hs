@@ -89,9 +89,24 @@ eval = cata $ \case
     CPat expr fields -> 
         expr >>= evalPat fields
 
+getField :: (Monad m) => Name -> [Value m] -> m (Value m)
+getField name [Data f (v:fs)]
+    | f == ("{" <> name <> "}") = pure v
+    | otherwise                 = getField name fs
+
+closure :: (Monad m) => Name -> m (Value m) -> m (Value m)
+closure var a = pure (Closure var a mempty)
+
 evalVar :: (MonadFail m, MonadReader (ValueEnv m) m) => Name -> m (Value m)
 evalVar var = 
     case Text.stripPrefix "@" var of
+        Just "#getField" -> 
+            closure "?a" $ do 
+                Just (Value (TString name)) <- asks (Env.lookup "?a")
+                closure "?b" $ do
+                    Just (Data "#" fields) <- asks (Env.lookup "?b")
+                    getField name fields
+
         Just prim ->
             case Env.lookup prim primEnv of
                 Just fun -> evalPrim prim fun []
@@ -183,7 +198,7 @@ evalPat ((ps@[p, _, _], e):_) val
   where
     isRowCon ""  = False
     isRowCon con = Text.head con == '{' && Text.last con == '}'
-evalPat ((p:ps, e):eqs) val =
+evalPat ((p:ps, e):eqs) val = 
     case val of
         Data con args | p == con ->
             local (Env.inserts (zip ps args)) e

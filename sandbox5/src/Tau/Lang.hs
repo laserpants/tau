@@ -74,6 +74,7 @@ data Op2 t
     | OStrc  t                           -- ^ String concatenation operator
     | ONdiv  t                           -- ^ Integral division
     | ODot   t                           -- ^ Dot operator
+    | OField t                           -- ^ Field access operator
 
 -- | Operator associativity
 data Assoc
@@ -315,6 +316,7 @@ instance Functor Ast where
             OStrc   t            -> OStrc      (f t)
             ONdiv   t            -> ONdiv      (f t)
             ODot    t            -> ODot       (f t)
+            OField  t            -> OField     (f t)
 
 -- >>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>
 
@@ -379,6 +381,7 @@ op2Tag = \case
     OStrc   t       -> t
     ONdiv   t       -> t
     ODot    t       -> t 
+    OField  t       -> t 
 
 bindingTag :: Binding t p -> t
 bindingTag = \case
@@ -436,6 +439,7 @@ opPrecedence = \case
     OOpt   _ -> 3
     OStrc  _ -> 5
     ODot   _ -> 1
+    OField _ -> 1
 
 -- | Return the associativity of a binary operator
 opAssoc :: Op2 t -> Assoc
@@ -460,6 +464,7 @@ opAssoc = \case
     OOpt   _ -> AssocN
     OStrc  _ -> AssocR
     ODot   _ -> AssocL
+    OField _ -> AssocL
 
 -- | Return the symbolic representation of a binary operator
 op2Symbol :: Op2 t -> Name
@@ -486,6 +491,7 @@ op2Symbol = \case
     OStrc   _ -> "++"
     ONdiv   _ -> "//"
     ODot    _ -> "."
+    OField  _ -> "@"
 
 -- >>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>
 -- Constructors

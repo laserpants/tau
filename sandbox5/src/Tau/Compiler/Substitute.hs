@@ -131,6 +131,7 @@ instance (Substitutable t a) => Substitutable (Op2 t) a where
         OStrc  t             -> OStrc  (apply sub t)
         ONdiv  t             -> ONdiv  (apply sub t)
         ODot   t             -> ODot   (apply sub t)
+        OField t             -> OField (apply sub t)
 
 instance (Substitutable t a) => Substitutable (Ast t) a where
     apply sub = \case
