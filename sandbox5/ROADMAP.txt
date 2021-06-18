@@ -1,8 +1,7 @@
 [x] JSON representations
 [x] Rows/Records
 [x] Patterns anomalies
-
-[-] Record field access
+[x] Record field access
 [-] Type class ambg.
 [-] Kinds
 [-] Tests

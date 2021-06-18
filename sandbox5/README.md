@@ -1,7 +1,7 @@
 
 
 grok : Option Int -> Int -> Int
-grok of 
+grok 
   | (Some x) 1 iff x > 100 = 0  
   | None     1             = 1 
   | _        _             = 2
@@ -163,6 +163,8 @@ foo(())
 
 
 let x = fun | Some(y) => y | None => 123 in x(Some(3)) 
+
+let x | Some(y) => y | None => 123 in x(Some(3)) 
 
 let withDefault(val) = fun | Some(y) => y | None => val in Some(3).withDefault(5)
 

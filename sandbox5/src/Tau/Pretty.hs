@@ -259,7 +259,7 @@ instance (Pretty p, Pretty a) => Clauses [Clause t p a] where
     clauses = hsep . fmap pretty
 
 instance (Pretty p, Pretty a) => Pretty (Clause t p a) where
-    pretty (Clause _ p g) = pipe <+> pretty p <+> guard g
+    pretty (Clause _ p g) = pipe <+> pretty p <+> prettyGuard g
 
 instance (Pretty a) => Pretty (Guard a) where
     pretty (Guard es e) = iffs <> "=>" <+> pretty e 
@@ -271,10 +271,10 @@ instance (Pretty a) => Pretty (Guard a) where
         prettyIff e = "iff" <+> pretty e
 
 class Guarded g where
-    guard :: g -> Doc a
+    prettyGuard :: g -> Doc a
 
 instance (Pretty a) => Guarded [Guard a] where
-    guard gs = hsep (pretty <$> gs)
+    prettyGuard gs = hsep (pretty <$> gs)
 
 -- >>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>
 
