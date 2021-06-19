@@ -21,6 +21,7 @@ data Prim
     | TDouble  Double                    -- ^ Double precision floating point numbers
     | TChar    Char                      -- ^ Chars
     | TString  Text                      -- ^ Strings
+    | TAtom    Name                      -- ^ Symbolic constant (language internal)
 
 -- >>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>
 
@@ -415,6 +416,7 @@ primName = \case
     (TDouble  _) -> "Double"
     (TChar    _) -> "Char"
     (TString  _) -> "String"
+    (TAtom    _) -> "Atom"
 
 -- | Return the precedence of a binary operator
 opPrecedence :: Op2 t -> Int

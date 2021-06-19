@@ -76,6 +76,14 @@ inferExprType = cata $ \case
             case es of
                 [] -> pure ()
                 f:args -> do
+                    --traceShowM (typeOf f)
+                    --traceShowM "****"
+                    --traceShowM "****"
+                    --traceShowM "****"
+                    --traceShowM "****"
+                    --traceShowM "****"
+                    --traceShowM "****"
+                    --pure ()
                     t1 <- thisNodeType
                     f ## foldr tArr t1 (typeOf <$> args)
             pure es
@@ -202,7 +210,8 @@ inferExprType = cata $ \case
                     unfiyWithNode t
                     op <- inferOp2Type (OField ())
                     op ## (typeOf a `tArr` typeOf b `tArr` t) 
-                    pure (op, litExpr (TypeInfo [] tString []) (TString name), b)
+                    --pure (op, litExpr (TypeInfo [] tString []) (TString name), b)
+                    pure (op, litExpr (TypeInfo [] tAtom []) (TAtom name), b)
 
                 _ -> do
                     op <- inferOp2Type op2
@@ -394,19 +403,19 @@ inferOp2Type
   => Op2 t
   -> WriterT Node m (Op2 (TypeInfo [Error]))
 inferOp2Type = \case
-    OEq  _ -> opType OEq  (Forall [kTyp] [InClass "Eq" 0] (tGen 0 `tArr` tGen 0 `tArr` tBool))
-    ONeq _ -> opType ONeq (Forall [kTyp] [InClass "Eq" 0] (tGen 0 `tArr` tGen 0 `tArr` tBool))
-    OAdd _ -> opType OAdd (Forall [kTyp] [InClass "Num" 0] (tGen 0 `tArr` tGen 0 `tArr` tGen 0))
-    OMul _ -> opType OMul (Forall [kTyp] [InClass "Num" 0] (tGen 0 `tArr` tGen 0 `tArr` tGen 0))
-    OSub _ -> opType OSub (Forall [kTyp] [InClass "Num" 0] (tGen 0 `tArr` tGen 0 `tArr` tGen 0))
-    OAnd _ -> opType OAnd (Forall [] [] (tBool `tArr` tBool `tArr` tBool))
-    OOr  _ -> opType OOr  (Forall [] [] (tBool `tArr` tBool `tArr` tBool))
-    OLt  _ -> opType OLt  (Forall [kTyp] [InClass "Ord" 0] (tGen 0 `tArr` tGen 0 `tArr` tBool))
-    OGt  _ -> opType OGt  (Forall [kTyp] [InClass "Ord" 0] (tGen 0 `tArr` tGen 0 `tArr` tBool))
-    OLte _ -> opType OLte (Forall [kTyp] [InClass "Ord" 0] (tGen 0 `tArr` tGen 0 `tArr` tBool))
-    OGte _ -> opType OGte (Forall [kTyp] [InClass "Ord" 0] (tGen 0 `tArr` tGen 0 `tArr` tBool))
-    ODot _ -> opType ODot (Forall [kTyp, kTyp] [] ((tGen 0 `tArr` tGen 1) `tArr` tGen 0 `tArr` tGen 1))
-    OField _ -> opType OField (Forall [kTyp, kTyp] [] (tString `tArr` tGen 1 `tArr` tGen 0))
+    OEq    _ -> opType OEq  (Forall [kTyp] [InClass "Eq" 0] (tGen 0 `tArr` tGen 0 `tArr` tBool))
+    ONeq   _ -> opType ONeq (Forall [kTyp] [InClass "Eq" 0] (tGen 0 `tArr` tGen 0 `tArr` tBool))
+    OAdd   _ -> opType OAdd (Forall [kTyp] [InClass "Num" 0] (tGen 0 `tArr` tGen 0 `tArr` tGen 0))
+    OMul   _ -> opType OMul (Forall [kTyp] [InClass "Num" 0] (tGen 0 `tArr` tGen 0 `tArr` tGen 0))
+    OSub   _ -> opType OSub (Forall [kTyp] [InClass "Num" 0] (tGen 0 `tArr` tGen 0 `tArr` tGen 0))
+    OAnd   _ -> opType OAnd (Forall [] [] (tBool `tArr` tBool `tArr` tBool))
+    OOr    _ -> opType OOr  (Forall [] [] (tBool `tArr` tBool `tArr` tBool))
+    OLt    _ -> opType OLt  (Forall [kTyp] [InClass "Ord" 0] (tGen 0 `tArr` tGen 0 `tArr` tBool))
+    OGt    _ -> opType OGt  (Forall [kTyp] [InClass "Ord" 0] (tGen 0 `tArr` tGen 0 `tArr` tBool))
+    OLte   _ -> opType OLte (Forall [kTyp] [InClass "Ord" 0] (tGen 0 `tArr` tGen 0 `tArr` tBool))
+    OGte   _ -> opType OGte (Forall [kTyp] [InClass "Ord" 0] (tGen 0 `tArr` tGen 0 `tArr` tBool))
+    ODot   _ -> opType ODot (Forall [kTyp, kTyp] [] ((tGen 0 `tArr` tGen 1) `tArr` tGen 0 `tArr` tGen 1))
+    OField _ -> opType OField (Forall [kTyp, kTyp] [] (tCon kTyp "Atom" `tArr` tGen 1 `tArr` tGen 0))
 
 inferClauseType
   :: ( MonadSupply Name m
@@ -456,6 +465,7 @@ primType = \case
     TInteger{} -> Forall [kTyp] [InClass "Num" 0] (tGen 0)
     TFloat{}   -> Forall [kTyp] [InClass "Fractional" 0] (tGen 0)
     TDouble{}  -> Forall [kTyp] [InClass "Fractional" 0] (tGen 0)
+    TAtom{}    -> Forall [kTyp] [] (tGen 0)
 
 exprNode
   :: ( MonadSupply Name m
@@ -677,6 +687,7 @@ doUnify t1 t2 = do
         modify (second3 (kindSub <>))
 -- TODO
 -- --        runUnifyKinds (kindOf t1) (kindOf t2)
+
         forM_ (Map.toList (getSub typeSub)) (uncurry propagate))
   where
     propagate tv ty = do

@@ -158,6 +158,15 @@ primEnv = Env.fromList
     , ( "Float.fromInteger"   , fun1 (fromInteger :: Integer -> Float) )
     , ( "Double.fromInteger"  , fun1 (fromInteger :: Integer -> Double) )
 
+    , ( "Bool.id"             , fun1 (id :: Bool -> Bool) )
+    , ( "Int.id"              , fun1 (id :: Int -> Int) )
+    , ( "Integer.id"          , fun1 (id :: Integer -> Integer) )
+    , ( "Float.id"            , fun1 (id :: Float -> Float) )
+    , ( "Double.id"           , fun1 (id :: Double -> Double) )
+    , ( "Char.id"             , fun1 (id :: Char -> Char) )
+    , ( "String.id"           , fun1 (id :: Text -> Text) )
+    , ( "Unit.id"             , fun1 (id :: () -> ()) )
+
     , ( "String.length"       , fun1 (Text.length :: Text -> Int ) )
 
     , ( "(++)"                , fun2 ((<>) :: Text -> Text -> Text ) )

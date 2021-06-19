@@ -116,44 +116,53 @@ inConstructorEnv
   -> (ClassEnv, TypeEnv, KindEnv, ConstructorEnv)
 inConstructorEnv f (e1, e2, e3, e4) = (e1, e2, e3, f e4)
 
-lookupClassInstance
-  :: ( MonadSupply Name m 
-     , MonadError Error m )
-  => Name
-  -> Type
+withClassInfo 
+  :: (MonadError Error m, MonadSupply Text m)
+  => (List (PredicateT Name) -> ClassInfo Type (Ast (TypeInfo ())) -> m a)
+  -> Name 
+  -> Type 
   -> ClassEnv
-  -> m (ClassInfo Type (Ast (TypeInfo ())))
-lookupClassInstance name ty env = do
+  -> m a
+withClassInfo fn name ty env = do
     (ClassInfo{..}, insts) <- liftMaybe (MissingClass name) (Env.lookup name env)
     info <- sequence [tryMatch i | i <- insts]
-    msum info & maybe (throwError (MissingInstance name ty)) pure
+    msum info & maybe (throwError (MissingInstance name ty)) (fn classSuper)
   where
     tryMatch info@ClassInfo{..} = do
         sub <- eitherToMaybe <$> runExceptT (matchTypes (predicateType classSignature) ty)
         pure (applyBoth <$> sub <*> pure info)
 
+lookupAllClassMethods
+  :: (MonadSupply Name m, MonadError Error m)
+  => Name
+  -> Type
+  -> ClassEnv
+  -> m [(Name, Ast (TypeInfo ()))]
+lookupAllClassMethods name ty env = withClassInfo collectAll name ty env 
+  where 
+    collectAll classSuper ClassInfo{ classMethods = methods } = do
+        super <- concat <$$> forM classSuper $ \(InClass name _) ->
+            lookupAllClassMethods name ty env
+        pure (super <> methods)
 
---    tryMatch 
---      :: (MonadSupply Name m) 
---      => ClassInfo Type (Ast (TypeInfo ())) 
---      -> m (Maybe (ClassInfo Type (Ast (TypeInfo ()))))
+lookupClassInstance
+  :: (MonadSupply Name m, MonadError Error m)
+  => Name
+  -> Type
+  -> ClassEnv
+  -> m (ClassInfo Type (Ast (TypeInfo ())))
+lookupClassInstance = withClassInfo (const pure) 
 
-        --pure (apply2 (t, k, ()) info)
-        --pure (apply2 (t, k, ()) info)
-        --undefined
-        --case matchTypes (predicateType classSignature) ty of
-        --    Left{}       -> Nothing
-        --    Right (t, k) -> Just (apply2 (t, k, ()) info)
-
---lookupClassInstance2
---  :: Name
---  -> Type
---  -> ClassEnv
---  -> Maybe (ClassInfo Type (Ast (TypeInfo ())))
---lookupClassInstance2 tc ty env = 
---    case Env.lookup tc env of
---        Nothing -> undefined
---        Just (x, y) -> Just x
+lookupAllClassX
+  :: (MonadSupply Name m, MonadError Error m)
+  => Name
+  -> ClassEnv
+  -> m [(Name, Type)]
+lookupAllClassX name env = do
+    (ClassInfo{..}, _) <- liftMaybe (MissingClass name) (Env.lookup name env)
+    super <- concat <$$> forM classSuper $ \(InClass name _) ->
+        lookupAllClassX name env
+    pure (super <> classMethods)
 
 -- >>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>
 

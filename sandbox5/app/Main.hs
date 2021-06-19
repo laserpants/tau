@@ -6,12 +6,14 @@ module Main where
 
 import Control.Monad.IO.Class
 import Control.Monad.Identity
+import Control.Monad.Except
 import Control.Monad.Reader
 import Control.Monad.State
 import Control.Monad.Supply
 import Data.Aeson
-import Data.Maybe
 import Data.Function ((&))
+import Data.Maybe
+import System.Environment 
 import Tau.Compiler.Error
 import Tau.Compiler.Patterns
 import Tau.Compiler.Pipeline.Stage0 
@@ -26,10 +28,12 @@ import Tau.Compiler.Typecheck
 import Tau.Core
 import Tau.Eval
 import Tau.Lang
+import Tau.Parser
 import Tau.Prog
 import Tau.Serialize
 import Tau.Tooling
 import Tau.Type
+import Text.Megaparsec
 import qualified Data.ByteString.Lazy as LBS
 import qualified Tau.Compiler.Pipeline.Stage0 as Stage0
 import qualified Tau.Compiler.Pipeline.Stage1 as Stage1
@@ -44,7 +48,28 @@ import qualified Tau.Env as Env
 
 --Clause t (ProgPattern t) (ProgExpr t)
 
-main = pure ()
+main :: IO ()
+main = do
+    [a] <- getArgs
+    case doParse (pack a) of
+        Right expr -> foo1 expr
+        Left err   -> traceShowM err
+    pure ()
+
+  where
+    doParse inp = runParserStack exprParser "" inp
+-- -- print "Main"
+
+
+--test338 :: ClassInfo Type (Ast (TypeInfo ()))
+test338 = do  --(classSignature, classSuper, classMethods)
+    case xx of
+        Right y -> mapM_ print y
+  where
+    exp = lookupAllClassMethods "Num" tInt testClassEnv
+    --xx :: [(Name, Ast (TypeInfo ()))]
+    xx = fromJust (runExceptT (evalSupplyT exp (numSupply "a")))
+
 
 test337 :: IO Bool
 test337 = runReaderT (exhaustive
@@ -389,8 +414,7 @@ removeNonVarPredicates (TypeInfo e ty ps) = TypeInfo e ty (filter keep ps)
     keep _                        = False
 
 
-example1 :: IO () -- (ProgExpr (TypeInfo [Error]), Substitution Type, Substitution Kind, Context)
-example1 = do
+foo1 expr = do
     void $ runInferT mempty testClassEnv testTypeEnv testKindEnv testConstructorEnv $ do
 
         Ast e <- inferAstType (Ast expr)
@@ -479,6 +503,9 @@ example1 = do
 
         pure e
 
+
+example1 :: IO () -- (ProgExpr (TypeInfo [Error]), Substitution Type, Substitution Kind, Context)
+example1 = foo1 expr
   where
     expr :: ProgExpr ()
     --expr = varExpr () "x"
@@ -517,10 +544,51 @@ example1 = do
 --                (recordExpr () (rowExpr () "a" (annExpr tInt (litExpr () (TInt 1))) (rowExpr () "b" (annExpr tInt (litExpr () (TInt 2))) (conExpr () "{}" [])))) 
 --                    (appExpr () [varExpr () "getA", varExpr () "r"]))
 
-    expr = 
-            letExpr () (BPat () (varPat () "r")) 
-                (recordExpr () (rowExpr () "a" (annExpr tInt (litExpr () (TInt 1))) (rowExpr () "b" (annExpr tInt (litExpr () (TInt 2))) (conExpr () "{}" [])))) 
-                    (op2Expr () (ODot ()) (varExpr () "b") (varExpr () "r"))
+-------------------------
+
+    expr =
+        letExpr () 
+            (BFun () "f" [varPat () "x"])
+            (op2Expr () (OAdd ()) (varExpr () "x") (litExpr () (TInt 1))) 
+--            (varExpr () "f")
+            (appExpr () [varExpr () "f", annExpr tInt (litExpr () (TInt 123))])
+
+
+--    expr =
+--        (op2Expr () (ODot ()) 
+--            (varExpr () "a")
+--            (recordExpr () (rowExpr () "a" (annExpr tInt (litExpr () (TInt 1))) (rowExpr () "b" (annExpr tInt (litExpr () (TInt 2))) (conExpr () "{}" [])))) 
+--        )
+
+
+--    expr =
+--        (annExpr tInt (appExpr () [varExpr () "fromInteger", litExpr () (TInteger 11)]))
+
+--    expr =
+--        (recordExpr () (rowExpr () "a" (annExpr tInt (litExpr () (TInt 1))) (rowExpr () "b" (annExpr tInt (litExpr () (TInt 2))) (conExpr () "{}" [])))) 
+
+
+
+--    expr = (annExpr tInt (litExpr () (TInt 6)))
+
+--    expr = (litExpr () (TInt 6))
+
+
+--    expr = (appExpr () [varExpr () "fromInteger", litExpr () (TInteger 1)])
+
+
+
+
+--    expr =
+--        letExpr () 
+--            (BFun () "f" [varPat () "x"])
+--            (op2Expr () (OAdd ()) (varExpr () "x") (litExpr () (TInt 1))) 
+--            (appExpr () [varExpr () "f", annExpr tInt (litExpr () (TInt 123))])
+
+--    expr = 
+--            letExpr () (BPat () (varPat () "r")) 
+--                (recordExpr () (rowExpr () "a" (annExpr tInt (litExpr () (TInt 1))) (rowExpr () "b" (annExpr tInt (litExpr () (TInt 2))) (conExpr () "{}" [])))) 
+--                    (op2Expr () (ODot ()) (varExpr () "b") (varExpr () "r"))
 
 --                    (appExpr () [varExpr () "getA", varExpr () "r"])
 
@@ -1576,16 +1644,17 @@ testKindEnv = Env.fromList
 
 testTypeEnv :: TypeEnv
 testTypeEnv = Env.fromList
-    [ ( "None"   , Forall [kTyp] [] (tApp kTyp (tCon kFun "Option") (tGen 0)) )
-    , ( "Some"   , Forall [kTyp] [] (tGen 0 `tArr` tApp kTyp (tCon kFun "Option") (tGen 0)) )
-    , ( "Foo"    , Forall [] [] (tInt `tArr` tInt `tArr` tCon kTyp "Foo") )
-    , ( "id"     , Forall [kTyp] [] (tGen 0 `tArr` tGen 0) )
-    , ( "(::)"   , Forall [kTyp] [] (tGen 0 `tArr` tList (tGen 0) `tArr` tList (tGen 0)) )
-    , ( "[]"     , Forall [kTyp] [] (tList (tGen 0)) )
-    , ( "(+)"    , Forall [kTyp] [InClass "Num" 0] (tGen 0 `tArr` tGen 0 `tArr` tGen 0) )
-    , ( "#"      , Forall [kRow] [] (tGen 0 `tArr` tApp kTyp tRecordCon (tGen 0)) )
-    , ( "{}"     , Forall [] [] tRowNil )
-    , ( "_#"     , Forall [kRow] [] (tApp kTyp (tCon (kArr kRow kTyp) "#") (tGen 0) `tArr` tGen 0) )
+    [ ( "None"         , Forall [kTyp] [] (tApp kTyp (tCon kFun "Option") (tGen 0)) )
+    , ( "Some"         , Forall [kTyp] [] (tGen 0 `tArr` tApp kTyp (tCon kFun "Option") (tGen 0)) )
+    , ( "Foo"          , Forall [] [] (tInt `tArr` tInt `tArr` tCon kTyp "Foo") )
+    , ( "id"           , Forall [kTyp] [] (tGen 0 `tArr` tGen 0) )
+    , ( "(::)"         , Forall [kTyp] [] (tGen 0 `tArr` tList (tGen 0) `tArr` tList (tGen 0)) )
+    , ( "[]"           , Forall [kTyp] [] (tList (tGen 0)) )
+    , ( "(+)"          , Forall [kTyp] [InClass "Num" 0] (tGen 0 `tArr` tGen 0 `tArr` tGen 0) )
+    , ( "#"            , Forall [kRow] [] (tGen 0 `tArr` tApp kTyp tRecordCon (tGen 0)) )
+    , ( "{}"           , Forall [] [] tRowNil )
+    , ( "_#"           , Forall [kRow] [] (tApp kTyp (tCon (kArr kRow kTyp) "#") (tGen 0) `tArr` tGen 0) )
+    , ( "fromInteger"  , Forall [kTyp] [InClass "Num" 0] (tInteger `tArr` tGen 0) )
     ]
 
 testClassEnv :: ClassEnv
@@ -1629,14 +1698,35 @@ testClassEnv = Env.fromList
           ]
         )
       )
+    , ( "Foo"
+        -- Interface
+      , ( ClassInfo (InClass "Foo" "a") [] 
+            [ ( "foo", tInt ) 
+            ]
+        -- Instances
+        , [ ClassInfo (InClass "Foo" tInt) [] 
+            [ ( "foo", (Ast (litExpr (TypeInfo () tInt []) (TInt 5))) ) 
+            ]
+          , ClassInfo (InClass "Foo" tInteger) [] 
+            [ ( "foo", (Ast (litExpr (TypeInfo () tInt []) (TInt 7))) ) 
+            ]
+          ]
+        )
+      )
     , ( "Num"
         -- Interface
-      , ( ClassInfo (InClass "Num" "a") [] 
-            [ ( "(+)", tVar kTyp "a" `tArr` tVar kTyp "a" `tArr` tVar kTyp "a" )
+      , ( ClassInfo (InClass "Num" "a") [InClass "Foo" "a"]
+            [ ( "(+)"         , tVar kTyp "a" `tArr` tVar kTyp "a" `tArr` tVar kTyp "a" )
+            , ( "fromInteger" , tInteger `tArr` tVar kTyp "a" )
             ]
         -- Instances
         , [ ClassInfo (InClass "Num" tInt) [] 
-            [ ( "fromInteger", Ast (varExpr (TypeInfo () (tInteger `tArr` tInt) []) "@Int.fromInteger") )
+            [ ( "(+)"         , Ast (varExpr (TypeInfo () (tInt `tArr` tInt `tArr` tInt) []) "@Int.(+)") )
+            , ( "fromInteger" , Ast (varExpr (TypeInfo () (tInteger `tArr` tInt) []) "@Int.fromInteger") )
+            ]
+          , ClassInfo (InClass "Num" tInteger) [] 
+            [ ( "(+)"         , Ast (varExpr (TypeInfo () (tInteger `tArr` tInteger `tArr` tInteger) []) "@Integer.(+)") )
+            , ( "fromInteger" , Ast (varExpr (TypeInfo () (tInteger `tArr` tInteger) []) "@Integer.id") )
             ]
           ]
         )

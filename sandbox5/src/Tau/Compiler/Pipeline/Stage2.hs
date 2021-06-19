@@ -145,7 +145,6 @@ dictTVar ty = do
     case filter ((==) ty . snd) map of
         p:_ -> pure (fst p)
         _   -> do 
-            --var <- Text.replace "a" "$dict" <$> supply
             var <- supply
             modify ((var, ty) :)
             pure var
@@ -156,58 +155,100 @@ applyDicts
   => Predicate
   -> WorkingExpr (Maybe Type)
   -> StateT [(Name, Type)] m (WorkingExpr (Maybe Type))
-applyDicts (InClass name ty) expr
+applyDicts (InClass name ty) = project >>> \case
 
-    | isVar ty = do
-        tv <- dictTVar t1
-        pure (appExpr (workingExprTag expr) 
-          [ setWorkingExprTag (tArr t1 <$> workingExprTag expr) expr
-          , varExpr (Just t1) tv ])
+    EVar _ var 
+        | isVar ty -> do
+            undefined
 
-    | otherwise = do
-        env <- askClassEnv
-        xx <- runExceptT (lookupClassInstance name ty env)
-        case classMethods <$> xx of
-            Left{} -> error ("No instance " <> show name <> " " <> show ty)
-            Right methods -> do
-                map <- traverse (secondM translateMethod) methods
-                pure (fromMaybe (buildDict map) (findIn map expr))
-        --methods <-- classMethods foo
-        --map <- traverse (secondM translateMethod) methods
-        --pure (fromMaybe (buildDict map) (findIn map expr))
+        | otherwise -> do
+            undefined
+    _ 
+        | isVar ty -> do
+            undefined
 
---        case classMethods <$> lookupClassInstance name ty env of
---            Left e -> undefined
---        case classMethods <$> lookupClassInstance name ty env of
---        --    -- TODO
---        --    Left e -> error ("No instance " <> show name <> " " <> show ty)
---        --    -- TODO
+        | otherwise -> do
+            undefined
+
+
+--applyDicts (InClass name ty) expr
+--
+--    | isVar ty = do
+--        tv <- dictTVar t1
+--        pure (appExpr (workingExprTag expr) 
+--          [ setWorkingExprTag (tArr t1 <$> workingExprTag expr) expr
+--          , varExpr (Just t1) tv ])
+--
+--    | otherwise = do
+--        env <- askClassEnv
+--        all <- runExceptT (lookupAllClassMethods name ty env)
+--        --ins <- runExceptT (lookupClassInstance name ty env)
+--        case all of
+--            Left{} -> error ("No instance " <> show name <> " " <> show ty)
 --            Right methods -> do
 --                map <- traverse (secondM translateMethod) methods
---                pure (fromMaybe (buildDict map) (findIn map expr))
-  where
-    t1 = tApp kClass (tCon (kArr kTyp kClass) name) ty
-
-    translateMethod = expandTypeClasses 
-                    . Stage1.translate 
-                    . getAst 
-                    . translateTag 
-
-    translateTag = fmap (\(TypeInfo () ty ps) -> TypeInfo [] (Just ty) ps)
-
-    findIn :: [(Name, WorkingExpr t)] -> WorkingExpr t -> Maybe (WorkingExpr t)
-    findIn map = project >>> \case
-        EVar _ var -> lookup var map
-        _          -> Nothing
-
-    buildDict :: [(Name, WorkingExpr (Maybe Type))] -> WorkingExpr (Maybe Type)
-    buildDict map = 
-        conExpr (Just t1) "#" [row]
-      where 
-        row = foldr fn (conExpr (Just tRowNil) "{}" []) map
-        fn (name, expr) e = 
-            let row = tRow name <$> workingExprTag expr <*> workingExprTag e
-             in rowExprCons row name expr e
+--                case findIn map expr of
+--                    Just e -> pure e
+--                    Nothing -> 
+--                        pure $ appExpr (workingExprTag expr)
+--                          [ setWorkingExprTag (tArr t1 <$> workingExprTag expr) expr
+--                          , buildDict map ]
+--
+--                --pure (fromMaybe (buildDict map) (findIn map expr))
+--                --pure (buildDict map)
+--
+----        traceShowM "vvvvvvvvvvvvv"
+----        traceShowM expr
+----        traceShowM "vvvvvvvvvvvvv"
+----
+----        case expr of
+----            Fix (EVar _ var) -> do
+----                traceShowM "*************"
+----                traceShowM var
+----            _ -> pure ()
+----
+----        pure foo
+--
+--        --pure (appExpr (workingExprTag expr)
+--        --  [ setWorkingExprTag (tArr t1 <$> workingExprTag expr) expr
+--        --  , foo ])
+--
+--        --methods <-- classMethods foo
+--        --map <- traverse (secondM translateMethod) methods
+--        --pure (fromMaybe (buildDict map) (findIn map expr))
+--
+----        case classMethods <$> lookupClassInstance name ty env of
+----            Left e -> undefined
+----        case classMethods <$> lookupClassInstance name ty env of
+----        --    -- TODO
+----        --    Left e -> error ("No instance " <> show name <> " " <> show ty)
+----        --    -- TODO
+----            Right methods -> do
+----                map <- traverse (secondM translateMethod) methods
+----                pure (fromMaybe (buildDict map) (findIn map expr))
+--  where
+--    t1 = tApp kClass (tCon (kArr kTyp kClass) name) ty
+--
+--    translateMethod = expandTypeClasses 
+--                    . Stage1.translate 
+--                    . getAst 
+--                    . translateTag 
+--
+--    translateTag = fmap (\(TypeInfo () ty ps) -> TypeInfo [] (Just ty) ps)
+--
+--    findIn :: [(Name, WorkingExpr t)] -> WorkingExpr t -> Maybe (WorkingExpr t)
+--    findIn map = project >>> \case
+--        EVar _ var -> lookup var map
+--        _          -> Nothing
+--
+--    buildDict :: [(Name, WorkingExpr (Maybe Type))] -> WorkingExpr (Maybe Type)
+--    buildDict map = 
+--        conExpr (Just t1) "#" [row]
+--      where 
+--        row = foldr fn (conExpr (Just tRowNil) "{}" []) map
+--        fn (name, expr) e = 
+--            let row = tRow name <$> workingExprTag expr <*> workingExprTag e
+--             in rowExprCons row name expr e
 
 setWorkingExprTag :: t -> WorkingExpr t -> WorkingExpr t
 setWorkingExprTag t = cata $ \case

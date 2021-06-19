@@ -363,6 +363,9 @@ tChar = typ "Char"
 tString :: TypeT a
 tString = typ "String"
 
+tAtom :: TypeT a
+tAtom = typ "Atom"
+
 -- Lists
 
 tListCon :: TypeT a

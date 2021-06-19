@@ -102,7 +102,7 @@ evalVar var =
     case Text.stripPrefix "@" var of
         Just "#getField" ->
             closure "?a" $ do 
-                Just (Value (TString name)) <- asks (Env.lookup "?a")
+                Just (Value (TAtom name)) <- asks (Env.lookup "?a")
                 closure "?b" $ do
                     Just (Data "#" fields) <- asks (Env.lookup "?b")
                     getField name fields

@@ -60,6 +60,7 @@ instance Pretty Prim where
         TDouble  a -> pretty a
         TChar    a -> squotes (pretty a)
         TString  a -> dquotes (pretty a)
+        TAtom    a -> "<" <> pretty a <> ">"
 
 -- >>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>
 
@@ -107,9 +108,14 @@ instance Pretty Type where
             let (_:ts) = unfoldApp (tApp k t1 t2)
              in prettyTuple (pretty <$> ts)
 
-        TApp _ (_, doc1) (t2, doc2) ->
-            doc1 <+> parensIf useRight doc2
+        TApp _ (t1, doc1) (t2, doc2) ->
+            parensIf useLeft doc1 <+> parensIf useRight doc2
           where
+            useLeft = 
+                case project t1 of
+                    TArr{} -> True
+                    _      -> False
+
             useRight =
                 case project t2 of
                     TApp{} -> True
@@ -120,9 +126,14 @@ instance Pretty Type where
         TVar _ var -> pretty var
         TCon _ con -> pretty con
 
-        TRow label (_, doc1) (t2, doc2) ->
-            "{" <> pretty label <> "}" <+> doc1 <+> parensIf useRight doc2
+        TRow label (t1, doc1) (t2, doc2) ->
+            "{" <> pretty label <> "}" <+> parensIf useLeft doc1 <+> parensIf useRight doc2
           where
+            useLeft = 
+                case project t1 of
+                    TArr{} -> True
+                    _      -> False
+
             useRight =
                 case project t2 of
                     TCon _ "{}" -> False
