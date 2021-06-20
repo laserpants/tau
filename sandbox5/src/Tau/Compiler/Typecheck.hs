@@ -76,14 +76,6 @@ inferExprType = cata $ \case
             case es of
                 [] -> pure ()
                 f:args -> do
-                    --traceShowM (typeOf f)
-                    --traceShowM "****"
-                    --traceShowM "****"
-                    --traceShowM "****"
-                    --traceShowM "****"
-                    --traceShowM "****"
-                    --traceShowM "****"
-                    --pure ()
                     t1 <- thisNodeType
                     f ## foldr tArr t1 (typeOf <$> args)
             pure es
@@ -210,7 +202,6 @@ inferExprType = cata $ \case
                     unfiyWithNode t
                     op <- inferOp2Type (OField ())
                     op ## (typeOf a `tArr` typeOf b `tArr` t) 
-                    --pure (op, litExpr (TypeInfo [] tString []) (TString name), b)
                     pure (op, litExpr (TypeInfo [] tAtom []) (TAtom name), b)
 
                 _ -> do
@@ -219,35 +210,6 @@ inferExprType = cata $ \case
                     op ## (typeOf a `tArr` typeOf b `tArr` t1) 
                     pure (op, a, b)
 
---            case (a, unpackRecordType (typeOf b)) of
---                (Fix (EVar _ name), Just row) -> do
---                    case lookupRowType name row of
---                        Just t -> do
---                            unfiyWithNode t
---                            op <- inferOp2Type (OField ())
---                            op ## (typeOf a `tArr` typeOf b `tArr` t) 
---                            pure (op, litExpr (TypeInfo [] tString []) (TString name), b)
---
---                        _ -> def
---                _ -> def
-
---            a <- exprNode expr1
---            b <- exprNode expr2
---
---            let lookupFn expr r = case (expr, unpackRecordType r) of
---                  (Fix (EVar _ name), Just row) -> lookupRowType name row
---                  _                             -> Nothing
---
---            op <- case lookupFn a (typeOf b) of
---                Just t1 -> do
---                    unfiyWithNode t1
---                    inferOp2Type (OField ())
---                _ -> 
---                    inferOp2Type op2
---
---            t1 <- thisNodeType
---            op ## (typeOf a `tArr` typeOf b `tArr` t1) 
---            pure (op, a, b)
         pure (op2Expr ti op a b)
 
     ETuple _ exprs -> do
