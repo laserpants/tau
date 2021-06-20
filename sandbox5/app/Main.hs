@@ -552,8 +552,8 @@ example1 = foo1 expr
 --    expr =
 --        appExpr () [varExpr () "fn1", litExpr () (TInteger 1), litExpr () (TInteger 1)]
 
-    expr =
-        appExpr () [varExpr () "fn1", annExpr tInteger (litExpr () (TInteger 1)), litExpr () (TInteger 1)]
+--    expr =
+--        appExpr () [varExpr () "fn1", annExpr tInteger (litExpr () (TInteger 1)), litExpr () (TInteger 1)]
 
 --    expr =
 --        letExpr () 
@@ -563,12 +563,12 @@ example1 = foo1 expr
 --            (appExpr () [varExpr () "f", annExpr tInt (litExpr () (TInt 123))])
 
 
---    expr =
---        letExpr () 
---            (BFun () "f" [varPat () "x"])
---            (op2Expr () (OAdd ()) (varExpr () "x") (litExpr () (TInt 1))) 
-----            (varExpr () "f")
---            (appExpr () [varExpr () "f", annExpr tInt (litExpr () (TInt 123))])
+    expr =
+        letExpr () 
+            (BFun () "f" [varPat () "x"])
+            (op2Expr () (OAdd ()) (varExpr () "x") (litExpr () (TInt 1))) 
+--            (varExpr () "f")
+            (appExpr () [varExpr () "f", annExpr tInt (litExpr () (TInt 123))])
 
 
 --    expr =
