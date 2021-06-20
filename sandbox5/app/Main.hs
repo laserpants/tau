@@ -546,12 +546,29 @@ example1 = foo1 expr
 
 -------------------------
 
+--    expr =
+--        op2Expr () (OAdd ()) (litExpr () (TInt 1)) (litExpr () (TInt 1))
+
+--    expr =
+--        appExpr () [varExpr () "fn1", litExpr () (TInteger 1), litExpr () (TInteger 1)]
+
     expr =
-        letExpr () 
-            (BFun () "f" [varPat () "x"])
-            (op2Expr () (OAdd ()) (varExpr () "x") (litExpr () (TInt 1))) 
---            (varExpr () "f")
-            (appExpr () [varExpr () "f", annExpr tInt (litExpr () (TInt 123))])
+        appExpr () [varExpr () "fn1", annExpr tInteger (litExpr () (TInteger 1)), litExpr () (TInteger 1)]
+
+--    expr =
+--        letExpr () 
+--            (BPat () (varPat () "f"))
+--            (lamExpr () [varPat () "x"] (op2Expr () (OAdd ()) (varExpr () "x") (litExpr () (TInt 1))))
+----            (varExpr () "f")
+--            (appExpr () [varExpr () "f", annExpr tInt (litExpr () (TInt 123))])
+
+
+--    expr =
+--        letExpr () 
+--            (BFun () "f" [varPat () "x"])
+--            (op2Expr () (OAdd ()) (varExpr () "x") (litExpr () (TInt 1))) 
+----            (varExpr () "f")
+--            (appExpr () [varExpr () "f", annExpr tInt (litExpr () (TInt 123))])
 
 
 --    expr =
@@ -1655,6 +1672,7 @@ testTypeEnv = Env.fromList
     , ( "{}"           , Forall [] [] tRowNil )
     , ( "_#"           , Forall [kRow] [] (tApp kTyp (tCon (kArr kRow kTyp) "#") (tGen 0) `tArr` tGen 0) )
     , ( "fromInteger"  , Forall [kTyp] [InClass "Num" 0] (tInteger `tArr` tGen 0) )
+    , ( "fn1"          , Forall [kTyp] [InClass "Num" 0] (tGen 0 `tArr` tGen 0 `tArr` tGen 0))
     ]
 
 testClassEnv :: ClassEnv
@@ -1701,15 +1719,16 @@ testClassEnv = Env.fromList
     , ( "Foo"
         -- Interface
       , ( ClassInfo (InClass "Foo" "a") [] 
-            [ ( "foo", tInt ) 
+            -- [ ( "foo", tInt ) 
+            [ ( "foo", tBool ) 
             ]
         -- Instances
         , [ ClassInfo (InClass "Foo" tInt) [] 
-            [ ( "foo", (Ast (litExpr (TypeInfo () tInt []) (TInt 5))) ) 
-            ]
+            -- [ ( "foo", (Ast (litExpr (TypeInfo () tInt []) (TInt 5))) ) 
+            [ ( "foo", (Ast (litExpr (TypeInfo () tBool []) (TBool True))) ) ]
           , ClassInfo (InClass "Foo" tInteger) [] 
-            [ ( "foo", (Ast (litExpr (TypeInfo () tInt []) (TInt 7))) ) 
-            ]
+            -- [ ( "foo", (Ast (litExpr (TypeInfo () tInt []) (TInt 7))) ) 
+            [ ( "foo", (Ast (litExpr (TypeInfo () tBool []) (TBool False))) ) ]
           ]
         )
       )
@@ -1750,4 +1769,5 @@ testEvalEnv = Env.fromList
     [ -- ( "(,)" , constructor "(,)" 2 )
       ( "_#"  , fromJust (evalExpr (cLam "?0" (cPat (cVar "?0") [(["#", "?1"], cVar "?1")])) mempty) ) 
     , ( "(.)" , fromJust (evalExpr (cLam "f" (cLam "x" (cApp [cVar "f", cVar "x"]))) mempty) )
+--    , ( "fn1" , fromJust (evalExpr (cLam "?0" (cLam "?1" (cApp [cVar "@Integer.(+)", cVar "?0", cVar "?1"]))) mempty) )
     ]

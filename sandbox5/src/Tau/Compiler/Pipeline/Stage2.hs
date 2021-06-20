@@ -9,6 +9,7 @@ import Control.Monad.State
 import Control.Monad.Supply
 import Data.Foldable (foldrM)
 import Data.List (nub)
+import Data.Either (fromRight)
 import Data.Maybe (fromMaybe, fromJust)
 import Data.Tuple.Extra (second)
 import Tau.Compiler.Error
@@ -129,9 +130,16 @@ expandTypeClasses expr =
 insertArgsExpr :: WorkingExpr (Maybe Type) -> [(Name, Type)] -> WorkingExpr (Maybe Type)
 insertArgsExpr = foldr fun 
   where
+    --fun (var, ty) e = 
+    --    lamExpr (tArr <$> Just ty <*> workingExprTag e) 
+    --            [varPat (Just ty) var] e
+
     fun (var, ty) e = 
-        lamExpr (tArr <$> Just ty <*> workingExprTag e) 
-                [varPat (Just ty) var] e
+        case ty of
+            Fix (TApp _ _ (Fix TVar{})) -> 
+                lamExpr (tArr <$> Just ty <*> workingExprTag e) 
+                        [varPat (Just ty) var] e
+            _ -> e
 
 insertArgsBinding :: ProgBinding (Maybe Type) -> [(Name, Type)] -> ProgBinding (Maybe Type)
 insertArgsBinding (BFun t name ps) vs = BFun t' name ps'
@@ -155,20 +163,64 @@ applyDicts
   => Predicate
   -> WorkingExpr (Maybe Type)
   -> StateT [(Name, Type)] m (WorkingExpr (Maybe Type))
-applyDicts (InClass name ty) = project >>> \case
+applyDicts (InClass name ty) expr = do
+    env <- askClassEnv
+    tv  <- dictTVar t1
+    case project expr of
+        EVar t var 
+            | isVar ty -> do
+                all <- baz env
+                if var `elem` (fst <$> all)
+                    then do
+                        let getType t = tAtom `tArr` t1 `tArr` t
+                        pure $ appExpr (workingExprTag expr) 
+                            [ varExpr (getType <$> workingExprTag expr) "@#getField"
+                            , litExpr (Just tAtom) (TAtom var) 
+                            , varExpr (Just t1) tv ]
+                    else pure $ appExpr (workingExprTag expr) 
+                            [ setWorkingExprTag (tArr t1 <$> workingExprTag expr) expr
+                            , varExpr (Just t1) tv ]
+            | otherwise -> do
+                methods <- baz2 env
+                map <- traverse (secondM translateMethod) methods
+                case lookup var map of
+                    Just e -> pure e
+                    Nothing -> 
+                        pure $ appExpr (workingExprTag expr)
+                          [ setWorkingExprTag (tArr t1 <$> workingExprTag expr) expr
+                          , buildDict map ]
+        e
+            | isVar ty -> do
+                undefined -- pure (varExpr (Just tInt) "a")
 
-    EVar _ var 
-        | isVar ty -> do
-            undefined
+            | otherwise -> do
+                undefined -- pure (varExpr (Just tInt) "a")
 
-        | otherwise -> do
-            undefined
-    _ 
-        | isVar ty -> do
-            undefined
+  where
+    t1 = tApp kTyp (tCon (kArr kTyp kTyp) name) ty
+    
+    baz env = fromRight noClassError <$> runExceptT (lookupAllClassX name env)
+    noClassError = error ("No class " <> show name)
 
-        | otherwise -> do
-            undefined
+    baz2 env = fromRight noInstanceError <$> runExceptT (lookupAllClassMethods name ty env)
+    noInstanceError = error ("No instance " <> show name <> " " <> show ty)
+
+    translateMethod = translate
+                    . Stage1.translate 
+                    . getAst 
+                    . translateTag 
+
+    translateTag = fmap (\(TypeInfo () ty ps) -> TypeInfo [] (Just ty) ps)
+
+    buildDict :: [(Name, WorkingExpr (Maybe Type))] -> WorkingExpr (Maybe Type)
+    buildDict map = 
+        conExpr (Just t1) "#" [row]
+      where 
+        row = foldr fn (conExpr (Just tRowNil) "{}" []) map
+        fn (name, expr) e = 
+            let row = tRow name <$> workingExprTag expr <*> workingExprTag e
+             in rowExprCons row name expr e
+
 
 
 --applyDicts (InClass name ty) expr
