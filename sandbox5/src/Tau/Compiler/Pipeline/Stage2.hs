@@ -145,7 +145,14 @@ insertArgsBinding :: ProgBinding (Maybe Type) -> [(Name, Type)] -> ProgBinding (
 insertArgsBinding (BFun t name ps) vs = BFun t' name ps'
   where
     (t', ps') = foldr fun (t, ps) vs
-    fun (var, ty) (t, ps) = (tArr ty <$> t, varPat (Just ty) var:ps)
+--    fun (var, ty) (t, ps) = (tArr ty <$> t, varPat (Just ty) var:ps)
+
+    fun (var, ty) (t, ps) = 
+        case ty of
+            Fix (TApp _ _ (Fix TVar{})) -> 
+                (tArr ty <$> t, varPat (Just ty) var:ps)
+            _ -> 
+                (t, ps)
 
 dictTVar :: (MonadSupply Name m) => Type -> StateT [(Name, Type)] m Name
 dictTVar ty = do

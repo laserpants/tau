@@ -45,6 +45,9 @@ import qualified Tau.Compiler.Pipeline.Stage6 as Stage6
 import qualified Tau.Env as Env
 
 
+-- let f(x : Int) = x + 1 in f(127)
+
+
 
 --Clause t (ProgPattern t) (ProgExpr t)
 
@@ -59,6 +62,15 @@ main = do
   where
     doParse inp = runParserStack exprParser "" inp
 -- -- print "Main"
+
+
+test339 :: ProgExpr ()
+test339 = 
+    letExpr ()
+        (BPat () (varPat () "f"))
+        (lamExpr () [annPat tInt (varPat () "x")] (op2Expr () (OAdd ()) (varExpr () "x") (litExpr () (TInteger 1))))
+        (appExpr () [varExpr () "f", litExpr () (TInt 123)])
+        
 
 
 --test338 :: ClassInfo Type (Ast (TypeInfo ()))
@@ -546,6 +558,19 @@ example1 = foo1 expr
 
 -------------------------
 
+    expr =
+        letExpr ()
+            (BFun () "f" [annPat tInt (varPat () "x")])
+            (op2Expr () (OAdd ()) (varExpr () "x") (litExpr () (TInteger 1)))
+            (appExpr () [varExpr () "f", litExpr () (TInt 123)])
+
+--        letExpr ()
+--            (BPat () (varPat () "f"))
+--            (lamExpr () [annPat tInt (varPat () "x")] (op2Expr () (OAdd ()) (varExpr () "x") (litExpr () (TInteger 1))))
+--            (appExpr () [varExpr () "f", litExpr () (TInt 123)])
+--            
+
+
 --    expr =
 --        op2Expr () (OAdd ()) (litExpr () (TInt 1)) (litExpr () (TInt 1))
 
@@ -563,12 +588,21 @@ example1 = foo1 expr
 --            (appExpr () [varExpr () "f", annExpr tInt (litExpr () (TInt 123))])
 
 
-    expr =
-        letExpr () 
-            (BFun () "f" [varPat () "x"])
-            (op2Expr () (OAdd ()) (varExpr () "x") (litExpr () (TInt 1))) 
---            (varExpr () "f")
-            (appExpr () [varExpr () "f", annExpr tInt (litExpr () (TInt 123))])
+--    expr =
+--        letExpr () 
+--            (BFun () "f" [annPat tInt (varPat () "x")])
+--            (op2Expr () (OAdd ()) (varExpr () "x") (litExpr () (TInt 1))) 
+----            (varExpr () "f")
+--            (appExpr () [varExpr () "f", litExpr () (TInt 123)])
+
+
+
+--    expr =
+--        letExpr () 
+--            (BFun () "f" [varPat () "x"])
+--            (op2Expr () (OAdd ()) (varExpr () "x") (litExpr () (TInt 1))) 
+----            (varExpr () "f")
+--            (appExpr () [varExpr () "f", annExpr tInt (litExpr () (TInt 123))])
 
 
 --    expr =
