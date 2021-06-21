@@ -38,7 +38,19 @@ inferAstType
 inferAstType (Ast expr) = do
     e <- inferExprType expr
     sub <- subs
-    pure (simplifyPredicates <$> Ast (applyBoth sub e))
+    pure (simplifyPredicates <$> Ast (packRows (applyBoth sub e)))
+
+packRows 
+  :: ProgExpr (TypeInfo [Error])
+  -> ProgExpr (TypeInfo [Error])
+packRows = cata $ \case
+
+    EVar t var -> 
+        if isRecordType (nodeType t)
+            then conExpr (TypeInfo [] (nodeType t) []) "#" [varExpr (fromJust . unpackRecordType <$> t) var]
+            else varExpr t var
+
+    e -> embed e
 
 inferExprType
   :: ( MonadSupply Name m
@@ -327,9 +339,27 @@ inferPatternType = cata $ \case
     PRow _ label pat row -> do
         ((p, r), ti, vs) <- runNode $ do
             p <- patternNode pat
-            r <- patternNode row
+            (r, vs) <- lift row
+            tellPredicates (patternPredicates r)
+
+            case project r of
+                PVar{} -> tellVars (second (tRecord) <$> vs)
+                _      -> tellVars vs
+
             unfiyWithNode (tRow label (typeOf p) (typeOf r))
             pure (p, r)
+
+--            case project r of
+--                PVar{} -> do
+--                    unfiyWithNode (tRow label (typeOf p) (typeOf r))
+--                    pure (p, r)
+--                    --let q = tRecord (typeOf r)
+--                    --unfiyWithNode (tRow label (typeOf p) q)
+--                    --pure (p, conPat (TypeInfo [] q []) "#" [r])
+--                _ -> do
+--                    unfiyWithNode (tRow label (typeOf p) (typeOf r))
+--                    pure (p, r)
+
         pure (rowPat ti label p r, vs)
 
     PAnn t pat -> do

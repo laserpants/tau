@@ -183,6 +183,11 @@ patternParser = makeExprParser (try (parens patternParser) <|> parser)
                                <*> (fromMaybe [] <$> optional (components annPatternParser))
     parseRecord    = recordPat () <$> rowParser "=" annPatternParser rowPat varPat emptyRowPat
 
+--    parseRecord    = recordPat () <$> rowParser "=" annPatternParser rowPat varPat_ emptyRowPat
+--
+--    varPat_ _ var = conPat () "#" [varPat () var]
+
+
 -- >>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>
 
 operator :: [[Operator Parser (ProgExpr ())]]

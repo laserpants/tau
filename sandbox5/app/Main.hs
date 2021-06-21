@@ -671,14 +671,94 @@ example1 = foo1 expr
 --                                    , varExpr () "r" ])
 --
 
---    -- (({ a = a | z }) => z)({ a = 1, b = 2, c = 3 })
+----    -- (({ a = a | z }) => z)({ a = 1, b = 2, d = 3 })
+--
+--    expr = appExpr () 
+--        -- [ lamExpr () [recordPat () (rowPat () "a" (varPat () "a") (varPat () "z"))] (varExpr () "z")
+--        [ lamExpr () [recordPat () (rowPat () "a" (varPat () "a") (varPat () "z"))] (varExpr () "z")
+--        , recordExpr () (rowExpr () "a" (annExpr tInt (litExpr () (TInt 1))) 
+--                        (rowExpr () "b" (annExpr tInt (litExpr () (TInt 2))) 
+--                        (rowExpr () "d" (annExpr tInt (litExpr () (TInt 3))) 
+--                        (conExpr () "{}" [])))) ]
 
-    expr = appExpr () 
-        [ lamExpr () [recordPat () (rowPat () "a" (varPat () "a") (varPat () "z"))] (varExpr () "z")
-        , recordExpr () (rowExpr () "a" (annExpr tInt (litExpr () (TInt 1))) (rowExpr () "b" (annExpr tInt (litExpr () (TInt 2))) (rowExpr () "c" (annExpr tInt (litExpr () (TInt 3))) (conExpr () "{}" [])))) ]
+
+--    -- (({ a = a | z }) => z)({ a = 1 })
+--
+--    expr = appExpr () 
+--        -- [ lamExpr () [recordPat () (rowPat () "a" (varPat () "a") (varPat () "z"))] (varExpr () "z")
+--        [ lamExpr () [recordPat () (rowPat () "a" (varPat () "a") (varPat () "z"))] (varExpr () "z")
+--        , recordExpr () (rowExpr () "a" (annExpr tInt (litExpr () (TInt 1))) 
+--                        (conExpr () "{}" [])) ]
+
+
+--    -- ({ a = a | z }) => z
+--
+--    expr = 
+--        -- [ lamExpr () [recordPat () (rowPat () "a" (varPat () "a") (varPat () "z"))] (varExpr () "z")
+--        lamExpr () [recordPat () (rowPat () "a" (varPat () "a") (varPat () "z"))] (varExpr () "z")
+
+
+--    -- (z) => { a = 1 : Int | z }
+--
+--    expr = 
+--        lamExpr () [varPat () "z"] (recordExpr () (rowExpr () "a" 
+--            (annExpr tInt (litExpr () (TInteger 1))) (appExpr () [varExpr () "_#", varExpr () "z"])))
+
+
+--    -- ((z) => { a = 1 : Int | z })({ b = 2 })
+--
+--    expr = 
+--        appExpr () [
+--            lamExpr () [varPat () "z"] (recordExpr () (rowExpr () "a" 
+--                (annExpr tInt (litExpr () (TInteger 1))) (appExpr () [varExpr () "_#", varExpr () "z"])))
+--        , recordExpr () (rowExpr () "b" (annExpr tInt (litExpr () (TInt 2))) (conExpr () "{}" []))
+--        ]
+
+--    -- let f = (z) => { a = 1 : Int | z } in f({ b = 2 })
+--
+--    expr = 
+--
+--        letExpr () 
+--            (BPat () (varPat () "f"))
+--            (lamExpr () [varPat () "z"] (recordExpr () (rowExpr () "a" (annExpr tInt (litExpr () (TInteger 1))) (appExpr () [varExpr () "_#", varExpr () "z"])))) 
+--            (appExpr () [varExpr () "f", recordExpr () (rowExpr () "b" (annExpr tInt (litExpr () (TInt 2))) (conExpr () "{}" []))])
+
+    -- let f(z) = { a = 1 : Int | z } in f({ b = 2 })
+
+    expr = 
+
+        letExpr () 
+            (BFun () "f" [varPat () "z"])
+            (recordExpr () (rowExpr () "a" (annExpr tInt (litExpr () (TInteger 1))) (appExpr () [varExpr () "_#", varExpr () "z"]))) 
+            (appExpr () [varExpr () "f", recordExpr () (rowExpr () "b" (annExpr tInt (litExpr () (TInt 2))) (conExpr () "{}" []))])
 
 
 
+--        appExpr () [
+--            lamExpr () [varPat () "z"] (recordExpr () (rowExpr () "a" (annExpr tInt (litExpr () (TInteger 1))) (appExpr () [varExpr () "_#", varExpr () "z"])))
+--        , recordExpr () (rowExpr () "b" (annExpr tInt (litExpr () (TInt 2))) (conExpr () "{}" []))
+--        ]
+
+
+
+
+
+
+
+
+
+--    -- let r = { z = 1 } in { a = 1, b = 2, d = 3 | r }
+--    expr = 
+--        letExpr () (BPat () (varPat () "r"))
+--            (recordExpr () (rowExpr () "z" (annExpr tInt (litExpr () (TInt 1))) (conExpr () "{}" []))) 
+--                    (recordExpr () (rowExpr () "a" (annExpr tInt (litExpr () (TInt 1))) 
+--                                    (rowExpr () "b" (annExpr tInt (litExpr () (TInt 2))) 
+--                                    (rowExpr () "d" (annExpr tInt (litExpr () (TInt 3))) 
+--
+--                                    (appExpr () [varExpr () "_#", varExpr () "r"])))))
+--
+--                                    --(varExpr () "r")))))
+--
 
 --                    (appExpr () [varExpr () "getA", varExpr () "r"])
 

@@ -89,11 +89,10 @@ instance Pretty Type where
                     TArr{} -> True
                     _      -> False
 
-        TApp _ (Fix (TCon _ "#"), _) (Fix (TVar _ v), _) ->
-            pretty v
-
         TApp _ (Fix (TCon _ "#"), _) (t2, _) -> 
-            "{" <+> commaSep fields <> final <+> "}"
+            if null fields
+                then maybe "" (\v -> "{" <+> pretty v <+> "}") final
+                else "{" <+> commaSep fields <+> maybe "}" (\v -> "|" <+> pretty v <+> "}") final
           where
             fields = flip para t2 $ \case
                 TRow label ty rest -> pretty label <+> ":" <+> pretty (fst ty):snd rest
@@ -101,8 +100,8 @@ instance Pretty Type where
 
             final = flip cata t2 $ \case
                 TRow _ _ r         -> r
-                TVar _ v           -> " " <> pipe <+> pretty v
-                _                  -> ""
+                TVar _ v           -> Just v
+                _                  -> Nothing
 
         TApp k (t1, _) (t2, _) | isTupleType t1 ->
             let (_:ts) = unfoldApp (tApp k t1 t2)
