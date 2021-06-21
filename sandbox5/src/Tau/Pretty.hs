@@ -92,7 +92,8 @@ instance Pretty Type where
         TApp _ (Fix (TCon _ "#"), _) (t2, _) -> 
             if null fields
                 then maybe "" (\v -> "{" <+> pretty v <+> "}") final
-                else "{" <+> commaSep fields <+> maybe "}" (\v -> "|" <+> pretty v <+> "}") final
+                else "{" <+> commaSep fields <+> maybe "}" 
+                    (\v -> "|" <+> pretty v <+> "}") final
           where
             fields = flip para t2 $ \case
                 TRow label ty rest -> pretty label <+> ":" <+> pretty (fst ty):snd rest
