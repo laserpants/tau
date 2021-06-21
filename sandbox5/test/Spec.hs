@@ -39,7 +39,11 @@ main =
 --        describe "Tau.Compiler.Substitution.null"          testNull
 --
 --        describe "Tau.Compiler.Typecheck.inferPattern"     testInferPattern
---
+
+        describe "Tau.Compiler.Typecheck.inferExprType"     testInferExprType
+        describe "Tau.Compiler.Typecheck.inferRecordExpr"   testInferRecordExpr
+        describe "Tau.Compiler.Typecheck.inferPatternType"  testInferPatternType
+
 --        describe "Tau.Compiler.Tranlsation.simplifyExpr"   testSimplifyExpr
 --
 --        describe "Tau.Compiler.Substitution.null"          testNull
