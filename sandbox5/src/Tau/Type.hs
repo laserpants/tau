@@ -195,15 +195,15 @@ isTupleCon con = Just True == (allCommas <$> stripped con)
 
 isTupleType :: Type -> Bool
 isTupleType = cata $ \case
-    TCon _ con         -> isTupleCon con
-    TApp _ a _         -> a
-    _                  -> False
+    TCon _ con -> isTupleCon con
+    TApp _ a _ -> a
+    _          -> False
 
 isRecordType :: Type -> Bool
 isRecordType = cata $ \case
-    TCon _ "#"         -> True
-    TApp _ a _         -> a
-    _                  -> False
+    TCon _ "#" -> True
+    TApp _ a _ -> a
+    _          -> False
 
 unpackRecordType :: Type -> Maybe Type
 unpackRecordType = para $ \case
@@ -213,9 +213,8 @@ unpackRecordType = para $ \case
 
 lookupRowType :: Name -> Type -> Maybe Type
 lookupRowType name = para $ \case
-    TRow label (r, _) _ | name == label -> Just r
-    TRow _     _ (_, next)              -> next
-    _                                   -> Nothing
+    TRow label (r, _) (_, next) -> if name == label then Just r else next
+    _                           -> Nothing
 
 isRowCon :: Name -> Bool
 isRowCon con = ("{", "}") == fstLst con
