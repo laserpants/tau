@@ -19,6 +19,18 @@ import qualified Data.Map.Strict as Map
 import qualified Data.Set.Monad as Set
 import qualified Tau.Env as Env
 
+--foo :: (Show t, RowType t) => [[ProgPattern t]] -> [[ProgPattern t]]
+--foo pss = (phase2 . phase1 <$$> pss) 
+--  where
+--    phase1 = cata $ \case
+--        p@PRow{}       -> foldRow (embed p)
+--        p              -> embed p
+--
+--    phase2 = cata $ \case
+--        PRow t lab p q -> conPat t ("{" <> lab <> "}") [p, q]
+--        --PRow t lab p q -> tuplePat t [p, q]
+--        p              -> embed p
+
 useful 
   :: (Show t, RowType t, MonadReader ConstructorEnv m) 
   => [[ProgPattern t]] 
@@ -31,13 +43,15 @@ useful pss ps = phase3 (phase2 . phase1 <$$> pss) (phase2 . phase1 <$> ps)
         p              -> embed p
 
     phase2 = cata $ \case
-        PRow t lab p q -> conPat t ("{" <> lab <> "}") [p, q]
+        --PRow t lab p q -> conPat t ("{" <> lab <> "}") [p, q]
+        PRow t lab p q -> tuplePat t [p, q]
         p              -> embed p
 
     phase3 [] _ = pure True      -- Zero rows (0x0 matrix)
     phase3 (p1:_) qs 
         | null p1 = pure False   -- One or more rows but no columns
         | null qs = error "Implementation error (phase3)"
+
     phase3 pss (q:qs) = 
         case groupPatterns q of
             ConGroup con rs  ->

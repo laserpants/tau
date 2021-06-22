@@ -39,403 +39,407 @@ patternsAreNotExhaustive pss =
 testPatterns :: SpecWith ()
 testPatterns = do
 
---    patternsAreExhaustive 
---        [ [] :: [ProgPattern ()]
---        ] 
---
---    patternsAreExhaustive 
---        [ [litPat () (TBool True)]
---        , [litPat () (TBool False)] 
---        ]
---
---    patternsAreNotExhaustive
---        [ [litPat () (TBool True)]
---        ]
---
---    patternsAreExhaustive 
---        [ [conPat () "(::)" [varPat () "x", conPat () "(::)" [varPat () "y", varPat () "ys"]]]
---        , [conPat () "[]" []]
---        , [conPat () "(::)" [varPat () "z", varPat () "zs"]]
---        ] 
---
---    patternsAreExhaustive 
---        [ [conPat () "(::)" [varPat () "x", conPat () "(::)" [varPat () "y", varPat () "ys"]]]
---        , [conPat () "[]" []]
---        , [conPat () "(::)" [varPat () "z", varPat () "zs"]]
---        ]
---
---    patternsAreNotExhaustive
---        [ [conPat () "(::)" [varPat () "x", conPat () "(::)" [varPat () "y", varPat () "ys"]]]
---        , [conPat () "(::)" [varPat () "z", varPat () "zs"]]
---        ]
---
---    patternsAreNotExhaustive
---        [ [conPat () "(::)" [varPat () "x", conPat () "(::)" [varPat () "y", varPat () "ys"]]]
---        , [conPat () "(::)" [varPat () "z", varPat () "zs"]]
---        , [conPat () "(::)" [anyPat (), anyPat ()]]
---        ]
---
---    patternsAreExhaustive 
---        [ [conPat () "(::)" [varPat () "x", conPat () "(::)" [varPat () "y", varPat () "ys"]]]
---        , [conPat () "(::)" [varPat () "z", varPat () "zs"]]
---        , [conPat () "(::)" [anyPat (), anyPat ()]]
---        , [conPat () "[]" []]
---        ]
---
---    patternsAreExhaustive 
---        [ [conPat () "(::)" [varPat () "x", conPat () "(::)" [varPat () "y", varPat () "ys"]]]
---        , [conPat () "[]" []]
---        , [conPat () "(::)" [varPat () "z", conPat () "[]" []]]
---        ]
---
---    patternsAreNotExhaustive
---        [ [conPat () "(::)" [varPat () "x", conPat () "(::)" [varPat () "y", varPat () "ys"]]]
---        , [conPat () "[]" []]
---        ]
---
---    patternsAreNotExhaustive
---        [ [conPat () "[]" []]
---        ]
---
---    patternsAreExhaustive 
---        [ [anyPat ()]
---        ]
---
---    patternsAreExhaustive 
---        [ [conPat () "(::)" [varPat () "x", varPat () "ys"]]
---        , [conPat () "[]" []]
---        ]
---
---    patternsAreExhaustive 
---        [ [conPat () "(::)" [varPat () "x", varPat () "ys"]]
---        , [varPat () "x"]
---        ]
---
---    patternsAreExhaustive 
---        [ [litPat () (TInt 5)]
---        , [varPat () "x"]
---        ]
---
---    patternsAreNotExhaustive
---        [ [litPat () (TInt 5)]
---        , [litPat () (TInt 4)]
---        ]
---
---    patternsAreExhaustive 
---        [ [litPat () (TInt 5), litPat () (TInt 5)]
---        , [varPat () "x", varPat () "y"]
---        ]
---
---    patternsAreNotExhaustive
---        [ [litPat () (TInt 5), litPat () (TInt 5)]
---        , [varPat () "x", litPat () (TInt 0)]
---        ]
---
---    patternsAreExhaustive 
---        [ [litPat () (TBool True)]
---        , [litPat () (TBool False)]
---        ]
---
---    patternsAreExhaustive 
---        [ [litPat () (TBool True)]
---        , [anyPat ()]
---        ]
---
---    patternsAreNotExhaustive
---        [ [litPat () (TBool True)]
---        ]
---
---    patternsAreExhaustive
---        [ [litPat () TUnit]
---        ]
---
---    patternsAreExhaustive
---        [ [litPat () TUnit, litPat () TUnit]
---        ]
---
---    patternsAreExhaustive
---        [ [litPat () TUnit, anyPat ()]
---        ]
---
---    patternsAreNotExhaustive
---        [ [litPat () TUnit, litPat () (TInt 3)]
---        ]
---
---    patternsAreNotExhaustive
---        [ [litPat () (TString "x")]
---        , [litPat () (TString "y")]
---        ]
---
---    patternsAreExhaustive
---        [ [litPat () (TString "x")]
---        , [litPat () (TString "y")]
---        , [anyPat ()]
---        ]
---
---    -- Tuple patterns
---
---    describe "Tuple patterns" $ do
---
---        patternsAreNotExhaustive
---            [ [tuplePat () [litPat () (TInt 1), litPat () (TInt 2)]]
---            ]
---
---        patternsAreExhaustive
---            [ [tuplePat () [anyPat (), anyPat ()]]
---            ]
---
---        patternsAreExhaustive
---            [ [tuplePat () [litPat () (TInt 1), litPat () (TInt 2)]]
---            , [tuplePat () [anyPat (), anyPat ()]]
---            ]
---
---        patternsAreNotExhaustive
---            [ [tuplePat () [conPat () "(::)" [varPat () "x", varPat () "xs"], litPat () (TInt 2)]]
---            , [tuplePat () [conPat () "[]" [], anyPat ()]]
---            ]
---
---        patternsAreExhaustive
---            [ [tuplePat () [conPat () "(::)" [varPat () "x", varPat () "xs"], litPat () (TBool True)]]
---            , [tuplePat () [conPat () "(::)" [varPat () "x", varPat () "xs"], litPat () (TBool False)]]
---            , [tuplePat () [conPat () "[]" [], anyPat ()]]
---            ]
---
---        patternsAreNotExhaustive
---            [ [tuplePat () [conPat () "(::)" [varPat () "x", varPat () "xs"], litPat () (TBool True)]]
---            , [tuplePat () [conPat () "(::)" [litPat () (TInt 3), varPat () "xs"], litPat () (TBool False)]]
---            , [tuplePat () [conPat () "[]" [], anyPat ()]]
---            ]
---
---        patternsAreExhaustive
---            [ [tuplePat () [conPat () "(::)" [varPat () "x", varPat () "xs"], litPat () (TBool True)]]
---            , [tuplePat () [conPat () "(::)" [litPat () (TInt 3), varPat () "xs"], litPat () (TBool False)]]
---            , [tuplePat () [conPat () "[]" [], anyPat ()]]
---            , [anyPat ()]
---            ]
---
---        -- (x, (y, z))
---        patternsAreExhaustive
---            [ [tuplePat () [varPat () "x", tuplePat () [varPat () "y", varPat () "z"]]]
---            ]
---
---     -- List patterns
---
---    describe "List patterns" $ do
---
---        patternsAreNotExhaustive
---            [ [listPat () [litPat () (TInt 1), litPat () (TInt 2)]]
---            ]
---
---        patternsAreNotExhaustive
---            [ [listPat () [varPat () "x", litPat () (TInt 2)]]
---            ]
---
---        patternsAreExhaustive
---            [ [listPat () [varPat () "x", litPat () (TInt 2)]]
---            , [anyPat ()]
---            ]
---
---        patternsAreNotExhaustive
---            [ [listPat () [varPat () "x", varPat () "y"]]
---            ]
---
---        patternsAreExhaustive
---            [ [conPat () "[]" []]
---            , [conPat () "(::)" [varPat () "x", varPat () "xs"]]
---            ]
---
---        patternsAreExhaustive
---            [ [listPat () []]
---            , [conPat () "(::)" [varPat () "x", varPat () "xs"]]
---            ]
---
---        patternsAreExhaustive
---            [ [listPat () []]
---            , [listPat () [varPat () "x"]]
---            , [listPat () [varPat () "x", varPat () "y"]]
---            , [conPat () "(::)" [varPat () "x", conPat () "(::)" [varPat () "y", varPat () "ys"]]]
---            ]
---
---     -- Or-patterns
---
---    describe "Or-patterns" $ do
---
---        patternsAreNotExhaustive
---            [ [litPat () (TBool False)]
---            ]
---
---        patternsAreExhaustive
---            [ [orPat () (litPat () (TBool False)) (litPat () (TBool True))]
---            ]
---
---     -- As-patterns
---
---    describe "As-patterns" $ do
---
---        patternsAreExhaustive
---            [ [asPat () "cons" (conPat () "(::)" [varPat () "x", varPat () "ys"])]
---            , [conPat () "[]" []]
---            ]
---
---        patternsAreNotExhaustive
---            [ [asPat () "cons" (conPat () "(::)" [varPat () "x", varPat () "ys"])]
---            ]
---
---        patternsAreExhaustive
---            [ [asPat () "foo" (anyPat ())]
---            ]
---
---    -- Combined patterns
---
---    describe "Combined patterns" $ do
---
---        patternsAreNotExhaustive
---            [ [asPat () "x" (orPat () (litPat () (TInt 1)) (litPat () (TInt 2)))]
---            ]
---
---        patternsAreExhaustive
---            [ [asPat () "x" (orPat () (litPat () (TInt 1)) (litPat () (TInt 2)))]
---            , [anyPat ()]
---            ]
---
---    -- Record patterns
---
---    describe "Record patterns" $ do
---
---        patternsAreNotExhaustive
---            [ [recordPat () (rowPat () "x" (litPat () (TInt 3)) (rowPat () "y" (litPat () (TInt 4)) (conPat () "{}" [])))]
---            , [recordPat () (rowPat () "x" (litPat () (TInt 6)) (rowPat () "y" (litPat () (TInt 7)) (conPat () "{}" [])))]
---            ]
--- 
---        -- { x = x | {} }
---        patternsAreExhaustive
---            [ [rowPat () "x" (varPat () "x") (conPat () "{}" [])]
---            ]
---
---        patternsAreExhaustive
---            [ [recordPat () (rowPat () "x" (litPat () (TInt 3)) (rowPat () "y" (litPat () (TInt 4)) (conPat () "{}" [])))]
---            , [recordPat () (rowPat () "x" (litPat () (TInt 6)) (rowPat () "y" (litPat () (TInt 7)) (conPat () "{}" [])))]
---            , [recordPat () (rowPat () "x" (anyPat ()) (rowPat () "y" (litPat () (TInt 7)) (conPat () "{}" [])))]
---            , [recordPat () (rowPat () "x" (varPat () "x") (rowPat () "y" (anyPat ()) (conPat () "{}" [])))]
---            ]
---
---        -- { x = _ | {} }
---        patternsAreExhaustive
---            [ [recordPat () (rowPat () "x" (anyPat ()) (conPat () "{}" []))]
---            ]
---
---        -- { x = _, y = a | {} }
---        patternsAreExhaustive
---            [ [recordPat () (rowPat () "x" (anyPat ()) (rowPat () "y" (varPat () "a") (conPat () "{}" [])))] 
---            ]
---
---        -- | { x = 3, y = { a = 3 | {} } | {} }
---        -- | { x = 6, y = { a = 4 | {} } | {} }
---        -- | { x = _, y = { a = 5 | {} } | {} }
---        -- | { x = x, y = { a = _ | {} } | {} }
---        patternsAreExhaustive
---            [ [recordPat () (rowPat () "x" (litPat () (TInt 3)) (rowPat () "y" (recordPat () (rowPat () "a" (litPat () (TInt 3)) (conPat () "{}" []))) (conPat () "{}" [])))] 
---            , [recordPat () (rowPat () "x" (litPat () (TInt 6)) (rowPat () "y" (recordPat () (rowPat () "a" (litPat () (TInt 4)) (conPat () "{}" []))) (conPat () "{}" [])))] 
---            , [recordPat () (rowPat () "x" (anyPat ()) (rowPat () "y" (recordPat () (rowPat () "a" (litPat () (TInt 5)) (conPat () "{}" []))) (conPat () "{}" [])))] 
---            , [recordPat () (rowPat () "x" (varPat () "x") (rowPat () "y" (recordPat () (rowPat () "a" (anyPat ()) (conPat () "{}" []))) (conPat () "{}" [])))] 
---            ]
---
---        -- | { x = False, y = False | {} }
---        -- | { x = False, y = True | {} }
---        -- | { x = True, y = False | {} }
---        -- | { x = True, y = True | {} }
---        patternsAreExhaustive
---            [ [recordPat () (rowPat () "x" (litPat () (TBool False)) (rowPat () "y" (litPat () (TBool False)) (conPat () "{}" [])))] 
---            , [recordPat () (rowPat () "x" (litPat () (TBool False)) (rowPat () "y" (litPat () (TBool True)) (conPat () "{}" [])))] 
---            , [recordPat () (rowPat () "x" (litPat () (TBool True)) (rowPat () "y" (litPat () (TBool False)) (conPat () "{}" [])))] 
---            , [recordPat () (rowPat () "x" (litPat () (TBool True)) (rowPat () "y" (litPat () (TBool True)) (conPat () "{}" [])))] 
---            ]
---
---        -- (False, False)
---        -- (False, True)
---        -- (True, False)
---        -- (True, True)
---        patternsAreExhaustive
---            [ [tuplePat () [litPat () (TBool False), litPat () (TBool False)]]
---            , [tuplePat () [litPat () (TBool False), litPat () (TBool True)]]
---            , [tuplePat () [litPat () (TBool True), litPat () (TBool False)]]
---            , [tuplePat () [litPat () (TBool True), litPat () (TBool True)]]
---            ]
---
---        -- | { x = False, y = False | {} }
---        -- | { x = True, y = False | {} }
---        patternsAreNotExhaustive
---            [ [recordPat () (rowPat () "x" (litPat () (TBool False)) (rowPat () "y" (litPat () (TBool False)) (conPat () "{}" [])))] 
---            , [recordPat () (rowPat () "x" (litPat () (TBool True)) (rowPat () "y" (litPat () (TBool False)) (conPat () "{}" [])))] 
---            ]
---
---        -- (False, False)
---        -- (True, False)
---        patternsAreNotExhaustive
---            [ [tuplePat () [litPat () (TBool False), litPat () (TBool False)]]
---            , [tuplePat () [litPat () (TBool True), litPat () (TBool False)]]
---            ]
---
---        -- | { x = False, y = False | {} }
---        -- | { x = False, y = True | {} }
---        -- | { x = True, y = False | {} }
---        patternsAreNotExhaustive
---            [ [recordPat () (rowPat () "x" (litPat () (TBool False)) (rowPat () "y" (litPat () (TBool False)) (conPat () "{}" [])))] 
---            , [recordPat () (rowPat () "x" (litPat () (TBool False)) (rowPat () "y" (litPat () (TBool True)) (conPat () "{}" [])))] 
---            , [recordPat () (rowPat () "x" (litPat () (TBool True)) (rowPat () "y" (litPat () (TBool False)) (conPat () "{}" [])))] 
---            ]
---
---        -- (False, False)
---        -- (False, True)
---        -- (True, False)
---        patternsAreNotExhaustive
---            [ [tuplePat () [litPat () (TBool False), litPat () (TBool False)]]
---            , [tuplePat () [litPat () (TBool False), litPat () (TBool True)]]
---            , [tuplePat () [litPat () (TBool True), litPat () (TBool False)]]
---            ]
---
---        patternsAreNotExhaustive
---            [ [litPat () (TBool False), litPat () (TBool False)]
---            , [litPat () (TBool False), litPat () (TBool True)]
---            , [litPat () (TBool True), litPat () (TBool False)]
---            ]
---
---        patternsAreNotExhaustive
---            [ [conPat () "#False" [], conPat () "#False" []]
---            , [conPat () "#False" [], conPat () "#True" []]
---            , [conPat () "#True" [], conPat () "#False" []]
---            ]
---
---        patternsAreExhaustive
---            [ [conPat () "#False" []]
---            , [conPat () "#True" []]
---            ]
---
---        patternsAreExhaustive
---            [ [tuplePat () [conPat () "#False" [], conPat () "#False" []]]
---            , [tuplePat () [conPat () "#False" [], conPat () "#True" []]]
---            , [tuplePat () [conPat () "#True" [], conPat () "#False" []]]
---            , [tuplePat () [conPat () "#True" [], conPat () "#True" []]]
---            ]
---
---        patternsAreNotExhaustive
---            [ [tuplePat () [conPat () "#False" [], conPat () "#False" []]]
---            , [tuplePat () [conPat () "#False" [], conPat () "#True" []]]
---            , [tuplePat () [conPat () "#True" [], conPat () "#False" []]]
---            ]
---
---
---
---        -- | { x = False, y = False | {} }
---        -- | { y = True, x = False | {} }
---        -- | { x = True, y = False | {} }
---        -- | { x = True, y = True | {} }
---        patternsAreExhaustive
---            [ [recordPat () (rowPat () "x" (litPat () (TBool False)) (rowPat () "y" (litPat () (TBool False)) (conPat () "{}" [])))] 
---            , [recordPat () (rowPat () "y" (litPat () (TBool True)) (rowPat () "x" (litPat () (TBool False)) (conPat () "{}" [])))] 
---            , [recordPat () (rowPat () "x" (litPat () (TBool True)) (rowPat () "y" (litPat () (TBool False)) (conPat () "{}" [])))] 
---            , [recordPat () (rowPat () "x" (litPat () (TBool True)) (rowPat () "y" (litPat () (TBool True)) (conPat () "{}" [])))] 
---            ]
+    patternsAreExhaustive 
+        [ [] :: [ProgPattern ()]
+        ] 
+
+    patternsAreExhaustive 
+        [ [litPat () (TBool True)]
+        , [litPat () (TBool False)] 
+        ]
+
+    patternsAreNotExhaustive
+        [ [litPat () (TBool True)]
+        ]
+
+    patternsAreExhaustive 
+        [ [conPat () "(::)" [varPat () "x", conPat () "(::)" [varPat () "y", varPat () "ys"]]]
+        , [conPat () "[]" []]
+        , [conPat () "(::)" [varPat () "z", varPat () "zs"]]
+        ] 
+
+    patternsAreExhaustive 
+        [ [conPat () "(::)" [varPat () "x", conPat () "(::)" [varPat () "y", varPat () "ys"]]]
+        , [conPat () "[]" []]
+        , [conPat () "(::)" [varPat () "z", varPat () "zs"]]
+        ]
+
+    patternsAreNotExhaustive
+        [ [conPat () "(::)" [varPat () "x", conPat () "(::)" [varPat () "y", varPat () "ys"]]]
+        , [conPat () "(::)" [varPat () "z", varPat () "zs"]]
+        ]
+
+    patternsAreNotExhaustive
+        [ [conPat () "(::)" [varPat () "x", conPat () "(::)" [varPat () "y", varPat () "ys"]]]
+        , [conPat () "(::)" [varPat () "z", varPat () "zs"]]
+        , [conPat () "(::)" [anyPat (), anyPat ()]]
+        ]
+
+    patternsAreExhaustive 
+        [ [conPat () "(::)" [varPat () "x", conPat () "(::)" [varPat () "y", varPat () "ys"]]]
+        , [conPat () "(::)" [varPat () "z", varPat () "zs"]]
+        , [conPat () "(::)" [anyPat (), anyPat ()]]
+        , [conPat () "[]" []]
+        ]
+
+    patternsAreExhaustive 
+        [ [conPat () "(::)" [varPat () "x", conPat () "(::)" [varPat () "y", varPat () "ys"]]]
+        , [conPat () "[]" []]
+        , [conPat () "(::)" [varPat () "z", conPat () "[]" []]]
+        ]
+
+    patternsAreNotExhaustive
+        [ [conPat () "(::)" [varPat () "x", conPat () "(::)" [varPat () "y", varPat () "ys"]]]
+        , [conPat () "[]" []]
+        ]
+
+    patternsAreNotExhaustive
+        [ [conPat () "[]" []]
+        ]
+
+    patternsAreExhaustive 
+        [ [anyPat ()]
+        ]
+
+    patternsAreExhaustive 
+        [ [conPat () "(::)" [varPat () "x", varPat () "ys"]]
+        , [conPat () "[]" []]
+        ]
+
+    patternsAreExhaustive 
+        [ [conPat () "(::)" [varPat () "x", varPat () "ys"]]
+        , [varPat () "x"]
+        ]
+
+    patternsAreExhaustive 
+        [ [litPat () (TInt 5)]
+        , [varPat () "x"]
+        ]
+
+    patternsAreNotExhaustive
+        [ [litPat () (TInt 5)]
+        , [litPat () (TInt 4)]
+        ]
+
+    patternsAreExhaustive 
+        [ [litPat () (TInt 5), litPat () (TInt 5)]
+        , [varPat () "x", varPat () "y"]
+        ]
+
+    patternsAreNotExhaustive
+        [ [litPat () (TInt 5), litPat () (TInt 5)]
+        , [varPat () "x", litPat () (TInt 0)]
+        ]
+
+    patternsAreExhaustive 
+        [ [litPat () (TBool True)]
+        , [litPat () (TBool False)]
+        ]
+
+    patternsAreExhaustive 
+        [ [litPat () (TBool True)]
+        , [anyPat ()]
+        ]
+
+    patternsAreNotExhaustive
+        [ [litPat () (TBool True)]
+        ]
+
+    patternsAreExhaustive
+        [ [litPat () TUnit]
+        ]
+
+    patternsAreExhaustive
+        [ [litPat () TUnit, litPat () TUnit]
+        ]
+
+    patternsAreExhaustive
+        [ [litPat () TUnit, anyPat ()]
+        ]
+
+    patternsAreNotExhaustive
+        [ [litPat () TUnit, litPat () (TInt 3)]
+        ]
+
+    patternsAreNotExhaustive
+        [ [litPat () (TString "x")]
+        , [litPat () (TString "y")]
+        ]
+
+    patternsAreExhaustive
+        [ [litPat () (TString "x")]
+        , [litPat () (TString "y")]
+        , [anyPat ()]
+        ]
+
+    -- Tuple patterns
+
+    describe "Tuple patterns" $ do
+
+        patternsAreNotExhaustive
+            [ [tuplePat () [litPat () (TInt 1), litPat () (TInt 2)]]
+            ]
+
+        patternsAreExhaustive
+            [ [tuplePat () [anyPat (), anyPat ()]]
+            ]
+
+        patternsAreExhaustive
+            [ [tuplePat () [litPat () (TInt 1), litPat () (TInt 2)]]
+            , [tuplePat () [anyPat (), anyPat ()]]
+            ]
+
+        patternsAreNotExhaustive
+            [ [tuplePat () [conPat () "(::)" [varPat () "x", varPat () "xs"], litPat () (TInt 2)]]
+            , [tuplePat () [conPat () "[]" [], anyPat ()]]
+            ]
+
+        patternsAreExhaustive
+            [ [tuplePat () [conPat () "(::)" [varPat () "x", varPat () "xs"], litPat () (TBool True)]]
+            , [tuplePat () [conPat () "(::)" [varPat () "x", varPat () "xs"], litPat () (TBool False)]]
+            , [tuplePat () [conPat () "[]" [], anyPat ()]]
+            ]
+
+        patternsAreNotExhaustive
+            [ [tuplePat () [conPat () "(::)" [varPat () "x", varPat () "xs"], litPat () (TBool True)]]
+            , [tuplePat () [conPat () "(::)" [litPat () (TInt 3), varPat () "xs"], litPat () (TBool False)]]
+            , [tuplePat () [conPat () "[]" [], anyPat ()]]
+            ]
+
+        patternsAreExhaustive
+            [ [tuplePat () [conPat () "(::)" [varPat () "x", varPat () "xs"], litPat () (TBool True)]]
+            , [tuplePat () [conPat () "(::)" [litPat () (TInt 3), varPat () "xs"], litPat () (TBool False)]]
+            , [tuplePat () [conPat () "[]" [], anyPat ()]]
+            , [anyPat ()]
+            ]
+
+        -- (x, (y, z))
+        patternsAreExhaustive
+            [ [tuplePat () [varPat () "x", tuplePat () [varPat () "y", varPat () "z"]]]
+            ]
+
+     -- List patterns
+
+    describe "List patterns" $ do
+
+        patternsAreNotExhaustive
+            [ [listPat () [litPat () (TInt 1), litPat () (TInt 2)]]
+            ]
+
+        patternsAreNotExhaustive
+            [ [listPat () [varPat () "x", litPat () (TInt 2)]]
+            ]
+
+        patternsAreExhaustive
+            [ [listPat () [varPat () "x", litPat () (TInt 2)]]
+            , [anyPat ()]
+            ]
+
+        patternsAreNotExhaustive
+            [ [listPat () [varPat () "x", varPat () "y"]]
+            ]
+
+        patternsAreExhaustive
+            [ [conPat () "[]" []]
+            , [conPat () "(::)" [varPat () "x", varPat () "xs"]]
+            ]
+
+        patternsAreExhaustive
+            [ [listPat () []]
+            , [conPat () "(::)" [varPat () "x", varPat () "xs"]]
+            ]
+
+        patternsAreExhaustive
+            [ [listPat () []]
+            , [listPat () [varPat () "x"]]
+            , [listPat () [varPat () "x", varPat () "y"]]
+            , [conPat () "(::)" [varPat () "x", conPat () "(::)" [varPat () "y", varPat () "ys"]]]
+            ]
+
+     -- Or-patterns
+
+    describe "Or-patterns" $ do
+
+        patternsAreNotExhaustive
+            [ [litPat () (TBool False)]
+            ]
+
+        patternsAreExhaustive
+            [ [orPat () (litPat () (TBool False)) (litPat () (TBool True))]
+            ]
+
+     -- As-patterns
+
+    describe "As-patterns" $ do
+
+        patternsAreExhaustive
+            [ [asPat () "cons" (conPat () "(::)" [varPat () "x", varPat () "ys"])]
+            , [conPat () "[]" []]
+            ]
+
+        patternsAreNotExhaustive
+            [ [asPat () "cons" (conPat () "(::)" [varPat () "x", varPat () "ys"])]
+            ]
+
+        patternsAreExhaustive
+            [ [asPat () "foo" (anyPat ())]
+            ]
+
+    -- Combined patterns
+
+    describe "Combined patterns" $ do
+
+        patternsAreNotExhaustive
+            [ [asPat () "x" (orPat () (litPat () (TInt 1)) (litPat () (TInt 2)))]
+            ]
+
+        patternsAreExhaustive
+            [ [asPat () "x" (orPat () (litPat () (TInt 1)) (litPat () (TInt 2)))]
+            , [anyPat ()]
+            ]
+
+    -- Record patterns
+
+    describe "Record patterns" $ do
+
+        patternsAreNotExhaustive
+            [ [recordPat () (rowPat () "x" (litPat () (TInt 3)) (rowPat () "y" (litPat () (TInt 4)) (conPat () "{}" [])))]
+            , [recordPat () (rowPat () "x" (litPat () (TInt 6)) (rowPat () "y" (litPat () (TInt 7)) (conPat () "{}" [])))]
+            ]
+ 
+        -- { x = x | {} }
+        patternsAreExhaustive
+            [ [rowPat () "x" (varPat () "x") (conPat () "{}" [])]
+            ]
+
+        patternsAreNotExhaustive
+            [ [rowPat () "x" (litPat () (TBool True)) (conPat () "{}" [])]
+            ]
+
+        patternsAreExhaustive
+            [ [recordPat () (rowPat () "x" (litPat () (TInt 3)) (rowPat () "y" (litPat () (TInt 4)) (conPat () "{}" [])))]
+            , [recordPat () (rowPat () "x" (litPat () (TInt 6)) (rowPat () "y" (litPat () (TInt 7)) (conPat () "{}" [])))]
+            , [recordPat () (rowPat () "x" (anyPat ()) (rowPat () "y" (litPat () (TInt 7)) (conPat () "{}" [])))]
+            , [recordPat () (rowPat () "x" (varPat () "x") (rowPat () "y" (anyPat ()) (conPat () "{}" [])))]
+            ]
+
+        -- { x = _ | {} }
+        patternsAreExhaustive
+            [ [recordPat () (rowPat () "x" (anyPat ()) (conPat () "{}" []))]
+            ]
+
+        -- { x = _, y = a | {} }
+        patternsAreExhaustive
+            [ [recordPat () (rowPat () "x" (anyPat ()) (rowPat () "y" (varPat () "a") (conPat () "{}" [])))] 
+            ]
+
+        -- | { x = 3, y = { a = 3 | {} } | {} }
+        -- | { x = 6, y = { a = 4 | {} } | {} }
+        -- | { x = _, y = { a = 5 | {} } | {} }
+        -- | { x = x, y = { a = _ | {} } | {} }
+        patternsAreExhaustive
+            [ [recordPat () (rowPat () "x" (litPat () (TInt 3)) (rowPat () "y" (recordPat () (rowPat () "a" (litPat () (TInt 3)) (conPat () "{}" []))) (conPat () "{}" [])))] 
+            , [recordPat () (rowPat () "x" (litPat () (TInt 6)) (rowPat () "y" (recordPat () (rowPat () "a" (litPat () (TInt 4)) (conPat () "{}" []))) (conPat () "{}" [])))] 
+            , [recordPat () (rowPat () "x" (anyPat ()) (rowPat () "y" (recordPat () (rowPat () "a" (litPat () (TInt 5)) (conPat () "{}" []))) (conPat () "{}" [])))] 
+            , [recordPat () (rowPat () "x" (varPat () "x") (rowPat () "y" (recordPat () (rowPat () "a" (anyPat ()) (conPat () "{}" []))) (conPat () "{}" [])))] 
+            ]
+
+        -- | { x = False, y = False | {} }
+        -- | { x = False, y = True | {} }
+        -- | { x = True, y = False | {} }
+        -- | { x = True, y = True | {} }
+        patternsAreExhaustive
+            [ [recordPat () (rowPat () "x" (litPat () (TBool False)) (rowPat () "y" (litPat () (TBool False)) (conPat () "{}" [])))] 
+            , [recordPat () (rowPat () "x" (litPat () (TBool False)) (rowPat () "y" (litPat () (TBool True)) (conPat () "{}" [])))] 
+            , [recordPat () (rowPat () "x" (litPat () (TBool True)) (rowPat () "y" (litPat () (TBool False)) (conPat () "{}" [])))] 
+            , [recordPat () (rowPat () "x" (litPat () (TBool True)) (rowPat () "y" (litPat () (TBool True)) (conPat () "{}" [])))] 
+            ]
+
+        -- (False, False)
+        -- (False, True)
+        -- (True, False)
+        -- (True, True)
+        patternsAreExhaustive
+            [ [tuplePat () [litPat () (TBool False), litPat () (TBool False)]]
+            , [tuplePat () [litPat () (TBool False), litPat () (TBool True)]]
+            , [tuplePat () [litPat () (TBool True), litPat () (TBool False)]]
+            , [tuplePat () [litPat () (TBool True), litPat () (TBool True)]]
+            ]
+
+        -- | { x = False, y = False | {} }
+        -- | { x = True, y = False | {} }
+        patternsAreNotExhaustive
+            [ [recordPat () (rowPat () "x" (litPat () (TBool False)) (rowPat () "y" (litPat () (TBool False)) (conPat () "{}" [])))] 
+            , [recordPat () (rowPat () "x" (litPat () (TBool True)) (rowPat () "y" (litPat () (TBool False)) (conPat () "{}" [])))] 
+            ]
+
+        -- (False, False)
+        -- (True, False)
+        patternsAreNotExhaustive
+            [ [tuplePat () [litPat () (TBool False), litPat () (TBool False)]]
+            , [tuplePat () [litPat () (TBool True), litPat () (TBool False)]]
+            ]
+
+        -- | { x = False, y = False | {} }
+        -- | { x = False, y = True | {} }
+        -- | { x = True, y = False | {} }
+        patternsAreNotExhaustive
+            [ [recordPat () (rowPat () "x" (litPat () (TBool False)) (rowPat () "y" (litPat () (TBool False)) (conPat () "{}" [])))] 
+            , [recordPat () (rowPat () "x" (litPat () (TBool False)) (rowPat () "y" (litPat () (TBool True)) (conPat () "{}" [])))] 
+            , [recordPat () (rowPat () "x" (litPat () (TBool True)) (rowPat () "y" (litPat () (TBool False)) (conPat () "{}" [])))] 
+            ]
+
+        -- (False, False)
+        -- (False, True)
+        -- (True, False)
+        patternsAreNotExhaustive
+            [ [tuplePat () [litPat () (TBool False), litPat () (TBool False)]]
+            , [tuplePat () [litPat () (TBool False), litPat () (TBool True)]]
+            , [tuplePat () [litPat () (TBool True), litPat () (TBool False)]]
+            ]
+
+        patternsAreNotExhaustive
+            [ [litPat () (TBool False), litPat () (TBool False)]
+            , [litPat () (TBool False), litPat () (TBool True)]
+            , [litPat () (TBool True), litPat () (TBool False)]
+            ]
+
+        patternsAreNotExhaustive
+            [ [conPat () "#False" [], conPat () "#False" []]
+            , [conPat () "#False" [], conPat () "#True" []]
+            , [conPat () "#True" [], conPat () "#False" []]
+            ]
+
+        patternsAreExhaustive
+            [ [conPat () "#False" []]
+            , [conPat () "#True" []]
+            ]
+
+        patternsAreExhaustive
+            [ [tuplePat () [conPat () "#False" [], conPat () "#False" []]]
+            , [tuplePat () [conPat () "#False" [], conPat () "#True" []]]
+            , [tuplePat () [conPat () "#True" [], conPat () "#False" []]]
+            , [tuplePat () [conPat () "#True" [], conPat () "#True" []]]
+            ]
+
+        patternsAreNotExhaustive
+            [ [tuplePat () [conPat () "#False" [], conPat () "#False" []]]
+            , [tuplePat () [conPat () "#False" [], conPat () "#True" []]]
+            , [tuplePat () [conPat () "#True" [], conPat () "#False" []]]
+            ]
+
+
+
+        -- | { x = False, y = False | {} }
+        -- | { y = True, x = False | {} }
+        -- | { x = True, y = False | {} }
+        -- | { x = True, y = True | {} }
+        patternsAreExhaustive
+            [ [recordPat () (rowPat () "x" (litPat () (TBool False)) (rowPat () "y" (litPat () (TBool False)) (conPat () "{}" [])))] 
+            , [recordPat () (rowPat () "y" (litPat () (TBool True)) (rowPat () "x" (litPat () (TBool False)) (conPat () "{}" [])))] 
+            , [recordPat () (rowPat () "x" (litPat () (TBool True)) (rowPat () "y" (litPat () (TBool False)) (conPat () "{}" [])))] 
+            , [recordPat () (rowPat () "x" (litPat () (TBool True)) (rowPat () "y" (litPat () (TBool True)) (conPat () "{}" [])))] 
+            ]
 
 
         patternsAreExhaustive
@@ -448,6 +452,29 @@ testPatterns = do
             , [ tuplePat () [litPat () (TBool True), litPat () (TBool True), litPat () (TBool False)] ]
             , [ tuplePat () [litPat () (TBool True), litPat () (TBool True), litPat () (TBool True)] ] 
             ]
+
+        patternsAreExhaustive
+            [ [ tuplePat () [litPat () (TBool False), tuplePat () [litPat () (TBool False), litPat () (TBool False)] ]]
+            , [ tuplePat () [litPat () (TBool False), tuplePat () [litPat () (TBool False), litPat () (TBool True)]  ]]
+            , [ tuplePat () [litPat () (TBool False), tuplePat () [litPat () (TBool True), litPat () (TBool False)]  ]]
+            , [ tuplePat () [litPat () (TBool False), tuplePat () [litPat () (TBool True), litPat () (TBool True)]   ]]
+            , [ tuplePat () [litPat () (TBool True),  tuplePat () [litPat () (TBool False), litPat () (TBool False)] ]]
+            , [ tuplePat () [litPat () (TBool True),  tuplePat () [litPat () (TBool False), litPat () (TBool True)]  ]]
+            , [ tuplePat () [litPat () (TBool True),  tuplePat () [litPat () (TBool True), litPat () (TBool False)]  ]]
+            , [ tuplePat () [litPat () (TBool True),  tuplePat () [litPat () (TBool True), litPat () (TBool True)]   ]] 
+            ]
+
+        patternsAreExhaustive
+            [[Fix (PCon () "{x}" [Fix (PLit () (TBool False)),Fix (PCon () "{y}" [Fix (PCon () "#" [Fix (PCon () "{a}" [Fix (PLit () (TBool False)),Fix (PCon () "{z}" [Fix (PLit () (TBool False)),Fix (PCon () "{}" [])])])]),Fix (PCon () "{}" [])])])],[Fix (PCon () "{x}" [Fix (PLit () (TBool False)),Fix (PCon () "{y}" [Fix (PCon () "#" [Fix (PCon () "{a}" [Fix (PLit () (TBool True)),Fix (PCon () "{z}" [Fix (PLit () (TBool False)),Fix (PCon () "{}" [])])])]),Fix (PCon () "{}" [])])])],[Fix (PCon () "{x}" [Fix (PLit () (TBool False)),Fix (PCon () "{y}" [Fix (PCon () "#" [Fix (PCon () "{a}" [Fix (PLit () (TBool False)),Fix (PCon () "{z}" [Fix (PLit () (TBool True)),Fix (PCon () "{}" [])])])]),Fix (PCon () "{}" [])])])],[Fix (PCon () "{x}" [Fix (PLit () (TBool False)),Fix (PCon () "{y}" [Fix (PCon () "#" [Fix (PCon () "{a}" [Fix (PLit () (TBool True)),Fix (PCon () "{z}" [Fix (PLit () (TBool True)),Fix (PCon () "{}" [])])])]),Fix (PCon () "{}" [])])])],[Fix (PCon () "{x}" [Fix (PLit () (TBool True)),Fix (PCon () "{y}" [Fix (PCon () "#" [Fix (PCon () "{a}" [Fix (PLit () (TBool False)),Fix (PCon () "{z}" [Fix (PLit () (TBool False)),Fix (PCon () "{}" [])])])]),Fix (PCon () "{}" [])])])],[Fix (PCon () "{x}" [Fix (PLit () (TBool True)),Fix (PCon () "{y}" [Fix (PCon () "#" [Fix (PCon () "{a}" [Fix (PLit () (TBool True)),Fix (PCon () "{z}" [Fix (PLit () (TBool False)),Fix (PCon () "{}" [])])])]),Fix (PCon () "{}" [])])])],[Fix (PCon () "{x}" [Fix (PLit () (TBool True)),Fix (PCon () "{y}" [Fix (PCon () "#" [Fix (PCon () "{a}" [Fix (PLit () (TBool False)),Fix (PCon () "{z}" [Fix (PLit () (TBool True)),Fix (PCon () "{}" [])])])]),Fix (PCon () "{}" [])])])],[Fix (PCon () "{x}" [Fix (PLit () (TBool True)),Fix (PCon () "{y}" [Fix (PCon () "#" [Fix (PCon () "{a}" [Fix (PLit () (TBool True)),Fix (PCon () "{z}" [Fix (PLit () (TBool True)),Fix (PCon () "{}" [])])])]),Fix (PCon () "{}" [])])])]]
+
+
+        patternsAreExhaustive
+--              [[Fix (PTuple () [Fix (PLit () (TBool False)),Fix (PTuple () [Fix (PCon () "#" [Fix (PTuple () [Fix (PLit () (TBool False)),Fix (PTuple () [Fix (PLit () (TBool False)),Fix (PCon () "{}" [])])])]),Fix (PCon () "{}" [])])])],[Fix (PTuple () [Fix (PLit () (TBool False)),Fix (PTuple () [Fix (PCon () "#" [Fix (PTuple () [Fix (PLit () (TBool True)),Fix (PTuple () [Fix (PLit () (TBool False)),Fix (PCon () "{}" [])])])]),Fix (PCon () "{}" [])])])],[Fix (PTuple () [Fix (PLit () (TBool False)),Fix (PTuple () [Fix (PCon () "#" [Fix (PTuple () [Fix (PLit () (TBool False)),Fix (PTuple () [Fix (PLit () (TBool True)),Fix (PCon () "{}" [])])])]),Fix (PCon () "{}" [])])])],[Fix (PTuple () [Fix (PLit () (TBool False)),Fix (PTuple () [Fix (PCon () "#" [Fix (PTuple () [Fix (PLit () (TBool True)),Fix (PTuple () [Fix (PLit () (TBool True)),Fix (PCon () "{}" [])])])]),Fix (PCon () "{}" [])])])],[Fix (PTuple () [Fix (PLit () (TBool True)),Fix (PTuple () [Fix (PCon () "#" [Fix (PTuple () [Fix (PLit () (TBool False)),Fix (PTuple () [Fix (PLit () (TBool False)),Fix (PCon () "{}" [])])])]),Fix (PCon () "{}" [])])])],[Fix (PTuple () [Fix (PLit () (TBool True)),Fix (PTuple () [Fix (PCon () "#" [Fix (PTuple () [Fix (PLit () (TBool True)),Fix (PTuple () [Fix (PLit () (TBool False)),Fix (PCon () "{}" [])])])]),Fix (PCon () "{}" [])])])],[Fix (PTuple () [Fix (PLit () (TBool True)),Fix (PTuple () [Fix (PCon () "#" [Fix (PTuple () [Fix (PLit () (TBool False)),Fix (PTuple () [Fix (PLit () (TBool True)),Fix (PCon () "{}" [])])])]),Fix (PCon () "{}" [])])])],[Fix (PTuple () [Fix (PLit () (TBool True)),Fix (PTuple () [Fix (PCon () "#" [Fix (PTuple () [Fix (PLit () (TBool True)),Fix (PTuple () [Fix (PLit () (TBool True)),Fix (PCon () "{}" [])])])]),Fix (PCon () "{}" [])])])]]
+
+              --[[Fix (PTuple () [Fix (PLit () (TBool True)),Fix (PTuple () [Fix (PTuple () [Fix (PLit () (TBool False)),Fix (PTuple () [Fix (PLit () (TBool False))])])])])],[Fix (PTuple () [Fix (PLit () (TBool False)),Fix (PTuple () [Fix (PTuple () [Fix (PLit () (TBool True)),Fix (PTuple () [Fix (PLit () (TBool False))])])])])],[Fix (PTuple () [Fix (PLit () (TBool False)),Fix (PTuple () [Fix (PTuple () [Fix (PLit () (TBool False)),Fix (PTuple () [Fix (PLit () (TBool True))])])])])],[Fix (PTuple () [Fix (PLit () (TBool False)),Fix (PTuple () [Fix (PTuple () [Fix (PLit () (TBool True)),Fix (PTuple () [Fix (PLit () (TBool True))])])])])],[Fix (PTuple () [Fix (PLit () (TBool True)),Fix (PTuple () [Fix (PTuple () [Fix (PLit () (TBool False)),Fix (PTuple () [Fix (PLit () (TBool False))])])])])],[Fix (PTuple () [Fix (PLit () (TBool True)),Fix (PTuple () [Fix (PTuple () [Fix (PLit () (TBool True)),Fix (PTuple () [Fix (PLit () (TBool False))])])])])],[Fix (PTuple () [Fix (PLit () (TBool True)),Fix (PTuple () [Fix (PTuple () [Fix (PLit () (TBool False)),Fix (PTuple () [Fix (PLit () (TBool True))])])])])],[Fix (PTuple () [Fix (PLit () (TBool True)),Fix (PTuple () [Fix (PTuple () [Fix (PLit () (TBool True)),Fix (PTuple () [Fix (PLit () (TBool True))])])])])]]
+
+              [[Fix (PTuple () [Fix (PLit () (TBool False)),Fix (PTuple () [Fix (PTuple () [Fix (PLit () (TBool False)),Fix (PTuple () [Fix (PLit () (TBool False))])])])])],[Fix (PTuple () [Fix (PLit () (TBool False)),Fix (PTuple () [Fix (PTuple () [Fix (PLit () (TBool True)),Fix (PTuple () [Fix (PLit () (TBool False))])])])])],[Fix (PTuple () [Fix (PLit () (TBool False)),Fix (PTuple () [Fix (PTuple () [Fix (PLit () (TBool False)),Fix (PTuple () [Fix (PLit () (TBool True))])])])])],[Fix (PTuple () [Fix (PLit () (TBool False)),Fix (PTuple () [Fix (PTuple () [Fix (PLit () (TBool True)),Fix (PTuple () [Fix (PLit () (TBool True))])])])])],[Fix (PTuple () [Fix (PLit () (TBool True)),Fix (PTuple () [Fix (PTuple () [Fix (PLit () (TBool False)),Fix (PTuple () [Fix (PLit () (TBool False))])])])])],[Fix (PTuple () [Fix (PLit () (TBool True)),Fix (PTuple () [Fix (PTuple () [Fix (PLit () (TBool True)),Fix (PTuple () [Fix (PLit () (TBool False))])])])])],[Fix (PTuple () [Fix (PLit () (TBool True)),Fix (PTuple () [Fix (PTuple () [Fix (PLit () (TBool False)),Fix (PTuple () [Fix (PLit () (TBool True))])])])])],[Fix (PTuple () [Fix (PLit () (TBool True)),Fix (PTuple () [Fix (PTuple () [Fix (PLit () (TBool True)),Fix (PTuple () [Fix (PLit () (TBool True))])])])])]]
+
 
 
         -- | { x = False, y = { z = False, a = False }| {} }
@@ -470,43 +497,56 @@ testPatterns = do
             , [rowPat () "x" (litPat () (TBool True)) (rowPat () "y" (recordPat () (rowPat () "z" (litPat () (TBool True)) (rowPat () "a" (litPat () (TBool True)) (conPat () "{}" [])))) (conPat () "{}" []))] 
             ]
 
-----        patternsAreExhaustive
-----            [ [recordPat () (rowPat () "x" (litPat () (TBool False)) (rowPat () "y" (recordPat () (rowPat () "z" (litPat () (TBool False)) (rowPat () "a" (litPat () (TBool False)) (conPat () "{}" [])))) (conPat () "{}" [])))] 
-----            , [recordPat () (rowPat () "x" (litPat () (TBool False)) (rowPat () "y" (recordPat () (rowPat () "z" (litPat () (TBool False)) (rowPat () "a" (litPat () (TBool True)) (conPat () "{}" [])))) (conPat () "{}" [])))] 
-----            , [recordPat () (rowPat () "x" (litPat () (TBool False)) (rowPat () "y" (recordPat () (rowPat () "z" (litPat () (TBool True)) (rowPat () "a" (litPat () (TBool False)) (conPat () "{}" [])))) (conPat () "{}" [])))] 
-----            , [recordPat () (rowPat () "x" (litPat () (TBool False)) (rowPat () "y" (recordPat () (rowPat () "z" (litPat () (TBool True)) (rowPat () "a" (litPat () (TBool True)) (conPat () "{}" [])))) (conPat () "{}" [])))] 
-----            , [recordPat () (rowPat () "x" (litPat () (TBool True)) (rowPat () "y" (recordPat () (rowPat () "z" (litPat () (TBool False)) (rowPat () "a" (litPat () (TBool False)) (conPat () "{}" [])))) (conPat () "{}" [])))] 
-----            , [recordPat () (rowPat () "x" (litPat () (TBool True)) (rowPat () "y" (recordPat () (rowPat () "z" (litPat () (TBool False)) (rowPat () "a" (litPat () (TBool True)) (conPat () "{}" [])))) (conPat () "{}" [])))] 
-----            , [recordPat () (rowPat () "x" (litPat () (TBool True)) (rowPat () "y" (recordPat () (rowPat () "z" (litPat () (TBool True)) (rowPat () "a" (litPat () (TBool False)) (conPat () "{}" [])))) (conPat () "{}" [])))] 
-----            , [recordPat () (rowPat () "x" (litPat () (TBool True)) (rowPat () "y" (recordPat () (rowPat () "z" (litPat () (TBool True)) (rowPat () "a" (litPat () (TBool True)) (conPat () "{}" [])))) (conPat () "{}" [])))] 
-----            ]
---
---
---        -- | { x = 3, y = { a = 3 | {} } | {} }
---        -- | { x = 6, y = { a = 4 | {} } | {} }
---        -- | { x = _, y = { a = 5 | {} } | {} }
---        -- | { x = x, y = { a = 6 | {} } | {} }
---        patternsAreNotExhaustive
---            [ [recordPat () (rowPat () "x" (litPat () (TInt 3)) (rowPat () "y" (recordPat () (rowPat () "a" (litPat () (TInt 3)) (conPat () "{}" []))) (conPat () "{}" [])))] 
---            , [recordPat () (rowPat () "x" (litPat () (TInt 6)) (rowPat () "y" (recordPat () (rowPat () "a" (litPat () (TInt 4)) (conPat () "{}" []))) (conPat () "{}" [])))] 
---            , [recordPat () (rowPat () "x" (anyPat ()) (rowPat () "y" (recordPat () (rowPat () "a" (litPat () (TInt 5)) (conPat () "{}" []))) (conPat () "{}" [])))] 
---            , [recordPat () (rowPat () "x" (varPat () "x") (rowPat () "y" (recordPat () (rowPat () "a" (litPat () (TInt 6)) (conPat () "{}" []))) (conPat () "{}" [])))] 
---            ]
---
---        -- | { x = x | r }
 --        patternsAreExhaustive
---            [ [recordPat () (rowPat () "x" (varPat () "x") (varPat () "r"))] 
+--            [ [recordPat () (rowPat () "x" (litPat () (TBool False)) (rowPat () "y" (recordPat () (rowPat () "z" (litPat () (TBool False)) (rowPat () "a" (litPat () (TBool False)) (conPat () "{}" [])))) (conPat () "{}" [])))] 
+--            , [recordPat () (rowPat () "x" (litPat () (TBool False)) (rowPat () "y" (recordPat () (rowPat () "z" (litPat () (TBool False)) (rowPat () "a" (litPat () (TBool True)) (conPat () "{}" [])))) (conPat () "{}" [])))] 
+--            , [recordPat () (rowPat () "x" (litPat () (TBool False)) (rowPat () "y" (recordPat () (rowPat () "z" (litPat () (TBool True)) (rowPat () "a" (litPat () (TBool False)) (conPat () "{}" [])))) (conPat () "{}" [])))] 
+--            , [recordPat () (rowPat () "x" (litPat () (TBool False)) (rowPat () "y" (recordPat () (rowPat () "z" (litPat () (TBool True)) (rowPat () "a" (litPat () (TBool True)) (conPat () "{}" [])))) (conPat () "{}" [])))] 
+--            , [recordPat () (rowPat () "x" (litPat () (TBool True)) (rowPat () "y" (recordPat () (rowPat () "z" (litPat () (TBool False)) (rowPat () "a" (litPat () (TBool False)) (conPat () "{}" [])))) (conPat () "{}" [])))] 
+--            , [recordPat () (rowPat () "x" (litPat () (TBool True)) (rowPat () "y" (recordPat () (rowPat () "z" (litPat () (TBool False)) (rowPat () "a" (litPat () (TBool True)) (conPat () "{}" [])))) (conPat () "{}" [])))] 
+--            , [recordPat () (rowPat () "x" (litPat () (TBool True)) (rowPat () "y" (recordPat () (rowPat () "z" (litPat () (TBool True)) (rowPat () "a" (litPat () (TBool False)) (conPat () "{}" [])))) (conPat () "{}" [])))] 
+--            , [recordPat () (rowPat () "x" (litPat () (TBool True)) (rowPat () "y" (recordPat () (rowPat () "z" (litPat () (TBool True)) (rowPat () "a" (litPat () (TBool True)) (conPat () "{}" [])))) (conPat () "{}" [])))] 
 --            ]
---
---        -- | { x = 1 | r }
---        patternsAreNotExhaustive
---            [ [recordPat () (rowPat () "x" (litPat () (TInt 1)) (varPat () "r"))] 
---            ]
---
---        -- | { x = () | r }
---        patternsAreExhaustive
---            [ [recordPat () (rowPat () "x" (litPat () TUnit) (varPat () "r"))] 
---            ]
+
+
+        -- | { x = 3, y = { a = 3 | {} } | {} }
+        -- | { x = 6, y = { a = 4 | {} } | {} }
+        -- | { x = _, y = { a = 5 | {} } | {} }
+        -- | { x = x, y = { a = 6 | {} } | {} }
+        patternsAreNotExhaustive
+            [ [recordPat () (rowPat () "x" (litPat () (TInt 3)) (rowPat () "y" (recordPat () (rowPat () "a" (litPat () (TInt 3)) (conPat () "{}" []))) (conPat () "{}" [])))] 
+            , [recordPat () (rowPat () "x" (litPat () (TInt 6)) (rowPat () "y" (recordPat () (rowPat () "a" (litPat () (TInt 4)) (conPat () "{}" []))) (conPat () "{}" [])))] 
+            , [recordPat () (rowPat () "x" (anyPat ()) (rowPat () "y" (recordPat () (rowPat () "a" (litPat () (TInt 5)) (conPat () "{}" []))) (conPat () "{}" [])))] 
+            , [recordPat () (rowPat () "x" (varPat () "x") (rowPat () "y" (recordPat () (rowPat () "a" (litPat () (TInt 6)) (conPat () "{}" []))) (conPat () "{}" [])))] 
+            ]
+
+        -- | { x = 3, y = { a = 3 | {} } | {} }
+        -- | { x = 6, y = { a = 4 | {} } | {} }
+        -- | { x = _, y = { a = 5 | {} } | {} }
+        -- | { x = x, y = { a = 6 | {} } | {} }
+        -- | _
+        patternsAreExhaustive
+            [ [recordPat () (rowPat () "x" (litPat () (TInt 3)) (rowPat () "y" (recordPat () (rowPat () "a" (litPat () (TInt 3)) (conPat () "{}" []))) (conPat () "{}" [])))] 
+            , [recordPat () (rowPat () "x" (litPat () (TInt 6)) (rowPat () "y" (recordPat () (rowPat () "a" (litPat () (TInt 4)) (conPat () "{}" []))) (conPat () "{}" [])))] 
+            , [recordPat () (rowPat () "x" (anyPat ()) (rowPat () "y" (recordPat () (rowPat () "a" (litPat () (TInt 5)) (conPat () "{}" []))) (conPat () "{}" [])))] 
+            , [recordPat () (rowPat () "x" (varPat () "x") (rowPat () "y" (recordPat () (rowPat () "a" (litPat () (TInt 6)) (conPat () "{}" []))) (conPat () "{}" [])))] 
+            , [anyPat ()]
+            ]
+
+        -- | { x = x | r }
+        patternsAreExhaustive
+            [ [recordPat () (rowPat () "x" (varPat () "x") (varPat () "r"))] 
+            ]
+
+        -- | { x = 1 | r }
+        patternsAreNotExhaustive
+            [ [recordPat () (rowPat () "x" (litPat () (TInt 1)) (varPat () "r"))] 
+            ]
+
+        -- | { x = () | r }
+        patternsAreExhaustive
+            [ [recordPat () (rowPat () "x" (litPat () TUnit) (varPat () "r"))] 
+            ]
 
 
 
