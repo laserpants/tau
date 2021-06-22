@@ -157,6 +157,8 @@ instance (Pretty a) => Pretty (PredicateT a) where
 instance Pretty (Pattern t1 t2 t3 t4 t5 t6 t7 t8 t9) where
     pretty = para $ \case
 
+        PCon _ "[]" []                   -> "[]"
+        PCon _ "(::)" [hd, tl]           -> snd hd <+> "::" <+> snd tl
         PCon _ "#" [(Fix (PVar _ v), _)] -> pretty v
         PCon _ "#" [(r@(Fix PRow{}), _)] -> "{" <+> commaSep (fields r) <> final r <+> "}"
         PCon _ con []                    -> pretty con
@@ -188,6 +190,8 @@ instance Pretty (Pattern t1 t2 t3 t4 t5 t6 t7 t8 t9) where
 instance (Pretty e1, FunArgs e2, Functor e3, Clauses [e3 (Expr t1 t2 t3 t4 t5 t6 t7 t8 t9 t10 t11 t12 t13 t14 t15 e1 e2 e3)]) => Pretty (Expr t1 t2 t3 t4 t5 t6 t7 t8 t9 t10 t11 t12 t13 t14 t15 e1 e2 e3) where
     pretty = para $ \case
 
+        ECon _ "[]" []                   -> "[]"
+        ECon _ "(::)" [hd, tl]           -> snd hd <+> "::" <+> snd tl
         ECon _ "#" [(Fix (EVar _ v), _)] -> pretty v
         ECon _ "#" [(r@(Fix ERow{}), _)] -> "{" <+> commaSep (fields r) <> final r <+> "}"
         ECon _ con []                    -> pretty con

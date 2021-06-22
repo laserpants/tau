@@ -647,8 +647,8 @@ example1 = foo1 expr
 
 
 
---    -- (let r = { a = 1, b = 2 } in ({ a = a | z }) => a)({ a = 5 ))
---
+    -- (let r = { a = 1, b = 2 } in ({ a = a | z }) => a)({ a = 5 ))
+
 --    expr = 
 --            appExpr () 
 --                [ letExpr () (BPat () (varPat () "r"))
@@ -686,13 +686,13 @@ example1 = foo1 expr
 --                        (conExpr () "{}" [])))) ]
 
 
-    -- (({ a = a | z }) => z)({ a = 1 })
-
-    expr = appExpr () 
-        -- [ lamExpr () [recordPat () (rowPat () "a" (varPat () "a") (varPat () "z"))] (varExpr () "z")
-        [ lamExpr () [recordPat () (rowPat () "a" (varPat () "a") (varPat () "z"))] (varExpr () "z")
-        , recordExpr () (rowExpr () "a" (annExpr tInt (litExpr () (TInt 1))) (conExpr () "{}" [])) 
-        ]
+--    -- (({ a = a | z }) => z)({ a = 1 })
+--
+--    expr = appExpr () 
+--        -- [ lamExpr () [recordPat () (rowPat () "a" (varPat () "a") (varPat () "z"))] (varExpr () "z")
+--        [ lamExpr () [recordPat () (rowPat () "a" (varPat () "a") (varPat () "z"))] (varExpr () "z")
+--        , recordExpr () (rowExpr () "a" (annExpr tInt (litExpr () (TInt 1))) (conExpr () "{}" [])) 
+--        ]
 
 
 --    -- ({ a = a | z }) => z
@@ -743,6 +743,14 @@ example1 = foo1 expr
 --        , recordExpr () (rowExpr () "b" (annExpr tInt (litExpr () (TInt 2))) (conExpr () "{}" []))
 --        ]
 
+    expr = funExpr () 
+        [ Clause () (conPat () "(::)" [varPat () "x", conPat () "(::)" [varPat () "y", varPat () "ys"]]) 
+            [Guard [] (litExpr () (TBool True))]
+        , Clause () (conPat () "[]" []) 
+            [Guard [] (litExpr () (TBool True))]
+        , Clause () (conPat () "(::)" [varPat () "z", varPat () "zs"]) 
+            [Guard [] (litExpr () (TBool True))]
+        ]
 
 
 
