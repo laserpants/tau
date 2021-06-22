@@ -318,8 +318,10 @@ exprParser = makeExprParser (try lambdaParser <|> try (parens exprParser) <|> pa
 
     varExpr_ _ var = appExpr () [varExpr () "_#", varExpr () var]
 
-lambdaParser :: Parser (ProgExpr ())
-lambdaParser = lamExpr () <$> argParser patternParser <*> (symbol "=>" *> annExprParser)
+lambdaParser = do -- lamExpr () <$> argParser patternParser <*> (symbol "=>" *> annExprParser)
+    args <- try (pure <$> annPatternParser) <|> argParser annPatternParser
+    body <- symbol "=>" *> annExprParser
+    pure (lamExpr () args body)
 
 -- >>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>
 

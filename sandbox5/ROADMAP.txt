@@ -2,8 +2,8 @@
 [x] Rows/Records
 [x] Patterns anomalies
 [x] Record field access
-[-] Type class ambg.
-[-] Kinds
+[x] Kinds
 [-] Tests
+[-] Type class ambg.
 [-] Recursion
 [-] Modules/Program

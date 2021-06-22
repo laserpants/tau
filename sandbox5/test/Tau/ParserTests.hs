@@ -203,7 +203,23 @@ testExprParser = do
         (lamExpr () [varPat () "x"] (varExpr () "x"))
 
     succeedParse exprParser
+        "x => x"
+        (lamExpr () [varPat () "x"] (varExpr () "x"))
+
+    succeedParse exprParser
         "(x) => { x = 5 }"
+        (lamExpr () [varPat () "x"] (recordExpr () (rowExpr () "x" (litExpr () (TInteger 5)) (emptyRowExpr ()))))
+
+    succeedParse exprParser
+        "x => { x = 5 }"
+        (lamExpr () [varPat () "x"] (recordExpr () (rowExpr () "x" (litExpr () (TInteger 5)) (emptyRowExpr ()))))
+
+    succeedParse exprParser
+        "(x => { x = 5 })"
+        (lamExpr () [varPat () "x"] (recordExpr () (rowExpr () "x" (litExpr () (TInteger 5)) (emptyRowExpr ()))))
+
+    succeedParse exprParser
+        "((x => { x = 5 }))"
         (lamExpr () [varPat () "x"] (recordExpr () (rowExpr () "x" (litExpr () (TInteger 5)) (emptyRowExpr ()))))
 
     succeedParse exprParser
@@ -225,7 +241,21 @@ testExprParser = do
             , litExpr () (TInteger 5) ])
 
     succeedParse exprParser
+        "Some(x) => x + 1"
+        (lamExpr () [conPat () "Some" [varPat () "x"]] (op2Expr () (OAdd ()) (varExpr () "x") (litExpr () (TInteger 1))))
+
+    succeedParse exprParser
+        "(Some(x) => x + 1)"
+        (lamExpr () [conPat () "Some" [varPat () "x"]] (op2Expr () (OAdd ()) (varExpr () "x") (litExpr () (TInteger 1))))
+
+    succeedParse exprParser
         "let f = (x) => x + 1 in y"
+        (letExpr () (BPat () (varPat () "f")) 
+            (lamExpr () [varPat () "x"] (op2Expr () (OAdd ()) (varExpr () "x") (litExpr () (TInteger 1))))
+            (varExpr () "y"))
+
+    succeedParse exprParser
+        "let f = x => x + 1 in y"
         (letExpr () (BPat () (varPat () "f")) 
             (lamExpr () [varPat () "x"] (op2Expr () (OAdd ()) (varExpr () "x") (litExpr () (TInteger 1))))
             (varExpr () "y"))
@@ -348,7 +378,24 @@ testExprParserMatch = do
             ])
 
     succeedParse exprParser
+        "match x with | y iff(y > 5) => True"
+        (patExpr () (varExpr () "x") 
+            [ Clause () (varPat () "y") 
+                  [ Guard [op2Expr () (OGt ()) (varExpr () "y") (litExpr () (TInteger 5))] (litExpr () (TBool True)) ]
+            ])
+
+    succeedParse exprParser
         "match x with | y iff y > 5 => 0 iff y > 1 => 1 otherwise => 2"
+        (patExpr () (varExpr () "x") 
+            [ Clause () (varPat () "y") 
+                  [ Guard [op2Expr () (OGt ()) (varExpr () "y") (litExpr () (TInteger 5))] (litExpr () (TInteger 0)) 
+                  , Guard [op2Expr () (OGt ()) (varExpr () "y") (litExpr () (TInteger 1))] (litExpr () (TInteger 1)) 
+                  , Guard [] (litExpr () (TInteger 2)) 
+                  ]
+            ])
+
+    succeedParse exprParser
+        "match x with | y iff(y > 5) => 0 iff(y > 1) => 1 otherwise => 2"
         (patExpr () (varExpr () "x") 
             [ Clause () (varPat () "y") 
                   [ Guard [op2Expr () (OGt ()) (varExpr () "y") (litExpr () (TInteger 5))] (litExpr () (TInteger 0)) 
@@ -474,3 +521,8 @@ testAnnExprParser = do
     succeedParse annExprParser
         "{ x = 5 : Int }"
         (recordExpr () (rowExpr () "x" (annExpr tInt (litExpr () (TInteger 5))) (emptyRowExpr ())))
+
+    succeedParse annExprParser
+        "(x : Int) => x + 1"
+        (lamExpr () [annPat tInt (varPat () "x")] (op2Expr () (OAdd ()) (varExpr () "x") (litExpr () (TInteger 1))))
+

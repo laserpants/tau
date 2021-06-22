@@ -126,9 +126,9 @@ someFun(Some x, y, z) =
 someFun(Some x, y, z) =
   match (x, y, z) with
     | (Some(xx), _, _)
-        iff (x x > 3) => xx
-        iff p         => 1
-    | (_, _, _)       => 0
+        iff(x x > 3) => xx
+        iff(p)       => 1
+    | (_, _, _)      => 0
 
 
   match (x, y) with

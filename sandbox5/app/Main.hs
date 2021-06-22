@@ -743,14 +743,44 @@ example1 = foo1 expr
 --        , recordExpr () (rowExpr () "b" (annExpr tInt (litExpr () (TInt 2))) (conExpr () "{}" []))
 --        ]
 
-    expr = funExpr () 
-        [ Clause () (conPat () "(::)" [varPat () "x", conPat () "(::)" [varPat () "y", varPat () "ys"]]) 
-            [Guard [] (litExpr () (TBool True))]
-        , Clause () (conPat () "[]" []) 
-            [Guard [] (litExpr () (TBool True))]
-        , Clause () (conPat () "(::)" [varPat () "z", varPat () "zs"]) 
-            [Guard [] (litExpr () (TBool True))]
-        ]
+--    expr = funExpr () 
+--        [ Clause () (conPat () "(::)" [varPat () "x", conPat () "(::)" [varPat () "y", varPat () "ys"]]) 
+--            [Guard [] (litExpr () (TBool True))]
+--        , Clause () (conPat () "[]" []) 
+--            [Guard [] (litExpr () (TBool True))]
+--        , Clause () (conPat () "(::)" [varPat () "z", varPat () "zs"]) 
+--            [Guard [] (litExpr () (TBool True))]
+--        ]
+
+
+
+--    -- let 
+--    --   withDefault(val)
+--    --     | Some(y) => y
+--    --     | None    => val
+--    --   in
+--    --     Some(3 : Int).withDefault(5 : Int)
+--    expr = 
+--        letExpr () (BFun () "withDefault" [varPat () "val"]) 
+--            (funExpr () 
+--                [ Clause () (conPat () "Some" [varPat () "y"]) [ Guard [] (varExpr () "y") ]
+--                , Clause () (conPat () "None" []) [ Guard [] (varExpr () "val") ]
+--                ])
+--            (op2Expr () (ODot ()) (appExpr () [varExpr () "withDefault", annExpr tInt (litExpr () (TInteger 5))]) (conExpr () "Some" [annExpr tInt (litExpr () (TInteger 3))]))
+
+    -- let 
+    --   withDefault(val)
+    --     | Some(y) => y
+    --     | None    => val
+    --   in
+    --     None.withDefault(5 : Int)
+    expr = 
+        letExpr () (BFun () "withDefault" [varPat () "val"]) 
+            (funExpr () 
+                [ Clause () (conPat () "Some" [varPat () "y"]) [ Guard [] (varExpr () "y") ]
+                , Clause () (conPat () "None" []) [ Guard [] (varExpr () "val") ]
+                ])
+            (op2Expr () (ODot ()) (appExpr () [varExpr () "withDefault", annExpr tInt (litExpr () (TInteger 5))]) (conExpr () "None" []))
 
 
 
