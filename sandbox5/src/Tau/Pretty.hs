@@ -265,7 +265,8 @@ instance FunArgs Text where
     funArgs = pretty
 
 instance (Pretty p) => FunArgs [p] where
-    funArgs p = "(" <> commaSep (pretty <$> p) <> ")"
+    funArgs [p] = pretty p
+    funArgs ps  = "(" <> commaSep (pretty <$> ps) <> ")"
 
 class Clauses c where
     clauses :: c -> Doc a
@@ -283,7 +284,7 @@ instance (Pretty a) => Pretty (Guard a) where
             [] -> ""
             _  -> hsep (prettyIff <$> es) <> " "
 
-        prettyIff e = "iff" <+> pretty e
+        prettyIff e = "iff" <> parens (pretty e)
 
 class Guarded g where
     prettyGuard :: g -> Doc a
