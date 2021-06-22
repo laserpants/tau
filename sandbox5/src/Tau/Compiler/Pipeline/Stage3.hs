@@ -75,7 +75,7 @@ translateLet t bind e1 e2 = do
                       pure (e, varPat t f)
     pure (patExpr t e [SimplifiedClause t [p] (Guard [] e2)])
 
-targetExprTag :: TargetExpr t -> t
+targetExprTag :: (Show t) => TargetExpr t -> t
 targetExprTag = cata $ \case
     EVar t _     -> t
     ECon t _ _   -> t
@@ -84,3 +84,5 @@ targetExprTag = cata $ \case
     EFix t _ _ _ -> t
     ELam t _ _   -> t
     EIf  t _ _ _ -> t
+    EPat t _ _   -> t
+--    e            -> error (show e)

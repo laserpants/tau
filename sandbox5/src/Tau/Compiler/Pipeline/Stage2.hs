@@ -194,14 +194,42 @@ applyDicts (InClass name ty) expr = do
                     Just e -> pure e
                     Nothing -> 
                         pure $ appExpr (workingExprTag expr)
-                          [ setWorkingExprTag (tArr t1 <$> workingExprTag expr) expr
-                          , buildDict map ]
+                            [ setWorkingExprTag (tArr t1 <$> workingExprTag expr) expr
+                            , buildDict map ]
         e
             | isVar ty -> do
-                undefined -- pure (varExpr (Just tInt) "a")
+                undefined
+                --traceShowM "*****************"
+                --traceShowM e
+                --traceShowM ty
+                --traceShowM "*****************"
+                --methods <- baz2 env
+                --map <- traverse (secondM translateMethod) methods
+                --pure $ appExpr (workingExprTag expr)
+                --  [ setWorkingExprTag (tArr t1 <$> workingExprTag expr) expr
+                --  , buildDict map ]
+                --pure (varExpr (Just tInt) "TODO!")
+                --all <- baz env
+                --pure $ appExpr (workingExprTag expr) 
+                --    [ setWorkingExprTag (tArr t1 <$> workingExprTag expr) expr
+                --    ]
+                --    , buildDict map ]
 
             | otherwise -> do
-                undefined -- pure (varExpr (Just tInt) "a")
+                --traceShowM "==================="
+                --traceShowM "==================="
+                --traceShowM expr
+                --traceShowM "==================="
+                --traceShowM "==================="
+--                pure (setWorkingExprTag (tArr t1 <$> workingExprTag expr) expr)
+--                pure (varExpr (Just tInt) "TODO!")
+                methods <- baz2 env
+                map <- traverse (secondM translateMethod) methods
+                pure $ appExpr (workingExprTag expr)
+                    [ setWorkingExprTag (tArr t1 <$> workingExprTag expr) expr
+                    , buildDict map -- varExpr (Just t1) "WHAT" 
+                    ]
+
 
   where
     t1 = tApp kTyp (tCon (kArr kTyp kTyp) name) ty
@@ -220,9 +248,9 @@ applyDicts (InClass name ty) expr = do
     translateTag = fmap (\(TypeInfo () ty ps) -> TypeInfo [] (Just ty) ps)
 
     buildDict :: [(Name, WorkingExpr (Maybe Type))] -> WorkingExpr (Maybe Type)
-    buildDict map = 
+    buildDict map =
         conExpr (Just t1) "#" [row]
-      where 
+      where
         row = foldr fn (conExpr (Just tRowNil) "{}" []) map
         fn (name, expr) e = 
             let row = tRow name <$> workingExprTag expr <*> workingExprTag e
@@ -310,7 +338,7 @@ applyDicts (InClass name ty) expr = do
 --             in rowExprCons row name expr e
 
 setWorkingExprTag :: t -> WorkingExpr t -> WorkingExpr t
-setWorkingExprTag t = cata $ \case
+setWorkingExprTag t = project >>> \case
     EVar _ a     -> varExpr t a
     ECon _ a b   -> conExpr t a b
     ELit _ a     -> litExpr t a
@@ -322,7 +350,7 @@ setWorkingExprTag t = cata $ \case
     EPat _ o a   -> patExpr t o a
 
 workingExprTag :: WorkingExpr t -> t
-workingExprTag = cata $ \case
+workingExprTag = project >>> \case
     EVar t _     -> t
     ECon t _ _   -> t
     ELit t _     -> t

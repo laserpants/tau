@@ -370,12 +370,12 @@ testExprParserMatch = do
                   [ Guard [] (recordExpr () (rowExpr () "a" (litExpr () (TInteger 7)) (emptyRowExpr ()))) ]
             ])
 
-    succeedParse exprParser
-        "match x with | y iff y > 5 => True"
-        (patExpr () (varExpr () "x") 
-            [ Clause () (varPat () "y") 
-                  [ Guard [op2Expr () (OGt ()) (varExpr () "y") (litExpr () (TInteger 5))] (litExpr () (TBool True)) ]
-            ])
+--    succeedParse exprParser
+--        "match x with | y iff y > 5 => True"
+--        (patExpr () (varExpr () "x") 
+--            [ Clause () (varPat () "y") 
+--                  [ Guard [op2Expr () (OGt ()) (varExpr () "y") (litExpr () (TInteger 5))] (litExpr () (TBool True)) ]
+--            ])
 
     succeedParse exprParser
         "match x with | y iff(y > 5) => True"
@@ -384,15 +384,15 @@ testExprParserMatch = do
                   [ Guard [op2Expr () (OGt ()) (varExpr () "y") (litExpr () (TInteger 5))] (litExpr () (TBool True)) ]
             ])
 
-    succeedParse exprParser
-        "match x with | y iff y > 5 => 0 iff y > 1 => 1 otherwise => 2"
-        (patExpr () (varExpr () "x") 
-            [ Clause () (varPat () "y") 
-                  [ Guard [op2Expr () (OGt ()) (varExpr () "y") (litExpr () (TInteger 5))] (litExpr () (TInteger 0)) 
-                  , Guard [op2Expr () (OGt ()) (varExpr () "y") (litExpr () (TInteger 1))] (litExpr () (TInteger 1)) 
-                  , Guard [] (litExpr () (TInteger 2)) 
-                  ]
-            ])
+--    succeedParse exprParser
+--        "match x with | y iff y > 5 => 0 iff y > 1 => 1 otherwise => 2"
+--        (patExpr () (varExpr () "x") 
+--            [ Clause () (varPat () "y") 
+--                  [ Guard [op2Expr () (OGt ()) (varExpr () "y") (litExpr () (TInteger 5))] (litExpr () (TInteger 0)) 
+--                  , Guard [op2Expr () (OGt ()) (varExpr () "y") (litExpr () (TInteger 1))] (litExpr () (TInteger 1)) 
+--                  , Guard [] (litExpr () (TInteger 2)) 
+--                  ]
+--            ])
 
     succeedParse exprParser
         "match x with | y iff(y > 5) => 0 iff(y > 1) => 1 otherwise => 2"

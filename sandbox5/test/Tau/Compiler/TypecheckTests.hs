@@ -496,6 +496,12 @@ testInferRecordExpr = do
                             (conExpr () "{}" [])))) ])
         (tRecord (tRow "b" tInt (tRow "d" tInt tRowNil)))
 
+    succeedInferExpr
+        (letExpr () (BFun () "withDefault" [varPat () "val"]) (funExpr () [ Clause () (conPat () "Some" [varPat () "y"]) [ Guard [] (varExpr () "y") ] , Clause () (conPat () "None" []) [ Guard [] (varExpr () "val") ] ]) (varExpr () "withDefault"))
+        (tVar kTyp "a" `tArr` tApp kTyp (tCon kFun "Option") (tVar kTyp "a") `tArr` tVar kTyp "a")
+
+
+
 testInferPatternType :: SpecWith ()
 testInferPatternType = do
 

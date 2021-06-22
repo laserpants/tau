@@ -297,7 +297,7 @@ exprParser = makeExprParser (try lambdaParser <|> try (parens exprParser) <|> pa
         pure (iffs <> maybe [] (pure . Guard []) last)
 
     iffClause = Guard 
-        <$> (keyword "iff" *> (pure <$> exprParser) <* symbol "=>") 
+        <$> (keyword "iff" *> (pure <$> parens exprParser) <* symbol "=>") 
         <*> annExprParser
 
     nonGuarded = do

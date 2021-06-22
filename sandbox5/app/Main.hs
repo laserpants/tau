@@ -768,19 +768,57 @@ example1 = foo1 expr
 --                ])
 --            (op2Expr () (ODot ()) (appExpr () [varExpr () "withDefault", annExpr tInt (litExpr () (TInteger 5))]) (conExpr () "Some" [annExpr tInt (litExpr () (TInteger 3))]))
 
+--    -- let 
+--    --   withDefault(val)
+--    --     | Some(y) => y
+--    --     | None    => val
+--    --   in
+--    --     None.withDefault(5 : Int)
+--    expr = 
+--        letExpr () (BFun () "withDefault" [varPat () "val"]) 
+--            (funExpr () 
+--                [ Clause () (conPat () "Some" [varPat () "y"]) [ Guard [] (varExpr () "y") ]
+--                , Clause () (conPat () "None" []) [ Guard [] (varExpr () "val") ]
+--                ])
+--            (op2Expr () (ODot ()) (appExpr () [varExpr () "withDefault", annExpr tInt (litExpr () (TInteger 5))]) (conExpr () "None" []))
+
+
+--    -- let 
+--    --   withDefault(val)
+--    --     | Some(y) => y
+--    --     | None    => val
+--    --   in
+--    --     withDefault
+--    expr = 
+--        letExpr () (BFun () "withDefault" [varPat () "val"]) 
+--            (funExpr () 
+--                [ Clause () (conPat () "Some" [varPat () "y"]) [ Guard [] (varExpr () "y") ]
+--                , Clause () (conPat () "None" []) [ Guard [] (varExpr () "val") ]
+--                ])
+--            (varExpr () "withDefault")
+
+
     -- let 
-    --   withDefault(val)
-    --     | Some(y) => y
-    --     | None    => val
+    --   fn
+    --     | Some(y) 
+    --         iff(y == 1) => 1
+    --         iff(y == 2) => 2
+    --         otherwise   => 3
+    --     | None          => 0
     --   in
-    --     None.withDefault(5 : Int)
+    --     fn(Some(100))
     expr = 
-        letExpr () (BFun () "withDefault" [varPat () "val"]) 
+        letExpr () (BPat () (varPat () "fn")) -- [annPat tInt (varPat () "val")]) 
             (funExpr () 
-                [ Clause () (conPat () "Some" [varPat () "y"]) [ Guard [] (varExpr () "y") ]
-                , Clause () (conPat () "None" []) [ Guard [] (varExpr () "val") ]
+                [ Clause () (conPat () "Some" [varPat () "y"]) 
+                    [ Guard [op2Expr () (OEq ()) (varExpr () "y") (litExpr () (TInt 1))] (litExpr () (TInteger 1))
+                    , Guard [op2Expr () (OEq ()) (varExpr () "y") (litExpr () (TInt 2))] (litExpr () (TInteger 2))
+                    , Guard [] (litExpr () (TInteger 3))
+                    ]
+                , Clause () (conPat () "None" []) [ Guard [] (annExpr tInt (litExpr () (TInteger 0))) ]
                 ])
-            (op2Expr () (ODot ()) (appExpr () [varExpr () "withDefault", annExpr tInt (litExpr () (TInteger 5))]) (conExpr () "None" []))
+            (appExpr () [varExpr () "fn", conExpr () "Some" [annExpr tInt (litExpr () (TInteger 100))]])
+
 
 
 
@@ -1901,7 +1939,7 @@ testClassEnv = Env.fromList
       )
     , ( "Eq"
         -- Interface
-      , ( ClassInfo (InClass "Eq" "a") [InClass "Ord" "a"] 
+      , ( ClassInfo (InClass "Eq" "a") [] -- [InClass "Ord" "a"] 
             [ ( "(==)", tVar kTyp "a" `tArr` tVar kTyp "a" `tArr` tBool )
             ]
         -- Instances
