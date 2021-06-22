@@ -42,7 +42,6 @@ succeedInferPattern pat ty = -- ps errs =
     t1 = typeOf e1
     r = runUnify (unifyTypes t1 ty)
 
-
 testKindEnv :: KindEnv
 testKindEnv = Env.fromList
     [ ( "Num" , kArr kTyp kClass )
