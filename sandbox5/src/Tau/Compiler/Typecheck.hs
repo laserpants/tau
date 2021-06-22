@@ -38,19 +38,7 @@ inferAstType
 inferAstType (Ast expr) = do
     e <- inferExprType expr
     sub <- subs
-    pure (simplifyPredicates <$> Ast (packRows (applyBoth sub e)))
-
-packRows 
-  :: ProgExpr (TypeInfo [Error])
-  -> ProgExpr (TypeInfo [Error])
-packRows = cata $ \case
-
-    EVar t var -> 
-        if isRecordType (nodeType t)
-            then conExpr (TypeInfo [] (nodeType t) []) "#" [varExpr (fromJust . unpackRecordType <$> t) var]
-            else varExpr t var
-
-    e -> embed e
+    pure (simplifyPredicates <$> Ast (applyBoth sub e))
 
 inferExprType
   :: ( MonadSupply Name m
@@ -65,7 +53,10 @@ inferExprType = cata $ \case
             ty <- lookupScheme var >>= instantiate
             unfiyWithNode ty
             pure var
-        pure (varExpr ti a)
+
+        pure $ if isRecordType (nodeType ti)
+            then conExpr (TypeInfo [] (nodeType ti) []) "#" [varExpr (fromJust . unpackRecordType <$> ti) a]
+            else varExpr ti a
 
     ECon _ con exprs -> do
         (es, ti, _) <- runNode $ do
