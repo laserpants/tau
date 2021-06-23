@@ -4,6 +4,7 @@
 {-# LANGUAGE RecordWildCards   #-}
 module Main where
 
+import Data.Foldable (foldlM, foldrM)
 import Control.Monad.IO.Class
 import Control.Monad.Identity
 import Control.Monad.Except
@@ -62,6 +63,11 @@ main = do
   where
     doParse inp = runParserStack exprParser "" inp
 -- -- print "Main"
+
+
+--test349 = evalSupply (runReaderT (evalStateT e []) (testClassEnv, testTypeEnv, testKindEnv, testConstructorEnv)) (numSupply "")
+--  where
+--    e = (foldrM applyDicts (varExpr (Just tInt) "fn") [InClass "Eq" tInt, InClass "Num" tInt])
 
 
 --test340 :: [[ProgPattern ()]]
@@ -453,7 +459,7 @@ foo1 expr = do
         let r1 = toRep e1
         liftIO $ LBS.writeFile "/home/laserpants/play/ast-folder-tree/ast-folder-tree/src/testData23.json" (encode r1)
 
-        traceShowM e1
+--        traceShowM e1
 
         --
 
@@ -464,7 +470,7 @@ foo1 expr = do
         let r2 = toRep e2
         liftIO $ LBS.writeFile "/home/laserpants/play/ast-folder-tree/ast-folder-tree/src/testData24.json" (encode r2)
 
-        traceShowM e2
+--        traceShowM e2
 
         --
 
@@ -475,7 +481,7 @@ foo1 expr = do
         let r3 = toRep e3
         liftIO $ LBS.writeFile "/home/laserpants/play/ast-folder-tree/ast-folder-tree/src/testData25.json" (encode r3)
 
-        traceShowM e3
+--        traceShowM e3
 
         --
 
@@ -484,7 +490,7 @@ foo1 expr = do
         let r4 = toRep e4
         liftIO $ LBS.writeFile "/home/laserpants/play/ast-folder-tree/ast-folder-tree/src/testData26.json" (encode r4)
 
-        traceShowM e4
+--        traceShowM e4
 
         --
 
@@ -495,7 +501,7 @@ foo1 expr = do
         let r5 = toRep e5
         liftIO $ LBS.writeFile "/home/laserpants/play/ast-folder-tree/ast-folder-tree/src/testData27.json" (encode r5)
 
-        traceShowM e5
+--        traceShowM e5
 
         --
 
@@ -504,7 +510,7 @@ foo1 expr = do
         let r6 = toRep e6
         liftIO $ LBS.writeFile "/home/laserpants/play/ast-folder-tree/ast-folder-tree/src/testData28.json" (encode r6)
 
-        traceShowM e6
+--        traceShowM e6
 
         --
 
@@ -667,13 +673,13 @@ example1 = foo1 expr
 --                , recordExpr () (rowExpr () "a" (annExpr tInt (litExpr () (TInt 5))) (conExpr () "{}" []))
 --                ]
 
---    -- let r = { a = 1, b = 2, c = 3 } in (({ a = a | z }) => z)(r)
---
---    expr = letExpr () (BPat () (varPat () "r"))
---               (recordExpr () (rowExpr () "a" (annExpr tInt (litExpr () (TInt 1))) (rowExpr () "b" (annExpr tInt (litExpr () (TInt 2))) (rowExpr () "c" (annExpr tInt (litExpr () (TInt 3))) (conExpr () "{}" []))))) 
---                        (appExpr () [ lamExpr () [recordPat () (rowPat () "a" (varPat () "a") (varPat () "z"))] (varExpr () "z")
---                                    , varExpr () "r" ])
---
+    -- let r = { a = 1, b = 2, c = 3 } in (({ a = a | z }) => z)(r)
+
+    expr = letExpr () (BPat () (varPat () "r"))
+               (recordExpr () (rowExpr () "a" (annExpr tInt (litExpr () (TInt 1))) (rowExpr () "b" (annExpr tInt (litExpr () (TInt 2))) (rowExpr () "c" (annExpr tInt (litExpr () (TInt 3))) (conExpr () "{}" []))))) 
+                        (appExpr () [ lamExpr () [recordPat () (rowPat () "a" (varPat () "a") (varPat () "z"))] (varExpr () "z")
+                                    , varExpr () "r" ])
+
 
 --    -- (({ a = a | z }) => z)({ a = 1, b = 2, d = 3 })
 
@@ -798,26 +804,26 @@ example1 = foo1 expr
 --            (varExpr () "withDefault")
 
 
-    -- let 
-    --   fn
-    --     | Some(y) 
-    --         iff(y == 1) => 1
-    --         iff(y == 2) => 2
-    --         otherwise   => 3
-    --     | None          => 0
-    --   in
-    --     fn(Some(100))
-    expr = 
-        letExpr () (BPat () (varPat () "fn")) -- [annPat tInt (varPat () "val")]) 
-            (funExpr () 
-                [ Clause () (conPat () "Some" [varPat () "y"]) 
-                    [ Guard [op2Expr () (OEq ()) (varExpr () "y") (litExpr () (TInt 1))] (litExpr () (TInteger 1))
-                    , Guard [op2Expr () (OEq ()) (varExpr () "y") (litExpr () (TInt 2))] (litExpr () (TInteger 2))
-                    , Guard [] (litExpr () (TInteger 3))
-                    ]
-                , Clause () (conPat () "None" []) [ Guard [] (annExpr tInt (litExpr () (TInteger 0))) ]
-                ])
-            (appExpr () [varExpr () "fn", conExpr () "Some" [annExpr tInt (litExpr () (TInteger 100))]])
+--    -- let 
+--    --   fn
+--    --     | Some(y) 
+--    --         iff(y == 1) => 1
+--    --         iff(y == 2) => 2
+--    --         otherwise   => 3
+--    --     | None          => 0
+--    --   in
+--    --     fn(Some(100))
+--    expr = 
+--        letExpr () (BPat () (varPat () "fn")) -- [annPat tInt (varPat () "val")]) 
+--            (funExpr () 
+--                [ Clause () (conPat () "Some" [varPat () "y"]) 
+--                    [ Guard [op2Expr () (OEq ()) (varExpr () "y") (litExpr () (TInt 1))] (litExpr () (TInteger 1))
+--                    , Guard [op2Expr () (OEq ()) (varExpr () "y") (litExpr () (TInt 2))] (litExpr () (TInteger 2))
+--                    , Guard [] (litExpr () (TInteger 3))
+--                    ]
+--                , Clause () (conPat () "None" []) [ Guard [] (annExpr tInt (litExpr () (TInteger 0))) ]
+--                ])
+--            (appExpr () [varExpr () "fn", conExpr () "Some" [annExpr tInt (litExpr () (TInteger 100))]])
 
 
 

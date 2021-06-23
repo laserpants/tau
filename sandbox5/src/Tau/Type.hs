@@ -199,17 +199,17 @@ isTupleType = cata $ \case
     TApp _ a _ -> a
     _          -> False
 
-isRecordType :: Type -> Bool
-isRecordType = cata $ \case
-    TCon _ "#" -> True
+isRecordType :: Name -> Type -> Bool
+isRecordType con = cata $ \case
+    TCon _ c | con == c -> True
     TApp _ a _ -> a
     _          -> False
 
-unpackRecordType :: Type -> Maybe Type
-unpackRecordType = para $ \case
-    TApp _ (Fix (TCon _ "#"), _) (t, _) -> Just t
-    TApp _ (_, a) _                     -> a
-    _                                   -> Nothing
+unpackRecordType :: Name -> Type -> Maybe Type
+unpackRecordType con = para $ \case
+    TApp _ (Fix (TCon _ c), _) (t, _) | con == c -> Just t
+    TApp _ (_, a) _ -> a
+    _               -> Nothing
 
 lookupRowType :: Name -> Type -> Maybe Type
 lookupRowType name = para $ \case

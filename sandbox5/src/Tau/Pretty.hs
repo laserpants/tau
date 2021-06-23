@@ -29,12 +29,12 @@ import Tau.Tooling
 import Tau.Type
 import qualified Data.Map.Strict as Map
 import qualified Data.Text as Text
-import qualified Tau.Compiler.Pipeline.Stage1 as Stage1
-import qualified Tau.Compiler.Pipeline.Stage2 as Stage2
-import qualified Tau.Compiler.Pipeline.Stage3 as Stage3
-import qualified Tau.Compiler.Pipeline.Stage4 as Stage4
-import qualified Tau.Compiler.Pipeline.Stage5 as Stage5
-import qualified Tau.Compiler.Pipeline.Stage6 as Stage6
+--import qualified Tau.Compiler.Pipeline.Stage1 as Stage1
+--import qualified Tau.Compiler.Pipeline.Stage2 as Stage2
+--import qualified Tau.Compiler.Pipeline.Stage3 as Stage3
+--import qualified Tau.Compiler.Pipeline.Stage4 as Stage4
+--import qualified Tau.Compiler.Pipeline.Stage5 as Stage5
+--import qualified Tau.Compiler.Pipeline.Stage6 as Stage6
 
 parensIf :: Bool -> Doc a -> Doc a
 parensIf yes doc = if yes then parens doc else doc

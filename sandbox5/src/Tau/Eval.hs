@@ -93,6 +93,12 @@ getField :: (Monad m) => Name -> [Value m] -> m (Value m)
 getField name [Data f (v:fs)]
     | f == ("{" <> name <> "}") = pure v
     | otherwise                 = getField name fs
+--getField name [x] = do
+--    traceShowM "$$$$$$$$$$$$$$$$$$$$$$$$$$$$"
+--    -- temp
+--    traceShowM name
+--    traceShowM x
+--    pure x
 
 closure :: (MonadReader (ValueEnv m) m) => Name -> m (Value m) -> m (Value m)
 closure var a = pure (Closure var a mempty)

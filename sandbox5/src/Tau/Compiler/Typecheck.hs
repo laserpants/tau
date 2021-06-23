@@ -26,6 +26,7 @@ import Tau.Prog
 import Tau.Tooling
 import Tau.Type
 import qualified Data.Map.Strict as Map
+import qualified Data.Text as Text
 import qualified Data.Set.Monad as Set
 import qualified Tau.Env as Env
 
@@ -54,9 +55,19 @@ inferExprType = cata $ \case
             unfiyWithNode ty
             pure var
 
-        pure $ if isRecordType (nodeType ti)
-            then conExpr (TypeInfo [] (nodeType ti) []) "#" [varExpr (fromJust . unpackRecordType <$> ti) a]
+        let fixRecords = cata $ \case
+              TCon k "##" -> tCon k "#"
+              TApp k a b  -> tApp k a b
+              t           -> embed t
+
+        pure $ if isRecordType "##" (nodeType ti)
+            then conExpr (TypeInfo [] (nodeType (fixRecords <$> ti)) []) "#"
+                     [varExpr (fromJust . unpackRecordType "##" <$> ti) a]
             else varExpr ti a
+
+--        pure $ if isRecordType (nodeType ti)
+--            then conExpr (TypeInfo [] (nodeType ti) []) "#" [varExpr (fromJust . unpackRecordType <$> ti) a]
+--            else varExpr ti a
 
     ECon _ con exprs -> do
         (es, ti, _) <- runNode $ do
@@ -193,7 +204,7 @@ inferExprType = cata $ \case
             a <- exprNode expr1
             b <- exprNode expr2
 
-            let getRowField = case (a, unpackRecordType (typeOf b)) of
+            let getRowField = case (a, unpackRecordType "#" (typeOf b)) of
                   (Fix (EVar _ name), Just row) -> do
                       t <- lookupRowType name row
                       pure (name, t)
@@ -334,7 +345,8 @@ inferPatternType = cata $ \case
             tellPredicates (patternPredicates r)
 
             case project r of
-                PVar{} -> tellVars (second (tRecord) <$> vs)
+                -- PVar{} -> tellVars (second tRecord <$> vs)
+                PVar{} -> tellVars (second (tApp kTyp (tCon (kArr kRow kTyp) "##")) <$> vs)
                 _      -> tellVars vs
 
             unfiyWithNode (tRow label (typeOf p) (typeOf r))

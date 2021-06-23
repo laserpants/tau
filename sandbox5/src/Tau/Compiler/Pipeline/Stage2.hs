@@ -7,8 +7,8 @@ import Control.Monad.Except
 import Control.Monad.Reader
 import Control.Monad.State
 import Control.Monad.Supply
-import Data.Foldable (foldrM)
-import Data.List (nub)
+import Data.Foldable (foldlM, foldrM)
+import Data.List (nub, tails)
 import Data.Either (fromRight)
 import Data.Maybe (fromMaybe, fromJust)
 import Data.Tuple.Extra (second)
@@ -16,6 +16,7 @@ import Tau.Compiler.Error
 import Tau.Compiler.Pipeline
 import Tau.Lang
 import Tau.Prog
+import Tau.Pretty
 import Tau.Tooling
 import Tau.Type
 import qualified Data.Text as Text
@@ -98,8 +99,16 @@ expandTypeClasses expr =
             vs <- nub <$> pluck
             fixExpr (nodeType t) var (insertArgsExpr e1 vs) <$> expr2
 
-        EVar t var ->
-            foldrM applyDicts (varExpr (nodeType t) var) (nodePredicates t)
+        EVar t var -> do
+            --fst <$> foldrM applyDicts (varExpr (nodeType t) var, nodeType t) (tails (nodePredicates t))
+            --fst <$> foldlM applyDicts (varExpr (nodeType t) var, nodeType t) (tails (nodePredicates t)) 
+            --when ("fn" == var) $ do
+            --    traceShowM "////////////////"
+            --    traceShowM "////////////////"
+            --    traceShowM (tails (nodePredicates t))
+            --    traceShowM "////////////////"
+            --    traceShowM "////////////////"
+            foldlM applyDicts (varExpr (nodeType t) var) (tails (reverse (nodePredicates t)))
 
         ELit   t lit       -> pure (litExpr (nodeType t) lit)
         ECon   t con es    -> conExpr (nodeType t) con <$> sequence es
@@ -167,78 +176,70 @@ dictTVar ty = do
 applyDicts
   :: ( MonadSupply Name m
      , MonadReader (ClassEnv, TypeEnv, KindEnv, ConstructorEnv) m )
-  => Predicate
-  -> WorkingExpr (Maybe Type)
+  => WorkingExpr (Maybe Type)
+  -> [Predicate]
   -> StateT [(Name, Type)] m (WorkingExpr (Maybe Type))
-applyDicts (InClass name ty) expr = do
-    env <- askClassEnv
-    tv  <- dictTVar t1
+applyDicts e [] = pure e
+applyDicts expr (InClass name ty:ps) = do
+  
+--    let t1 = tApp kTyp (tCon kFun name) ty    -- Dictionary type, e.g., Num Int
+
     case project expr of
         EVar t var 
             | isVar ty -> do
-                all <- baz env
-                if var `elem` (fst <$> all)
+                tv  <- dictTVar (tApp kTyp (tCon kFun name) ty)
+                all <- baz 
+                if var `elem` (fst <$> all) 
                     then do
-                        let getType t = tAtom `tArr` t1 `tArr` t
-                        pure $ appExpr (workingExprTag expr) 
+                        let t1 = tApp kTyp (tCon kFun name) ty
+                            getType t = tAtom `tArr` t1 `tArr` t
+                        pure (appExpr (workingExprTag expr)
                             [ varExpr (getType <$> workingExprTag expr) "@#getField"
                             , litExpr (Just tAtom) (TAtom var) 
-                            , varExpr (Just t1) tv ]
-                    else pure $ appExpr (workingExprTag expr) 
-                            [ setWorkingExprTag (tArr t1 <$> workingExprTag expr) expr
-                            , varExpr (Just t1) tv ]
+                            , varExpr (Just t1) tv 
+                            ])
+                    else 
+                        undefined
+                        --pure (appExpr (Just tBool)
+                        --    [ expr
+                        --    , varExpr (Just tBool) tv ])
+
             | otherwise -> do
-                methods <- baz2 env
-                map <- traverse (secondM translateMethod) methods
+                map <- baz2 
+                -- Is this a member function of the class?
                 case lookup var map of
-                    Just e -> pure e
-                    Nothing -> 
-                        pure $ appExpr (workingExprTag expr)
-                            [ setWorkingExprTag (tArr t1 <$> workingExprTag expr) expr
-                            , buildDict map ]
-        e
-            | isVar ty -> do
+                    Just e -> 
+                        pure e
+                    Nothing -> do
+                        pure (appExpr zz1
+                            [ setWorkingExprTag (yy (InClass name ty) zz1) expr
+                            , buildDict map ])
+
+        _   | isVar ty -> do
                 undefined
-                --traceShowM "*****************"
-                --traceShowM e
-                --traceShowM ty
-                --traceShowM "*****************"
-                --methods <- baz2 env
-                --map <- traverse (secondM translateMethod) methods
-                --pure $ appExpr (workingExprTag expr)
-                --  [ setWorkingExprTag (tArr t1 <$> workingExprTag expr) expr
-                --  , buildDict map ]
-                --pure (varExpr (Just tInt) "TODO!")
-                --all <- baz env
-                --pure $ appExpr (workingExprTag expr) 
-                --    [ setWorkingExprTag (tArr t1 <$> workingExprTag expr) expr
-                --    ]
-                --    , buildDict map ]
 
             | otherwise -> do
-                --traceShowM "==================="
-                --traceShowM "==================="
-                --traceShowM expr
-                --traceShowM "==================="
-                --traceShowM "==================="
---                pure (setWorkingExprTag (tArr t1 <$> workingExprTag expr) expr)
---                pure (varExpr (Just tInt) "TODO!")
-                methods <- baz2 env
-                map <- traverse (secondM translateMethod) methods
-                pure $ appExpr (workingExprTag expr)
-                    [ setWorkingExprTag (tArr t1 <$> workingExprTag expr) expr
-                    , buildDict map -- varExpr (Just t1) "WHAT" 
-                    ]
-
+                map <- baz2
+                pure (appExpr (cod <$> workingExprTag expr) -- TODO
+                    [ expr
+                    , buildDict map ])
 
   where
-    t1 = tApp kTyp (tCon (kArr kTyp kTyp) name) ty
-    
-    baz env = fromRight noClassError <$> runExceptT (lookupAllClassX name env)
-    noClassError = error ("No class " <> show name)
+    cod (Fix (TArr _ t)) = t
 
-    baz2 env = fromRight noInstanceError <$> runExceptT (lookupAllClassMethods name ty env)
-    noInstanceError = error ("No instance " <> show name <> " " <> show ty)
+    yy (InClass name ty) tz = tArr (tApp kTyp (tCon kFun name) ty) <$> tz
+    zz1 = foldr yy (workingExprTag expr) ps
+
+    baz = do
+        env <- askClassEnv
+        fromRight (error ("No class " <> show name))   -- TODO
+            <$> runExceptT (lookupAllClassX name env)
+
+    baz2 = do
+        env <- askClassEnv
+        fromRight (error ("No instance " <> show name <> " " <> show ty))   -- TODO
+            <$> runExceptT (lookupAllClassMethods name ty env)
+            >>= traverse (secondM translateMethod) 
 
     translateMethod = translate
                     . Stage1.translate 
@@ -248,15 +249,200 @@ applyDicts (InClass name ty) expr = do
     translateTag = fmap (\(TypeInfo () ty ps) -> TypeInfo [] (Just ty) ps)
 
     buildDict :: [(Name, WorkingExpr (Maybe Type))] -> WorkingExpr (Maybe Type)
-    buildDict map =
-        conExpr (Just t1) "#" [row]
+    buildDict map = conExpr (Just (tApp kTyp (tCon kFun name) ty)) "#" [row]
       where
         row = foldr fn (conExpr (Just tRowNil) "{}" []) map
         fn (name, expr) e = 
             let row = tRow name <$> workingExprTag expr <*> workingExprTag e
              in rowExprCons row name expr e
 
+--    t1 = undefined
 
+--applyDicts
+--  :: ( MonadSupply Name m
+--     , MonadReader (ClassEnv, TypeEnv, KindEnv, ConstructorEnv) m )
+--  => Predicate
+--  -> (WorkingExpr (Maybe Type), Maybe Type)
+--  -> StateT [(Name, Type)] m (WorkingExpr (Maybe Type), Maybe Type)
+--applyDicts (InClass name ty) (expr, tx) = do
+--    env <- askClassEnv
+--    tv  <- dictTVar t1
+--    case project expr of
+--        EVar t var 
+--            | isVar ty -> do
+--                all <- baz env
+--                if var `elem` (fst <$> all)
+--                    then do
+--                        let getType t = tAtom `tArr` t1 `tArr` t
+--                        pure ( appExpr tx
+--                                 [ varExpr (getType <$> workingExprTag expr) "@#getField"
+--                                 , litExpr (Just tAtom) (TAtom var) 
+--                                 , varExpr (Just t1) tv ]
+--                             , tArr t1 <$> tx )
+--                    else pure ( appExpr tx
+--                                 [ setWorkingExprTag (tArr t1 <$> tx) expr
+--                                 , varExpr (Just t1) tv ]
+--                              , tArr t1 <$> tx )
+--            | otherwise -> do
+--                methods <- baz2 env
+--                map <- traverse (secondM translateMethod) methods
+--                -- Is this function a member of the class?
+--                case lookup var map of
+--                    Just e -> pure ( e, tArr t1 <$> tx )
+--                    Nothing -> 
+--                        pure ( appExpr tx
+--                                 [ setWorkingExprTag (tArr t1 <$> tx) expr
+--                                 , buildDict map ]
+--                             , tArr t1 <$> tx )
+--        _   | isVar ty -> do
+--                undefined
+--                --traceShowM "*****************"
+--                --traceShowM e
+--                --traceShowM ty
+--                --traceShowM "*****************"
+--                --methods <- baz2 env
+--                --map <- traverse (secondM translateMethod) methods
+--                --pure $ appExpr (workingExprTag expr)
+--                --  [ setWorkingExprTag (tArr t1 <$> workingExprTag expr) expr
+--                --  , buildDict map ]
+--                --pure (varExpr (Just tInt) "TODO!")
+--                --all <- baz env
+--                --pure $ appExpr (workingExprTag expr) 
+--                --    [ setWorkingExprTag (tArr t1 <$> workingExprTag expr) expr
+--                --    ]
+--                --    , buildDict map ]
+--
+--            | otherwise -> do
+--                --traceShowM "==================="
+--                --traceShowM "==================="
+--                --traceShowM expr
+--                --traceShowM "==================="
+--                --traceShowM "==================="
+----                pure (setWorkingExprTag (tArr t1 <$> workingExprTag expr) expr)
+----                pure (varExpr (Just tInt) "TODO!")
+--                methods <- baz2 env
+--                map <- traverse (secondM translateMethod) methods
+--                pure ( appExpr tx
+--                         [ setWorkingExprTag (tArr t1 <$> tx) expr
+--                         , buildDict map ]
+--                     , tArr t1 <$> tx )
+--
+--  where
+--    t1 = tApp kTyp (tCon (kArr kTyp kTyp) name) ty
+--    
+--    baz env = fromRight noClassError <$> runExceptT (lookupAllClassX name env)
+--    noClassError = error ("No class " <> show name)
+--
+--    baz2 env = fromRight noInstanceError <$> runExceptT (lookupAllClassMethods name ty env)
+--    noInstanceError = error ("No instance " <> show name <> " " <> show ty)
+--
+--    translateMethod = translate
+--                    . Stage1.translate 
+--                    . getAst 
+--                    . translateTag 
+--
+--    translateTag = fmap (\(TypeInfo () ty ps) -> TypeInfo [] (Just ty) ps)
+--
+--    buildDict :: [(Name, WorkingExpr (Maybe Type))] -> WorkingExpr (Maybe Type)
+--    buildDict map =
+--        conExpr (Just t1) "#" [row]
+--      where
+--        row = foldr fn (conExpr (Just tRowNil) "{}" []) map
+--        fn (name, expr) e = 
+--            let row = tRow name <$> workingExprTag expr <*> workingExprTag e
+--             in rowExprCons row name expr e
+
+--applyDicts
+--  :: ( MonadSupply Name m
+--     , MonadReader (ClassEnv, TypeEnv, KindEnv, ConstructorEnv) m )
+--  => Predicate
+--  -> WorkingExpr (Maybe Type)
+--  -> StateT [(Name, Type)] m (WorkingExpr (Maybe Type))
+--applyDicts (InClass name ty) expr = do
+--    env <- askClassEnv
+--    tv  <- dictTVar t1
+--    case project expr of
+--        EVar t var 
+--            | isVar ty -> do
+--                all <- baz env
+--                if var `elem` (fst <$> all)
+--                    then do
+--                        let getType t = tAtom `tArr` t1 `tArr` t
+--                        pure $ appExpr (workingExprTag expr) 
+--                            [ varExpr (getType <$> workingExprTag expr) "@#getField"
+--                            , litExpr (Just tAtom) (TAtom var) 
+--                            , varExpr (Just t1) tv ]
+--                    else pure $ appExpr (workingExprTag expr) 
+--                            [ setWorkingExprTag (tArr t1 <$> workingExprTag expr) expr
+--                            , varExpr (Just t1) tv ]
+--            | otherwise -> do
+--                methods <- baz2 env
+--                map <- traverse (secondM translateMethod) methods
+--                case lookup var map of
+--                    Just e -> pure e
+--                    Nothing -> 
+--                        pure $ appExpr (workingExprTag expr)
+--                            [ setWorkingExprTag (tArr t1 <$> workingExprTag expr) expr
+--                            , buildDict map ]
+--        e
+--            | isVar ty -> do
+--                undefined
+--                --traceShowM "*****************"
+--                --traceShowM e
+--                --traceShowM ty
+--                --traceShowM "*****************"
+--                --methods <- baz2 env
+--                --map <- traverse (secondM translateMethod) methods
+--                --pure $ appExpr (workingExprTag expr)
+--                --  [ setWorkingExprTag (tArr t1 <$> workingExprTag expr) expr
+--                --  , buildDict map ]
+--                --pure (varExpr (Just tInt) "TODO!")
+--                --all <- baz env
+--                --pure $ appExpr (workingExprTag expr) 
+--                --    [ setWorkingExprTag (tArr t1 <$> workingExprTag expr) expr
+--                --    ]
+--                --    , buildDict map ]
+--
+--            | otherwise -> do
+--                --traceShowM "==================="
+--                --traceShowM "==================="
+--                --traceShowM expr
+--                --traceShowM "==================="
+--                --traceShowM "==================="
+----                pure (setWorkingExprTag (tArr t1 <$> workingExprTag expr) expr)
+----                pure (varExpr (Just tInt) "TODO!")
+--                methods <- baz2 env
+--                map <- traverse (secondM translateMethod) methods
+--                pure $ appExpr (workingExprTag expr)
+--                    [ setWorkingExprTag (tArr t1 <$> workingExprTag expr) expr
+--                    , buildDict map -- varExpr (Just t1) "WHAT" 
+--                    ]
+--
+--
+--  where
+--    t1 = tApp kTyp (tCon (kArr kTyp kTyp) name) ty
+--    
+--    baz env = fromRight noClassError <$> runExceptT (lookupAllClassX name env)
+--    noClassError = error ("No class " <> show name)
+--
+--    baz2 env = fromRight noInstanceError <$> runExceptT (lookupAllClassMethods name ty env)
+--    noInstanceError = error ("No instance " <> show name <> " " <> show ty)
+--
+--    translateMethod = translate
+--                    . Stage1.translate 
+--                    . getAst 
+--                    . translateTag 
+--
+--    translateTag = fmap (\(TypeInfo () ty ps) -> TypeInfo [] (Just ty) ps)
+--
+--    buildDict :: [(Name, WorkingExpr (Maybe Type))] -> WorkingExpr (Maybe Type)
+--    buildDict map =
+--        conExpr (Just t1) "#" [row]
+--      where
+--        row = foldr fn (conExpr (Just tRowNil) "{}" []) map
+--        fn (name, expr) e = 
+--            let row = tRow name <$> workingExprTag expr <*> workingExprTag e
+--             in rowExprCons row name expr e
 
 --applyDicts (InClass name ty) expr
 --

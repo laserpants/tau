@@ -88,8 +88,11 @@ data Assoc
 -- | Pattern guard
 data Guard a = Guard [a] a
 
--- | Pattern matching clause
-data Clause t p a = Clause t p [Guard a] 
+-- | Pattern match clause
+data Clause t p a = Clause
+    { clauseTag      :: t
+    , clausePatterns :: p
+    , clauseGuard    :: [Guard a] }
 
 type ProgClause t = Clause t (ProgPattern t) (ProgExpr t)
 
@@ -392,19 +395,10 @@ bindingTag = \case
 astTag :: Ast t -> t
 astTag = exprTag . getAst 
 
-clauseTag :: Clause t p a -> t
-clauseTag (Clause t _ _) = t
-
-clausePatterns :: Clause t p a -> p
-clausePatterns (Clause _ p _) = p
-
-clauseGuards :: Clause t p a -> [Guard a]
-clauseGuards (Clause _ _ gs) = gs
+-- >>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>
 
 guardToPair :: Guard a -> ([a], a)
 guardToPair (Guard es e) = (es, e)
-
--- >>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>
 
 primName :: Prim -> Name
 primName = \case

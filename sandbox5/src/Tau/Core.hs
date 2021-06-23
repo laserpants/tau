@@ -16,7 +16,7 @@ data CoreF a
     | CLet Name a a             -- ^ Let expression
     | CLam Name a               -- ^ Lambda abstraction
     | CIf  a ~a ~a              -- ^ If-clause
-    | CPat a (CMatrix a)        -- ^ Pattern matching clause matrix
+    | CPat a (CMatrix a)        -- ^ Pattern match clause matrix
 
 -- | Core language expression used for evaluation and code generation
 type Core = Fix CoreF
