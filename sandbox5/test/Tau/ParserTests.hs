@@ -73,6 +73,10 @@ testPatternParser = do
         "{ x = 5 } as y"
         (asPat () "y" (recordPat () (rowPat () "x" (litPat () (TInteger 5)) (emptyRowPat ()))))
 
+    succeedParse patternParser
+        "{}"
+        (recordPat () (conPat () "{}" []))
+
 testAnnPatternParser :: SpecWith ()
 testAnnPatternParser = do
 
@@ -282,6 +286,10 @@ testExprParser = do
         "{ a = True | b }"
         (recordExpr () (rowExpr () "a" (litExpr () (TBool True)) (appExpr () [varExpr () "_#", varExpr () "b"])))
 
+    succeedParse exprParser
+        "{}"
+        (recordExpr () (conExpr () "{}" []))
+
 testTypeParser :: SpecWith ()
 testTypeParser = do
 
@@ -349,7 +357,9 @@ testTypeParser = do
         "{ a : Int, b : a | c }"
         (tRecord (tRow "a" tInt (tRow "b" (tVar kTyp "a") (tVar kRow "c"))))
 
-    --
+    succeedParseType typeParser
+        "{}"
+        (tRecord tRowNil)
 
 testExprParserMatch :: SpecWith ()
 testExprParserMatch = do
@@ -414,6 +424,10 @@ testExprParserMatch = do
 
     succeedParse exprParser
         "xs.map((x) => x + 1)"
+        (op2Expr () (ODot ()) (appExpr () [varExpr () "map", lamExpr () [varPat () "x"] (op2Expr () (OAdd ()) (varExpr () "x") (litExpr () (TInteger 1)))]) (varExpr () "xs"))
+
+    succeedParse exprParser
+        "xs.map(x => x + 1)"
         (op2Expr () (ODot ()) (appExpr () [varExpr () "map", lamExpr () [varPat () "x"] (op2Expr () (OAdd ()) (varExpr () "x") (litExpr () (TInteger 1)))]) (varExpr () "xs"))
 
 testAnnExprParser :: SpecWith ()
@@ -526,3 +540,6 @@ testAnnExprParser = do
         "(x : Int) => x + 1"
         (lamExpr () [annPat tInt (varPat () "x")] (op2Expr () (OAdd ()) (varExpr () "x") (litExpr () (TInteger 1))))
 
+    succeedParse annExprParser
+        "x : Int => x + 1"
+        (lamExpr () [annPat tInt (varPat () "x")] (op2Expr () (OAdd ()) (varExpr () "x") (litExpr () (TInteger 1))))

@@ -436,9 +436,24 @@ testInferExprType = do
         (op2Expr () (ODot ()) (varExpr () "a") (recordExpr () (rowExpr () "a" (annExpr tInt (litExpr () (TInt 1))) (rowExpr () "b" (annExpr tInt (litExpr () (TInt 2))) (conExpr () "{}" [])))))
         tInt
 
+    -- { a = (), b = 2 }.a
     succeedInferExpr
         (op2Expr () (ODot ()) (varExpr () "a") (recordExpr () (rowExpr () "a" (litExpr () TUnit) (rowExpr () "b" (annExpr tInt (litExpr () (TInt 2))) (conExpr () "{}" [])))))
         tUnit
+
+    -- let c = (_ => True) in { a = (), b = 2 }.c
+    succeedInferExpr
+        (letExpr () (BPat () (varPat () "c"))
+            (lamExpr () [anyPat ()] (litExpr () (TBool True)))
+            (op2Expr () (ODot ()) (varExpr () "c") (recordExpr () (rowExpr () "a" (litExpr () TUnit) (rowExpr () "b" (annExpr tInt (litExpr () (TInt 2))) (conExpr () "{}" []))))))
+        tBool
+
+    -- let c(_) = True in { a = (), b = 2 }.c
+    succeedInferExpr
+        (letExpr () (BFun () "c" [anyPat ()])
+            (litExpr () (TBool True))
+            (op2Expr () (ODot ()) (varExpr () "c") (recordExpr () (rowExpr () "a" (litExpr () TUnit) (rowExpr () "b" (annExpr tInt (litExpr () (TInt 2))) (conExpr () "{}" []))))))
+        tBool
 
     succeedInferExpr
         (letExpr () (BFun () "f" [varPat () "x"]) (op2Expr () (OAdd ()) (varExpr () "x") (litExpr () (TInt 1))) (appExpr () [varExpr () "f", annExpr tInt (litExpr () (TInt 123))]))
