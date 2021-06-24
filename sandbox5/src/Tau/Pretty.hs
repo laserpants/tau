@@ -159,8 +159,7 @@ instance Pretty (Pattern t1 t2 t3 t4 t5 t6 t7 t8 t9) where
 
         PCon _ "[]" []                   -> "[]"
         PCon _ "(::)" [hd, tl]           -> snd hd <+> "::" <+> snd tl
-        PCon _ "#" [(Fix (PVar _ v), _)] -> pretty v
-        PCon _ "#" [(r@(Fix PRow{}), _)] -> "{" <+> commaSep (fields r) <> final r <+> "}"
+        PCon _ "#" [(r, _)]              -> prettyRecord r
         PCon _ con []                    -> pretty con
         PCon _ con ps                    -> pretty con <> prettyTuple (snd <$> ps)
 
@@ -176,6 +175,13 @@ instance Pretty (Pattern t1 t2 t3 t4 t5 t6 t7 t8 t9) where
             PAnn    t p                  -> p <+> ":" <+> pretty t
 
       where
+        prettyRecord = project >>> \case
+            PVar _ v                     -> pretty v
+            r@PRow{}                     -> "{" <+> commaSep (fields (embed r)) <> final (embed r) <+> "}"
+            PCon _ "{}" []               -> "{}"
+            PCon _ con []                -> pretty con
+            PCon _ con ps                -> pretty con <> prettyTuple (pretty <$> ps) 
+
         fields = para $ \case
             PRow _ label p rest          -> pretty label <+> "=" <+> pretty (fst p):snd rest
             _                            -> []
@@ -192,8 +198,7 @@ instance (Pretty e1, FunArgs e2, Functor e3, Clauses [e3 (Expr t1 t2 t3 t4 t5 t6
 
         ECon _ "[]" []                   -> "[]"
         ECon _ "(::)" [hd, tl]           -> snd hd <+> "::" <+> snd tl
-        ECon _ "#" [(Fix (EVar _ v), _)] -> pretty v
-        ECon _ "#" [(r@(Fix ERow{}), _)] -> "{" <+> commaSep (fields r) <> final r <+> "}"
+        ECon _ "#" [(r, _)]              -> prettyRecord r
         ECon _ con []                    -> pretty con
         ECon _ con ps                    -> pretty con <> prettyTuple (snd <$> ps)
         EPat    _ e1 cs                  -> "match" <+> snd e1 <+> "with" <+> clauses (fst <$$> cs)
@@ -224,6 +229,13 @@ instance (Pretty e1, FunArgs e2, Functor e3, Clauses [e3 (Expr t1 t2 t3 t4 t5 t6
             EAnn    t e                  -> e <+> ":" <+> pretty t
 
       where
+        prettyRecord = project >>> \case
+            EVar _ v                     -> pretty v
+            r@ERow{}                     -> "{" <+> commaSep (fields (embed r)) <> final (embed r) <+> "}"
+            ECon _ "{}" []               -> "{}"
+            ECon _ con []                -> pretty con
+            ECon _ con es                -> pretty con <> prettyTuple (pretty <$> es) 
+
         fields = para $ \case
             ERow _ label p rest          -> pretty label <+> "=" <+> pretty (fst p):snd rest
             _                            -> []

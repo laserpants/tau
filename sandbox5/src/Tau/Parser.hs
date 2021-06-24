@@ -181,7 +181,9 @@ patternParser = makeExprParser (try (parens patternParser) <|> parser)
     parseTuple     = tuplePat () <$> components annPatternParser
     parseCon       = conPat () <$> constructorParser 
                                <*> (fromMaybe [] <$> optional (components annPatternParser))
-    parseRecord    = recordPat () <$> rowParser "=" annPatternParser rowPat varPat emptyRowPat
+    parseRecord = do
+        symbol "{}" $> recordPat () (conPat () "{}" [])
+            <|> recordPat () <$> rowParser "=" annPatternParser rowPat varPat emptyRowPat
 
 --    parseRecord    = recordPat () <$> rowParser "=" annPatternParser rowPat varPat_ emptyRowPat
 --
@@ -314,11 +316,14 @@ exprParser = makeExprParser (try lambdaParser <|> try (parens exprParser) <|> pa
     parseTuple     = tupleExpr () <$> components exprParser
     parseCon       = conExpr () <$> constructorParser 
                                 <*> (fromMaybe [] <$> optional (components annExprParser))
-    parseRecord    = recordExpr () <$> rowParser "=" annExprParser rowExpr varExpr_ emptyRowExpr
+    parseRecord = do
+        symbol "{}" $> recordExpr () (conExpr () "{}" [])
+            <|> recordExpr () <$> rowParser "=" annExprParser rowExpr varExpr_ emptyRowExpr
 
     varExpr_ _ var = appExpr () [varExpr () "_#", varExpr () var]
 
-lambdaParser = do -- lamExpr () <$> argParser patternParser <*> (symbol "=>" *> annExprParser)
+lambdaParser :: Parser (ProgExpr ())
+lambdaParser = do
     args <- try (pure <$> annPatternParser) <|> argParser annPatternParser
     body <- symbol "=>" *> annExprParser
     pure (lamExpr () args body)
@@ -334,12 +339,16 @@ typeParser = makeExprParser (try (parens typeParser) <|> parser)
         foldlM (\s t -> kind >>= \k -> pure (tApp k s t)) t ts
 
     typeFragmentParser :: Parser Type
-    typeFragmentParser = 
-        tVar <$> kind <*> nameParser
-          <|> builtIn
-          <|> tCon <$> kind <*> constructorParser
-          <|> tTuple <$> components typeParser
-          <|> tRecord <$> rowParser ":" typeParser (const tRow) (const (tVar kRow)) (const tRowNil)
+    typeFragmentParser = tVar <$> kind <*> nameParser
+        <|> builtIn
+        <|> tCon <$> kind <*> constructorParser
+        <|> tTuple <$> components typeParser
+        <|> recordTypeParser
+
+    recordTypeParser :: Parser Type
+    recordTypeParser =
+        symbol "{}" $> tRecord tRowNil 
+            <|> tRecord <$> rowParser ":" typeParser (const tRow) (const (tVar kRow)) (const tRowNil)
 
     kind = lift (kVar . ("k" <>) <$> supply)
 

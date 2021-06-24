@@ -65,10 +65,6 @@ inferExprType = cata $ \case
                      [varExpr (fromJust . unpackRecordType "##" <$> ti) a]
             else varExpr ti a
 
---        pure $ if isRecordType (nodeType ti)
---            then conExpr (TypeInfo [] (nodeType ti) []) "#" [varExpr (fromJust . unpackRecordType <$> ti) a]
---            else varExpr ti a
-
     ECon _ con exprs -> do
         (es, ti, _) <- runNode $ do
             ty <- lookupScheme con >>= instantiate
