@@ -663,15 +663,34 @@ example1 = foo1 expr
 --                , recordExpr () (rowExpr () "a" (annExpr tInt (litExpr () (TInt 5))) (conExpr () "{}" []))
 --                ]
 
-    -- (let r = { a = 1, b = 2 } in ({ a = a | z }) => z)({ a = 5 ))
+--    -- (let r = { a = 1, b = 2 } in ({ a = a | z }) => z)({ a = 5 ))
+--
+--    expr = 
+--            appExpr () 
+--                [ letExpr () (BPat () (varPat () "r"))
+--                    (recordExpr () (rowExpr () "a" (annExpr tInt (litExpr () (TInt 1))) (rowExpr () "b" (annExpr tInt (litExpr () (TInt 2))) (conExpr () "{}" [])))) 
+--                        (lamExpr () [recordPat () (rowPat () "a" (varPat () "a") (varPat () "z"))] (varExpr () "z"))
+--                , recordExpr () (rowExpr () "a" (annExpr tInt (litExpr () (TInt 5))) (conExpr () "{}" []))
+--                ]
 
     expr = 
-            appExpr () 
-                [ letExpr () (BPat () (varPat () "r"))
-                    (recordExpr () (rowExpr () "a" (annExpr tInt (litExpr () (TInt 1))) (rowExpr () "b" (annExpr tInt (litExpr () (TInt 2))) (conExpr () "{}" [])))) 
-                        (lamExpr () [recordPat () (rowPat () "a" (varPat () "a") (varPat () "z"))] (varExpr () "z"))
-                , recordExpr () (rowExpr () "a" (annExpr tInt (litExpr () (TInt 5))) (conExpr () "{}" []))
-                ]
+        (fixExpr () "map" 
+            (lamExpr () [varPat () "f"]
+                (funExpr () 
+                    [ Clause () (conPat () "[]" []) 
+                          [ Guard [] (conExpr () "[]" [])
+                          ]
+                    , Clause () (conPat () "(::)" [varPat () "x", varPat () "xs"]) 
+                          [ Guard [] (conExpr () "(::)" 
+                              [ appExpr () [varExpr () "f", varExpr () "x"]
+                              , appExpr () [varExpr () "map", varExpr () "f", varExpr () "xs"]
+                              ])
+                          ]]))
+            (appExpr () 
+                [ varExpr () "map"
+                , lamExpr () [varPat () "x"] (op2Expr () (OAdd ()) (varExpr () "x") (litExpr () (TInteger 1)))
+                , annExpr (tList tInt) (listExpr () [litExpr () (TInteger 1), litExpr () (TInteger 2), litExpr () (TInteger 3)])
+                ]))
 
 --    -- let r = { a = 1, b = 2, c = 3 } in (({ a = a | z }) => z)(r)
 --
