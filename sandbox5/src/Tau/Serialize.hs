@@ -39,6 +39,9 @@ instance ToRep Kind where
 instance ToRep Prim where 
     toRep = withPretty primJson
 
+instance ToRep () where
+    toRep _ = object []
+
 instance 
     ( ToRep t1
     , ToRep t2
@@ -51,13 +54,16 @@ instance
     , ToRep t9
     ) => ToRep (Pattern t1 t2 t3 t4 t5 t6 t7 t8 t9) 
   where 
-    toRep = patternRep
+    toRep = withPretty patternRep
 
 instance (ToRep t) => ToRep (SimplifiedPattern t) where 
-    toRep = simplifiedPatternRep
+    toRep = withPretty simplifiedPatternRep
 
 instance 
     ( Functor e3
+    , Pretty e1
+    , FunArgs e2
+    , Clauses [e3 (Expr t1 t2 t3 t4 t5 t6 t7 t8 t9 t10 t11 t12 t13 t14 t15 e1 e2 e3)]
     , ToRep t1
     , ToRep t2
     , ToRep t3
@@ -78,13 +84,13 @@ instance
     , ToRep (e3 (Expr t1 t2 t3 t4 t5 t6 t7 t8 t9 t10 t11 t12 t13 t14 t15 e1 e2 e3))
     ) => ToRep (Expr t1 t2 t3 t4 t5 t6 t7 t8 t9 t10 t11 t12 t13 t14 t15 e1 e2 e3) 
   where
-    toRep = exprRep
+    toRep = withPretty exprRep
 
 instance (ToRep a) => ToRep (Op1 a) where 
-    toRep = op1Rep
+    toRep = withPretty op1Rep
 
 instance (ToRep a) => ToRep (Op2 a) where 
-    toRep = op2Rep
+    toRep = withPretty op2Rep
 
 instance (ToRep t, ToRep p) => ToRep (Binding t p) where
     toRep = bindintRep
@@ -92,11 +98,11 @@ instance (ToRep t, ToRep p) => ToRep (Binding t p) where
 instance (ToRep a) => ToRep (Guard a) where
     toRep = guardRep
 
-instance (ToRep t, ToRep p, ToRep a) => ToRep (Clause t p a) where
-    toRep = clauseRep
+instance (Pretty p, Pretty a, ToRep t, ToRep p, ToRep a) => ToRep (Clause t p a) where
+    toRep = withPretty clauseRep
 
-instance (ToRep t, ToRep p, ToRep a) => ToRep (SimplifiedClause t p a) where
-    toRep = simplifiedClauseRep
+instance (Pretty p, Pretty a, ToRep t, ToRep p, ToRep a) => ToRep (SimplifiedClause t p a) where
+    toRep = withPretty simplifiedClauseRep
 
 instance (ToRep e, ToRep t) => ToRep (TypeInfoT e t) where
     toRep = typeInfoRep
@@ -191,6 +197,9 @@ simplifiedPatternRep = \case
 
 exprRep
   :: ( Functor e3
+     , Pretty e1
+     , FunArgs e2
+     , Clauses [e3 (Expr t1 t2 t3 t4 t5 t6 t7 t8 t9 t10 t11 t12 t13 t14 t15 e1 e2 e3)]
      , ToRep t1
      , ToRep t2
      , ToRep t3

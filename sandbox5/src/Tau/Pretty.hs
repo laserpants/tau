@@ -163,6 +163,16 @@ instance Pretty (Pattern t1 t2 t3 t4 t5 t6 t7 t8 t9) where
         PCon _ con []                    -> pretty con
         PCon _ con ps                    -> pretty con <> prettyTuple (snd <$> ps)
 
+        PRow _ lab (a, doc1) (b, doc2) -> 
+            pretty ("{" <> lab <> "}") <+> parensIf (useParens a) doc1 
+                                       <+> parensIf (useParens b) doc2
+          where
+            useParens = project >>> \case
+                PAs _ _ _    -> True
+                POr _ _ _    -> True
+                PAnn _ _     -> True
+                _            -> False
+
         expr -> snd <$> expr & \case
             PVar    _ var                -> pretty var
             PLit    _ prim               -> pretty prim
@@ -171,7 +181,6 @@ instance Pretty (Pattern t1 t2 t3 t4 t5 t6 t7 t8 t9) where
             PAny    _                    -> "_"
             PTuple  _ ps                 -> prettyTuple ps
             PList   _ ps                 -> prettyList_ ps
-            PRow    _ lab a b            -> "<<row>>" 
             PAnn    t p                  -> p <+> ":" <+> pretty t
 
       where
@@ -190,6 +199,10 @@ instance Pretty (Pattern t1 t2 t3 t4 t5 t6 t7 t8 t9) where
             PRow _ _ _ r                 -> r
             PVar _ v                     -> " " <> pipe <+> pretty v
             _                            -> ""
+
+instance Pretty (SimplifiedPattern t) where
+    pretty (SCon _ con []) = pretty con
+    pretty (SCon _ con ps) = prettyTuple (pretty <$> ps)
 
 -- >>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>
 
@@ -212,6 +225,16 @@ instance (Pretty e1, FunArgs e2, Functor e3, Clauses [e3 (Expr t1 t2 t3 t4 t5 t6
                     EVar{} -> False
                     _      -> True
 
+        ERow _ lab (a, doc1) (b, doc2) -> 
+            pretty ("{" <> lab <> "}") <+> parensIf (useParens a) doc1 
+                                       <+> parensIf (useParens b) doc2
+          where
+            useParens = project >>> \case
+                EOp2 _ _ _ _ -> True
+                EIf  _ _ _ _ -> True
+                EAnn _ _     -> True
+                _            -> False
+
         ELet _ bind e1 e2                -> prettyLet bind e1 (snd e2)
 
         expr -> snd <$> expr & \case
@@ -225,7 +248,6 @@ instance (Pretty e1, FunArgs e2, Functor e3, Clauses [e3 (Expr t1 t2 t3 t4 t5 t6
             EOp2    _ op a b             -> a <+> pretty op <+> b
             ETuple  _ es                 -> prettyTuple es
             EList   _ es                 -> prettyList_ es
-            ERow{}                       -> "<<row>>"
             EAnn    t e                  -> e <+> ":" <+> pretty t
 
       where
@@ -270,6 +292,8 @@ instance Pretty (Op1 t) where
 instance Pretty (Op2 t) where
     pretty = pretty . op2Symbol
 
+-- >>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>
+
 class FunArgs f where
     funArgs :: f -> Doc a
 
@@ -280,8 +304,16 @@ instance (Pretty p) => FunArgs [p] where
     funArgs [p] = pretty p
     funArgs ps  = "(" <> commaSep (pretty <$> ps) <> ")"
 
+-- >>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>
+
 class Clauses c where
     clauses :: c -> Doc a
+
+instance (Pretty p, Pretty a) => Clauses [SimplifiedClause t p a] where
+    clauses = hsep . fmap pretty
+
+instance (Pretty p, Pretty a) => Pretty (SimplifiedClause t p a) where
+    pretty (SimplifiedClause _ p g) = pipe <+> pretty p <+> prettyGuard g
 
 instance (Pretty p, Pretty a) => Clauses [Clause t p a] where
     clauses = hsep . fmap pretty
@@ -303,6 +335,9 @@ class Guarded g where
 
 instance (Pretty a) => Guarded [Guard a] where
     prettyGuard gs = hsep (pretty <$> gs)
+
+instance (Pretty a) => Guarded (Guard a) where
+    prettyGuard = pretty 
 
 -- >>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>
 
