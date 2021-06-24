@@ -168,9 +168,9 @@ instance Pretty (Pattern t1 t2 t3 t4 t5 t6 t7 t8 t9) where
                                        <+> parensIf (useParens b) doc2
           where
             useParens = project >>> \case
-                PAs _ _ _    -> True
-                POr _ _ _    -> True
-                PAnn _ _     -> True
+                PAs{}        -> True
+                POr{}        -> True
+                PAnn{}       -> True
                 _            -> False
 
         expr -> snd <$> expr & \case
@@ -230,9 +230,10 @@ instance (Pretty e1, FunArgs e2, Functor e3, Clauses [e3 (Expr t1 t2 t3 t4 t5 t6
                                        <+> parensIf (useParens b) doc2
           where
             useParens = project >>> \case
-                EOp2 _ _ _ _ -> True
-                EIf  _ _ _ _ -> True
-                EAnn _ _     -> True
+                EOp2{}       -> True
+                EIf{}        -> True
+                EAnn{}       -> True
+                ERow{}       -> True
                 _            -> False
 
         ELet _ bind e1 e2                -> prettyLet bind e1 (snd e2)
