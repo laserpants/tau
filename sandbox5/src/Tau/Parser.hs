@@ -177,12 +177,12 @@ patternParser = makeExprParser (try (parens patternParser) <|> parser)
 
     parseWildcard  = symbol "_" $> anyPat ()
     parseAsPattern = keyword "as" >> asPat () <$> nameParser
-    parseVar       = varPat () <$> nameParser
-    parseLit       = litPat () <$> primParser
-    parseList      = listPat () <$> elements annPatternParser
+    parseVar       = varPat   () <$> nameParser
+    parseLit       = litPat   () <$> primParser
+    parseList      = listPat  () <$> elements annPatternParser
     parseTuple     = tuplePat () <$> components annPatternParser
-    parseCon       = conPat () <$> constructorParser 
-                               <*> (fromMaybe [] <$> optional (components annPatternParser))
+    parseCon       = conPat   () <$> constructorParser 
+                                 <*> (fromMaybe [] <$> optional (components annPatternParser))
     parseRecord = do
         symbol "{}" $> recordPat () (conPat () "{}" [])
             <|> recordPat () <$> rowParser "=" annPatternParser rowPat varPat emptyRowPat
@@ -312,12 +312,12 @@ exprParser = makeExprParser (try lambdaParser <|> try (parens exprParser) <|> pa
     parseNormalLet = BPat () <$> annPatternParser
 --    parseFix       = undefined
     parseFun       = keyword "fun" *> (funExpr () <$> some parseClause)
-    parseVar       = varExpr () <$> nameParser
-    parseLit       = litExpr () <$> primParser
-    parseList      = listExpr () <$> elements annExprParser
+    parseVar       = varExpr   () <$> nameParser
+    parseLit       = litExpr   () <$> primParser
+    parseList      = listExpr  () <$> elements annExprParser
     parseTuple     = tupleExpr () <$> components exprParser
-    parseCon       = conExpr () <$> constructorParser 
-                                <*> (fromMaybe [] <$> optional (components annExprParser))
+    parseCon       = conExpr   () <$> constructorParser 
+                                  <*> (fromMaybe [] <$> optional (components annExprParser))
     parseRecord = do
         symbol "{}" $> recordExpr () (conExpr () "{}" [])
             <|> recordExpr () <$> rowParser "=" annExprParser rowExpr varExpr_ emptyRowExpr
