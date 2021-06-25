@@ -398,7 +398,14 @@ insertKinds = go kTyp
         TCon _ con   -> tCon k con
         TRow lab a b -> tRow lab (insertKinds a) (setKind kRow b)
         TArr a b     -> tArr (insertKinds a) (insertKinds b)
-        TApp _ a b   -> tApp k (go (kArr kTyp k) a) (setKind kTyp (insertKinds b))
+        TApp _ a b   -> tApp k (go (kArr k1 k) a) rhs
+          where
+            k1 = case project a of
+                TCon _ "#"  -> kRow 
+                _           -> kTyp 
+            rhs = case project (insertKinds b) of
+                TCon _ "{}" -> tCon kRow "{}"
+                t           -> setKind kTyp (embed t)
 
     setKind :: Kind -> Type -> Type
     setKind k = project >>> \case

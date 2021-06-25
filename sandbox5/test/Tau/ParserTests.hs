@@ -42,6 +42,10 @@ testDatatypeParser = do
         "type List a = Nil | Cons a (List a)"
         (Sum "List" ["a"] [ Mul "Nil" [] , Mul "Cons" [tVar kTyp "a", tApp kTyp (tCon kFun "List") (tVar kTyp "a")]])
 
+    succeedParse datatypeParser
+        "type User = User { name : String }"
+        (Sum "User" [] [ Mul "User" [ tRecord (tRow "name" tString tRowNil) ] ])
+
 testPatternParser :: SpecWith ()
 testPatternParser = do
 
