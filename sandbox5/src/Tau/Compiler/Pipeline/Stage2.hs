@@ -189,20 +189,18 @@ applyDicts expr (InClass name ty:ps) = do
             | isVar ty -> do
                 tv  <- dictTVar (tApp kTyp (tCon kFun name) ty)
                 all <- baz 
+                let t1 = tApp kTyp (tCon kFun name) ty
+                    getType t = tAtom `tArr` t1 `tArr` t
                 if var `elem` (fst <$> all) 
                     then do
-                        let t1 = tApp kTyp (tCon kFun name) ty
-                            getType t = tAtom `tArr` t1 `tArr` t
                         pure (appExpr (workingExprTag expr)
                             [ varExpr (getType <$> workingExprTag expr) "@#getField"
                             , litExpr (Just tAtom) (TAtom var) 
                             , varExpr (Just t1) tv 
                             ])
-                    else 
-                        undefined
-                        --pure (appExpr (Just tBool)
-                        --    [ expr
-                        --    , varExpr (Just tBool) tv ])
+                    else pure (appExpr zz1
+                            [ setWorkingExprTag (yy (InClass name ty) zz1) expr
+                            , varExpr (Just t1) tv ])
 
             | otherwise -> do
                 map <- baz2 

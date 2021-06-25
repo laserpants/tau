@@ -46,6 +46,11 @@ import qualified Tau.Compiler.Pipeline.Stage6 as Stage6
 import qualified Tau.Env as Env
 
 
+data Nat = Zero | Succ Nat deriving (Show)
+
+fnx g a (Succ n) = fnx g (g (Succ n) a) n
+fnx _ a _        = a
+
 -- let f(x : Int) = x + 1 in f(127)
 
 
@@ -673,24 +678,78 @@ example1 = foo1 expr
 --                , recordExpr () (rowExpr () "a" (annExpr tInt (litExpr () (TInt 5))) (conExpr () "{}" []))
 --                ]
 
+
+--    expr = 
+--        (fixExpr () "foldSucc"
+--            (lamExpr () [varPat () "g", varPat () "a"] (funExpr () 
+--                [ Clause () (conPat () "Succ" [varPat () "n"]) 
+--                    [Guard [] (appExpr () 
+--                        [ varExpr () "foldSucc"
+--                        , varExpr () "g"
+--                        , appExpr () [varExpr () "g", conExpr () "Succ" [varExpr () "n"], varExpr () "a"]
+--                        , varExpr () "n"
+--                        ])]
+--                , Clause () (anyPat ()) 
+--                    [Guard [] (varExpr () "a")]
+--                ]))
+--            (appExpr () 
+--                [ varExpr () "foldSucc"
+--                , lamExpr () [anyPat (), varPat () "x"] (op2Expr () (OAdd ()) (varExpr () "x") (litExpr () (TInteger 1)))
+--                , annExpr tInt (litExpr () (TInteger 0))
+--                , conExpr () "Succ" [conExpr () "Succ" [conExpr () "Succ" [conExpr () "Zero" []]]]
+--                ]))
+
+
+    -- 5 factorial
     expr = 
-        (fixExpr () "map" 
-            (lamExpr () [varPat () "f"]
-                (funExpr () 
-                    [ Clause () (conPat () "[]" []) 
-                          [ Guard [] (conExpr () "[]" [])
-                          ]
-                    , Clause () (conPat () "(::)" [varPat () "x", varPat () "xs"]) 
-                          [ Guard [] (conExpr () "(::)" 
-                              [ appExpr () [varExpr () "f", varExpr () "x"]
-                              , appExpr () [varExpr () "map", varExpr () "f", varExpr () "xs"]
-                              ])
-                          ]]))
-            (appExpr () 
-                [ varExpr () "map"
-                , lamExpr () [varPat () "x"] (op2Expr () (OAdd ()) (varExpr () "x") (litExpr () (TInteger 1)))
-                , annExpr (tList tInt) (listExpr () [litExpr () (TInteger 1), litExpr () (TInteger 2), litExpr () (TInteger 3)])
+        (fixExpr () "foldSucc"
+            (lamExpr () [varPat () "g", varPat () "a"] (funExpr () 
+                [ Clause () (conPat () "Succ" [varPat () "n"]) 
+                    [Guard [] (appExpr () 
+                        [ varExpr () "foldSucc"
+                        , varExpr () "g"
+                        , appExpr () [varExpr () "g", conExpr () "Succ" [varExpr () "n"], varExpr () "a"]
+                        , varExpr () "n"
+                        ])]
+                , Clause () (anyPat ()) 
+                    [Guard [] (varExpr () "a")]
                 ]))
+            (letExpr () 
+                (BFun () "toInt" [varPat () "n"])
+                (appExpr () 
+                    [ varExpr () "foldSucc"
+                    , lamExpr () [anyPat (), varPat () "x"] (op2Expr () (OAdd ()) (varExpr () "x") (litExpr () (TInteger 1)))
+                    , annExpr tInt (litExpr () (TInteger 0))
+                    , varExpr () "n"
+                    ])
+                (appExpr () 
+                    [ varExpr () "foldSucc"
+                    , lamExpr () [varPat () "n", varPat () "x"] (op2Expr () (OMul ()) (appExpr () [varExpr () "toInt", varExpr () "n"]) (varExpr () "x"))
+                    , annExpr tInt (litExpr () (TInteger 1))
+                    , conExpr () "Succ" [conExpr () "Succ" [conExpr () "Succ" [conExpr () "Succ" [conExpr () "Succ" [conExpr () "Zero" []]]]]]
+                    ])))
+
+
+
+--    expr = 
+--        (fixExpr () "map" 
+--            (lamExpr () [varPat () "f"]
+--                (funExpr () 
+--                    [ Clause () (conPat () "[]" []) 
+--                          [ Guard [] (conExpr () "[]" [])
+--                          ]
+--                    , Clause () (conPat () "(::)" [varPat () "x", varPat () "xs"]) 
+--                          [ Guard [] (conExpr () "(::)" 
+--                              [ appExpr () [varExpr () "f", varExpr () "x"]
+--                              , appExpr () [varExpr () "map", varExpr () "f", varExpr () "xs"]
+--                              ])
+--                          ]]))
+--            (appExpr () 
+--                [ varExpr () "map"
+--                , lamExpr () [varPat () "x"] (op2Expr () (OAdd ()) (varExpr () "x") (litExpr () (TInteger 1)))
+--                , annExpr (tList tInt) (listExpr () [litExpr () (TInteger 1), litExpr () (TInteger 2), litExpr () (TInteger 3)])
+--                ]))
+
 
 --    -- let r = { a = 1, b = 2, c = 3 } in (({ a = a | z }) => z)(r)
 --
@@ -1921,11 +1980,14 @@ testTypeEnv :: TypeEnv
 testTypeEnv = Env.fromList
     [ ( "None"         , Forall [kTyp] [] (tApp kTyp (tCon kFun "Option") (tGen 0)) )
     , ( "Some"         , Forall [kTyp] [] (tGen 0 `tArr` tApp kTyp (tCon kFun "Option") (tGen 0)) )
+    , ( "Zero"         , Forall []     [] (tCon kTyp "Nat") )
+    , ( "Succ"         , Forall []     [] (tCon kTyp "Nat" `tArr` tCon kTyp "Nat") )
     , ( "Foo"          , Forall [] [] (tInt `tArr` tInt `tArr` tCon kTyp "Foo") )
     , ( "id"           , Forall [kTyp] [] (tGen 0 `tArr` tGen 0) )
     , ( "(::)"         , Forall [kTyp] [] (tGen 0 `tArr` tList (tGen 0) `tArr` tList (tGen 0)) )
     , ( "[]"           , Forall [kTyp] [] (tList (tGen 0)) )
     , ( "(+)"          , Forall [kTyp] [InClass "Num" 0] (tGen 0 `tArr` tGen 0 `tArr` tGen 0) )
+    , ( "(*)"          , Forall [kTyp] [InClass "Num" 0] (tGen 0 `tArr` tGen 0 `tArr` tGen 0) )
     , ( "#"            , Forall [kRow] [] (tGen 0 `tArr` tApp kTyp tRecordCon (tGen 0)) )
     , ( "{}"           , Forall [] [] tRowNil )
     , ( "_#"           , Forall [kRow] [] (tApp kTyp (tCon (kArr kRow kTyp) "#") (tGen 0) `tArr` tGen 0) )
@@ -1994,15 +2056,18 @@ testClassEnv = Env.fromList
         -- Interface
       , ( ClassInfo (InClass "Num" "a") [InClass "Foo" "a"]
             [ ( "(+)"         , tVar kTyp "a" `tArr` tVar kTyp "a" `tArr` tVar kTyp "a" )
+            , ( "(*)"         , tVar kTyp "a" `tArr` tVar kTyp "a" `tArr` tVar kTyp "a" )
             , ( "fromInteger" , tInteger `tArr` tVar kTyp "a" )
             ]
         -- Instances
         , [ ClassInfo (InClass "Num" tInt) [] 
             [ ( "(+)"         , Ast (varExpr (TypeInfo () (tInt `tArr` tInt `tArr` tInt) []) "@Int.(+)") )
+            , ( "(*)"         , Ast (varExpr (TypeInfo () (tInt `tArr` tInt `tArr` tInt) []) "@Int.(*)") )
             , ( "fromInteger" , Ast (varExpr (TypeInfo () (tInteger `tArr` tInt) []) "@Int.fromInteger") )
             ]
           , ClassInfo (InClass "Num" tInteger) [] 
             [ ( "(+)"         , Ast (varExpr (TypeInfo () (tInteger `tArr` tInteger `tArr` tInteger) []) "@Integer.(+)") )
+            , ( "(*)"         , Ast (varExpr (TypeInfo () (tInteger `tArr` tInteger `tArr` tInteger) []) "@Integer.(*)") )
             , ( "fromInteger" , Ast (varExpr (TypeInfo () (tInteger `tArr` tInteger) []) "@Integer.id") )
             ]
           ]
@@ -2014,6 +2079,8 @@ testConstructorEnv :: ConstructorEnv
 testConstructorEnv = constructorEnv
     [ ("Some"     , ( ["Some", "None"], 1 ))
     , ("None"     , ( ["Some", "None"], 0 ))
+    , ("Zero"     , ( ["Zero", "Succ"], 0 ))
+    , ("Succ"     , ( ["Zero", "Succ"], 1 ))
     , ("[]"       , ( ["[]", "(::)"], 0 ))
     , ("(::)"     , ( ["[]", "(::)"], 2 ))
     , ("(,)"      , ( ["(,)"], 2 ))

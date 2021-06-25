@@ -7,3 +7,4 @@
 [-] Type class ambg.
 [-] Recursion
 [-] Modules/Program
+[-] Codata
