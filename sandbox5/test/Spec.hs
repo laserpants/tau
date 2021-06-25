@@ -59,4 +59,5 @@ main =
         describe "Tau.Parser (patternParser)"              testPatternParser
         describe "Tau.Parser (annPatternParser)"           testAnnPatternParser
         describe "Tau.Parser (type)"                       testTypeParser
+        describe "Tau.Parser (datatype)"                   testDatatypeParser
 

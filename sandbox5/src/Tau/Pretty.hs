@@ -140,13 +140,6 @@ instance Pretty Type where
                     TVar{}      -> False
                     _           -> True
 
-unfoldApp :: Type -> [Type]
-unfoldApp = para $ \case
-    TApp _ (_, a) (_, b) -> a <> b
-    TArr (a, _) (b, _)   -> [tArr a b]
-    TCon kind con        -> [tCon kind con]
-    TVar kind var        -> [tVar kind var]
-
 -- >>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>
 
 instance (Pretty a) => Pretty (PredicateT a) where
@@ -352,6 +345,26 @@ instance Pretty UnificationError where
     pretty = \case 
         -- TODO
         e -> pretty (show e)
+
+-- >>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>
+
+instance Pretty Product where
+    pretty (Mul con types) = 
+        pretty con <+> hsep (prettyType <$> types)
+      where
+        prettyType t = parensIf (useParens t) (pretty t)
+        useParens = project >>> \case
+            TApp{} -> True
+            TCon{} -> True
+            _      -> False
+
+instance Pretty Datatype where
+    pretty (Sum con vars prods) =
+        "type" <+> pretty con
+               <+> hsep (pretty <$> vars)
+               <+> "="
+               <+> hsep (punctuate pipe (pretty <$> prods))
+
 
 
 

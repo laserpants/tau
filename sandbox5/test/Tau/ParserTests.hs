@@ -6,6 +6,7 @@ import Tau.Compiler.Unify
 import Tau.Lang
 import Tau.Parser
 import Tau.Pretty
+import Tau.Prog
 import Tau.Tooling
 import Tau.Type
 import Test.Hspec hiding (describe, it)
@@ -33,6 +34,13 @@ failParse parser input =
     describe input $
         it "✗ fails to parse" $
             isLeft (runParserStack parser "" input)
+
+testDatatypeParser :: SpecWith ()
+testDatatypeParser = do
+
+    succeedParse datatypeParser
+        "type List a = Nil | Cons a (List a)"
+        (Sum "List" ["a"] [ Mul "Nil" [] , Mul "Cons" [tVar kTyp "a", tApp kTyp (tCon kFun "List") (tVar kTyp "a")]])
 
 testPatternParser :: SpecWith ()
 testPatternParser = do

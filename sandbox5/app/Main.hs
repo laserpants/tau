@@ -79,6 +79,20 @@ main = do
 --test340 = foo [ [rowPat () "x" (litPat () (TBool False)) (rowPat () "y" (recordPat () (rowPat () "z" (litPat () (TBool False)) (rowPat () "a" (litPat () (TBool False)) (conPat () "{}" [])))) (conPat () "{}" []))] , [rowPat () "x" (litPat () (TBool False)) (rowPat () "y" (recordPat () (rowPat () "z" (litPat () (TBool False)) (rowPat () "a" (litPat () (TBool True)) (conPat () "{}" [])))) (conPat () "{}" []))] , [rowPat () "x" (litPat () (TBool False)) (rowPat () "y" (recordPat () (rowPat () "z" (litPat () (TBool True)) (rowPat () "a" (litPat () (TBool False)) (conPat () "{}" [])))) (conPat () "{}" []))] , [rowPat () "x" (litPat () (TBool False)) (rowPat () "y" (recordPat () (rowPat () "z" (litPat () (TBool True)) (rowPat () "a" (litPat () (TBool True)) (conPat () "{}" [])))) (conPat () "{}" []))] , [rowPat () "x" (litPat () (TBool True)) (rowPat () "y" (recordPat () (rowPat () "z" (litPat () (TBool False)) (rowPat () "a" (litPat () (TBool False)) (conPat () "{}" [])))) (conPat () "{}" []))] , [rowPat () "x" (litPat () (TBool True)) (rowPat () "y" (recordPat () (rowPat () "z" (litPat () (TBool False)) (rowPat () "a" (litPat () (TBool True)) (conPat () "{}" [])))) (conPat () "{}" []))] , [rowPat () "x" (litPat () (TBool True)) (rowPat () "y" (recordPat () (rowPat () "z" (litPat () (TBool True)) (rowPat () "a" (litPat () (TBool False)) (conPat () "{}" [])))) (conPat () "{}" []))] , [rowPat () "x" (litPat () (TBool True)) (rowPat () "y" (recordPat () (rowPat () "z" (litPat () (TBool True)) (rowPat () "a" (litPat () (TBool True)) (conPat () "{}" [])))) (conPat () "{}" []))] ]
 
 
+test344 = tApp (kVar "k3") (tVar (kVar "k4") "m") (tVar (kVar "k5") "a")
+
+
+test343 = tApp (kVar "k1") (tVar (kVar "k2") "f") (tApp (kVar "k3") (tVar (kVar "k4") "m") (tVar (kVar "k5") "a" `tArr` tApp (kVar "k6") (tCon (kVar "k7") "List") (tVar (kVar "k8") "b")))
+
+
+test342 = tApp (kVar "k1") (tVar (kVar "k2") "f") (tApp (kVar "k3") (tVar (kVar "k4") "m") (tVar (kVar "k5") "a" `tArr` tVar (kVar "k6") "b"))
+
+
+test341 = tApp (kVar "k1") (tVar (kVar "k2") "f") (tApp (kVar "k3") (tVar (kVar "k4") "m") (tVar (kVar "k5") "a"))
+
+test340 = tApp (kVar "k1") (tApp (kVar "k2") (tVar (kVar "k3") "f") (tVar (kVar "k4") "m")) (tVar (kVar "k5") "a")
+
+
 test339 :: ProgExpr ()
 test339 = 
     letExpr ()

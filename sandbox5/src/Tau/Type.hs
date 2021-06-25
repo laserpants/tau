@@ -172,6 +172,11 @@ isCon = project >>> \case
     TCon{}   -> True
     _        -> False
 
+unfoldApp :: Type -> [Type]
+unfoldApp = para $ \case
+    TApp _ a b -> snd a <> snd b
+    t          -> [embed (fst <$> t)]
+
 getTypeVar :: Type -> Maybe Name
 getTypeVar = project >>> \case
     TVar _ v -> Just v

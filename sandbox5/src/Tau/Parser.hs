@@ -7,10 +7,12 @@ import Control.Monad.Combinators.Expr
 import Control.Monad.Supply
 import Control.Monad.Trans (lift)
 import Data.Foldable (foldlM)
+import Data.Function ((&))
 import Data.Functor (($>))
 import Data.Maybe (fromMaybe, fromJust)
 import Data.Text (Text, pack, unpack)
 import Tau.Lang
+import Tau.Prog
 import Tau.Tooling hiding (parens, brackets, braces, commaSep)
 import Tau.Type
 import Text.Megaparsec
@@ -98,7 +100,7 @@ constructorParser :: Parser Name
 constructorParser = word (withInitial upperChar)
 
 commaSep :: Parser a -> Parser [a]
-commaSep parser = parser `sepBy` symbol ","
+commaSep parser = parser `sepBy1` symbol ","
 
 elements :: Parser a -> Parser [a]
 elements = brackets . commaSep 
@@ -330,40 +332,77 @@ lambdaParser = do
 
 -- >>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>
 
+kindVar :: Parser Kind
+kindVar = lift (kVar . ("k" <>) <$> supply)
+
 typeParser :: Parser Type
 typeParser = makeExprParser (try (parens typeParser) <|> parser) 
     [[ InfixR (tArr <$ symbol "->") ]]
   where
     parser = do
         (t:ts) <- some typeFragmentParser
-        foldlM (\s t -> kind >>= \k -> pure (tApp k s t)) t ts
+        foldlM (\s t -> kindVar >>= \k -> pure (tApp k s t)) t ts
 
-    typeFragmentParser :: Parser Type
-    typeFragmentParser = tVar <$> kind <*> nameParser
-        <|> builtIn
-        <|> tCon <$> kind <*> constructorParser
-        <|> tTuple <$> components typeParser
-        <|> recordTypeParser
-
+typeFragmentParser :: Parser Type
+typeFragmentParser = tVar <$> kindVar <*> nameParser
+    <|> builtIn
+    <|> tCon <$> kindVar <*> constructorParser
+    <|> tTuple <$> components typeParser
+    <|> recordTypeParser
+  where
     recordTypeParser :: Parser Type
     recordTypeParser =
         symbol "{}" $> tRecord tRowNil 
             <|> tRecord <$> rowParser ":" typeParser (const tRow) (const (tVar kRow)) (const tRowNil)
 
-    kind = lift (kVar . ("k" <>) <$> supply)
+    builtIn :: Parser Type
+    builtIn = builtInType "Integer" kTyp
+          <|> builtInType "Int"     kTyp
+          <|> builtInType "Unit"    kTyp
+          <|> builtInType "Bool"    kTyp
+          <|> builtInType "Float"   kTyp
+          <|> builtInType "Double"  kTyp
+          <|> builtInType "Char"    kTyp
+          <|> builtInType "String"  kTyp
+          <|> builtInType "Nat"     kTyp
+          <|> builtInType "List"    kFun
+          <|> builtInType "Option"  kFun
 
-builtIn :: Parser Type
-builtIn = builtInType "Integer" kTyp
-      <|> builtInType "Int"     kTyp
-      <|> builtInType "Unit"    kTyp
-      <|> builtInType "Bool"    kTyp
-      <|> builtInType "Float"   kTyp
-      <|> builtInType "Double"  kTyp
-      <|> builtInType "Char"    kTyp
-      <|> builtInType "String"  kTyp
-      <|> builtInType "Nat"     kTyp
-      <|> builtInType "List"    kFun
-      <|> builtInType "Option"  kFun
+    builtInType :: Name -> Kind -> Parser Type
+    builtInType name kind = keyword name $> tCon kind name
 
-builtInType :: Name -> Kind -> Parser Type
-builtInType name kind = keyword name $> tCon kind name
+-- >>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>
+
+datatypeParser :: Parser Datatype
+datatypeParser = do
+    keyword "type"
+    con <- constructorParser
+    tvs <- many nameParser <* symbol "="
+    prods <- productParser `sepBy` symbol "|"
+    pure (Sum con tvs prods)
+
+productParser :: Parser Product
+productParser = do
+    data_ <- constructorParser
+    types <- many item
+    pure (Mul data_ (insertKinds <$> types))
+  where
+    item = try (parens typeParser) <|> typeFragmentParser
+
+insertKinds :: Type -> Type
+insertKinds = go kTyp
+  where
+    go :: Kind -> Type -> Type
+    go k = project >>> \case
+        TVar _ var   -> tVar k var
+        TCon _ con   -> tCon k con
+        TRow lab a b -> tRow lab (insertKinds a) (setKind kRow b)
+        TArr a b     -> tArr (insertKinds a) (insertKinds b)
+        TApp _ a b   -> tApp k (go (kArr kTyp k) a) (setKind kTyp (insertKinds b))
+
+    setKind :: Kind -> Type -> Type
+    setKind k = project >>> \case
+        TVar _ var   -> tVar k var
+        TCon _ con   -> tCon k con
+        TApp _ a b   -> tApp k a b
+        t            -> embed t
