@@ -354,6 +354,7 @@ instance Pretty Product where
       where
         prettyType t = parensIf (useParens t) (pretty t)
         useParens = project >>> \case
+            TApp _ a _ | isRecordType "#" a -> False 
             TApp{} -> True
             TCon{} -> True
             _      -> False
@@ -361,11 +362,13 @@ instance Pretty Product where
 instance Pretty Datatype where
     pretty (Sum con vars prods) =
         "type" <+> pretty con
-               <+> hsep (pretty <$> vars)
+               <> lhs
                <+> "="
                <+> hsep (punctuate pipe (pretty <$> prods))
-
-
+      where
+        lhs = if null vars 
+                  then "" 
+                  else " " <> hsep (pretty <$> vars)
 
 
 ----prettyLet :: (Pretty p) => p -> Doc a -> Doc a -> Doc a
