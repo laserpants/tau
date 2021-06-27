@@ -45,17 +45,87 @@ import qualified Tau.Compiler.Pipeline.Stage5 as Stage5
 import qualified Tau.Compiler.Pipeline.Stage6 as Stage6
 import qualified Tau.Env as Env
 
+--leaf n = Branch TNil n TNil
+--
+--testTree = Branch (Branch (leaf 2) 3 (Branch (leaf 4) 1 (Branch (leaf 8) 7 TNil))) 5 (Branch (leaf 2) 6 (leaf 8))
+--                
+--               5
+--             /   \
+--            3     6
+--           / \   / \
+--          2   1 2   8      5 + 3 + 6 + 2 + 1 + 2 + 8 + 4 + 7 + 8  = 46
+--             / \
+--            4   7
+--               / 
+--              8
+--
 
-data Nat = Zero | Succ Nat deriving (Show)
+data Tree a = Leaf | Node a (Tree a) (Tree a) deriving (Show)
 
-fnx g a (Succ n) = fnx g (g (Succ n) a) n
-fnx _ a _        = a
+data Tree' a b = Leaf' | Node' a (Tree a) (Tree a) b b deriving (Show)
 
--- let f(x : Int) = x + 1 in f(127)
+testTree = Node 5 (Node 3 (Node 2 Leaf Leaf) (Node 1 (Node 4 Leaf Leaf) (Node 7 (Node 8 Leaf Leaf) Leaf))) (Node 6 (Node 2 Leaf Leaf) (Node 8 Leaf Leaf))
+
+loopTree g (Node n t1 t2) = g (Node' n t1 t2 (loopTree g t1) (loopTree g t2))
+loopTree g Leaf           = g Leaf'
+
+height' = loopTree go testTree
+  where
+    go (Node' n t1 t2 a b) = 1 + max a b
+    go _                   = 0
 
 
-
---Clause t (ProgPattern t) (ProgExpr t)
+--data Tree a = TNil | Branch (Tree a) a (Tree a) deriving (Show)
+--
+--data TreeX a b = TNilX | BranchX (Tree a, b) a (Tree a, b) deriving (Show)
+--
+--fnyy g (Branch t1 n t2) = g (BranchX (t1, fnyy g t1) n (t2, fnyy g t2))
+--fnyy g b                = g TNilX 
+--
+--heightX = fnyy g1 testTree
+--  where
+--    g1 (BranchX (t1, x) n (t2, y)) = 1 + max x y
+--    g1 _                           = 0
+--
+----height 
+----  | .Branch(t1, n, t2, a, b) => 1 + max a b
+----  | .TNil                    => 0
+--
+--
+--
+----fny g a b1@(Branch t1 m t2) b2@(Branch t3 n t4) = fny g (g b1 b2 a) undefined
+--
+--fny g b@(Branch t1 _ t2) = g b [fny g t1, fny g t2]
+--fny g b                  = g b []
+--
+--height = fny g1 testTree
+--  where
+--    g1 (Branch t1 n t2) [x, y] = 1 + max x y
+--    g1 _                []     = 0
+--
+---- testTree.recurse(g1)
+----
+--sum_ = fny g1 testTree
+--  where
+--    g1 (Branch t1 n t2) [x, y] = n + x + y
+--    g1 _                []     = 0
+--
+--
+--
+--
+--
+--data Nat = Zero | Succ Nat deriving (Show)
+--
+--fnx g a (Succ n) = fnx g (g (Succ n) a) n
+--fnx _ a _        = a
+--
+--len = fnx (\_ x -> x + 1) 0 (Succ (Succ (Succ Zero)))
+--
+---- let f(x : Int) = x + 1 in f(127)
+--
+--
+--
+----Clause t (ProgPattern t) (ProgExpr t)
 
 main :: IO ()
 main = do
@@ -714,35 +784,99 @@ example1 = foo1 expr
 --                ]))
 
 
-    -- 5 factorial
-    expr = 
-        (fixExpr () "foldSucc"
-            (lamExpr () [varPat () "g", varPat () "a"] (funExpr () 
-                [ Clause () (conPat () "Succ" [varPat () "n"]) 
-                    [Guard [] (appExpr () 
-                        [ varExpr () "foldSucc"
-                        , varExpr () "g"
-                        , appExpr () [varExpr () "g", conExpr () "Succ" [varExpr () "n"], varExpr () "a"]
-                        , varExpr () "n"
-                        ])]
-                , Clause () (anyPat ()) 
-                    [Guard [] (varExpr () "a")]
-                ]))
-            (letExpr () 
-                (BFun () "toInt" [varPat () "n"])
-                (appExpr () 
-                    [ varExpr () "foldSucc"
-                    , lamExpr () [anyPat (), varPat () "x"] (op2Expr () (OAdd ()) (varExpr () "x") (litExpr () (TInteger 1)))
-                    , annExpr tInt (litExpr () (TInteger 0))
-                    , varExpr () "n"
-                    ])
-                (appExpr () 
-                    [ varExpr () "foldSucc"
-                    , lamExpr () [varPat () "n", varPat () "x"] (op2Expr () (OMul ()) (appExpr () [varExpr () "toInt", varExpr () "n"]) (varExpr () "x"))
-                    , annExpr tInt (litExpr () (TInteger 1))
-                    , conExpr () "Succ" [conExpr () "Succ" [conExpr () "Succ" [conExpr () "Succ" [conExpr () "Succ" [conExpr () "Zero" []]]]]]
-                    ])))
+    testTree :: ProgExpr () 
+    testTree =
+        conExpr () "Node" 
+            [ annExpr tInt (litExpr () (TInteger 5))
+            , conExpr () "Node" 
+                [ annExpr tInt (litExpr () (TInteger 3)) 
+                , conExpr () "Node" 
+                    [ annExpr tInt (litExpr () (TInteger 2))
+                    , conExpr () "Leaf" []
+                    , conExpr () "Leaf" []
+                    ]
+                , conExpr () "Node" 
+                    [ annExpr tInt (litExpr () (TInteger 1))
+                    , conExpr () "Node" 
+                        [ annExpr tInt (litExpr () (TInteger 4))
+                        , conExpr () "Leaf" []
+                        , conExpr () "Leaf" []
+                        ]
+                    , conExpr () "Node" 
+                        [ annExpr tInt (litExpr () (TInteger 7))
+                        , conExpr () "Node" 
+                            [ annExpr tInt (litExpr () (TInteger 8))
+                            , conExpr () "Leaf" []
+                            , conExpr () "Leaf" []
+                            ]
+                        , conExpr () "Leaf" []
+                        ]
+                    ]
+                ]
+            , conExpr () "Node" 
+                [ annExpr tInt (litExpr () (TInteger 6)) 
+                , conExpr () "Node" 
+                    [ annExpr tInt (litExpr () (TInteger 2))
+                    , conExpr () "Leaf" []
+                    , conExpr () "Leaf" []
+                    ]
+                , conExpr () "Node" 
+                    [ annExpr tInt (litExpr () (TInteger 8))
+                    , conExpr () "Leaf" []
+                    , conExpr () "Leaf" []
+                    ]
+                ]
+            ]
 
+    expr = 
+      letExpr () 
+          (BPat () (varPat () "testTree")) testTree
+          (fixExpr () "loopTree"
+              (lamExpr () [varPat () "g", varPat () "t"] (patExpr () (varExpr () "t")
+                  [ Clause () (conPat () "Node" [varPat () "n", varPat () "t1", varPat () "t2"]) 
+                        [Guard [] (appExpr () [varExpr () "g", conExpr () "Node'" [varExpr () "n", varExpr () "t1", varExpr () "t2", appExpr () [varExpr () "loopTree", varExpr () "g", varExpr () "t1"], appExpr () [varExpr () "loopTree", varExpr () "g", varExpr () "t2"]]])]
+                  , Clause () (conPat () "Leaf" []) 
+                        [Guard [] (appExpr () [varExpr () "g", conExpr () "Leaf'" []])]
+                  ]))
+              (appExpr () 
+                  [ varExpr () "loopTree"
+                  , lamExpr () [] (funExpr () 
+                      [ Clause () (conPat () "Node'" [varPat () "n", varPat () "t1", varPat () "t2", varPat () "a", varPat () "b"]) [Guard [] (op2Expr () (OAdd ()) (varExpr () "n") (op2Expr () (OAdd ()) (varExpr () "a") (varExpr () "b")))]
+                      , Clause () (conPat () "Leaf'" []) [Guard [] (annExpr tInt (litExpr () (TInteger 0)))]
+                      ])
+                  , varExpr () "testTree"
+                  ]))
+
+
+--    -- 5 factorial
+--    expr = 
+--        (fixExpr () "foldSucc"
+--            (lamExpr () [varPat () "g", varPat () "a"] (funExpr () 
+--                [ Clause () (conPat () "Succ" [varPat () "n"]) 
+--                    [Guard [] (appExpr () 
+--                        [ varExpr () "foldSucc"
+--                        , varExpr () "g"
+--                        , appExpr () [varExpr () "g", conExpr () "Succ" [varExpr () "n"], varExpr () "a"]
+--                        , varExpr () "n"
+--                        ])]
+--                , Clause () (anyPat ()) 
+--                    [Guard [] (varExpr () "a")]
+--                ]))
+--            (letExpr () 
+--                (BFun () "toInt" [varPat () "n"])
+--                (appExpr () 
+--                    [ varExpr () "foldSucc"
+--                    , lamExpr () [anyPat (), varPat () "x"] (op2Expr () (OAdd ()) (varExpr () "x") (litExpr () (TInteger 1)))
+--                    , annExpr tInt (litExpr () (TInteger 0))
+--                    , varExpr () "n"
+--                    ])
+--                (appExpr () 
+--                    [ varExpr () "foldSucc"
+--                    , lamExpr () [varPat () "n", varPat () "x"] (op2Expr () (OMul ()) (appExpr () [varExpr () "toInt", varExpr () "n"]) (varExpr () "x"))
+--                    , annExpr tInt (litExpr () (TInteger 1))
+--                    , conExpr () "Succ" [conExpr () "Succ" [conExpr () "Succ" [conExpr () "Succ" [conExpr () "Succ" [conExpr () "Zero" []]]]]]
+--                    ])))
+--
 
 
 --    expr = 
@@ -1996,6 +2130,10 @@ testTypeEnv = Env.fromList
     , ( "Some"         , Forall [kTyp] [] (tGen 0 `tArr` tApp kTyp (tCon kFun "Option") (tGen 0)) )
     , ( "Zero"         , Forall []     [] (tCon kTyp "Nat") )
     , ( "Succ"         , Forall []     [] (tCon kTyp "Nat" `tArr` tCon kTyp "Nat") )
+    , ( "Leaf"         , Forall [kTyp] [] (tApp kTyp (tCon kFun "Tree") (tGen 0)) )
+    , ( "Node"         , Forall [kTyp] [] (tGen 0 `tArr` tApp kTyp (tCon kFun "Tree") (tGen 0) `tArr` tApp kTyp (tCon kFun "Tree") (tGen 0) `tArr` tApp kTyp (tCon kFun "Tree") (tGen 0)) )
+    , ( "Leaf'"        , Forall [kTyp, kTyp] [] (tApp kTyp (tApp kFun (tCon kFun2 "Tree'") (tGen 0)) (tGen 1)) )
+    , ( "Node'"        , Forall [kTyp, kTyp] [] (tGen 0 `tArr` tApp kTyp (tCon kFun "Tree") (tGen 0) `tArr` tApp kTyp (tCon kFun "Tree") (tGen 0) `tArr` tGen 1 `tArr` tGen 1 `tArr` tApp kTyp (tApp kFun (tCon kFun2 "Tree'") (tGen 0)) (tGen 1)) )
     , ( "Foo"          , Forall [] [] (tInt `tArr` tInt `tArr` tCon kTyp "Foo") )
     , ( "id"           , Forall [kTyp] [] (tGen 0 `tArr` tGen 0) )
     , ( "(::)"         , Forall [kTyp] [] (tGen 0 `tArr` tList (tGen 0) `tArr` tList (tGen 0)) )
@@ -2095,6 +2233,10 @@ testConstructorEnv = constructorEnv
     , ("None"     , ( ["Some", "None"], 0 ))
     , ("Zero"     , ( ["Zero", "Succ"], 0 ))
     , ("Succ"     , ( ["Zero", "Succ"], 1 ))
+    , ("Leaf"     , ( ["Leaf", "Node"], 0 ))
+    , ("Node"     , ( ["Leaf", "Node"], 3 ))
+    , ("Leaf'"    , ( ["Leaf'", "Node'"], 0 ))
+    , ("Node'"    , ( ["Leaf'", "Node'"], 5 ))
     , ("[]"       , ( ["[]", "(::)"], 0 ))
     , ("(::)"     , ( ["[]", "(::)"], 2 ))
     , ("(,)"      , ( ["(,)"], 2 ))
