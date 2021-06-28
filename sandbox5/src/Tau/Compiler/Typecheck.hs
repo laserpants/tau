@@ -676,9 +676,8 @@ doUnify t1 t2 = do
         (typeSub, kindSub) <- withExceptT (CannotUnify t1 t2) (unifyTypes (applyBoth sub t1) (applyBoth sub t2))
         modify (first3 (typeSub <>))
         modify (second3 (kindSub <>))
--- TODO
--- --        runUnifyKinds (kindOf t1) (kindOf t2)
-
+        -- TODO
+        -- --        runUnifyKinds (kindOf t1) (kindOf t2)
         forM_ (Map.toList (getSub typeSub)) (uncurry propagate))
   where
     propagate tv ty = do

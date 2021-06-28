@@ -257,7 +257,6 @@ exprParser = makeExprParser (try lambdaParser <|> try (parens exprParser) <|> pa
   where
     parser = parseIf
       <|> parseFun
---      <|> parseFix
       <|> parseLet
       <|> parseMatch
       <|> parseVar
@@ -310,7 +309,6 @@ exprParser = makeExprParser (try lambdaParser <|> try (parens exprParser) <|> pa
 
     parseFunLet    = BFun () <$> nameParser <*> argParser annPatternParser
     parseNormalLet = BPat () <$> annPatternParser
---    parseFix       = undefined
     parseFun       = keyword "fun" *> (funExpr () <$> some parseClause)
     parseVar       = varExpr   () <$> nameParser
     parseLit       = litExpr   () <$> primParser

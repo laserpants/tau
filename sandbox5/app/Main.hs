@@ -45,6 +45,44 @@ import qualified Tau.Compiler.Pipeline.Stage5 as Stage5
 import qualified Tau.Compiler.Pipeline.Stage6 as Stage6
 import qualified Tau.Env as Env
 
+
+-- Modules
+--   - add module
+--
+-- Definitions
+--   - add def
+--   - add type decl.
+--   - add class
+--   - add instance
+
+--data Module = Module 
+--    { moduleName      :: String 
+--    , moduleDefs      :: [Definition]
+--    , moduleTypeDecls :: [Datatype]
+--    , moduleClassEnv  :: 
+--    }
+--
+--data Definition = Definition 
+--    { defName :: String 
+--    }
+
+
+insertDefinition
+  :: ( MonadSupply Name m
+     , MonadState (ClassEnv, TypeEnv, KindEnv, ConstructorEnv) m ) 
+  => Name
+  -> ProgExpr () 
+  -> m ()
+insertDefinition name expr = do
+    (classEnv, typeEnv, kindEnv, constructorEnv) <- get
+    x <- runInferT mempty classEnv typeEnv kindEnv constructorEnv $ do
+        Ast e <- inferAstType (Ast expr)
+        undefined
+
+    pure ()
+
+
+
 --leaf n = Branch TNil n TNil
 --
 --testTree = Branch (Branch (leaf 2) 3 (Branch (leaf 4) 1 (Branch (leaf 8) 7 TNil))) 5 (Branch (leaf 2) 6 (leaf 8))
@@ -533,6 +571,11 @@ foo1 expr = do
         let r = toRep e
         liftIO $ LBS.writeFile "/home/laserpants/play/ast-folder-tree/ast-folder-tree/src/testData22.json" (encode r)
 
+        (_,_,s) <- get
+
+        traceShowM e
+        traceShowM s
+
         --
 
         let Ast e0 = fmap (fmap Just) (Ast e)
@@ -784,69 +827,69 @@ example1 = foo1 expr
 --                ]))
 
 
-    testTree :: ProgExpr () 
-    testTree =
-        conExpr () "Node" 
-            [ annExpr tInt (litExpr () (TInteger 5))
-            , conExpr () "Node" 
-                [ annExpr tInt (litExpr () (TInteger 3)) 
-                , conExpr () "Node" 
-                    [ annExpr tInt (litExpr () (TInteger 2))
-                    , conExpr () "Leaf" []
-                    , conExpr () "Leaf" []
-                    ]
-                , conExpr () "Node" 
-                    [ annExpr tInt (litExpr () (TInteger 1))
-                    , conExpr () "Node" 
-                        [ annExpr tInt (litExpr () (TInteger 4))
-                        , conExpr () "Leaf" []
-                        , conExpr () "Leaf" []
-                        ]
-                    , conExpr () "Node" 
-                        [ annExpr tInt (litExpr () (TInteger 7))
-                        , conExpr () "Node" 
-                            [ annExpr tInt (litExpr () (TInteger 8))
-                            , conExpr () "Leaf" []
-                            , conExpr () "Leaf" []
-                            ]
-                        , conExpr () "Leaf" []
-                        ]
-                    ]
-                ]
-            , conExpr () "Node" 
-                [ annExpr tInt (litExpr () (TInteger 6)) 
-                , conExpr () "Node" 
-                    [ annExpr tInt (litExpr () (TInteger 2))
-                    , conExpr () "Leaf" []
-                    , conExpr () "Leaf" []
-                    ]
-                , conExpr () "Node" 
-                    [ annExpr tInt (litExpr () (TInteger 8))
-                    , conExpr () "Leaf" []
-                    , conExpr () "Leaf" []
-                    ]
-                ]
-            ]
-
-    expr = 
-      letExpr () 
-          (BPat () (varPat () "testTree")) testTree
-          (fixExpr () "loopTree"
-              (lamExpr () [varPat () "g", varPat () "t"] (patExpr () (varExpr () "t")
-                  [ Clause () (conPat () "Node" [varPat () "n", varPat () "t1", varPat () "t2"]) 
-                        [Guard [] (appExpr () [varExpr () "g", conExpr () "Node'" [varExpr () "n", varExpr () "t1", varExpr () "t2", appExpr () [varExpr () "loopTree", varExpr () "g", varExpr () "t1"], appExpr () [varExpr () "loopTree", varExpr () "g", varExpr () "t2"]]])]
-                  , Clause () (conPat () "Leaf" []) 
-                        [Guard [] (appExpr () [varExpr () "g", conExpr () "Leaf'" []])]
-                  ]))
-              (appExpr () 
-                  [ varExpr () "loopTree"
-                  , lamExpr () [] (funExpr () 
-                      [ Clause () (conPat () "Node'" [varPat () "n", varPat () "t1", varPat () "t2", varPat () "a", varPat () "b"]) [Guard [] (op2Expr () (OAdd ()) (varExpr () "n") (op2Expr () (OAdd ()) (varExpr () "a") (varExpr () "b")))]
-                      , Clause () (conPat () "Leaf'" []) [Guard [] (annExpr tInt (litExpr () (TInteger 0)))]
-                      ])
-                  , varExpr () "testTree"
-                  ]))
-
+--    testTree :: ProgExpr () 
+--    testTree =
+--        conExpr () "Node" 
+--            [ annExpr tInt (litExpr () (TInteger 5))
+--            , conExpr () "Node" 
+--                [ annExpr tInt (litExpr () (TInteger 3)) 
+--                , conExpr () "Node" 
+--                    [ annExpr tInt (litExpr () (TInteger 2))
+--                    , conExpr () "Leaf" []
+--                    , conExpr () "Leaf" []
+--                    ]
+--                , conExpr () "Node" 
+--                    [ annExpr tInt (litExpr () (TInteger 1))
+--                    , conExpr () "Node" 
+--                        [ annExpr tInt (litExpr () (TInteger 4))
+--                        , conExpr () "Leaf" []
+--                        , conExpr () "Leaf" []
+--                        ]
+--                    , conExpr () "Node" 
+--                        [ annExpr tInt (litExpr () (TInteger 7))
+--                        , conExpr () "Node" 
+--                            [ annExpr tInt (litExpr () (TInteger 8))
+--                            , conExpr () "Leaf" []
+--                            , conExpr () "Leaf" []
+--                            ]
+--                        , conExpr () "Leaf" []
+--                        ]
+--                    ]
+--                ]
+--            , conExpr () "Node" 
+--                [ annExpr tInt (litExpr () (TInteger 6)) 
+--                , conExpr () "Node" 
+--                    [ annExpr tInt (litExpr () (TInteger 2))
+--                    , conExpr () "Leaf" []
+--                    , conExpr () "Leaf" []
+--                    ]
+--                , conExpr () "Node" 
+--                    [ annExpr tInt (litExpr () (TInteger 8))
+--                    , conExpr () "Leaf" []
+--                    , conExpr () "Leaf" []
+--                    ]
+--                ]
+--            ]
+--
+--    expr = 
+--      letExpr () 
+--          (BPat () (varPat () "testTree")) testTree
+--          (fixExpr () "loopTree"
+--              (lamExpr () [varPat () "g", varPat () "t"] (patExpr () (varExpr () "t")
+--                  [ Clause () (conPat () "Node" [varPat () "n", varPat () "t1", varPat () "t2"]) 
+--                        [Guard [] (appExpr () [varExpr () "g", conExpr () "Node'" [varExpr () "n", varExpr () "t1", varExpr () "t2", appExpr () [varExpr () "loopTree", varExpr () "g", varExpr () "t1"], appExpr () [varExpr () "loopTree", varExpr () "g", varExpr () "t2"]]])]
+--                  , Clause () (conPat () "Leaf" []) 
+--                        [Guard [] (appExpr () [varExpr () "g", conExpr () "Leaf'" []])]
+--                  ]))
+--              (appExpr () 
+--                  [ varExpr () "loopTree"
+--                  , lamExpr () [] (funExpr () 
+--                      [ Clause () (conPat () "Node'" [varPat () "n", varPat () "t1", varPat () "t2", varPat () "a", varPat () "b"]) [Guard [] (op2Expr () (OAdd ()) (varExpr () "n") (op2Expr () (OAdd ()) (varExpr () "a") (varExpr () "b")))]
+--                      , Clause () (conPat () "Leaf'" []) [Guard [] (annExpr tInt (litExpr () (TInteger 0)))]
+--                      ])
+--                  , varExpr () "testTree"
+--                  ]))
+--
 
 --    -- 5 factorial
 --    expr = 
@@ -984,6 +1027,21 @@ example1 = foo1 expr
 --            [Guard [] (litExpr () (TBool True))]
 --        ]
 
+
+--    expr = 
+--        (lamExpr () [varPat () "a", varPat () "b"] (op2Expr () (OAdd ()) (varExpr () "a") (varExpr () "b")))
+
+
+--    expr = 
+--        (lamExpr () [varPat () "a", varPat () "b"] (op2Expr () (OAdd ()) (varExpr () "a") (varExpr () "b")))
+
+
+    expr =
+        (lamExpr () [varPat () "a"] (op2Expr () (OEq ()) (varExpr () "a") (litExpr () (TInteger 1))))
+
+
+--    expr =
+--        (lamExpr () [varPat () "a"] (appExpr () [varExpr () "(==)", varExpr () "a", litExpr () (TInteger 1)]))
 
 
 --    -- let 
@@ -2137,6 +2195,10 @@ testTypeEnv = Env.fromList
     , ( "Foo"          , Forall [] [] (tInt `tArr` tInt `tArr` tCon kTyp "Foo") )
     , ( "id"           , Forall [kTyp] [] (tGen 0 `tArr` tGen 0) )
     , ( "(::)"         , Forall [kTyp] [] (tGen 0 `tArr` tList (tGen 0) `tArr` tList (tGen 0)) )
+
+    -- TEMP
+    , ( "(==)"         , Forall [kTyp] [InClass "Eq" 0] (tGen 0 `tArr` tGen 0 `tArr` tBool) )
+
     , ( "[]"           , Forall [kTyp] [] (tList (tGen 0)) )
     , ( "(+)"          , Forall [kTyp] [InClass "Num" 0] (tGen 0 `tArr` tGen 0 `tArr` tGen 0) )
     , ( "(*)"          , Forall [kTyp] [InClass "Num" 0] (tGen 0 `tArr` tGen 0 `tArr` tGen 0) )
