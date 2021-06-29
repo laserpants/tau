@@ -68,21 +68,46 @@ bySuper :: ClassEnv -> Predicate -> [Predicate]
 bySuper env self@(InClass name ty) =
     self:concat [bySuper env (InClass tc ty) | tc <- super env name]
 
-byInstance :: ClassEnv -> Predicate -> Maybe [Predicate]
+byInstance :: (MonadSupply Name m) => ClassEnv -> Predicate -> m (Maybe [Predicate])
 byInstance env self@(InClass name ty) = do
-    undefined -- msum $ rightToMaybe <$> [tryInstance i | i <- instances env name]
+    msum <$> (rightToMaybe <$$> sequence [runExceptT (tryInstance i) | i <- instances env name])
   where
     tryInstance :: (MonadSupply Name m) => Instance -> ExceptT UnificationError m [Predicate]
-    tryInstance ClassInfo{..} = 
-        applyBoth <$> matchClass classSignature self <*> pure classPredicates
+    tryInstance ClassInfo{..} =
+        applyBoth <$> matchClass classSignature self 
+                  <*> pure classPredicates
 
-entail :: ClassEnv -> [Predicate] -> Predicate -> Either a Bool
-entail env cls0 cl = pure super ||^ instances
+entail :: (MonadSupply Name m) => ClassEnv -> [Predicate] -> Predicate -> m (Either a Bool)
+entail env cls0 cl = do -- pure super ||^ instances
+    x <- instances
+    pure (pure super ||^ x)
   where
+    super :: Bool
     super = any (cl `elem`) (bySuper env <$> cls0)
-    instances = case byInstance env cl of
-        Nothing   -> pure False
-        Just cls1 -> allM (entail env cls0) cls1
+    instances :: (MonadSupply Name m) => m (Either a Bool)
+    instances = do
+        zz <- byInstance env cl
+        case zz of
+            Nothing   -> pure (Right False)
+            Just cls1 -> do
+                x <- mapM (entail env cls0) cls1
+                let zzz = all too x 
+                pure (Right zzz)
+
+    too a = case a of
+        Right True -> True
+        _          -> False
+
+--        undefined
+--        case zz of
+--            Nothing   -> pure (Right False)
+--            Just cls1 -> do
+--                xx <- entail env cls0
+--                undefined -- allM (entail env cls0) cls1
+
+--    instances = case byInstance env cl of
+--        Nothing   -> pure False
+--        Just cls1 -> allM (entail env cls0) cls1
 
 isHeadNormalForm :: Predicate -> Bool
 isHeadNormalForm (InClass _ t) = 
@@ -91,31 +116,34 @@ isHeadNormalForm (InClass _ t) =
         TVar{}      -> True
         _           -> False
 
-toHeadNormalForm :: ClassEnv -> [Predicate] -> Either a [Predicate]
-toHeadNormalForm env = fmap concat . mapM (hnf env) 
+toHeadNormalForm :: (MonadSupply Name m) => ClassEnv -> [Predicate] -> m (Either a [Predicate])
+toHeadNormalForm env ps = do
+    z <- mapM (hnf env) ps
+    pure (Right (concat (concat (sequence z))))
   where
+--  hnf :: ClassEnv -> Predicate -> m (Either a [Predicate])
     hnf env tycl 
-        | isHeadNormalForm tycl = pure [tycl]
-        | otherwise = case byInstance env tycl of
-            Nothing  -> error "ContextReductionFailed" -- throwError ContextReductionFailed 
+        | isHeadNormalForm tycl = pure (Right [tycl])
+        | otherwise = byInstance env tycl >>= \case
+            Nothing  -> pure (Left ContextReductionFailed)
             Just cls -> toHeadNormalForm env cls
 
--- remove a class constraint if it is entailed by the other constraints in the list
-simplify :: ClassEnv -> [Predicate] -> Either a [Predicate]
-simplify env = loop [] where
-    loop qs [] = pure qs
-    loop qs (p:ps) = do
-        entailed <- entail env (qs <> ps) p
-        if entailed then loop qs ps 
-             else loop (p:qs) ps
+simplify :: (MonadSupply Name m) => ClassEnv -> [Predicate] -> m (Either a [Predicate])
+simplify env = loop [] 
+  where
+    loop :: (MonadSupply Name m) => [Predicate] -> [Predicate] -> m (Either a [Predicate])
+    loop qs [] = pure (Right qs)
+    loop qs (p:ps) = entail env (qs <> ps) p >>= \case
+        Left  e -> pure (Left e)
+        Right b -> if b then loop qs ps else loop (p:qs) ps
 
-reduce :: ClassEnv -> [Predicate] -> Either a [Predicate]
-reduce env cls = toHeadNormalForm env cls >>= simplify env 
+
+reduce :: (MonadSupply Name m) => ClassEnv -> [Predicate] -> m (Either a [Predicate])
+reduce env cls = join <$> (toHeadNormalForm env cls >>= traverse (simplify env))
 
 
 unifyClass, matchClass 
-  :: ( MonadSupply Name m
-     , MonadError UnificationError m ) 
+  :: (MonadSupply Name m, MonadError UnificationError m) 
   => Predicate 
   -> Predicate 
   -> m (Substitution Type, Substitution Kind)
@@ -123,8 +151,7 @@ unifyClass = liftU unifyTypes
 matchClass = liftU matchTypes
 
 liftU 
-  :: ( MonadSupply Name m
-     , MonadError UnificationError m ) 
+  :: (MonadSupply Name m, MonadError UnificationError m) 
   => (Type -> Type -> m a) 
   -> Predicate 
   -> Predicate 
@@ -298,6 +325,13 @@ main = do
 
 --test340 :: [[ProgPattern ()]]
 --test340 = foo [ [rowPat () "x" (litPat () (TBool False)) (rowPat () "y" (recordPat () (rowPat () "z" (litPat () (TBool False)) (rowPat () "a" (litPat () (TBool False)) (conPat () "{}" [])))) (conPat () "{}" []))] , [rowPat () "x" (litPat () (TBool False)) (rowPat () "y" (recordPat () (rowPat () "z" (litPat () (TBool False)) (rowPat () "a" (litPat () (TBool True)) (conPat () "{}" [])))) (conPat () "{}" []))] , [rowPat () "x" (litPat () (TBool False)) (rowPat () "y" (recordPat () (rowPat () "z" (litPat () (TBool True)) (rowPat () "a" (litPat () (TBool False)) (conPat () "{}" [])))) (conPat () "{}" []))] , [rowPat () "x" (litPat () (TBool False)) (rowPat () "y" (recordPat () (rowPat () "z" (litPat () (TBool True)) (rowPat () "a" (litPat () (TBool True)) (conPat () "{}" [])))) (conPat () "{}" []))] , [rowPat () "x" (litPat () (TBool True)) (rowPat () "y" (recordPat () (rowPat () "z" (litPat () (TBool False)) (rowPat () "a" (litPat () (TBool False)) (conPat () "{}" [])))) (conPat () "{}" []))] , [rowPat () "x" (litPat () (TBool True)) (rowPat () "y" (recordPat () (rowPat () "z" (litPat () (TBool False)) (rowPat () "a" (litPat () (TBool True)) (conPat () "{}" [])))) (conPat () "{}" []))] , [rowPat () "x" (litPat () (TBool True)) (rowPat () "y" (recordPat () (rowPat () "z" (litPat () (TBool True)) (rowPat () "a" (litPat () (TBool False)) (conPat () "{}" [])))) (conPat () "{}" []))] , [rowPat () "x" (litPat () (TBool True)) (rowPat () "y" (recordPat () (rowPat () "z" (litPat () (TBool True)) (rowPat () "a" (litPat () (TBool True)) (conPat () "{}" [])))) (conPat () "{}" []))] ]
+
+test345 = 
+    evalSupply (reduce testClassEnv 
+        [ InClass "Num" (tVar kTyp "a") 
+        , InClass "Num" (tVar kTyp "a")
+        , InClass "Foo" (tVar kTyp "a")
+        ]) (numSupply "a")
 
 
 test344 = tApp (kVar "k3") (tVar (kVar "k4") "m") (tVar (kVar "k5") "a")
