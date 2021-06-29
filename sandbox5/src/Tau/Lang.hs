@@ -402,15 +402,15 @@ guardToPair (Guard es e) = (es, e)
 
 primName :: Prim -> Name
 primName = \case
-    TUnit        -> "Unit"
-    (TBool    _) -> "Bool"
-    (TInt     _) -> "Int"
-    (TInteger _) -> "Integer"
-    (TFloat   _) -> "Float"
-    (TDouble  _) -> "Double"
-    (TChar    _) -> "Char"
-    (TString  _) -> "String"
-    (TAtom    _) -> "Atom"
+    TUnit      -> "Unit"
+    TBool    _ -> "Bool"
+    TInt     _ -> "Int"
+    TInteger _ -> "Integer"
+    TFloat   _ -> "Float"
+    TDouble  _ -> "Double"
+    TChar    _ -> "Char"
+    TString  _ -> "String"
+    TAtom    _ -> "Atom"
 
 -- | Return the precedence of a binary operator
 opPrecedence :: Op2 t -> Int

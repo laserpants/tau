@@ -39,9 +39,9 @@ data Datatype = Sum Name [Name] [Product]
 -- >>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>
 
 data ClassInfo p a = ClassInfo 
-    { classSignature :: PredicateT p
-    , classSuper     :: List (PredicateT p)
-    , classMethods   :: List (Name, a)
+    { classSignature  :: PredicateT p
+    , classPredicates :: List (PredicateT p)
+    , classMethods    :: List (Name, a)
     } deriving (Show, Eq)
 
 -- Environments
@@ -126,7 +126,7 @@ withClassInfo
 withClassInfo fn name ty env = do
     (ClassInfo{..}, insts) <- liftMaybe (MissingClass name) (Env.lookup name env)
     info <- sequence [tryMatch i | i <- insts]
-    msum info & maybe (throwError (MissingInstance name ty)) (fn classSuper)
+    msum info & maybe (throwError (MissingInstance name ty)) (fn classPredicates)
   where
     tryMatch info@ClassInfo{..} = do
         sub <- eitherToMaybe <$> runExceptT (matchTypes (predicateType classSignature) ty)
@@ -140,8 +140,8 @@ lookupAllClassMethods
   -> m [(Name, Ast (TypeInfo ()))]
 lookupAllClassMethods name ty env = withClassInfo collectAll name ty env 
   where 
-    collectAll classSuper ClassInfo{ classMethods = methods } = do
-        super <- concat <$$> forM classSuper $ \(InClass name _) ->
+    collectAll classPredicates ClassInfo{ classMethods = methods } = do
+        super <- concat <$$> forM classPredicates $ \(InClass name _) ->
             lookupAllClassMethods name ty env
         pure (super <> methods)
 
@@ -160,7 +160,7 @@ lookupAllClassX
   -> m [(Name, Type)]
 lookupAllClassX name env = do
     (ClassInfo{..}, _) <- liftMaybe (MissingClass name) (Env.lookup name env)
-    super <- concat <$$> forM classSuper $ \(InClass name _) ->
+    super <- concat <$$> forM classPredicates $ \(InClass name _) ->
         lookupAllClassX name env
     pure (super <> classMethods)
 
@@ -208,8 +208,8 @@ instance (Substitutable Scheme t) => Substitutable TypeEnv t where
 
 instance (Substitutable Type t) => Substitutable (ClassInfo Type (Ast (TypeInfo e))) t where
     apply sub ClassInfo{..} =
-        ClassInfo{ classSuper     = apply sub classSuper
-                 , classSignature = apply sub classSignature
+        ClassInfo{ classPredicates = apply sub classPredicates
+                 , classSignature  = apply sub classSignature
                  , .. }
 
 -- >>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>

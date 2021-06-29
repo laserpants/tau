@@ -2,16 +2,19 @@
 {-# LANGUAGE LambdaCase        #-}
 {-# LANGUAGE OverloadedStrings #-}
 {-# LANGUAGE RecordWildCards   #-}
+{-# LANGUAGE RecordWildCards   #-}
 module Main where
 
-import Data.Foldable (foldlM, foldrM)
+import Control.Monad.Except
+import Control.Monad.Extra (allM, (||^))
 import Control.Monad.IO.Class
 import Control.Monad.Identity
-import Control.Monad.Except
 import Control.Monad.Reader
 import Control.Monad.State
 import Control.Monad.Supply
 import Data.Aeson
+import Data.Either.Combinators (rightToMaybe)
+import Data.Foldable (foldlM, foldrM)
 import Data.Function ((&))
 import Data.Maybe
 import System.Environment 
@@ -26,6 +29,7 @@ import Tau.Compiler.Pipeline.Stage5
 import Tau.Compiler.Pipeline.Stage6 
 import Tau.Compiler.Substitute
 import Tau.Compiler.Typecheck
+import Tau.Compiler.Unify
 import Tau.Core
 import Tau.Eval
 import Tau.Lang
@@ -36,6 +40,7 @@ import Tau.Tooling
 import Tau.Type
 import Text.Megaparsec
 import qualified Data.ByteString.Lazy as LBS
+import qualified Data.Set.Monad as Set
 import qualified Tau.Compiler.Pipeline.Stage0 as Stage0
 import qualified Tau.Compiler.Pipeline.Stage1 as Stage1
 import qualified Tau.Compiler.Pipeline.Stage2 as Stage2
@@ -44,6 +49,114 @@ import qualified Tau.Compiler.Pipeline.Stage4 as Stage4
 import qualified Tau.Compiler.Pipeline.Stage5 as Stage5
 import qualified Tau.Compiler.Pipeline.Stage6 as Stage6
 import qualified Tau.Env as Env
+
+
+
+-----------------------
+-----------------------
+
+super :: ClassEnv -> Name -> [Name]
+super env name =
+    maybe [] (fmap predicateName . classPredicates . fst) (Env.lookup name env)
+
+type Instance = ClassInfo Type (Ast (TypeInfo ()))
+
+instances :: ClassEnv -> Name -> [Instance]
+instances env name = fromMaybe [] (snd <$> Env.lookup name env)
+
+bySuper :: ClassEnv -> Predicate -> [Predicate]
+bySuper env self@(InClass name ty) =
+    self:concat [bySuper env (InClass tc ty) | tc <- super env name]
+
+byInstance :: ClassEnv -> Predicate -> Maybe [Predicate]
+byInstance env self@(InClass name ty) = do
+    undefined -- msum $ rightToMaybe <$> [tryInstance i | i <- instances env name]
+  where
+    tryInstance :: (MonadSupply Name m) => Instance -> ExceptT UnificationError m [Predicate]
+    tryInstance ClassInfo{..} = 
+        applyBoth <$> matchClass classSignature self <*> pure classPredicates
+
+entail :: ClassEnv -> [Predicate] -> Predicate -> Either a Bool
+entail env cls0 cl = pure super ||^ instances
+  where
+    super = any (cl `elem`) (bySuper env <$> cls0)
+    instances = case byInstance env cl of
+        Nothing   -> pure False
+        Just cls1 -> allM (entail env cls0) cls1
+
+isHeadNormalForm :: Predicate -> Bool
+isHeadNormalForm (InClass _ t) = 
+    flip cata t $ \case
+        TApp _ t1 _ -> t1
+        TVar{}      -> True
+        _           -> False
+
+toHeadNormalForm :: ClassEnv -> [Predicate] -> Either a [Predicate]
+toHeadNormalForm env = fmap concat . mapM (hnf env) 
+  where
+    hnf env tycl 
+        | isHeadNormalForm tycl = pure [tycl]
+        | otherwise = case byInstance env tycl of
+            Nothing  -> error "ContextReductionFailed" -- throwError ContextReductionFailed 
+            Just cls -> toHeadNormalForm env cls
+
+-- remove a class constraint if it is entailed by the other constraints in the list
+simplify :: ClassEnv -> [Predicate] -> Either a [Predicate]
+simplify env = loop [] where
+    loop qs [] = pure qs
+    loop qs (p:ps) = do
+        entailed <- entail env (qs <> ps) p
+        if entailed then loop qs ps 
+             else loop (p:qs) ps
+
+reduce :: ClassEnv -> [Predicate] -> Either a [Predicate]
+reduce env cls = toHeadNormalForm env cls >>= simplify env 
+
+
+unifyClass, matchClass 
+  :: ( MonadSupply Name m
+     , MonadError UnificationError m ) 
+  => Predicate 
+  -> Predicate 
+  -> m (Substitution Type, Substitution Kind)
+unifyClass = liftU unifyTypes
+matchClass = liftU matchTypes
+
+liftU 
+  :: ( MonadSupply Name m
+     , MonadError UnificationError m ) 
+  => (Type -> Type -> m a) 
+  -> Predicate 
+  -> Predicate 
+  -> m a
+liftU m (InClass c1 t1) (InClass c2 t2)
+    | c1 == c2  = m t1 t2
+    | otherwise = throwError ClassMismatch
+
+
+
+-----------------------
+-----------------------
+
+insertDicts 
+  :: Context
+  -> Ast (TypeInfo [e])
+  -> Ast (TypeInfo [e])
+insertDicts env = fmap (\TypeInfo{..} -> 
+    TypeInfo{ nodePredicates = predicates nodeType <> nodePredicates, .. })
+  where
+    predicates :: Type -> [Predicate]
+    predicates t = [InClass name (tVar kTyp t) | (t, set) <- vars, name <- Set.toList set]
+      where
+        vars = [(var, cls) | var <- (fst <$> free t), cls <- maybeToList (Env.lookup var env)]
+
+
+--insertDicts env = mapTags $ \info@NodeInfo{..} -> 
+--        info{ nodePredicates = nub (nodePredicates <> predicates nodeType) }
+--  where
+--    predicates :: Type -> [Predicate]
+--    predicates t = concat [ concat $ maybeToList (Env.lookup v env) | v <- Set.toList (free t) ]
+
 
 
 -- Modules
@@ -211,7 +324,7 @@ test339 =
 
 
 --test338 :: ClassInfo Type (Ast (TypeInfo ()))
-test338 = do  --(classSignature, classSuper, classMethods)
+test338 = do  --(classSignature, classPredicates, classMethods)
     case xx of
         Right y -> mapM_ print y
   where
@@ -566,15 +679,23 @@ removeNonVarPredicates (TypeInfo e ty ps) = TypeInfo e ty (filter keep ps)
 foo1 expr = do
     void $ runInferT mempty testClassEnv testTypeEnv testKindEnv testConstructorEnv $ do
 
+
+        --traceShowM (insertDicts ctx (Ast e))
+
         Ast e <- inferAstType (Ast expr)
+
+        --x <- inferAstType (Ast expr)
+
+        --(_,_,ctx) <- get
+
+        --let Ast e = insertDicts ctx x
+
         --let r = toRep (getAst (removeNonVarPredicates <$> Ast e))
         let r = toRep e
         liftIO $ LBS.writeFile "/home/laserpants/play/ast-folder-tree/ast-folder-tree/src/testData22.json" (encode r)
 
-        (_,_,s) <- get
-
-        traceShowM e
-        traceShowM s
+--        traceShowM (pretty ((insertDicts ctx (Ast e))))
+--        traceShowM s
 
         --
 

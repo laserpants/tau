@@ -584,7 +584,7 @@ propagateClasses (Fix (TVar _ var)) ps
 propagateClasses ty ps =
     forM_ ps $ \name -> do
         env <- asks getClassEnv
-        ClassInfo{ classSuper = preds } <- lookupClassInstance name ty env
+        ClassInfo{ classPredicates = preds } <- lookupClassInstance name ty env
         sequence_ [propagateClasses t (Set.singleton a) | InClass a t <- preds]
 
 -- >>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>
@@ -1378,7 +1378,7 @@ subs = do
 -- propagateClasses ty ps =
 --     forM_ ps $ \name -> do
 --         env <- asks getClassEnv
---         ClassInfo{ classSuper = preds } <- lookupClassInstance name ty env
+--         ClassInfo{ classPredicates = preds } <- lookupClassInstance name ty env
 --         sequence_ [propagateClasses t (Set.singleton a) | InClass a t <- preds]
 -- 
 -- -- >>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>
