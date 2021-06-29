@@ -14,6 +14,7 @@ data UnificationError
     | IncompatibleKinds
     | MergeFailed
     | ClassMismatch
+    | ContextReductionFailed
 --    | IncompatibleRows
     deriving (Show, Eq)
 
