@@ -17,8 +17,8 @@ import qualified Data.Map.Strict as Map
 import qualified Data.Text as Text
 
 data KindF a
-    = KVar Name
-    | KCon Name
+    = KVar Name               -- ^ Kind variable
+    | KCon Name               -- ^ Kind constructor
     | KArr a a 
 
 -- | Kind
