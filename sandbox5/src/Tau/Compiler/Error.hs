@@ -13,6 +13,7 @@ data UnificationError
     | IncompatibleTypes
     | IncompatibleKinds
     | MergeFailed
+    | ClassMismatch
 --    | IncompatibleRows
     deriving (Show, Eq)
 

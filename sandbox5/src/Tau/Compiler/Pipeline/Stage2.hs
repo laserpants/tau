@@ -214,7 +214,13 @@ applyDicts expr (InClass name ty:ps) = do
                             , buildDict map ])
 
         _   | isVar ty -> do
+                -- TODO
                 undefined
+                --pure (setWorkingExprTag (Just (tCon kTyp "XX")) expr)
+                --all <- baz 
+                --pure (appExpr (cod <$> workingExprTag expr) -- TODO
+                --    [ expr
+                --    , buildDict map ])
 
             | otherwise -> do
                 map <- baz2
