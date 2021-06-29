@@ -183,7 +183,7 @@ patternParser = makeExprParser (try (parens patternParser) <|> parser)
     parseTuple     = tuplePat () <$> components annPatternParser
     parseCon       = conPat   () <$> constructorParser 
                                  <*> (fromMaybe [] <$> optional (components annPatternParser))
-    parseRecord = do
+    parseRecord =
         symbol "{}" $> recordPat () (conPat () "{}" [])
             <|> recordPat () <$> rowParser "=" annPatternParser rowPat varPat emptyRowPat
 
@@ -316,7 +316,7 @@ exprParser = makeExprParser (try lambdaParser <|> try (parens exprParser) <|> pa
     parseTuple     = tupleExpr () <$> components exprParser
     parseCon       = conExpr   () <$> constructorParser 
                                   <*> (fromMaybe [] <$> optional (components annExprParser))
-    parseRecord = do
+    parseRecord =
         symbol "{}" $> recordExpr () (conExpr () "{}" [])
             <|> recordExpr () <$> rowParser "=" annExprParser rowExpr varExpr_ emptyRowExpr
 
