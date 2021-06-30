@@ -55,110 +55,110 @@ import qualified Tau.Env as Env
 -----------------------
 -----------------------
 
-super :: ClassEnv -> Name -> [Name]
-super env name =
-    maybe [] (fmap predicateName . classPredicates . fst) (Env.lookup name env)
+--super :: ClassEnv -> Name -> [Name]
+--super env name =
+--    maybe [] (fmap predicateName . classPredicates . fst) (Env.lookup name env)
+--
+--type Instance = ClassInfo Type (Ast (TypeInfo ()))
 
-type Instance = ClassInfo Type (Ast (TypeInfo ()))
+--instances :: ClassEnv -> Name -> [Instance]
+--instances env name = fromMaybe [] (snd <$> Env.lookup name env)
+--
+--bySuper :: ClassEnv -> Predicate -> [Predicate]
+--bySuper env self@(InClass name ty) =
+--    self:concat [bySuper env (InClass tc ty) | tc <- super env name]
 
-instances :: ClassEnv -> Name -> [Instance]
-instances env name = fromMaybe [] (snd <$> Env.lookup name env)
-
-bySuper :: ClassEnv -> Predicate -> [Predicate]
-bySuper env self@(InClass name ty) =
-    self:concat [bySuper env (InClass tc ty) | tc <- super env name]
-
-byInstance :: (MonadSupply Name m) => ClassEnv -> Predicate -> m (Maybe [Predicate])
-byInstance env self@(InClass name ty) = do
-    msum <$> (rightToMaybe <$$> sequence [runExceptT (tryInstance i) | i <- instances env name])
-  where
-    tryInstance :: (MonadSupply Name m) => Instance -> ExceptT UnificationError m [Predicate]
-    tryInstance ClassInfo{..} =
-        applyBoth <$> matchClass classSignature self 
-                  <*> pure classPredicates
-
-entail :: (MonadSupply Name m) => ClassEnv -> [Predicate] -> Predicate -> m (Either a Bool)
-entail env cls0 cl = do -- pure super ||^ instances
-    x <- instances
-    pure (pure super ||^ x)
-  where
-    super :: Bool
-    super = any (cl `elem`) (bySuper env <$> cls0)
-    instances :: (MonadSupply Name m) => m (Either a Bool)
-    instances = do
-        zz <- byInstance env cl
-        case zz of
-            Nothing   -> pure (Right False)
-            Just cls1 -> do
-                x <- mapM (entail env cls0) cls1
-                let zzz = all too x 
-                pure (Right zzz)
-
-    too a = case a of
-        Right True -> True
-        _          -> False
-
---        undefined
+--byInstance :: (MonadSupply Name m) => ClassEnv -> Predicate -> m (Maybe [Predicate])
+--byInstance env self@(InClass name ty) = do
+--    msum <$> (rightToMaybe <$$> sequence [runExceptT (tryInstance i) | i <- instances env name])
+--  where
+--    tryInstance :: (MonadSupply Name m) => Instance -> ExceptT UnificationError m [Predicate]
+--    tryInstance ClassInfo{..} =
+--        applyBoth <$> matchClass classSignature self 
+--                  <*> pure classPredicates
+--
+--entail :: (MonadSupply Name m) => ClassEnv -> [Predicate] -> Predicate -> m (Either a Bool)
+--entail env cls0 cl = do -- pure super ||^ instances
+--    x <- instances
+--    pure (pure super ||^ x)
+--  where
+--    super :: Bool
+--    super = any (cl `elem`) (bySuper env <$> cls0)
+--    instances :: (MonadSupply Name m) => m (Either a Bool)
+--    instances = do
+--        zz <- byInstance env cl
 --        case zz of
 --            Nothing   -> pure (Right False)
 --            Just cls1 -> do
---                xx <- entail env cls0
---                undefined -- allM (entail env cls0) cls1
+--                x <- mapM (entail env cls0) cls1
+--                let zzz = all too x 
+--                pure (Right zzz)
+--
+--    too a = case a of
+--        Right True -> True
+--        _          -> False
+--
+----        undefined
+----        case zz of
+----            Nothing   -> pure (Right False)
+----            Just cls1 -> do
+----                xx <- entail env cls0
+----                undefined -- allM (entail env cls0) cls1
+--
+----    instances = case byInstance env cl of
+----        Nothing   -> pure False
+----        Just cls1 -> allM (entail env cls0) cls1
+--
+----isHeadNormalForm :: Predicate -> Bool
+----isHeadNormalForm (InClass _ t) = 
+----    flip cata t $ \case
+----        TApp _ t1 _ -> t1
+----        TVar{}      -> True
+----        _           -> False
+--
+--toHeadNormalForm :: (MonadSupply Name m) => ClassEnv -> [Predicate] -> m (Either a [Predicate])
+--toHeadNormalForm env ps = do
+--    z <- mapM (hnf env) ps
+--    pure (Right (concat (concat (sequence z))))
+--  where
+----  hnf :: ClassEnv -> Predicate -> m (Either a [Predicate])
+--    hnf env tycl 
+--        | isHeadNormalForm tycl = pure (Right [tycl])
+--        | otherwise = byInstance env tycl >>= \case
+--            Nothing  -> pure (Left ContextReductionFailed)
+--            Just cls -> toHeadNormalForm env cls
+--
+--simplify :: (MonadSupply Name m) => ClassEnv -> [Predicate] -> m (Either a [Predicate])
+--simplify env = loop [] 
+--  where
+--    loop :: (MonadSupply Name m) => [Predicate] -> [Predicate] -> m (Either a [Predicate])
+--    loop qs [] = pure (Right qs)
+--    loop qs (p:ps) = entail env (qs <> ps) p >>= \case
+--        Left  e -> pure (Left e)
+--        Right b -> if b then loop qs ps else loop (p:qs) ps
+--
+--
+--reduce :: (MonadSupply Name m) => ClassEnv -> [Predicate] -> m (Either a [Predicate])
+--reduce env cls = join <$> (toHeadNormalForm env cls >>= traverse (simplify env))
 
---    instances = case byInstance env cl of
---        Nothing   -> pure False
---        Just cls1 -> allM (entail env cls0) cls1
 
-isHeadNormalForm :: Predicate -> Bool
-isHeadNormalForm (InClass _ t) = 
-    flip cata t $ \case
-        TApp _ t1 _ -> t1
-        TVar{}      -> True
-        _           -> False
-
-toHeadNormalForm :: (MonadSupply Name m) => ClassEnv -> [Predicate] -> m (Either a [Predicate])
-toHeadNormalForm env ps = do
-    z <- mapM (hnf env) ps
-    pure (Right (concat (concat (sequence z))))
-  where
---  hnf :: ClassEnv -> Predicate -> m (Either a [Predicate])
-    hnf env tycl 
-        | isHeadNormalForm tycl = pure (Right [tycl])
-        | otherwise = byInstance env tycl >>= \case
-            Nothing  -> pure (Left ContextReductionFailed)
-            Just cls -> toHeadNormalForm env cls
-
-simplify :: (MonadSupply Name m) => ClassEnv -> [Predicate] -> m (Either a [Predicate])
-simplify env = loop [] 
-  where
-    loop :: (MonadSupply Name m) => [Predicate] -> [Predicate] -> m (Either a [Predicate])
-    loop qs [] = pure (Right qs)
-    loop qs (p:ps) = entail env (qs <> ps) p >>= \case
-        Left  e -> pure (Left e)
-        Right b -> if b then loop qs ps else loop (p:qs) ps
-
-
-reduce :: (MonadSupply Name m) => ClassEnv -> [Predicate] -> m (Either a [Predicate])
-reduce env cls = join <$> (toHeadNormalForm env cls >>= traverse (simplify env))
-
-
-unifyClass, matchClass 
-  :: (MonadSupply Name m, MonadError UnificationError m) 
-  => Predicate 
-  -> Predicate 
-  -> m (Substitution Type, Substitution Kind)
-unifyClass = liftU unifyTypes
-matchClass = liftU matchTypes
-
-liftU 
-  :: (MonadSupply Name m, MonadError UnificationError m) 
-  => (Type -> Type -> m a) 
-  -> Predicate 
-  -> Predicate 
-  -> m a
-liftU m (InClass c1 t1) (InClass c2 t2)
-    | c1 == c2  = m t1 t2
-    | otherwise = throwError ClassMismatch
+--unifyClass, matchClass 
+--  :: (MonadSupply Name m, MonadError UnificationError m) 
+--  => Predicate 
+--  -> Predicate 
+--  -> m (Substitution Type, Substitution Kind)
+--unifyClass = liftU unifyTypes
+--matchClass = liftU matchTypes
+--
+--liftU 
+--  :: (MonadSupply Name m, MonadError UnificationError m) 
+--  => (Type -> Type -> m a) 
+--  -> Predicate 
+--  -> Predicate 
+--  -> m a
+--liftU m (InClass c1 t1) (InClass c2 t2)
+--    | c1 == c2  = m t1 t2
+--    | otherwise = throwError ClassMismatch
 
 
 

@@ -10,16 +10,20 @@
 module Tau.Prog where
 
 import Control.Monad.Except (MonadError, catchError, throwError, runExceptT)
+import Control.Monad.Extra (allM, (||^))
 import Control.Monad.Reader
 import Control.Monad.State
 import Control.Monad.Supply
+import Data.Either.Combinators (rightToMaybe)
 import Data.Either.Extra (eitherToMaybe)
 import Data.Function ((&))
 import Data.List (nub)
+import Data.Maybe (fromMaybe)
 import Data.Set.Monad (Set)
 import Data.Tuple.Extra (first)
 import Tau.Compiler.Error
 import Tau.Compiler.Substitute
+import Tau.Compiler.Unify
 import Tau.Compiler.Unify
 import Tau.Env (Env(..))
 import Tau.Lang
@@ -57,6 +61,104 @@ type ClassEnv = Env
     , List (ClassInfo Type (Ast (TypeInfo ()))) )  -- Instances
 
 type ConstructorEnv = Env (Set Name, Int)
+
+type Instance = ClassInfo Type (Ast (TypeInfo ()))
+
+-- >>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>
+
+super :: ClassEnv -> Name -> [Name]
+super env name =
+    maybe [] (fmap predicateName . classPredicates . fst) (Env.lookup name env)
+
+instances :: ClassEnv -> Name -> [Instance]
+instances env name = fromMaybe [] (snd <$> Env.lookup name env)
+
+bySuper :: ClassEnv -> Predicate -> [Predicate]
+bySuper env self@(InClass name ty) =
+    self:concat [bySuper env (InClass tc ty) | tc <- super env name]
+
+byInstance 
+  :: (MonadError UnificationError m, MonadSupply Name m) 
+  => ClassEnv 
+  -> Predicate 
+  -> m (Maybe [Predicate])
+byInstance env self@(InClass name ty) = do
+    a <- sequence [runExceptT (tryInstance i) | i <- instances env name]
+    pure (msum (rightToMaybe <$> a))
+  where
+    tryInstance ClassInfo{..} = applyBoth <$> matchClass classSignature self 
+                                          <*> pure classPredicates
+
+entail 
+  :: (MonadError UnificationError m, MonadSupply Name m) 
+  => ClassEnv 
+  -> [Predicate] 
+  -> Predicate 
+  -> m Bool
+entail env cls0 cl = pure super ||^ instances
+  where
+    super = any (cl `elem`) (bySuper env <$> cls0)
+    instances = byInstance env cl >>= \case
+        Nothing   -> pure False
+        Just cls1 -> allM (entail env cls0) cls1
+
+isHeadNormalForm :: Predicate -> Bool
+isHeadNormalForm (InClass _ t) = 
+    flip cata t $ \case
+        TApp _ t1 _ -> t1
+        TVar{}      -> True
+        _           -> False
+
+toHeadNormalForm 
+  :: (MonadError UnificationError m, MonadSupply Name m) 
+  => ClassEnv
+  -> [Predicate] 
+  -> m [Predicate]
+toHeadNormalForm env = fmap concat . mapM (hnf env) 
+  where
+    hnf env tycl 
+        | isHeadNormalForm tycl = pure [tycl]
+        | otherwise = byInstance env tycl >>= \case
+            Nothing  -> throwError ContextReductionFailed
+            Just cls -> toHeadNormalForm env cls
+
+simplify 
+  :: (MonadError UnificationError m, MonadSupply Name m) 
+  => ClassEnv 
+  -> [Predicate] 
+  -> m [Predicate]
+simplify env = loop []
+  where
+    loop qs [] = pure qs
+    loop qs (p:ps) = do
+        entailed <- entail env (qs <> ps) p
+        if entailed then loop qs ps 
+                    else loop (p:qs) ps
+
+reduce
+  :: (MonadSupply Name m) 
+  => ClassEnv
+  -> [Predicate] 
+  -> m (Either UnificationError [Predicate])
+reduce env cls = runExceptT (toHeadNormalForm env cls >>= simplify env) 
+
+unifyClass, matchClass 
+  :: (MonadSupply Name m, MonadError UnificationError m) 
+  => Predicate 
+  -> Predicate 
+  -> m (Substitution Type, Substitution Kind)
+unifyClass = liftU unifyTypes
+matchClass = liftU matchTypes
+
+liftU 
+  :: (MonadSupply Name m, MonadError UnificationError m) 
+  => (Type -> Type -> m a) 
+  -> Predicate 
+  -> Predicate 
+  -> m a
+liftU m (InClass c1 t1) (InClass c2 t2)
+    | c1 == c2  = m t1 t2
+    | otherwise = throwError ClassMismatch
 
 -- >>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>
 
