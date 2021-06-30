@@ -83,8 +83,8 @@ byInstance
   -> Predicate 
   -> m (Maybe [Predicate])
 byInstance env self@(InClass name ty) = do
-    a <- sequence [runExceptT (tryInstance i) | i <- instances env name]
-    pure (msum (rightToMaybe <$> a))
+    r <- sequence [runExceptT (tryInstance i) | i <- instances env name]
+    pure (msum (rightToMaybe <$> r))
   where
     tryInstance ClassInfo{..} = applyBoth <$> matchClass classSignature self 
                                           <*> pure classPredicates
