@@ -851,10 +851,10 @@ foo1 expr = do
 
         let Ast e0 = fmap (fmap Just) (Ast e)
 
-        --let e0_1 :: ProgExpr (TypeInfoT [Error] (Maybe Type))
-        --    e0_1 = Stage0.runExhaustivePatternsCheck testConstructorEnv e0 
+        let e0_1 :: ProgExpr (TypeInfoT [Error] (Maybe Type))
+            e0_1 = Stage0.runExhaustivePatternsCheck testConstructorEnv e0 
 
-        e0_1 <- withReaderT getConstructorEnv (Stage0.exhaustivePatternsCheck e0)
+        --e0_1 <- withReaderT getConstructorEnv (Stage0.exhaustivePatternsCheck e0)
 
         --
 
@@ -864,28 +864,26 @@ foo1 expr = do
         let r1 = toRep e1
         liftIO $ LBS.writeFile "/home/laserpants/play/ast-folder-tree/ast-folder-tree/src/testData23.json" (encode r1)
 
---        traceShowM e1
-
         --
 
---        let e2_1 = Stage2.translate e1
---
---        let e2 = Stage2.runTranslate testClassEnv testTypeEnv testKindEnv testConstructorEnv e2_1
+        let e2_1 = Stage2.translate e1
 
-        e2 <- Stage2.translate e1
+        let e2 = Stage2.runTranslate testClassEnv testTypeEnv testKindEnv testConstructorEnv e2_1
+
+--        e2 <- Stage2.translate e1
 
         let r2 = toRep e2
         liftIO $ LBS.writeFile "/home/laserpants/play/ast-folder-tree/ast-folder-tree/src/testData24.json" (encode r2)
 
---        traceShowM e2
+        traceShowM e2
 
         --
 
---        let e3_1 = Stage3.translate e2
---
---        let e3 = Stage3.runTranslate e3_1
+        let e3_1 = Stage3.translate e2
 
-        e3 <- Stage3.translate e2
+        let e3 = Stage3.runTranslate e3_1
+
+--        e3 <- Stage3.translate e2
 
         let r3 = toRep e3
         liftIO $ LBS.writeFile "/home/laserpants/play/ast-folder-tree/ast-folder-tree/src/testData25.json" (encode r3)
@@ -903,11 +901,11 @@ foo1 expr = do
 
         --
 
---        let e5_1 = Stage5.translate e4
---
---        let e5 = Stage5.runTranslate e5_1
+        let e5_1 = Stage5.translate e4
 
-        e5 <- Stage5.translate e4
+        let e5 = Stage5.runTranslate e5_1
+
+--        e5 <- Stage5.translate e4
 
         let r5 = toRep e5
         liftIO $ LBS.writeFile "/home/laserpants/play/ast-folder-tree/ast-folder-tree/src/testData27.json" (encode r5)
@@ -1315,8 +1313,16 @@ example1 = foo1 expr
 --        (lamExpr () [varPat () "a", varPat () "b"] (op2Expr () (OAdd ()) (varExpr () "a") (varExpr () "b")))
 
 
+--    expr =
+--        litExpr () (TInteger 1)
+
+
     expr =
-        lamExpr () [varPat () "a"] (op2Expr () (OEq ()) (varExpr () "a") (litExpr () (TInteger 1)))
+        lamExpr () [varPat () "b"] (appExpr () [varExpr () "testFun1", varExpr () "b"])
+
+
+--    expr =
+--        lamExpr () [varPat () "a"] (op2Expr () (OEq ()) (varExpr () "a") (litExpr () (TInteger 1)))
 
 
 --    expr =
@@ -2477,6 +2483,8 @@ testTypeEnv = Env.fromList
 
     -- TEMP
     , ( "(==)"         , Forall [kTyp] [InClass "Eq" 0] (tGen 0 `tArr` tGen 0 `tArr` tBool) )
+
+    , ( "testFun1"     , Forall [kTyp] [InClass "Num" 0, InClass "Eq" 0] (tGen 0 `tArr` tBool) )
 
     , ( "[]"           , Forall [kTyp] [] (tList (tGen 0)) )
     , ( "(+)"          , Forall [kTyp] [InClass "Num" 0] (tGen 0 `tArr` tGen 0 `tArr` tGen 0) )
