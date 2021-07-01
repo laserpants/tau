@@ -19,8 +19,8 @@ type TargetExpr t = Expr t t t t t t t t Void Void Void Void Void Void Void
 
 -- >>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>
 
-runTranslate :: Supply Name a -> a
-runTranslate expr = fromJust (evalSupply expr (numSupply "#"))
+--runTranslate :: Supply Name a -> a
+--runTranslate expr = fromJust (evalSupply expr (numSupply "#"))
 
 translate :: (MonadSupply Name m) => SourceExpr (Maybe Type) -> m (TargetExpr (Maybe Type))
 translate = cata $ \case

@@ -851,8 +851,10 @@ foo1 expr = do
 
         let Ast e0 = fmap (fmap Just) (Ast e)
 
-        let e0_1 :: ProgExpr (TypeInfoT [Error] (Maybe Type))
-            e0_1 = Stage0.runExhaustivePatternsCheck testConstructorEnv e0 
+        --let e0_1 :: ProgExpr (TypeInfoT [Error] (Maybe Type))
+        --    e0_1 = Stage0.runExhaustivePatternsCheck testConstructorEnv e0 
+
+        e0_1 <- withReaderT getConstructorEnv (Stage0.exhaustivePatternsCheck e0)
 
         --
 
@@ -866,9 +868,11 @@ foo1 expr = do
 
         --
 
-        let e2_1 = Stage2.translate e1
+--        let e2_1 = Stage2.translate e1
+--
+--        let e2 = Stage2.runTranslate testClassEnv testTypeEnv testKindEnv testConstructorEnv e2_1
 
-        let e2 = Stage2.runTranslate testClassEnv testTypeEnv testKindEnv testConstructorEnv e2_1
+        e2 <- Stage2.translate e1
 
         let r2 = toRep e2
         liftIO $ LBS.writeFile "/home/laserpants/play/ast-folder-tree/ast-folder-tree/src/testData24.json" (encode r2)
@@ -877,9 +881,11 @@ foo1 expr = do
 
         --
 
-        let e3_1 = Stage3.translate e2
+--        let e3_1 = Stage3.translate e2
+--
+--        let e3 = Stage3.runTranslate e3_1
 
-        let e3 = Stage3.runTranslate e3_1
+        e3 <- Stage3.translate e2
 
         let r3 = toRep e3
         liftIO $ LBS.writeFile "/home/laserpants/play/ast-folder-tree/ast-folder-tree/src/testData25.json" (encode r3)
@@ -897,9 +903,11 @@ foo1 expr = do
 
         --
 
-        let e5_1 = Stage5.translate e4
+--        let e5_1 = Stage5.translate e4
+--
+--        let e5 = Stage5.runTranslate e5_1
 
-        let e5 = Stage5.runTranslate e5_1
+        e5 <- Stage5.translate e4
 
         let r5 = toRep e5
         liftIO $ LBS.writeFile "/home/laserpants/play/ast-folder-tree/ast-folder-tree/src/testData27.json" (encode r5)
@@ -908,7 +916,7 @@ foo1 expr = do
 
         --
 
-        let e6 = runIdentity (Stage6.translate e5)
+        e6 <- Stage6.translate e5
 
         let r6 = toRep e6
         liftIO $ LBS.writeFile "/home/laserpants/play/ast-folder-tree/ast-folder-tree/src/testData28.json" (encode r6)
@@ -2539,7 +2547,7 @@ testClassEnv = Env.fromList
       )
     , ( "Num"
         -- Interface
-      , ( ClassInfo (InClass "Num" "a") [InClass "Foo" "a"]
+      , ( ClassInfo (InClass "Num" "a") [InClass "Eq" "a", InClass "Foo" "a"]
             [ ( "(+)"         , tVar kTyp "a" `tArr` tVar kTyp "a" `tArr` tVar kTyp "a" )
             , ( "(*)"         , tVar kTyp "a" `tArr` tVar kTyp "a" `tArr` tVar kTyp "a" )
             , ( "fromInteger" , tInteger `tArr` tVar kTyp "a" )

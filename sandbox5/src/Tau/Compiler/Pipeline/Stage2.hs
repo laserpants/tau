@@ -27,17 +27,17 @@ type WorkingExpr t = Expr t t t t t t t t t Void Void Void Void Void Void
 
 -- >>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>
 
-runTranslate 
-  :: ClassEnv 
-  -> TypeEnv 
-  -> KindEnv 
-  -> ConstructorEnv 
-  -> ReaderT (ClassEnv, TypeEnv, KindEnv, ConstructorEnv) (Supply Name) e 
-  -> e
-runTranslate classEnv typeEnv kindEnv constructorEnv expr = 
-    fromJust (evalSupply (runReaderT expr env) (numSupply "$dict"))
-  where
-    env = (classEnv, typeEnv, kindEnv, constructorEnv)
+--runTranslate 
+--  :: ClassEnv 
+--  -> TypeEnv 
+--  -> KindEnv 
+--  -> ConstructorEnv 
+--  -> ReaderT (ClassEnv, TypeEnv, KindEnv, ConstructorEnv) (Supply Name) e 
+--  -> e
+--runTranslate classEnv typeEnv kindEnv constructorEnv expr = 
+--    fromJust (evalSupply (runReaderT expr env) (numSupply "$dict"))
+--  where
+--    env = (classEnv, typeEnv, kindEnv, constructorEnv)
 
 translate 
   :: ( MonadSupply Name m

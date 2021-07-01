@@ -54,8 +54,8 @@ deriving instance (Eq   t) => Eq   (ConsGroup t)
 
 -- >>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>
 
-runTranslate :: Supply Name a -> a
-runTranslate expr = fromJust (evalSupply expr (numSupply "a"))
+--runTranslate :: Supply Name a -> a
+--runTranslate expr = fromJust (evalSupply expr (numSupply "a"))
 
 translate :: (MonadSupply Name m) => SourceExpr (Maybe Type) -> m (TargetExpr (Maybe Type))
 translate = cata $ \case

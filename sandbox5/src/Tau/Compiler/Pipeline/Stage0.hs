@@ -12,11 +12,11 @@ import Tau.Prog
 import Tau.Tooling
 import Tau.Type
 
-runExhaustivePatternsCheck
-  :: ConstructorEnv 
-  -> ProgExpr (TypeInfoT [Error] (Maybe Type)) 
-  -> ProgExpr (TypeInfoT [Error] (Maybe Type))
-runExhaustivePatternsCheck env = flip runReader env . exhaustivePatternsCheck
+--runExhaustivePatternsCheck
+--  :: ConstructorEnv 
+--  -> ProgExpr (TypeInfoT [Error] (Maybe Type)) 
+--  -> ProgExpr (TypeInfoT [Error] (Maybe Type))
+--runExhaustivePatternsCheck env = flip runReader env . exhaustivePatternsCheck
 
 exhaustivePatternsCheck
   :: (MonadReader ConstructorEnv m) 
