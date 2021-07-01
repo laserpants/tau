@@ -19,7 +19,7 @@ import qualified Data.Text as Text
 data KindF a
     = KVar Name               -- ^ Kind variable
     | KCon Name               -- ^ Kind constructor
-    | KArr a a 
+    | KArr a a                -- ^ Kind of higher order type constructor 
 
 -- | Kind
 type Kind = Fix KindF
@@ -145,7 +145,7 @@ instance (FreeIn t) => FreeIn [t] where
     free = concatMap free
 
 instance FreeIn (TypeT a) where
-    free = typeVars
+    free = nub . typeVars
 
 instance FreeIn Scheme where
     free (Forall _ _ t) = free t

@@ -301,6 +301,9 @@ instance Typed () where
 instance FreeIn TypeEnv where
     free = free . Env.elems
 
+instance FreeIn (TypeInfo e) where
+    free = free . nodeType
+
 instance (Substitutable Type a) => Substitutable (TypeInfo e) a where
     apply sub = \case
         TypeInfo e ty ps -> TypeInfo e (apply sub ty) (apply sub ps)
@@ -357,10 +360,10 @@ astTypeVars (Ast expr) = nub (exprTypeVars expr)
         EApp    t as           -> typeVars (typeOf t) <> concat as
         ELet    t bind a1 a2   -> typeVars (typeOf t) <> bindingTypeVars bind <> a1 <> a2
         EFix    t _ a1 a2      -> typeVars (typeOf t) <> a1 <> a2
-        ELam    t ps a         -> typeVars (typeOf t) <> (patternTypeVars =<< ps) <> a
+        ELam    t ps a         -> typeVars (typeOf t) <> concatMap patternTypeVars ps <> a
         EIf     t a1 a2 a3     -> typeVars (typeOf t) <> a1 <> a2 <> a3
-        EPat    t a clauses    -> typeVars (typeOf t) <> a <> (clauseTypeVars =<< clauses)
-        EFun    t clauses      -> typeVars (typeOf t) <> (clauseTypeVars =<< clauses)
+        EPat    t a clauses    -> typeVars (typeOf t) <> a <> concatMap clauseTypeVars clauses
+        EFun    t clauses      -> typeVars (typeOf t) <> concatMap clauseTypeVars clauses
         EOp1    t op a         -> typeVars (typeOf t) <> op1TypeVars op <> a
         EOp2    t op a b       -> typeVars (typeOf t) <> op2TypeVars op <> a <> b
         ETuple  t as           -> typeVars (typeOf t) <> concat as
@@ -370,11 +373,11 @@ astTypeVars (Ast expr) = nub (exprTypeVars expr)
 
     bindingTypeVars = \case
         BPat    t p            -> typeVars (typeOf t) <> patternTypeVars p
-        BFun    t _ ps         -> typeVars (typeOf t) <> (patternTypeVars =<< ps)
+        BFun    t _ ps         -> typeVars (typeOf t) <> concatMap patternTypeVars ps
 
     clauseTypeVars = \case
         Clause  t p gs         -> typeVars (typeOf t) <> patternTypeVars p
-                                                      <> (guardTypeVars =<< gs)
+                                                      <> concatMap guardTypeVars gs
     guardTypeVars = \case
         Guard es e             -> concat es <> e
 

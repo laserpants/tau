@@ -322,6 +322,94 @@ instance Functor Ast where
             ODot    t            -> ODot       (f t)
             OField  t            -> OField     (f t)
 
+instance Foldable Ast where
+    foldr f s (Ast e) = foldr1 (.) (foldExpr f e) s
+      where
+        foldExpr :: (t -> s -> s) -> ProgExpr t -> [s -> s]
+        foldExpr f = cata $ \case
+            EVar    t _          -> [f t]
+            ECon    t _ es       -> (f t:concat es)
+            ELit    t _          -> [f t]
+            EApp    t es         -> (f t:concat es)
+            ELet    t bind e1 e2 -> (f t:foldBind f bind <> e1 <> e2)
+            EFix    t _ e1 e2    -> (f t:e1 <> e2)
+            ELam    t ps e       -> (f t:concatMap (foldPattern f) ps <> e)
+            EIf     t e1 e2 e3   -> (f t:e1 <> e2 <> e3)
+            EPat    t e cs       -> (f t:e <> concatMap (foldClause f) cs)
+            EFun    t cs         -> (f t:concatMap (foldClause f) cs)
+            EOp1    t op a       -> (f t:foldOp1 f op <> a)
+            EOp2    t op a b     -> (f t:foldOp2 f op <> a <> b)
+            ETuple  t es         -> (f t:concat es)
+            EList   t es         -> (f t:concat es)
+            ERow    t _ a b      -> (f t:a <> b)
+            EAnn    _ e          -> e
+
+        foldClause :: (t -> s -> s) -> Clause t (ProgPattern t) [s -> s] -> [s -> s]
+        foldClause f = \case
+            Clause  t p gs       -> (f t:foldPattern f p <> concatMap (foldGuard f) gs)
+
+        foldGuard :: (t -> s -> s) -> Guard [s -> s] -> [s -> s]
+        foldGuard f = \case
+            Guard es e           -> concat (e:es)
+
+        foldPattern :: (t -> s -> s) -> ProgPattern t -> [s -> s]
+        foldPattern f = cata $ \case
+            PVar    t _          -> [f t]
+            PCon    t _ ps       -> (f t:concat ps)
+            PLit    t _          -> [f t]
+            PAs     t _ p        -> (f t:p)
+            POr     t p q        -> (f t:p <> q)
+            PAny    t            -> [f t]
+            PTuple  t ps         -> (f t:concat ps)
+            PList   t ps         -> (f t:concat ps)
+            PRow    t _ p q      -> (f t:p <> q)
+            PAnn    _ p          -> p
+
+        foldBind :: (t -> s -> s) -> Binding t (ProgPattern t) -> [s -> s]
+        foldBind f = \case
+            BPat    t p          -> (f t:foldPattern f p)
+            BFun    t _ ps       -> (f t:concatMap (foldPattern f) ps)
+
+        foldOp1 :: (t -> s -> s) -> Op1 t -> [s -> s]
+        foldOp1 f = \case
+            ONeg    t            -> [f t]
+            ONot    t            -> [f t]
+
+        foldOp2 :: (t -> s -> s) -> Op2 t -> [s -> s]
+        foldOp2 f = \case
+            OEq     t            -> [f t]
+            ONeq    t            -> [f t]
+            OAnd    t            -> [f t]
+            OOr     t            -> [f t]
+            OAdd    t            -> [f t]
+            OSub    t            -> [f t]
+            OMul    t            -> [f t]
+            ODiv    t            -> [f t]
+            OPow    t            -> [f t]
+            OMod    t            -> [f t]
+            OLt     t            -> [f t]
+            OGt     t            -> [f t]
+            OLte    t            -> [f t]
+            OGte    t            -> [f t]
+            OLarr   t            -> [f t]
+            ORarr   t            -> [f t]
+            OFpipe  t            -> [f t]
+            OBpipe  t            -> [f t]
+            OOpt    t            -> [f t]
+            OStrc   t            -> [f t]
+            ONdiv   t            -> [f t]
+            ODot    t            -> [f t] 
+            OField  t            -> [f t] 
+
+instance Traversable Ast where
+    traverse f ast = Ast <$> cata alg (getAst ast)
+      where
+        alg = \case
+            EVar    t var        -> varExpr   <$> f t <*> pure var
+            ECon    t con es     -> conExpr   <$> f t <*> pure con <*> sequenceA es
+            ELit    t prim       -> litExpr   <$> f t <*> pure prim
+            -- ...
+
 -- >>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>
 
 exprTag :: (Functor e3) => Expr t t t t t t t t t t t t t t t e1 e2 e3 -> t

@@ -17,6 +17,7 @@ import Data.Either.Combinators (rightToMaybe)
 import Data.Foldable (foldlM, foldrM)
 import Data.Function ((&))
 import Data.Maybe
+import Data.List (nub)
 import System.Environment 
 import Tau.Compiler.Error
 import Tau.Compiler.Patterns
@@ -166,16 +167,114 @@ import qualified Tau.Env as Env
 -----------------------
 
 insertDicts 
-  :: Context
+  :: (MonadSupply Name m)
+  => Context
+  -> ConstructorEnv
+  -> ClassEnv
   -> Ast (TypeInfo [e])
-  -> Ast (TypeInfo [e])
-insertDicts env = fmap (\TypeInfo{..} -> 
-    TypeInfo{ nodePredicates = predicates nodeType <> nodePredicates, .. })
+  -> m (Ast (TypeInfo [e]))
+insertDicts env constructorEnv classEnv ast = do
+    moo ast
+
+--    zzz2 ast
+--    --pure (fmap zzz ast)
+--  where
+----    xx = traverse zzz ast
+--
+--    zzz2 :: Monad m => Ast (TypeInfo [e]) -> m (Ast (TypeInfo [e]))
+--    zzz2 a = do
+--        let -- xx :: Ast (m (TypeInfo [e]))
+--            xx = fmap zzz a
+--        sequence xx
+--
+--    zzz :: Monad m => TypeInfo [e] -> m (TypeInfo [e])
+--    zzz TypeInfo{..} = 
+--        pure $ TypeInfo{ nodePredicates = predicates nodeType <> nodePredicates, .. }
+--
+--    predicates :: Type -> [Predicate]
+--    predicates t = [InClass name (tVar kTyp t) | (t, set) <- vars, name <- Set.toList set]
+--      where
+--        vars = [(var, cls) | var <- (fst <$> free t), cls <- maybeToList (Env.lookup var env)]
+
   where
-    predicates :: Type -> [Predicate]
-    predicates t = [InClass name (tVar kTyp t) | (t, set) <- vars, name <- Set.toList set]
+    moo :: (MonadSupply Name m) => Ast (TypeInfo [e]) -> m (Ast (TypeInfo [e]))
+    moo ast = Ast <$> cata alg (getAst ast) 
       where
-        vars = [(var, cls) | var <- (fst <$> free t), cls <- maybeToList (Env.lookup var env)]
+        alg = \case
+            EVar    t var        -> varExpr   <$> boo t <*> pure var
+            ECon    t con es     -> conExpr   <$> boo t <*> pure con <*> sequence es
+            ELit    t prim       -> litExpr   <$> boo t <*> pure prim
+            EApp    t es         -> appExpr   <$> boo t <*> sequence es
+            ELet    t bind e1 e2 -> letExpr   <$> boo t <*> binding bind <*> e1 <*> e2
+            EFix    t name e1 e2 -> fixExpr   <$> boo t <*> pure name <*> e1 <*> e2
+            ELam    t ps e       -> lamExpr   <$> boo t <*> traverse pattern ps <*> e
+            EIf     t e1 e2 e3   -> ifExpr    <$> boo t <*> e1 <*> e2 <*> e3 
+            EPat    t e cs       -> patExpr   <$> boo t <*> e <*> traverse clause cs
+            EFun    t cs         -> funExpr   <$> boo t <*> traverse clause cs
+            EOp1    t op a       -> op1Expr   <$> boo t <*> pure op <*> a
+            EOp2    t op a b     -> op2Expr   <$> boo t <*> pure op <*> a <*> b
+            ETuple  t es         -> tupleExpr <$> boo t <*> sequence es
+            EList   t es         -> listExpr  <$> boo t <*> sequence es
+            ERow    t lab a b    -> rowExpr   <$> boo t <*> pure lab <*> a <*> b
+            EAnn    _ e          -> e
+
+        binding = \case
+            BPat    t p          -> BPat      <$> boo t <*> pattern p
+            BFun    t name ps    -> BFun      <$> boo t <*> pure name <*> traverse pattern ps
+
+        clause = \case
+            Clause  t p gs       -> Clause    <$> boo t <*> pattern p <*> traverse guard gs
+
+        guard = \case
+            Guard es e           -> Guard     <$> sequence es <*> e
+
+        pattern = cata $ \case
+            PVar    t var        -> varPat    <$> boo t <*> pure var
+            PCon    t con ps     -> conPat    <$> boo t <*> pure con <*> sequence ps
+            PLit    t prim       -> litPat    <$> boo t <*> pure prim
+            PAs     t as p       -> asPat     <$> boo t <*> pure as <*> p
+            POr     t p q        -> orPat     <$> boo t <*> p <*> q
+            PAny    t            -> anyPat    <$> boo t
+            PTuple  t ps         -> tuplePat  <$> boo t <*> sequence ps
+            PList   t ps         -> listPat   <$> boo t <*> sequence ps
+            PRow    t lab p q    -> rowPat    <$> boo t <*> pure lab <*> p <*> q
+            PAnn    _ p          -> p
+  
+    boo :: (MonadSupply Name m) => TypeInfo [e] -> m (TypeInfo [e])
+    boo TypeInfo{..} = do
+        zzz <- foo nodeType nodePredicates
+        pure $ TypeInfo { nodePredicates = zzz, .. }
+
+    foo :: (MonadSupply Name m) => Type -> [Predicate] -> m [Predicate]
+    foo t ps = do
+        reduce classEnv (predicates <> ps) >>= \case
+            Left e -> undefined
+            Right r -> pure r
+      where
+        predicates :: [Predicate]
+        predicates = do
+            var <- (fst <$> free t)
+            set <- maybeToList (Env.lookup var env)
+            name <- Set.toList set
+            pure (InClass name (tVar kTyp var))
+
+--        predicates = do
+--            (t1, set) <- vars
+--            name <- Set.toList set
+--            pure (InClass name (tVar kTyp t1))
+--
+--        vars = do
+--            var <- (fst <$> free t)
+--            cls <- maybeToList (Env.lookup var env)
+--            pure (var, cls)
+
+--insertDicts env = fmap (\TypeInfo{..} -> 
+--    TypeInfo{ nodePredicates = predicates nodeType <> nodePredicates, .. })
+--  where
+--    predicates :: Type -> [Predicate]
+--    predicates t = [InClass name (tVar kTyp t) | (t, set) <- vars, name <- Set.toList set]
+--      where
+--        vars = [(var, cls) | var <- (fst <$> free t), cls <- maybeToList (Env.lookup var env)]
 
 
 --insertDicts env = mapTags $ \info@NodeInfo{..} -> 
@@ -716,17 +815,34 @@ foo1 expr = do
 
         --traceShowM (insertDicts ctx (Ast e))
 
-        Ast e <- inferAstType (Ast expr)
+        ast@(Ast e) <- inferAstType (Ast expr)
 
         --x <- inferAstType (Ast expr)
-
-        --(_,_,ctx) <- get
-
-        --let Ast e = insertDicts ctx x
 
         --let r = toRep (getAst (removeNonVarPredicates <$> Ast e))
         let r = toRep e
         liftIO $ LBS.writeFile "/home/laserpants/play/ast-folder-tree/ast-folder-tree/src/testData22.json" (encode r)
+
+
+        (_,_,ctx) <- get
+        ce <- askConstructorEnv
+        le <- askClassEnv
+        (Ast f) <- insertDicts ctx ce le ast
+        let frees = nub $ foldr (<>) [] (free <$> Ast f)
+        traceShowM frees
+
+        let sub1 = normalizer frees
+        let (Ast ggg) = fmap (apply sub1) (Ast f)
+
+
+        --let ddd = eee :: [(Name, Kind)]
+        --let ddd = foldr (<>) [] zzz
+--        let d = zzz :: Int
+
+        let r = toRep ggg
+        liftIO $ LBS.writeFile "/home/laserpants/play/ast-folder-tree/ast-folder-tree/src/testData220.json" (encode r)
+
+
 
 --        traceShowM (pretty ((insertDicts ctx (Ast e))))
 --        traceShowM s
@@ -1192,7 +1308,7 @@ example1 = foo1 expr
 
 
     expr =
-        (lamExpr () [varPat () "a"] (op2Expr () (OEq ()) (varExpr () "a") (litExpr () (TInteger 1))))
+        lamExpr () [varPat () "a"] (op2Expr () (OEq ()) (varExpr () "a") (litExpr () (TInteger 1)))
 
 
 --    expr =
