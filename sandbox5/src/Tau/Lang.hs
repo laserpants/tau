@@ -408,7 +408,70 @@ instance Traversable Ast where
             EVar    t var        -> varExpr   <$> f t <*> pure var
             ECon    t con es     -> conExpr   <$> f t <*> pure con <*> sequenceA es
             ELit    t prim       -> litExpr   <$> f t <*> pure prim
-            -- ...
+            EApp    t es         -> appExpr   <$> f t <*> sequenceA es
+            ELet    t bind e1 e2 -> letExpr   <$> f t <*> binding bind <*> e1 <*> e2
+            EFix    t name e1 e2 -> fixExpr   <$> f t <*> pure name <*> e1 <*> e2
+            ELam    t ps e       -> lamExpr   <$> f t <*> traverse pattern ps <*> e
+            EIf     t e1 e2 e3   -> ifExpr    <$> f t <*> e1 <*> e2 <*> e3
+            EPat    t e cs       -> patExpr   <$> f t <*> e <*> traverse clause cs
+            EFun    t cs         -> funExpr   <$> f t <*> traverse clause cs
+            EOp1    t op a       -> op1Expr   <$> f t <*> op1 op <*> a
+            EOp2    t op a b     -> op2Expr   <$> f t <*> op2 op <*> a <*> b
+            ETuple  t es         -> tupleExpr <$> f t <*> sequenceA es
+            EList   t es         -> listExpr  <$> f t <*> sequenceA es
+            ERow    t lab a b    -> rowExpr   <$> f t <*> pure lab <*> a <*> b
+            EAnn    t e          -> annExpr t <$> e
+
+        binding = \case
+            BPat    t p          -> BPat      <$> f t <*> pattern p
+            BFun    t name ps    -> BFun      <$> f t <*> pure name <*> traverse pattern ps
+
+        clause = \case
+            Clause  t p gs       -> Clause    <$> f t <*> pattern p <*> traverse guard gs
+
+        guard = \case
+            Guard es e           -> Guard     <$> sequenceA es <*> e
+
+        pattern = cata $ \case
+            PVar    t var        -> varPat    <$> f t <*> pure var
+            PCon    t con ps     -> conPat    <$> f t <*> pure con <*> sequenceA ps
+            PLit    t prim       -> litPat    <$> f t <*> pure prim
+            PAs     t as p       -> asPat     <$> f t <*> pure as <*> p
+            POr     t p q        -> orPat     <$> f t <*> p <*> q
+            PAny    t            -> anyPat    <$> f t
+            PTuple  t ps         -> tuplePat  <$> f t <*> sequenceA ps
+            PList   t ps         -> listPat   <$> f t <*> sequenceA ps
+            PRow    t lab p q    -> rowPat    <$> f t <*> pure lab <*> p <*> q
+            PAnn    t p          -> annPat  t <$> p
+
+        op1 = \case
+            ONeg    t            -> ONeg      <$> f t
+            ONot    t            -> ONot      <$> f t
+
+        op2 = \case
+            OEq     t            -> OEq       <$> f t
+            ONeq    t            -> ONeq      <$> f t  
+            OAnd    t            -> OAnd      <$> f t  
+            OOr     t            -> OOr       <$> f t  
+            OAdd    t            -> OAdd      <$> f t  
+            OSub    t            -> OSub      <$> f t  
+            OMul    t            -> OMul      <$> f t  
+            ODiv    t            -> ODiv      <$> f t  
+            OPow    t            -> OPow      <$> f t  
+            OMod    t            -> OMod      <$> f t  
+            OLt     t            -> OLt       <$> f t  
+            OGt     t            -> OGt       <$> f t  
+            OLte    t            -> OLte      <$> f t  
+            OGte    t            -> OGte      <$> f t  
+            OLarr   t            -> OLarr     <$> f t  
+            ORarr   t            -> ORarr     <$> f t  
+            OFpipe  t            -> OFpipe    <$> f t  
+            OBpipe  t            -> OBpipe    <$> f t  
+            OOpt    t            -> OOpt      <$> f t  
+            OStrc   t            -> OStrc     <$> f t  
+            ONdiv   t            -> ONdiv     <$> f t  
+            ODot    t            -> ODot      <$> f t   
+            OField  t            -> OField    <$> f t   
 
 -- >>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>
 

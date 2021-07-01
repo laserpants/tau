@@ -174,7 +174,7 @@ insertDicts
   -> Ast (TypeInfo [e])
   -> m (Ast (TypeInfo [e]))
 insertDicts env constructorEnv classEnv ast = do
-    moo ast
+    traverse boo ast
 
 --    zzz2 ast
 --    --pure (fmap zzz ast)
@@ -197,48 +197,48 @@ insertDicts env constructorEnv classEnv ast = do
 --        vars = [(var, cls) | var <- (fst <$> free t), cls <- maybeToList (Env.lookup var env)]
 
   where
-    moo :: (MonadSupply Name m) => Ast (TypeInfo [e]) -> m (Ast (TypeInfo [e]))
-    moo ast = Ast <$> cata alg (getAst ast) 
-      where
-        alg = \case
-            EVar    t var        -> varExpr   <$> boo t <*> pure var
-            ECon    t con es     -> conExpr   <$> boo t <*> pure con <*> sequence es
-            ELit    t prim       -> litExpr   <$> boo t <*> pure prim
-            EApp    t es         -> appExpr   <$> boo t <*> sequence es
-            ELet    t bind e1 e2 -> letExpr   <$> boo t <*> binding bind <*> e1 <*> e2
-            EFix    t name e1 e2 -> fixExpr   <$> boo t <*> pure name <*> e1 <*> e2
-            ELam    t ps e       -> lamExpr   <$> boo t <*> traverse pattern ps <*> e
-            EIf     t e1 e2 e3   -> ifExpr    <$> boo t <*> e1 <*> e2 <*> e3 
-            EPat    t e cs       -> patExpr   <$> boo t <*> e <*> traverse clause cs
-            EFun    t cs         -> funExpr   <$> boo t <*> traverse clause cs
-            EOp1    t op a       -> op1Expr   <$> boo t <*> pure op <*> a
-            EOp2    t op a b     -> op2Expr   <$> boo t <*> pure op <*> a <*> b
-            ETuple  t es         -> tupleExpr <$> boo t <*> sequence es
-            EList   t es         -> listExpr  <$> boo t <*> sequence es
-            ERow    t lab a b    -> rowExpr   <$> boo t <*> pure lab <*> a <*> b
-            EAnn    _ e          -> e
+    --moo :: (MonadSupply Name m) => Ast (TypeInfo [e]) -> m (Ast (TypeInfo [e]))
+    --moo ast = Ast <$> cata alg (getAst ast) 
+    --  where
+    --    alg = \case
+    --        EVar    t var        -> varExpr   <$> boo t <*> pure var
+    --        ECon    t con es     -> conExpr   <$> boo t <*> pure con <*> sequence es
+    --        ELit    t prim       -> litExpr   <$> boo t <*> pure prim
+    --        EApp    t es         -> appExpr   <$> boo t <*> sequence es
+    --        ELet    t bind e1 e2 -> letExpr   <$> boo t <*> binding bind <*> e1 <*> e2
+    --        EFix    t name e1 e2 -> fixExpr   <$> boo t <*> pure name <*> e1 <*> e2
+    --        ELam    t ps e       -> lamExpr   <$> boo t <*> traverse pattern ps <*> e
+    --        EIf     t e1 e2 e3   -> ifExpr    <$> boo t <*> e1 <*> e2 <*> e3 
+    --        EPat    t e cs       -> patExpr   <$> boo t <*> e <*> traverse clause cs
+    --        EFun    t cs         -> funExpr   <$> boo t <*> traverse clause cs
+    --        EOp1    t op a       -> op1Expr   <$> boo t <*> pure op <*> a
+    --        EOp2    t op a b     -> op2Expr   <$> boo t <*> pure op <*> a <*> b
+    --        ETuple  t es         -> tupleExpr <$> boo t <*> sequence es
+    --        EList   t es         -> listExpr  <$> boo t <*> sequence es
+    --        ERow    t lab a b    -> rowExpr   <$> boo t <*> pure lab <*> a <*> b
+    --        EAnn    _ e          -> e
 
-        binding = \case
-            BPat    t p          -> BPat      <$> boo t <*> pattern p
-            BFun    t name ps    -> BFun      <$> boo t <*> pure name <*> traverse pattern ps
+    --    binding = \case
+    --        BPat    t p          -> BPat      <$> boo t <*> pattern p
+    --        BFun    t name ps    -> BFun      <$> boo t <*> pure name <*> traverse pattern ps
 
-        clause = \case
-            Clause  t p gs       -> Clause    <$> boo t <*> pattern p <*> traverse guard gs
+    --    clause = \case
+    --        Clause  t p gs       -> Clause    <$> boo t <*> pattern p <*> traverse guard gs
 
-        guard = \case
-            Guard es e           -> Guard     <$> sequence es <*> e
+    --    guard = \case
+    --        Guard es e           -> Guard     <$> sequence es <*> e
 
-        pattern = cata $ \case
-            PVar    t var        -> varPat    <$> boo t <*> pure var
-            PCon    t con ps     -> conPat    <$> boo t <*> pure con <*> sequence ps
-            PLit    t prim       -> litPat    <$> boo t <*> pure prim
-            PAs     t as p       -> asPat     <$> boo t <*> pure as <*> p
-            POr     t p q        -> orPat     <$> boo t <*> p <*> q
-            PAny    t            -> anyPat    <$> boo t
-            PTuple  t ps         -> tuplePat  <$> boo t <*> sequence ps
-            PList   t ps         -> listPat   <$> boo t <*> sequence ps
-            PRow    t lab p q    -> rowPat    <$> boo t <*> pure lab <*> p <*> q
-            PAnn    _ p          -> p
+    --    pattern = cata $ \case
+    --        PVar    t var        -> varPat    <$> boo t <*> pure var
+    --        PCon    t con ps     -> conPat    <$> boo t <*> pure con <*> sequence ps
+    --        PLit    t prim       -> litPat    <$> boo t <*> pure prim
+    --        PAs     t as p       -> asPat     <$> boo t <*> pure as <*> p
+    --        POr     t p q        -> orPat     <$> boo t <*> p <*> q
+    --        PAny    t            -> anyPat    <$> boo t
+    --        PTuple  t ps         -> tuplePat  <$> boo t <*> sequence ps
+    --        PList   t ps         -> listPat   <$> boo t <*> sequence ps
+    --        PRow    t lab p q    -> rowPat    <$> boo t <*> pure lab <*> p <*> q
+    --        PAnn    _ p          -> p
   
     boo :: (MonadSupply Name m) => TypeInfo [e] -> m (TypeInfo [e])
     boo TypeInfo{..} = do
