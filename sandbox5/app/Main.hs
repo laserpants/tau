@@ -13,7 +13,7 @@ import Control.Monad.Reader
 import Control.Monad.State
 import Control.Monad.Supply
 import Data.Aeson
-import Data.Either.Combinators (rightToMaybe)
+import Data.Either.Combinators (rightToMaybe, fromRight)
 import Data.Foldable (foldlM, foldrM)
 import Data.Function ((&))
 import Data.Maybe
@@ -173,8 +173,23 @@ insertDicts
   -> ClassEnv
   -> Ast (TypeInfo [e])
   -> m (Ast (TypeInfo [e]))
-insertDicts env constructorEnv classEnv ast = do
-    traverse boo ast
+insertDicts env constructorEnv classEnv ast = 
+    forM ast (\TypeInfo{..} -> do
+        ps <- fromRight undefined <$> reduce classEnv (predicates nodeType <> nodePredicates)
+        pure $ TypeInfo { nodePredicates = ps, .. })
+  where
+--    foo :: (MonadSupply Name m) => Type -> [Predicate] -> m [Predicate]
+--    foo t ps = do
+--        fromRight undefined <$> reduce classEnv (predicates <> ps) --  >>= \case
+----            Left e -> undefined
+----            Right r -> pure r
+--      where
+--        predicates :: [Predicate]
+        predicates t = do
+            var <- (fst <$> free t)
+            set <- maybeToList (Env.lookup var env)
+            name <- Set.toList set
+            pure (InClass name (tVar kTyp var))
 
 --    zzz2 ast
 --    --pure (fmap zzz ast)
@@ -196,7 +211,7 @@ insertDicts env constructorEnv classEnv ast = do
 --      where
 --        vars = [(var, cls) | var <- (fst <$> free t), cls <- maybeToList (Env.lookup var env)]
 
-  where
+
     --moo :: (MonadSupply Name m) => Ast (TypeInfo [e]) -> m (Ast (TypeInfo [e]))
     --moo ast = Ast <$> cata alg (getAst ast) 
     --  where
@@ -240,23 +255,10 @@ insertDicts env constructorEnv classEnv ast = do
     --        PRow    t lab p q    -> rowPat    <$> boo t <*> pure lab <*> p <*> q
     --        PAnn    _ p          -> p
   
-    boo :: (MonadSupply Name m) => TypeInfo [e] -> m (TypeInfo [e])
-    boo TypeInfo{..} = do
-        zzz <- foo nodeType nodePredicates
-        pure $ TypeInfo { nodePredicates = zzz, .. }
-
-    foo :: (MonadSupply Name m) => Type -> [Predicate] -> m [Predicate]
-    foo t ps = do
-        reduce classEnv (predicates <> ps) >>= \case
-            Left e -> undefined
-            Right r -> pure r
-      where
-        predicates :: [Predicate]
-        predicates = do
-            var <- (fst <$> free t)
-            set <- maybeToList (Env.lookup var env)
-            name <- Set.toList set
-            pure (InClass name (tVar kTyp var))
+    --boo :: (MonadSupply Name m) => TypeInfo [e] -> m (TypeInfo [e])
+    --boo TypeInfo{..} = do
+    --    ps <- foo nodeType nodePredicates
+    --    pure $ TypeInfo { nodePredicates = ps, .. }
 
 --        predicates = do
 --            (t1, set) <- vars
@@ -875,8 +877,8 @@ foo1 expr = do
         let r2 = toRep e2
         liftIO $ LBS.writeFile "/home/laserpants/play/ast-folder-tree/ast-folder-tree/src/testData24.json" (encode r2)
 
-        traceShowM e2
-        traceShowM (pretty ggg)
+--        traceShowM e2
+--        traceShowM (pretty ggg)
 
         --
 
@@ -1387,13 +1389,14 @@ example1 = foo1 expr
         letExpr () (BPat () (varPat () "fn")) -- [annPat tInt (varPat () "val")]) 
             (funExpr () 
                 [ Clause () (conPat () "Some" [varPat () "y"]) 
-                    [ Guard [op2Expr () (OEq ()) (varExpr () "y") (litExpr () (TInt 1))] (litExpr () (TInteger 1))
-                    , Guard [op2Expr () (OEq ()) (varExpr () "y") (litExpr () (TInt 2))] (litExpr () (TInteger 2))
+--                    [ Guard [op2Expr () (OEq ()) (varExpr () "y") (litExpr () (TInt 1))] (litExpr () (TInteger 1))
+                    [ Guard [op2Expr () (OEq ()) (varExpr () "y") (litExpr () (TInteger 2))] (litExpr () (TInteger 2))
                     , Guard [] (litExpr () (TInteger 3))
                     ]
                 , Clause () (conPat () "None" []) [ Guard [] (annExpr tInt (litExpr () (TInteger 0))) ]
                 ])
-            (appExpr () [varExpr () "fn", conExpr () "Some" [annExpr tInt (litExpr () (TInteger 100))]])
+            --(appExpr () [varExpr () "fn", conExpr () "Some" [annExpr tInt (litExpr () (TInteger 100))]])
+            (appExpr () [varExpr () "fn", conExpr () "Some" [annExpr tInt (litExpr () (TInteger 3))]])
 
 
 

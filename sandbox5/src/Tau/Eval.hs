@@ -99,11 +99,11 @@ getField name [Data f (v:fs)]
 --    traceShowM name
 --    traceShowM x
 --    pure x
-getField x y = do
-    traceShowM x
-    traceShowM y
-    traceShowM "///////////"
-    undefined
+--getField x y = do
+--    traceShowM x
+--    traceShowM y
+--    traceShowM "///////////"
+--    undefined
 
 closure :: (MonadReader (ValueEnv m) m) => Name -> m (Value m) -> m (Value m)
 closure var a = pure (Closure var a mempty)
@@ -116,6 +116,11 @@ evalVar var =
                 Just (Value (TAtom name)) <- asks (Env.lookup "?a")
                 closure "?b" $ do
                     Just (Data "#" fields) <- asks (Env.lookup "?b")
+                    traceShowM "b****"
+                    traceShowM name
+                    traceShowM fields
+                    traceShowM "e****"
+                    traceShowM name
                     getField name fields
 
         Just prim ->

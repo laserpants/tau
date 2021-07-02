@@ -44,13 +44,13 @@ translate
      , MonadReader (ClassEnv, TypeEnv, KindEnv, ConstructorEnv) m )
   => WorkingExpr (TypeInfoT [Error] (Maybe Type))
   -> m (WorkingExpr (Maybe Type))
-translate expr = evalStateT (expandTypeClasses =<< translateLiterals expr) []
+translate expr = evalStateT (expandTypeClasses =<< translateLiterals expr) ([], [])
 
 translateLiterals 
   :: ( MonadSupply Name m
      , MonadReader (ClassEnv, TypeEnv, KindEnv, ConstructorEnv) m )
   => WorkingExpr (TypeInfoT [e] (Maybe Type))
-  -> StateT [(Name, Type)] m (WorkingExpr (TypeInfoT [e] (Maybe Type)))
+  -> StateT ([Predicate], [(Name, Type)]) m (WorkingExpr (TypeInfoT [e] (Maybe Type)))
 translateLiterals = cata $ \case
 
     ELit t (TInt n) -> 
@@ -79,33 +79,39 @@ expandTypeClasses
   :: ( MonadSupply Name m
      , MonadReader (ClassEnv, TypeEnv, KindEnv, ConstructorEnv) m )
   => WorkingExpr (TypeInfoT [e] (Maybe Type))
-  -> StateT [(Name, Type)] m (WorkingExpr (Maybe Type))
-expandTypeClasses expr = insertArgsExpr <$> run expr <*> (nub <$> pluck)
+  -> StateT ([Predicate], [(Name, Type)]) m (WorkingExpr (Maybe Type))
+expandTypeClasses expr = insertArgsExpr <$> run expr <*> (nub . snd <$> pluck)
   where
     run = cata $ \case
         ELet t bind@BFun{} expr1 expr2 -> do
             e1 <- expr1
-            vs <- nub <$> pluck
+            vs <- nub . snd <$> pluck
+            traceShowM "1**********"
+            traceShowM vs
             letExpr (nodeType t) (insertArgsBinding (translateBinding bind) vs) e1 <$> expr2
 
         ELet t pat expr1 expr2 -> do
             e1 <- expr1
-            vs <- nub <$> pluck
+            vs <- nub . snd <$> pluck
+            traceShowM "2**********"
+            traceShowM vs
             letExpr (nodeType t) (translateBinding pat) (insertArgsExpr e1 vs) <$> expr2
 
         EFix t var expr1 expr2 -> do
             e1 <- expr1
-            vs <- nub <$> pluck
+            vs <- nub . snd <$> pluck
+            traceShowM "3**********"
+            traceShowM vs
             fixExpr (nodeType t) var (insertArgsExpr e1 vs) <$> expr2
 
         EVar t var -> do
-            classEnv <- askClassEnv
-            reduce2 classEnv (nodePredicates t) >>= \case
-                Left  _  -> undefined   -- TODO
-                Right ps -> do
-                    foldlM applyDicts (varExpr (nodeType t) var) (tails (reverse ps))
+            --classEnv <- askClassEnv
+            --reduce2 classEnv (nodePredicates t) >>= \case
+            --    Left  _  -> undefined   -- TODO
+            --    Right ps -> do
+            --        foldlM applyDicts (varExpr (nodeType t) var) (tails (reverse ps))
 
-            --foldlM applyDicts (varExpr (nodeType t) var) (tails (reverse (nodePredicates t)))
+            foldlM applyDicts (varExpr (nodeType t) var) (tails (reverse (nodePredicates t)))
 
         ELit   t lit       -> pure (litExpr (nodeType t) lit)
         ECon   t con es    -> conExpr (nodeType t) con <$> sequence es
@@ -160,14 +166,15 @@ insertArgsBinding (BFun t name ps) vs = BFun t' name ps'
             _ -> 
                 (t, ps)
 
-dictTVar :: (MonadSupply Name m) => Type -> StateT [(Name, Type)] m Name
-dictTVar ty = do
-    map <- get
+--dictTVar :: (MonadSupply Name m) => Type -> StateT ([Predicate], [(Name, Type)]) m Name
+dictTVar xx ty = do
+    (_, map) <- get
     case filter ((==) ty . snd) map of
         p:_ -> pure (fst p)
         _   -> do 
             var <- supply
-            modify ((var, ty) :)
+            --modify ((var, ty) :)
+            modify (\(x1, x2) -> (xx:x1, (var, ty):x2))
             pure var
 
 applyDicts
@@ -175,84 +182,104 @@ applyDicts
      , MonadReader (ClassEnv, TypeEnv, KindEnv, ConstructorEnv) m )
   => WorkingExpr (Maybe Type)
   -> [Predicate]
-  -> StateT [(Name, Type)] m (WorkingExpr (Maybe Type))
+  -> StateT ([Predicate], [(Name, Type)]) m (WorkingExpr (Maybe Type))
 applyDicts e [] = pure e
 applyDicts expr (InClass name ty:ps) = do
   
 --    let t1 = tApp kTyp (tCon kFun name) ty    -- Dictionary type, e.g., Num Int
 
-    case project expr of
-        EVar t var 
-            | isVar ty -> do
-                tv  <- dictTVar (tApp kTyp (tCon kFun name) ty)
-                all <- baz 
-                let t1 = tApp kTyp (tCon kFun name) ty
-                    getType t = tAtom `tArr` t1 `tArr` t
-                if var `elem` (fst <$> all) 
-                    then do
-                        pure (appExpr (workingExprTag expr)
-                            [ varExpr (getType <$> workingExprTag expr) "@#getField"
-                            , litExpr (Just tAtom) (TAtom var) 
-                            , varExpr (Just t1) tv 
-                            ])
-                    else pure (appExpr zz1
-                            [ setWorkingExprTag (yy (InClass name ty) zz1) expr
-                            , varExpr (Just t1) tv ])
-
-            | otherwise -> do
-                map <- baz2 
-                -- Is this a member function of the class?
-                case lookup var map of
-                    Just e -> 
-                        pure e
-                    Nothing -> do
-                        pure (appExpr zz1
-                            [ setWorkingExprTag (yy (InClass name ty) zz1) expr
-                            , buildDict map ])
-
-        _   | isVar ty -> do
-
-                tv  <- dictTVar (tApp kTyp (tCon kFun name) ty)
-                --all <- baz 
-                let t1 = tApp kTyp (tCon kFun name) ty
-                --    getType t = tAtom `tArr` t1 `tArr` t
-                --if var `elem` (fst <$> all) 
-                --    then do
-                --        pure (appExpr (workingExprTag expr)
-                --            [ varExpr (getType <$> workingExprTag expr) "@#getField"
-                --            , litExpr (Just tAtom) (TAtom var) 
-                --            , varExpr (Just t1) tv 
-                --            ])
-                --pure (appExpr zz1
-                --            [ setWorkingExprTag (yy (InClass name ty) zz1) expr
-                --            , varExpr (Just t1) tv ])
-                pure (appExpr (cod <$> zz1)
+--    classEnv <- askClassEnv
+--    ps <- fst <$> get
+--
+--    traceShowM "vvvvvvvvvvvvvvvvvvvvvv"
+--    traceShowM (InClass name ty)
+--    traceShowM ps
+--    traceShowM "^^^^^^^^^^^^^^^^^^^^^^"
+--
+--    foo <- runExceptT (entail classEnv ps (InClass name ty))
+--    case foo of
+--        Right True -> 
+--            pure expr
+--        _ -> 
+            case project expr of
+                EVar t var 
+                    | isVar ty -> do
+        
+                        tv  <- dictTVar (InClass name ty) (tApp kTyp (tCon kFun name) ty)
+        
+--                        traceShowM "++++++++++++++++"
+--                        traceShowM name
+--                        traceShowM ty
+--                        traceShowM "++++++++++++++++"
+        
+                        all <- baz 
+                        let t1 = tApp kTyp (tCon kFun name) ty
+                            getType t = tAtom `tArr` t1 `tArr` t
+                        if var `elem` (fst <$> all) 
+                            then do
+                                pure (appExpr (workingExprTag expr)
+                                    [ varExpr (getType <$> workingExprTag expr) "@#getField"
+                                    , litExpr (Just tAtom) (TAtom var) 
+                                    , varExpr (Just t1) tv 
+                                    ])
+                            else pure (appExpr zz1
+                                    [ setWorkingExprTag (yy (InClass name ty) zz1) expr
+                                    , varExpr (Just t1) tv ])
+        
+                    | otherwise -> do
+                        map <- baz2 
+                        -- Is this a member function of the class?
+                        case lookup var map of
+                            Just e -> 
+                                pure e
+                            Nothing -> do
+                                pure (appExpr zz1
+                                    [ setWorkingExprTag (yy (InClass name ty) zz1) expr
+                                    , buildDict map ])
+        
+                _   | isVar ty -> do
+        
+                        tv  <- dictTVar (InClass name ty) (tApp kTyp (tCon kFun name) ty)
+                        --all <- baz 
+                        let t1 = tApp kTyp (tCon kFun name) ty
+                        --    getType t = tAtom `tArr` t1 `tArr` t
+                        --if var `elem` (fst <$> all) 
+                        --    then do
+                        --        pure (appExpr (workingExprTag expr)
+                        --            [ varExpr (getType <$> workingExprTag expr) "@#getField"
+                        --            , litExpr (Just tAtom) (TAtom var) 
+                        --            , varExpr (Just t1) tv 
+                        --            ])
+                        --pure (appExpr zz1
+                        --            [ setWorkingExprTag (yy (InClass name ty) zz1) expr
+                        --            , varExpr (Just t1) tv ])
+                        pure (appExpr (cod <$> zz1)
+                                    [ expr
+                                    , varExpr (Just t1) tv ])
+        
+        
+                        --pure expr
+        --                pure (appExpr zz1
+        --                    [ expr -- setWorkingExprTag (yy (InClass name ty) zz1) expr
+        --                    , varExpr zz1 "xx" ])
+        --                -- TODO
+                        --all <- baz 
+                        --map <- baz2
+        --                pure (setWorkingExprTag (Just (tCon kTyp "Xxx") ) expr)
+                        --pure (setWorkingExprTag (Just (tCon kTyp "XX")) expr)
+                        --all <- baz 
+                        --pure (appExpr (cod <$> workingExprTag expr) -- TODO
+                        --    [ expr
+                        --    , buildDict map ])
+                        --pure (appExpr zz1
+                        --    [ setWorkingExprTag (yy (InClass name ty) zz1) expr
+                        --    , varExpr (Just t1) tv ])
+        
+                    | otherwise -> do
+                        map <- baz2
+                        pure (appExpr (cod <$> workingExprTag expr) -- TODO
                             [ expr
-                            , varExpr (Just t1) tv ])
-
-
-                --pure expr
---                pure (appExpr zz1
---                    [ expr -- setWorkingExprTag (yy (InClass name ty) zz1) expr
---                    , varExpr zz1 "xx" ])
---                -- TODO
-                --all <- baz 
-                --map <- baz2
---                pure (setWorkingExprTag (Just (tCon kTyp "Xxx") ) expr)
-                --pure (setWorkingExprTag (Just (tCon kTyp "XX")) expr)
-                --all <- baz 
-                --pure (appExpr (cod <$> workingExprTag expr) -- TODO
-                --    [ expr
-                --    , buildDict map ])
-                --pure (appExpr zz1
-                --    [ setWorkingExprTag (yy (InClass name ty) zz1) expr
-                --    , varExpr (Just t1) tv ])
-
-            | otherwise -> do
-                map <- baz2
-                pure (appExpr (cod <$> workingExprTag expr) -- TODO
-                    [ expr
-                    , buildDict map ])
+                            , buildDict map ])
 
   where
     cod (Fix (TArr _ t)) = t
