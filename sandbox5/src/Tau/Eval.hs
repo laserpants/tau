@@ -99,6 +99,11 @@ getField name [Data f (v:fs)]
 --    traceShowM name
 --    traceShowM x
 --    pure x
+getField x y = do
+    traceShowM x
+    traceShowM y
+    traceShowM "///////////"
+    undefined
 
 closure :: (MonadReader (ValueEnv m) m) => Name -> m (Value m) -> m (Value m)
 closure var a = pure (Closure var a mempty)

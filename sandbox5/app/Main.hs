@@ -1056,10 +1056,10 @@ example1 = foo1 expr
 --            (op2Expr () (OAdd ()) (varExpr () "x") (litExpr () (TInt 1))) 
 --            (appExpr () [varExpr () "f", annExpr tInt (litExpr () (TInt 123))])
 
-    expr = 
-            letExpr () (BPat () (varPat () "r")) 
-                (recordExpr () (rowExpr () "a" (annExpr tInt (litExpr () (TInt 1))) (rowExpr () "b" (annExpr tInt (litExpr () (TInt 2))) (conExpr () "{}" [])))) 
-                    (op2Expr () (ODot ()) (varExpr () "b") (varExpr () "r"))
+--    expr = 
+--            letExpr () (BPat () (varPat () "r")) 
+--                (recordExpr () (rowExpr () "a" (annExpr tInt (litExpr () (TInt 1))) (rowExpr () "b" (annExpr tInt (litExpr () (TInt 2))) (conExpr () "{}" [])))) 
+--                    (op2Expr () (ODot ()) (varExpr () "b") (varExpr () "r"))
 
 
 
@@ -1374,26 +1374,26 @@ example1 = foo1 expr
 --            (varExpr () "withDefault")
 
 
---    -- let 
---    --   fn
---    --     | Some(y) 
---    --         iff(y == 1) => 1
---    --         iff(y == 2) => 2
---    --         otherwise   => 3
---    --     | None          => 0
---    --   in
---    --     fn(Some(100))
---    expr = 
---        letExpr () (BPat () (varPat () "fn")) -- [annPat tInt (varPat () "val")]) 
---            (funExpr () 
---                [ Clause () (conPat () "Some" [varPat () "y"]) 
---                    [ Guard [op2Expr () (OEq ()) (varExpr () "y") (litExpr () (TInt 1))] (litExpr () (TInteger 1))
---                    , Guard [op2Expr () (OEq ()) (varExpr () "y") (litExpr () (TInt 2))] (litExpr () (TInteger 2))
---                    , Guard [] (litExpr () (TInteger 3))
---                    ]
---                , Clause () (conPat () "None" []) [ Guard [] (annExpr tInt (litExpr () (TInteger 0))) ]
---                ])
---            (appExpr () [varExpr () "fn", conExpr () "Some" [annExpr tInt (litExpr () (TInteger 100))]])
+    -- let 
+    --   fn
+    --     | Some(y) 
+    --         iff(y == 1) => 1
+    --         iff(y == 2) => 2
+    --         otherwise   => 3
+    --     | None          => 0
+    --   in
+    --     fn(Some(100))
+    expr = 
+        letExpr () (BPat () (varPat () "fn")) -- [annPat tInt (varPat () "val")]) 
+            (funExpr () 
+                [ Clause () (conPat () "Some" [varPat () "y"]) 
+                    [ Guard [op2Expr () (OEq ()) (varExpr () "y") (litExpr () (TInt 1))] (litExpr () (TInteger 1))
+                    , Guard [op2Expr () (OEq ()) (varExpr () "y") (litExpr () (TInt 2))] (litExpr () (TInteger 2))
+                    , Guard [] (litExpr () (TInteger 3))
+                    ]
+                , Clause () (conPat () "None" []) [ Guard [] (annExpr tInt (litExpr () (TInteger 0))) ]
+                ])
+            (appExpr () [varExpr () "fn", conExpr () "Some" [annExpr tInt (litExpr () (TInteger 100))]])
 
 
 
