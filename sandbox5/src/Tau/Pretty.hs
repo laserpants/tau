@@ -60,7 +60,7 @@ instance Pretty Prim where
         TDouble  a -> pretty a
         TChar    a -> squotes (pretty a)
         TString  a -> dquotes (pretty a)
-        TAtom    a -> "<" <> pretty a <> ">"
+        TAtom    a -> pretty a
 
 -- >>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>
 
@@ -239,6 +239,7 @@ instance (Pretty e1, FunArgs e2, Functor e3, Clauses [e3 (Expr t1 t2 t3 t4 t5 t6
             EFix    _ name e1 e2         -> "fix" <+> pretty name <+> "=" <+> e1 <+> "in" <+> e2
             EOp1    _ op a               -> pretty op <> a
             EOp2    _ (ODot _) a b       -> b <> "." <> a
+            EOp2    _ (OField _) a b     -> b <> "." <> a
             EOp2    _ op a b             -> a <+> pretty op <+> b
             ETuple  _ es                 -> prettyTuple es
             EList   _ es                 -> prettyList_ es

@@ -100,9 +100,10 @@ expandTypeClasses expr = insertArgsExpr <$> run expr <*> (nub <$> pluck)
 
         EVar t var -> do
             classEnv <- askClassEnv
-            reduce classEnv (nodePredicates t) >>= \case
+            reduce2 classEnv (nodePredicates t) >>= \case
                 Left  _  -> undefined   -- TODO
-                Right ps -> foldlM applyDicts (varExpr (nodeType t) var) (tails (reverse ps))
+                Right ps -> do
+                    foldlM applyDicts (varExpr (nodeType t) var) (tails (reverse ps))
 
             --foldlM applyDicts (varExpr (nodeType t) var) (tails (reverse (nodePredicates t)))
 

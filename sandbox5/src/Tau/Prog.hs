@@ -142,6 +142,39 @@ reduce
   -> m (Either UnificationError [Predicate])
 reduce env cls = runExceptT (toHeadNormalForm env cls >>= simplify env) 
 
+
+simplify2 
+  :: (MonadError UnificationError m, MonadSupply Name m) 
+  => ClassEnv 
+  -> [Predicate] 
+  -> m [Predicate]
+simplify2 env = loop []
+  where
+    loop qs [] = pure qs
+    loop qs (p:ps) = do
+        entailed <- entail env (qs <> ps) p
+        if isVar (predicateType p) && entailed 
+            then loop qs ps 
+            else loop (p:qs) ps
+
+reduce2
+  :: (MonadSupply Name m) 
+  => ClassEnv
+  -> [Predicate] 
+  -> m (Either UnificationError [Predicate])
+--reduce2 env cls = runExceptT (toHeadNormalForm env cls >>= simplify2 env) 
+reduce2 = runExceptT <$$> simplify2
+
+
+
+--reduce2
+--  :: (MonadSupply Name m) 
+--  => ClassEnv
+--  -> [Predicate] 
+--  -> m (Either UnificationError [Predicate])
+--reduce2 = runExceptT <$$> simplify 
+
+
 unifyClass, matchClass 
   :: (MonadSupply Name m, MonadError UnificationError m) 
   => Predicate 
