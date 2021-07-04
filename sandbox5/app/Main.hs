@@ -65,9 +65,9 @@ test001 =
                 Just a -> if foo a then 1 else 2
                 Nothing -> 3 :: Int
   in 
-    fn Nothing
-    --fn (Nothing :: Maybe Int)
-    --fn (Just (1 :: Int))
+    --fn Nothing
+    --fn Nothing 
+    fn (Just (1 :: Int))
 
 
 -----------------------
@@ -1045,10 +1045,11 @@ example1 = foo1 expr
 
 
 --    expr =
---        (op2Expr () (ODot ()) 
---            (varExpr () "a")
---            (recordExpr () (rowExpr () "a" (annExpr tInt (litExpr () (TInt 1))) (rowExpr () "b" (annExpr tInt (litExpr () (TInt 2))) (conExpr () "{}" [])))) 
---        )
+--        (op2Expr () (ODot ()) (varExpr () "a") (recordExpr () (rowExpr () "a" (annExpr tInt (litExpr () (TInt 1))) (rowExpr () "b" (annExpr tInt (litExpr () (TInt 2))) (conExpr () "{}" [])))) )
+
+
+--    expr =
+--        (letExpr () (BPat () (varPat () "a")) (lamExpr () [anyPat ()] (litExpr () (TBool True))) (op2Expr () (ODot ()) (varExpr () "a") (recordExpr () (rowExpr () "x" (annExpr tInt (litExpr () (TInt 1))) (rowExpr () "b" (annExpr tInt (litExpr () (TInt 2))) (conExpr () "{}" [])))) ))
 
 
 --    expr =
@@ -1069,11 +1070,11 @@ example1 = foo1 expr
 
 
 
---    expr =
---        letExpr () 
---            (BFun () "f" [varPat () "x"])
---            (op2Expr () (OAdd ()) (varExpr () "x") (litExpr () (TInt 1))) 
---            (appExpr () [varExpr () "f", annExpr tInt (litExpr () (TInt 123))])
+    expr =
+        letExpr () 
+            (BFun () "f" [varPat () "x"])
+            (op2Expr () (OAdd ()) (varExpr () "x") (litExpr () (TInt 1))) 
+            (appExpr () [varExpr () "f", annExpr tInt (litExpr () (TInt 123))])
 
 --    expr = 
 --            letExpr () (BPat () (varPat () "r")) 
@@ -1329,6 +1330,30 @@ example1 = foo1 expr
 --        (lamExpr () [varPat () "a", varPat () "b"] (op2Expr () (OAdd ()) (varExpr () "a") (varExpr () "b")))
 
 
+--    -- ((a, b) => a + b)(5 : Int, 3)
+--    expr = 
+--        appExpr () 
+--            [ lamExpr () [varPat () "a", varPat () "b"] (op2Expr () (OAdd ()) (varExpr () "a") (varExpr () "b"))
+--            , annExpr tInt (litExpr () (TInteger 5))
+--            , litExpr () (TInteger 3) ]
+
+--    expr = 
+--        appExpr () 
+--            [ lamExpr () [varPat () "a", varPat () "b"] (op2Expr () (OAdd ()) (varExpr () "a") (varExpr () "b"))
+--            , annExpr tInt (litExpr () (TInteger 5))
+--            , litExpr () (TInteger 3) ]
+
+
+
+--    -- ((a, b) => a + b)(5, 3)
+--    expr = 
+--        appExpr () 
+--            [ lamExpr () [varPat () "a", varPat () "b"] (op2Expr () (OAdd ()) (varExpr () "a") (varExpr () "b"))
+--            , litExpr () (TInteger 5)
+--            , litExpr () (TInteger 3) ]
+
+
+--    -- (a, b) => a + b
 --    expr = 
 --        (lamExpr () [varPat () "a", varPat () "b"] (op2Expr () (OAdd ()) (varExpr () "a") (varExpr () "b")))
 
@@ -1393,30 +1418,45 @@ example1 = foo1 expr
 --            (varExpr () "withDefault")
 
 
-    -- let 
-    --   fn
-    --     | Some(y) 
-    --         iff(y == 1) => 1
-    --         iff(y == 2) => 2
-    --         otherwise   => 3
-    --     | None          => 0
-    --   in
-    --     fn(Some(100))
-    expr = 
-        letExpr () (BPat () (varPat () "fn")) -- [annPat tInt (varPat () "val")]) 
-            (funExpr () 
-                [ Clause () (conPat () "Some" [varPat () "y"]) 
-                    [ Guard [op2Expr () (OEq ()) (varExpr () "y") (litExpr () (TInteger 1))] (litExpr () (TInteger 1))
-                    , Guard [op2Expr () (OEq ()) (varExpr () "y") (litExpr () (TInteger 2))] (litExpr () (TInteger 2))
-                    , Guard [] (litExpr () (TInteger 4))
-                    ]
-                , Clause () (conPat () "None" []) [ Guard [] (annExpr tInt (litExpr () (TInteger 0))) ]
-                ])
-            --(appExpr () [varExpr () "fn", conExpr () "Some" [annExpr tInt (litExpr () (TInteger 100))]])
-            --(appExpr () [varExpr () "fn", conExpr () "Some" [annExpr tInt (litExpr () (TInteger 3))]])
-            (appExpr () [varExpr () "fn", conExpr () "None" []])
-            --(appExpr () [varExpr () "fn", annExpr (tApp kTyp (tCon kFun "Option") tInt) (conExpr () "None" [])])
+--    -- 
+--    --   val => fun
+--    --     | Some(y) => y
+--    --     | None    => val
+--    expr = 
+--            (lamExpr () [varPat () "val"] (funExpr () 
+--                [ Clause () (conPat () "Some" [varPat () "y"]) [ Guard [] (varExpr () "y") ]
+--                , Clause () (conPat () "None" []) [ Guard [] (varExpr () "val") ]
+--                ]))
+--
 
+
+    -- ******************************************************************************************************************************************************************************************************
+
+--    -- let 
+--    --   fn
+--    --     | Some(y) 
+--    --         iff(y == 1) => 1
+--    --         iff(y == 2) => 2
+--    --         otherwise   => 3
+--    --     | None          => 0
+--    --   in
+--    --     fn(Some(100))
+--    expr = 
+--        letExpr () (BPat () (varPat () "fn")) -- [annPat tInt (varPat () "val")]) 
+--            (funExpr () 
+--                [ Clause () (conPat () "Some" [varPat () "y"]) 
+--                    [ Guard [op2Expr () (OEq ()) (varExpr () "y") (litExpr () (TInteger 1))] (litExpr () (TInteger 1))
+--                    , Guard [op2Expr () (OEq ()) (varExpr () "y") (litExpr () (TInteger 2))] (litExpr () (TInteger 2))
+--                    , Guard [] (litExpr () (TInteger 4))
+--                    ]
+--                , Clause () (conPat () "None" []) [ Guard [] (annExpr tInt (litExpr () (TInteger 0))) ]
+--                ])
+--            --(appExpr () [varExpr () "fn", conExpr () "Some" [annExpr tInt (litExpr () (TInteger 100))]])
+--            --(appExpr () [varExpr () "fn", conExpr () "Some" [annExpr tInt (litExpr () (TInteger 3))]])
+--            --(appExpr () [varExpr () "fn", conExpr () "None" []])
+--            (appExpr () [varExpr () "fn", annExpr (tApp kTyp (tCon kFun "Option") tInt) (conExpr () "None" [])])
+
+    -- ******************************************************************************************************************************************************************************************************
 
 
 

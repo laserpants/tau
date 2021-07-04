@@ -3,8 +3,9 @@
 [x] Patterns anomalies
 [x] Record field access
 [x] Kinds
-[-] Tests
+[x] Tests
 [-] Type class ambg.
+[-] Type class argument order
 [-] Recursion
 [-] Modules/Program
 [-] Codata

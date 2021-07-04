@@ -245,7 +245,7 @@ typeVars :: TypeT a -> [(Name, Kind)]
 typeVars = nub . cata (\case
     TVar k var   -> [(var, k)]
     TApp _ t1 t2 -> t1 <> t2
-    TArr t1 t2   -> t1 <> t2
+    TArr   t1 t2 -> t1 <> t2
     TRow _ t1 t2 -> t1 <> t2
     _            -> [])
 
@@ -254,7 +254,7 @@ toPolytype = cata $ \case
     TVar k var   -> tVar k var
     TCon k con   -> tCon k con
     TApp k t1 t2 -> tApp k t1 t2
-    TArr t1 t2   -> tArr t1 t2
+    TArr   t1 t2 -> tArr t1 t2
     TRow n t1 t2 -> tRow n t1 t2 
 
 fromPolytype :: [Type] -> Polytype -> Type
@@ -263,7 +263,7 @@ fromPolytype ts = cata $ \case
     TApp k t1 t2 -> tApp k t1 t2
     TVar k var   -> tVar k var
     TCon k con   -> tCon k con
-    TArr t1 t2   -> tArr t1 t2
+    TArr   t1 t2 -> tArr t1 t2
     TRow n t1 t2 -> tRow n t1 t2
 
 toScheme :: Type -> Scheme

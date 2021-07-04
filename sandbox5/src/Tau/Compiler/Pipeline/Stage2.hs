@@ -209,14 +209,29 @@ insertArgsExpr expr = foldrM fun expr . Env.toList
             --  :: (Name, Name) 
             --  -> WorkingExpr (Maybe Type) 
             --  -> WorkingExpr (Maybe Type)
-            fun2 set1 set2 (name, dv) e = 
-                if name `elem` set1
-                    then do
-                        let ty = tApp kTyp (tCon kFun name) (tVar kTyp var)
-                        lamExpr (tArr <$> Just ty <*> workingExprTag e) 
-                                [varPat (Just ty) dv] e
-                    else 
-                        replaceVar dv (fromJust (lookup name set2)) e
+            fun2 set1 set2 (name, dv) e = do
+
+                --traceShow "^^^^^^^^^^^^^^^^^^" $
+                --traceShow (pretty (typeOf <$> (workingExprTag e))) $
+                --traceShow var $
+
+                --case typeOf <$> (workingExprTag e) of
+                --    Just x -> undefined
+                --    Nothing -> undefined
+
+                let
+                    fnx t = var `elem` (fst <$> free t)
+
+                -- TODO
+                if Just False == (fnx . typeOf <$> (workingExprTag e))
+                    then error "Ambiguity"
+                    else if name `elem` set1
+                              then do
+                                  let ty = tApp kTyp (tCon kFun name) (tVar kTyp var)
+                                  lamExpr (tArr <$> Just ty <*> workingExprTag e) 
+                                          [varPat (Just ty) dv] e
+                              else 
+                                  replaceVar dv (fromJust (lookup name set2)) e
 
 --              case ty of
 --                  Fix (TApp _ _ (Fix TVar{})) -> 
