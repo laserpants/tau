@@ -37,7 +37,7 @@ data TypeF k i a
 -- | Type 
 type TypeT i = Fix (TypeF Kind i)
 
--- | Standalone type (a type that is not embedded in a type scheme)
+-- | Standalone type (a type that is not part of a type scheme)
 type Type = TypeT Void
 
 -- | A type which appears in a type scheme and therefore may contain quantified 
