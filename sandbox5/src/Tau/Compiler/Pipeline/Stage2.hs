@@ -300,13 +300,20 @@ insertArgsBinding (BFun t name ps) expr env = do
 --          :: (Name, Name) 
 --          -> (Maybe Type, [ProgPattern (Maybe Type)], WorkingExpr (Maybe Type)) 
 --          -> (Maybe Type, [ProgPattern (Maybe Type)], WorkingExpr (Maybe Type))
-        fun2 set1 set2 (name, dv) (t, ps, x) = 
-            if name `elem` set1
-                then do
-                    let ty = tApp kTyp (tCon kFun name) (tVar kTyp var)
-                    (tArr ty <$> t, varPat (Just ty) var:ps, x)
-                else 
-                    (t, ps, replaceVar dv (fromJust (lookup name set2)) x)
+        fun2 set1 set2 (name, dv) (t, ps, x) = do
+
+            let
+                fnx t = var `elem` (fst <$> free t)
+
+            -- TODO
+            if Just False == (fnx . typeOf <$> (workingExprTag x))
+                then error "Ambiguity"
+                else if name `elem` set1
+                          then do
+                              let ty = tApp kTyp (tCon kFun name) (tVar kTyp var)
+                              (tArr ty <$> t, varPat (Just ty) dv:ps, x)
+                          else 
+                              (t, ps, replaceVar dv (fromJust (lookup name set2)) x)
 
 replaceVar
   :: Name 

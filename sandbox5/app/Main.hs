@@ -1067,14 +1067,28 @@ example1 = foo1 expr
 
 --    expr = (appExpr () [varExpr () "fromInteger", litExpr () (TInteger 1)])
 
-
-
-
     expr =
-        letExpr () 
-            (BFun () "f" [varPat () "x"])
-            (op2Expr () (OAdd ()) (varExpr () "x") (litExpr () (TInt 1))) 
-            (appExpr () [varExpr () "f", annExpr tInt (litExpr () (TInt 123))])
+            (lamExpr () [varPat () "x"] (op2Expr () (OAdd ()) (varExpr () "x") (litExpr () (TInt 1))))
+
+
+--    -- *************************************
+--
+--    expr =
+--        letExpr () 
+--            (BPat () (varPat () "f"))
+--            (lamExpr () [varPat () "x"] (op2Expr () (OAdd ()) (varExpr () "x") (litExpr () (TInt 1))))
+--            (appExpr () [varExpr () "f", annExpr tInt (litExpr () (TInt 123))])
+--
+--
+--    -- *************************************
+
+--    expr =
+--        letExpr () 
+--            (BFun () "f" [varPat () "x"])
+--            (op2Expr () (OAdd ()) (varExpr () "x") (litExpr () (TInt 1))) 
+--            (appExpr () [varExpr () "f", annExpr tInt (litExpr () (TInt 123))])
+
+    -- *************************************
 
 --    expr = 
 --            letExpr () (BPat () (varPat () "r")) 
