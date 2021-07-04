@@ -67,9 +67,9 @@ instance Pretty Prim where
 instance Pretty Kind where
     pretty = para $ \case
         KArr (k1, doc1) (_, doc2) ->
-            parensIf useLeft doc1 <+> "->" <+> doc2
+            parensIf addLeft doc1 <+> "->" <+> doc2
           where
-            useLeft =
+            addLeft =
                 case project k1 of
                     KArr{} -> True
                     _      -> False
@@ -82,9 +82,9 @@ instance Pretty Kind where
 instance Pretty Type where
     pretty = para $ \case
         TArr (t1, doc1) (_, doc2) ->
-            parensIf useLeft doc1 <+> "->" <+> doc2
+            parensIf addLeft doc1 <+> "->" <+> doc2
           where
-            useLeft =
+            addLeft =
                 case project t1 of
                     TArr{} -> True
                     _      -> False
@@ -109,14 +109,14 @@ instance Pretty Type where
              in prettyTuple (pretty <$> ts)
 
         TApp _ (t1, doc1) (t2, doc2) ->
-            parensIf useLeft doc1 <+> parensIf useRight doc2
+            parensIf addLeft doc1 <+> parensIf addRight doc2
           where
-            useLeft = 
+            addLeft = 
                 case project t1 of
                     TArr{} -> True
                     _      -> False
 
-            useRight =
+            addRight =
                 case project t2 of
                     TApp{} -> True
                     TArr{} -> True
@@ -127,14 +127,15 @@ instance Pretty Type where
         TCon _ con -> pretty con
 
         TRow label (t1, doc1) (t2, doc2) ->
-            "{" <> pretty label <> "}" <+> parensIf useLeft doc1 <+> parensIf useRight doc2
+            "{" <> pretty label <> "}" <+> parensIf addLeft doc1 
+                                       <+> parensIf addRight doc2
           where
-            useLeft = 
+            addLeft = 
                 case project t1 of
                     TArr{} -> True
                     _      -> False
 
-            useRight =
+            addRight =
                 case project t2 of
                     TCon _ "{}" -> False
                     TVar{}      -> False
@@ -207,13 +208,14 @@ instance (Pretty e1, FunArgs e2, Functor e3, Clauses [e3 (Expr t1 t2 t3 t4 t5 t6
         ECon _ "#" [(r, _)]              -> prettyRecord r
         ECon _ con []                    -> pretty con
         ECon _ con ps                    -> pretty con <> prettyTuple (snd <$> ps)
-        EPat    _ e1 cs                  -> "match" <+> snd e1 <+> "with" <+> clauses (fst <$$> cs)
+--        EPat    _ e1 cs                  -> "match" <+> snd e1 <+> "with" <+> clauses (fst <$$> cs)
+        EPat    _ e1 cs                  -> group (nest 2 (vsep ["match" <+> snd e1 <+> "with", clauses (fst <$$> cs)]))
         EFun    _ cs                     -> "fun" <+> clauses (fst <$$> cs)
 
         EApp _ ((e, doc1):es) -> 
-            parensIf useLeft doc1 <> prettyTuple (snd <$> es)
+            parensIf addLeft doc1 <> prettyTuple (snd <$> es)
           where
-            useLeft = 
+            addLeft = 
                 case project e of
                     EVar{} -> False
                     _      -> True
@@ -234,8 +236,8 @@ instance (Pretty e1, FunArgs e2, Functor e3, Clauses [e3 (Expr t1 t2 t3 t4 t5 t6
         expr -> snd <$> expr & \case
             EVar    _ var                -> pretty var
             ELit    _ prim               -> pretty prim
-            ELam    _ ps e               -> funArgs ps <+> "=>" <+> e
-            EIf     _ e1 e2 e3           -> "if" <+> e1 <+> "then" <+> e2 <+> "else" <+> e3
+            ELam    _ ps e               -> group (nest 2 (vsep [funArgs ps <+> "=>", e]))
+            EIf     _ e1 e2 e3           -> prettyIf e1 e2 e3
             EFix    _ name e1 e2         -> "fix" <+> pretty name <+> "=" <+> e1 <+> "in" <+> e2
             EOp1    _ op a               -> pretty op <> a
             EOp2    _ (ODot _) a b       -> b <> "." <> a
@@ -263,16 +265,39 @@ instance (Pretty e1, FunArgs e2, Functor e3, Clauses [e3 (Expr t1 t2 t3 t4 t5 t6
             EApp _ (_:a:_)               -> a
             _                            -> ""
 
+prettyIf :: Doc a -> Doc a -> Doc a -> Doc a 
+prettyIf e1 e2 e3 =
+    "if" <+> e1 <> group (nest 2 (line' <> vsep 
+        [ group (nest 2 (vsep ["then", e2]))
+        , group (nest 2 (vsep ["else", e3]))
+        ]))
+
 prettyLet 
   :: (Functor e3, Pretty p, Clauses [e3 (Expr t1 t2 t3 t4 t5 t6 t7 t8 t9 t10 t11 t12 t13 t14 t15 e1 e2 e3)]) 
   => p 
   -> (Expr t1 t2 t3 t4 t5 t6 t7 t8 t9 t10 t11 t12 t13 t14 t15 e1 e2 e3, Doc a) 
   -> Doc a 
   -> Doc a
-prettyLet bind e1 e2 = "let" <+> pretty bind <+> body <+> "in" <+> e2 where 
+prettyLet bind e1 e2 = 
+    group (nest 2 (vsep
+        [ "let" <+> pretty bind <+> body
+        , nest 2 (vsep ["in", e2])
+        ]))
+  where 
     body = case project (fst e1) of
-        EFun _ cs -> clauses cs
-        _         -> "=" <+> snd e1
+        EFun _ cs -> line' <> clauses cs
+        _         -> group (vsep ["=", snd e1])
+
+--prettyLet 
+--  :: (Functor e3, Pretty p, Clauses [e3 (Expr t1 t2 t3 t4 t5 t6 t7 t8 t9 t10 t11 t12 t13 t14 t15 e1 e2 e3)]) 
+--  => p 
+--  -> (Expr t1 t2 t3 t4 t5 t6 t7 t8 t9 t10 t11 t12 t13 t14 t15 e1 e2 e3, Doc a) 
+--  -> Doc a 
+--  -> Doc a
+--prettyLet bind e1 e2 = "let" <+> pretty bind <+> body <+> "in" <+> e2 where 
+--    body = case project (fst e1) of
+--        EFun _ cs -> clauses cs
+--        _         -> "=" <+> snd e1
 
 instance (Pretty p) => Pretty (Binding t p) where
     pretty = \case
@@ -311,7 +336,7 @@ instance (Pretty p, Pretty a) => Pretty (SimplifiedClause t p a) where
     pretty (SimplifiedClause _ p g) = pipe <+> pretty p <+> prettyGuard g
 
 instance (Pretty p, Pretty a) => Clauses [Clause t p a] where
-    clauses = hsep . fmap pretty
+    clauses cs = group (vsep (pretty <$> cs))
 
 instance (Pretty p, Pretty a) => Pretty (Clause t p a) where
     pretty (Clause _ p gs) = pipe <+> pretty p <+> prettyGuard gs
@@ -331,7 +356,7 @@ class Guarded g where
 instance (Pretty a) => Guarded [Guard a] where
     prettyGuard []           = ""
     prettyGuard [Guard [] e] = "=>" <+> pretty e
-    prettyGuard gs           = hsep (pretty <$> gs)
+    prettyGuard gs           = nest 4 (line' <> vsep (pretty <$> gs))
 
 instance (Pretty a) => Guarded (Guard a) where
     prettyGuard = pretty 
@@ -528,9 +553,9 @@ instance Pretty Datatype where
 ------exprCon2 :: SimplifiedExpr t -> Doc a -> Doc a
 ------exprCon2 expr doc = lhs <> rhs
 ------  where
-------    lhs = parensIf useLeft (pretty expr)
+------    lhs = parensIf addLeft (pretty expr)
 ------    rhs = if "" == show doc then "" else space <> doc
-------    useLeft = case project expr of
+------    addLeft = case project expr of
 ------        ECon _ _ es | not (null es) -> True
 ------        ELam{}                      -> True
 ------        _                           -> False
@@ -620,9 +645,9 @@ instance Pretty Datatype where
 ----patternCon :: Pattern t1 t2 t3 t4 t5 t6 t7 t8 t9 -> Doc a -> Doc a
 ----patternCon pat doc = lhs <> rhs
 ----  where
-----    lhs = parensIf useLeft (pretty pat)
+----    lhs = parensIf addLeft (pretty pat)
 ----    rhs = if "" == show doc then "" else space <> doc
-----    useLeft = case project pat of
+----    addLeft = case project pat of
 ----        PCon _ _ ps | not (null ps) -> True
 ----        PAs{}                       -> True
 ----        POr{}                       -> True
@@ -631,9 +656,9 @@ instance Pretty Datatype where
 ----exprCon :: (Functor clause) => Expr t1 t2 t3 t4 t5 t6 t7 t8 t9 t10 t11 t12 t13 t14 t15 bind lam clause -> Doc a -> Doc a
 ----exprCon expr doc = lhs <> rhs
 ----  where
-----    lhs = parensIf useLeft (pretty expr)
+----    lhs = parensIf addLeft (pretty expr)
 ----    rhs = if "" == show doc then "" else space <> doc
-----    useLeft = case project expr of
+----    addLeft = case project expr of
 ----        ECon _ _ es | not (null es) -> True
 ----        ELam{}                      -> True
 ----        _                           -> False
@@ -867,9 +892,9 @@ instance Pretty Datatype where
 ----patternCon :: Pattern t1 t2 t3 t4 t5 t6 t7 t8 t9 -> Doc a -> Doc a
 ----patternCon pat doc = lhs <> rhs
 ----  where
-----    lhs = parensIf useLeft (pretty pat)
+----    lhs = parensIf addLeft (pretty pat)
 ----    rhs = if "" == show doc then "" else space <> doc
-----    useLeft = case project pat of
+----    addLeft = case project pat of
 ----        PCon _ _ ps | not (null ps) -> True
 ----        PAs{}                       -> True
 ----        POr{}                       -> True

@@ -4,7 +4,7 @@
 [x] Record field access
 [x] Kinds
 [x] Tests
-[-] Type class ambg.
+[x] Type class ambg.
 [-] Type class argument order
 [-] Recursion
 [-] Modules/Program
