@@ -187,11 +187,6 @@ patternParser = makeExprParser (try (parens patternParser) <|> parser)
         symbol "{}" $> recordPat () (conPat () "{}" [])
             <|> recordPat () <$> rowParser "=" annPatternParser rowPat varPat emptyRowPat
 
---    parseRecord    = recordPat () <$> rowParser "=" annPatternParser rowPat varPat_ emptyRowPat
---
---    varPat_ _ var = conPat () "#" [varPat () var]
-
-
 -- >>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>
 
 operator :: [[Operator Parser (ProgExpr ())]]

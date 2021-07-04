@@ -14,7 +14,7 @@ import Control.Monad.Extra (allM, (||^))
 import Control.Monad.Reader
 import Control.Monad.State
 import Control.Monad.Supply
-import Data.Either.Combinators (rightToMaybe)
+import Data.Either.Combinators (fromRight, rightToMaybe)
 import Data.Either.Extra (eitherToMaybe)
 import Data.Function ((&))
 import Data.List (nub)
@@ -69,6 +69,9 @@ type Instance = ClassInfo Type (Ast (TypeInfo ()))
 super :: ClassEnv -> Name -> [Name]
 super env name = maybe [] (fmap predicateName . classPredicates . fst) 
                           (Env.lookup name env)
+
+super1 :: ClassEnv -> Name -> [Name]
+super1 env name = name:super env name
 
 instances :: ClassEnv -> Name -> [Instance]
 instances env name = fromMaybe [] (snd <$> Env.lookup name env)
@@ -144,6 +147,15 @@ reduce
   -> m (Either UnificationError [Predicate])
 reduce env cls = runExceptT (toHeadNormalForm env cls >>= simplify env) 
 
+reduceSet 
+  :: (MonadSupply Name m) 
+  => ClassEnv
+  -> [Name] 
+  -> m [Name]
+reduceSet env vars = do
+    let ps = [InClass name (tVar kTyp "a") | name <- vars]
+    x <- fromRight (error "TODO") <$> reduce env ps
+    pure (predicateName <$> x)
 
 --simplify2 
 --  :: (MonadError UnificationError m, MonadSupply Name m) 

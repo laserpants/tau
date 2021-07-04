@@ -54,5 +54,8 @@ isMember name (Env envMap) = Map.member name envMap
 update :: (a -> Maybe a) -> Name -> Env a -> Env a
 update f name (Env envMap) = Env (Map.update f name envMap)
 
+alter :: (Maybe a -> Maybe a) -> Name -> Env a -> Env a
+alter f name (Env envMap) = Env (Map.alter f name envMap)
+
 map :: (a -> b) -> Env a -> Env b
 map f (Env envMap) = Env (Map.map f envMap)

@@ -52,6 +52,23 @@ import qualified Tau.Compiler.Pipeline.Stage6 as Stage6
 import qualified Tau.Env as Env
 
 
+class Foo a where
+    foo :: a -> Bool
+
+instance Foo Int where
+    foo _ = True
+
+test001 :: Int
+test001 =
+  let fn = \x -> 
+            case x of
+                Just a -> if foo a then 1 else 2
+                Nothing -> 3 :: Int
+  in 
+    fn Nothing
+    --fn (Nothing :: Maybe Int)
+    --fn (Just (1 :: Int))
+
 
 -----------------------
 -----------------------
@@ -1389,14 +1406,16 @@ example1 = foo1 expr
         letExpr () (BPat () (varPat () "fn")) -- [annPat tInt (varPat () "val")]) 
             (funExpr () 
                 [ Clause () (conPat () "Some" [varPat () "y"]) 
---                    [ Guard [op2Expr () (OEq ()) (varExpr () "y") (litExpr () (TInt 1))] (litExpr () (TInteger 1))
-                    [ Guard [op2Expr () (OEq ()) (varExpr () "y") (litExpr () (TInteger 2))] (litExpr () (TInteger 2))
-                    , Guard [] (litExpr () (TInteger 3))
+                    [ Guard [op2Expr () (OEq ()) (varExpr () "y") (litExpr () (TInteger 1))] (litExpr () (TInteger 1))
+                    , Guard [op2Expr () (OEq ()) (varExpr () "y") (litExpr () (TInteger 2))] (litExpr () (TInteger 2))
+                    , Guard [] (litExpr () (TInteger 4))
                     ]
                 , Clause () (conPat () "None" []) [ Guard [] (annExpr tInt (litExpr () (TInteger 0))) ]
                 ])
             --(appExpr () [varExpr () "fn", conExpr () "Some" [annExpr tInt (litExpr () (TInteger 100))]])
-            (appExpr () [varExpr () "fn", conExpr () "Some" [annExpr tInt (litExpr () (TInteger 3))]])
+            --(appExpr () [varExpr () "fn", conExpr () "Some" [annExpr tInt (litExpr () (TInteger 3))]])
+            (appExpr () [varExpr () "fn", conExpr () "None" []])
+            --(appExpr () [varExpr () "fn", annExpr (tApp kTyp (tCon kFun "Option") tInt) (conExpr () "None" [])])
 
 
 

@@ -6,7 +6,7 @@ module Tau.Tooling
   , Algebra
   , List
   , (<$$>)
-  , pluck
+  , getAndReset
   , liftMaybe
   , embed1
   , embed2
@@ -73,11 +73,8 @@ type Algebra f a = f a -> a
 
 infixl 4 <$$>
 
-pluck :: (Monoid a, MonadState a m) => m a
-pluck = do
-    a <- get
-    put mempty
-    pure a
+getAndReset :: (Monoid a, MonadState a m) => m a
+getAndReset = get <* put mempty
 
 liftMaybe :: (MonadError e m) => e -> Maybe a -> m a
 liftMaybe err Nothing = throwError err
