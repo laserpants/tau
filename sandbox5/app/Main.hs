@@ -67,43 +67,24 @@ prettyDoc2 :: Doc a -> IO ()
 prettyDoc2 = Text.putStrLn . renderDoc2 
 
 
-epxr123 :: ProgExpr ()
-epxr123 =
-    letExpr () (BPat () (varPat () "x"))
-        (ifExpr ()
-            (op2Expr () (OGt ()) (varExpr () "z") (litExpr () (TInteger 10)))
-            (patExpr () (varExpr () "x")
-                    [ Clause () ( conPat () "Some" [varPat () "z"] ) 
-                        [ Guard [op2Expr () (OGt ()) (varExpr () "z") (litExpr () (TInteger 10))] (annExpr tInt (litExpr () (TInt 1))) 
-                        , Guard [op2Expr () (OGt ()) (varExpr () "z") (litExpr () (TInteger 5))] (annExpr tInt (litExpr () (TInt 2))) 
-                        , Guard [] (annExpr tInt (litExpr () (TInt 3))) 
-                        ]
-                    , Clause () ( conPat () "Some" [varPat () "z"] ) 
-                        [ Guard [] (litExpr () (TInt 2)) 
-                        ]
-                    , Clause () ( conPat () "None" [] ) 
-                        [ Guard [] (litExpr () (TInt 3)) 
-                        ]
-                    ])
-            (patExpr () (varExpr () "x")
-                    [ Clause () ( conPat () "Some" [varPat () "z"] ) 
-                        [ Guard [op2Expr () (OGt ()) (varExpr () "z") (litExpr () (TInteger 10))] (annExpr tInt (litExpr () (TInt 1))) 
-                        , Guard [op2Expr () (OGt ()) (varExpr () "z") (litExpr () (TInteger 5))] (annExpr tInt (litExpr () (TInt 2))) 
-                        , Guard [] (annExpr tInt (litExpr () (TInt 3))) 
-                        ]
-                    , Clause () ( conPat () "Some" [varPat () "z"] ) 
-                        [ Guard [] (litExpr () (TInt 2)) 
-                        ]
-                    ]))
-        (litExpr () (TInteger 3))
-
-
 --epxr123 :: ProgExpr ()
 --epxr123 =
 --    letExpr () (BPat () (varPat () "x"))
 --        (ifExpr ()
 --            (op2Expr () (OGt ()) (varExpr () "z") (litExpr () (TInteger 10)))
---            (litExpr () (TInteger 3))
+--            (patExpr () (varExpr () "x")
+--                    [ Clause () ( conPat () "Some" [varPat () "z"] ) 
+--                        [ Guard [op2Expr () (OGt ()) (varExpr () "z") (litExpr () (TInteger 10))] (annExpr tInt (litExpr () (TInt 1))) 
+--                        , Guard [op2Expr () (OGt ()) (varExpr () "z") (litExpr () (TInteger 5))] (annExpr tInt (litExpr () (TInt 2))) 
+--                        , Guard [] (annExpr tInt (litExpr () (TInt 3))) 
+--                        ]
+--                    , Clause () ( conPat () "Some" [varPat () "z"] ) 
+--                        [ Guard [] (litExpr () (TInt 2)) 
+--                        ]
+--                    , Clause () ( conPat () "None" [] ) 
+--                        [ Guard [] (litExpr () (TInt 3)) 
+--                        ]
+--                    ])
 --            (patExpr () (varExpr () "x")
 --                    [ Clause () ( conPat () "Some" [varPat () "z"] ) 
 --                        [ Guard [op2Expr () (OGt ()) (varExpr () "z") (litExpr () (TInteger 10))] (annExpr tInt (litExpr () (TInt 1))) 
@@ -115,6 +96,25 @@ epxr123 =
 --                        ]
 --                    ]))
 --        (litExpr () (TInteger 3))
+
+
+epxr123 :: ProgExpr ()
+epxr123 =
+    letExpr () (BPat () (varPat () "x"))
+        (ifExpr ()
+            (op2Expr () (OGt ()) (varExpr () "z") (litExpr () (TInteger 10)))
+            (litExpr () (TInteger 3))
+            (patExpr () (varExpr () "x")
+                    [ Clause () ( conPat () "Some" [varPat () "z"] ) 
+                        [ Guard [op2Expr () (OGt ()) (varExpr () "z") (litExpr () (TInteger 10))] (annExpr tInt (litExpr () (TInt 1))) 
+                        , Guard [op2Expr () (OGt ()) (varExpr () "z") (litExpr () (TInteger 5))] (annExpr tInt (litExpr () (TInt 2))) 
+                        , Guard [] (annExpr tInt (litExpr () (TInt 3))) 
+                        ]
+                    , Clause () ( conPat () "Some" [varPat () "z"] ) 
+                        [ Guard [] (litExpr () (TInt 2)) 
+                        ]
+                    ]))
+        (litExpr () (TInteger 3))
 
 
 --epxr123 :: ProgExpr ()

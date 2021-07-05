@@ -322,7 +322,6 @@ class FunArgs f where
 instance FunArgs Text where
     funArgs = pretty
 
-
 instance FunArgs [(ProgPattern t, Doc a)] where
     funArgs ps = funArgs (fst <$> ps)
 
@@ -365,17 +364,20 @@ instance (Pretty p, Pretty a, Width p, Width a) => Clauses [Clause t p a] where
 class Width a where
     widthOf :: a -> Int
 
+layoutWidth :: Doc a -> Int
+layoutWidth d = n where (SText n _ _) = layoutPretty defaultLayoutOptions d
+
 instance (Pretty a, Width a, Width p) => Width (Clause t p a) where
-    widthOf (Clause _ p gs) = maximum (widthOf p : fmap ((+2) . widthOf) gs)
+    widthOf (Clause _ p gs) = maximum (3 + widthOf p : fmap ((+4) . widthOf) gs)
 
 instance Width (ProgExpr t) where
-    widthOf = length . show . pretty
+    widthOf = layoutWidth . pretty
 
 instance Width (ProgPattern t) where
-    widthOf = length . show . pretty
+    widthOf = layoutWidth . pretty
 
 instance (Pretty a, Width a) => Width (Guard a) where
-    widthOf (Guard es _) = length (show (prettyIffs es))
+    widthOf (Guard es _) = layoutWidth (prettyIffs es)
 
 instance (Pretty p, Pretty a) => Pretty (Clause t p a) where
     pretty (Clause _ p gs) = pipe <+> pretty p <+> prettyGuard gs
