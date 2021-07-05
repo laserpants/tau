@@ -233,10 +233,12 @@ instance (Pretty e1, FunArgs e2, Functor e3, Clauses [e3 (Expr t1 t2 t3 t4 t5 t6
 
         ELet _ bind e1 e2                -> prettyLet bind e1 (snd e2)
 
+        ELam _ ps e                      -> group (nest 2 (vsep [funArgs ps <+> "=>", snd e]))
+
         expr -> snd <$> expr & \case
             EVar    _ var                -> pretty var
             ELit    _ prim               -> pretty prim
-            ELam    _ ps e               -> group (nest 2 (vsep [funArgs ps <+> "=>", e]))
+            --ELam    _ ps e               -> group (nest 2 (vsep [funArgs ps <+> "=>", e]))
             EIf     _ e1 e2 e3           -> prettyIf e1 e2 e3
             EFix    _ name e1 e2         -> "fix" <+> pretty name <+> "=" <+> e1 <+> "in" <+> e2
             EOp1    _ op a               -> pretty op <> a
@@ -320,8 +322,18 @@ class FunArgs f where
 instance FunArgs Text where
     funArgs = pretty
 
-instance (Pretty p) => FunArgs [p] where
-    funArgs [p] = pretty p
+
+instance FunArgs [(ProgPattern t, Doc a)] where
+    funArgs ps = funArgs (fst <$> ps)
+
+instance FunArgs [(ProgPattern t)] where
+    funArgs [p] = parensIf (useParens p) (pretty p)
+      where
+        useParens = project >>> \case
+            PVar{} -> False
+            PLit{} -> False
+            _      -> True
+
     funArgs ps  = "(" <> commaSep (pretty <$> ps) <> ")"
 
 -- >>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>
@@ -335,20 +347,55 @@ instance (Pretty p, Pretty a) => Clauses [SimplifiedClause t p a] where
 instance (Pretty p, Pretty a) => Pretty (SimplifiedClause t p a) where
     pretty (SimplifiedClause _ p g) = pipe <+> pretty p <+> prettyGuard g
 
-instance (Pretty p, Pretty a) => Clauses [Clause t p a] where
-    clauses cs = group (vsep (pretty <$> cs))
+instance (Pretty p, Pretty a, Width p, Width a) => Clauses [Clause t p a] where
+    clauses cs = group (vsep (prettyClause <$> cs))
+      where
+        prettyClause (Clause _ p gs) = pipe <+> fillBreak maxW (pretty p) <+> prettyGuard gs
+
+        -- TODO
+        prettyGuard []           = ""
+        prettyGuard [Guard [] e] = "=>" <+> pretty e
+        prettyGuard gs           = nest 4 (line' <> vsep (prettyG <$> gs))
+
+        -- TODO
+        prettyG (Guard es e) = fillBreak (maxW - 1) (prettyIffs es) <> "=>" <+> pretty e 
+
+        maxW = maximum (widthOf <$> cs)
+
+class Width a where
+    widthOf :: a -> Int
+
+instance (Pretty a, Width a, Width p) => Width (Clause t p a) where
+    widthOf (Clause _ p gs) = maximum (widthOf p : fmap ((+2) . widthOf) gs)
+
+instance Width (ProgExpr t) where
+    widthOf = length . show . pretty
+
+instance Width (ProgPattern t) where
+    widthOf = length . show . pretty
+
+instance (Pretty a, Width a) => Width (Guard a) where
+    widthOf (Guard es _) = length (show (prettyIffs es))
 
 instance (Pretty p, Pretty a) => Pretty (Clause t p a) where
     pretty (Clause _ p gs) = pipe <+> pretty p <+> prettyGuard gs
 
 instance (Pretty a) => Pretty (Guard a) where
-    pretty (Guard es e) = iffs <> "=>" <+> pretty e 
-      where
-        iffs = case es of
-            [] -> "otherwise "
-            _  -> hsep (prettyIff <$> es) <> " "
+    pretty (Guard es e) = prettyIffs es <> "=>" <+> pretty e 
 
-        prettyIff e = "iff" <> parens (pretty e)
+prettyIffs :: (Pretty p) => [p] -> Doc a
+prettyIffs = \case 
+    [] -> "otherwise"
+    es -> "iff" <> prettyTuple (pretty <$> es) 
+
+--instance (Pretty a) => Pretty (Guard a) where
+--    pretty (Guard es e) = iffs <> "=>" <+> pretty e 
+--      where
+--        iffs = case es of
+--            [] -> "otherwise "
+--            _  -> hsep (prettyIff <$> es) <> " "
+--
+--        prettyIff e = "iff" <> parens (pretty e)
 
 class Guarded g where
     prettyGuard :: g -> Doc a

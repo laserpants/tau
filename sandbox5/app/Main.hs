@@ -81,6 +81,9 @@ epxr123 =
                     , Clause () ( conPat () "Some" [varPat () "z"] ) 
                         [ Guard [] (litExpr () (TInt 2)) 
                         ]
+                    , Clause () ( conPat () "None" [] ) 
+                        [ Guard [] (litExpr () (TInt 3)) 
+                        ]
                     ])
             (patExpr () (varExpr () "x")
                     [ Clause () ( conPat () "Some" [varPat () "z"] ) 
