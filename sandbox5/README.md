@@ -257,6 +257,11 @@ foo = fun 2
   | (3, 4) => True
   | (_, _) => False
 
+foo 
+  | (2, 3) => True
+  | (3, 4) => True
+  | (_, _) => False
+
 
 foo((a, b)) = a + b
 
