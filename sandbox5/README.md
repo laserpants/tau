@@ -2,7 +2,7 @@
 
 grok : Option Int -> Int -> Int
 grok 
-  | (Some x) 1 iff x > 100 = 0  
+  | (Some x) 1 when x > 100 = 0  
   | None     1             = 1 
   | _        _             = 2
   where
@@ -126,8 +126,8 @@ someFun(Some x, y, z) =
 someFun(Some x, y, z) =
   match (x, y, z) with
     | (Some(xx), _, _)
-        iff(x x > 3) => xx
-        iff(p)       => 1
+        when(x x > 3) => xx
+        when(p)       => 1
     | (_, _, _)      => 0
 
 
@@ -188,15 +188,75 @@ let
 
 
 
-if z > 10 then 3 else match x with | Some(z) iff(z > 10) => 1 : Int; iff(z > 5) => 2 : Int; otherwise => 3 : Int | Some(z) => 2
+if z > 10 then 3 else match x with | Some(z) when(z > 10) => 1 : Int; when(z > 5) => 2 : Int; otherwise => 3 : Int | Some(z) => 2
 
 if z > 10 
   then 3
   else
     match x with
       | Some(z) 
-          iff(z > 10) => 1 : Int
-          iff(z > 5) => 2 : Int
+          when(z > 10) => 1 : Int
+          when(z > 5) => 2 : Int
           otherwise => 3 : Int
       | Some(z) => 2
+
+foo 
+  | a when(a > 3) => 1
+  | _            => 0
+
+foo 
+  | (a, b) when(a > 3) => 1
+  | _                 => 0
+
+foo 
+  | (a, b) 
+      when(a > 3)      => 1
+  | _                 => 0
+
+
+
+foo(a, b, c) =
+  match (a, b, c) with
+    | (1, 1, 1) => True
+    | _         => False
+
+foo 
+  | (1, 1, 1) => True
+  | _         => False
+
+
+
+foo 
+  | 2 => True
+  | 3 => True
+  | _ => False
+
+foo = fun
+  | 2 => True
+  | 3 => True
+  | _ => False
+
+foo 
+  | (2, 3) => True
+  | (3, 4) => True
+  | (_, _) => False
+
+foo 
+  | 2, 3 => True
+  | 3, 4 => True
+  | _, _ => False
+
+foo(a, b) =
+  match (a, b) with
+    | (2, 3) => True
+    | (3, 4) => True
+    | (_, _) => False
+
+foo = fun 2
+  | (2, 3) => True
+  | (3, 4) => True
+  | (_, _) => False
+
+
+foo((a, b)) = a + b
 

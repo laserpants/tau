@@ -302,6 +302,18 @@ testExprParser = do
         "{}"
         (recordExpr () (conExpr () "{}" []))
 
+    succeedParse exprParser
+        "(x, y) => x"
+        (lamExpr () [varPat () "x", varPat () "y"] (varExpr () "x")) 
+
+    succeedParse exprParser
+        "((x, y)) => x"
+        (lamExpr () [tuplePat () [varPat () "x", varPat () "y"]] (varExpr () "x")) 
+
+    succeedParse exprParser
+        "(((x, y))) => x"
+        (lamExpr () [tuplePat () [varPat () "x", varPat () "y"]] (varExpr () "x")) 
+
 testTypeParser :: SpecWith ()
 testTypeParser = do
 

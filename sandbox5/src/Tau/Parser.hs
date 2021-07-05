@@ -81,6 +81,7 @@ reserved =
     , "otherwise"
     , "then"
     , "where"
+--    , "when"
     , "with"
     ]
 
@@ -320,7 +321,7 @@ exprParser = makeExprParser (try lambdaParser <|> try (parens exprParser) <|> pa
 
 lambdaParser :: Parser (ProgExpr ())
 lambdaParser = do
-    args <- try (pure <$> annPatternParser) <|> argParser annPatternParser
+    args <- try (argParser annPatternParser) <|> pure <$> annPatternParser
     body <- symbol "=>" *> annExprParser
     pure (lamExpr () args body)
 
