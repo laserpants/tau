@@ -350,7 +350,7 @@ instance (Pretty p, Pretty a, Width p, Width a) => Clauses [Clause t p a] where
     clauses cs = group (vsep (prettyClause <$> cs))
       where
         --prettyClause (Clause _ p gs) = pipe <+> fillBreak maxW (pretty p) <+> prettyGuard gs
-        prettyClause (Clause _ p gs) = pipe <+> boss maxW (pretty p) <+> prettyGuard gs
+        prettyClause (Clause _ p gs) = pipe <+> fill maxW (pretty p) <+> prettyGuard gs
 
         -- TODO
         prettyGuard []           = ""
@@ -358,11 +358,11 @@ instance (Pretty p, Pretty a, Width p, Width a) => Clauses [Clause t p a] where
         prettyGuard gs           = nest 4 (line' <> vsep (prettyG <$> gs))
 
         -- TODO
-        prettyG (Guard es e) = boss (maxW - 2) (prettyIffs es) <+> "=>" <+> pretty e 
+        prettyG (Guard es e) = fill (maxW - 2) (prettyIffs es) <+> "=>" <+> pretty e 
 
         maxW = maximum (widthOf <$> cs)
 
-        boss n a = flatAlt (fillBreak n a) a
+        fill n a = group (flatAlt (fillBreak n a) a)
 
 class Width a where
     widthOf :: a -> Int
