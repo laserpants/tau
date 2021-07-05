@@ -136,22 +136,22 @@ prettyDoc2 = Text.putStrLn . renderDoc2
 --        (litExpr () (TInteger 3))
 
 
-epxr123 :: ProgExpr ()
-epxr123 =
-    lamExpr () [varPat () "x", varPat () "y"]
-        (ifExpr ()
-            (op2Expr () (OGt ()) (varExpr () "z") (litExpr () (TInteger 10)))
-            (litExpr () (TInteger 3))
-            (patExpr () (varExpr () "x")
-                    [ Clause () ( conPat () "Some" [varPat () "z"] ) 
-                        [ Guard [op2Expr () (OGt ()) (varExpr () "z") (litExpr () (TInteger 10))] (annExpr tInt (litExpr () (TInt 1))) 
-                        , Guard [op2Expr () (OGt ()) (varExpr () "z") (litExpr () (TInteger 5))] (annExpr tInt (litExpr () (TInt 2))) 
-                        , Guard [] (annExpr tInt (litExpr () (TInt 3))) 
-                        ]
-                    , Clause () ( conPat () "Some" [varPat () "z"] ) 
-                        [ Guard [] (litExpr () (TInt 2)) 
-                        ]
-                    ]))
+--epxr123 :: ProgExpr ()
+--epxr123 =
+--    lamExpr () [varPat () "x", varPat () "y"]
+--        (ifExpr ()
+--            (op2Expr () (OGt ()) (varExpr () "z") (litExpr () (TInteger 10)))
+--            (litExpr () (TInteger 3))
+--            (patExpr () (varExpr () "x")
+--                    [ Clause () ( conPat () "Some" [varPat () "z"] ) 
+--                        [ Guard [op2Expr () (OGt ()) (varExpr () "z") (litExpr () (TInteger 10))] (annExpr tInt (litExpr () (TInt 1))) 
+--                        , Guard [op2Expr () (OGt ()) (varExpr () "z") (litExpr () (TInteger 5))] (annExpr tInt (litExpr () (TInt 2))) 
+--                        , Guard [] (annExpr tInt (litExpr () (TInt 3))) 
+--                        ]
+--                    , Clause () ( conPat () "Some" [varPat () "z"] ) 
+--                        [ Guard [] (litExpr () (TInt 2)) 
+--                        ]
+--                    ]))
 
 --epxr123 :: ProgExpr ()
 --epxr123 = 
@@ -170,14 +170,14 @@ epxr123 =
 --                ])
 
 
---epxr123 :: ProgExpr ()
---epxr123 = 
---    letExpr () (BPat () (varPat () "x"))
---        (funExpr () 
---            [ Clause () ( conPat () "Some" [litPat () (TBool True)] ) [ Guard [] (annExpr tInt (litExpr () (TInt 1))) ]
---            , Clause () ( conPat () "Some" [litPat () (TBool False)] ) [ Guard [] (litExpr () (TInt 2)) ]
---            ])
---        (varExpr () "y")
+epxr123 :: ProgExpr ()
+epxr123 = 
+    letExpr () (BPat () (varPat () "x"))
+        (funExpr () 
+            [ Clause () ( conPat () "Some" [litPat () (TBool True)] ) [ Guard [] (annExpr tInt (litExpr () (TInt 1))) ]
+            , Clause () ( conPat () "Some" [litPat () (TBool False)] ) [ Guard [] (litExpr () (TInt 2)) ]
+            ])
+        (varExpr () "y")
 
 --epxr123 :: ProgExpr ()
 --epxr123 = 

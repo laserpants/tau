@@ -417,6 +417,13 @@ testExprParserMatch = do
 --            ])
 
     succeedParse exprParser
+        "match x with | y iff(y > 5, z > 2) => True"
+        (patExpr () (varExpr () "x") 
+            [ Clause () (varPat () "y") 
+                  [ Guard [op2Expr () (OGt ()) (varExpr () "y") (litExpr () (TInteger 5)), op2Expr () (OGt ()) (varExpr () "z") (litExpr () (TInteger 2))] (litExpr () (TBool True)) ]
+            ])
+
+    succeedParse exprParser
         "match x with | y iff(y > 5) => 0 iff(y > 1) => 1 otherwise => 2"
         (patExpr () (varExpr () "x") 
             [ Clause () (varPat () "y") 

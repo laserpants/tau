@@ -269,7 +269,7 @@ instance (Pretty e1, FunArgs e2, Functor e3, Clauses [e3 (Expr t1 t2 t3 t4 t5 t6
 
 prettyIf :: Doc a -> Doc a -> Doc a -> Doc a 
 prettyIf e1 e2 e3 =
-    "if" <+> e1 <> group (nest 2 (line' <> vsep 
+    "if" <> softline <> e1 <> group (nest 2 (line' <> vsep 
         [ group (nest 2 (vsep ["then", e2]))
         , group (nest 2 (vsep ["else", e3]))
         ]))
@@ -349,7 +349,8 @@ instance (Pretty p, Pretty a) => Pretty (SimplifiedClause t p a) where
 instance (Pretty p, Pretty a, Width p, Width a) => Clauses [Clause t p a] where
     clauses cs = group (vsep (prettyClause <$> cs))
       where
-        prettyClause (Clause _ p gs) = pipe <+> fillBreak maxW (pretty p) <+> prettyGuard gs
+        --prettyClause (Clause _ p gs) = pipe <+> fillBreak maxW (pretty p) <+> prettyGuard gs
+        prettyClause (Clause _ p gs) = pipe <+> boss maxW (pretty p) <+> prettyGuard gs
 
         -- TODO
         prettyGuard []           = ""
@@ -357,18 +358,21 @@ instance (Pretty p, Pretty a, Width p, Width a) => Clauses [Clause t p a] where
         prettyGuard gs           = nest 4 (line' <> vsep (prettyG <$> gs))
 
         -- TODO
-        prettyG (Guard es e) = fillBreak (maxW - 1) (prettyIffs es) <> "=>" <+> pretty e 
+        prettyG (Guard es e) = boss (maxW - 2) (prettyIffs es) <+> "=>" <+> pretty e 
 
         maxW = maximum (widthOf <$> cs)
+
+        boss n a = flatAlt (fillBreak n a) a
 
 class Width a where
     widthOf :: a -> Int
 
 layoutWidth :: Doc a -> Int
-layoutWidth d = n where (SText n _ _) = layoutPretty defaultLayoutOptions d
+--layoutWidth d = n where (SText n _ _) = layoutPretty defaultLayoutOptions d
+layoutWidth = length . show
 
 instance (Pretty a, Width a, Width p) => Width (Clause t p a) where
-    widthOf (Clause _ p gs) = maximum (3 + widthOf p : fmap ((+4) . widthOf) gs)
+    widthOf (Clause _ p gs) = maximum (1 + widthOf p : fmap ((+2) . widthOf) gs)
 
 instance Width (ProgExpr t) where
     widthOf = layoutWidth . pretty
