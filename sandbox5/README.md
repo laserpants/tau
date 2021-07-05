@@ -187,3 +187,16 @@ let
     Some(3).withDefault(5)
 
 
+
+if z > 10 then 3 else match x with | Some(z) iff(z > 10) => 1 : Int; iff(z > 5) => 2 : Int; otherwise => 3 : Int | Some(z) => 2
+
+if z > 10 
+  then 3
+  else
+    match x with
+      | Some(z) 
+          iff(z > 10) => 1 : Int
+          iff(z > 5) => 2 : Int
+          otherwise => 3 : Int
+      | Some(z) => 2
+

@@ -269,7 +269,7 @@ instance (Pretty e1, FunArgs e2, Functor e3, Clauses [e3 (Expr t1 t2 t3 t4 t5 t6
 
 prettyIf :: Doc a -> Doc a -> Doc a -> Doc a 
 prettyIf e1 e2 e3 =
-    "if" <> softline <> e1 <> group (nest 2 (line' <> vsep 
+    "if" <> softline <> e1 <> space <> group (nest 2 (line' <> vsep 
         [ group (nest 2 (vsep ["then", e2]))
         , group (nest 2 (vsep ["else", e3]))
         ]))
@@ -347,7 +347,8 @@ instance (Pretty p, Pretty a) => Pretty (SimplifiedClause t p a) where
     pretty (SimplifiedClause _ p g) = pipe <+> pretty p <+> prettyGuard g
 
 instance (Pretty p, Pretty a, Width p, Width a) => Clauses [Clause t p a] where
-    clauses cs = group (vsep (prettyClause <$> cs))
+    --clauses cs = group (vsep (prettyClause <$> cs))
+    clauses cs = vsep (prettyClause <$> cs)
       where
         --prettyClause (Clause _ p gs) = pipe <+> fillBreak maxW (pretty p) <+> prettyGuard gs
         prettyClause (Clause _ p gs) = pipe <+> fill maxW (pretty p) <+> prettyGuard gs
