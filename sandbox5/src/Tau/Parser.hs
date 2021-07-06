@@ -131,7 +131,7 @@ rowParser sep parser rowCon varCon empty = braces $ do
 
 argParser :: Parser p -> Parser [p]
 argParser parser = components parser >>= \case 
-    [] -> fail "Expected at least one function argument"
+    [] -> fail "Expected one or more function arguments"
     ps -> pure ps
 
 -- >>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>

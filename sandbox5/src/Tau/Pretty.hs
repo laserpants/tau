@@ -464,14 +464,16 @@ instance Pretty Product where
 
 instance Pretty Datatype where
     pretty (Sum con vars prods) =
-        "type" <+> pretty con
-               <> lhs
-               <+> "="
-               <+> hsep (punctuate pipe (pretty <$> prods))
+        case prods of
+            []   -> lhs
+            [p]  -> lhs <+> "=" <+> pretty p
+            p:ps -> lhs <+> nest 2 (line' <> vsep (pre "=" p:(pre "|" <$> ps)))
       where
-        lhs = if null vars 
-                  then "" 
-                  else " " <> hsep (pretty <$> vars)
+        pre a p = a <+> pretty p
+        lhs = "type" 
+            <+> pretty con 
+            <> if null vars then "" 
+                            else " " <> hsep (pretty <$> vars)
 
 
 ----prettyLet :: (Pretty p) => p -> Doc a -> Doc a -> Doc a
