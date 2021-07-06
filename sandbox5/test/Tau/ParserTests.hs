@@ -489,6 +489,10 @@ testExprParserMatch = do
         "xs.map(x => x + 1)"
         (op2Expr () (ODot ()) (appExpr () [varExpr () "map", lamExpr () [varPat () "x"] (op2Expr () (OAdd ()) (varExpr () "x") (litExpr () (TInteger 1)))]) (varExpr () "xs"))
 
+    succeedParse exprParser
+        "{ a = { b = \"c\" } }.a.b"
+        (Fix (EOp2 () (ODot ()) (Fix (EVar () "b")) (Fix (EOp2 () (ODot ()) (Fix (EVar () "a")) (Fix (ECon () "#" [Fix (ERow () "a" (Fix (ECon () "#" [Fix (ERow () "b" (Fix (ELit () (TString "c"))) (Fix (ECon () "{}" [])))])) (Fix (ECon () "{}" [])))]))))))
+
 testAnnExprParser :: SpecWith ()
 testAnnExprParser = do
 

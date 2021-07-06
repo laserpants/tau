@@ -232,13 +232,13 @@ operator =
       , Prefix (op1Expr () (ONot ()) <$ (keyword "not" *> spaces))
       ]
       -- 1
-    , [ Postfix (op2Expr () (ODot ()) <$> (symbol "." *> annExprParser))
-      ]
-      -- 0
     , [ InfixL (op2Expr () (OFpipe ()) <$ symbol "|>")
       , InfixR (op2Expr () (OBpipe ()) <$ symbol "<|")
       ]
     , [ Postfix postfixFunArgParser
+      ]
+      -- 0
+    , [ InfixL (symbol "." $> flip (op2Expr () (ODot ())))
       ]
     ]
 

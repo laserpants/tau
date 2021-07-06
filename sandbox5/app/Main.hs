@@ -1735,13 +1735,17 @@ example1 = foo1 expr
 --    expr = 
 --        letExpr () (BFun () "add" [varPat () "x", varPat () "y"]) (op2Expr () (OAdd ()) (varExpr () "x") (varExpr () "y")) (letExpr () (BFun () "add5" [varPat () "z"]) (appExpr () [varExpr () "add", varExpr () "z", annExpr tInt (litExpr () (TInteger 5))]) (appExpr () [varExpr () "add5", annExpr tInt (litExpr () (TInteger 3))]))
 
+--    expr = r
+--      where
+--        Right r = runParserStack exprParser "" "let xs = [] in match xs with | (x :: _) when(xs <= 3) => x | _ => 0"
+----        Right r = runParserStack exprParser "" "let xs = [] : List Int in match xs with | (x :: _) when(x == 1) => x | _ => 0"
+
+
+
+
     expr = r
       where
-        Right r = runParserStack exprParser "" "let xs = [] in match xs with | (x :: _) when(xs <= 3) => x | _ => 0"
---        Right r = runParserStack exprParser "" "let xs = [] : List Int in match xs with | (x :: _) when(x == 1) => x | _ => 0"
-
-
-
+        Right r = runParserStack exprParser "" "{ a = { b = { c = \"d\" } } }.a.b.c"
 
 
 --    expr = r
