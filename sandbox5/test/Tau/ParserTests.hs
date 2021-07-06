@@ -89,6 +89,14 @@ testPatternParser = do
         "{}"
         (recordPat () (conPat () "{}" []))
 
+    succeedParse patternParser
+        "[1, 2]"
+        (listPat () [litPat () (TInteger 1), litPat () (TInteger 2)])
+
+    succeedParse patternParser
+        "[]"
+        (conPat () "[]" [])
+
 testAnnPatternParser :: SpecWith ()
 testAnnPatternParser = do
 
@@ -313,6 +321,14 @@ testExprParser = do
     succeedParse exprParser
         "(((x, y))) => x"
         (lamExpr () [tuplePat () [varPat () "x", varPat () "y"]] (varExpr () "x")) 
+
+    succeedParse exprParser
+        "[1, 2]"
+        (listExpr () [litExpr () (TInteger 1), litExpr () (TInteger 2)])
+
+    succeedParse exprParser
+        "[]"
+        (conExpr () "[]" [])
 
 testTypeParser :: SpecWith ()
 testTypeParser = do

@@ -180,12 +180,16 @@ patternParser = makeExprParser (try (parens patternParser) <|> parser)
     parseAsPattern = keyword "as" >> asPat () <$> nameParser
     parseVar       = varPat   () <$> nameParser
     parseLit       = litPat   () <$> primParser
-    parseList      = listPat  () <$> elements annPatternParser
     parseTuple     = tuplePat () <$> components annPatternParser
     parseCon       = conPat   () <$> constructorParser 
                                  <*> (fromMaybe [] <$> optional (components annPatternParser))
+
+    parseList = 
+        try (brackets spaces $> conPat () "[]" [])
+            <|> listPat () <$> elements annPatternParser
+
     parseRecord =
-        symbol "{}" $> recordPat () (conPat () "{}" [])
+        try (braces spaces $> recordPat () (conPat () "{}" []))
             <|> recordPat () <$> rowParser "=" annPatternParser rowPat varPat emptyRowPat
 
 -- >>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>
@@ -296,7 +300,6 @@ exprParser = makeExprParser (try lambdaParser <|> try (parens exprParser) <|> pa
         pure (iffs <> maybe [] (pure . Guard []) last)
 
     iffClause = Guard 
---        <$> (keyword "iff" *> (pure <$> parens exprParser) <* symbol "=>") 
         <$> (keyword "iff" *> (argParser exprParser) <* symbol "=>") 
         <*> annExprParser
 
@@ -309,12 +312,16 @@ exprParser = makeExprParser (try lambdaParser <|> try (parens exprParser) <|> pa
     parseFun       = keyword "fun" *> (funExpr () <$> some parseClause)
     parseVar       = varExpr   () <$> nameParser
     parseLit       = litExpr   () <$> primParser
-    parseList      = listExpr  () <$> elements annExprParser
     parseTuple     = tupleExpr () <$> components exprParser
     parseCon       = conExpr   () <$> constructorParser 
                                   <*> (fromMaybe [] <$> optional (components annExprParser))
+
+    parseList = 
+        try (brackets spaces $> conExpr () "[]" [])
+            <|> listExpr () <$> elements annExprParser
+
     parseRecord =
-        symbol "{}" $> recordExpr () (conExpr () "{}" [])
+        try (braces spaces $> recordExpr () (conExpr () "{}" []))
             <|> recordExpr () <$> rowParser "=" annExprParser rowExpr varExpr_ emptyRowExpr
 
     varExpr_ _ var = appExpr () [varExpr () "_#", varExpr () var]

@@ -2,6 +2,7 @@
 {-# LANGUAGE LambdaCase            #-}
 {-# LANGUAGE MultiParamTypeClasses #-}
 module Tau.Tooling
+  -- Util
   ( Name
   , Algebra
   , List

@@ -210,7 +210,7 @@ instance (Pretty e1, FunArgs e2, Functor e3, Clauses [e3 (Expr t1 t2 t3 t4 t5 t6
         ECon _ con ps                    -> pretty con <> prettyTuple (snd <$> ps)
 --        EPat    _ e1 cs                  -> "match" <+> snd e1 <+> "with" <+> clauses (fst <$$> cs)
         EPat    _ e1 cs                  -> group (nest 2 (vsep ["match" <+> snd e1 <+> "with", clauses (fst <$$> cs)]))
-        EFun    _ cs                     -> "fun" <+> clauses (fst <$$> cs)
+        EFun    _ cs                     -> group (nest 2 (vsep ["fun", clauses (fst <$$> cs)]))
 
         EApp _ ((e, doc1):es) -> 
             parensIf addLeft doc1 <> prettyTuple (snd <$> es)
@@ -240,7 +240,7 @@ instance (Pretty e1, FunArgs e2, Functor e3, Clauses [e3 (Expr t1 t2 t3 t4 t5 t6
             ELit    _ prim               -> pretty prim
             --ELam    _ ps e               -> group (nest 2 (vsep [funArgs ps <+> "=>", e]))
             EIf     _ e1 e2 e3           -> prettyIf e1 e2 e3
-            EFix    _ name e1 e2         -> "fix" <+> pretty name <+> "=" <+> e1 <+> "in" <+> e2
+            EFix    _ name e1 e2         -> prettyFix name e1 e2
             EOp1    _ op a               -> pretty op <> a
             EOp2    _ (ODot _) a b       -> b <> "." <> a
             EOp2    _ (OField _) a b     -> b <> "." <> a
@@ -289,6 +289,13 @@ prettyLet bind e1 e2 =
     body = case project (fst e1) of
         EFun _ cs -> line' <> clauses cs
         _         -> group (vsep ["=", snd e1])
+
+prettyFix name e1 e2 =
+    group (nest 2 (vsep
+        [ "fix" <+> pretty name <+> "="
+        , e1
+        , nest 2 (vsep ["in", e2])
+        ]))
 
 --prettyLet 
 --  :: (Functor e3, Pretty p, Clauses [e3 (Expr t1 t2 t3 t4 t5 t6 t7 t8 t9 t10 t11 t12 t13 t14 t15 e1 e2 e3)]) 
@@ -363,7 +370,8 @@ instance (Pretty p, Pretty a, Width p, Width a) => Clauses [Clause t p a] where
 
         maxW = maximum (widthOf <$> cs)
 
-        fill n a = group (flatAlt (fillBreak n a) a)
+        fill n a = flatAlt (fillBreak n a) a
+        --fill n a = group (flatAlt (fillBreak n a) a)
 
 class Width a where
     widthOf :: a -> Int
