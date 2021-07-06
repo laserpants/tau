@@ -273,6 +273,10 @@ testExprParser = do
         (lamExpr () [conPat () "Some" [varPat () "x"]] (op2Expr () (OAdd ()) (varExpr () "x") (litExpr () (TInteger 1))))
 
     succeedParse exprParser
+        "() => ()"
+        (lamExpr () [litPat () TUnit] (litExpr () TUnit))
+
+    succeedParse exprParser
         "let f = (x) => x + 1 in y"
         (letExpr () (BPat () (varPat () "f")) 
             (lamExpr () [varPat () "x"] (op2Expr () (OAdd ()) (varExpr () "x") (litExpr () (TInteger 1))))
@@ -329,6 +333,14 @@ testExprParser = do
     succeedParse exprParser
         "[]"
         (conExpr () "[]" [])
+
+    succeedParse exprParser
+        "[  ]"
+        (conExpr () "[]" [])
+
+    succeedParse exprParser
+        "let f() = () in f()"
+        (letExpr () (BFun () "f" [litPat () TUnit]) (litExpr () TUnit) (appExpr () [varExpr () "f", litExpr () TUnit]))
 
 testTypeParser :: SpecWith ()
 testTypeParser = do
@@ -421,21 +433,21 @@ testExprParserMatch = do
             ])
 
 --    succeedParse exprParser
---        "match x with | y iff y > 5 => True"
+--        "match x with | y when y > 5 => True"
 --        (patExpr () (varExpr () "x") 
 --            [ Clause () (varPat () "y") 
 --                  [ Guard [op2Expr () (OGt ()) (varExpr () "y") (litExpr () (TInteger 5))] (litExpr () (TBool True)) ]
 --            ])
 
     succeedParse exprParser
-        "match x with | y iff(y > 5) => True"
+        "match x with | y when(y > 5) => True"
         (patExpr () (varExpr () "x") 
             [ Clause () (varPat () "y") 
                   [ Guard [op2Expr () (OGt ()) (varExpr () "y") (litExpr () (TInteger 5))] (litExpr () (TBool True)) ]
             ])
 
 --    succeedParse exprParser
---        "match x with | y iff y > 5 => 0 iff y > 1 => 1 otherwise => 2"
+--        "match x with | y when y > 5 => 0 when y > 1 => 1 otherwise => 2"
 --        (patExpr () (varExpr () "x") 
 --            [ Clause () (varPat () "y") 
 --                  [ Guard [op2Expr () (OGt ()) (varExpr () "y") (litExpr () (TInteger 5))] (litExpr () (TInteger 0)) 
@@ -445,14 +457,14 @@ testExprParserMatch = do
 --            ])
 
     succeedParse exprParser
-        "match x with | y iff(y > 5, z > 2) => True"
+        "match x with | y when(y > 5, z > 2) => True"
         (patExpr () (varExpr () "x") 
             [ Clause () (varPat () "y") 
                   [ Guard [op2Expr () (OGt ()) (varExpr () "y") (litExpr () (TInteger 5)), op2Expr () (OGt ()) (varExpr () "z") (litExpr () (TInteger 2))] (litExpr () (TBool True)) ]
             ])
 
     succeedParse exprParser
-        "match x with | y iff(y > 5) => 0 iff(y > 1) => 1 otherwise => 2"
+        "match x with | y when(y > 5) => 0 when(y > 1) => 1 otherwise => 2"
         (patExpr () (varExpr () "x") 
             [ Clause () (varPat () "y") 
                   [ Guard [op2Expr () (OGt ()) (varExpr () "y") (litExpr () (TInteger 5))] (litExpr () (TInteger 0)) 

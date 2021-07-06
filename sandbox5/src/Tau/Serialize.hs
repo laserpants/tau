@@ -108,7 +108,10 @@ instance (Pretty p, Pretty a, ToRep t, ToRep p, ToRep a) => ToRep (SimplifiedCla
 instance (ToRep e, ToRep t) => ToRep (TypeInfoT e t) where
     toRep = typeInfoRep
 
-instance (Pretty a, ToRep a) => ToRep (PredicateT a) where
+instance ToRep Predicate where
+    toRep = withPretty predicateRep
+
+instance ToRep (PredicateT Name) where
     toRep = withPretty predicateRep
 
 instance ToRep Error where

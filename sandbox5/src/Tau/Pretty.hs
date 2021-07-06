@@ -143,8 +143,16 @@ instance Pretty Type where
 
 -- >>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>
 
-instance (Pretty a) => Pretty (PredicateT a) where
+instance Pretty (PredicateT Name) where
     pretty (InClass n t) = pretty n <+> pretty t
+
+instance Pretty Predicate where
+    pretty (InClass n t) = pretty n <+> parensIf (useParens t) (pretty t)
+      where
+        useParens = project >>> \case
+            TApp{} -> True
+            TArr{} -> True
+            _      -> False
 
 -- >>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>
 
@@ -208,7 +216,6 @@ instance (Pretty e1, FunArgs e2, Functor e3, Clauses [e3 (Expr t1 t2 t3 t4 t5 t6
         ECon _ "#" [(r, _)]              -> prettyRecord r
         ECon _ con []                    -> pretty con
         ECon _ con ps                    -> pretty con <> prettyTuple (snd <$> ps)
---        EPat    _ e1 cs                  -> "match" <+> snd e1 <+> "with" <+> clauses (fst <$$> cs)
         EPat    _ e1 cs                  -> group (nest 2 (vsep ["match" <+> snd e1 <+> "with", clauses (fst <$$> cs)]))
         EFun    _ cs                     -> group (nest 2 (vsep ["fun", clauses (fst <$$> cs)]))
 
@@ -238,7 +245,6 @@ instance (Pretty e1, FunArgs e2, Functor e3, Clauses [e3 (Expr t1 t2 t3 t4 t5 t6
         expr -> snd <$> expr & \case
             EVar    _ var                -> pretty var
             ELit    _ prim               -> pretty prim
-            --ELam    _ ps e               -> group (nest 2 (vsep [funArgs ps <+> "=>", e]))
             EIf     _ e1 e2 e3           -> prettyIf e1 e2 e3
             EFix    _ name e1 e2         -> prettyFix name e1 e2
             EOp1    _ op a               -> pretty op <> a
@@ -290,6 +296,7 @@ prettyLet bind e1 e2 =
         EFun _ cs -> line' <> clauses cs
         _         -> group (vsep ["=", snd e1])
 
+prettyFix :: Pretty p => p -> Doc a -> Doc a -> Doc a
 prettyFix name e1 e2 =
     group (nest 2 (vsep
         [ "fix" <+> pretty name <+> "="
@@ -401,7 +408,7 @@ instance (Pretty a) => Pretty (Guard a) where
 prettyIffs :: (Pretty p) => [p] -> Doc a
 prettyIffs = \case 
     [] -> "otherwise"
-    es -> "iff" <> prettyTuple (pretty <$> es) 
+    es -> "when" <> prettyTuple (pretty <$> es) 
 
 --instance (Pretty a) => Pretty (Guard a) where
 --    pretty (Guard es e) = iffs <> "=>" <+> pretty e 

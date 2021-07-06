@@ -67,35 +67,35 @@ prettyDoc2 :: Doc a -> IO ()
 prettyDoc2 = Text.putStrLn . renderDoc2 
 
 
---epxr123 :: ProgExpr ()
---epxr123 =
---    letExpr () (BPat () (varPat () "x"))
---        (ifExpr ()
---            (op2Expr () (OGt ()) (varExpr () "z") (litExpr () (TInteger 10)))
---            (patExpr () (varExpr () "x")
---                    [ Clause () ( conPat () "Some" [varPat () "z"] ) 
---                        [ Guard [op2Expr () (OGt ()) (varExpr () "z") (litExpr () (TInteger 10))] (annExpr tInt (litExpr () (TInt 1))) 
---                        , Guard [op2Expr () (OGt ()) (varExpr () "z") (litExpr () (TInteger 5))] (annExpr tInt (litExpr () (TInt 2))) 
---                        , Guard [] (annExpr tInt (litExpr () (TInt 3))) 
---                        ]
---                    , Clause () ( conPat () "Some" [varPat () "z"] ) 
---                        [ Guard [] (litExpr () (TInt 2)) 
---                        ]
---                    , Clause () ( conPat () "None" [] ) 
---                        [ Guard [] (litExpr () (TInt 3)) 
---                        ]
---                    ])
---            (patExpr () (varExpr () "x")
---                    [ Clause () ( conPat () "Some" [varPat () "z"] ) 
---                        [ Guard [op2Expr () (OGt ()) (varExpr () "z") (litExpr () (TInteger 10))] (annExpr tInt (litExpr () (TInt 1))) 
---                        , Guard [op2Expr () (OGt ()) (varExpr () "z") (litExpr () (TInteger 5))] (annExpr tInt (litExpr () (TInt 2))) 
---                        , Guard [] (annExpr tInt (litExpr () (TInt 3))) 
---                        ]
---                    , Clause () ( conPat () "Some" [varPat () "z"] ) 
---                        [ Guard [] (litExpr () (TInt 2)) 
---                        ]
---                    ]))
---        (litExpr () (TInteger 3))
+epxr123 :: ProgExpr ()
+epxr123 =
+    letExpr () (BPat () (varPat () "x"))
+        (ifExpr ()
+            (op2Expr () (OGt ()) (varExpr () "z") (litExpr () (TInteger 10)))
+            (patExpr () (varExpr () "x")
+                    [ Clause () ( conPat () "Some" [varPat () "z"] ) 
+                        [ Guard [op2Expr () (OGt ()) (varExpr () "z") (litExpr () (TInteger 10))] (annExpr tInt (litExpr () (TInt 1))) 
+                        , Guard [op2Expr () (OGt ()) (varExpr () "z") (litExpr () (TInteger 5))] (annExpr tInt (litExpr () (TInt 2))) 
+                        , Guard [] (annExpr tInt (litExpr () (TInt 3))) 
+                        ]
+                    , Clause () ( conPat () "Some" [varPat () "z"] ) 
+                        [ Guard [] (litExpr () (TInt 2)) 
+                        ]
+                    , Clause () ( conPat () "None" [] ) 
+                        [ Guard [] (litExpr () (TInt 3)) 
+                        ]
+                    ])
+            (patExpr () (varExpr () "x")
+                    [ Clause () ( conPat () "Some" [varPat () "z"] ) 
+                        [ Guard [op2Expr () (OGt ()) (varExpr () "z") (litExpr () (TInteger 10))] (annExpr tInt (litExpr () (TInt 1))) 
+                        , Guard [op2Expr () (OGt ()) (varExpr () "z") (litExpr () (TInteger 5))] (annExpr tInt (litExpr () (TInt 2))) 
+                        , Guard [] (annExpr tInt (litExpr () (TInt 3))) 
+                        ]
+                    , Clause () ( conPat () "Some" [varPat () "z"] ) 
+                        [ Guard [] (litExpr () (TInt 2)) 
+                        ]
+                    ]))
+        (litExpr () (TInteger 3))
 
 
 --epxr123 :: ProgExpr ()
@@ -170,22 +170,22 @@ prettyDoc2 = Text.putStrLn . renderDoc2
 --                ])
 
 
-epxr123 :: ProgExpr ()
-epxr123 = 
-    letExpr () 
-        (BPat () (varPat () "f"))
-        (lamExpr () [varPat () "t"]
-            (patExpr () (varExpr () "t")
-                    [ Clause () ( conPat () "Some" [varPat () "z"] ) 
-                        [ Guard [op2Expr () (OGt ()) (varExpr () "z") (litExpr () (TInteger 10))] (annExpr tInt (litExpr () (TInt 1))) 
-                        , Guard [op2Expr () (OGt ()) (varExpr () "z") (litExpr () (TInteger 5))] (annExpr tInt (litExpr () (TInt 2))) 
-                        , Guard [] (annExpr tInt (litExpr () (TInt 3))) 
-                        ]
-                    , Clause () ( conPat () "Some" [varPat () "z"] ) 
-                        [ Guard [] (litExpr () (TInt 2)) 
-                        ]
-                    ]))
-        (varExpr () "x")
+--epxr123 :: ProgExpr ()
+--epxr123 = 
+--    letExpr () 
+--        (BPat () (varPat () "f"))
+--        (lamExpr () [varPat () "t"]
+--            (patExpr () (varExpr () "t")
+--                    [ Clause () ( conPat () "Some" [varPat () "z"] ) 
+--                        [ Guard [op2Expr () (OGt ()) (varExpr () "z") (litExpr () (TInteger 10))] (annExpr tInt (litExpr () (TInt 1))) 
+--                        , Guard [op2Expr () (OGt ()) (varExpr () "z") (litExpr () (TInteger 5))] (annExpr tInt (litExpr () (TInt 2))) 
+--                        , Guard [] (annExpr tInt (litExpr () (TInt 3))) 
+--                        ]
+--                    , Clause () ( conPat () "Some" [varPat () "z"] ) 
+--                        [ Guard [] (litExpr () (TInt 2)) 
+--                        ]
+--                    ]))
+--        (varExpr () "x")
 
 
 --epxr123 :: ProgExpr ()
@@ -350,9 +350,20 @@ insertDicts
   -> Ast (TypeInfo [e])
   -> m (Ast (TypeInfo [e]))
 insertDicts env constructorEnv classEnv ast = 
-    forM ast (\TypeInfo{..} -> do
-        ps <- fromRight undefined <$> reduce classEnv (predicates nodeType <> nodePredicates)
-        pure $ TypeInfo { nodePredicates = ps, .. })
+    pure ast
+
+
+--  TODO
+--  TODO
+--  TODO
+--    forM ast (\TypeInfo{..} -> do
+--        ps <- fromRight undefined <$> reduce classEnv (predicates nodeType <> nodePredicates)
+--        pure $ TypeInfo { nodePredicates = ps, .. })
+--  TODO
+--  TODO
+--  TODO
+
+
   where
 --    foo :: (MonadSupply Name m) => Type -> [Predicate] -> m [Predicate]
 --    foo t ps = do
@@ -1608,8 +1619,8 @@ example1 = foo1 expr
 --    -- let 
 --    --   fn
 --    --     | Some(y) 
---    --         iff(y == 1) => 1
---    --         iff(y == 2) => 2
+--    --         when(y == 1) => 1
+--    --         when(y == 2) => 2
 --    --         otherwise   => 3
 --    --     | None          => 0
 --    --   in
@@ -1662,44 +1673,69 @@ example1 = foo1 expr
 
 
 
-    testList =
-        annExpr (tList tInt) (listExpr () [litExpr () (TInteger 1), litExpr () (TInteger 2), litExpr () (TInteger 3), litExpr () (TInteger 4)])
+--    testList =
+--        annExpr (tList tInt) (listExpr () [litExpr () (TInteger 1), litExpr () (TInteger 2), litExpr () (TInteger 3), litExpr () (TInteger 4)])
+--
+--    -- sum the list
+--    expr = 
+--      letExpr () 
+--          (BPat () (varPat () "testList")) testList
+--          (fixExpr () "loopList"
+--              (lamExpr () [varPat () "g", varPat () "ys"] (patExpr () (varExpr () "ys")
+--                  [ Clause () (conPat () "(::)" [varPat () "x", varPat () "xs"]) 
+--                        [Guard [] (appExpr () [varExpr () "g", conExpr () "Cons'" [varExpr () "x", varExpr () "xs", appExpr () [varExpr () "loopList", varExpr () "g", varExpr () "xs"]]])]
+--                  , Clause () (conPat () "[]" []) 
+--                        [Guard [] (appExpr () [varExpr () "g", conExpr () "Nil'" []])]
+--                  ]))
+--              --
+--              -- let map = 
+--              --
+--              (letExpr ()
+--                  (BFun () "map" [varPat () "f", varPat () "ys"])
+--                  --
+--                  -- ys.loopList(fun | Cons'(x, xs, a) => f(x) :: a | Nil' => [])
+--                  -- 
+--                  (op2Expr () (ODot ())
+--                      (appExpr () 
+--                          [ varExpr () "loopList"
+--                          , funExpr () 
+--                              [ Clause () (conPat () "Cons'" [varPat () "x", varPat () "xs", varPat () "a"]) [Guard [] (conExpr () "(::)" [appExpr () [varExpr () "f", varExpr () "x"], varExpr () "a"])]
+--                              , Clause () (conPat () "Nil'" []) [Guard [] (conExpr () "[]" [])]
+--                              ]
+--                          ])
+--                      (varExpr () "ys"))
+--
+--                  (appExpr () 
+--                      [ varExpr () "map"
+--                      , lamExpr () [varPat () "x"] (op2Expr () (OAdd ()) (varExpr () "x") (litExpr () (TInteger 1)))
+--                      , testList
+--                      ])))
 
-    -- sum the list
-    expr = 
-      letExpr () 
-          (BPat () (varPat () "testList")) testList
-          (fixExpr () "loopList"
-              (lamExpr () [varPat () "g", varPat () "ys"] (patExpr () (varExpr () "ys")
-                  [ Clause () (conPat () "(::)" [varPat () "x", varPat () "xs"]) 
-                        [Guard [] (appExpr () [varExpr () "g", conExpr () "Cons'" [varExpr () "x", varExpr () "xs", appExpr () [varExpr () "loopList", varExpr () "g", varExpr () "xs"]]])]
-                  , Clause () (conPat () "[]" []) 
-                        [Guard [] (appExpr () [varExpr () "g", conExpr () "Nil'" []])]
-                  ]))
-              --
-              -- let map = 
-              --
-              (letExpr ()
-                  (BFun () "map" [varPat () "f", varPat () "ys"])
-                  --
-                  -- ys.loopList(fun | Cons'(x, xs, a) => f(x) :: a | Nil' => [])
-                  -- 
-                  (op2Expr () (ODot ())
-                      (appExpr () 
-                          [ varExpr () "loopList"
-                          , funExpr () 
-                              [ Clause () (conPat () "Cons'" [varPat () "x", varPat () "xs", varPat () "a"]) [Guard [] (conExpr () "(::)" [appExpr () [varExpr () "f", varExpr () "x"], varExpr () "a"])]
-                              , Clause () (conPat () "Nil'" []) [Guard [] (conExpr () "[]" [])]
-                              ]
-                          ])
-                      (varExpr () "ys"))
 
-                  (appExpr () 
-                      [ varExpr () "map"
-                      , lamExpr () [varPat () "x"] (op2Expr () (OAdd ()) (varExpr () "x") (litExpr () (TInteger 1)))
-                      , testList
-                      ])))
+--    expr = r
+--      where
+--        Right r = runParserStack exprParser "" "let xs = [5 : Int, 3, 3] in match xs with | [x] => x | [x, y] => x | [x, y, z] => x | _ => 0"
 
+--    expr = r
+--      where
+--        Right r = runParserStack exprParser "" "let xs = [5 : Int, 3, 3, 3] in match xs with | [x] => x | [x, y] => x | [x, y, z] => x | _ => 0"
+
+--    expr = r
+--      where
+--        Right r = runParserStack exprParser "" "let xs = [1 : Int,2,3] in match xs with | [x] or [x, _] or [x, _, _] => x | _ => 0"
+
+--    expr = r
+--      where
+--        Right r = runParserStack exprParser "" "let xs = [] : List Int in match xs with | [x] or [x, _] or [x, _, _] => x | _ => 0"
+
+    expr = r
+      where
+        Right r = runParserStack exprParser "" "let xs = [] in match xs with | (x :: _) when(xs <= 3) => x | _ => 0"
+--        Right r = runParserStack exprParser "" "let xs = [] : List Int in match xs with | (x :: _) when(x == 1) => x | _ => 0"
+
+--    expr = r
+--      where
+--        Right r = runParserStack exprParser "" "let xs = [5 : Int] : List Int in match xs with | (x :: _) when (xs.length <= 3) => x | _ => 0"
 
 
 
@@ -2791,6 +2827,7 @@ testTypeEnv = Env.fromList
     , ( "(==)"         , Forall [kTyp] [InClass "Eq" 0] (tGen 0 `tArr` tGen 0 `tArr` tBool) )
 
     , ( "testFun1"     , Forall [kTyp] [InClass "Num" 0, InClass "Eq" 0] (tGen 0 `tArr` tBool) )
+    , ( "length"       , Forall [kTyp] [] (tList (tGen 0) `tArr` tInt) )
 
     , ( "[]"           , Forall [kTyp] [] (tList (tGen 0)) )
     , ( "(+)"          , Forall [kTyp] [InClass "Num" 0] (tGen 0 `tArr` tGen 0 `tArr` tGen 0) )

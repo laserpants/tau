@@ -73,7 +73,6 @@ reserved =
     , "else"
     , "fun"
     , "if"
-    , "iff"
     , "in"
     , "let"
     , "match"
@@ -81,7 +80,7 @@ reserved =
     , "otherwise"
     , "then"
     , "where"
---    , "when"
+    , "when"
     , "with"
     ]
 
@@ -245,7 +244,7 @@ operator =
 
 postfixFunArgParser :: Parser (ProgExpr () -> ProgExpr ())
 postfixFunArgParser = do
-    args <- argParser annExprParser
+    args <- try (parens spaces $> [litExpr () TUnit]) <|> argParser annExprParser
     pure (\fun -> appExpr () (fun:args))
 
 annExprParser :: Parser (ProgExpr ())
@@ -265,11 +264,6 @@ exprParser = makeExprParser (try lambdaParser <|> try (parens exprParser) <|> pa
       <|> parseList
       <|> parseTuple
       <|> parseRecord
-
-    parseApp = do
-        fun  <- nameParser
-        args <- argParser annExprParser
-        pure (appExpr () (varExpr () fun:args))
 
     parseIf = ifExpr () 
         <$> (keyword "if"   *> annExprParser)
@@ -300,14 +294,14 @@ exprParser = makeExprParser (try lambdaParser <|> try (parens exprParser) <|> pa
         pure (iffs <> maybe [] (pure . Guard []) last)
 
     iffClause = Guard 
-        <$> (keyword "iff" *> (argParser exprParser) <* symbol "=>") 
+        <$> (keyword "when" *> (argParser exprParser) <* symbol "=>") 
         <*> annExprParser
 
     nonGuarded = do
         expr <- symbol "=>" *> annExprParser
         pure [Guard [] expr]
 
-    parseFunLet    = BFun () <$> nameParser <*> argParser annPatternParser
+    parseFunLet    = BFun () <$> nameParser <*> parseFunArg 
     parseNormalLet = BPat () <$> annPatternParser
     parseFun       = keyword "fun" *> (funExpr () <$> some parseClause)
     parseVar       = varExpr   () <$> nameParser
@@ -315,6 +309,9 @@ exprParser = makeExprParser (try lambdaParser <|> try (parens exprParser) <|> pa
     parseTuple     = tupleExpr () <$> components exprParser
     parseCon       = conExpr   () <$> constructorParser 
                                   <*> (fromMaybe [] <$> optional (components annExprParser))
+
+    parseFunArg = 
+        try (parens spaces $> [litPat () TUnit]) <|> argParser annPatternParser
 
     parseList = 
         try (brackets spaces $> conExpr () "[]" [])

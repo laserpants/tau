@@ -5,8 +5,8 @@
 [x] Kinds
 [x] Tests
 [x] Type class ambg.
+[x] Recursion
 [-] Type class argument order
-[-] Recursion
 [-] Modules/Program
 [-] Codata
 

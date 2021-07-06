@@ -2,12 +2,14 @@
 
 grok : Option Int -> Int -> Int
 grok 
-  | (Some x) 1 when x > 100 = 0  
-  | None     1             = 1 
-  | _        _             = 2
+  | (Some x) 1 when(x > 100) = 0  
+  | None     1               = 1 
+  | _        _               = 2
   where
     valid = True
 
+
+grok : Option(Int) -> Int -> Int
 
 
 reverse 
@@ -196,9 +198,9 @@ if z > 10
     match x with
       | Some(z) 
           when(z > 10) => 1 : Int
-          when(z > 5) => 2 : Int
-          otherwise => 3 : Int
-      | Some(z) => 2
+          when(z > 5)  => 2 : Int
+          otherwise    => 3 : Int
+      | Some(z)        => 2
 
 foo 
   | a when(a > 3) => 1
@@ -267,3 +269,14 @@ foo((a, b)) = a + b
 
 
 replace OField ...> @#getField
+
+semicolon
+
+
+let x =
+  if z > 10 
+    then match x with | Some(z) when(z > 10) => 1 : Int; when(z > 5) => 2 : Int; otherwise => 3 : Int | Some(z) => 2 | None => 3
+    else match x with | Some(z) when(z > 10) => 1 : Int; when(z > 5) => 2 : Int; otherwise => 3 : Int | Some(z) => 2
+  in
+    3
+

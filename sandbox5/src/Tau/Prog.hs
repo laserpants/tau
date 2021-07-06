@@ -117,7 +117,10 @@ toHeadNormalForm
   => ClassEnv
   -> [Predicate] 
   -> m [Predicate]
-toHeadNormalForm env = fmap concat . mapM (hnf env) 
+toHeadNormalForm env ps = do
+    traceShowM ps
+    traceShowM "////////////"
+    fmap concat (mapM (hnf env) ps)
   where
     hnf env tycl 
         | isHeadNormalForm tycl = pure [tycl]
