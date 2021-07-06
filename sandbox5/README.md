@@ -265,3 +265,5 @@ foo
 
 foo((a, b)) = a + b
 
+
+replace OField ...> @#getField
