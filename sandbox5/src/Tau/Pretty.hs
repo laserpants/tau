@@ -220,8 +220,11 @@ instance (Pretty e1, FunArgs e2, Functor e3, Clauses [e3 (Expr t1 t2 t3 t4 t5 t6
         EFun    _ cs                     -> group (nest 2 (vsep ["fun", clauses (fst <$$> cs)]))
 
         EApp _ ((e, doc1):es) -> 
-            parensIf addLeft doc1 <> prettyTuple (snd <$> es)
+            parensIf addLeft doc1 <> prettyArgs es
           where
+            prettyArgs [(Fix (ELit _ TUnit), _)] = "()"
+            prettyArgs args = parens (commaSep (snd <$> args))
+
             addLeft = 
                 case project e of
                     EVar{} -> False
@@ -315,10 +318,13 @@ prettyFix name e1 e2 =
 --        EFun _ cs -> clauses cs
 --        _         -> "=" <+> snd e1
 
-instance (Pretty p) => Pretty (Binding t p) where
+instance Pretty (Binding t (ProgPattern t)) where
     pretty = \case
         BPat _ p    -> pretty p
-        BFun _ f ps -> pretty f <> prettyTuple (pretty <$> ps)
+        BFun _ f ps -> pretty f <> prettyArgs ps
+          where
+            prettyArgs [Fix (PLit _ TUnit)] = "()"
+            prettyArgs args = parens (commaSep (pretty <$> args))
 
 instance Pretty (Op1 t) where
     pretty = \case
