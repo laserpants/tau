@@ -9,5 +9,3 @@
 [-] Type class argument order
 [-] Modules/Program
 [-] Codata
-
-iff ..> when
