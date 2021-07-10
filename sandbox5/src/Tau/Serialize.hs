@@ -323,17 +323,17 @@ errorRep = \case
     _                   -> makeRep "Error" "TODO"     []
 
 coreRep :: Core -> Value
-coreRep = cata $ \case
+coreRep = project >>> \case
     CVar name           -> makeRep "Core" "CVar"      [String name]
     CLit prim           -> makeRep "Core" "CLit"      [toRep prim]
-    CApp es             -> makeRep "Core" "CApp"      es
-    CLet name e1 e2     -> makeRep "Core" "CLet"      [String name, e1, e2]
-    CLam name e         -> makeRep "Core" "CLam"      [String name, e]
-    CIf  e1 e2 e3       -> makeRep "Core" "CIf"       [e1, e2, e3]
-    CPat e m            -> makeRep "Core" "CPat"      (e:(coreClausesRep <$> m))
+    CApp es             -> makeRep "Core" "CApp"      [toRep es]
+    CLet name e1 e2     -> makeRep "Core" "CLet"      [String name, toRep e1, toRep e2]
+    CLam name e         -> makeRep "Core" "CLam"      [String name, toRep e]
+    CIf  e1 e2 e3       -> makeRep "Core" "CIf"       [toRep e1, toRep e2, toRep e3]
+    CPat e m            -> makeRep "Core" "CPat"      [toRep e, array (concatMap coreClausesRep m)]
 
-coreClausesRep :: ([Name], Value) -> Value
-coreClausesRep (names, value) = array [array (String <$> names), value]
+coreClausesRep :: ([Name], Core) -> [Value]
+coreClausesRep (names, e) = [toRep names, toRep e]
 
 valueRep :: Tau.Value Eval -> Value
 valueRep = \case
