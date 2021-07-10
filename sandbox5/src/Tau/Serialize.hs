@@ -193,8 +193,8 @@ patternRep = project >>> \case
     PAs    t as p       -> makeRep "Pattern" "PAs"    [toRep t, String as, toRep p] 
     POr    t p q        -> makeRep "Pattern" "POr"    [toRep t, toRep p, toRep q] 
     PAny   t            -> makeRep "Pattern" "PAny"   [toRep t] 
-    PTuple t ps         -> makeRep "Pattern" "PTuple" (toRep t:toReps ps)
-    PList  t ps         -> makeRep "Pattern" "PList"  (toRep t:toReps ps)
+    PTuple t ps         -> makeRep "Pattern" "PTuple" [toRep t, toRep ps]
+    PList  t ps         -> makeRep "Pattern" "PList"  [toRep t, toRep ps]
     PRow   t lab a b    -> makeRep "Pattern" "PRow"   [toRep t, String lab, toRep a, toRep b]
     PAnn   t p          -> makeRep "Pattern" "PAnn"   [toRep t, toRep p]
 
@@ -298,7 +298,7 @@ guardRep = \case
 
 clauseRep :: (ToRep t, ToRep p, ToRep a) => Clause t p a -> Value
 clauseRep = \case
-    Clause t ps e       -> makeRep "Clause" "Clause"  ([toRep t, toRep ps] <> toReps e)
+    Clause t ps e       -> makeRep "Clause" "Clause"  [toRep t, toRep ps, toRep e]
 
 simplifiedClauseRep :: (ToRep t, ToRep p, ToRep a) => SimplifiedClause t p a -> Value
 simplifiedClauseRep = \case

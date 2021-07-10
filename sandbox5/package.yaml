@@ -33,6 +33,7 @@ dependencies:
 - tree-view
 - type-iso
 - aeson
+- aeson-pretty
 - vector
 - bytestring
 - unordered-containers

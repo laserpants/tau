@@ -14,6 +14,7 @@ import Control.Monad.State
 import Control.Monad.Supply
 import Control.Monad.Trans.Maybe
 import Data.Aeson
+import Data.Aeson.Encode.Pretty
 import Data.Either.Combinators (rightToMaybe, fromRight)
 import Data.Foldable (foldlM, foldrM)
 import Data.Function ((&))
@@ -1134,7 +1135,7 @@ example1 = do -- foo1 expr
     traceShowM (pretty expr)
     a <- runReaderT (compileBundle expr) (testClassEnv, testTypeEnv, testKindEnv, testConstructorEnv) 
 
-    liftIO $ LBS.writeFile "/home/laserpants/code/tau-tooling/src/tmp/bundle.json" (encode (toRep a))
+    liftIO $ LBS.writeFile "/home/laserpants/code/tau-tooling/src/tmp/bundle.json" (encodePretty' defConfig{ confIndent = Spaces 2 } (toRep a))
 
     let v = evalExpr (coreExpr a) testEvalEnv
     traceShowM v
@@ -1761,6 +1762,8 @@ example1 = do -- foo1 expr
 --      where
 --        Right r = runParserStack exprParser "" "{ a = { b = { c = \"d\" } } }.a.b.c"
 --    -- DONE --
+
+
 
 
     --expr = r
