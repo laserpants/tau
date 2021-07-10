@@ -6,6 +6,7 @@ module Tau.Compiler.Pipeline.Stage2 where
 import Control.Monad.Except 
 import Control.Monad.Reader
 import Control.Monad.State
+import Control.Monad.Trans.Maybe
 import Control.Monad.Supply
 import Data.Either (fromRight)
 import Data.Foldable (foldlM, foldrM)
@@ -48,7 +49,7 @@ translate
      , MonadReader (ClassEnv, TypeEnv, KindEnv, ConstructorEnv) m )
   => WorkingExpr (TypeInfoT [Error] (Maybe Type))
   -> m (WorkingExpr (Maybe Type))
-translate expr = evalStateT (expandTypeClasses =<< translateLiterals expr) mempty -- ([], [])
+translate expr = evalStateT (expandTypeClasses =<< translateLiterals expr) mempty
 
 translateLiterals 
   :: ( MonadSupply Name m

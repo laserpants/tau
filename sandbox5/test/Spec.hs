@@ -2,6 +2,7 @@
 import Tau.Compiler.PatternsTests
 import Tau.Compiler.SubstitutionTests
 import Tau.Compiler.TranslationTests
+import Tau.Compiler.TranslationTests
 import Tau.Compiler.TypecheckTests
 import Tau.Compiler.UnificationTests
 import Tau.ParserTests
@@ -61,3 +62,4 @@ main =
         describe "Tau.Parser (type)"                       testTypeParser
         describe "Tau.Parser (datatype)"                   testDatatypeParser
 
+        describe "Bundle"                                  testCompileBundle

@@ -12,13 +12,17 @@ import Control.Monad.Identity
 import Control.Monad.Reader
 import Control.Monad.State
 import Control.Monad.Supply
+import Control.Monad.Trans.Maybe
 import Data.Aeson
 import Data.Either.Combinators (rightToMaybe, fromRight)
 import Data.Foldable (foldlM, foldrM)
 import Data.Function ((&))
-import Data.Maybe
 import Data.List (nub)
+import Data.Maybe
+import Data.Text.Prettyprint.Doc
+import Data.Text.Prettyprint.Doc.Render.Text
 import System.Environment 
+import Tau.Compiler.Bundle
 import Tau.Compiler.Error
 import Tau.Compiler.Patterns
 import Tau.Compiler.Pipeline.Stage0 
@@ -51,8 +55,6 @@ import qualified Tau.Compiler.Pipeline.Stage4 as Stage4
 import qualified Tau.Compiler.Pipeline.Stage5 as Stage5
 import qualified Tau.Compiler.Pipeline.Stage6 as Stage6
 import qualified Tau.Env as Env
-import Data.Text.Prettyprint.Doc
-import Data.Text.Prettyprint.Doc.Render.Text
 
 
 layoutOpts = (LayoutOptions {layoutPageWidth = AvailablePerLine 10 1.0})
@@ -1057,7 +1059,8 @@ foo1 expr = do
 
         let e2_1 = Stage2.translate e1
 
-        let e2 = Stage2.runTranslate testClassEnv testTypeEnv testKindEnv testConstructorEnv e2_1
+        let e2 :: Stage2.WorkingExpr (Maybe Type)
+            e2 = Stage2.runTranslate testClassEnv testTypeEnv testKindEnv testConstructorEnv e2_1
 
 --        e2 <- Stage2.translate e1
 
@@ -1071,7 +1074,8 @@ foo1 expr = do
 
         let e3_1 = Stage3.translate e2
 
-        let e3 = Stage3.runTranslate e3_1
+        let e3 :: Stage3.TargetExpr (Maybe Type)
+            e3 = Stage3.runTranslate e3_1
 
 --        e3 <- Stage3.translate e2
 
@@ -1126,7 +1130,16 @@ foo1 expr = do
 
 
 example1 :: IO () -- (ProgExpr (TypeInfo [Error]), Substitution Type, Substitution Kind, Context)
-example1 = foo1 expr
+example1 = do -- foo1 expr
+    traceShowM (pretty expr)
+    a <- runReaderT (compileBundle expr) (testClassEnv, testTypeEnv, testKindEnv, testConstructorEnv) 
+
+    liftIO $ LBS.writeFile "/home/laserpants/code/tau-tooling/src/tmp/bundle.json" (encode (toRep a))
+
+    let v = evalExpr (coreExpr a) testEvalEnv
+    traceShowM v
+
+    pure ()
   where
     expr :: ProgExpr ()
     --expr = varExpr () "x"
@@ -1743,14 +1756,45 @@ example1 = foo1 expr
 
 
 
-    expr = r
-      where
-        Right r = runParserStack exprParser "" "{ a = { b = { c = \"d\" } } }.a.b.c"
-
-
+--    -- DONE --
 --    expr = r
 --      where
---        Right r = runParserStack exprParser "" "let xs = [5 : Int] : List Int in match xs with | (x :: _) when (xs.length <= 3) => x | _ => 0"
+--        Right r = runParserStack exprParser "" "{ a = { b = { c = \"d\" } } }.a.b.c"
+--    -- DONE --
+
+
+    --expr = r
+    --  where
+    --    Right r = runParserStack exprParser "" "let xs = [5 : Int] : List Int in match xs with | (x :: _) when (length(xs) <= 3) => x | _ => 0"
+    expr = 
+        (fixExpr () "loopList"
+            (lamExpr () [varPat () "g", varPat () "ys"] (patExpr () (varExpr () "ys")
+                [ Clause () (conPat () "(::)" [varPat () "x", varPat () "xs"]) 
+                      [Guard [] (appExpr () [varExpr () "g", conExpr () "Cons'" [varExpr () "x", varExpr () "xs", appExpr () [varExpr () "loopList", varExpr () "g", varExpr () "xs"]]])]
+                , Clause () (conPat () "[]" []) 
+                      [Guard [] (appExpr () [varExpr () "g", conExpr () "Nil'" []])]
+                ]))
+            (letExpr ()
+                (BFun () "length" [varPat () "xs"])
+                --
+                -- xs.loopList(fun | Cons'(_, _, a) => 1 + a | Nil' => 0 : Int)
+                -- 
+                (op2Expr () (ODot ())
+                    (appExpr () 
+                        [ varExpr () "loopList"
+                        , funExpr () 
+                            [ Clause () (conPat () "Cons'" [anyPat (), anyPat (), varPat () "a"]) [Guard [] (op2Expr () (OAdd ()) (litExpr () (TInteger 1)) (varExpr () "a"))]
+                            , Clause () (conPat () "Nil'" []) [Guard [] (annExpr tInt (litExpr () (TInteger 0)))]
+                            ]
+                        ])
+                    (varExpr () "xs"))
+                (letExpr () 
+                    (BPat () (varPat () "xs"))
+                    (annExpr (tList tInt) (listExpr () [litExpr () (TInteger 5)]))
+                    (patExpr () (varExpr () "xs")
+                        [ Clause () (conPat () "(::)" [varPat () "x", anyPat ()]) [Guard [op2Expr () (OLte ()) (appExpr () [varExpr () "length", varExpr () "xs"]) (litExpr () (TInteger 3))] (varExpr () "x")]
+                        , Clause () (anyPat ()) [Guard [] (litExpr () (TInteger 0))]
+                        ]))))
 
 
 
@@ -2880,7 +2924,13 @@ testClassEnv = Env.fromList
             , ( "(<=)", tVar kTyp "a" `tArr` tVar kTyp "a" `tArr` tBool ) 
             ]
         -- Instances
-        , []
+        , [ ClassInfo (InClass "Ord" tInt) [] 
+              [ ( "(>)", Ast (varExpr (TypeInfo () (tInt `tArr` tInt `tArr` tBool) []) "@Int.(>)") ) 
+              , ( "(<)", Ast (varExpr (TypeInfo () (tInt `tArr` tInt `tArr` tBool) []) "@Int.(<)") ) 
+              , ( "(>=)", Ast (varExpr (TypeInfo () (tInt `tArr` tInt `tArr` tBool) []) "@Int.(>=)") ) 
+              , ( "(<=)", Ast (varExpr (TypeInfo () (tInt `tArr` tInt `tArr` tBool) []) "@Int.(<=)") ) 
+              ]
+          ]
         )
       )
     , ( "Eq"

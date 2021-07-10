@@ -21,7 +21,7 @@ import qualified Data.Map.Strict as Map
 import qualified Data.Text as Text
 
 testDescription :: Type -> Type -> Text
-testDescription t1 t2 = "The types " <> prettyText t1 <> " and " <> prettyText t2 
+testDescription t1 t2 = "The types " <> prettyPrint t1 <> " and " <> prettyPrint t2 
 
 succeedUnifyTypes :: Type -> Type -> SpecWith ()
 succeedUnifyTypes t1 t2 = do
@@ -120,7 +120,7 @@ failUnifyTypes t1 t2 = do
 ---- >>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>
 --
 --testDescription :: Type -> Type -> Text
---testDescription t1 t2 = "The types " <> prettyText t1 <> " and " <> prettyText t2 
+--testDescription t1 t2 = "The types " <> prettyPrint t1 <> " and " <> prettyPrint t2 
 --
 --failUnifyTypes :: Type -> Type -> SpecWith ()
 --failUnifyTypes t1 t2 = do
@@ -338,8 +338,8 @@ testUnifyRowTypes = do
 --
 --succeedTypeToRow :: Type -> Row Type -> SpecWith ()
 --succeedTypeToRow ty row =
---    describe ("The type " <> prettyText ty) $ 
---        it ("✔ unfolds to " <> prettyText row)
+--    describe ("The type " <> prettyPrint ty) $ 
+--        it ("✔ unfolds to " <> prettyPrint row)
 --            (typeToRow ty == row)
 --
 --testTypeToRow :: SpecWith ()

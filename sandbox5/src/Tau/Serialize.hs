@@ -28,7 +28,7 @@ instance (ToRep t) => ToRep [t] where
     toRep ts = array (toRep <$> ts)
 
 instance (ToRep t) => ToRep (Maybe t) where
-    toRep Nothing  = object []
+    toRep Nothing  = makeRep "-" "-" []
     toRep (Just t) = toRep t
 
 instance ToRep Type where 
@@ -41,7 +41,7 @@ instance ToRep Prim where
     toRep = withPretty primJson
 
 instance ToRep () where
-    toRep _ = object []
+    toRep _ = makeRep "()" "()" []
 
 instance 
     ( ToRep t1
@@ -64,6 +64,7 @@ instance
     ( Functor e3
     , Pretty e1
     , FunArgs e2
+    , FunArgsRep e2
     , Clauses [e3 (Expr t1 t2 t3 t4 t5 t6 t7 t8 t9 t10 t11 t12 t13 t14 t15 e1 e2 e3)]
     , ToRep t1
     , ToRep t2
@@ -105,7 +106,7 @@ instance (Pretty p, Pretty a, ToRep t, ToRep p, ToRep a) => ToRep (Clause t p a)
 instance (Pretty p, Pretty a, ToRep t, ToRep p, ToRep a) => ToRep (SimplifiedClause t p a) where
     toRep = withPretty simplifiedClauseRep
 
-instance (ToRep e, ToRep t) => ToRep (TypeInfoT e t) where
+instance (ToRep t) => ToRep (TypeInfoT [Error] t) where
     toRep = typeInfoRep
 
 instance ToRep Predicate where
@@ -129,6 +130,9 @@ instance ToRep Text where
 instance ToRep (Tau.Value Eval) where
     toRep = valueRep
 
+toReps :: ToRep r => [r] -> [Value]
+toReps rs = toRep <$> rs 
+
 -- >>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>
 
 array :: [Value] -> Value
@@ -136,7 +140,7 @@ array = Array . Vector.fromList
 
 makeRep :: String -> String -> [Value] -> Value
 makeRep type_ constructor args = object 
-    [ "_meta"    .= [type_, constructor]
+    [ "meta"     .= [type_, constructor]
     , "children" .= args ]
 
 withPretty :: (Pretty p) => (p -> Value) -> p -> Value
@@ -184,25 +188,26 @@ patternRep
   -> Value
 patternRep = project >>> \case
     PVar   t var        -> makeRep "Pattern" "PVar"   [toRep t, String var]
-    PCon   t con ps     -> makeRep "Pattern" "PCon"   [toRep t, String con, toRep ps] 
+    PCon   t con ps     -> makeRep "Pattern" "PCon"   [toRep t, String con, toRep ps]
     PLit   t prim       -> makeRep "Pattern" "PLit"   [toRep t, toRep prim] 
     PAs    t as p       -> makeRep "Pattern" "PAs"    [toRep t, String as, toRep p] 
     POr    t p q        -> makeRep "Pattern" "POr"    [toRep t, toRep p, toRep q] 
     PAny   t            -> makeRep "Pattern" "PAny"   [toRep t] 
-    PTuple t ps         -> makeRep "Pattern" "PTuple" [toRep t, toRep ps] 
-    PList  t ps         -> makeRep "Pattern" "PList"  [toRep t, toRep ps] 
+    PTuple t ps         -> makeRep "Pattern" "PTuple" (toRep t:toReps ps)
+    PList  t ps         -> makeRep "Pattern" "PList"  (toRep t:toReps ps)
     PRow   t lab a b    -> makeRep "Pattern" "PRow"   [toRep t, String lab, toRep a, toRep b]
     PAnn   t p          -> makeRep "Pattern" "PAnn"   [toRep t, toRep p]
 
 simplifiedPatternRep :: (ToRep t) => SimplifiedPattern t -> Value
 simplifiedPatternRep = \case
-    SCon   t p ps       -> makeRep "SimplifiedPattern" "SCon" 
-                                                      [toRep t, toRep p, toRep ps]
+    SCon   t p ps       -> makeRep "SimplifiedPattern" 
+                                   "SCon"             ([toRep t, toRep p] <> toReps ps)
 
 exprRep
   :: ( Functor e3
      , Pretty e1
      , FunArgs e2
+     , FunArgsRep e2
      , Clauses [e3 (Expr t1 t2 t3 t4 t5 t6 t7 t8 t9 t10 t11 t12 t13 t14 t15 e1 e2 e3)]
      , ToRep t1
      , ToRep t2
@@ -230,17 +235,26 @@ exprRep = project >>> \case
     ELit   t prim       -> makeRep "Expr" "ELit"      [toRep t, toRep prim]
     EApp   t es         -> makeRep "Expr" "EApp"      [toRep t, toRep es]
     EFix   t name e1 e2 -> makeRep "Expr" "EFix"      [toRep t, String name, toRep e1, toRep e2]
-    ELam   t ps e       -> makeRep "Expr" "ELam"      [toRep t, toRep ps, toRep e]
+    ELam   t ps e       -> makeRep "Expr" "ELam"      [toRep t, toFunArgsRep ps, toRep e]
     EIf    t e1 e2 e3   -> makeRep "Expr" "EIf"       [toRep t, toRep e1, toRep e2, toRep e3]
-    EPat   t es cs      -> makeRep "Expr" "EPat"      [toRep t, toRep es, toRep cs]
+    EPat   t es cs      -> makeRep "Expr" "EPat"      ([toRep t, toRep es] <> (toRep <$> cs))
     ELet   t bind e1 e2 -> makeRep "Expr" "ELet"      [toRep t, toRep bind, toRep e1, toRep e2]
-    EFun   t cs         -> makeRep "Expr" "EFun"      [toRep t, toRep cs]
+    EFun   t cs         -> makeRep "Expr" "EFun"      (toRep t:(toRep <$> cs))
     EOp1   t op a       -> makeRep "Expr" "EOp1"      [toRep t, toRep op, toRep a]
     EOp2   t op a b     -> makeRep "Expr" "EOp2"      [toRep t, toRep op, toRep a, toRep b]
     ETuple t es         -> makeRep "Expr" "ETuple"    [toRep t, toRep es]
     EList  t es         -> makeRep "Expr" "EList"     [toRep t, toRep es]
     ERow   t lab a b    -> makeRep "Expr" "ERow"      [toRep t, String lab, toRep a, toRep b]
     EAnn   t a          -> makeRep "Expr" "EAnn"      [toRep t, toRep a]
+
+class FunArgsRep f where
+    toFunArgsRep :: f -> Value
+
+instance FunArgsRep Text where
+    toFunArgsRep t = array [toRep t]
+
+instance (ToRep t) => FunArgsRep [(ProgPattern t)] where
+    toFunArgsRep = array . fmap toRep
 
 op1Rep :: (ToRep t) => Op1 t -> Value
 op1Rep = \case
@@ -276,30 +290,33 @@ op2Rep = \case
 bindintRep :: (ToRep t, ToRep p) => Binding t p -> Value
 bindintRep = \case
     BPat t p            -> makeRep "Binding" "BPat"   [toRep t, toRep p]
-    BFun t name ps      -> makeRep "Binding" "BFun"   [toRep t, String name, toRep ps]
+    BFun t name ps      -> makeRep "Binding" "BFun"   ([toRep t, String name] <> toReps ps)
 
 guardRep :: (ToRep a) => Guard a -> Value
 guardRep = \case
-    Guard es e          -> makeRep "Guard" "Guard"    [toRep es, toRep e]
+    Guard es e          -> makeRep "Guard" "Guard"    (toReps es <> [toRep e])
 
 clauseRep :: (ToRep t, ToRep p, ToRep a) => Clause t p a -> Value
 clauseRep = \case
-    Clause t ps e       -> makeRep "Clause" "Clause"  [toRep t, toRep ps, toRep e]
+    Clause t ps e       -> makeRep "Clause" "Clause"  ([toRep t, toRep ps] <> toReps e)
 
 simplifiedClauseRep :: (ToRep t, ToRep p, ToRep a) => SimplifiedClause t p a -> Value
 simplifiedClauseRep = \case
-    SimplifiedClause t ps e -> makeRep "SimplifiedClause" "SimplifiedClause" 
-                                                      [toRep t, toRep ps, toRep e]
+    SimplifiedClause t ps e -> makeRep "SimplifiedClause" 
+                                       "SimplifiedClause" 
+                                       ((toRep t:toReps ps) <> [toRep e])
 
-typeInfoRep :: (ToRep e, ToRep t) => TypeInfoT e t -> Value
+typeInfoRep :: (ToRep t) => TypeInfoT [Error] t -> Value
 typeInfoRep = \case
-    TypeInfo e t ps     -> makeRep "TypeInfoT" "TypeInfo" 
-                                                      [toRep e, toRep t, toRep ps]
+    TypeInfo e t ps      -> makeRep "TypeInfoT" "TypeInfo" 
+        [ makeRep "List" "Errors" (toReps e)
+        , toRep t
+        , makeRep "List" "Predicates" (toReps ps) ]
 
 predicateRep :: (ToRep a) => PredicateT a -> Value
 predicateRep = \case
-    InClass name a      -> makeRep "PredicateT" "InClass" 
-                                                      [String name, toRep a]
+    InClass name a      -> makeRep "PredicateT" 
+                                   "InClass"         [String name, toRep a]
 
 errorRep :: Error -> Value
 errorRep = \case
@@ -309,11 +326,11 @@ coreRep :: Core -> Value
 coreRep = cata $ \case
     CVar name           -> makeRep "Core" "CVar"      [String name]
     CLit prim           -> makeRep "Core" "CLit"      [toRep prim]
-    CApp es             -> makeRep "Core" "CApp"      [array es]
+    CApp es             -> makeRep "Core" "CApp"      es
     CLet name e1 e2     -> makeRep "Core" "CLet"      [String name, e1, e2]
     CLam name e         -> makeRep "Core" "CLam"      [String name, e]
     CIf  e1 e2 e3       -> makeRep "Core" "CIf"       [e1, e2, e3]
-    CPat e m            -> makeRep "Core" "CPat"      [e, array (coreClausesRep <$> m)]
+    CPat e m            -> makeRep "Core" "CPat"      (e:(coreClausesRep <$> m))
 
 coreClausesRep :: ([Name], Value) -> Value
 coreClausesRep (names, value) = array [array (String <$> names), value]
@@ -321,7 +338,7 @@ coreClausesRep (names, value) = array [array (String <$> names), value]
 valueRep :: Tau.Value Eval -> Value
 valueRep = \case
     Tau.Value prim      -> makeRep "Value" "Value"    [toRep prim]
-    Tau.Data con args   -> makeRep "Value" "Data"     [String con, toRep args]
-    Tau.PrimFun f _ vs  -> makeRep "Value" "PrimFun"  [String f, String "<<internal>>", toRep vs]
+    Tau.Data con args   -> makeRep "Value" "Data"     (String con:toReps args)
+    Tau.PrimFun f _ vs  -> makeRep "Value" "PrimFun"  (String f:String "<<internal>>":toReps vs)
     Tau.Closure f _ _   -> makeRep "Value" "Closure"  [String f, String "<<internal>>", String "<<internal>>"]
     Tau.Fail err        -> makeRep "Value" "Fail"     [String (pack err)]

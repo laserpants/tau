@@ -118,8 +118,8 @@ toHeadNormalForm
   -> [Predicate] 
   -> m [Predicate]
 toHeadNormalForm env ps = do
-    traceShowM ps
-    traceShowM "////////////"
+    --traceShowM ps
+    --traceShowM "////////////"
     fmap concat (mapM (hnf env) ps)
   where
     hnf env tycl 

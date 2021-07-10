@@ -216,8 +216,10 @@ instance (Pretty e1, FunArgs e2, Functor e3, Clauses [e3 (Expr t1 t2 t3 t4 t5 t6
         ECon _ "#" [(r, _)]              -> prettyRecord r
         ECon _ con []                    -> pretty con
         ECon _ con ps                    -> pretty con <> prettyTuple (snd <$> ps)
-        EPat    _ e1 cs                  -> group (nest 2 (vsep ["match" <+> snd e1 <+> "with", clauses (fst <$$> cs)]))
-        EFun    _ cs                     -> group (nest 2 (vsep ["fun", clauses (fst <$$> cs)]))
+        --EPat    _ e1 cs                  -> group (nest 2 (vsep ["match" <+> snd e1 <+> "with", clauses (fst <$$> cs)]))
+        --EFun    _ cs                     -> group (nest 2 (vsep ["fun", clauses (fst <$$> cs)]))
+        EPat    _ e1 cs                  -> nest 2 (vsep ["match" <+> snd e1 <+> "with", clauses (fst <$$> cs)])
+        EFun    _ cs                     -> nest 2 (vsep ["fun", clauses (fst <$$> cs)])
 
         EApp _ ((e, doc1):es) -> 
             parensIf addLeft doc1 <> prettyArgs es

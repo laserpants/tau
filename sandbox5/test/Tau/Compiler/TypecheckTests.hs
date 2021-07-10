@@ -12,6 +12,7 @@ import Tau.Eval
 import Tau.Pretty
 import Tau.Lang
 import Tau.Prog
+import Tau.Tooling
 import Tau.Type
 import Test.Hspec hiding (describe, it)
 import Utils
@@ -22,8 +23,8 @@ runInferStack = runInfer mempty testClassEnv testTypeEnv testKindEnv testConstru
 
 succeedInferExpr :: ProgExpr () -> Type -> SpecWith ()
 succeedInferExpr expr ty = -- ps errs =
-    describe ("The inferred type of the expression " <> prettyText expr) $ do
-        it ("✔ is unifiable with " <> prettyText ty) $
+    describe ("The inferred type of the expression " <> prettyPrint expr) $ do
+        it ("✔ is unifiable with " <> prettyPrint ty) $
             isRight r
   where
     (Ast e, typeSub, kindSub, context) = runInferStack (inferAstType (Ast expr))
@@ -33,8 +34,8 @@ succeedInferExpr expr ty = -- ps errs =
 
 succeedInferPattern :: ProgPattern () -> Type -> SpecWith ()
 succeedInferPattern pat ty = -- ps errs =
-    describe ("The inferred type of the pattern " <> prettyText pat) $ do
-        it ("✔ is unifiable with " <> prettyText ty) $
+    describe ("The inferred type of the pattern " <> prettyPrint pat) $ do
+        it ("✔ is unifiable with " <> prettyPrint ty) $
             isRight r
   where
     ((p, _), typeSub, kindSub, context) = runInferStack (inferPatternType pat)
@@ -89,7 +90,13 @@ testClassEnv = Env.fromList
             , ( "(<=)", tVar kTyp "a" `tArr` tVar kTyp "a" `tArr` tBool ) 
             ]
         -- Instances
-        , []
+        , [ ClassInfo (InClass "Ord" tInt) [] 
+              [ ( "(>)", Ast (varExpr (TypeInfo () (tInt `tArr` tInt `tArr` tBool) []) "@Int.(>)") ) 
+              , ( "(<)", Ast (varExpr (TypeInfo () (tInt `tArr` tInt `tArr` tBool) []) "@Int.(<)") ) 
+              , ( "(>=)", Ast (varExpr (TypeInfo () (tInt `tArr` tInt `tArr` tBool) []) "@Int.(>=)") ) 
+              , ( "(<=)", Ast (varExpr (TypeInfo () (tInt `tArr` tInt `tArr` tBool) []) "@Int.(<=)") ) 
+              ]
+          ]
         )
       )
     , ( "Eq"
@@ -231,7 +238,7 @@ testEvalEnv = Env.fromList
 ----
 ------failInferPattern :: (Show t, Monoid t) => Text -> ProgPattern t -> (Error -> Bool) -> SpecWith ()
 ----failInferPattern expl pat isExpected = undefined -- do
-------    describe ("The pattern " <> prettyText pat) $
+------    describe ("The pattern " <> prettyPrint pat) $
 ------        case runInferWithEnvs (runWriterT (inferPattern pat)) of
 ------            Left (InferError _ _ err _) -> 
 ------                it ("✗ is not well-typed: (" <> expl <> ")") $ isExpected err
@@ -244,10 +251,10 @@ testEvalEnv = Env.fromList
 ------    case runInferWithEnvs (runWriterT (inferPattern pat)) of
 ------        Left e -> error (show e)
 ------        Right ((pat, vars), sub, context) -> do
-------            describe ("The pattern " <> prettyText pat) $
-------                it ("has type: " <> prettyText ty <> ", class constraints: " 
-------                                 <> prettyText ps <> ", variables: " 
-------                                 <> prettyText vs <> ", etc.") $
+------            describe ("The pattern " <> prettyPrint pat) $
+------                it ("has type: " <> prettyPrint ty <> ", class constraints: " 
+------                                 <> prettyPrint ps <> ", variables: " 
+------                                 <> prettyPrint vs <> ", etc.") $
 ------                    let TypeInfo{..} = patternTag (apply sub pat)
 ------                        sub1 = normalizer nodeType
 ------                        vars' = apply sub <$$> vars

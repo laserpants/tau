@@ -36,9 +36,6 @@ _b = tVar kTyp "b"
 _c :: Type
 _c = tVar kTyp "c"
 
-prettyText :: (Pretty p) => p -> Text
-prettyText = renderDoc . pretty
-
 runUnify :: SupplyT Name (ExceptT err Maybe) a -> Either err a
 runUnify e = fromJust (runExceptT (evalSupplyT e (numSupply "")))
 

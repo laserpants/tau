@@ -342,6 +342,18 @@ testExprParser = do
         "let f() = () in f()"
         (letExpr () (BFun () "f" [litPat () TUnit]) (litExpr () TUnit) (appExpr () [varExpr () "f", litExpr () TUnit]))
 
+    succeedParse exprParser
+        "length(xs) <= 3"
+        (op2Expr () (OLte ()) (appExpr () [varExpr () "length", varExpr () "xs"]) (litExpr () (TInteger 3)))
+
+    succeedParse exprParser
+        "(length(xs) <= 3)"
+        (op2Expr () (OLte ()) (appExpr () [varExpr () "length", varExpr () "xs"]) (litExpr () (TInteger 3)))
+
+    succeedParse exprParser
+        "((length(xs) <= 3))"
+        (op2Expr () (OLte ()) (appExpr () [varExpr () "length", varExpr () "xs"]) (litExpr () (TInteger 3)))
+
 testTypeParser :: SpecWith ()
 testTypeParser = do
 

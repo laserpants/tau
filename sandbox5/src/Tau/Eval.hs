@@ -31,7 +31,7 @@ data Value m
 
 instance Show (Value m) where
     show (Value lit) = 
-        "Value " <> show lit
+        "Value " <> "(" <> show lit <> ")"
     show (Data name lit) = 
         "Data " <> show name <> " " <> show lit
     show (PrimFun name _ args) =
@@ -116,11 +116,11 @@ evalVar var =
                 Just (Value (TAtom name)) <- asks (Env.lookup "?a")
                 closure "?b" $ do
                     Just (Data "#" fields) <- asks (Env.lookup "?b")
-                    traceShowM "b****"
-                    traceShowM name
-                    traceShowM fields
-                    traceShowM "e****"
-                    traceShowM name
+                    --traceShowM "b****"
+                    --traceShowM name
+                    --traceShowM fields
+                    --traceShowM "e****"
+                    --traceShowM name
                     getField name fields
 
         Just prim ->
