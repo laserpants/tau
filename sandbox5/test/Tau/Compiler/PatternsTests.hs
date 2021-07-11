@@ -2,26 +2,27 @@
 module Tau.Compiler.PatternsTests where
 
 import Control.Monad.Reader
-import Tau.Lang
 import Tau.Compiler.Patterns
+import Tau.Lang
 import Tau.Pretty
 import Tau.Prog
+import Tau.TestEnv
 import Tau.Tooling
 import Tau.Type
 import Test.Hspec hiding (describe, it)
 import Utils
 
-testConstructorEnv :: ConstructorEnv
-testConstructorEnv = constructorEnv
-    [ ("Some"     , ( ["Some", "None"], 1 ))
-    , ("None"     , ( ["Some", "None"], 0 ))
-    , ("[]"       , ( ["[]", "(::)"], 0 ))
-    , ("(::)"     , ( ["[]", "(::)"], 2 ))
-    , ("(,)"      , ( ["(,)"], 2 ))
-    , ("Foo"      , ( ["Foo"], 2 ))
-    , ("#"        , ( ["#"], 1 ))
-    , ("{}"       , ( ["{}"], 0 ))
-    ]
+--testConstructorEnv :: ConstructorEnv
+--testConstructorEnv = constructorEnv
+--    [ ("Some"     , ( ["Some", "None"], 1 ))
+--    , ("None"     , ( ["Some", "None"], 0 ))
+--    , ("[]"       , ( ["[]", "(::)"], 0 ))
+--    , ("(::)"     , ( ["[]", "(::)"], 2 ))
+--    , ("(,)"      , ( ["(,)"], 2 ))
+--    , ("Foo"      , ( ["Foo"], 2 ))
+--    , ("#"        , ( ["#"], 1 ))
+--    , ("{}"       , ( ["{}"], 0 ))
+--    ]
 
 runPatterns :: Reader ConstructorEnv a -> a
 runPatterns = flip runReader testConstructorEnv 
