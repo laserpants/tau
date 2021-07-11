@@ -290,11 +290,11 @@ op2Rep = \case
 bindintRep :: (ToRep t, ToRep p) => Binding t p -> Value
 bindintRep = \case
     BPat t p            -> makeRep "Binding" "BPat"   [toRep t, toRep p]
-    BFun t name ps      -> makeRep "Binding" "BFun"   ([toRep t, String name] <> toReps ps)
+    BFun t name ps      -> makeRep "Binding" "BFun"   [toRep t, String name, toRep ps]
 
 guardRep :: (ToRep a) => Guard a -> Value
 guardRep = \case
-    Guard es e          -> makeRep "Guard" "Guard"    (toReps es <> [toRep e])
+    Guard es e          -> makeRep "Guard" "Guard"    [toRep es, toRep e]
 
 clauseRep :: (ToRep t, ToRep p, ToRep a) => Clause t p a -> Value
 clauseRep = \case
@@ -302,9 +302,8 @@ clauseRep = \case
 
 simplifiedClauseRep :: (ToRep t, ToRep p, ToRep a) => SimplifiedClause t p a -> Value
 simplifiedClauseRep = \case
-    SimplifiedClause t ps e -> makeRep "SimplifiedClause" 
-                                       "SimplifiedClause" 
-                                       ((toRep t:toReps ps) <> [toRep e])
+    SimplifiedClause t ps e -> makeRep "SimplifiedClause" "SimplifiedClause" 
+                                                      [toRep t, toRep ps, toRep e]
 
 typeInfoRep :: (ToRep t) => TypeInfoT [Error] t -> Value
 typeInfoRep = \case
@@ -338,7 +337,7 @@ coreClausesRep (names, e) = [toRep names, toRep e]
 valueRep :: Tau.Value Eval -> Value
 valueRep = \case
     Tau.Value prim      -> makeRep "Value" "Value"    [toRep prim]
-    Tau.Data con args   -> makeRep "Value" "Data"     (String con:toReps args)
-    Tau.PrimFun f _ vs  -> makeRep "Value" "PrimFun"  (String f:String "<<internal>>":toReps vs)
+    Tau.Data con args   -> makeRep "Value" "Data"     [String con, toRep args]
+    Tau.PrimFun f _ vs  -> makeRep "Value" "PrimFun"  [String f, String "<<internal>>", toRep vs]
     Tau.Closure f _ _   -> makeRep "Value" "Closure"  [String f, String "<<internal>>", String "<<internal>>"]
     Tau.Fail err        -> makeRep "Value" "Fail"     [String (pack err)]

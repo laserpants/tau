@@ -1752,7 +1752,7 @@ example1 = do -- foo1 expr
 --    expr = r
 --      where
 --        Right r = runParserStack exprParser "" "let xs = [] in match xs with | (x :: _) when(xs <= 3) => x | _ => 0"
-----        Right r = runParserStack exprParser "" "let xs = [] : List Int in match xs with | (x :: _) when(x == 1) => x | _ => 0"
+--        Right r = runParserStack exprParser "" "let xs = [] : List Int in match xs with | (x :: _) when(x == 1) => x | _ => 0"
 
 
 
