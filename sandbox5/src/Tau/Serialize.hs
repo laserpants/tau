@@ -237,9 +237,9 @@ exprRep = project >>> \case
     EFix   t name e1 e2 -> makeRep "Expr" "EFix"      [toRep t, String name, toRep e1, toRep e2]
     ELam   t ps e       -> makeRep "Expr" "ELam"      [toRep t, toFunArgsRep ps, toRep e]
     EIf    t e1 e2 e3   -> makeRep "Expr" "EIf"       [toRep t, toRep e1, toRep e2, toRep e3]
-    EPat   t es cs      -> makeRep "Expr" "EPat"      ([toRep t, toRep es] <> (toRep <$> cs))
+    EPat   t es cs      -> makeRep "Expr" "EPat"      [toRep t, toRep es, toRep cs]
     ELet   t bind e1 e2 -> makeRep "Expr" "ELet"      [toRep t, toRep bind, toRep e1, toRep e2]
-    EFun   t cs         -> makeRep "Expr" "EFun"      (toRep t:(toRep <$> cs))
+    EFun   t cs         -> makeRep "Expr" "EFun"      [toRep t, toRep cs]
     EOp1   t op a       -> makeRep "Expr" "EOp1"      [toRep t, toRep op, toRep a]
     EOp2   t op a b     -> makeRep "Expr" "EOp2"      [toRep t, toRep op, toRep a, toRep b]
     ETuple t es         -> makeRep "Expr" "ETuple"    [toRep t, toRep es]
