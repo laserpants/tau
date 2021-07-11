@@ -424,7 +424,7 @@ layoutWidth :: Doc a -> Int
 layoutWidth = length . show
 
 instance (Pretty a, Width a, Width p) => Width (Clause t p a) where
-    widthOf (Clause _ p gs) = maximum (1 + widthOf p : fmap ((+2) . widthOf) gs)
+    widthOf (Clause _ p gs) = maximum (widthOf p:fmap ((+2) . widthOf) gs)
 
 instance Width (ProgExpr t) where
     widthOf = layoutWidth . pretty
@@ -433,6 +433,7 @@ instance Width (ProgPattern t) where
     widthOf = layoutWidth . pretty
 
 instance (Pretty a, Width a) => Width (Guard a) where
+    widthOf (Guard [] _) = 0
     widthOf (Guard es _) = layoutWidth (prettyIffs es)
 
 instance (Pretty p, Pretty a) => Pretty (Clause t p a) where

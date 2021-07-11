@@ -1,5 +1,11 @@
 
 
+## User documentation
+
+## Language spec and implementation
+
+
+
 grok : Option Int -> Int -> Int
 grok 
   | (Some x) 1 when(x > 100) = 0  
@@ -193,7 +199,8 @@ let
 if z > 10 then 3 else match x with | Some(z) when(z > 10) => 1 : Int; when(z > 5) => 2 : Int; otherwise => 3 : Int | Some(z) => 2
 
 if z > 10 
-  then 3
+  then 
+    3
   else
     match x with
       | Some(z) 
