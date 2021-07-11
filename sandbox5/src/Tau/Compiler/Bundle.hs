@@ -33,6 +33,7 @@ import qualified Tau.Compiler.Pipeline.Stage6 as Stage6
 
 data Bundle = Bundle
     { sourceExpr :: ProgExpr ()
+    , typedExpr  :: ProgExpr (TypeInfoT [Error] Type)
     , normalExpr :: ProgExpr Type
     , stage1Expr :: Stage1.TargetExpr (TypeInfoT [Error] (Maybe Type))
     , stage2Expr :: Stage2.WorkingExpr (Maybe Type)
@@ -46,6 +47,7 @@ instance ToRep Bundle where
     toRep Bundle{..} =
         object 
             [ "source" .= toRep sourceExpr
+            , "typed"  .= toRep typedExpr
             , "normal" .= toRep normalExpr
             , "stage1" .= toRep stage1Expr
             , "stage2" .= toRep stage2Expr
@@ -95,6 +97,7 @@ compileBundle expr = do
 
     let bundle = Bundle
           { sourceExpr = mapExprTag (const ()) expr
+          , typedExpr  = getAst ast
           , normalExpr = normal
           , stage1Expr = expr1
           , stage2Expr = expr2

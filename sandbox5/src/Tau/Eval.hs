@@ -86,8 +86,8 @@ eval = cata $ \case
         Value (TBool isTrue) <- e1
         if isTrue then e2 else e3
 
-    CPat expr fields -> 
-        expr >>= evalPat fields
+    CPat expr clauses -> 
+        expr >>= evalPat clauses
 
 getField :: (Monad m) => Name -> [Value m] -> m (Value m)
 getField name [Data f (v:fs)]

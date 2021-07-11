@@ -23,6 +23,7 @@ import Tau.Compiler.Error
 import Tau.Compiler.Pipeline
 import Tau.Compiler.Substitute hiding (null)
 import Tau.Compiler.Unify
+import Tau.Core
 import Tau.Lang
 import Tau.Prog
 import Tau.Tooling
@@ -243,9 +244,22 @@ instance (Pretty e1, FunArgs e2, Functor e3, Clauses [e3 (Expr t1 t2 t3 t4 t5 t6
                 ERow{}       -> True
                 _            -> False
 
-        ELet _ bind e1 e2                -> prettyLet bind e1 (snd e2)
+        ELet _ bind e1 e2 -> 
+            prettyLet (pretty bind) (rhs e1) (snd e2)
 
-        ELam _ ps e                      -> group (nest 2 (vsep [funArgs ps <+> "=>", snd e]))
+          where
+            --
+            --  :: (Functor e3, Clauses [e3 (Expr t1 t2 t3 t4 t5 t6 t7 t8 t9 t10 t11 t12 t13 t14 t15 e1 e2 e3)]) 
+            --  => (Expr t1 t2 t3 t4 t5 t6 t7 t8 t9 t10 t11 t12 t13 t14 t15 e1 e2 e3, Doc a) 
+            --  -> Doc a
+            rhs (expr, doc) = 
+                case project expr of
+                    EFun _ cs -> line' <> clauses cs
+                    _         -> group (vsep ["=", doc])
+
+
+
+        ELam _ ps e                      -> prettyLam (funArgs ps) (snd e)
 
         expr -> snd <$> expr & \case
             EVar    _ var                -> pretty var
@@ -278,6 +292,20 @@ instance (Pretty e1, FunArgs e2, Functor e3, Clauses [e3 (Expr t1 t2 t3 t4 t5 t6
             EApp _ (_:a:_)               -> a
             _                            -> ""
 
+prettyLet 
+  :: Doc a 
+  -> Doc a
+  -> Doc a 
+  -> Doc a
+prettyLet bind e1 e2 =
+    group (nest 2 (vsep
+        [ "let" <+> bind <+> e1
+        , nest 2 (vsep ["in", e2])
+        ]))
+
+prettyLam :: Doc a -> Doc a -> Doc a 
+prettyLam args body = group (nest 2 (vsep [args <+> "=>", body]))
+
 prettyIf :: Doc a -> Doc a -> Doc a -> Doc a 
 prettyIf e1 e2 e3 =
     "if" <> softline <> e1 <> space <> group (nest 2 (line' <> vsep 
@@ -285,21 +313,21 @@ prettyIf e1 e2 e3 =
         , group (nest 2 (vsep ["else", e3]))
         ]))
 
-prettyLet 
-  :: (Functor e3, Pretty p, Clauses [e3 (Expr t1 t2 t3 t4 t5 t6 t7 t8 t9 t10 t11 t12 t13 t14 t15 e1 e2 e3)]) 
-  => p 
-  -> (Expr t1 t2 t3 t4 t5 t6 t7 t8 t9 t10 t11 t12 t13 t14 t15 e1 e2 e3, Doc a) 
-  -> Doc a 
-  -> Doc a
-prettyLet bind e1 e2 = 
-    group (nest 2 (vsep
-        [ "let" <+> pretty bind <+> body
-        , nest 2 (vsep ["in", e2])
-        ]))
-  where 
-    body = case project (fst e1) of
-        EFun _ cs -> line' <> clauses cs
-        _         -> group (vsep ["=", snd e1])
+--prettyLet 
+--  :: (Functor e3, Clauses [e3 (Expr t1 t2 t3 t4 t5 t6 t7 t8 t9 t10 t11 t12 t13 t14 t15 e1 e2 e3)]) 
+--  => Doc a 
+--  -> (Expr t1 t2 t3 t4 t5 t6 t7 t8 t9 t10 t11 t12 t13 t14 t15 e1 e2 e3, Doc a) 
+--  -> Doc a 
+--  -> Doc a
+--prettyLet bind e1 e2 = 
+--    group (nest 2 (vsep
+--        [ "let" <+> bind <+> body
+--        , nest 2 (vsep ["in", e2])
+--        ]))
+--  where 
+--    body = case project (fst e1) of
+--        EFun _ cs -> line' <> clauses cs
+--        _         -> group (vsep ["=", snd e1])
 
 prettyFix :: Pretty p => p -> Doc a -> Doc a -> Doc a
 prettyFix name e1 e2 =
@@ -477,18 +505,39 @@ instance Pretty Datatype where
             <> if null vars then "" 
                             else " " <> hsep (pretty <$> vars)
 
+-- >>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>
 
-----prettyLet :: (Pretty p) => p -> Doc a -> Doc a -> Doc a
-----prettyLet bind expr body =
-----    group (vsep
-----        [ nest 2 (vsep
-----            [ "let"
-----            , pretty bind <+> equals <+> expr
-----            , nest 2 (vsep ["in", body])
-----            ])
-----        ])
---
---
+instance Pretty Core where
+    pretty = para $ \case
+
+        CApp ((e, doc1):es) ->
+            parensIf addLeft doc1 <> prettyArgs es
+          where
+            --prettyArgs [(Fix (ELit _ TUnit), _)] = "()"
+            prettyArgs args = parens (commaSep (snd <$> args))
+
+            addLeft = 
+                case project e of
+                    CVar{} -> False
+                    _      -> True
+
+        expr -> snd <$> expr & \case
+
+            CVar var                     -> pretty var
+            CLit prim                    -> pretty prim
+            CLet name e1 e2              -> prettyLet (pretty name <+> "=") e1 e2
+            CLam name e1                 -> prettyLam (pretty name) e1 
+            CIf  e1 e2 e3                -> prettyIf e1 e2 e3
+            CPat e1 cs                   -> nest 2 (vsep ["match" <+> e1 <+> "with", coreClauses cs])
+
+coreClauses cs = vsep (prettyClause <$> cs)
+  where
+    prettyClause (ns, e) = pipe <+> prettyTuple (pretty <$> ns) <+> "=>" <+> e
+
+
+
+
+
 --
 ----instance (Eq e, Pretty e) => Pretty (Row e) where
 ----    pretty (Row map r) | null map = maybe "{}" pretty r

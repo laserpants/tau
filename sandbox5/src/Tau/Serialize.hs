@@ -119,7 +119,7 @@ instance ToRep Error where
     toRep = withPretty errorRep
 
 instance ToRep Core where
-    toRep = coreRep
+    toRep = withPretty coreRep
 
 instance ToRep Void where
     toRep _ = makeRep "Void" "Void" []
