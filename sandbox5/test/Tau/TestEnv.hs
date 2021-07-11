@@ -150,6 +150,8 @@ testConstructorEnv = constructorEnv
     , ("Foo"      , ( ["Foo"], 2 ))
     , ("#"        , ( ["#"], 1 ))
     , ("{}"       , ( ["{}"], 0 ))
+    , ("Cons'"    , ( ["Nil'", "Cons'"], 3 ))
+    , ("Nil'"     , ( ["Nil'", "Cons'"], 0 ))
     ]
 
 testEvalEnv :: ValueEnv Eval

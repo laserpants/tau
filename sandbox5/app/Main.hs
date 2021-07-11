@@ -1764,8 +1764,6 @@ example1 = do -- foo1 expr
 --    -- DONE --
 
 
-
-
     --expr = r
     --  where
     --    Right r = runParserStack exprParser "" "let xs = [5 : Int] : List Int in match xs with | (x :: _) when (length(xs) <= 3) => x | _ => 0"
@@ -3003,6 +3001,8 @@ testConstructorEnv = constructorEnv
     , ("Foo"      , ( ["Foo"], 2 ))
     , ("#"        , ( ["#"], 1 ))
     , ("{}"       , ( ["{}"], 0 ))
+    , ("Cons'"    , ( ["Nil'", "Cons'"], 3 ))
+    , ("Nil'"     , ( ["Nil'", "Cons'"], 0 ))
     ]
 
 testEvalEnv :: ValueEnv Eval
