@@ -201,7 +201,7 @@ patternRep = project >>> \case
 simplifiedPatternRep :: (ToRep t) => SimplifiedPattern t -> Value
 simplifiedPatternRep = \case
     SCon   t p ps       -> makeRep "SimplifiedPattern" 
-                                   "SCon"             ([toRep t, toRep p] <> toReps ps)
+                                   "SCon"             [toRep t, toRep p, toRep ps]
 
 exprRep
   :: ( Functor e3
