@@ -199,6 +199,10 @@ testExprParser = do
         (appExpr () [varExpr () "fn", varExpr () "x", litExpr () (TInteger 3), litExpr () (TInteger 4)])
 
     succeedParse exprParser
+        "(fn)(x, 3, 4)"
+        (appExpr () [varExpr () "fn", varExpr () "x", litExpr () (TInteger 3), litExpr () (TInteger 4)])
+
+    succeedParse exprParser
         "(fn(x))(y)"
         (appExpr () [appExpr () [varExpr () "fn", varExpr () "x"], varExpr () "y"])
 
