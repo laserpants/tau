@@ -170,6 +170,10 @@ add(x, y) = x + y
 add5 : Int -> Int
 add5 = add(5) 
 
+add5 = add(5, _)
+
+add5 = add(_, 5)
+
 nope : IO ()
 nope() = print("Done")
 
