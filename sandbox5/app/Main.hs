@@ -1636,31 +1636,34 @@ example1 = do -- foo1 expr
 --            [ Clause () (varPat () "x") [Guard [] (litExpr () (TInteger 3))]
 --            ])
 
-    -- let 
-    --   fn
-    --     | Some(y) 
-    --         when(y == 1) => 1
-    --         when(y == 2) => 2
-    --         otherwise   => 3
-    --     | None          => 0
-    --   in
-    --     fn(Some(100))
-    expr = 
-        letExpr () (BPat () (varPat () "fn")) -- [annPat tInt (varPat () "val")]) 
-            (funExpr () 
-                [ Clause () (conPat () "Some" [varPat () "y"]) 
-                    [ Guard [op2Expr () (OEq ()) (varExpr () "y") (litExpr () (TInteger 1))] (litExpr () (TInteger 1))
-                    , Guard [op2Expr () (OEq ()) (varExpr () "y") (litExpr () (TInteger 2))] (litExpr () (TInteger 2))
-                    , Guard [] (litExpr () (TInteger 4))
-                    ]
-                , Clause () (conPat () "None" []) [ Guard [] (annExpr tInt (litExpr () (TInteger 0))) ]
-                ])
-            --(appExpr () [varExpr () "fn", conExpr () "Some" [annExpr tInt (litExpr () (TInteger 100))]])
-            --(appExpr () [varExpr () "fn", conExpr () "Some" [annExpr tInt (litExpr () (TInteger 3))]])
-            --(appExpr () [varExpr () "fn", conExpr () "None" []])
-            (appExpr () [varExpr () "fn", annExpr (tApp kTyp (tCon kFun "Option") tInt) (conExpr () "None" [])])
 
-    -- ******************************************************************************************************************************************************************************************************
+--    -- TEST_EXPR_1
+--
+--    -- let 
+--    --   fn
+--    --     | Some(y) 
+--    --         when(y == 1) => 1
+--    --         when(y == 2) => 2
+--    --         otherwise   => 3
+--    --     | None          => 0
+--    --   in
+--    --     fn(Some(100))
+--    expr = 
+--        letExpr () (BPat () (varPat () "fn")) -- [annPat tInt (varPat () "val")]) 
+--            (funExpr () 
+--                [ Clause () (conPat () "Some" [varPat () "y"]) 
+--                    [ Guard [op2Expr () (OEq ()) (varExpr () "y") (litExpr () (TInteger 1))] (litExpr () (TInteger 1))
+--                    , Guard [op2Expr () (OEq ()) (varExpr () "y") (litExpr () (TInteger 2))] (litExpr () (TInteger 2))
+--                    , Guard [] (litExpr () (TInteger 4))
+--                    ]
+--                , Clause () (conPat () "None" []) [ Guard [] (annExpr tInt (litExpr () (TInteger 0))) ]
+--                ])
+--            --(appExpr () [varExpr () "fn", conExpr () "Some" [annExpr tInt (litExpr () (TInteger 100))]])
+--            --(appExpr () [varExpr () "fn", conExpr () "Some" [annExpr tInt (litExpr () (TInteger 3))]])
+--            --(appExpr () [varExpr () "fn", conExpr () "None" []])
+--            (appExpr () [varExpr () "fn", annExpr (tApp kTyp (tCon kFun "Option") tInt) (conExpr () "None" [])])
+--
+--    -- ******************************************************************************************************************************************************************************************************
 
 
 
@@ -1763,11 +1766,11 @@ example1 = do -- foo1 expr
 
 
 
---    -- DONE --
---    expr = r
---      where
---        Right r = runParserStack exprParser "" "{ a = { b = { c = \"d\" } } }.a.b.c"
---    -- DONE --
+    -- DONE --
+    expr = r
+      where
+        Right r = runParserStack exprParser "" "{ a = { b = { c = \"d\" } } }.a.b.c"
+    -- DONE --
 
 
 --    --expr = r
@@ -2976,19 +2979,17 @@ testClassEnv = Env.fromList
             , ( "fromInteger" , tInteger `tArr` tVar kTyp "a" )
             ]
         -- Instances
-        , [
+        , [ ClassInfo (InClass "Num" tInt) [] 
+            [ ( "(+)"         , Ast (varExpr (TypeInfo () (tInt `tArr` tInt `tArr` tInt) []) "@Int.(+)") )
+            , ( "(*)"         , Ast (varExpr (TypeInfo () (tInt `tArr` tInt `tArr` tInt) []) "@Int.(*)") )
+            , ( "fromInteger" , Ast (varExpr (TypeInfo () (tInteger `tArr` tInt) []) "@Int.fromInteger") )
+            ]
+          , ClassInfo (InClass "Num" tInteger) [] 
+            [ ( "(+)"         , Ast (varExpr (TypeInfo () (tInteger `tArr` tInteger `tArr` tInteger) []) "@Integer.(+)") )
+            , ( "(*)"         , Ast (varExpr (TypeInfo () (tInteger `tArr` tInteger `tArr` tInteger) []) "@Integer.(*)") )
+            , ( "fromInteger" , Ast (varExpr (TypeInfo () (tInteger `tArr` tInteger) []) "@Integer.id") )
+            ]
           ]
---        , [ ClassInfo (InClass "Num" tInt) [] 
---            [ ( "(+)"         , Ast (varExpr (TypeInfo () (tInt `tArr` tInt `tArr` tInt) []) "@Int.(+)") )
---            , ( "(*)"         , Ast (varExpr (TypeInfo () (tInt `tArr` tInt `tArr` tInt) []) "@Int.(*)") )
---            , ( "fromInteger" , Ast (varExpr (TypeInfo () (tInteger `tArr` tInt) []) "@Int.fromInteger") )
---            ]
---          , ClassInfo (InClass "Num" tInteger) [] 
---            [ ( "(+)"         , Ast (varExpr (TypeInfo () (tInteger `tArr` tInteger `tArr` tInteger) []) "@Integer.(+)") )
---            , ( "(*)"         , Ast (varExpr (TypeInfo () (tInteger `tArr` tInteger `tArr` tInteger) []) "@Integer.(*)") )
---            , ( "fromInteger" , Ast (varExpr (TypeInfo () (tInteger `tArr` tInteger) []) "@Integer.id") )
---            ]
---          ]
         )
       )
     ]

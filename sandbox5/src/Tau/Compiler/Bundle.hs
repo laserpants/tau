@@ -121,7 +121,8 @@ compileBundle expr = do
             expr6 <- Stage6.translate expr5
 
             pure (bundle
-                    { stage2Expr = Just expr2
+                    { stage1Expr = Just expr1
+                    , stage2Expr = Just expr2
                     , stage3Expr = Just expr3
                     , stage4Expr = Just expr4
                     , stage5Expr = Just expr5
