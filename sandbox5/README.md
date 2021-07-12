@@ -9,13 +9,18 @@
     https://mdkrajnak.github.io/ebnftest/
     https://www.bottlecaps.de/rr/ui
 
+    expr 
+      = var_expr
+      | let_expr 
+      | literal_expr
+
     Expr 
       = VarExpr
       | LetExpr 
       | LiteralExpr
 
     Name
-      = #'[A-Za-z][A-Za-z0-9_+]*'
+      = #'[A-Za-z_][A-Za-z0-9_+]*'
 
     Prim
       = '()' 

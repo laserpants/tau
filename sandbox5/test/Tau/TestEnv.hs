@@ -1,3 +1,4 @@
+{-# LANGUAGE OverloadedStrings #-}
 module Tau.TestEnv where
 
 import Data.Maybe
