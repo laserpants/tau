@@ -1133,12 +1133,13 @@ foo1 expr = do
 example1 :: IO () -- (ProgExpr (TypeInfo [Error]), Substitution Type, Substitution Kind, Context)
 example1 = do -- foo1 expr
     traceShowM (pretty expr)
-    a <- runReaderT (compileBundle expr) (testClassEnv, testTypeEnv, testKindEnv, testConstructorEnv) 
+    bundle <- runReaderT (compileBundle expr) (testClassEnv, testTypeEnv, testKindEnv, testConstructorEnv) 
 
-    liftIO $ LBS.writeFile "/home/laserpants/code/tau-tooling/src/tmp/bundle.json" (encodePretty' defConfig{ confIndent = Spaces 2 } (toRep a))
+    let value = evalExpr (coreExpr bundle) testEvalEnv
 
-    let v = evalExpr (coreExpr a) testEvalEnv
-    traceShowM v
+    liftIO $ LBS.writeFile "/home/laserpants/code/tau-tooling/src/tmp/bundle.json" (encodePretty' defConfig{ confIndent = Spaces 2 } (toRep (bundle{ value = value })))
+
+    traceShowM value
 
     pure ()
   where
@@ -1628,33 +1629,38 @@ example1 = do -- foo1 expr
 --
 
 
---    -- ******************************************************************************************************************************************************************************************************
---
---    -- let 
---    --   fn
---    --     | Some(y) 
---    --         when(y == 1) => 1
---    --         when(y == 2) => 2
---    --         otherwise   => 3
---    --     | None          => 0
---    --   in
---    --     fn(Some(100))
---    expr = 
---        letExpr () (BPat () (varPat () "fn")) -- [annPat tInt (varPat () "val")]) 
---            (funExpr () 
---                [ Clause () (conPat () "Some" [varPat () "y"]) 
---                    [ Guard [op2Expr () (OEq ()) (varExpr () "y") (litExpr () (TInteger 1))] (litExpr () (TInteger 1))
---                    , Guard [op2Expr () (OEq ()) (varExpr () "y") (litExpr () (TInteger 2))] (litExpr () (TInteger 2))
---                    , Guard [] (litExpr () (TInteger 4))
---                    ]
---                , Clause () (conPat () "None" []) [ Guard [] (annExpr tInt (litExpr () (TInteger 0))) ]
---                ])
---            --(appExpr () [varExpr () "fn", conExpr () "Some" [annExpr tInt (litExpr () (TInteger 100))]])
---            --(appExpr () [varExpr () "fn", conExpr () "Some" [annExpr tInt (litExpr () (TInteger 3))]])
---            --(appExpr () [varExpr () "fn", conExpr () "None" []])
---            (appExpr () [varExpr () "fn", annExpr (tApp kTyp (tCon kFun "Option") tInt) (conExpr () "None" [])])
---
---    -- ******************************************************************************************************************************************************************************************************
+    -- ******************************************************************************************************************************************************************************************************
+
+--    expr =
+--        (funExpr () 
+--            [ Clause () (varPat () "x") [Guard [] (litExpr () (TInteger 3))]
+--            ])
+
+    -- let 
+    --   fn
+    --     | Some(y) 
+    --         when(y == 1) => 1
+    --         when(y == 2) => 2
+    --         otherwise   => 3
+    --     | None          => 0
+    --   in
+    --     fn(Some(100))
+    expr = 
+        letExpr () (BPat () (varPat () "fn")) -- [annPat tInt (varPat () "val")]) 
+            (funExpr () 
+                [ Clause () (conPat () "Some" [varPat () "y"]) 
+                    [ Guard [op2Expr () (OEq ()) (varExpr () "y") (litExpr () (TInteger 1))] (litExpr () (TInteger 1))
+                    , Guard [op2Expr () (OEq ()) (varExpr () "y") (litExpr () (TInteger 2))] (litExpr () (TInteger 2))
+                    , Guard [] (litExpr () (TInteger 4))
+                    ]
+                , Clause () (conPat () "None" []) [ Guard [] (annExpr tInt (litExpr () (TInteger 0))) ]
+                ])
+            --(appExpr () [varExpr () "fn", conExpr () "Some" [annExpr tInt (litExpr () (TInteger 100))]])
+            --(appExpr () [varExpr () "fn", conExpr () "Some" [annExpr tInt (litExpr () (TInteger 3))]])
+            --(appExpr () [varExpr () "fn", conExpr () "None" []])
+            (appExpr () [varExpr () "fn", annExpr (tApp kTyp (tCon kFun "Option") tInt) (conExpr () "None" [])])
+
+    -- ******************************************************************************************************************************************************************************************************
 
 
 
@@ -1764,38 +1770,38 @@ example1 = do -- foo1 expr
 --    -- DONE --
 
 
-    --expr = r
-    --  where
-    --    Right r = runParserStack exprParser "" "let xs = [5 : Int] : List Int in match xs with | (x :: _) when (length(xs) <= 3) => x | _ => 0"
-    expr = 
-        (fixExpr () "loopList"
-            (lamExpr () [varPat () "g", varPat () "ys"] (patExpr () (varExpr () "ys")
-                [ Clause () (conPat () "(::)" [varPat () "x", varPat () "xs"]) 
-                      [Guard [] (appExpr () [varExpr () "g", conExpr () "Cons'" [varExpr () "x", varExpr () "xs", appExpr () [varExpr () "loopList", varExpr () "g", varExpr () "xs"]]])]
-                , Clause () (conPat () "[]" []) 
-                      [Guard [] (appExpr () [varExpr () "g", conExpr () "Nil'" []])]
-                ]))
-            (letExpr ()
-                (BFun () "length" [varPat () "xs"])
-                --
-                -- xs.loopList(fun | Cons'(_, _, a) => 1 + a | Nil' => 0 : Int)
-                -- 
-                (op2Expr () (ODot ())
-                    (appExpr () 
-                        [ varExpr () "loopList"
-                        , funExpr () 
-                            [ Clause () (conPat () "Cons'" [anyPat (), anyPat (), varPat () "a"]) [Guard [] (op2Expr () (OAdd ()) (litExpr () (TInteger 1)) (varExpr () "a"))]
-                            , Clause () (conPat () "Nil'" []) [Guard [] (annExpr tInt (litExpr () (TInteger 0)))]
-                            ]
-                        ])
-                    (varExpr () "xs"))
-                (letExpr () 
-                    (BPat () (varPat () "xs"))
-                    (annExpr (tList tInt) (listExpr () [litExpr () (TInteger 5)]))
-                    (patExpr () (varExpr () "xs")
-                        [ Clause () (conPat () "(::)" [varPat () "x", anyPat ()]) [Guard [op2Expr () (OLte ()) (appExpr () [varExpr () "length", varExpr () "xs"]) (litExpr () (TInteger 3))] (varExpr () "x")]
-                        , Clause () (anyPat ()) [Guard [] (litExpr () (TInteger 0))]
-                        ]))))
+--    --expr = r
+--    --  where
+--    --    Right r = runParserStack exprParser "" "let xs = [5 : Int] : List Int in match xs with | (x :: _) when (length(xs) <= 3) => x | _ => 0"
+--    expr = 
+--        (fixExpr () "loopList"
+--            (lamExpr () [varPat () "g", varPat () "ys"] (patExpr () (varExpr () "ys")
+--                [ Clause () (conPat () "(::)" [varPat () "x", varPat () "xs"]) 
+--                      [Guard [] (appExpr () [varExpr () "g", conExpr () "Cons'" [varExpr () "x", varExpr () "xs", appExpr () [varExpr () "loopList", varExpr () "g", varExpr () "xs"]]])]
+--                , Clause () (conPat () "[]" []) 
+--                      [Guard [] (appExpr () [varExpr () "g", conExpr () "Nil'" []])]
+--                ]))
+--            (letExpr ()
+--                (BFun () "length" [varPat () "xs"])
+--                --
+--                -- xs.loopList(fun | Cons'(_, _, a) => 1 + a | Nil' => 0 : Int)
+--                -- 
+--                (op2Expr () (ODot ())
+--                    (appExpr () 
+--                        [ varExpr () "loopList"
+--                        , funExpr () 
+--                            [ Clause () (conPat () "Cons'" [anyPat (), anyPat (), varPat () "a"]) [Guard [] (op2Expr () (OAdd ()) (litExpr () (TInteger 1)) (varExpr () "a"))]
+--                            , Clause () (conPat () "Nil'" []) [Guard [] (annExpr tInt (litExpr () (TInteger 0)))]
+--                            ]
+--                        ])
+--                    (varExpr () "xs"))
+--                (letExpr () 
+--                    (BPat () (varPat () "xs"))
+--                    (annExpr (tList tInt) (listExpr () [litExpr () (TInteger 5)]))
+--                    (patExpr () (varExpr () "xs")
+--                        [ Clause () (conPat () "(::)" [varPat () "x", anyPat ()]) [Guard [op2Expr () (OLte ()) (appExpr () [varExpr () "length", varExpr () "xs"]) (litExpr () (TInteger 3))] (varExpr () "x")]
+--                        , Clause () (anyPat ()) [Guard [] (litExpr () (TInteger 0))]
+--                        ]))))
 
 
 
@@ -1886,45 +1892,45 @@ example1 = do -- foo1 expr
 --         (tRow "shoeSize" tFloat (tRow "id" tInt (tVar kRow "r")))
 -- 
 -- 
--- --------------------------
--- --------------------------
--- --------------------------
--- 
--- data TypeFocus
---     = TAppLeft  Kind Type
---     | TAppRight Kind Type
---     | TArrLeft  Type
---     | TArrRight Type
---     deriving (Show, Eq)
--- 
--- type TypeZipper = (Type, [TypeFocus])
--- 
--- tAppLeft :: TypeZipper -> Maybe TypeZipper
--- tAppLeft (Fix (TApp k l r), fs) = Just (l, TAppLeft k r:fs)
--- tAppLeft _ = Nothing
--- 
--- tAppRight :: TypeZipper -> Maybe TypeZipper
--- tAppRight (Fix (TApp k l r), fs) = Just (r, TAppRight k l:fs)
--- tAppRight _ = Nothing
--- 
--- tAppUp :: TypeZipper -> Maybe TypeZipper
--- tAppUp (t, TAppLeft  k r:fs) = Just (tApp k t r, fs)
--- tAppUp (t, TAppRight k l:fs) = Just (tApp k l t, fs)
--- tAppUp _ = Nothing
--- 
--- tArrLeft :: TypeZipper -> Maybe TypeZipper
--- tArrLeft (Fix (TArr l r), fs) = Just (l, TArrLeft r:fs)
--- tArrLeft _ = Nothing
--- 
--- tArrRight :: TypeZipper -> Maybe TypeZipper
--- tArrRight (Fix (TArr l r), fs) = Just (r, TArrRight l:fs)
--- tArrRight _ = Nothing
--- 
--- tArrUp :: TypeZipper -> Maybe TypeZipper
--- tArrUp (t, TArrLeft  r:fs) = Just (tArr t r, fs)
--- tArrUp (t, TArrRight l:fs) = Just (tArr l t, fs)
--- tArrUp _ = Nothing
--- 
+--------------------------
+--------------------------
+--------------------------
+
+data TypeFocus
+    = TAppLeft  Kind Type
+    | TAppRight Kind Type
+    | TArrLeft  Type
+    | TArrRight Type
+    deriving (Show, Eq)
+
+type TypeZipper = (Type, [TypeFocus])
+
+tAppLeft :: TypeZipper -> Maybe TypeZipper
+tAppLeft (Fix (TApp k l r), fs) = Just (l, TAppLeft k r:fs)
+tAppLeft _ = Nothing
+
+tAppRight :: TypeZipper -> Maybe TypeZipper
+tAppRight (Fix (TApp k l r), fs) = Just (r, TAppRight k l:fs)
+tAppRight _ = Nothing
+
+tAppUp :: TypeZipper -> Maybe TypeZipper
+tAppUp (t, TAppLeft  k r:fs) = Just (tApp k t r, fs)
+tAppUp (t, TAppRight k l:fs) = Just (tApp k l t, fs)
+tAppUp _ = Nothing
+
+tArrLeft :: TypeZipper -> Maybe TypeZipper
+tArrLeft (Fix (TArr l r), fs) = Just (l, TArrLeft r:fs)
+tArrLeft _ = Nothing
+
+tArrRight :: TypeZipper -> Maybe TypeZipper
+tArrRight (Fix (TArr l r), fs) = Just (r, TArrRight l:fs)
+tArrRight _ = Nothing
+
+tArrUp :: TypeZipper -> Maybe TypeZipper
+tArrUp (t, TArrLeft  r:fs) = Just (tArr t r, fs)
+tArrUp (t, TArrRight l:fs) = Just (tArr l t, fs)
+tArrUp _ = Nothing
+
 -- ---- ----test3 = unifyRows (typeToRowX r1) (typeToRowX r2) :: Either UnificationError TypeSubstitution
 -- ---- ----  where
 -- ---- ----    r1 = tRow "name" tString (tRow "id" tInt tEmptyRow)

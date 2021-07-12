@@ -41,21 +41,26 @@ data Bundle = Bundle
     , stage4Expr :: Stage4.TargetExpr (Maybe Type)
     , stage5Expr :: Stage5.TargetExpr (Maybe Type)
     , coreExpr   :: Core
+    , value      :: Maybe (Tau.Eval.Value Eval)
     } deriving (Show, Eq)
 
 instance ToRep Bundle where
     toRep Bundle{..} =
         object 
-            [ "source" .= toRep sourceExpr
-            , "typed"  .= toRep typedExpr
-            , "normal" .= toRep normalExpr
-            , "stage1" .= toRep stage1Expr
-            , "stage2" .= toRep stage2Expr
-            , "stage3" .= toRep stage3Expr
-            , "stage4" .= toRep stage4Expr
-            , "stage5" .= toRep stage5Expr
-            , "core"   .= toRep coreExpr  
-            ]
+            ( [ "source" .= toRep sourceExpr
+              , "typed"  .= toRep typedExpr
+              , "normal" .= toRep normalExpr
+              , "stage1" .= toRep stage1Expr
+              , "stage2" .= toRep stage2Expr
+              , "stage3" .= toRep stage3Expr
+              , "stage4" .= toRep stage4Expr
+              , "stage5" .= toRep stage5Expr
+              , "core"   .= toRep coreExpr  
+              ] <> valueField )
+      where
+        valueField = case value of
+            Nothing  -> []
+            Just val -> ["value" .= toRep val]
 
 runInferTree
   :: (MonadReader (ClassEnv, TypeEnv, KindEnv, ConstructorEnv) m)
@@ -104,7 +109,9 @@ compileBundle expr = do
           , stage3Expr = expr3
           , stage4Expr = expr4
           , stage5Expr = expr5
-          , coreExpr   = expr6 }
+          , coreExpr   = expr6 
+          , value      = Nothing
+          }
 
     --traceShowM (toRep bundle)
     --traceShowM (toRep bundle)

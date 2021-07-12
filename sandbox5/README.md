@@ -1,8 +1,77 @@
 
 
-## User documentation
+## Overview
 
 ## Language spec and implementation
+
+### (E)BNF grammar
+
+    https://mdkrajnak.github.io/ebnftest/
+    https://www.bottlecaps.de/rr/ui
+
+    Expr 
+      = VarExpr
+      | LetExpr 
+      | LiteralExpr
+
+    Name
+      = #'[A-Za-z][A-Za-z0-9_+]*'
+
+    Prim
+      = '()' 
+      | ('True' | 'False')
+
+    VarExpr
+      = Name
+
+    LetExpr     
+      = 'let' 
+      , Spaces 
+      , LetBinding
+
+    LetBinding
+      = PatternBinding
+
+    PatternBinding
+      = Name , Spaces
+      , '='  , Spaces
+      , Expr , Spaces
+      , 'in' , Spaces
+      , Expr
+
+    LiteralExpr 
+      = Prim
+
+    Spaces      
+      = ' '+
+
+
+
+
+let 
+  ys.map(f) = e    ==>  let map(f, ys) = e
+
+
+ys.length = ...
+
+List.length = ... match this with      ==>   length(x) = match x with
+
+
+add(5, _)         <==>  #0 => add(5, #0)
+
+add(_, 5)         <==>  #0 => add(#0, 5)
+
+
+    EAppX [add, _, 5]
+
+    EAppX [_, add, 5]
+
+foo 
+  | (2, 3) => True
+  | (3, 4) => True
+  | (_, _) => False
+
+
 
 
 
