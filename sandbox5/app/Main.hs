@@ -1135,11 +1135,11 @@ example1 = do -- foo1 expr
     traceShowM (pretty expr)
     bundle <- runReaderT (compileBundle expr) (testClassEnv, testTypeEnv, testKindEnv, testConstructorEnv) 
 
-    let value = evalExpr (coreExpr bundle) testEvalEnv
+    let value = join (evalExpr <$> (coreExpr bundle) <*> Just testEvalEnv)
 
     liftIO $ LBS.writeFile "/home/laserpants/code/tau-tooling/src/tmp/bundle.json" (encodePretty' defConfig{ confIndent = Spaces 2 } (toRep (bundle{ value = value })))
 
-    traceShowM value
+--    traceShowM value
 
     pure ()
   where
@@ -2976,17 +2976,19 @@ testClassEnv = Env.fromList
             , ( "fromInteger" , tInteger `tArr` tVar kTyp "a" )
             ]
         -- Instances
-        , [ ClassInfo (InClass "Num" tInt) [] 
-            [ ( "(+)"         , Ast (varExpr (TypeInfo () (tInt `tArr` tInt `tArr` tInt) []) "@Int.(+)") )
-            , ( "(*)"         , Ast (varExpr (TypeInfo () (tInt `tArr` tInt `tArr` tInt) []) "@Int.(*)") )
-            , ( "fromInteger" , Ast (varExpr (TypeInfo () (tInteger `tArr` tInt) []) "@Int.fromInteger") )
-            ]
-          , ClassInfo (InClass "Num" tInteger) [] 
-            [ ( "(+)"         , Ast (varExpr (TypeInfo () (tInteger `tArr` tInteger `tArr` tInteger) []) "@Integer.(+)") )
-            , ( "(*)"         , Ast (varExpr (TypeInfo () (tInteger `tArr` tInteger `tArr` tInteger) []) "@Integer.(*)") )
-            , ( "fromInteger" , Ast (varExpr (TypeInfo () (tInteger `tArr` tInteger) []) "@Integer.id") )
-            ]
+        , [
           ]
+--        , [ ClassInfo (InClass "Num" tInt) [] 
+--            [ ( "(+)"         , Ast (varExpr (TypeInfo () (tInt `tArr` tInt `tArr` tInt) []) "@Int.(+)") )
+--            , ( "(*)"         , Ast (varExpr (TypeInfo () (tInt `tArr` tInt `tArr` tInt) []) "@Int.(*)") )
+--            , ( "fromInteger" , Ast (varExpr (TypeInfo () (tInteger `tArr` tInt) []) "@Int.fromInteger") )
+--            ]
+--          , ClassInfo (InClass "Num" tInteger) [] 
+--            [ ( "(+)"         , Ast (varExpr (TypeInfo () (tInteger `tArr` tInteger `tArr` tInteger) []) "@Integer.(+)") )
+--            , ( "(*)"         , Ast (varExpr (TypeInfo () (tInteger `tArr` tInteger `tArr` tInteger) []) "@Integer.(*)") )
+--            , ( "fromInteger" , Ast (varExpr (TypeInfo () (tInteger `tArr` tInteger) []) "@Integer.id") )
+--            ]
+--          ]
         )
       )
     ]

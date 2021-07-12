@@ -4,13 +4,62 @@
 module Tau.Compiler.Pipeline.Stage0 where
 
 import Control.Monad.Reader
+import Control.Monad.Supply
 import Data.Function ((&))
+import Data.Maybe
 import Tau.Compiler.Error
 import Tau.Compiler.Patterns
 import Tau.Lang
 import Tau.Prog
 import Tau.Tooling
 import Tau.Type
+import qualified Data.Set.Monad as Set
+import qualified Tau.Env as Env
+
+hasErrors 
+  :: ProgExpr (TypeInfoT [Error] t)
+  -> Bool
+hasErrors expr = foldrExprTag (\ti rest -> rest || not (null (nodeErrors ti))) False expr
+
+runReduce
+  :: ClassEnv
+  -> [Predicate] 
+  -> Either UnificationError [Predicate]
+runReduce env ps =
+    fromJust (evalSupply (reduce env ps) (numSupply "???"))
+
+xxx1 
+  :: (FreeIn t) 
+  => Context
+  -> ConstructorEnv
+  -> ClassEnv
+  -> TypeInfoT [Error] t
+  -> TypeInfoT [Error] t
+xxx1 context constructorEnv classEnv (TypeInfo e t ps) =
+    case runReduce classEnv (predicates <> ps) of
+        Left err -> TypeInfo (e <> [CannotUnify tInt tInt err]) t ps  -- TODO
+        Right qs -> TypeInfo e t qs
+  where
+    predicates = do
+        var <- (fst <$> free t)
+        set <- maybeToList (Env.lookup var context)
+        name <- Set.toList set
+        pure (InClass name (tVar kTyp var))
+
+foo2
+  :: (FreeIn t)
+  => Context
+  -> ConstructorEnv
+  -> ClassEnv
+  -> ProgExpr (TypeInfoT [Error] t) 
+  -> ProgExpr (TypeInfoT [Error] t)
+foo2 context constructorEnv classEnv = mapExprTag (xxx1 context constructorEnv classEnv) 
+
+--foo2 env = para $ \case
+--
+--    expr -> snd <$> expr & \case
+--        EVar    t var        -> varExpr (xxx1 env t) var
+
 
 runExhaustivePatternsCheck
   :: ConstructorEnv 

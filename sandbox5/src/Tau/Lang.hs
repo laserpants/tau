@@ -478,6 +478,9 @@ instance Traversable Ast where
 mapExprTag :: (t -> u) -> ProgExpr t -> ProgExpr u
 mapExprTag f expr = getAst (f <$> Ast expr)
 
+foldrExprTag :: (a -> b -> b) -> b -> ProgExpr a -> b
+foldrExprTag f s expr = foldr f s (Ast expr)
+
 exprTag :: (Functor e3) => Expr t t t t t t t t t t t t t t t e1 e2 e3 -> t
 exprTag = cata $ \case
     EVar    t _     -> t

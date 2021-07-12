@@ -34,13 +34,13 @@ import qualified Tau.Compiler.Pipeline.Stage6 as Stage6
 data Bundle = Bundle
     { sourceExpr :: ProgExpr ()
     , typedExpr  :: ProgExpr (TypeInfoT [Error] Type)
-    , normalExpr :: ProgExpr Type
-    , stage1Expr :: Stage1.TargetExpr (TypeInfoT [Error] (Maybe Type))
-    , stage2Expr :: Stage2.WorkingExpr (Maybe Type)
-    , stage3Expr :: Stage3.TargetExpr (Maybe Type)
-    , stage4Expr :: Stage4.TargetExpr (Maybe Type)
-    , stage5Expr :: Stage5.TargetExpr (Maybe Type)
-    , coreExpr   :: Core
+    , normalExpr :: ProgExpr (TypeInfoT [Error] Type)
+    , stage1Expr :: Maybe (Stage1.TargetExpr (TypeInfoT [Error] (Maybe Type)))
+    , stage2Expr :: Maybe (Stage2.WorkingExpr (Maybe Type))
+    , stage3Expr :: Maybe (Stage3.TargetExpr (Maybe Type))
+    , stage4Expr :: Maybe (Stage4.TargetExpr (Maybe Type))
+    , stage5Expr :: Maybe (Stage5.TargetExpr (Maybe Type))
+    , coreExpr   :: Maybe Core
     , value      :: Maybe (Tau.Eval.Value Eval)
     } deriving (Show, Eq)
 
@@ -87,36 +87,51 @@ compileBundle expr = do
     (ast, _, _, context) <- runInferTree (inferAstType (Ast expr))
 
     -- TODO
-    let normal = getAst (nodeType <$> ast)
+    constructorEnv <- askConstructorEnv
+    classEnv <- askClassEnv
+    let normal = Stage0.foo2 context constructorEnv classEnv (getAst ast)
     -- TODO
-
-    let expr1 = Stage1.translate (getAst (Just <$$> ast))
-
-    expr2 <- runStage2 expr1
-
-    let expr3 = Stage3.runTranslate (Stage3.translate expr2)
-    let expr4 = Stage4.translate expr3
-    let expr5 = Stage5.runTranslate (Stage5.translate expr4)
-
-    expr6 <- Stage6.translate expr5
-
+    --
+    
     let bundle = Bundle
           { sourceExpr = mapExprTag (const ()) expr
           , typedExpr  = getAst ast
           , normalExpr = normal
-          , stage1Expr = expr1
-          , stage2Expr = expr2
-          , stage3Expr = expr3
-          , stage4Expr = expr4
-          , stage5Expr = expr5
-          , coreExpr   = expr6 
+          , stage1Expr = Nothing
+          , stage2Expr = Nothing
+          , stage3Expr = Nothing
+          , stage4Expr = Nothing
+          , stage5Expr = Nothing
+          , coreExpr   = Nothing
           , value      = Nothing
           }
+
+    --
+
+    if not (hasErrors normal) 
+        then do
+            let expr1 = Stage1.translate (getAst (Just <$$> ast))
+
+            expr2 <- runStage2 expr1
+
+            let expr3 = Stage3.runTranslate (Stage3.translate expr2)
+            let expr4 = Stage4.translate expr3
+            let expr5 = Stage5.runTranslate (Stage5.translate expr4)
+
+            expr6 <- Stage6.translate expr5
+
+            pure (bundle
+                    { stage2Expr = Just expr2
+                    , stage3Expr = Just expr3
+                    , stage4Expr = Just expr4
+                    , stage5Expr = Just expr5
+                    , coreExpr   = Just expr6 
+                    })
+        else 
+            pure bundle
 
     --traceShowM (toRep bundle)
     --traceShowM (toRep bundle)
 
     --traceShowM (stage1Expr bundle)
     --traceShowM (coreExpr bundle)
-
-    pure bundle
