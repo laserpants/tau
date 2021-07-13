@@ -52,6 +52,8 @@
 
 
 
+(+)(5, 3)
+
 
 let 
   ys.map(f) = e    ==>  let map(f, ys) = e
@@ -65,6 +67,7 @@ List.length = ... match this with      ==>   length(x) = match x with
 add(5, _)         <==>  ^0 => add(5, ^0)
 
 add(_, 5)         <==>  ^0 => add(^0, 5)
+
 
 
     EAppX [add, _, 5]

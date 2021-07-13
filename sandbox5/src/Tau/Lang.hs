@@ -109,6 +109,7 @@ type ProgBinding t = Binding t (ProgPattern t)
 
 data ExprF t1 t2 t3 t4 t5 t6 t7 t8 t9 t10 t11 t12 t13 t14 t15 e1 e2 e3 a
     = EVar    t1  Name                   -- ^ Variable
+    | EHole   t1        -- t16
     | ECon    t2  Name [a]               -- ^ Data constructor
     | ELit    t3  Prim                   -- ^ Literal value
     | EApp    t4  [a]                    -- ^ Function application
@@ -258,6 +259,7 @@ instance Functor Ast where
       where 
         mapExpr = cata $ \case
             EVar    t var        -> varExpr    (f t) var
+            EHole   t            -> holeExpr   (f t)
             ECon    t con es     -> conExpr    (f t) con es
             ELit    t prim       -> litExpr    (f t) prim
             EApp    t es         -> appExpr    (f t) es
@@ -328,6 +330,7 @@ instance Foldable Ast where
         foldExpr :: (t -> s -> s) -> ProgExpr t -> [s -> s]
         foldExpr f = cata $ \case
             EVar    t _          -> [f t]
+            EHole   t            -> [f t]
             ECon    t _ es       -> (f t:concat es)
             ELit    t _          -> [f t]
             EApp    t es         -> (f t:concat es)
@@ -406,6 +409,7 @@ instance Traversable Ast where
       where
         alg = \case
             EVar    t var        -> varExpr   <$> f t <*> pure var
+            EHole   t            -> holeExpr  <$> f t 
             ECon    t con es     -> conExpr   <$> f t <*> pure con <*> sequenceA es
             ELit    t prim       -> litExpr   <$> f t <*> pure prim
             EApp    t es         -> appExpr   <$> f t <*> sequenceA es
@@ -475,6 +479,14 @@ instance Traversable Ast where
 
 -- >>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>
 
+isHole 
+  :: (Functor e3) 
+  => Expr t1 t2 t3 t4 t5 t6 t7 t8 t9 t10 t11 t12 t13 t14 t15 e1 e2 e3 
+  -> Bool
+isHole = project >>> \case
+    EHole{} -> True
+    _       -> False
+
 mapExprTag :: (t -> u) -> ProgExpr t -> ProgExpr u
 mapExprTag f expr = getAst (f <$> Ast expr)
 
@@ -484,6 +496,7 @@ foldrExprTag f s expr = foldr f s (Ast expr)
 exprTag :: (Functor e3) => Expr t t t t t t t t t t t t t t t e1 e2 e3 -> t
 exprTag = cata $ \case
     EVar    t _     -> t
+    EHole   t       -> t
     ECon    t _ _   -> t
     ELit    t _     -> t
     EApp    t _     -> t
@@ -724,6 +737,12 @@ varExpr
   -> Name 
   -> Expr t1 t2 t3 t4 t5 t6 t7 t8 t9 t10 t11 t12 t13 t14 t15 e1 e2 e3 
 varExpr = embed2 EVar
+
+holeExpr 
+  :: (Functor e3) 
+  => t1
+  -> Expr t1 t2 t3 t4 t5 t6 t7 t8 t9 t10 t11 t12 t13 t14 t15 e1 e2 e3 
+holeExpr = embed1 EHole
 
 conExpr 
   :: (Functor e3) 

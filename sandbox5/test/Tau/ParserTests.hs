@@ -358,6 +358,14 @@ testExprParser = do
         "((length(xs) <= 3))"
         (op2Expr () (OLte ()) (appExpr () [varExpr () "length", varExpr () "xs"]) (litExpr () (TInteger 3)))
 
+    succeedParse exprParser
+        "add(5, _)"
+        (appExpr () [varExpr () "add", litExpr () (TInteger 5), holeExpr ()])
+
+    succeedParse exprParser
+        "add(5, _ : Int)"
+        (appExpr () [varExpr () "add", litExpr () (TInteger 5), annExpr tInt (holeExpr ())])
+
 testTypeParser :: SpecWith ()
 testTypeParser = do
 

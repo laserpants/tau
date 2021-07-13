@@ -1,10 +1,13 @@
+{-# LANGUAGE FlexibleContexts  #-}
 {-# LANGUAGE LambdaCase        #-}
 {-# LANGUAGE OverloadedStrings #-}
 module Tau.Compiler.Pipeline.Stage1 where
 
+import Control.Monad.Supply
+import Data.List (partition)
 import Data.Map.Strict (Map)
+import Data.Maybe (fromMaybe, fromJust)
 import Data.Tuple.Extra (second)
-import Data.Maybe (fromMaybe)
 import Data.Void
 import Tau.Compiler.Error
 import Tau.Compiler.Pipeline
@@ -52,7 +55,6 @@ type TargetSimplifiedClause t =
 --  :: ProgExpr (TypeInfoT [Error] (Maybe Type))
 --  -> TargetExpr (TypeInfoT [Error] (Maybe Type))
 --translate = translate2 . translate1
-
 --translate = translate2 . translate1
 --
 ---- TODO ???
@@ -90,11 +92,15 @@ translate = cata $ \case
     -- Expand pattern clause guards
     EPat    t e cs       -> patExpr t e (expandClause =<< cs)
     EFun    t cs         -> translateFunExpr t (expandClause =<< cs)
+
+    EApp    t es         -> translateAppExpr t es
+--    EApp    t es         -> appExpr t es
+
     -- Other expressions do not change, except sub-expressions
     EVar    t var        -> varExpr t var
+    EHole   t            -> holeExpr t 
     ECon    t con es     -> conExpr t con es
     ELit    t prim       -> litExpr t prim
-    EApp    t es         -> appExpr t es
     EFix    t name e1 e2 -> fixExpr t name e1 e2
     ELam    t ps e       -> lamExpr t ps e
     EIf     t e1 e2 e3   -> ifExpr  t e1 e2 e3
@@ -130,6 +136,36 @@ translate = cata $ \case
 --         -- in (rowExprCons (TypeInfo [] ty1 []) name d e, ty1)
 --         in (rowExprCons (t{ nodeType = ty1 }) name d e, ty1)
 
+-- [varExpr () "(+)", x, y]
+
+translateAppExpr 
+  :: TypeInfoT [Error] (Maybe Type) 
+  -> [TargetExpr (TypeInfoT [Error] (Maybe Type))] 
+  -> TargetExpr (TypeInfoT [Error] (Maybe Type))
+translateAppExpr t es = 
+    foldr yyy (appExpr (TypeInfo [] (gork <$> nodeType t) []) replaceHoles) holes
+  where
+    yyy (a, n) b = lamExpr (xyz (nodeType (targetExprTag a)) <$> targetExprTag b) [varPat (targetExprTag a) n] b
+
+    xyz :: Maybe Type -> Maybe Type -> Maybe Type
+    xyz a t = tArr <$> a <*> t
+
+    replaceHoles = fromJust (evalSupply (mapM f es) [0..])
+      where
+        f e 
+          | isHole e = do
+              n <- supply
+              pure (varExpr (targetExprTag e) (xvar n))
+          | otherwise = pure e
+
+    holes = zip (filter isHole es) [xvar n | n <- [0..]]
+
+    xvar n = "^" <> intToText n
+
+    gork = cata $ \case
+      TArr _ t -> t
+      s        -> embed s
+
 translateFunExpr
   :: TypeInfoT [Error] (Maybe Type)
   -> [TargetSimplifiedClause (TypeInfoT [Error] (Maybe Type))]
@@ -146,14 +182,15 @@ translateFunExpr t =
     cod (TArr t1 _) = t1
     dom (TArr _ t2) = t2
 
---targetExprTag :: TargetExpr t -> t
---targetExprTag = cata $ \case
---    EVar t _     -> t
---    ECon t _ _   -> t
---    ELit t _     -> t
---    EApp t _     -> t
---    EFix t _ _ _ -> t
---    ELam t _ _   -> t
---    EIf  t _ _ _ -> t
---    EPat t _ _   -> t
---    ELet t _ _ _ -> t
+targetExprTag :: TargetExpr t -> t
+targetExprTag = cata $ \case
+    EVar  t _     -> t
+    EHole t       -> t
+    ECon  t _ _   -> t
+    ELit  t _     -> t
+    EApp  t _     -> t
+    EFix  t _ _ _ -> t
+    ELam  t _ _   -> t
+    EIf   t _ _ _ -> t
+    EPat  t _ _   -> t
+    ELet  t _ _ _ -> t

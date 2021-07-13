@@ -231,6 +231,7 @@ exprRep
   -> Value
 exprRep = project >>> \case
     EVar   t var        -> makeRep "Expr" "EVar"      [toRep t, String var]
+    EHole  t            -> makeRep "Expr" "EHole"     [toRep t]
     ECon   t con es     -> makeRep "Expr" "ECon"      [toRep t, String con, toRep es]
     ELit   t prim       -> makeRep "Expr" "ELit"      [toRep t, toRep prim]
     EApp   t es         -> makeRep "Expr" "EApp"      [toRep t, toRep es]

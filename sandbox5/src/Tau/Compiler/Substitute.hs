@@ -84,6 +84,7 @@ instance (Substitutable t a) => Substitutable (Clause t (ProgPattern t) (ProgExp
 instance (Substitutable t a) => Substitutable (ProgExpr t) a where
     apply sub = cata $ \case
         EVar    t var        -> varExpr    (apply sub t) var
+        EHole   t            -> holeExpr   (apply sub t)
         ECon    t con es     -> conExpr    (apply sub t) con es
         ELit    t prim       -> litExpr    (apply sub t) prim
         EApp    t es         -> appExpr    (apply sub t) es

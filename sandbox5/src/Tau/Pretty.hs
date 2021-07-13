@@ -263,6 +263,7 @@ instance (Pretty e1, FunArgs e2, Functor e3, Clauses [e3 (Expr t1 t2 t3 t4 t5 t6
 
         expr -> snd <$> expr & \case
             EVar    _ var                -> pretty var
+            EHole   _                    -> "_"
             ELit    _ prim               -> pretty prim
             EIf     _ e1 e2 e3           -> prettyIf e1 e2 e3
             EFix    _ name e1 e2         -> prettyFix name e1 e2

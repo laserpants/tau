@@ -1766,11 +1766,39 @@ example1 = do -- foo1 expr
 
 
 
-    -- DONE --
-    expr = r
-      where
-        Right r = runParserStack exprParser "" "{ a = { b = { c = \"d\" } } }.a.b.c"
-    -- DONE --
+--    -- DONE --
+--    expr = r
+--      where
+--        Right r = runParserStack exprParser "" "{ a = { b = { c = \"d\" } } }.a.b.c"
+--    -- DONE --
+
+
+
+--    expr = 
+--        letExpr () (BPat () (varPat () "f"))
+--            --(appExpr () [varExpr () "(-)", holeExpr (), annExpr tInt (litExpr () (TInteger 3))])
+--            --(appExpr () [varExpr () "isLongerThan", holeExpr (), holeExpr ()])
+--            (appExpr () [varExpr () "isLongerThan", holeExpr (), litExpr () (TString "boo")])
+--            (appExpr () [varExpr () "f", litExpr () (TInteger 4)])
+
+
+    expr = 
+        -- let f(x, y) = x - y
+        --  in 
+        --  let
+        --    pred = f(_, 1)
+        --   in
+        --   pred(11)
+        letExpr () 
+            (BFun () "f" [varPat () "x", varPat () "y"])
+            (op2Expr () (OSub ()) (varExpr () "x") (varExpr () "y"))
+            (letExpr () 
+                (BPat () (varPat () "pred"))
+                (appExpr () [varExpr () "f", holeExpr (), annExpr tInt (litExpr () (TInteger 1))])
+                (appExpr () [varExpr () "pred", litExpr () (TInteger 11)])
+            )
+
+
 
 
 --    --expr = r
@@ -2900,12 +2928,16 @@ testTypeEnv = Env.fromList
 
     , ( "[]"           , Forall [kTyp] [] (tList (tGen 0)) )
     , ( "(+)"          , Forall [kTyp] [InClass "Num" 0] (tGen 0 `tArr` tGen 0 `tArr` tGen 0) )
+    , ( "(-)"          , Forall [kTyp] [InClass "Num" 0] (tGen 0 `tArr` tGen 0 `tArr` tGen 0) )
     , ( "(*)"          , Forall [kTyp] [InClass "Num" 0] (tGen 0 `tArr` tGen 0 `tArr` tGen 0) )
     , ( "#"            , Forall [kRow] [] (tGen 0 `tArr` tApp kTyp tRecordCon (tGen 0)) )
     , ( "{}"           , Forall [] [] tRowNil )
     , ( "_#"           , Forall [kRow] [] (tApp kTyp (tCon (kArr kRow kTyp) "#") (tGen 0) `tArr` tGen 0) )
     , ( "fromInteger"  , Forall [kTyp] [InClass "Num" 0] (tInteger `tArr` tGen 0) )
     , ( "fn1"          , Forall [kTyp] [InClass "Num" 0] (tGen 0 `tArr` tGen 0 `tArr` tGen 0))
+
+    , ( "isLongerThan" , Forall [] [] (tInt `tArr` tString `tArr` tBool) )
+
     ]
 
 testClassEnv :: ClassEnv
@@ -2976,17 +3008,20 @@ testClassEnv = Env.fromList
       , ( ClassInfo (InClass "Num" "a") [InClass "Eq" "a", InClass "Foo" "a"]
             [ ( "(+)"         , tVar kTyp "a" `tArr` tVar kTyp "a" `tArr` tVar kTyp "a" )
             , ( "(*)"         , tVar kTyp "a" `tArr` tVar kTyp "a" `tArr` tVar kTyp "a" )
+            , ( "(-)"         , tVar kTyp "a" `tArr` tVar kTyp "a" `tArr` tVar kTyp "a" )
             , ( "fromInteger" , tInteger `tArr` tVar kTyp "a" )
             ]
         -- Instances
         , [ ClassInfo (InClass "Num" tInt) [] 
             [ ( "(+)"         , Ast (varExpr (TypeInfo () (tInt `tArr` tInt `tArr` tInt) []) "@Int.(+)") )
             , ( "(*)"         , Ast (varExpr (TypeInfo () (tInt `tArr` tInt `tArr` tInt) []) "@Int.(*)") )
+            , ( "(-)"         , Ast (varExpr (TypeInfo () (tInt `tArr` tInt `tArr` tInt) []) "@Int.(-)") )
             , ( "fromInteger" , Ast (varExpr (TypeInfo () (tInteger `tArr` tInt) []) "@Int.fromInteger") )
             ]
           , ClassInfo (InClass "Num" tInteger) [] 
             [ ( "(+)"         , Ast (varExpr (TypeInfo () (tInteger `tArr` tInteger `tArr` tInteger) []) "@Integer.(+)") )
             , ( "(*)"         , Ast (varExpr (TypeInfo () (tInteger `tArr` tInteger `tArr` tInteger) []) "@Integer.(*)") )
+            , ( "(-)"         , Ast (varExpr (TypeInfo () (tInteger `tArr` tInteger `tArr` tInteger) []) "@Integer.(-)") )
             , ( "fromInteger" , Ast (varExpr (TypeInfo () (tInteger `tArr` tInteger) []) "@Integer.id") )
             ]
           ]

@@ -65,6 +65,10 @@ inferExprType = cata $ \case
                      [varExpr (fromJust . unpackRecordType "##" <$> ti) a]
             else varExpr ti a
 
+    EHole _ -> do 
+        ((), ti, _) <- runNode $ pure ()
+        pure (holeExpr ti)
+
     ECon _ con exprs -> do
         (es, ti, _) <- runNode $ do
             ty <- lookupScheme con >>= instantiate
@@ -86,8 +90,11 @@ inferExprType = cata $ \case
             case es of
                 [] -> pure ()
                 f:args -> do
-                    t1 <- thisNodeType
-                    f ## foldr tArr t1 (typeOf <$> args)
+                    r <- thisNodeType
+                    t <- newTVar 
+                    r ## foldr tArr t (typeOf <$> filter isHole args)
+                    f ## foldr tArr t (typeOf <$> args)
+                    --f ## foldr tArr t1 (typeOf <$> args)
             pure es
         pure (appExpr ti es)
 

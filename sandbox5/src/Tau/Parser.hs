@@ -245,8 +245,12 @@ operator =
 
 postfixFunArgParser :: Parser (ProgExpr () -> ProgExpr ())
 postfixFunArgParser = do
-    args <- try (parens spaces $> [litExpr () TUnit]) <|> argParser annExprParser
+    args <- try (parens spaces $> [litExpr () TUnit]) <|> argParser exprWithHolesParser
     pure (\fun -> appExpr () (fun:args))
+  where
+    exprWithHolesParser = try (symbol "_" *> symbol ":" *> (annExpr <$> typeParser <*> pure (holeExpr ())))
+        <|> symbol "_" *> pure (holeExpr ())
+        <|> annExprParser
 
 annExprParser :: Parser (ProgExpr ())
 annExprParser = makeExprParser (try lambdaParser <|> try (parens annExprParser) <|> exprParser)
@@ -256,15 +260,15 @@ exprParser :: Parser (ProgExpr ())
 exprParser = makeExprParser (try lambdaParser <|> try (parens exprParser) <|> parser) operator
   where
     parser = parseIf
-      <|> parseFun
-      <|> parseLet
-      <|> parseMatch
-      <|> parseVar
-      <|> parseLit
-      <|> parseCon
-      <|> parseList
-      <|> parseTuple
-      <|> parseRecord
+        <|> parseFun
+        <|> parseLet
+        <|> parseMatch
+        <|> parseVar
+        <|> parseLit
+        <|> parseCon
+        <|> parseList
+        <|> parseTuple
+        <|> parseRecord
 
     parseIf = ifExpr () 
         <$> (keyword "if"   *> annExprParser)
