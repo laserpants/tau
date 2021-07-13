@@ -18,7 +18,8 @@ data CoreF a
     | CIf  a ~a ~a              -- ^ If-clause
     | CPat a (CMatrix a)        -- ^ Pattern match clause matrix
 
--- | Core language expression used for evaluation and code generation
+-- | Core language expression used for interpreted program evaluation and code 
+-- generation
 type Core = Fix CoreF
 
 -- >>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>

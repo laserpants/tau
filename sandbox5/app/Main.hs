@@ -1782,57 +1782,57 @@ example1 = do -- foo1 expr
 --            (appExpr () [varExpr () "f", litExpr () (TInteger 4)])
 
 
-    expr = 
-        -- let f(x, y) = x - y
-        --  in 
-        --  let
-        --    pred = f(_, 1)
-        --   in
-        --   pred(11)
-        letExpr () 
-            (BFun () "f" [varPat () "x", varPat () "y"])
-            (op2Expr () (OSub ()) (varExpr () "x") (varExpr () "y"))
-            (letExpr () 
-                (BPat () (varPat () "pred"))
-                (appExpr () [varExpr () "f", holeExpr (), annExpr tInt (litExpr () (TInteger 1))])
-                (appExpr () [varExpr () "pred", litExpr () (TInteger 11)])
-            )
-
-
-
-
---    --expr = r
---    --  where
---    --    Right r = runParserStack exprParser "" "let xs = [5 : Int] : List Int in match xs with | (x :: _) when (length(xs) <= 3) => x | _ => 0"
 --    expr = 
---        (fixExpr () "loopList"
---            (lamExpr () [varPat () "g", varPat () "ys"] (patExpr () (varExpr () "ys")
---                [ Clause () (conPat () "(::)" [varPat () "x", varPat () "xs"]) 
---                      [Guard [] (appExpr () [varExpr () "g", conExpr () "Cons'" [varExpr () "x", varExpr () "xs", appExpr () [varExpr () "loopList", varExpr () "g", varExpr () "xs"]]])]
---                , Clause () (conPat () "[]" []) 
---                      [Guard [] (appExpr () [varExpr () "g", conExpr () "Nil'" []])]
---                ]))
---            (letExpr ()
---                (BFun () "length" [varPat () "xs"])
---                --
---                -- xs.loopList(fun | Cons'(_, _, a) => 1 + a | Nil' => 0 : Int)
---                -- 
---                (op2Expr () (ODot ())
---                    (appExpr () 
---                        [ varExpr () "loopList"
---                        , funExpr () 
---                            [ Clause () (conPat () "Cons'" [anyPat (), anyPat (), varPat () "a"]) [Guard [] (op2Expr () (OAdd ()) (litExpr () (TInteger 1)) (varExpr () "a"))]
---                            , Clause () (conPat () "Nil'" []) [Guard [] (annExpr tInt (litExpr () (TInteger 0)))]
---                            ]
---                        ])
---                    (varExpr () "xs"))
---                (letExpr () 
---                    (BPat () (varPat () "xs"))
---                    (annExpr (tList tInt) (listExpr () [litExpr () (TInteger 5)]))
---                    (patExpr () (varExpr () "xs")
---                        [ Clause () (conPat () "(::)" [varPat () "x", anyPat ()]) [Guard [op2Expr () (OLte ()) (appExpr () [varExpr () "length", varExpr () "xs"]) (litExpr () (TInteger 3))] (varExpr () "x")]
---                        , Clause () (anyPat ()) [Guard [] (litExpr () (TInteger 0))]
---                        ]))))
+--        -- let f(x, y) = x - y
+--        --  in 
+--        --  let
+--        --    pred = f(_, 1)
+--        --   in
+--        --   pred(11)
+--        letExpr () 
+--            (BFun () "f" [varPat () "x", varPat () "y"])
+--            (op2Expr () (OSub ()) (varExpr () "x") (varExpr () "y"))
+--            (letExpr () 
+--                (BPat () (varPat () "pred"))
+--                (appExpr () [varExpr () "f", holeExpr (), annExpr tInt (litExpr () (TInteger 1))])
+--                (appExpr () [varExpr () "pred", litExpr () (TInteger 11)])
+--            )
+
+
+
+
+    --expr = r
+    --  where
+    --    Right r = runParserStack exprParser "" "let xs = [5 : Int] : List Int in match xs with | (x :: _) when (length(xs) <= 3) => x | _ => 0"
+    expr = 
+        (fixExpr () "loopList"
+            (lamExpr () [varPat () "g", varPat () "ys"] (patExpr () (varExpr () "ys")
+                [ Clause () (conPat () "(::)" [varPat () "x", varPat () "xs"]) 
+                      [Guard [] (appExpr () [varExpr () "g", conExpr () "Cons'" [varExpr () "x", varExpr () "xs", appExpr () [varExpr () "loopList", varExpr () "g", varExpr () "xs"]]])]
+                , Clause () (conPat () "[]" []) 
+                      [Guard [] (appExpr () [varExpr () "g", conExpr () "Nil'" []])]
+                ]))
+            (letExpr ()
+                (BFun () "length" [varPat () "xs"])
+                --
+                -- xs.loopList(fun | Cons'(_, _, a) => 1 + a | Nil' => 0 : Int)
+                -- 
+                (op2Expr () (ODot ())
+                    (appExpr () 
+                        [ varExpr () "loopList"
+                        , funExpr () 
+                            [ Clause () (conPat () "Cons'" [anyPat (), anyPat (), varPat () "a"]) [Guard [] (op2Expr () (OAdd ()) (litExpr () (TInteger 1)) (varExpr () "a"))]
+                            , Clause () (conPat () "Nil'" []) [Guard [] (annExpr tInt (litExpr () (TInteger 0)))]
+                            ]
+                        ])
+                    (varExpr () "xs"))
+                (letExpr () 
+                    (BPat () (varPat () "xs"))
+                    (annExpr (tList tInt) (listExpr () [litExpr () (TInteger 5)]))
+                    (patExpr () (varExpr () "xs")
+                        [ Clause () (conPat () "(::)" [varPat () "x", anyPat ()]) [Guard [op2Expr () (OLte ()) (appExpr () [varExpr () "length", varExpr () "xs"]) (litExpr () (TInteger 3))] (varExpr () "x")]
+                        , Clause () (anyPat ()) [Guard [] (litExpr () (TInteger 0))]
+                        ]))))
 
 
 
