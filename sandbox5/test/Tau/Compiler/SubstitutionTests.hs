@@ -6,10 +6,10 @@ import Data.Maybe (isNothing)
 import Data.Text (pack)
 import Tau.Compiler.Substitute
 import Tau.Pretty
-import Tau.Tooling
+import Tau.Util
 import Tau.Type
 import Test.Hspec hiding (describe, it)
-import Utils
+import TestUtils
 import qualified Tau.Compiler.Substitute as Sub
 
 --testSubstitution :: SpecWith ()

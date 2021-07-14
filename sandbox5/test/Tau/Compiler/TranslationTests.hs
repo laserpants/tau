@@ -19,10 +19,10 @@ import Tau.Lang
 import Tau.Pretty
 import Tau.Prog
 import Tau.TestEnv
-import Tau.Tooling
+import Tau.Util
 import Tau.Type
 import Test.Hspec hiding (describe, it)
-import Utils
+import TestUtils
 import qualified Data.Text as Text
 import qualified Tau.Compiler.Pipeline.Stage0 as Stage0
 import qualified Tau.Compiler.Pipeline.Stage1 as Stage1

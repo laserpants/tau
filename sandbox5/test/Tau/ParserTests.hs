@@ -7,11 +7,11 @@ import Tau.Lang
 import Tau.Parser
 import Tau.Pretty
 import Tau.Prog
-import Tau.Tooling
+import Tau.Util
 import Tau.Type
 import Test.Hspec hiding (describe, it)
 import Text.Megaparsec
-import Utils
+import TestUtils
 
 succeedParseType :: Parser Type -> Text -> Type -> SpecWith ()
 succeedParseType parser input expected =

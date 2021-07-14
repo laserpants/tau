@@ -11,7 +11,7 @@ import Tau.Compiler.Error
 import Tau.Compiler.Patterns
 import Tau.Lang
 import Tau.Prog
-import Tau.Tooling
+import Tau.Util
 import Tau.Type
 import qualified Data.Set.Monad as Set
 import qualified Tau.Env as Env

@@ -8,7 +8,7 @@
 {-# LANGUAGE TemplateHaskell       #-}
 module Tau.Lang where
 
-import Tau.Tooling
+import Tau.Util
 import Tau.Type
 
 -- | Built-in language primitives

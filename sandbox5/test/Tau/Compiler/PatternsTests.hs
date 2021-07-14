@@ -7,10 +7,10 @@ import Tau.Lang
 import Tau.Pretty
 import Tau.Prog
 import Tau.TestEnv
-import Tau.Tooling
+import Tau.Util
 import Tau.Type
 import Test.Hspec hiding (describe, it)
-import Utils
+import TestUtils
 
 --testConstructorEnv :: ConstructorEnv
 --testConstructorEnv = constructorEnv

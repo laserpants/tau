@@ -13,7 +13,7 @@ import Tau.Core
 import Tau.Env (Env(..))
 import Tau.Eval.Prim
 import Tau.Lang
-import Tau.Tooling
+import Tau.Util
 import qualified Data.Map.Strict as Map
 import qualified Data.Text as Text
 import qualified Tau.Env as Env

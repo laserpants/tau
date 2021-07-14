@@ -5,9 +5,9 @@ import Data.Text.Prettyprint.Doc
 import Tau.Lang
 import Tau.Pretty
 import Tau.Type
-import Tau.Tooling
+import Tau.Util
 import Test.Hspec hiding (describe, it)
-import Utils
+import TestUtils
 import qualified Data.Text as Text
 
 suceedPrint :: (Pretty p) => p -> String -> SpecWith ()

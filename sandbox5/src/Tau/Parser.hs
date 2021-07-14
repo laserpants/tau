@@ -13,7 +13,7 @@ import Data.Maybe (fromMaybe, fromJust)
 import Data.Text (Text, pack, unpack)
 import Tau.Lang
 import Tau.Prog
-import Tau.Tooling hiding (parens, brackets, braces, commaSep)
+import Tau.Util hiding (parens, brackets, braces, commaSep)
 import Tau.Type
 import Text.Megaparsec
 import Text.Megaparsec.Char

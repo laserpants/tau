@@ -3,7 +3,7 @@ module Tau.Env where
 
 import Data.Map.Strict (Map)
 import Prelude hiding (lookup, insert)
-import Tau.Tooling
+import Tau.Util
 import qualified Data.Map.Strict as Map
 
 newtype Env a = Env { getEnv :: Map Name a }

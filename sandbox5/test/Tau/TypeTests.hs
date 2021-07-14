@@ -4,10 +4,10 @@ module Tau.TypeTests where
 import Data.Text (Text)
 import Data.Text.Prettyprint.Doc
 import Tau.Pretty
-import Tau.Tooling
+import Tau.Util
 import Tau.Type
 import Test.Hspec hiding (describe, it)
-import Utils
+import TestUtils
 import qualified Data.Text as Text
 
 testKindOf :: SpecWith ()

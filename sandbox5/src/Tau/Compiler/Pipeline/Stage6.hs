@@ -1,7 +1,7 @@
 {-# LANGUAGE LambdaCase #-}
 module Tau.Compiler.Pipeline.Stage6 where
 
-import Tau.Tooling
+import Tau.Util
 import Tau.Core
 import Tau.Lang
 import Tau.Compiler.Pipeline

@@ -26,7 +26,7 @@ import Tau.Compiler.Unify
 import Tau.Core
 import Tau.Lang
 import Tau.Prog
-import Tau.Tooling
+import Tau.Util
 import Tau.Type
 import qualified Data.Map.Strict as Map
 import qualified Data.Text as Text

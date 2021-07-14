@@ -23,7 +23,7 @@ import Tau.Compiler.Substitute
 import Tau.Compiler.Unify
 import Tau.Lang
 import Tau.Prog
-import Tau.Tooling
+import Tau.Util
 import Tau.Type
 import qualified Data.Map.Strict as Map
 import qualified Data.Text as Text
@@ -733,7 +733,7 @@ subs = do
 --import Tau.Lang
 --import Tau.Pretty
 --import Tau.Prog
---import Tau.Tooling
+--import Tau.Util
 --import Tau.Type
 --import qualified Data.Map.Strict as Map
 --import qualified Data.Set.Monad as Set

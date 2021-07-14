@@ -13,7 +13,7 @@ import Data.Maybe (fromMaybe)
 import Data.Tuple.Extra (first, second)
 import Tau.Lang
 import Tau.Prog
-import Tau.Tooling
+import Tau.Util
 import Tau.Type
 import qualified Data.Map.Strict as Map
 import qualified Data.Set.Monad as Set

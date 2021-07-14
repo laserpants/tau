@@ -14,7 +14,7 @@ import Tau.Eval (Eval)
 import Tau.Lang
 import Tau.Pretty
 import Tau.Prog
-import Tau.Tooling
+import Tau.Util
 import Tau.Type
 import qualified Data.HashMap.Strict as HM
 import qualified Data.Text as Text

@@ -8,7 +8,7 @@ import Data.Foldable (foldrM)
 import Data.Maybe (fromJust)
 import Tau.Compiler.Pipeline
 import Tau.Lang
-import Tau.Tooling
+import Tau.Util
 import Tau.Type
 
 type SourceExpr t = Expr t t t t t t t t t Void Void Void Void Void Void

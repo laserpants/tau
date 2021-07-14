@@ -13,7 +13,7 @@ import Tau.Compiler.Error
 import Tau.Compiler.Pipeline
 import Tau.Lang
 import Tau.Prog
-import Tau.Tooling
+import Tau.Util
 import Tau.Type
 import qualified Data.Map.Strict as Map
 

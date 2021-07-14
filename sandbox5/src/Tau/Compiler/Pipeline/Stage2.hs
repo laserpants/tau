@@ -20,7 +20,7 @@ import Tau.Env (Env)
 import Tau.Lang
 import Tau.Pretty
 import Tau.Prog
-import Tau.Tooling
+import Tau.Util
 import Tau.Type
 import qualified Data.Text as Text
 import qualified Data.Map.Strict as Map

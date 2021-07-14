@@ -6,7 +6,7 @@ import Data.Maybe (fromMaybe)
 import Tau.Compiler.Pipeline
 import Tau.Lang
 import Tau.Type
-import Tau.Tooling
+import Tau.Util
 
 type SourceExpr t = Expr t t t t t t t t Void Void Void Void Void Void Void
     Void Name (SimplifiedClause t (ProgPattern t))

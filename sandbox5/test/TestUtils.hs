@@ -1,5 +1,5 @@
 {-# LANGUAGE OverloadedStrings #-}
-module Utils where
+module TestUtils where
 --  ( module Debug.Trace
 --  , describe
 --  , it
@@ -16,7 +16,7 @@ import Data.Text (Text, unpack)
 import Data.Text.Prettyprint.Doc
 import Data.Text.Prettyprint.Doc.Render.Text
 import Debug.Trace
-import Tau.Tooling
+import Tau.Util
 import Tau.Type
 import Test.Hspec hiding (describe, it) 
 import qualified Test.Hspec as Hspec

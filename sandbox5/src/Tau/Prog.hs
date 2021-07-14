@@ -27,7 +27,7 @@ import Tau.Compiler.Unify
 import Tau.Compiler.Unify
 import Tau.Env (Env(..))
 import Tau.Lang
-import Tau.Tooling
+import Tau.Util
 import Tau.Type
 import qualified Data.Set.Monad as Set
 import qualified Tau.Env as Env

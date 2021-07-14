@@ -21,7 +21,7 @@ import Tau.Eval
 import Tau.Lang
 import Tau.Prog
 import Tau.Serialize
-import Tau.Tooling
+import Tau.Util
 import Tau.Type
 import qualified Tau.Compiler.Pipeline.Stage0 as Stage0
 import qualified Tau.Compiler.Pipeline.Stage1 as Stage1

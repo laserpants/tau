@@ -13,10 +13,10 @@ import Tau.Lang
 import Tau.Pretty
 import Tau.Prog
 import Tau.TestEnv
-import Tau.Tooling
+import Tau.Util
 import Tau.Type
 import Test.Hspec hiding (describe, it)
-import Utils
+import TestUtils
 import qualified Tau.Env as Env
 
 runInferStack :: InferStack Identity a -> (a, Substitution Type, Substitution Kind, Context)
@@ -183,10 +183,10 @@ succeedInferPattern pat ty = -- ps errs =
 --import Tau.Pretty
 --import Tau.Prog
 --import Tau.Row
---import Tau.Tooling
+--import Tau.Util
 --import Tau.Type
 --import Test.Hspec hiding (describe, it)
---import Utils
+--import TestUtils
 --import qualified Data.Map.Strict as Map
 --import qualified Data.Set.Monad as Set
 --import qualified Tau.Compiler.Substitution as Sub

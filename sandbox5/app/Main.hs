@@ -42,8 +42,8 @@ import Tau.Lang
 import Tau.Parser
 import Tau.Prog
 import Tau.Serialize
-import Tau.Tooling
 import Tau.Type
+import Tau.Util
 import Text.Megaparsec
 import qualified Data.ByteString.Lazy as LBS
 import qualified Data.Set.Monad as Set

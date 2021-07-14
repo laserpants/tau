@@ -9,7 +9,7 @@ import Tau.ParserTests
 import Tau.PrettyTests
 import Tau.TypeTests
 import Test.Hspec hiding (describe, it)
-import Utils
+import TestUtils
 
 main :: IO ()
 main =

@@ -13,10 +13,10 @@ import Tau.Compiler.Unify
 import Tau.Lang
 import Tau.Pretty
 import Tau.Prog
-import Tau.Tooling
+import Tau.Util
 import Tau.Type
 import Test.Hspec hiding (describe, it)
-import Utils
+import TestUtils
 import qualified Data.Map.Strict as Map
 import qualified Data.Text as Text
 
@@ -102,7 +102,7 @@ failUnifyTypes t1 t2 = do
 --import Tau.Row
 --import Tau.Type
 --import Test.Hspec hiding (describe, it)
---import Utils
+--import TestUtils
 --
 --testBind :: SpecWith ()
 --testBind = do
