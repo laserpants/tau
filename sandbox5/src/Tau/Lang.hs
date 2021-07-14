@@ -123,7 +123,7 @@ data ExprF t1 t2 t3 t4 t5 t6 t7 t8 t9 t10 t11 t12 t13 t14 t15 t16 e1 e2 e3 a
     | ETuple  t13 [a]                    -- ^ Tuple
     | EList   t14 [a]                    -- ^ List literal
     | ERow    t15 Name a a               -- ^ Row expression
-    | EHole   t16                        -- ^ Curried argument in function application
+    | EHole   t16                        -- ^ Blank argument in partial function application
     | EAnn    Type a                     -- ^ Explicit type annotation
 
 -- | Language expression

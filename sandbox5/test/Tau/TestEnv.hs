@@ -88,10 +88,16 @@ testClassEnv = Env.fromList
         -- Interface
       , ( ClassInfo (InClass "Eq" "a") [] -- [InClass "Ord" "a"] 
             [ ( "(==)", tVar kTyp "a" `tArr` tVar kTyp "a" `tArr` tBool )
+            , ( "(/=)", tVar kTyp "a" `tArr` tVar kTyp "a" `tArr` tBool )
             ]
         -- Instances
         , [ ClassInfo (InClass "Eq" tInt) [] 
             [ ( "(==)", Ast (varExpr (TypeInfo () (tInt `tArr` tInt `tArr` tBool) []) "@Int.(==)" ) )
+            , ( "(/=)", Ast (varExpr (TypeInfo () (tInt `tArr` tInt `tArr` tBool) []) "@Int.(/=)" ) )
+            ]
+          , ClassInfo (InClass "Eq" tInteger) [] 
+            [ ( "(==)", Ast (varExpr (TypeInfo () (tInt `tArr` tInt `tArr` tBool) []) "@Integer.(==)" ) )
+            , ( "(/=)", Ast (varExpr (TypeInfo () (tInt `tArr` tInt `tArr` tBool) []) "@Integer.(/=)" ) )
             ]
           ]
         )
