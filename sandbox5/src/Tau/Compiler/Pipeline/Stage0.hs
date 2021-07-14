@@ -19,14 +19,14 @@ import qualified Tau.Env as Env
 hasErrors 
   :: ProgExpr (TypeInfoT [Error] t)
   -> Bool
-hasErrors expr = foldrExprTag (\ti rest -> rest || not (null (nodeErrors ti))) False expr
+hasErrors = foldrExprTag (\ti rest -> rest || not (null (nodeErrors ti))) False 
 
 runReduce
   :: ClassEnv
   -> [Predicate] 
   -> Either UnificationError [Predicate]
 runReduce env ps =
-    fromJust (evalSupply (reduce env ps) (numSupply "???"))
+    fromJust (evalSupply (reduce env ps) (numSupply "???"))  -- TODO
 
 xxx1 
   :: (FreeIn t) 
