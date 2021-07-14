@@ -33,7 +33,7 @@ main =
 --
 --        describe "Tau.Compiler.Substitution"               testSubstitution
         describe "Tau.Compiler.Substitution.apply"         testApply
---        describe "Tau.Compiler.Substitution.compose"       testCompose
+        describe "Tau.Compiler.Substitution.compose"       testCompose
 --        describe "Tau.Compiler.Substitution.merge"         testMerge
 --        describe "Tau.Compiler.Substitution.fromList"      testFromList
 --        describe "Tau.Compiler.Substitution.toList"        testToList

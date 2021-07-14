@@ -49,63 +49,63 @@ testApply = do
 
 ---- >>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>
 --
---composeAndApplyTo :: TypeSubstitution -> TypeSubstitution -> Type -> Type -> SpecWith ()
---composeAndApplyTo sub1 sub2 ty res =
---    describe ("apply TODO to " <> prettyPrint ty) $ do
---        it ("✔ returns: " <> prettyPrint res)
---            (apply (compose sub1 sub2) ty == res)
---
---testCompose ::  SpecWith ()
---testCompose = do 
---
---    composeAndApplyTo
---        (fromList [ ("a", tInt) ]) 
---        (fromList [ ("b", tBool) ])
---        _a
---        tInt
---
---    composeAndApplyTo
---        (fromList [ ("a", tInt) ]) 
---        (fromList [ ("b", tBool) ])
---        _b
---        tBool
---
---    composeAndApplyTo
---        (fromList [ ("b", tBool) ])
---        (fromList [ ("a", tInt) ]) 
---        _a
---        tInt
---
---    composeAndApplyTo
---        (fromList [ ("b", tBool) ])
---        (fromList [ ("a", tInt) ]) 
---        _b
---        tBool
---
---    composeAndApplyTo
---        (fromList [ ("b", tBool) ])
---        (fromList [ ("a", tInt) ]) 
---        (_a `tArr` _b)
---        (tInt `tArr` tBool)
---
---    composeAndApplyTo
---        (fromList [ ("b", tBool) ])
---        (fromList [ ("a", tVar kTyp "b") ]) 
---        _a
---        tBool
---
---    composeAndApplyTo
---        (fromList [ ("b", tBool) ])
---        (fromList [ ("a", tVar kTyp "b") ]) 
---        _b
---        tBool
---
---    composeAndApplyTo
---        (compose (fromList [ ("a3", tVar kTyp "a4") ]) (fromList [ ("a2", tVar kTyp "a3") ]))
---        (fromList [ ("a1", tVar kTyp "a2") ]) 
---        (tVar kTyp "a1")
---        (tVar kTyp "a4")
---
+composeAndApplyTo :: Substitution Type -> Substitution Type -> Type -> Type -> SpecWith ()
+composeAndApplyTo sub1 sub2 ty res =
+    describe ("apply TODO to " <> prettyPrint ty) $ do
+        it ("✔ returns: " <> prettyPrint res)
+            (apply (compose sub1 sub2) ty == res)
+
+testCompose ::  SpecWith ()
+testCompose = do 
+
+    composeAndApplyTo
+        (fromList [ ("a", tInt) ]) 
+        (fromList [ ("b", tBool) ])
+        _a
+        tInt
+
+    composeAndApplyTo
+        (fromList [ ("a", tInt) ]) 
+        (fromList [ ("b", tBool) ])
+        _b
+        tBool
+
+    composeAndApplyTo
+        (fromList [ ("b", tBool) ])
+        (fromList [ ("a", tInt) ]) 
+        _a
+        tInt
+
+    composeAndApplyTo
+        (fromList [ ("b", tBool) ])
+        (fromList [ ("a", tInt) ]) 
+        _b
+        tBool
+
+    composeAndApplyTo
+        (fromList [ ("b", tBool) ])
+        (fromList [ ("a", tInt) ]) 
+        (_a `tArr` _b)
+        (tInt `tArr` tBool)
+
+    composeAndApplyTo
+        (fromList [ ("b", tBool) ])
+        (fromList [ ("a", tVar kTyp "b") ]) 
+        _a
+        tBool
+
+    composeAndApplyTo
+        (fromList [ ("b", tBool) ])
+        (fromList [ ("a", tVar kTyp "b") ]) 
+        _b
+        tBool
+
+    composeAndApplyTo
+        (compose (fromList [ ("a3", tVar kTyp "a4") ]) (fromList [ ("a2", tVar kTyp "a3") ]))
+        (fromList [ ("a1", tVar kTyp "a2") ]) 
+        (tVar kTyp "a1")
+        (tVar kTyp "a4")
+
 ---- >>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>
 --
 --testMerge ::  SpecWith ()
