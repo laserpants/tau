@@ -38,5 +38,3 @@ _c = tVar kTyp "c"
 
 runUnify :: SupplyT Name (ExceptT err Maybe) a -> Either err a
 runUnify e = fromJust (runExceptT (evalSupplyT e (numSupply "")))
-
-
