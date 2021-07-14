@@ -15,44 +15,44 @@ import qualified Tau.Compiler.Substitute as Sub
 --testSubstitution :: SpecWith ()
 --testSubstitution = 
 --    pure ()
---
----- >>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>
---
---applyTo :: TypeSubstitution -> Type -> Type -> SpecWith ()
---applyTo sub ty res =
---    describe ("apply " <> prettyText sub <> " to " <> prettyText ty) $ do
---        it ("✔ returns: " <> prettyText res)
---            (apply sub ty == res)
---
---testApply :: SpecWith ()
---testApply = do 
---
---    applyTo 
---        (mapsTo "a" tInt) 
---        _a
---        tInt
---
---    applyTo 
---        (mapsTo "a" tInt) 
---        (_a `tArr` _b)
---        (tInt `tArr` _b)
---
---    applyTo 
---        (mapsTo "a" tInt) 
---        (_a `tArr` _a)
---        (tInt `tArr` tInt)
---
---    applyTo 
---        (mapsTo "a" tInt) 
---        tInt
---        tInt
---
+
+-- >>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>
+
+applyTo :: Substitution Type -> Type -> Type -> SpecWith ()
+applyTo sub ty res =
+    describe ("apply " <> prettyPrint (show sub) <> " to " <> prettyPrint ty) $ do
+        it ("✔ returns: " <> prettyPrint res)
+            (apply sub ty == res)
+
+testApply :: SpecWith ()
+testApply = do 
+
+    applyTo 
+        (mapsTo "a" tInt) 
+        _a
+        tInt
+
+    applyTo 
+        (mapsTo "a" tInt) 
+        (_a `tArr` _b)
+        (tInt `tArr` _b)
+
+    applyTo 
+        (mapsTo "a" tInt) 
+        (_a `tArr` _a)
+        (tInt `tArr` tInt)
+
+    applyTo 
+        (mapsTo "a" tInt) 
+        tInt
+        tInt
+
 ---- >>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>
 --
 --composeAndApplyTo :: TypeSubstitution -> TypeSubstitution -> Type -> Type -> SpecWith ()
 --composeAndApplyTo sub1 sub2 ty res =
---    describe ("apply TODO to " <> prettyText ty) $ do
---        it ("✔ returns: " <> prettyText res)
+--    describe ("apply TODO to " <> prettyPrint ty) $ do
+--        it ("✔ returns: " <> prettyPrint res)
 --            (apply (compose sub1 sub2) ty == res)
 --
 --testCompose ::  SpecWith ()
