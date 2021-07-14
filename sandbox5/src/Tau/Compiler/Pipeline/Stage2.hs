@@ -27,7 +27,7 @@ import qualified Data.Map.Strict as Map
 import qualified Tau.Compiler.Pipeline.Stage1 as Stage1
 import qualified Tau.Env as Env
 
-type WorkingExpr t = Expr t t t t t t t t t Void Void Void Void Void Void
+type WorkingExpr t = Expr t t t t t t t t t Void Void Void Void Void Void Void
     (ProgBinding t) [ProgPattern t] (SimplifiedClause t (ProgPattern t))
 
 -- >>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>

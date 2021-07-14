@@ -65,7 +65,7 @@ instance
     , Pretty e1
     , FunArgs e2
     , FunArgsRep e2
-    , Clauses [e3 (Expr t1 t2 t3 t4 t5 t6 t7 t8 t9 t10 t11 t12 t13 t14 t15 e1 e2 e3)]
+    , Clauses [e3 (Expr t1 t2 t3 t4 t5 t6 t7 t8 t9 t10 t11 t12 t13 t14 t15 t16 e1 e2 e3)]
     , ToRep t1
     , ToRep t2
     , ToRep t3
@@ -81,10 +81,11 @@ instance
     , ToRep t13
     , ToRep t14
     , ToRep t15
+    , ToRep t16
     , ToRep e1
     , ToRep e2
-    , ToRep (e3 (Expr t1 t2 t3 t4 t5 t6 t7 t8 t9 t10 t11 t12 t13 t14 t15 e1 e2 e3))
-    ) => ToRep (Expr t1 t2 t3 t4 t5 t6 t7 t8 t9 t10 t11 t12 t13 t14 t15 e1 e2 e3) 
+    , ToRep (e3 (Expr t1 t2 t3 t4 t5 t6 t7 t8 t9 t10 t11 t12 t13 t14 t15 t16 e1 e2 e3))
+    ) => ToRep (Expr t1 t2 t3 t4 t5 t6 t7 t8 t9 t10 t11 t12 t13 t14 t15 t16 e1 e2 e3) 
   where
     toRep = withPretty exprRep
 
@@ -208,7 +209,7 @@ exprRep
      , Pretty e1
      , FunArgs e2
      , FunArgsRep e2
-     , Clauses [e3 (Expr t1 t2 t3 t4 t5 t6 t7 t8 t9 t10 t11 t12 t13 t14 t15 e1 e2 e3)]
+     , Clauses [e3 (Expr t1 t2 t3 t4 t5 t6 t7 t8 t9 t10 t11 t12 t13 t14 t15 t16 e1 e2 e3)]
      , ToRep t1
      , ToRep t2
      , ToRep t3
@@ -224,10 +225,11 @@ exprRep
      , ToRep t13
      , ToRep t14
      , ToRep t15
+     , ToRep t16
      , ToRep e1
      , ToRep e2
-     , ToRep (e3 (Expr t1 t2 t3 t4 t5 t6 t7 t8 t9 t10 t11 t12 t13 t14 t15 e1 e2 e3)) ) 
-  => Expr t1 t2 t3 t4 t5 t6 t7 t8 t9 t10 t11 t12 t13 t14 t15 e1 e2 e3 
+     , ToRep (e3 (Expr t1 t2 t3 t4 t5 t6 t7 t8 t9 t10 t11 t12 t13 t14 t15 t16 e1 e2 e3)) ) 
+  => Expr t1 t2 t3 t4 t5 t6 t7 t8 t9 t10 t11 t12 t13 t14 t15 t16 e1 e2 e3 
   -> Value
 exprRep = project >>> \case
     EVar   t var        -> makeRep "Expr" "EVar"      [toRep t, String var]

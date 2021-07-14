@@ -17,7 +17,7 @@ import Tau.Util
 import Tau.Type
 import qualified Data.Map.Strict as Map
 
-type TargetExpr t = Expr t t t t t t t t t Void Void Void Void Void Void
+type TargetExpr t = Expr t t t t t t t t t Void Void Void Void Void Void Void
     (ProgBinding t) [ProgPattern t] (SimplifiedClause t (ProgPattern t))
 
 type TargetSimplifiedClause t = 
@@ -96,7 +96,7 @@ translate = cata $ \case
     EApp    t es         -> translateAppExpr t es
     -- Other expressions do not change, except sub-expressions
     EVar    t var        -> varExpr t var
-    EHole   t            -> holeExpr t 
+    EHole   t            -> varExpr t "^" 
     ECon    t con es     -> conExpr t con es
     ELit    t prim       -> litExpr t prim
     EFix    t name e1 e2 -> fixExpr t name e1 e2
@@ -151,12 +151,16 @@ translateAppExpr t es =
     replaceHoles = fromJust (evalSupply (mapM f es) [0..])
       where
         f e 
-          | isHole e = do
+          | hole e = do
               n <- supply
               pure (varExpr (targetExprTag e) (xvar n))
           | otherwise = pure e
 
-    holes = zip (filter isHole es) [xvar n | n <- [0..]]
+    hole (Fix (EVar _ "^")) = True
+--    hole (Fix (EHole _))    = True
+    hole _                  = False
+
+    holes = zip (filter hole es) [xvar n | n <- [0..]]
 
     xvar n = "^" <> intToText n
 
@@ -183,7 +187,6 @@ translateFunExpr t =
 targetExprTag :: TargetExpr t -> t
 targetExprTag = cata $ \case
     EVar  t _     -> t
-    EHole t       -> t
     ECon  t _ _   -> t
     ELit  t _     -> t
     EApp  t _     -> t
