@@ -52,7 +52,8 @@ main =
         describe "Tau.Pretty (Type)"                       testPrettyType
         describe "Tau.Pretty (Kind)"                       testPrettyKind
 --        describe "Tau.Pretty (Pattern)"                    testPrettyPattern
-        describe "Tau.Pretty (Predicates)"                 testPrettyPredicates
+        describe "Tau.Pretty (Predicate)"                  testPrettyPredicates
+        describe "Tau.Pretty (Expr)"                       testPrettyExpr
 
         describe "Tau.Parser (exprParser)"                 testExprParser
         describe "Tau.Parser (annExprParser)"              testAnnExprParser

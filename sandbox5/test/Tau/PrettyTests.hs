@@ -223,3 +223,16 @@ testPrettyPredicates = do
     suceedPrint
         (InClass "Eq" tInt :: Predicate)
         "Eq Int"
+
+-- >>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>
+
+suceedPrintExpr :: ProgExpr t -> String -> SpecWith ()
+suceedPrintExpr = suceedPrint
+
+testPrettyExpr :: SpecWith ()
+testPrettyExpr = do
+
+        suceedPrintExpr
+            (appExpr () [varExpr () "add", litExpr () (TInteger 3) :: ProgExpr (), holeExpr ()])
+            "add(3, _)"
+
