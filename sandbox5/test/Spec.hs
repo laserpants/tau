@@ -16,8 +16,8 @@ main =
     hspec $ do
         describe "Tau.Type.kindOf"                         testKindOf
         describe "Tau.Type.typeVars"                       testTypeVars
---        describe "Tau.Type.upgrade"                        testUpgrade
---        describe "Tau.Type.tupleCon"                       testTupleCon
+        describe "Tau.Type.upgrade"                        testUpgrade
+        describe "Tau.Type.tupleCon"                       testTupleCon
 
         describe "Tau.Compiler.Patterns"                   testPatterns
 

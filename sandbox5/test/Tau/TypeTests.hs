@@ -67,31 +67,31 @@ testTypeVars = do
         [("m", kFun), ("a", kTyp)] 
 
 ---- >>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>
---
---testUpgrade :: SpecWith ()
---testUpgrade = do
---
---    describe "Upgrading a type variable" $ do
---        it "✔ returns the same type" 
---            (upgrade _a == (tVar kTyp "a" :: PolyType))
---
---    describe "Upgrading a type constructor" $ do
---        it "✔ returns the same type" 
---            (upgrade tInt == (tInt :: PolyType))
---
----- >>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>
---
---testTupleCon :: SpecWith ()
---testTupleCon = do
---
---    describe "The 2-tuple constructor" $ do
---        it "✔ is (,)" 
---            (tupleCon 2 == "(,)")
---
---    describe "The 3-tuple constructor" $ do
---        it "✔ is (,,)" 
---            (tupleCon 3 == "(,,)")
---
---    describe "The 4-tuple constructor" $ do
---        it "✔ is (,,,)" 
---            (tupleCon 4 == "(,,,)")
+
+testUpgrade :: SpecWith ()
+testUpgrade = do
+
+    describe "Upgrading a type variable" $ do
+        it "✔ returns the same type" 
+            (toPolytype _a == (tVar kTyp "a" :: Polytype))
+
+    describe "Upgrading a type constructor" $ do
+        it "✔ returns the same type" 
+            (toPolytype tInt == (tInt :: Polytype))
+
+-- >>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>
+
+testTupleCon :: SpecWith ()
+testTupleCon = do
+
+    describe "The 2-tuple constructor" $ do
+        it "✔ is (,)" 
+            (tupleCon 2 == "(,)")
+
+    describe "The 3-tuple constructor" $ do
+        it "✔ is (,,)" 
+            (tupleCon 3 == "(,,)")
+
+    describe "The 4-tuple constructor" $ do
+        it "✔ is (,,,)" 
+            (tupleCon 4 == "(,,,)")
