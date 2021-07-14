@@ -160,7 +160,6 @@ instance Pretty Predicate where
 instance Pretty (Pattern t1 t2 t3 t4 t5 t6 t7 t8 t9) where
     pretty = para $ \case
 
-        PCon _ "[]" []                   -> "[]"
         PCon _ "(::)" [hd, tl]           -> snd hd <+> "::" <+> snd tl
         PCon _ "#" [(r, _)]              -> prettyRecord r
         PCon _ con []                    -> pretty con
@@ -212,7 +211,6 @@ instance Pretty (SimplifiedPattern t) where
 instance (Pretty e1, FunArgs e2, Functor e3, Clauses [e3 (Expr t1 t2 t3 t4 t5 t6 t7 t8 t9 t10 t11 t12 t13 t14 t15 e1 e2 e3)]) => Pretty (Expr t1 t2 t3 t4 t5 t6 t7 t8 t9 t10 t11 t12 t13 t14 t15 e1 e2 e3) where
     pretty = para $ \case
 
-        ECon _ "[]" []                   -> "[]"
         ECon _ "(::)" [hd, tl]           -> snd hd <+> "::" <+> snd tl
         ECon _ "#" [(r, _)]              -> prettyRecord r
         ECon _ con []                    -> pretty con

@@ -34,38 +34,38 @@ testKindOf = do
             (kindOf tListCon == kFun)
 
 ---- >>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>
---
---typeVarsAre :: Type -> [(Name, Kind)] -> SpecWith ()
---typeVarsAre ty vars =
---    describe ("The free type variables in " <> prettyText ty) $
---        it ("✔ are [" <> Text.intercalate ", " (renderDoc . prettyTypePair <$> vars) <> "]")
---            (typeVars ty == vars)
---  where
---    prettyTypePair (n, k) = pretty n <+> ":" <+> pretty k
---
---testTypeVars :: SpecWith ()
---testTypeVars = do
---
---    typeVarsAre 
---        _a
---        [("a", kTyp)] 
---
---    typeVarsAre 
---        (_a `tArr` _b) 
---        [("a", kTyp), ("b", kTyp)] 
---
---    typeVarsAre 
---        (tList _a `tArr` _b) 
---        [("a", kTyp), ("b", kTyp)] 
---
---    typeVarsAre 
---        tInt
---        [] 
---
---    typeVarsAre 
---        (tApp (tVar kFun "m") _a) 
---        [("m", kFun), ("a", kTyp)] 
---
+
+typeVarsAre :: Type -> [(Name, Kind)] -> SpecWith ()
+typeVarsAre ty vars =
+    describe ("The free type variables in " <> prettyPrint ty) $
+        it ("✔ are [" <> Text.intercalate ", " (renderDoc . prettyTypePair <$> vars) <> "]")
+            (typeVars ty == vars)
+  where
+    prettyTypePair (n, k) = pretty n <+> ":" <+> pretty k
+
+testTypeVars :: SpecWith ()
+testTypeVars = do
+
+    typeVarsAre 
+        _a
+        [("a", kTyp)] 
+
+    typeVarsAre 
+        (_a `tArr` _b) 
+        [("a", kTyp), ("b", kTyp)] 
+
+    typeVarsAre 
+        (tList _a `tArr` _b) 
+        [("a", kTyp), ("b", kTyp)] 
+
+    typeVarsAre 
+        tInt
+        [] 
+
+    typeVarsAre 
+        (tApp kTyp (tVar kFun "m") _a) 
+        [("m", kFun), ("a", kTyp)] 
+
 ---- >>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>
 --
 --testUpgrade :: SpecWith ()
