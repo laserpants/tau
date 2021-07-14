@@ -109,7 +109,7 @@ type ProgBinding t = Binding t (ProgPattern t)
 
 data ExprF t1 t2 t3 t4 t5 t6 t7 t8 t9 t10 t11 t12 t13 t14 t15 e1 e2 e3 a
     = EVar    t1  Name                   -- ^ Variable
-    | EHole   t1        -- t16
+    | EHole   t1                         -- ^ Curried argument in function application
     | ECon    t2  Name [a]               -- ^ Data constructor
     | ELit    t3  Prim                   -- ^ Literal value
     | EApp    t4  [a]                    -- ^ Function application

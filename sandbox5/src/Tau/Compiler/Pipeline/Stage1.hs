@@ -92,10 +92,8 @@ translate = cata $ \case
     -- Expand pattern clause guards
     EPat    t e cs       -> patExpr t e (expandClause =<< cs)
     EFun    t cs         -> translateFunExpr t (expandClause =<< cs)
-
+    -- Remove holes in function application expressions
     EApp    t es         -> translateAppExpr t es
---    EApp    t es         -> appExpr t es
-
     -- Other expressions do not change, except sub-expressions
     EVar    t var        -> varExpr t var
     EHole   t            -> holeExpr t 
