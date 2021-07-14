@@ -5,6 +5,7 @@ module Tau.Compiler.Pipeline.Stage2 where
 
 import Control.Monad.Except 
 import Control.Monad.Reader
+import Control.Monad.Writer
 import Control.Monad.State
 import Control.Monad.Trans.Maybe
 import Control.Monad.Supply
@@ -40,7 +41,7 @@ runTranslate
   -> ReaderT (ClassEnv, TypeEnv, KindEnv, ConstructorEnv) (Supply Name) e 
   -> e
 runTranslate classEnv typeEnv kindEnv constructorEnv expr = 
-    fromJust (evalSupply (runReaderT expr env) (numSupply "$dict"))
+    fromJust (evalSupply (runReaderT expr env) (numSupply ""))
   where
     env = (classEnv, typeEnv, kindEnv, constructorEnv)
 
@@ -49,7 +50,84 @@ translate
      , MonadReader (ClassEnv, TypeEnv, KindEnv, ConstructorEnv) m )
   => WorkingExpr (TypeInfoT [Error] (Maybe Type))
   -> m (WorkingExpr (Maybe Type))
-translate expr = evalStateT (expandTypeClasses =<< translateLiterals expr) mempty
+translate expr = evalStateT (expandTypeClasses =<< translateLiterals =<< xxx expr) mempty
+
+xxx
+  :: ( MonadSupply Name m
+     , MonadReader (ClassEnv, TypeEnv, KindEnv, ConstructorEnv) m )
+  => WorkingExpr (TypeInfoT [e] (Maybe Type))
+  -> m (WorkingExpr (TypeInfoT [e] (Maybe Type)))
+xxx = cata $ \case
+
+    EPat t expr clauses -> do
+        e <- expr
+        cs <- traverse sequence clauses >>= expandLitAndAnyPatterns 
+        pure (patExpr t e cs)
+        --compilePatterns e cs
+
+    ELit    t prim       -> pure (litExpr t prim)
+    EVar    t var        -> pure (varExpr t var)
+    ECon    t con exs    -> conExpr t con <$> sequence exs
+    EApp    t es         -> appExpr t <$> sequence es
+    EFix    t name e1 e2 -> fixExpr t name <$> e1 <*> e2
+    ELam    t ps e       -> lamExpr t ps <$> e
+    EIf     t e1 e2 e3   -> ifExpr  t <$> e1 <*> e2 <*> e3
+--    EPat    t e cs       -> patExpr t <$> e <*> traverse sequence cs
+    ELet    t bind e1 e2 -> letExpr t bind <$> e1 <*> e2
+
+expandLitAndAnyPatterns 
+  :: (MonadSupply Name m) 
+  => [SimplifiedClause (TypeInfoT [e] (Maybe Type)) (ProgPattern (TypeInfoT [e] (Maybe Type))) (WorkingExpr (TypeInfoT [e] (Maybe Type)))] 
+  -> m [SimplifiedClause (TypeInfoT [e] (Maybe Type)) (ProgPattern (TypeInfoT [e] (Maybe Type))) (WorkingExpr (TypeInfoT [e] (Maybe Type)))]
+expandLitAndAnyPatterns = traverse expandClause
+  where
+    expandClause (SimplifiedClause t ps (Guard exs e)) = do
+        (qs, exs1) <- runWriterT (traverse expandPatterns ps)
+        pure (SimplifiedClause t qs (Guard (exs <> exs1) e))
+
+    expandPatterns = cata $ \case
+        PLit t prim -> do
+            var <- varSupply
+            tell [ appExpr (TypeInfo [] (Just tBool) [])
+                   [ varExpr (ty <$$> t) ("(==)")
+                   , varExpr (TypeInfo [] (nodeType t) []) var
+                   , litExpr t prim ]]
+            pure (varPat t var)
+          where
+            ty t = t `tArr` t `tArr` tBool
+
+        PAny   t          -> varPat t <$> varSupply
+        PVar   t var      -> pure (varPat t var)
+        PCon   t con ps   -> conPat t con <$> sequence ps
+        PAs    t as p     -> asPat t as <$> p
+        POr    t p q      -> orPat t <$> p <*> q
+        PTuple t ps       -> tuplePat t <$> sequence ps
+        PList  t ps       -> listPat t <$> sequence ps
+        PRow   t lab p q  -> rowPat t lab <$> p <*> q 
+
+    varSupply = ("$2.a" <>) <$> supply
+
+--    traverse expandClause
+--      where
+--        expandClause (SimplifiedClause t ps (Guard exs e)) = do
+--            (qs, exs1) <- runWriterT (traverse expandPatterns ps)
+--            pure (SimplifiedClause t qs (Guard (exs <> exs1) e))
+--
+--        expandPatterns = cata $ \case
+--            PLit t prim -> do
+--                var <- supply
+--                tell [ appExpr (Just tBool)
+--                       [ varExpr (ty <$> t) ("@" <> primName prim <> ".(==)")
+--                       , varExpr t var
+--                       , litExpr t prim ]]
+--                pure (varPat t var)
+--              where
+--                ty t = t `tArr` t `tArr` tBool
+--
+--            PAny t           -> varPat t <$> supply
+--            PVar t var       -> pure (varPat t var)
+--            PCon t con ps    -> conPat t con <$> sequence ps
+--            PAs  t as p      -> asPat t as <$> p
 
 translateLiterals 
   :: ( MonadSupply Name m
@@ -69,6 +147,12 @@ translateLiterals = cata $ \case
             , litExpr (TypeInfo [] (Just tInteger) []) (TInteger (fromIntegral n)) ])
 
     -- TODO: FLoat, Double, etc.
+
+--    EPat t expr clauses -> do
+--        e <- expr
+--        cs <- traverse sequence clauses >>= expandLitAndAnyPatterns 
+--        pure (patExpr t e cs)
+--        --compilePatterns e cs
 
     ELit    t prim       -> pure (litExpr t prim)
     EVar    t var        -> pure (varExpr t var)
@@ -462,7 +546,7 @@ dictTVar2 name (TVar _ var) = do
     maybe fresh pure (lookupVar info classEnv)
   where
     fresh = do
-        dv <- supply
+        dv <- ("$dict" <>) <$> supply
         modify (Env.alter (\vs -> Just $ (name, dv):fromMaybe [] vs) var)
         pure dv
 

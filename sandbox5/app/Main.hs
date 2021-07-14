@@ -1137,6 +1137,8 @@ example1 = do -- foo1 expr
 
     let value = join (evalExpr <$> (coreExpr bundle) <*> Just testEvalEnv)
 
+    traceShowM value
+
     liftIO $ LBS.writeFile "/home/laserpants/code/tau-tooling/src/tmp/bundle.json" (encodePretty' defConfig{ confIndent = Spaces 2 } (toRep (bundle{ value = value })))
 
 --    traceShowM value
