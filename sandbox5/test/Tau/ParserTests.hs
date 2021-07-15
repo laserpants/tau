@@ -517,6 +517,13 @@ testExprParserMatch = do
         "{ a = { b = \"c\" } }.a.b"
         (Fix (EOp2 () (ODot ()) (Fix (EVar () "b")) (Fix (EOp2 () (ODot ()) (Fix (EVar () "a")) (Fix (ECon () "#" [Fix (ERow () "a" (Fix (ECon () "#" [Fix (ERow () "b" (Fix (ELit () (TString "c"))) (Fix (ECon () "{}" [])))])) (Fix (ECon () "{}" [])))]))))))
 
+    failParse exprParser 
+        "let 5 = 3 in y"
+
+    succeedParse exprParser
+        "(Some(x) => x | None => 1)"
+        (Fix (EFun () [Clause {clauseTag = (), clausePatterns = Fix (PCon () "Some" [Fix (PVar () "x")]), clauseGuard = [Guard [] (Fix (EVar () "x"))]},Clause {clauseTag = (), clausePatterns = Fix (PCon () "None" []), clauseGuard = [Guard [] (Fix (ELit () (TInteger 1)))]}]))
+
 testAnnExprParser :: SpecWith ()
 testAnnExprParser = do
 
