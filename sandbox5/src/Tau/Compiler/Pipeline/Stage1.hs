@@ -143,7 +143,9 @@ translateAppExpr
 translateAppExpr t es = 
     foldr yyy (appExpr (TypeInfo [] (gork <$> nodeType t) []) replaceHoles) holes
   where
-    yyy (a, n) b = lamExpr (xyz (nodeType (targetExprTag a)) <$> targetExprTag b) [varPat (targetExprTag a) n] b
+    yyy (a, n) b = lamExpr 
+        (xyz (nodeType (targetExprTag a)) <$> targetExprTag b) 
+        [varPat (targetExprTag a) n] b
 
     xyz :: Maybe Type -> Maybe Type -> Maybe Type
     xyz a t = tArr <$> a <*> t
