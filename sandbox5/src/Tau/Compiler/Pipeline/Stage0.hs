@@ -100,12 +100,13 @@ exhaustivePatternsCheck = para $ \case
         ELit    t prim       -> pure (litExpr t prim)
         EApp    t es         -> appExpr t <$> sequence es
         EFix    t name e1 e2 -> fixExpr t name <$> e1 <*> e2
-        EIf     t e1 e2 e3   -> ifExpr  t <$> e1 <*> e2 <*> e3
+        EIf     t e1 e2 e3   -> ifExpr t <$> e1 <*> e2 <*> e3
         EOp1    t op a       -> op1Expr t op <$> a
         EOp2    t op a b     -> op2Expr t op <$> a <*> b
         ETuple  t es         -> tupleExpr t <$> sequence es
         EList   t es         -> listExpr t <$> sequence es
         ERow    t lab a b    -> rowExpr t lab <$> a <*> b 
+
   where
     check f as ti = do
         exhaustive <- f as
