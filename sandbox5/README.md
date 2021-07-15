@@ -355,6 +355,12 @@ foo
 
 foo((a, b)) = a + b
 
+foo(<a, b>) = a + b
+
+<a, b>.second
+
+
+createTuple(x, y) = <x, y>
 
 replace OField ...> @#getField
 
