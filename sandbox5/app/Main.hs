@@ -1041,17 +1041,19 @@ foo1 expr = do
 
         --
 
-        let Ast e0 = fmap (fmap Just) (Ast e)
+        --let Ast e0 = fmap (fmap Just) (Ast e)
 
-        let e0_1 :: ProgExpr (TypeInfoT [Error] (Maybe Type))
-            e0_1 = Stage0.runExhaustivePatternsCheck testConstructorEnv e0 
+        let e0_1 :: ProgExpr (TypeInfoT [Error] (Type))
+            e0_1 = Stage0.runExhaustivePatternsCheck testConstructorEnv e 
 
         --e0_1 <- withReaderT getConstructorEnv (Stage0.exhaustivePatternsCheck e0)
 
         --
 
+        let Ast e0_11 = fmap (fmap Just) (Ast e0_1)
+
         let e1 :: Stage1.TargetExpr (TypeInfoT [Error] (Maybe Type))
-            e1 = Stage1.translate e0_1
+            e1 = Stage1.translate e0_11
         
         let r1 = toRep e1
         liftIO $ LBS.writeFile "/home/laserpants/play/ast-folder-tree/ast-folder-tree/src/testData23.json" (encode r1)
@@ -1762,8 +1764,8 @@ example1 = do -- foo1 expr
 
 --    expr = r
 --      where
---        Right r = runParserStack exprParser "" "let xs = [] in match xs with | (x :: _) when(xs <= 3) => x | _ => 0"
---        Right r = runParserStack exprParser "" "let xs = [] : List Int in match xs with | (x :: _) when(x == 1) => x | _ => 0"
+----        Right r = runParserStack exprParser "" "let xs = [] in match xs with | (x :: _) when(xs <= 3) => x | _ => 0"
+--        Right r = runParserStack exprParser "" "let xs = [1] : List Int in match xs with | (x :: _) when(x == 1) => x | _ => 0"
 
 
 
@@ -1779,8 +1781,8 @@ example1 = do -- foo1 expr
 --    expr = 
 --        letExpr () (BPat () (varPat () "f"))
 --            --(appExpr () [varExpr () "(-)", holeExpr (), annExpr tInt (litExpr () (TInteger 3))])
---            --(appExpr () [varExpr () "isLongerThan", holeExpr (), holeExpr ()])
---            (appExpr () [varExpr () "isLongerThan", holeExpr (), litExpr () (TString "boo")])
+--            (appExpr () [varExpr () "isLongerThan", holeExpr (), holeExpr ()])
+----            (appExpr () [varExpr () "isLongerThan", holeExpr (), litExpr () (TString "boo")])
 --            (appExpr () [varExpr () "f", litExpr () (TInteger 4)])
 
 
@@ -1806,32 +1808,32 @@ example1 = do -- foo1 expr
 
 
     expr =
-        appExpr ()
-            [ lamExpr () 
-                [varPat () "x", varPat () "y"]
-                -- match (x, y) with
-                --   | (1, x) or (x, 1) 
-                --       when x /= 0 => x
-                --       otherwise   => 0
-                --   | _ => 100
-                (patExpr () 
-                    (tupleExpr () [varExpr () "x", varExpr () "y"])
-                    -- [ Clause () (orPat () (tuplePat () [litPat () (TInteger 1), varPat () "x"]) (tuplePat () [varPat () "x", litPat () (TInteger 1)])) 
-                    -- [ Clause () (orPat () (tuplePat () [annPat tInt (litPat () (TInteger 1)), varPat () "x"]) (tuplePat () [varPat () "x", litPat () (TInteger 1)])) 
---                    [ Clause () (tuplePat () [annPat tInt (litPat () (TInteger 1)), varPat () "x"])  
---                        [ Guard [op2Expr () (ONeq ()) (varExpr () "x") (litExpr () (TInteger 0))] (varExpr () "x")
---                        , Guard [] (annExpr tInt (litExpr () (TInteger 0)))
---                        ]
+            (appExpr ()
+                [ lamExpr () 
+                    [varPat () "x", varPat () "y"]
+                    -- match (x, y) with
+                    --   | (1, x) or (x, 1) 
+                    --       when x /= 0 => x
+                    --       otherwise   => 0
+                    --   | _ => 100
+                    (patExpr () 
+                        (tupleExpr () [varExpr () "x", varExpr () "y"])
+                        -- [ Clause () (orPat () (tuplePat () [litPat () (TInteger 1), varPat () "x"]) (tuplePat () [varPat () "x", litPat () (TInteger 1)])) 
+                        -- [ Clause () (orPat () (tuplePat () [annPat tInt (litPat () (TInteger 1)), varPat () "x"]) (tuplePat () [varPat () "x", litPat () (TInteger 1)])) 
+                        [ Clause () (tuplePat () [annPat tInt (litPat () (TInteger 1)), varPat () "x"])  
+                            [ Guard [op2Expr () (ONeq ()) (varExpr () "x") (litExpr () (TInteger 0))] (varExpr () "x")
+                            , Guard [] (annExpr tInt (litExpr () (TInteger 0)))
+                            ]
 
-                    [ Clause () (tuplePat () [annPat tInt (litPat () (TInteger 1)), annPat tInt (varPat () "x")])  
-                        [ Guard [] (annExpr tInt (litExpr () (TInteger 0)))
-                        ]
+--                        [ Clause () (tuplePat () [annPat tInt (litPat () (TInteger 1)), annPat tInt (varPat () "x")])  
+--                            [ Guard [] (annExpr tInt (litExpr () (TInteger 0)))
+--                            ]
 
-                    , Clause () (anyPat ()) [ Guard [] (annExpr tInt (litExpr () (TInteger 100))) ]
-                    ])
-            , litExpr () (TInteger 1)
-            , litExpr () (TInteger 5)
-            ]
+--                        , Clause () (anyPat ()) [ Guard [] (annExpr tInt (litExpr () (TInteger 100))) ]
+                        ])
+                , litExpr () (TInteger 1)
+                , litExpr () (TInteger 5)
+                ])
 
 --    expr = (fixExpr () "loopList" (lamExpr () [varPat () "g", varPat () "ys"] (patExpr () (varExpr () "ys") [ Clause () (conPat () "(::)" [varPat () "x", varPat () "xs"]) [Guard [] (appExpr () [varExpr () "g", conExpr () "Cons'" [varExpr () "x", varExpr () "xs", appExpr () [varExpr () "loopList", varExpr () "g", varExpr () "xs"]]])] , Clause () (conPat () "[]" []) [Guard [] (appExpr () [varExpr () "g", conExpr () "Nil'" []])] ])) (letExpr () (BFun () "length" [varPat () "xs"]) (op2Expr () (ODot ()) (appExpr () [ varExpr () "loopList" , funExpr () [ Clause () (conPat () "Cons'" [anyPat (), anyPat (), varPat () "a"]) [Guard [] (op2Expr () (OAdd ()) (litExpr () (TInteger 1)) (varExpr () "a"))] , Clause () (conPat () "Nil'" []) [Guard [] (annExpr tInt (litExpr () (TInteger 0)))] ] ]) (varExpr () "xs")) (letExpr () (BPat () (varPat () "xs")) (annExpr (tList tInt) (listExpr () [litExpr () (TInteger 5)])) (patExpr () (varExpr () "xs") [ Clause () (conPat () "(::)" [varPat () "x", anyPat ()]) [Guard [op2Expr () (OLte ()) (appExpr () [varExpr () "length", varExpr () "xs"]) (litExpr () (TInteger 3))] (varExpr () "x")] , Clause () (anyPat ()) [Guard [] (litExpr () (TInteger 0))] ])))) 
 

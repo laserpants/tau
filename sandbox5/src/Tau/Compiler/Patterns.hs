@@ -229,9 +229,9 @@ checkExhaustive = para $ \case
         ECon   _ _ exprs             -> andM exprs
         EApp   _ exprs               -> andM exprs
         ELet   _ (BPat _ p) e1 e2    -> exhaustive [[p]] &&^ e1 &&^ e2
-        ELet   _ (BFun _ _ ps) e1 e2 -> exhaustive [ps] &&^ e1 &&^ e2
+        ELet   _ (BFun _ _ ps) e1 e2 -> exhaustive [ps] &&^ e1 &&^ e2  -- TODO: this is wrong!!
         EFix   _ _ e1 e2             -> e1 &&^ e2
-        ELam   _ ps e1               -> exhaustive [ps] &&^ e1
+        ELam   _ ps e1               -> exhaustive [ps] &&^ e1        --- and this
         EIf    _ cond tr fl          -> cond &&^ tr &&^ fl
         EOp1   _ _ a                 -> a
         EOp2   _ _ a b               -> a &&^ b

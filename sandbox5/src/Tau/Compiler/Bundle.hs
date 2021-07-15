@@ -89,7 +89,8 @@ compileBundle expr = do
     -- TODO
     constructorEnv <- askConstructorEnv
     classEnv <- askClassEnv
-    let normal = Stage0.foo2 context constructorEnv classEnv (getAst ast)
+    let normal_ = Stage0.foo2 context constructorEnv classEnv (getAst ast)
+        normal  = Stage0.runExhaustivePatternsCheck constructorEnv normal_
     -- TODO
     --
     
