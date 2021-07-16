@@ -78,6 +78,7 @@ type TargetSimplifiedClause t =
 --    EList   t es         -> listExpr  t es
 --    ERow    t lab a b    -> rowExpr   t lab a b 
 
+-- desugar
 translate
   :: ProgExpr (TypeInfoT [Error] (Maybe Type))
   -> TargetExpr (TypeInfoT [Error] (Maybe Type))

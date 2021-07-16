@@ -91,6 +91,24 @@ xxx = cata $ \case
     ELet    t bind e1 e2 -> letExpr t bind <$> e1 <*> e2
 
 
+--translateLambda
+--  :: (MonadSupply Name m) 
+--  => Maybe Type
+--  -> [ProgPattern (Maybe Type)]
+--  -> TargetExpr (Maybe Type)
+--  -> m (TargetExpr (Maybe Type))
+--translateLambda t [Fix (PVar _ var)] e = pure (lamExpr t var e)
+--translateLambda t ps e = do
+--    fst <$> foldrM fn (e, undefined e) ps
+--  where
+--    fn p (e, t) = do
+--        let t' = tArr <$> xPatternTag p <*> t
+--        var <- supply
+--        pure (lamExpr t' var (patExpr t 
+--                 (varExpr (xPatternTag p) var)
+--                 [SimplifiedClause t [p] (Guard [] e)]), t')
+--
+--xPatternTag = undefined
 
 
 
@@ -342,9 +360,10 @@ insertArgsExpr expr = foldrM fun expr . Env.toList
                     fnx t = var `elem` (fst <$> free t)
 
                 -- TODO
-                if Just False == (fnx . typeOf <$> (workingExprTag e))
-                    then error "Ambiguity"
-                    else if name `elem` set1
+--                if Just False == (fnx . typeOf <$> (workingExprTag e))
+--                    then error "Ambiguity"
+--                    else if name `elem` set1
+                if name `elem` set1
                               then do
                                   let ty = tApp kTyp (tCon kFun name) (tVar kTyp var)
                                   lamExpr (tArr <$> Just ty <*> workingExprTag e) 
@@ -1076,22 +1095,112 @@ workingExprTag = project >>> \case
     --  -> m [SimplifiedClause Ti (Pattern Ti Ti Ti Void Void Ti Void Void Void) (Expr Ti Ti Ti Ti Ti Ti Ti Ti Ti Void Void Void Void Void Void Void (ProgBinding Ti) [ProgPattern Ti] (SimplifiedClause Ti (Pattern Ti Ti Ti Void Void Ti Void Void Void)))]
 -------------------------------------------------------------------------------
 
+type StageX1Expr = Expr Ti Ti Ti Ti Ti Ti Ti Ti Ti Void Void Void Void Void Void Void (ProgBinding Ti) Name (SimplifiedClause Ti (Pattern Ti Ti Ti Void Void Ti Void Void Void))
 
+runTranslate3
+  :: ClassEnv 
+  -> TypeEnv 
+  -> KindEnv 
+  -> ConstructorEnv 
+  -> Expr Ti Ti Ti Ti Ti Ti Ti Ti Ti Void Void Void Void Void Void Void (ProgBinding Ti) [ProgPattern Ti] (SimplifiedClause Ti (ProgPattern Ti)) 
+  -> Expr Ti Ti Ti Ti Ti Ti Ti Ti Ti Void Void Void Void Void Void Void (ProgBinding Ti) Name (SimplifiedClause Ti (Pattern Ti Ti Ti Void Void Ti Void Void Void))
+runTranslate3 classEnv typeEnv kindEnv constructorEnv expr = 
+    fromJust (evalSupply (runReaderT (translate3 expr) env) (numSupply ""))
+  where
+    env = (classEnv, typeEnv, kindEnv, constructorEnv)
 
-translate2
+--runTranslate3
+--  :: (MonadReader (ClassEnv, TypeEnv, KindEnv, ConstructorEnv) m)
+--  => Expr Ti Ti Ti Ti Ti Ti Ti Ti Ti Void Void Void Void Void Void Void (ProgBinding Ti) [ProgPattern Ti] (SimplifiedClause Ti (ProgPattern Ti)) 
+--  -> m (Expr Ti Ti Ti Ti Ti Ti Ti Ti Ti Void Void Void Void Void Void Void (ProgBinding Ti) Name (SimplifiedClause Ti (Pattern Ti Ti Ti Void Void Ti Void Void Void)))
+--runTranslate3 expr = do
+--    --yo <- evalSupplyT (translate3 expr) (numSupply "")
+--    pure (fromJust zz)
+--    --fromJust (evalSupply (runReaderT (translate3 expr) env) (numSupply ""))
+--  where
+----    zz :: Maybe (Expr Ti Ti Ti Ti Ti Ti Ti Ti Ti Void Void Void Void Void Void Void (ProgBinding Ti) Name (SimplifiedClause Ti (Pattern Ti Ti Ti Void Void Ti Void Void Void)))
+--    zz = evalSupply (translate3 expr) (numSupply "")
+
+translate3
   :: ( MonadSupply Name m
      , MonadReader (ClassEnv, TypeEnv, KindEnv, ConstructorEnv) m )
   => Expr Ti Ti Ti Ti Ti Ti Ti Ti Ti Void Void Void Void Void Void Void (ProgBinding Ti) [ProgPattern Ti] (SimplifiedClause Ti (ProgPattern Ti))
-  -> m (Expr (Maybe Type) (Maybe Type) (Maybe Type) (Maybe Type) (Maybe Type) (Maybe Type) (Maybe Type) (Maybe Type) (Maybe Type) Void Void Void Void Void Void Void (ProgBinding (Maybe Type)) [ProgPattern (Maybe Type)] (SimplifiedClause (Maybe Type) (Pattern (Maybe Type) (Maybe Type) (Maybe Type) Void Void (Maybe Type) Void Void Void)))
-translate2 expr = evalStateT (expandTypeClasses2 =<< translateLiterals2 =<< xxx2 expr) mempty
+  -> m (Expr Ti Ti Ti Ti Ti Ti Ti Ti Ti Void Void Void Void Void Void Void (ProgBinding Ti) Name (SimplifiedClause Ti (Pattern Ti Ti Ti Void Void Ti Void Void Void)))
+translate3 expr = translateLiteral2 =<< xxx2 =<< xxx00 expr
+
+--translate2
+--  :: ( MonadSupply Name m
+--     , MonadReader (ClassEnv, TypeEnv, KindEnv, ConstructorEnv) m )
+--  => Expr Ti Ti Ti Ti Ti Ti Ti Ti Ti Void Void Void Void Void Void Void (ProgBinding Ti) [ProgPattern Ti] (SimplifiedClause Ti (ProgPattern Ti))
+--  -> m (Expr (Maybe Type) (Maybe Type) (Maybe Type) (Maybe Type) (Maybe Type) (Maybe Type) (Maybe Type) (Maybe Type) (Maybe Type) Void Void Void Void Void Void Void (ProgBinding (Maybe Type)) [ProgPattern (Maybe Type)] (SimplifiedClause (Maybe Type) (Pattern (Maybe Type) (Maybe Type) (Maybe Type) Void Void (Maybe Type) Void Void Void)))
+--translate2 expr = evalStateT (expandTypeClasses2 =<< translateLiteral2 =<< xxx2 =<< xxx00 expr) mempty
+
+xxx00
+  :: ( MonadSupply Name m
+     , MonadReader (ClassEnv, TypeEnv, KindEnv, ConstructorEnv) m )
+  => Expr Ti Ti Ti Ti Ti Ti Ti Ti Ti Void Void Void Void Void Void Void (ProgBinding Ti) [ProgPattern Ti] (SimplifiedClause Ti (ProgPattern Ti))
+  -> m (Expr Ti Ti Ti Ti Ti Ti Ti Ti Ti Void Void Void Void Void Void Void (ProgBinding Ti) Name (SimplifiedClause Ti (ProgPattern Ti)))
+xxx00 = cata $ \case
+
+    ELam t ps expr -> do
+        e <- expr
+        translateLambda2 t ps e
+
+    ELit    t prim       -> pure (litExpr t prim)
+    EVar    t var        -> pure (varExpr t var)
+    ECon    t con exs    -> conExpr t con <$> sequence exs
+    EApp    t es         -> appExpr t <$> sequence es
+    EFix    t name e1 e2 -> fixExpr t name <$> e1 <*> e2
+    EIf     t e1 e2 e3   -> ifExpr  t <$> e1 <*> e2 <*> e3
+    ELet    t bind e1 e2 -> letExpr t bind <$> e1 <*> e2
+
+translateLambda2
+  :: ( MonadSupply Name m
+     , MonadReader (ClassEnv, TypeEnv, KindEnv, ConstructorEnv) m )
+  => Ti
+  -> [Fix (PatternF Ti Ti Ti Ti Ti Ti Ti Ti Ti)]
+  -> Expr Ti Ti Ti Ti Ti Ti Ti Ti Ti Void Void Void Void Void Void Void (ProgBinding Ti) Name (SimplifiedClause Ti (ProgPattern Ti))
+  -> m (Expr Ti Ti Ti Ti Ti Ti Ti Ti Ti Void Void Void Void Void Void Void (ProgBinding Ti) Name (SimplifiedClause Ti (ProgPattern Ti)))
+translateLambda2 t [Fix (PVar _ var)] e = pure (lamExpr t var e)
+translateLambda2 t ps e = fst <$> foldrM fn (e, fooExprTag e) ps
+  where
+    fn p (e, t) = do
+        let t' :: TypeInfoT [Error] (Maybe Type)
+            t' = TypeInfo [] (tArr <$> nodeType (fooPatternTag p) <*> nodeType t) []
+        var <- supply
+        pure (lamExpr t' var (patExpr t 
+                 (varExpr (fooPatternTag p) var)
+                 [SimplifiedClause t [p] (Guard [] e)]), t')
+
+    fooExprTag = project >>> \case
+        EVar t _     -> t
+        ECon t _ _   -> t
+        ELit t _     -> t
+        EApp t _     -> t
+        ELet t _ _ _ -> t
+        EFix t _ _ _ -> t
+        ELam t _ _   -> t
+        EIf  t _ _ _ -> t
+        EPat t _ _   -> t
+
+    fooPatternTag = cata $ \case
+        PVar    t _     -> t
+        PCon    t _ _   -> t
+        PLit    t _     -> t 
+        PAs     t _ _   -> t
+        POr     t _ _   -> t
+        PAny    t       -> t
+        PTuple  t _     -> t
+        PList   t _     -> t
+        PRow    t _ _ _ -> t
 
 
 xxx2
   :: ( MonadSupply Name m
      , MonadReader (ClassEnv, TypeEnv, KindEnv, ConstructorEnv) m )
-  => Expr Ti Ti Ti Ti Ti Ti Ti Ti Ti Void Void Void Void Void Void Void (ProgBinding Ti) [ProgPattern Ti] (SimplifiedClause Ti (ProgPattern Ti))
-  -> m (Expr Ti Ti Ti Ti Ti Ti Ti Ti Ti Void Void Void Void Void Void Void (ProgBinding Ti) [ProgPattern Ti] (SimplifiedClause Ti (Pattern Ti Ti Ti Void Void Ti Void Void Void)))
-
+  => Expr Ti Ti Ti Ti Ti Ti Ti Ti Ti Void Void Void Void Void Void Void (ProgBinding Ti) Name (SimplifiedClause Ti (ProgPattern Ti))
+  -> m (Expr Ti Ti Ti Ti Ti Ti Ti Ti Ti Void Void Void Void Void Void Void (ProgBinding Ti) Name (SimplifiedClause Ti (Pattern Ti Ti Ti Void Void Ti Void Void Void)))
+--  -> m (Expr Ti Ti Ti Ti Ti Ti Ti Ti Ti Ti Ti Ti Ti Ti Ti Ti Void Name (SimplifiedClause Ti (ProgPattern Ti)))
 xxx2 = cata $ \case
 
     EPat t expr clauses -> 
@@ -1103,7 +1212,7 @@ xxx2 = cata $ \case
     ECon    t con exs    -> conExpr t con <$> sequence exs
     EApp    t es         -> appExpr t <$> sequence es
     EFix    t name e1 e2 -> fixExpr t name <$> e1 <*> e2
-    ELam    t ps e       -> lamExpr t ps <$> e
+    ELam    t name e     -> lamExpr t name <$> e
     EIf     t e1 e2 e3   -> ifExpr  t <$> e1 <*> e2 <*> e3
     ELet    t bind e1 e2 -> letExpr t bind <$> e1 <*> e2
   where
@@ -1135,7 +1244,8 @@ xxx2 = cata $ \case
                 foldr (listPatCons t) (conPat t "[]" []) <$> sequence ps
 
             -- TODO: comment
-            PRow t lab p q  -> foldRowPat t lab <$> p <*> q
+            PRow t lab p q  -> 
+                foldRowPat t lab <$> p <*> q
 
             -- TODO: comment
             PAny t          -> varPat t <$> varSupply
@@ -1144,12 +1254,12 @@ xxx2 = cata $ \case
             PAs  t as p     -> asPat t as <$> p
             POr  t p q      -> orPat t <$> p <*> q
 
-translateLiterals2
+translateLiteral2
   :: ( MonadSupply Name m
      , MonadReader (ClassEnv, TypeEnv, KindEnv, ConstructorEnv) m )
-  => Expr Ti Ti Ti Ti Ti Ti Ti Ti Ti Void Void Void Void Void Void Void (ProgBinding Ti) [ProgPattern Ti] (SimplifiedClause Ti (Pattern Ti Ti Ti Void Void Ti Void Void Void))
-  -> StateT (Env [(Name, Name)]) m (Expr Ti Ti Ti Ti Ti Ti Ti Ti Ti Void Void Void Void Void Void Void (ProgBinding Ti) [ProgPattern Ti] (SimplifiedClause Ti (Pattern Ti Ti Ti Void Void Ti Void Void Void)))
-translateLiterals2 = cata $ \case
+  => Expr Ti Ti Ti Ti Ti Ti Ti Ti Ti Void Void Void Void Void Void Void (ProgBinding Ti) Name (SimplifiedClause Ti (Pattern Ti Ti Ti Void Void Ti Void Void Void))
+  -> m (Expr Ti Ti Ti Ti Ti Ti Ti Ti Ti Void Void Void Void Void Void Void (ProgBinding Ti) Name (SimplifiedClause Ti (Pattern Ti Ti Ti Void Void Ti Void Void Void)))
+translateLiteral2 = cata $ \case
 
     ELit t (TInt n) -> 
         pure (appExpr t 
@@ -1176,17 +1286,16 @@ translateLiterals2 = cata $ \case
     ECon    t con exs    -> conExpr t con <$> sequence exs
     EApp    t es         -> appExpr t <$> sequence es
     EFix    t name e1 e2 -> fixExpr t name <$> e1 <*> e2
-    ELam    t ps e       -> lamExpr t ps <$> e
+    ELam    t name e     -> lamExpr t name <$> e
     EIf     t e1 e2 e3   -> ifExpr  t <$> e1 <*> e2 <*> e3
     EPat    t e cs       -> patExpr t <$> e <*> traverse sequence cs
     ELet    t bind e1 e2 -> letExpr t bind <$> e1 <*> e2
 
-
 expandTypeClasses2
   :: ( MonadSupply Name m
      , MonadReader (ClassEnv, TypeEnv, KindEnv, ConstructorEnv) m )
-  => Expr Ti Ti Ti Ti Ti Ti Ti Ti Ti Void Void Void Void Void Void Void (ProgBinding Ti) [ProgPattern Ti] (SimplifiedClause Ti (Pattern Ti Ti Ti Void Void Ti Void Void Void))
-  -> StateT (Env [(Name, Name)]) m (Expr (Maybe Type) (Maybe Type) (Maybe Type) (Maybe Type) (Maybe Type) (Maybe Type) (Maybe Type) (Maybe Type) (Maybe Type) Void Void Void Void Void Void Void (ProgBinding (Maybe Type)) [ProgPattern (Maybe Type)] (SimplifiedClause (Maybe Type) (Pattern (Maybe Type) (Maybe Type) (Maybe Type) Void Void (Maybe Type) Void Void Void)))
+  => Expr Ti Ti Ti Ti Ti Ti Ti Ti Ti Void Void Void Void Void Void Void (ProgBinding Ti) Name (SimplifiedClause Ti (Pattern Ti Ti Ti Void Void Ti Void Void Void))
+  -> StateT (Env [(Name, Name)]) m (Expr (Maybe Type) (Maybe Type) (Maybe Type) (Maybe Type) (Maybe Type) (Maybe Type) (Maybe Type) (Maybe Type) (Maybe Type) Void Void Void Void Void Void Void (ProgBinding (Maybe Type)) Name (SimplifiedClause (Maybe Type) (Pattern (Maybe Type) (Maybe Type) (Maybe Type) Void Void (Maybe Type) Void Void Void)))
 expandTypeClasses2 =
     undefined
 

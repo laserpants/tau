@@ -1785,6 +1785,13 @@ example1 = do -- foo1 expr
 ----            (appExpr () [varExpr () "isLongerThan", holeExpr (), litExpr () (TString "boo")])
 --            (appExpr () [varExpr () "f", litExpr () (TInteger 4)])
 
+    expr =
+        letExpr () (BPat () (varPat () "x"))
+            (litExpr () (TInteger 11))
+            (lamExpr () [varPat () "x"]
+                (appExpr () [varExpr () "show", appExpr () [varExpr () "read", varExpr () "x"]]))
+        
+
 
 --    expr = 
 --        -- let f(x, y) = x - y
@@ -1799,6 +1806,7 @@ example1 = do -- foo1 expr
 --            (letExpr () 
 --                (BPat () (varPat () "pred"))
 --                (appExpr () [varExpr () "f", holeExpr (), annExpr tInt (litExpr () (TInteger 1))])
+----                (appExpr () [varExpr () "f", holeExpr (), litExpr () (TInteger 1)])
 --                (appExpr () [varExpr () "pred", litExpr () (TInteger 11)])
 --            )
 
@@ -1807,33 +1815,33 @@ example1 = do -- foo1 expr
 --        appExpr () [appExpr () [varExpr () "(+)", annExpr tInt (litExpr () (TInteger 5))], litExpr () (TInteger 5)]
 
 
-    expr =
-            (appExpr ()
-                [ lamExpr () 
-                    [varPat () "x", varPat () "y"]
-                    -- match (x, y) with
-                    --   | (1, x) or (x, 1) 
-                    --       when x /= 0 => x
-                    --       otherwise   => 0
-                    --   | _ => 100
-                    (patExpr () 
-                        (tupleExpr () [varExpr () "x", varExpr () "y"])
-                        -- [ Clause () (orPat () (tuplePat () [litPat () (TInteger 1), varPat () "x"]) (tuplePat () [varPat () "x", litPat () (TInteger 1)])) 
-                        -- [ Clause () (orPat () (tuplePat () [annPat tInt (litPat () (TInteger 1)), varPat () "x"]) (tuplePat () [varPat () "x", litPat () (TInteger 1)])) 
-                        [ Clause () (tuplePat () [annPat tInt (litPat () (TInteger 1)), varPat () "x"])  
-                            [ Guard [op2Expr () (ONeq ()) (varExpr () "x") (litExpr () (TInteger 0))] (varExpr () "x")
-                            , Guard [] (annExpr tInt (litExpr () (TInteger 0)))
-                            ]
-
---                        [ Clause () (tuplePat () [annPat tInt (litPat () (TInteger 1)), annPat tInt (varPat () "x")])  
---                            [ Guard [] (annExpr tInt (litExpr () (TInteger 0)))
+--    expr =
+--            (appExpr ()
+--                [ lamExpr () 
+--                    [varPat () "x", varPat () "y"]
+--                    -- match (x, y) with
+--                    --   | (1, x) or (x, 1) 
+--                    --       when x /= 0 => x
+--                    --       otherwise   => 0
+--                    --   | _ => 100
+--                    (patExpr () 
+--                        (tupleExpr () [varExpr () "x", varExpr () "y"])
+--                        -- [ Clause () (orPat () (tuplePat () [litPat () (TInteger 1), varPat () "x"]) (tuplePat () [varPat () "x", litPat () (TInteger 1)])) 
+--                        -- [ Clause () (orPat () (tuplePat () [annPat tInt (litPat () (TInteger 1)), varPat () "x"]) (tuplePat () [varPat () "x", litPat () (TInteger 1)])) 
+--                        [ Clause () (tuplePat () [annPat tInt (litPat () (TInteger 1)), varPat () "x"])  
+--                            [ Guard [op2Expr () (ONeq ()) (varExpr () "x") (litExpr () (TInteger 0))] (varExpr () "x")
+--                            , Guard [] (annExpr tInt (litExpr () (TInteger 0)))
 --                            ]
-
---                        , Clause () (anyPat ()) [ Guard [] (annExpr tInt (litExpr () (TInteger 100))) ]
-                        ])
-                , litExpr () (TInteger 1)
-                , litExpr () (TInteger 5)
-                ])
+--
+----                        [ Clause () (tuplePat () [annPat tInt (litPat () (TInteger 1)), annPat tInt (varPat () "x")])  
+----                            [ Guard [] (annExpr tInt (litExpr () (TInteger 0)))
+----                            ]
+--
+----                        , Clause () (anyPat ()) [ Guard [] (annExpr tInt (litExpr () (TInteger 100))) ]
+--                        ])
+--                , litExpr () (TInteger 1)
+--                , litExpr () (TInteger 5)
+--                ])
 
 --    expr = (fixExpr () "loopList" (lamExpr () [varPat () "g", varPat () "ys"] (patExpr () (varExpr () "ys") [ Clause () (conPat () "(::)" [varPat () "x", varPat () "xs"]) [Guard [] (appExpr () [varExpr () "g", conExpr () "Cons'" [varExpr () "x", varExpr () "xs", appExpr () [varExpr () "loopList", varExpr () "g", varExpr () "xs"]]])] , Clause () (conPat () "[]" []) [Guard [] (appExpr () [varExpr () "g", conExpr () "Nil'" []])] ])) (letExpr () (BFun () "length" [varPat () "xs"]) (op2Expr () (ODot ()) (appExpr () [ varExpr () "loopList" , funExpr () [ Clause () (conPat () "Cons'" [anyPat (), anyPat (), varPat () "a"]) [Guard [] (op2Expr () (OAdd ()) (litExpr () (TInteger 1)) (varExpr () "a"))] , Clause () (conPat () "Nil'" []) [Guard [] (annExpr tInt (litExpr () (TInteger 0)))] ] ]) (varExpr () "xs")) (letExpr () (BPat () (varPat () "xs")) (annExpr (tList tInt) (listExpr () [litExpr () (TInteger 5)])) (patExpr () (varExpr () "xs") [ Clause () (conPat () "(::)" [varPat () "x", anyPat ()]) [Guard [op2Expr () (OLte ()) (appExpr () [varExpr () "length", varExpr () "xs"]) (litExpr () (TInteger 3))] (varExpr () "x")] , Clause () (anyPat ()) [Guard [] (litExpr () (TInteger 0))] ])))) 
 
@@ -2974,20 +2982,35 @@ testTypeEnv = Env.fromList
     , ( "fromInteger"  , Forall [kTyp] [InClass "Num" 0] (tInteger `tArr` tGen 0) )
     , ( "fn1"          , Forall [kTyp] [InClass "Num" 0] (tGen 0 `tArr` tGen 0 `tArr` tGen 0))
 
+    , ( "show"         , Forall [kTyp] [InClass "Show" 0] (tGen 0 `tArr` tString) )
+    , ( "read"         , Forall [kTyp] [InClass "Read" 0] (tString `tArr` tGen 0) )
+
     , ( "isLongerThan" , Forall [] [] (tInt `tArr` tString `tArr` tBool) )
 
     ]
 
 testClassEnv :: ClassEnv
 testClassEnv = Env.fromList
-    [ ( "Show"
+    [ ( "Read"
+        -- Interface
+      , ( ClassInfo (InClass "Read" "a") []  
+            [ ( "read", tString `tArr` tVar kTyp "a"  )
+            ]
+        -- Instances
+        , [ ClassInfo (InClass "Show" tInt) [] 
+              [ ( "read", Ast (varExpr (TypeInfo () (tString `tArr` tString) []) "@Int.read") )
+              ]
+          ]
+        )
+      )
+    , ( "Show"
         -- Interface
       , ( ClassInfo (InClass "Show" "a") []  
             [ ( "show", tVar kTyp "a" `tArr` tString )
             ]
         -- Instances
         , [ ClassInfo (InClass "Show" tInt) [] 
-              [ ( "show", Ast (varExpr (TypeInfo () (tInt `tArr` tString) []) "@Int.Show") )
+              [ ( "show", Ast (varExpr (TypeInfo () (tInt `tArr` tString) []) "@Int.show") )
               ]
           , ClassInfo (InClass "Show" (tPair (tVar kTyp "a") (tVar kTyp "b"))) [] 
               [ ( "show", Ast (varExpr (TypeInfo () (tPair (tVar kTyp "a") (tVar kTyp "b") `tArr` tString) []) "TODO") )
@@ -3092,6 +3115,8 @@ testConstructorEnv = constructorEnv
     , ("Cons'"    , ( ["Nil'", "Cons'"], 3 ))
     , ("Nil'"     , ( ["Nil'", "Cons'"], 0 ))
     ]
+
+--xxx x = show (read x)
 
 testEvalEnv :: ValueEnv Eval
 testEvalEnv = Env.fromList 
