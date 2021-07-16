@@ -157,8 +157,8 @@ reduceSet
   -> m [Name]
 reduceSet env vars = do
     let ps = [InClass name (tVar kTyp "a") | name <- vars]
-    x <- fromRight (error "TODO") <$> reduce env ps
-    pure (predicateName <$> x)
+    qs <- fromRight (error "TODO") <$> reduce env ps
+    pure (predicateName <$> qs)
 
 --simplify2 
 --  :: (MonadError UnificationError m, MonadSupply Name m) 

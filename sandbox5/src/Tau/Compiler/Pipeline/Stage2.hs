@@ -257,7 +257,9 @@ expandTypeClasses expr = do -- insertArgsExpr <$> run expr <*> (nub . snd <$> ge
 
             let (xs, ys) = partition (isVar . predicateType) (nodePredicates t)
 
-            let zmap = foldr (\(InClass n t) -> Map.insertWith (<>) t [n]) mempty ys
+            let zmap :: Map Type [Name]
+                zmap = foldr (\(InClass n t) -> Map.insertWith (<>) t [n]) mempty ys
+
             classEnv <- askClassEnv
             zmap2 <- traverse (reduceSet classEnv) zmap
 
