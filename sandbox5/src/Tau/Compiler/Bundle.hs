@@ -5,7 +5,10 @@
 module Tau.Compiler.Bundle where
 
 import Control.Monad.Reader
+import Control.Monad.Supply
+import Control.Monad.State
 import Data.Aeson
+import Data.Maybe
 import Tau.Compiler.Error
 import Tau.Compiler.Pipeline.Stage0 
 import Tau.Compiler.Pipeline.Stage1 
@@ -21,8 +24,8 @@ import Tau.Eval
 import Tau.Lang
 import Tau.Prog
 import Tau.Serialize
-import Tau.Util
 import Tau.Type
+import Tau.Util
 import qualified Tau.Compiler.Pipeline.Stage0 as Stage0
 import qualified Tau.Compiler.Pipeline.Stage1 as Stage1
 import qualified Tau.Compiler.Pipeline.Stage2 as Stage2
@@ -36,7 +39,9 @@ data Bundle = Bundle
     , typedExpr  :: ProgExpr (TypeInfoT [Error] Type)
     , normalExpr :: ProgExpr (TypeInfoT [Error] Type)
     , stage1Expr :: Maybe (Stage1.TargetExpr (TypeInfoT [Error] (Maybe Type)))
-    , stageX1Expr :: Maybe StageX1Expr 
+    , stageX1Expr :: Maybe StageX1ExprYY
+    , stageX2Expr :: Maybe StageX1ExprYY
+    , stageX3Expr :: Maybe (StageX1ExprYYY (Maybe Type))
     , stage2Expr :: Maybe (Stage2.WorkingExpr (Maybe Type))
     , stage3Expr :: Maybe (Stage3.TargetExpr (Maybe Type))
     , stage4Expr :: Maybe (Stage4.TargetExpr (Maybe Type))
@@ -54,7 +59,9 @@ instance ToRep Bundle where
               , "stage1" .= toRep stage1Expr
               , "stageX" .= toRep stageX1Expr
               , "stage2" .= toRep stage2Expr
+              , "stageX2" .= toRep stageX2Expr
               , "stage3" .= toRep stage3Expr
+              , "stageX3" .= toRep stageX3Expr
               , "stage4" .= toRep stage4Expr
               , "stage5" .= toRep stage5Expr
               , "core"   .= toRep coreExpr  
@@ -103,7 +110,9 @@ compileBundle expr = do
           , stage1Expr = Nothing
           , stageX1Expr = Nothing
           , stage2Expr = Nothing
+          , stageX2Expr = Nothing
           , stage3Expr = Nothing
+          , stageX3Expr = Nothing
           , stage4Expr = Nothing
           , stage5Expr = Nothing
           , coreExpr   = Nothing
@@ -116,9 +125,9 @@ compileBundle expr = do
         then do
             let expr1 = Stage1.translate (getAst (Just <$$> ast))
 
-
-            (a, b, c, d) <- ask
-            let exprX1 = runTranslate3 a b c d expr1
+            exprX1 <- runTranslate44 (expandExpr expr1)
+            let exprX2 = translateLiteral3 exprX1
+            exprX3 <- runTranslate44 (evalStateT (compileTypeclasses exprX2) mempty)
 
             expr2 <- runStage2 expr1
 
@@ -131,6 +140,8 @@ compileBundle expr = do
             pure (bundle
                     { stage1Expr = Just expr1
                     , stageX1Expr = Just exprX1
+                    , stageX2Expr = Just exprX2
+                    , stageX3Expr = Just exprX3
                     , stage2Expr = Just expr2
                     , stage3Expr = Just expr3
                     , stage4Expr = Just expr4

@@ -80,8 +80,8 @@ type TargetSimplifiedClause t =
 
 -- desugar
 translate
-  :: ProgExpr (TypeInfoT [Error] (Maybe Type))
-  -> TargetExpr (TypeInfoT [Error] (Maybe Type))
+  :: ProgExpr (TypeInfoT [e] (Maybe Type))
+  -> TargetExpr (TypeInfoT [e] (Maybe Type))
 translate = cata $ \case
     -- Translate tuples, lists, and row expressions
     ETuple  t exprs      -> conExpr t (tupleCon (length exprs)) exprs
@@ -90,7 +90,7 @@ translate = cata $ \case
     -- Translate operators to prefix form
     EOp1    t op a       -> appExpr t [prefixOp1 op, a]
     EOp2    t op a b     -> appExpr t [prefixOp2 op, a, b]
-    -- Expand pattern clause guards
+    -- Expand pattern clause guards and eliminate fun expressions
     EPat    t e cs       -> patExpr t e (expandClause =<< cs)
     EFun    t cs         -> translateFunExpr t (expandClause =<< cs)
     -- Remove holes in function application expressions
@@ -138,9 +138,9 @@ translate = cata $ \case
 -- [varExpr () "(+)", x, y]
 
 translateAppExpr 
-  :: TypeInfoT [Error] (Maybe Type) 
-  -> [TargetExpr (TypeInfoT [Error] (Maybe Type))] 
-  -> TargetExpr (TypeInfoT [Error] (Maybe Type))
+  :: TypeInfoT [e] (Maybe Type) 
+  -> [TargetExpr (TypeInfoT [e] (Maybe Type))] 
+  -> TargetExpr (TypeInfoT [e] (Maybe Type))
 translateAppExpr t es = 
     foldr yyy (appExpr (TypeInfo [] (gork <$> nodeType t) []) replaceHoles) holes
   where
@@ -172,9 +172,9 @@ translateAppExpr t es =
       s        -> embed s
 
 translateFunExpr
-  :: TypeInfoT [Error] (Maybe Type)
-  -> [TargetSimplifiedClause (TypeInfoT [Error] (Maybe Type))]
-  -> TargetExpr (TypeInfoT [Error] (Maybe Type))
+  :: TypeInfoT [e] (Maybe Type)
+  -> [TargetSimplifiedClause (TypeInfoT [e] (Maybe Type))]
+  -> TargetExpr (TypeInfoT [e] (Maybe Type))
 translateFunExpr t =
     lamExpr t [varPat t1 "#0"] <<< patExpr t2 (varExpr t1 "#0")
   where

@@ -347,13 +347,13 @@ prettyFix name e1 e2 =
 --        EFun _ cs -> clauses cs
 --        _         -> "=" <+> snd e1
 
-instance Pretty (Binding t (ProgPattern t)) where
-    pretty = \case
-        BPat _ p    -> pretty p
-        BFun _ f ps -> pretty f <> prettyArgs ps
-          where
-            prettyArgs [Fix (PLit _ TUnit)] = "()"
-            prettyArgs args = parens (commaSep (pretty <$> args))
+--instance Pretty (Binding t (ProgPattern t)) where
+--    pretty = \case
+--        BPat _ p    -> pretty p
+--        BFun _ f ps -> pretty f <> prettyArgs ps
+--          where
+--            prettyArgs [Fix (PLit _ TUnit)] = "()"
+--            prettyArgs args = parens (commaSep (pretty <$> args))
 
 instance Pretty (Op1 t) where
     pretty = \case
@@ -362,6 +362,14 @@ instance Pretty (Op1 t) where
 
 instance Pretty (Op2 t) where
     pretty = pretty . op2Symbol
+
+instance Pretty (Binding t (Pattern t t t s s t s s s)) where
+    pretty = \case
+        BPat _ p    -> pretty p
+        BFun _ f ps -> pretty f <> prettyArgs ps
+          where
+            prettyArgs [Fix (PLit _ TUnit)] = "()"
+            prettyArgs args = parens (commaSep (pretty <$> args))
 
 -- >>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>
 
@@ -443,7 +451,7 @@ instance (Pretty a) => Pretty (Guard a) where
 
 prettyIffs :: (Pretty p) => [p] -> Doc a
 prettyIffs = \case 
-    [] -> "otherwise"
+    [] -> "otherwise" -- space??
     es -> "when" <> prettyTuple (pretty <$> es) 
 
 --instance (Pretty a) => Pretty (Guard a) where
