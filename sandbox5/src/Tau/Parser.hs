@@ -257,8 +257,12 @@ annExprParser = makeExprParser (try lambdaParser <|> try (parens annExprParser) 
     [[ Postfix (symbol ":" *> (annExpr <$> typeParser)) ]]
 
 exprParser :: Parser (ProgExpr ())
-exprParser = makeExprParser (try lambdaParser <|> try (parens exprParser) <|> parser) operator
+exprParser = makeExprParser parseItem operator
   where
+    parseItem = try lambdaParser 
+        <|> try (parens exprParser) 
+        <|> parser
+
     parser = parseIf
         <|> parseFun
         <|> parseLet
