@@ -1291,8 +1291,18 @@ fooz3 t expr clauses = do
     pure (patExpr t expr gg)
   where
     expandClausePatterns (SimplifiedClause t ps (Guard es e)) = do
-        (qss, ds) <- runWriterT (traverse expandPatterns2 ps)
-        pure [SimplifiedClause t qs (Guard (es <> ds) e) | qs <- qss]
+--        traceShowM "===============>>"
+--        traceShowM (pretty ps)
+--        traceShowM ps
+--        traceShowM "===============>>"
+        (qs, ds) <- runWriterT (traverse expandPatterns999 ps)
+        pure (expandPatterns444 [SimplifiedClause t qs (Guard (es <> ds) e)])
+
+--        pure (undefined [SimplifiedClause t qs (Guard (es <> ds) e)])
+--        traceShowM (pretty qss)
+--        traceShowM qss
+--        traceShowM "===============>>"
+--        pure [SimplifiedClause t qs (Guard (es <> ds) e) | qs <- qss]
 
 
     --let foo = expandOrPatterns gg
@@ -1396,6 +1406,68 @@ varSupply = ("$2.a" <>) <$> supply
 ----  => ProgPattern Ti -- Pattern Ti Ti Ti Ti Void Ti Void Void Void  -- Pattern Ti Ti Ti Ti Void Ti Void Void Void
 ----  -> WriterT [Expr Ti Ti Ti Ti Ti Ti Ti Ti Void Void Void Void Void Void Void Void (Binding Ti (Pattern Ti Ti Ti Void Void Ti Void Void Void)) Name (SimplifiedClause Ti (Pattern Ti Ti Ti Void Void Ti Void Void Void))] m (Pattern Ti Ti Ti Void Void Ti Void Void Void) -- (Pattern Ti Ti Ti Void Void Ti Void Void Void)
 
+--expandPatterns333
+--  :: ( MonadSupply Name m
+--     , MonadReader (ClassEnv, TypeEnv, KindEnv, ConstructorEnv) m )
+--  => ProgPattern Ti 
+--  -> m (Pattern Ti Ti Ti Void Void Ti Void Void Void)
+--expandPatterns333 =
+--    undefined
+
+type Foox = SimplifiedClause () (Pattern () () () Void Void () Void Void Void) (ProgExpr ())
+
+-- (SimplifiedClause Ti (Pattern Ti Ti Ti Void Void Void Void Void Void)
+
+expandPatterns444
+  :: [SimplifiedClause t (Pattern t t t Void Void t Void Void Void) a]
+  -> [SimplifiedClause t (Pattern t t t Void Void Void Void Void Void) a]
+expandPatterns444 = concatMap $ \(SimplifiedClause t ps g) ->
+    [SimplifiedClause t qs g | qs <- traverse fn ps]
+  where
+    fn :: Pattern t t t Void Void t Void Void Void -> [Pattern t t t Void Void Void Void Void Void]
+    fn = cata $ \case
+
+        PVar t var       -> pure (varPat t var)
+        PCon t con ps    -> conPat t con <$> sequence ps
+        PAs  t name a    -> asPat t name <$> a
+        POr  _ a b       -> a <> b
+
+expandPatterns999
+  :: ( MonadSupply Name m
+     , MonadReader (ClassEnv, TypeEnv, KindEnv, ConstructorEnv) m )
+  => ProgPattern Ti 
+  -> WriterT [Expr Ti Ti Ti Ti Ti Ti Ti Ti Void Void Void Void Void Void Void Void Void Name (SimplifiedClause Ti (Pattern Ti Ti Ti Void Void Void Void Void Void))] m 
+        (Pattern Ti Ti Ti Void Void Ti Void Void Void)
+expandPatterns999 = cata $ \case
+
+    PTuple t ps -> 
+        conPat t (tupleCon (length ps)) <$> sequence ps
+
+    PList t ps -> 
+        foldr (listPatCons t) (conPat t "[]" []) <$> sequence ps
+
+    PRow t lab p q -> 
+        foldRowPat t lab <$> p <*> q
+
+    PAny t -> 
+        varPat t <$> varSupply
+
+    PLit t prim -> do
+        var <- varSupply
+        tell [ appExpr (TypeInfo [] (Just tBool) [])
+                 [ varExpr (eqFunType <$$> t) ("(==)")
+                 , varExpr (TypeInfo [] (nodeType t) []) var
+                 , litExpr t prim ] ]
+        pure (varPat t var)
+      where
+        eqFunType t = t `tArr` t `tArr` tBool
+
+    PVar t var       -> pure (varPat t var)
+    PCon t con ps    -> conPat t con <$> sequence ps
+    PAs  t name a    -> asPat t name <$> a
+    POr  t a b       -> orPat t <$> a <*> b
+
+
 expandPatterns2
   :: ( MonadSupply Name m
      , MonadReader (ClassEnv, TypeEnv, KindEnv, ConstructorEnv) m )
@@ -1427,7 +1499,8 @@ expandPatterns2 = cata $ \case
 
     PCon t con ps -> do
         pss <- sequence ps
-        pure (conPat t con <$> pss)
+        pure [conPat t con qs | qs <- pss]
+        --pure (conPat t con <$> pss)
 
     PAs t as p -> do
         ps <- p
@@ -1612,6 +1685,16 @@ compileTypeclasses expr = do
     --  -> StateT (Env [(Name, Name)]) m (StageX1ExprYYY (Maybe Type)) -- (Expr (Maybe Type) (Maybe Type) (Maybe Type) (Maybe Type) (Maybe Type) (Maybe Type) (Maybe Type) (Maybe Type) (Maybe Type) Void Void Void Void Void Void Void (ProgBinding (Maybe Type)) Name (SimplifiedClause (Maybe Type) (Pattern (Maybe Type) (Maybe Type) (Maybe Type) Void Void (Maybe Type) Void Void Void)))
     walk = cata $ \case 
 
+--        ELam t name expr -> do
+--            e <- expr
+--            s <- getAndReset
+--            lamExpr (nodeType t) name <$> insertArgsExpr2 e s
+
+        EPat t expr cs -> do
+            e <- expr
+            s <- getAndReset
+            patExpr (nodeType t) <$> insertArgsExpr2 e s <*> (translateClauses <$$> traverse sequence cs)
+
         EFix t var expr1 expr2 -> do
             e <- expr1
             s <- getAndReset
@@ -1635,7 +1718,7 @@ compileTypeclasses expr = do
         EApp   t es        -> appExpr (nodeType t) <$> sequence es
         ELam   t name e    -> lamExpr (nodeType t) name <$> e
         EIf    t e1 e2 e3  -> ifExpr  (nodeType t) <$> e1 <*> e2 <*> e3
-        EPat   t expr cs   -> patExpr (nodeType t) <$> expr <*> (translateClauses <$$> traverse sequence cs)
+--        EPat   t expr cs   -> patExpr (nodeType t) <$> expr <*> (translateClauses <$$> traverse sequence cs)
 
     --translatePatterns 
     --  :: Pattern Ti Ti Ti Void Void Void Void Void Void 

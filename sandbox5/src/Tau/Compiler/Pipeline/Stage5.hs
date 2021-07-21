@@ -57,6 +57,25 @@ deriving instance (Eq   t) => Eq   (ConsGroup t)
 runTranslate :: Supply Name a -> a
 runTranslate expr = fromJust (evalSupply expr (numSupply "a"))
 
+translate222 
+  :: (MonadSupply Name m) 
+  => Expr (Maybe Type) (Maybe Type) (Maybe Type) (Maybe Type) (Maybe Type) (Maybe Type) (Maybe Type) (Maybe Type) Void Void Void Void Void Void Void Void Void Name (SimplifiedClause (Maybe Type) (Pattern (Maybe Type) (Maybe Type) (Maybe Type) Void Void Void Void Void Void))
+  -> m (TargetExpr (Maybe Type))
+translate222 = cata $ \case
+    EPat t expr clauses -> do
+        e <- expr
+        cs <- traverse sequence clauses 
+        compilePatterns e cs
+
+    EVar    t var        -> pure (varExpr t var)
+    ELit    t prim       -> pure (litExpr t prim)
+    ECon    t con exs    -> conExpr t con <$> sequence exs
+    EApp    t es         -> appExpr t <$> sequence es
+    EFix    t name e1 e2 -> fixExpr t name <$> e1 <*> e2
+    ELam    t ps e       -> lamExpr t ps <$> e
+    EIf     t e1 e2 e3   -> ifExpr  t <$> e1 <*> e2 <*> e3
+
+
 translate :: (MonadSupply Name m) => SourceExpr (Maybe Type) -> m (TargetExpr (Maybe Type))
 translate = cata $ \case
     EPat t expr clauses -> do
@@ -192,7 +211,7 @@ compilePatterns u qs =
         EIf     t _ _ _ -> t
         EPat    t _ _   -> t
 
-    clauseGroups :: [TargetPatternClause t a] -> [Labeled [TargetPatternClause t a]]
+    clauseGroups :: (Show t, Show a) => [TargetPatternClause t a] -> [Labeled [TargetPatternClause t a]]
     clauseGroups = cata alg . fmap labeledClause where
         alg Nil                                        = []
         alg (Cons (Constructor e) (Constructor es:ts)) = Constructor (e:es):ts
@@ -216,11 +235,12 @@ compilePatterns u qs =
            PCon    t _ _ -> t
            PAs     t _ _ -> t
 
-    labeledClause :: TargetPatternClause t a -> Labeled (TargetPatternClause t a)
+    labeledClause :: (Show t, Show a) => TargetPatternClause t a -> Labeled (TargetPatternClause t a)
     labeledClause eq@(SimplifiedClause _ (p:_) _) = flip cata p $ \case
         PCon{}    -> Constructor eq
         PVar{}    -> Variable eq
         PAs _ _ q -> q
+    labeledClause qq = traceShow qq $ undefined "<<<<<<<<<<<<<<<<<<<"
 
     consGroups
       :: TargetExpr t

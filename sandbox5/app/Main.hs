@@ -1137,11 +1137,14 @@ example1 = do -- foo1 expr
     traceShowM (pretty expr)
     bundle <- runReaderT (compileBundle expr) (testClassEnv, testTypeEnv, testKindEnv, testConstructorEnv) 
 
-    let value = join (evalExpr <$> (coreExpr bundle) <*> Just testEvalEnv)
+    let value  = join (evalExpr <$> (coreExpr bundle) <*> Just testEvalEnv)
+    let value2 = join (evalExpr <$> (stageX6Expr bundle) <*> Just testEvalEnv)
 
     traceShowM value
+    traceShowM value2
 
-    liftIO $ LBS.writeFile "/home/laserpants/code/tau-tooling/src/tmp/bundle.json" (encodePretty' defConfig{ confIndent = Spaces 2 } (toRep (bundle{ value = value })))
+    liftIO $ LBS.writeFile "/home/laserpants/code/tau-tooling/src/tmp/bundle.json" (encodePretty' defConfig{ confIndent = Spaces 2 } 
+                (toRep (bundle{ value = value, value2 = value2 })))
 
 --    traceShowM value
 
@@ -1216,12 +1219,12 @@ example1 = do -- foo1 expr
 --            (appExpr () [varExpr () "f", annExpr tInt (litExpr () (TInt 123))])
 
 
---    expr =
---        letExpr () 
---            (BFun () "f" [annPat tInt (varPat () "x")])
---            (op2Expr () (OAdd ()) (varExpr () "x") (litExpr () (TInt 1))) 
-----            (varExpr () "f")
---            (appExpr () [varExpr () "f", litExpr () (TInt 123)])
+    expr =
+        letExpr () 
+            (BFun () "f" [annPat tInt (varPat () "x")])
+            (op2Expr () (OAdd ()) (varExpr () "x") (litExpr () (TInt 1))) 
+--            (varExpr () "f")
+            (appExpr () [varExpr () "f", litExpr () (TInt 123)])
 
 
 
@@ -1663,9 +1666,9 @@ example1 = do -- foo1 expr
 --                , Clause () (conPat () "None" []) [ Guard [] (annExpr tInt (litExpr () (TInteger 0))) ]
 --                ])
 --            --(appExpr () [varExpr () "fn", conExpr () "Some" [annExpr tInt (litExpr () (TInteger 100))]])
---            --(appExpr () [varExpr () "fn", conExpr () "Some" [annExpr tInt (litExpr () (TInteger 3))]])
+--            (appExpr () [varExpr () "fn", conExpr () "Some" [annExpr tInt (litExpr () (TInteger 2))]])
 --            --(appExpr () [varExpr () "fn", conExpr () "None" []])
---            (appExpr () [varExpr () "fn", annExpr (tApp kTyp (tCon kFun "Option") tInt) (conExpr () "None" [])])
+--            --(appExpr () [varExpr () "fn", annExpr (tApp kTyp (tCon kFun "Option") tInt) (conExpr () "None" [])])
 --
 --    -- ******************************************************************************************************************************************************************************************************
 
@@ -1703,7 +1706,7 @@ example1 = do -- foo1 expr
 --    testList =
 --        annExpr (tList tInt) (listExpr () [litExpr () (TInteger 1), litExpr () (TInteger 2), litExpr () (TInteger 3), litExpr () (TInteger 4)])
 --
---    -- sum the list
+--    -- map over the list
 --    expr = 
 --      letExpr () 
 --          (BPat () (varPat () "testList")) testList
@@ -1800,14 +1803,18 @@ example1 = do -- foo1 expr
 --                (appExpr () [varExpr () "show", appExpr () [varExpr () "read", varExpr () "x"]]))
 --        
 
-    expr =
-        letExpr () (BFun () "f" [varPat () "x"])
-            (appExpr () [varExpr () "(+)", varExpr () "x", litExpr () (TInteger 5)])
-            (appExpr () [varExpr () "f", annExpr tInt (litExpr () (TInteger 5))])
+--    expr =
+--        letExpr () (BFun () "f" [varPat () "x"])
+--            (appExpr () [varExpr () "(+)", varExpr () "x", annExpr tInt (litExpr () (TInteger 5))])
+--            (appExpr () [varExpr () "f", annExpr tInt (litExpr () (TInteger 5))])
         
 
 
 
+-- *************************
+-- *************************
+-- *************************
+-- *************************
 
 --    expr = 
 --        -- let f(x, y) = x - y
@@ -1821,7 +1828,9 @@ example1 = do -- foo1 expr
 --            (op2Expr () (OSub ()) (varExpr () "x") (varExpr () "y"))
 --            (letExpr () 
 --                (BPat () (varPat () "pred"))
+--
 --                (appExpr () [varExpr () "f", holeExpr (), annExpr tInt (litExpr () (TInteger 1))])
+--
 ----                (appExpr () [varExpr () "f", holeExpr (), litExpr () (TInteger 1)])
 --                (appExpr () [varExpr () "pred", litExpr () (TInteger 11)])
 --            )
@@ -1909,7 +1918,7 @@ example1 = do -- foo1 expr
 --                                    (appExpr () [varExpr () "_#", varExpr () "r"])))))
 --
 --                                    --(varExpr () "r")))))
---
+
 
 --                    (appExpr () [varExpr () "getA", varExpr () "r"])
 

@@ -35,41 +35,49 @@ import qualified Tau.Compiler.Pipeline.Stage5 as Stage5
 import qualified Tau.Compiler.Pipeline.Stage6 as Stage6
 
 data Bundle = Bundle
-    { sourceExpr :: ProgExpr ()
-    , typedExpr  :: ProgExpr (TypeInfoT [Error] Type)
-    , normalExpr :: ProgExpr (TypeInfoT [Error] Type)
-    , stage1Expr :: Maybe (Stage1.TargetExpr (TypeInfoT [Error] (Maybe Type)))
+    { sourceExpr  :: ProgExpr ()
+    , typedExpr   :: ProgExpr (TypeInfoT [Error] Type)
+    , normalExpr  :: ProgExpr (TypeInfoT [Error] Type)
+    , stage1Expr  :: Maybe (Stage1.TargetExpr (TypeInfoT [Error] (Maybe Type)))
     , stageX1Expr :: Maybe StageX1ExprYY
     , stageX2Expr :: Maybe StageX1ExprYY
     , stageX3Expr :: Maybe (StageX1ExprYYY (Maybe Type))
-    , stage2Expr :: Maybe (Stage2.WorkingExpr (Maybe Type))
-    , stage3Expr :: Maybe (Stage3.TargetExpr (Maybe Type))
-    , stage4Expr :: Maybe (Stage4.TargetExpr (Maybe Type))
-    , stage5Expr :: Maybe (Stage5.TargetExpr (Maybe Type))
-    , coreExpr   :: Maybe Core
-    , value      :: Maybe (Tau.Eval.Value Eval)
+    , stageX5Expr :: Maybe (Stage5.TargetExpr (Maybe Type))
+    , stage2Expr  :: Maybe (Stage2.WorkingExpr (Maybe Type))
+    , stage3Expr  :: Maybe (Stage3.TargetExpr (Maybe Type))
+    , stage4Expr  :: Maybe (Stage4.TargetExpr (Maybe Type))
+    , stage5Expr  :: Maybe (Stage5.TargetExpr (Maybe Type))
+    , stageX6Expr :: Maybe Core
+    , coreExpr    :: Maybe Core
+    , value       :: Maybe (Tau.Eval.Value Eval)
+    , value2      :: Maybe (Tau.Eval.Value Eval)
     } deriving (Show, Eq)
 
 instance ToRep Bundle where
     toRep Bundle{..} =
         object 
-            ( [ "source" .= toRep sourceExpr
-              , "typed"  .= toRep typedExpr
-              , "normal" .= toRep normalExpr
-              , "stage1" .= toRep stage1Expr
-              , "stageX" .= toRep stageX1Expr
-              , "stage2" .= toRep stage2Expr
+            ( [ "source"  .= toRep sourceExpr
+              , "typed"   .= toRep typedExpr
+              , "normal"  .= toRep normalExpr
+              , "stage1"  .= toRep stage1Expr
+              , "stageX"  .= toRep stageX1Expr
+              , "stage2"  .= toRep stage2Expr
               , "stageX2" .= toRep stageX2Expr
-              , "stage3" .= toRep stage3Expr
+              , "stage3"  .= toRep stage3Expr
               , "stageX3" .= toRep stageX3Expr
-              , "stage4" .= toRep stage4Expr
-              , "stage5" .= toRep stage5Expr
-              , "core"   .= toRep coreExpr  
-              ] <> valueField )
+              , "stage4"  .= toRep stage4Expr
+              , "stage5"  .= toRep stage5Expr
+              , "stageX5" .= toRep stage5Expr
+              , "stageX6" .= toRep stageX6Expr
+              , "core"    .= toRep coreExpr
+              ] <> valueField <> value2Field )
       where
         valueField = case value of
             Nothing  -> []
             Just val -> ["value" .= toRep val]
+        value2Field = case value2 of
+            Nothing  -> []
+            Just val -> ["value2" .= toRep val]
 
 runInferTree
   :: (MonadReader (ClassEnv, TypeEnv, KindEnv, ConstructorEnv) m)
@@ -104,19 +112,22 @@ compileBundle expr = do
     --
     
     let bundle = Bundle
-          { sourceExpr = mapExprTag (const ()) expr
-          , typedExpr  = getAst ast
-          , normalExpr = normal
-          , stage1Expr = Nothing
+          { sourceExpr  = mapExprTag (const ()) expr
+          , typedExpr   = getAst ast
+          , normalExpr  = normal
+          , stage1Expr  = Nothing
           , stageX1Expr = Nothing
-          , stage2Expr = Nothing
+          , stage2Expr  = Nothing
           , stageX2Expr = Nothing
-          , stage3Expr = Nothing
+          , stage3Expr  = Nothing
           , stageX3Expr = Nothing
-          , stage4Expr = Nothing
-          , stage5Expr = Nothing
-          , coreExpr   = Nothing
-          , value      = Nothing
+          , stage4Expr  = Nothing
+          , stage5Expr  = Nothing
+          , stageX5Expr = Nothing
+          , stageX6Expr = Nothing
+          , coreExpr    = Nothing
+          , value       = Nothing
+          , value2      = Nothing
           }
 
     --
@@ -128,6 +139,10 @@ compileBundle expr = do
             exprX1 <- runTranslate44 (expandExpr expr1)
             let exprX2 = translateLiteral3 exprX1
             exprX3 <- runTranslate44 (evalStateT (compileTypeclasses exprX2) mempty)
+            let exprX5 = Stage5.runTranslate (Stage5.translate222 exprX3)
+            exprX6 <- Stage6.translate exprX5
+
+            --
 
             expr2 <- runStage2 expr1
 
@@ -137,16 +152,23 @@ compileBundle expr = do
 
             expr6 <- Stage6.translate expr5
 
+            traceShowM "vv"
+            traceShowM (pretty exprX3)
+            traceShowM "vvvv"
+            traceShowM (pretty expr5)
+
             pure (bundle
-                    { stage1Expr = Just expr1
+                    { stage1Expr  = Just expr1
                     , stageX1Expr = Just exprX1
                     , stageX2Expr = Just exprX2
                     , stageX3Expr = Just exprX3
-                    , stage2Expr = Just expr2
-                    , stage3Expr = Just expr3
-                    , stage4Expr = Just expr4
-                    , stage5Expr = Just expr5
-                    , coreExpr   = Just expr6 
+                    , stageX5Expr = Just exprX5
+                    , stageX6Expr = Just exprX6
+                    , stage2Expr  = Just expr2
+                    , stage3Expr  = Just expr3
+                    , stage4Expr  = Just expr4
+                    , stage5Expr  = Just expr5
+                    , coreExpr    = Just expr6
                     })
         else 
             pure bundle
