@@ -306,8 +306,14 @@ exprParser = makeExprParser (try lambdaParser <|> try (parens exprParser) <|> pa
         expr <- symbol "=>" *> annExprParser
         pure [Guard [] expr]
 
+    parseNormalLet = do
+        p <- annPatternParser
+        if hasLiteralPattern p 
+            then fail ("Literal patterns cannot be used in let bindings")
+            else pure (BPat () p)
+
     parseFunLet    = BFun () <$> nameParser <*> parseFunArg 
-    parseNormalLet = BPat () <$> annPatternParser
+
     parseFun       = keyword "fun" *> (funExpr () <$> some parseClause)
     parseVar       = varExpr   () <$> nameParser
     parseLit       = litExpr   () <$> primParser
@@ -327,6 +333,18 @@ exprParser = makeExprParser (try lambdaParser <|> try (parens exprParser) <|> pa
             <|> recordExpr () <$> rowParser "=" annExprParser rowExpr varExpr_ emptyRowExpr
 
     varExpr_ _ var = appExpr () [varExpr () "_#", varExpr () var]
+
+hasLiteralPattern :: ProgPattern () -> Bool
+hasLiteralPattern = cata $ \case
+    PLit{}       -> True
+    PCon _ _ ps  -> or ps
+    PAs _ _ p    -> p
+    POr _ p q    -> p || q
+    PTuple _ ps  -> or ps
+    PList _ ps   -> or ps
+    PRow _ _ p q -> p || q
+    PAnn _ p     -> p
+    _            -> False
 
 lambdaParser :: Parser (ProgExpr ())
 lambdaParser = do
