@@ -138,10 +138,12 @@ incrementEach(xs) = xs.map(x => x + 1)
 
 let f(x, y) = x + y
 
+stuff((3, 4))
+
 -- Let f = (x, y) => x + y
 
 
-let f = function
+let f 
   | Some x 
       when x > 3  => 5
       when x <= 0 => 1
