@@ -131,7 +131,7 @@ inferExprType = cata $ \case
     EPat _ expr eqs -> do
         ((e1, cs), ti, _) <- runNode $ do
             e1 <- exprNode expr
-            cs <- lift (traverse (inferClauseType (typeOf e1)) eqs)
+            cs <- lift (traverse inferClauseType eqs)
             tellPredicates (clausePredicates =<< cs)
             -- Unify pattern clauses
             forM_ cs $ \(Clause t p gs) -> do
@@ -177,7 +177,7 @@ inferExprType = cata $ \case
         (cs, ti, _) <- runNode $ do
             ty <- newTVar 
             t1 <- thisNodeType
-            cs <- lift (traverse (inferClauseType t1) eqs)
+            cs <- lift (traverse inferClauseType eqs)
             tellPredicates (clausePredicates =<< cs)
             -- Unify pattern clauses
             forM_ cs $ \(Clause t p gs) -> do
@@ -419,10 +419,10 @@ inferClauseType
   :: ( MonadSupply Name m
      , MonadReader (ClassEnv, TypeEnv, KindEnv, ConstructorEnv) m
      , MonadState (Substitution Type, Substitution Kind, Context) m )
-  => Type
-  -> Clause t (ProgPattern t) (m (ProgExpr (TypeInfo [Error])))
+--  => Type
+  => Clause t (ProgPattern t) (m (ProgExpr (TypeInfo [Error])))
   -> m (ProgClause (TypeInfo [Error]))
-inferClauseType ty eq@(Clause _ pat _) = do
+inferClauseType eq@(Clause _ pat _) = do
     ((p, gs), ti, _) <- runNode $ do
         (p, (_, vs, _, _)) <- listen (patternNode (inferPatternType pat)) 
         let schemes = toScheme <$$> vs
