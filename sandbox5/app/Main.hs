@@ -70,6 +70,7 @@ prettyDoc2 :: Doc a -> IO ()
 prettyDoc2 = Text.putStrLn . renderDoc2 
 
 
+
 epxr123 :: ProgExpr ()
 epxr123 =
     letExpr () (BPat () (varPat () "x"))

@@ -1,6 +1,9 @@
 {-# LANGUAGE FlexibleContexts  #-}
 {-# LANGUAGE LambdaCase        #-}
 {-# LANGUAGE OverloadedStrings #-}
+{-# LANGUAGE MultiParamTypeClasses #-}
+{-# LANGUAGE FlexibleInstances #-}
+{-# LANGUAGE TypeSynonymInstances #-}
 module Tau.Compiler.Pipeline.Stage2 where
 
 import Control.Monad.Except 
@@ -30,6 +33,23 @@ import qualified Tau.Env as Env
 
 type WorkingExpr t = Expr t t t t t t t t t Void Void Void Void Void Void Void
     (ProgBinding t) [ProgPattern t] (SimplifiedClause t (ProgPattern t))
+
+
+-- class Tag a t where
+--     getTag :: a -> t
+-- 
+-- instance Tag (ProgExpr t) t where
+--     getTag = exprTag
+-- 
+-- instance Tag (ProgPattern t) t where
+--     getTag = patternTag
+-- 
+-- foob :: (Functor e3) => Expr t1 t2 t3 t4 t5 t6 t7 t8 t9 t10 t11 t12 t13 t14 t15 t16 e1 e2 e3 -> t1
+-- foob = project >>> \case
+--     EVar t _ -> t
+-- 
+-- instance Tag (Expr t t t t t t t t u u u u u u u u e1 e2 e3) t where
+--     getTag = undefined
 
 -- >>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>
 
