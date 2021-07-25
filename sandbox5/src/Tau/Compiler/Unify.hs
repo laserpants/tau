@@ -136,7 +136,7 @@ unifyRows
   -> Type
   -> Type
   -> m (Substitution Type, Substitution Kind)
-unifyRows combineTypes combinePairs t u = do
+unifyRows combineTypes combinePairs t u =
     fn (mapRep t, final t) (mapRep u, final u)
   where
     mapRep = foldr (uncurry (Map.insertWith (<>))) mempty . fields 
@@ -163,7 +163,7 @@ unifyRows combineTypes combinePairs t u = do
                         (fromMap k (updateMap m2 us), u)
                 _ -> do
                     when (k == j) $ throwError IncompatibleTypes
-                    tv <- tVar <$> (kVar . ("k" <>) <$> supply) 
+                    tv <- tVar <$> pure kRow -- (kVar . ("k" <>) <$> supply) 
                                <*> (("a" <>) <$> supply)
                     combinePairs 
                         (fromMap j (updateMap m1 ts), k) 

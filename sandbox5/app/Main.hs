@@ -1813,25 +1813,28 @@ example1 = do -- foo1 expr
 ----            (appExpr () [varExpr () "isLongerThan", holeExpr (), litExpr () (TString "boo")])
 --            (appExpr () [varExpr () "f", litExpr () (TInteger 4)])
 
+    -- AMBIGUITY
+    -- AMBIGUITY
+    -- AMBIGUITY
+    --expr =
+    --    letExpr () (BPat () (varPat () "x"))
+    --        (litExpr () (TInteger 11))
+    --        (lamExpr () [varPat () "x"]
+    --            (appExpr () [varExpr () "show", appExpr () [varExpr () "read", varExpr () "x"]]))
+        
+
+
 --    expr =
---        letExpr () (BPat () (varPat () "x"))
+--        letExpr () (BFun () "f" [varPat () "x"])
 --            (litExpr () (TInteger 11))
 --            (lamExpr () [varPat () "x"]
 --                (appExpr () [varExpr () "show", appExpr () [varExpr () "read", varExpr () "x"]]))
 --        
 
-
---    expr =
---        letExpr () (BFun () "f" [varPat () "x"])
---            (litExpr () (TInteger 11))
---            (lamExpr () [varPat () "x"]
---                (appExpr () [varExpr () "show", appExpr () [varExpr () "read", varExpr () "x"]]))
-        
-
---    expr =
---        letExpr () (BFun () "f" [varPat () "x"])
---            (appExpr () [varExpr () "(+)", varExpr () "x", annExpr tInt (litExpr () (TInteger 5))])
---            (appExpr () [varExpr () "f", annExpr tInt (litExpr () (TInteger 5))])
+    expr =
+        letExpr () (BFun () "f" [varPat () "x"])
+            (appExpr () [varExpr () "(+)", varExpr () "x", annExpr tInt (litExpr () (TInteger 5))])
+            (appExpr () [varExpr () "f", annExpr tInt (litExpr () (TInteger 5))])
         
 
 
@@ -1961,7 +1964,7 @@ example1 = do -- foo1 expr
 ----                    (appExpr () [varExpr () "getA", varExpr () "r"])
 
 
-    expr = (Fix (ELam () [Fix (PCon () "#" [Fix (PRow () "a" (Fix (PVar () "a")) (Fix (PVar () "z")))])] (Fix (EVar () "z")))) 
+--    expr = (Fix (ELam () [Fix (PCon () "#" [Fix (PRow () "a" (Fix (PVar () "a")) (Fix (PVar () "z")))])] (Fix (EVar () "z")))) 
 
 
 

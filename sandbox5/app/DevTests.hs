@@ -263,6 +263,7 @@ expr39 = appExpr () [ (funExpr () [ Clause () [litPat () (TBool True), conPat ()
 
 arbitraryTests :: IO ()
 arbitraryTests = do
+
     a <- runExprTest expr1
     b <- runExprTest expr1_result
 
@@ -272,14 +273,32 @@ arbitraryTests = do
     a <- runExprTest expr2
     let res2 = (a == Just (Value (TInt 2)))
 
+    -- (Value (TInt 5))
+    a <- runExprTest expr3
+    let res3 = (a == Just (Value (TInt 5)))
+
+    -- (Value (TInt 10))
+    a <- runExprTest expr4
+    let res4 = (a == Just (Value (TInt 10)))
+
+    -- (Value (TInt 10))
+    a <- runExprTest expr5
+    let res5 = (a == Just (Value (TInt 10)))
+
+    -- Value (TString "d")
+    a <- runExprTest expr6
+    let res6 = (a == Just (Value (TString "d")))
+
 
 
     traceShowM res1
     traceShowM res2
+    traceShowM res3
+    traceShowM res4
+    traceShowM res5
+    traceShowM res6
 
     pure ()
-
-    
 
 
 
@@ -299,6 +318,8 @@ runExprTest expr = do -- foo1 expr
     --    traceShowM value
 
     pure value2
+
+
 
 
 testKindEnv :: KindEnv

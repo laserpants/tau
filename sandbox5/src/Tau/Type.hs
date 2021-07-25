@@ -19,7 +19,7 @@ import qualified Data.Text as Text
 data KindF a
     = KVar Name               -- ^ Kind variable
     | KCon Name               -- ^ Kind constructor
-    | KArr a a                -- ^ Kind of higher order type constructor 
+    | KArr a a                -- ^ Kind of (higher order) type constructors
 
 -- | Kind
 type Kind = Fix KindF

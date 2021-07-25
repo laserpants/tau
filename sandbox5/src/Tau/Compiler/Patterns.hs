@@ -219,6 +219,8 @@ exhaustive pss@(ps:_) = not <$> useful pss (anyPat . patternTag <$> ps)
 
 -- | Determine if all patterns in the expression are exhaustive.
 --
+-- TODO: remove
+--
 checkExhaustive :: (Show t, Eq t, RowType t, MonadReader ConstructorEnv m) => ProgExpr t -> m Bool
 checkExhaustive = para $ \case
 
