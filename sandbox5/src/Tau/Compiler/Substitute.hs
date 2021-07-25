@@ -217,9 +217,6 @@ kindSubstitute sub = cata $ \case
    ty         -> embed ty
 
 applyBoth
-  :: ( Substitutable t Type
-     , Substitutable t Kind ) 
-  => (Substitution Type, Substitution Kind) 
-  -> t 
-  -> t
+  :: (Substitutable t Type, Substitutable t Kind) 
+  => (Substitution Type, Substitution Kind) -> t -> t
 applyBoth (typeSub, kindSub) = apply kindSub . apply typeSub
