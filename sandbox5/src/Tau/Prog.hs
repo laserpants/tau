@@ -383,7 +383,7 @@ clausePredicates (Clause _ ps gs) = (patternPredicates =<< ps)
                                  <> (guardPredicates =<< gs)
 
 astPredicates :: Ast (TypeInfoT e t) -> [Predicate]
-astPredicates = exprPredicates . getAst
+astPredicates = exprPredicates . astExpr
 
 constructorEnv :: [(Name, ([Name], Int))] -> ConstructorEnv
 constructorEnv = Env.fromList . (first Set.fromList <$$>)

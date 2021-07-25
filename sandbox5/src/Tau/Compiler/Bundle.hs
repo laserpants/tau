@@ -37,7 +37,7 @@ import qualified Tau.Compiler.Pipeline.Stage6 as Stage6
 data Bundle = Bundle
     { sourceExpr  :: ProgExpr ()
     , typedExpr   :: ProgExpr (TypeInfoT [Error] Type)
-    , normalExpr  :: ProgExpr (TypeInfoT [Error] Type)
+    , normalExpr  :: Maybe (ProgExpr (TypeInfoT [Error] Type))
     , stage1Expr  :: Maybe (Stage1.TargetExpr (TypeInfoT [Error] (Maybe Type)))
     , stageX1Expr :: Maybe StageX1ExprYY
     , stageX2Expr :: Maybe StageX1ExprYY
@@ -103,76 +103,124 @@ compileBundle expr = do
 
     (ast, _, _, context) <- runInferTree (inferAstType (Ast expr))
 
-    -- TODO
     constructorEnv <- askConstructorEnv
     classEnv <- askClassEnv
-    let normal_ = Stage0.foo2 context constructorEnv classEnv (getAst ast)
-        normal  = Stage0.runExhaustivePatternsCheck constructorEnv normal_
-    -- TODO
-    --
-    
+
+    -- let xx00 = Stage0.foo2 context constructorEnv classEnv (astExpr ast)
+    --let xx01 = Stage0.runExhaustivePatternsCheck constructorEnv xx00
+
+    let xx01 = Stage0.runExhaustivePatternsCheck constructorEnv (astExpr ast)
+
+    let expr1 = Stage1.translate (mapExprTag (fmap Just) xx01)
+    exprX1 <- runTranslate44 (expandExpr expr1)
+
+    let exprX2 = translateLiteral3 exprX1
+    (foo111, exprX3) <- runTranslate44 (evalStateT (compileTypeclasses222 exprX2) mempty)
+
+
+
     let bundle = Bundle
           { sourceExpr  = mapExprTag (const ()) expr
-          , typedExpr   = getAst ast
-          , normalExpr  = normal
-          , stage1Expr  = Nothing
-          , stageX1Expr = Nothing
-          , stage2Expr  = Nothing
-          , stageX2Expr = Nothing
-          , stage3Expr  = Nothing
-          , stageX3Expr = Nothing
-          , stage4Expr  = Nothing
-          , stage5Expr  = Nothing
+          , typedExpr   = astExpr ast
+          , stage1Expr  = Just expr1
+          , stageX1Expr = Just exprX1
+          , stageX2Expr = Just exprX2
+          , stageX3Expr = Just exprX3
           , stageX5Expr = Nothing
           , stageX6Expr = Nothing
+          , value2      = Nothing
+          --
+          , normalExpr  = Nothing
+          , stage2Expr  = Nothing
+          , stage3Expr  = Nothing
+          , stage4Expr  = Nothing
+          , stage5Expr  = Nothing
           , coreExpr    = Nothing
           , value       = Nothing
-          , value2      = Nothing
           }
 
-    --
-
-    if not (hasErrors normal) 
+    if not (hasErrors111 foo111) 
         then do
-            let expr1 = Stage1.translate (getAst (Just <$$> ast))
-
-            exprX1 <- runTranslate44 (expandExpr expr1)
-            let exprX2 = translateLiteral3 exprX1
-            exprX3 <- runTranslate44 (evalStateT (compileTypeclasses exprX2) mempty)
             let exprX5 = Stage5.runTranslate (Stage5.translate222 exprX3)
             exprX6 <- Stage6.translate exprX5
 
-            --
-
-            expr2 <- runStage2 expr1
-
-            let expr3 = Stage3.runTranslate (Stage3.translate expr2)
-            let expr4 = Stage4.translate expr3
-            let expr5 = Stage5.runTranslate (Stage5.translate expr4)
---
---            expr6 <- Stage6.translate expr5
-
---            traceShowM "vv"
---            traceShowM (pretty exprX3)
---            traceShowM "vvvv"
---            traceShowM (pretty expr5)
-
-            pure (bundle
-                    { stage1Expr  = Just expr1
-                    , stageX1Expr = Just exprX1
-                    , stageX2Expr = Just exprX2
-                    , stageX3Expr = Just exprX3
-                    , stageX5Expr = Just exprX5
-                    , stageX6Expr = Just exprX6
-                    , stage2Expr  = Just expr2
-                    , stage3Expr  = Just expr3
-                    , stage4Expr  = Just expr4
---                    , stage5Expr  = Just expr5
---                    , coreExpr    = Just expr6
-                    })
-        else 
+            pure (bundle{ stageX5Expr = Just exprX5
+                        , stageX6Expr = Just exprX6 
+                        })
+        else
             pure bundle
 
+
+--    -- TODO
+--    constructorEnv <- askConstructorEnv
+--    classEnv <- askClassEnv
+--    let normal_ = Stage0.foo2 context constructorEnv classEnv (astExpr ast)
+--        normal  = Stage0.runExhaustivePatternsCheck constructorEnv normal_
+--    -- TODO
+--    --
+--    
+--    let bundle = Bundle
+--          { sourceExpr  = mapExprTag (const ()) expr
+--          , typedExpr   = astExpr ast
+--          , normalExpr  = Nothing -- normal
+--          , stage1Expr  = Nothing
+--          , stageX1Expr = Nothing
+--          , stage2Expr  = Nothing
+--          , stageX2Expr = Nothing
+--          , stage3Expr  = Nothing
+--          , stageX3Expr = Nothing
+--          , stage4Expr  = Nothing
+--          , stage5Expr  = Nothing
+--          , stageX5Expr = Nothing
+--          , stageX6Expr = Nothing
+--          , coreExpr    = Nothing
+--          , value       = Nothing
+--          , value2      = Nothing
+--          }
+--
+--    --
+--
+--    if not (hasErrors normal) 
+--        then do
+--            let expr1 = Stage1.translate (astExpr (Just <$$> ast))
+--
+--            exprX1 <- runTranslate44 (expandExpr expr1)
+--            let exprX2 = translateLiteral3 exprX1
+--            (foo111, exprX3) <- runTranslate44 (evalStateT (compileTypeclasses222 exprX2) mempty)
+--            let exprX5 = Stage5.runTranslate (Stage5.translate222 exprX3)
+--            exprX6 <- Stage6.translate exprX5
+--
+--            --
+--
+--            expr2 <- runStage2 expr1
+--
+--            let expr3 = Stage3.runTranslate (Stage3.translate expr2)
+--            let expr4 = Stage4.translate expr3
+--            let expr5 = Stage5.runTranslate (Stage5.translate expr4)
+----
+----            expr6 <- Stage6.translate expr5
+--
+----            traceShowM "vv"
+----            traceShowM (pretty exprX3)
+----            traceShowM "vvvv"
+----            traceShowM (pretty expr5)
+--
+--            pure (bundle
+--                    { stage1Expr  = Just expr1
+--                    , stageX1Expr = Just exprX1
+--                    , stageX2Expr = Just exprX2
+--                    , stageX3Expr = Just exprX3
+--                    , stageX5Expr = Just exprX5
+--                    , stageX6Expr = Just exprX6
+--                    , stage2Expr  = Just expr2
+--                    , stage3Expr  = Just expr3
+--                    , stage4Expr  = Just expr4
+----                    , stage5Expr  = Just expr5
+----                    , coreExpr    = Just expr6
+--                    })
+--        else 
+--            pure bundle
+--
     --traceShowM (toRep bundle)
     --traceShowM (toRep bundle)
 

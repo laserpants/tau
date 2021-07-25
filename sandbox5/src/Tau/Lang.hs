@@ -131,13 +131,11 @@ type Expr t1 t2 t3 t4 t5 t6 t7 t8 t9 t10 t11 t12 t13 t14 t15 t16 e1 e2 e3 =
     Fix (ExprF t1 t2 t3 t4 t5 t6 t7 t8 t9 t10 t11 t12 t13 t14 t15 t16 e1 e2 e3)
 
 type ProgExpr t = Expr t t t t t t t t t t t t t t t t
-    (ProgBinding t) 
-    [ProgPattern t] 
-    (Clause t [ProgPattern t])
+    (ProgBinding t) [ProgPattern t] (Clause t [ProgPattern t])
 
 -- >>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>
 
-newtype Ast t = Ast { getAst :: ProgExpr t }
+newtype Ast t = Ast { astExpr :: ProgExpr t }
 
 -- >>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>
 
@@ -405,7 +403,7 @@ instance Foldable Ast where
             OField  t            -> [f t] 
 
 instance Traversable Ast where
-    traverse f ast = Ast <$> cata alg (getAst ast)
+    traverse f ast = Ast <$> cata alg (astExpr ast)
       where
         alg = \case
             EVar    t var        -> varExpr   <$> f t <*> pure var
@@ -480,7 +478,7 @@ instance Traversable Ast where
 -- >>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>
 
 mapExprTag :: (t -> u) -> ProgExpr t -> ProgExpr u
-mapExprTag f expr = getAst (f <$> Ast expr)
+mapExprTag f expr = astExpr (f <$> Ast expr)
 
 foldrExprTag :: (a -> b -> b) -> b -> ProgExpr a -> b
 foldrExprTag f s expr = foldr f s (Ast expr)
@@ -555,7 +553,7 @@ bindingTag = \case
     BFun    t _ _   -> t
 
 astTag :: Ast t -> t
-astTag = exprTag . getAst 
+astTag = exprTag . astExpr 
 
 -- >>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>
 

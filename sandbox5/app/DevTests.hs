@@ -289,6 +289,12 @@ arbitraryTests = do
     a <- runExprTest expr6
     let res6 = (a == Just (Value (TString "d")))
 
+    a <- runExprTest expr7 
+    let res7 = (a == Just (Value (TInt 1)))
+
+    a <- runExprTest expr8 
+    let res8 = (a == Just (Value (TInt 8)))
+
 
 
     traceShowM res1
@@ -297,6 +303,8 @@ arbitraryTests = do
     traceShowM res4
     traceShowM res5
     traceShowM res6
+    traceShowM res7
+    traceShowM res8
 
     pure ()
 

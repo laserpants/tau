@@ -569,7 +569,7 @@ applyXx1 expr (InClass name ty:ps) = do
 
     translateMethod = translate
         . Stage1.translate 
-        . getAst 
+        . astExpr 
         . fmap (\(TypeInfo () ty ps) -> TypeInfo [] (Just ty) ps)
 
 --dictTVar xx ty = do
@@ -805,7 +805,7 @@ applyXx2 expr (InClass name ty:ps) = do
 --
 --    translateMethod = translate
 --                    . Stage1.translate 
---                    . getAst 
+--                    . astExpr 
 --                    . translateTag 
 --
 --    translateTag = fmap (\(TypeInfo () ty ps) -> TypeInfo [] (Just ty) ps)
@@ -900,7 +900,7 @@ applyXx2 expr (InClass name ty:ps) = do
 --
 --    translateMethod = translate
 --                    . Stage1.translate 
---                    . getAst 
+--                    . astExpr 
 --                    . translateTag 
 --
 --    translateTag = fmap (\(TypeInfo () ty ps) -> TypeInfo [] (Just ty) ps)
@@ -992,7 +992,7 @@ applyXx2 expr (InClass name ty:ps) = do
 --
 --    translateMethod = translate
 --                    . Stage1.translate 
---                    . getAst 
+--                    . astExpr 
 --                    . translateTag 
 --
 --    translateTag = fmap (\(TypeInfo () ty ps) -> TypeInfo [] (Just ty) ps)
@@ -1066,7 +1066,7 @@ applyXx2 expr (InClass name ty:ps) = do
 --
 --    translateMethod = expandTypeClasses 
 --                    . Stage1.translate 
---                    . getAst 
+--                    . astExpr 
 --                    . translateTag 
 --
 --    translateTag = fmap (\(TypeInfo () ty ps) -> TypeInfo [] (Just ty) ps)
@@ -1703,6 +1703,96 @@ translateLiteral3 = cata $ \case
 --   => Expr Ti Ti Ti Ti Ti Ti Ti Ti Ti Void Void Void Void Void Void Void (ProgBinding Ti) Name (SimplifiedClause Ti (Pattern Ti Ti Ti Void Void Ti Void Void Void))
 --   -> StateT (Env [(Name, Name)]) m (Expr (Maybe Type) (Maybe Type) (Maybe Type) (Maybe Type) (Maybe Type) (Maybe Type) (Maybe Type) (Maybe Type) (Maybe Type) Void Void Void Void Void Void Void (ProgBinding (Maybe Type)) Name (SimplifiedClause (Maybe Type) (Pattern (Maybe Type) (Maybe Type) (Maybe Type) Void Void (Maybe Type) Void Void Void)))
 
+
+hasErrors111
+  :: StageX1ExprYY
+  -> Bool
+hasErrors111 _ = False
+-- TODO
+-- TODO
+-- TODO
+
+
+compileTypeclasses222
+  :: ( MonadSupply Name m
+     , MonadReader (ClassEnv, TypeEnv, KindEnv, ConstructorEnv) m )
+  => StageX1ExprYY
+  -> StateT (Env [(Name, Name)]) m (StageX1ExprYY, StageX1ExprYYY (Maybe Type))
+compileTypeclasses222 expr = do
+    (e1, e2) <- walk expr
+    s <- getAndReset 
+    xx <- insertArgsExpr2 e2 s
+    pure (e1, xx)
+  where
+    walk = cata $ \case 
+
+        EPat t expr cs -> do
+            (e1, e2) <- expr
+            s <- getAndReset
+            xx <- insertArgsExpr2 e2 s
+            ds <- traverse sequence cs
+            let ds2 = snd <$$> (translateClauses <$> ds)
+            pure (patExpr t e1 (fst <$$> ds), patExpr (nodeType t) xx ds2)
+
+        EFix t var expr1 expr2 -> do
+            (e1, e2) <- expr1
+            s <- getAndReset
+            xx <- insertArgsExpr2 e2 s
+            (e3, e4) <- expr2
+            pure (fixExpr t var e1 e3, fixExpr (nodeType t) var xx e4)
+
+        EVar t var -> do
+            let (vs, ts) = partition (isVar . predicateType) (nodePredicates t)
+
+            classEnv <- askClassEnv
+            fromType <- traverse (reduceSet classEnv) 
+                (foldr (\(InClass n t) -> Map.insertWith (<>) t [n]) mempty ts)
+
+            let ps = Map.foldrWithKey (\k ns ps -> [InClass n k | n <- ns] <> ps) [] fromType
+            e1 <- foldlM applyNonVarPredicates (varExpr (nodeType t) var) (tails ps)
+
+            qs <- fromRight (error "impl") <$> reduce classEnv vs  
+            xx <- foldlM applyVarPredicates e1 (tails qs)
+
+            pure (varExpr t var, xx)
+
+        ELit t prim -> 
+            pure (litExpr t prim, litExpr (nodeType t) prim)
+
+        ECon t con es -> do  -- conExpr (nodeType t) con <$> sequence es
+            (ds1, ds2) <- unzip <$> sequence es
+            pure (conExpr t con ds1, conExpr (nodeType t) con ds2)
+
+        EApp t es -> do -- appExpr (nodeType t) <$> sequence es
+            (ds1, ds2) <- unzip <$> sequence es
+            pure (appExpr t ds1, appExpr (nodeType t) ds2)
+
+        ELam t name expr -> do -- lamExpr (nodeType t) name <$> e
+            (e1, e2) <- expr
+            pure (lamExpr t name e1, lamExpr (nodeType t) name e2)
+
+        EIf t expr1 expr2 expr3 -> do 
+            (e1, e2) <- expr1
+            (e3, e4) <- expr2
+            (e5, e6) <- expr3
+            pure (ifExpr t e1 e3 e5, ifExpr (nodeType t) e2 e4 e6)
+
+    translatePatterns 
+      :: Pattern Ti Ti Ti Void Void Void Void Void Void 
+      -> Pattern (Maybe Type) (Maybe Type) (Maybe Type) Void Void Void Void Void Void
+    translatePatterns = cata $ \case
+        PVar   t var       -> varPat  (nodeType t) var
+        PCon   t con ps    -> conPat  (nodeType t) con ps
+        PAs    t as p      -> asPat   (nodeType t) as p
+
+    translateClauses 
+      :: SimplifiedClause Ti (Pattern Ti Ti Ti Void Void Void Void Void Void) (StageX1ExprYY, StageX1ExprYYY (Maybe Type))
+      -> SimplifiedClause (Maybe Type) (Pattern (Maybe Type) (Maybe Type) (Maybe Type) Void Void Void Void Void Void) (StageX1ExprYY, StageX1ExprYYY (Maybe Type))
+    translateClauses = \case
+        SimplifiedClause t ps g -> 
+            SimplifiedClause (nodeType t) (translatePatterns <$> ps) g
+
+
 compileTypeclasses
   :: ( MonadSupply Name m
      , MonadReader (ClassEnv, TypeEnv, KindEnv, ConstructorEnv) m )
@@ -1891,7 +1981,7 @@ translateMethod ast = do
     a <- translateLiteral3 <$> expandExpr (Stage1.translate expr)
     runTranslate44 (evalStateT (compileTypeclasses a) mempty)
   where
-    expr = mapExprTag zzz (getAst ast)
+    expr = mapExprTag zzz (astExpr ast)
     zzz (TypeInfo () ty ps) = TypeInfo [] (Just ty) ps
 
 

@@ -33,7 +33,7 @@ runReducePredicates env ps =
     fromJust (evalSupply (reduce env ps) (numSupply "???"))  -- TODO
 
 foo2
-  :: (FreeIn t)
+  :: (Show t, FreeIn t)
   => Context
   -> ConstructorEnv
   -> ClassEnv

@@ -405,7 +405,7 @@ insertDicts env constructorEnv classEnv ast =
 
 
     --moo :: (MonadSupply Name m) => Ast (TypeInfo [e]) -> m (Ast (TypeInfo [e]))
-    --moo ast = Ast <$> cata alg (getAst ast) 
+    --moo ast = Ast <$> cata alg (astExpr ast) 
     --  where
     --    alg = \case
     --        EVar    t var        -> varExpr   <$> boo t <*> pure var
@@ -1013,7 +1013,7 @@ foo1 expr = do
 
         --x <- inferAstType (Ast expr)
 
-        --let r = toRep (getAst (removeNonVarPredicates <$> Ast e))
+        --let r = toRep (astExpr (removeNonVarPredicates <$> Ast e))
         let r = toRep e
         liftIO $ LBS.writeFile "/home/laserpants/play/ast-folder-tree/ast-folder-tree/src/testData22.json" (encode r)
 
@@ -1728,43 +1728,43 @@ example1 = do -- foo1 expr
 
 
 
---    testList =
---        annExpr (tList tInt) (listExpr () [litExpr () (TInteger 1), litExpr () (TInteger 2), litExpr () (TInteger 3), litExpr () (TInteger 4)])
---
---    -- map over the list
---    expr = 
---      letExpr () 
---          (BPat () (varPat () "testList")) testList
---          (fixExpr () "loopList"
---              (lamExpr () [varPat () "g", varPat () "ys"] (patExpr () (varExpr () "ys")
---                  [ Clause () [conPat () "(::)" [varPat () "x", varPat () "xs"]]
---                        [Guard [] (appExpr () [varExpr () "g", conExpr () "Cons'" [varExpr () "x", varExpr () "xs", appExpr () [varExpr () "loopList", varExpr () "g", varExpr () "xs"]]])]
---                  , Clause () [conPat () "[]" []] 
---                        [Guard [] (appExpr () [varExpr () "g", conExpr () "Nil'" []])]
---                  ]))
---              --
---              -- let map = 
---              --
---              (letExpr ()
---                  (BFun () "map" [varPat () "f", varPat () "ys"])
---                  --
---                  -- ys.loopList(fun | Cons'(x, xs, a) => f(x) :: a | Nil' => [])
---                  -- 
---                  (op2Expr () (ODot ())
---                      (appExpr () 
---                          [ varExpr () "loopList"
---                          , funExpr () 
---                              [ Clause () [conPat () "Cons'" [varPat () "x", varPat () "xs", varPat () "a"]] [Guard [] (conExpr () "(::)" [appExpr () [varExpr () "f", varExpr () "x"], varExpr () "a"])]
---                              , Clause () [conPat () "Nil'" []] [Guard [] (conExpr () "[]" [])]
---                              ]
---                          ])
---                      (varExpr () "ys"))
---
---                  (appExpr () 
---                      [ varExpr () "map"
---                      , lamExpr () [varPat () "x"] (op2Expr () (OAdd ()) (varExpr () "x") (litExpr () (TInteger 1)))
---                      , testList
---                      ])))
+    testList =
+        annExpr (tList tInt) (listExpr () [litExpr () (TInteger 1), litExpr () (TInteger 2), litExpr () (TInteger 3), litExpr () (TInteger 4)])
+
+    -- map over the list
+    expr = 
+      letExpr () 
+          (BPat () (varPat () "testList")) testList
+          (fixExpr () "loopList"
+              (lamExpr () [varPat () "g", varPat () "ys"] (patExpr () (varExpr () "ys")
+                  [ Clause () [conPat () "(::)" [varPat () "x", varPat () "xs"]]
+                        [Guard [] (appExpr () [varExpr () "g", conExpr () "Cons'" [varExpr () "x", varExpr () "xs", appExpr () [varExpr () "loopList", varExpr () "g", varExpr () "xs"]]])]
+                  , Clause () [conPat () "[]" []] 
+                        [Guard [] (appExpr () [varExpr () "g", conExpr () "Nil'" []])]
+                  ]))
+              --
+              -- let map = 
+              --
+              (letExpr ()
+                  (BFun () "map" [varPat () "f", varPat () "ys"])
+                  --
+                  -- ys.loopList(fun | Cons'(x, xs, a) => f(x) :: a | Nil' => [])
+                  -- 
+                  (op2Expr () (ODot ())
+                      (appExpr () 
+                          [ varExpr () "loopList"
+                          , funExpr () 
+                              [ Clause () [conPat () "Cons'" [varPat () "x", varPat () "xs", varPat () "a"]] [Guard [] (conExpr () "(::)" [appExpr () [varExpr () "f", varExpr () "x"], varExpr () "a"])]
+                              , Clause () [conPat () "Nil'" []] [Guard [] (conExpr () "[]" [])]
+                              ]
+                          ])
+                      (varExpr () "ys"))
+
+                  (appExpr () 
+                      [ varExpr () "map"
+                      , lamExpr () [varPat () "x"] (op2Expr () (OAdd ()) (varExpr () "x") (litExpr () (TInteger 1)))
+                      , testList
+                      ])))
 
 
 --    expr = r
@@ -1813,14 +1813,14 @@ example1 = do -- foo1 expr
 ----            (appExpr () [varExpr () "isLongerThan", holeExpr (), litExpr () (TString "boo")])
 --            (appExpr () [varExpr () "f", litExpr () (TInteger 4)])
 
-    -- AMBIGUITY
-    -- AMBIGUITY
-    -- AMBIGUITY
-    expr =
-        letExpr () (BPat () (varPat () "x"))
-            (litExpr () (TInteger 11))
-            (lamExpr () [varPat () "x"]
-                (appExpr () [varExpr () "show", appExpr () [varExpr () "read", varExpr () "x"]]))
+--    -- AMBIGUITY
+--    -- AMBIGUITY
+--    -- AMBIGUITY
+--    expr =
+--        letExpr () (BPat () (varPat () "x"))
+--            (litExpr () (TInteger 11))
+--            (lamExpr () [varPat () "x"]
+--                (appExpr () [varExpr () "show", appExpr () [varExpr () "read", varExpr () "x"]]))
         
 
 
@@ -2185,7 +2185,7 @@ tArrUp _ = Nothing
 -- ---- 
 -- ----     zz = simplifiedExprTree z
 -- ----     z = fromJust (evalSupply (simplifyExpr y) (nameSupply "a"))
--- ----     y = getAst (apply sub x)
+-- ----     y = astExpr (apply sub x)
 -- ----     (x, sub, ctx) = fromJust (runInfer mempty testClassEnv testTypeEnv testConstructorEnv e)
 -- ----     e = inferAst (Ast (funExpr () [ Clause () [varPat () "x"] [Guard [] (litExpr () (TInt 5))] ]))
 -- 
@@ -2482,7 +2482,7 @@ tArrUp _ = Nothing
 --   where
 --     xx = Ast e
 --     yy = fmap f xx
---     zz = getAst yy
+--     zz = astExpr yy
 -- 
 
 -- --test2 = do -- case fromJust (runInfer mempty testClassEnv testTypeEnv testConstructorEnv (inferExprType expr1)) of
@@ -2523,10 +2523,10 @@ tArrUp _ = Nothing
 -- ----        print (apply sub expr)
 -- --  where
 -- ----    e :: ProgExpr (TypeInfo [Error])
--- ----    e = getAst (apply sub a)
+-- ----    e = astExpr (apply sub a)
 -- --
 -- --    h = unpack . renderDoc <$> g
--- --    g = exprTree (getAst ee)
+-- --    g = exprTree (astExpr ee)
 -- --
 -- --    f :: Ast Type
 -- --    f = typeOf <$> (apply sub a)
@@ -2537,10 +2537,10 @@ tArrUp _ = Nothing
 -- --    eee :: Ast (TypeInfoT [Error] (Maybe Type))
 -- --    eee = fmap (fmap Just) ee
 -- --
--- --    --xx = simplifyExpr yyyy -- (getAst ee)
--- --    --xx = simplifyExpr (getAst ee)
+-- --    --xx = simplifyExpr yyyy -- (astExpr ee)
+-- --    --xx = simplifyExpr (astExpr ee)
 -- ----    xx :: Stage1Expr (TypeInfoT [Error] (Maybe Type))
--- --    xx = stage1 (getAst eee)
+-- --    xx = stage1 (astExpr eee)
 -- --
 -- ----    xx2 :: Stage3Expr (TypeInfoT [Error] (Maybe Type))
 -- --    xx2 = stage3 xx
@@ -2560,7 +2560,7 @@ tArrUp _ = Nothing
 -- --    xx123 :: Stage1Expr (TypeInfoT [Error] (Maybe Type))
 -- --    xx123 = fromJust (evalSupply (runReaderT (evalStateT (compileClasses xx) []) (testClassEnv, testTypeEnv, testKindEnv, testConstructorEnv)) (nameSupply ""))
 -- --
--- ----    yyyy = mapAst (const ()) (getAst ee)
+-- ----    yyyy = mapAst (const ()) (astExpr ee)
 -- --
 -- --    yy = exprTree xx
 -- --    zz = unpack . renderDoc <$> yy
@@ -2646,7 +2646,7 @@ tArrUp _ = Nothing
 -- --test555 = Fix (TApp (Fix (KCon "Row")) (Fix (TApp (Fix (KArr (Fix (KCon "Row")) (Fix (KCon "Row")))) (Fix (TCon (Fix (KArr (Fix (KCon "*")) (Fix (KArr (Fix (KCon "Row")) (Fix (KCon "Row")))))) "{b}")) (Fix (TCon (Fix (KCon "*")) "Int")))) (Fix (TCon (Fix (KCon "Row")) "{}")))
 -- 
 -- test123 expr = do
---     let xx = toRep (getAst ee)
+--     let xx = toRep (astExpr ee)
 --     LBS.writeFile "/home/laserpants/play/ast-folder-tree/ast-folder-tree/src/testData2.json" (encode xx)
 --     let xx1 = toRep ef
 --     LBS.writeFile "/home/laserpants/play/ast-folder-tree/ast-folder-tree/src/testData3.json" (encode xx1)
@@ -2700,7 +2700,7 @@ tArrUp _ = Nothing
 --     eee :: Ast (TypeInfoT [Error] (Maybe Type))
 --     eee = fmap (fmap Just) ee
 -- 
---     ef = Stage1.translate (getAst eee)
+--     ef = Stage1.translate (astExpr eee)
 -- 
 --     eg = Stage2.translate ef
 -- 
@@ -2727,7 +2727,7 @@ tArrUp _ = Nothing
 --     g32 = exprTree ej
 -- 
 -- --    xx :: Stage1Expr (TypeInfoT [Error] (Maybe Type))
--- --    xx = Stage1.translate (getAst eee)
+-- --    xx = Stage1.translate (astExpr eee)
 -- 
 --     h4 = unpack . renderDoc <$> g4
 --     g4 = exprTree3 ek
@@ -2739,7 +2739,7 @@ tArrUp _ = Nothing
 --     g1 = exprTree ef
 -- --
 --     h = unpack . renderDoc <$> g
---     g = exprTree (getAst ee)
+--     g = exprTree (astExpr ee)
 -- --
 -- --    xx2 :: Stage3Expr (Maybe Type)
 -- --    xx2 = Stage3.translate (mapExpr2 nodeType xx)
