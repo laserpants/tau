@@ -379,7 +379,8 @@ guardPredicates :: Guard (ProgExpr (TypeInfoT e t)) -> [Predicate]
 guardPredicates (Guard es e) = exprPredicates e <> (exprPredicates =<< es)
 
 clausePredicates :: ProgClause (TypeInfoT e t) -> [Predicate]
-clausePredicates (Clause _ p gs) = patternPredicates p <> (guardPredicates =<< gs)
+clausePredicates (Clause _ ps gs) = (patternPredicates =<< ps) 
+                                 <> (guardPredicates =<< gs)
 
 astPredicates :: Ast (TypeInfoT e t) -> [Predicate]
 astPredicates = exprPredicates . getAst
@@ -426,7 +427,7 @@ astTypeVars (Ast expr) = nub (exprTypeVars expr)
         BFun    t _ ps         -> typeVars (typeOf t) <> concatMap patternTypeVars ps
 
     clauseTypeVars = \case
-        Clause  t p gs         -> typeVars (typeOf t) <> patternTypeVars p
+        Clause  t ps gs        -> typeVars (typeOf t) <> concatMap patternTypeVars ps
                                                       <> concatMap guardTypeVars gs
     guardTypeVars = \case
         Guard es e             -> concat es <> e

@@ -147,12 +147,15 @@ expandLitAndAnyPatterns = traverse expandClause
         PLit t prim -> do
             var <- varSupply
             tell [ appExpr (TypeInfo [] (Just tBool) [])
-                   [ varExpr (eqFunType <$$> t) ("(==)")
+                   [ varExpr (eqFunType t) ("(==)")
                    , varExpr (TypeInfo [] (nodeType t) []) var
                    , litExpr t prim ]]
             pure (varPat t var)
           where
-            eqFunType t = t `tArr` t `tArr` tBool
+            --eqFunType t = t `tArr` t `tArr` tBool
+            eqFunType (TypeInfo _ ti _) = case ti of
+                    Nothing -> TypeInfo [] Nothing []
+                    Just t  -> TypeInfo [] (Just (t `tArr` t `tArr` tBool)) [InClass "Eq" t]
 
         PAny   t          -> varPat t <$> varSupply
         PVar   t var      -> pure (varPat t var)
@@ -650,12 +653,12 @@ applyXx2 expr (InClass name ty:ps) = do
         EVar t var -> do
             --tv  <- dictTVar (InClass name ty) (tApp kTyp (tCon kFun name) ty)
             all <- baz 
-            let getType t = tAtom `tArr` t1 `tArr` t
+            let getType t = tSymbol `tArr` t1 `tArr` t
             if var `elem` (fst <$> all) 
                 then do
                     pure (appExpr (workingExprTag expr)
                         [ varExpr (getType <$> workingExprTag expr) "@#getField"
-                        , litExpr (Just tAtom) (TAtom var) 
+                        , litExpr (Just tSymbol) (TSymbol var) 
                         , varExpr (Just t1) tv 
                         ])
                 else pure (appExpr zz1
@@ -716,12 +719,12 @@ applyXx2 expr (InClass name ty:ps) = do
 --        
 --                        all <- baz 
 --                        let t1 = tApp kTyp (tCon kFun name) ty
---                            getType t = tAtom `tArr` t1 `tArr` t
+--                            getType t = tSymbol `tArr` t1 `tArr` t
 --                        if var `elem` (fst <$> all) 
 --                            then do
 --                                pure (appExpr (workingExprTag expr)
 --                                    [ varExpr (getType <$> workingExprTag expr) "@#getField"
---                                    , litExpr (Just tAtom) (TAtom var) 
+--                                    , litExpr (Just tSymbol) (TSymbol var) 
 --                                    , varExpr (Just t1) tv 
 --                                    ])
 --                            else pure (appExpr zz1
@@ -744,12 +747,12 @@ applyXx2 expr (InClass name ty:ps) = do
 --                        tv  <- dictTVar (InClass name ty) (tApp kTyp (tCon kFun name) ty)
 --                        --all <- baz 
 --                        let t1 = tApp kTyp (tCon kFun name) ty
---                        --    getType t = tAtom `tArr` t1 `tArr` t
+--                        --    getType t = tSymbol `tArr` t1 `tArr` t
 --                        --if var `elem` (fst <$> all) 
 --                        --    then do
 --                        --        pure (appExpr (workingExprTag expr)
 --                        --            [ varExpr (getType <$> workingExprTag expr) "@#getField"
---                        --            , litExpr (Just tAtom) (TAtom var) 
+--                        --            , litExpr (Just tSymbol) (TSymbol var) 
 --                        --            , varExpr (Just t1) tv 
 --                        --            ])
 --                        --pure (appExpr zz1
@@ -832,10 +835,10 @@ applyXx2 expr (InClass name ty:ps) = do
 --                all <- baz env
 --                if var `elem` (fst <$> all)
 --                    then do
---                        let getType t = tAtom `tArr` t1 `tArr` t
+--                        let getType t = tSymbol `tArr` t1 `tArr` t
 --                        pure ( appExpr tx
 --                                 [ varExpr (getType <$> workingExprTag expr) "@#getField"
---                                 , litExpr (Just tAtom) (TAtom var) 
+--                                 , litExpr (Just tSymbol) (TSymbol var) 
 --                                 , varExpr (Just t1) tv ]
 --                             , tArr t1 <$> tx )
 --                    else pure ( appExpr tx
@@ -926,10 +929,10 @@ applyXx2 expr (InClass name ty:ps) = do
 --                all <- baz env
 --                if var `elem` (fst <$> all)
 --                    then do
---                        let getType t = tAtom `tArr` t1 `tArr` t
+--                        let getType t = tSymbol `tArr` t1 `tArr` t
 --                        pure $ appExpr (workingExprTag expr) 
 --                            [ varExpr (getType <$> workingExprTag expr) "@#getField"
---                            , litExpr (Just tAtom) (TAtom var) 
+--                            , litExpr (Just tSymbol) (TSymbol var) 
 --                            , varExpr (Just t1) tv ]
 --                    else pure $ appExpr (workingExprTag expr) 
 --                            [ setWorkingExprTag (tArr t1 <$> workingExprTag expr) expr
@@ -1181,7 +1184,7 @@ runTranslate4 classEnv typeEnv kindEnv constructorEnv f =
 
 runTranslate44 f = do
     env <- ask
-    pure (fromJust (evalSupply (runReaderT f env) (numSupply "")))
+    pure (fromJust (evalSupply (runReaderT f env) (numSupply "$2.b")))
 
 type StageX1ExprYY = (Expr Ti Ti Ti Ti Ti Ti Ti Ti Void Void Void Void Void Void Void Void Void Name (SimplifiedClause Ti (Pattern Ti Ti Ti Void Void Void Void Void Void)))
 
@@ -1475,12 +1478,24 @@ expandPatterns999 = cata $ \case
     PLit t prim -> do
         var <- varSupply
         tell [ appExpr (TypeInfo [] (Just tBool) [])
-                 [ varExpr (eqFunType <$$> t) ("(==)")
-                 , varExpr (TypeInfo [] (nodeType t) []) var
-                 , litExpr t prim ] ]
+               [ varExpr (eqFunType t) ("(==)")
+               , varExpr (TypeInfo [] (nodeType t) []) var
+               , litExpr t prim ]]
         pure (varPat t var)
       where
-        eqFunType t = t `tArr` t `tArr` tBool
+        eqFunType (TypeInfo _ ti _) = case ti of
+                Nothing -> TypeInfo [] Nothing []
+                Just t  -> TypeInfo [] (Just (t `tArr` t `tArr` tBool)) [InClass "Eq" t]
+
+--    PLit t prim -> do
+--        var <- varSupply
+--        tell [ appExpr (TypeInfo [] (Just tBool) [])
+--                 [ varExpr (eqFunType <$$> t) ("(==)")
+--                 , varExpr (TypeInfo [] (nodeType t) []) var
+--                 , litExpr t prim ] ]
+--        pure (varPat t var)
+--      where
+--        eqFunType t = t `tArr` t `tArr` tBool
 
     PVar t var       -> pure (varPat t var)
     PCon t con ps    -> conPat t con <$> sequence ps
@@ -1794,12 +1809,12 @@ applyVarPredicates expr (InClass name ty:ps) = do
     case project expr of
         EVar t var -> do
             all <- baz 
-            let getType t = tAtom `tArr` t1 `tArr` t
+            let getType t = tSymbol `tArr` t1 `tArr` t
             if var `elem` (fst <$> all) 
                 then do
                     pure (appExpr (workingExprTag2 expr)
                         [ varExpr (getType <$> workingExprTag2 expr) "@#getField"
-                        , litExpr (Just tAtom) (TAtom var) 
+                        , litExpr (Just tSymbol) (TSymbol var) 
                         , varExpr (Just t1) tv ])
                 else pure (appExpr zz1
                         [ setWorkingExprTag2 (yy (InClass name ty) zz1) expr

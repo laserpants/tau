@@ -77,9 +77,9 @@ instance (Substitutable t a) => Substitutable (Guard (ProgExpr t)) a where
     apply sub = \case
         Guard es e           -> Guard (apply sub es) (apply sub e)
 
-instance (Substitutable t a) => Substitutable (Clause t (ProgPattern t) (ProgExpr t)) a where
+instance (Substitutable t a) => Substitutable (Clause t [ProgPattern t] (ProgExpr t)) a where
     apply sub = \case
-        Clause  t gs es      -> Clause (apply sub t) (apply sub gs) (apply sub es)
+        Clause  t ps gs      -> Clause (apply sub t) (apply sub ps) (apply sub gs)
 
 instance (Substitutable t a) => Substitutable (ProgExpr t) a where
     apply sub = cata $ \case

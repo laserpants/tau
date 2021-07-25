@@ -15,6 +15,7 @@ import Data.Tuple.Extra
 import Data.Void
 import Tau.Compiler.Pipeline
 import Tau.Lang
+import Tau.Pretty
 import Tau.Util
 import Tau.Type
 
@@ -143,7 +144,7 @@ compilePatterns u qs =
   where
     compileMatch [] []                                       c = pure c
     compileMatch [] (SimplifiedClause _ [] (Guard [] e):_)   _ = pure e
-    compileMatch [] (SimplifiedClause _ [] (Guard exs e):qs) c =
+    compileMatch [] (SimplifiedClause _ [] (Guard exs e):qs) c = do
         ifExpr (stage6ExprTag e) (foldr1 andExpr exs) e <$> compileMatch [] qs c
     compileMatch (u:us) qs c =
         case clauseGroups qs of

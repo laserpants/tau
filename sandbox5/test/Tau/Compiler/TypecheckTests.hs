@@ -472,7 +472,7 @@ testInferExprType = do
         (tVar kTyp "a" `tArr` tVar kTyp "a")
 
     succeedInferExpr
-        (funExpr () [ Clause () (conPat () "(::)" [varPat () "x", conPat () "(::)" [varPat () "y", varPat () "ys"]]) [Guard [] (litExpr () (TBool True))] , Clause () (conPat () "[]" []) [Guard [] (litExpr () (TBool True))] , Clause () (conPat () "(::)" [varPat () "z", varPat () "zs"]) [Guard [] (litExpr () (TBool True))] ])
+        (funExpr () [ Clause () [conPat () "(::)" [varPat () "x", conPat () "(::)" [varPat () "y", varPat () "ys"]]] [Guard [] (litExpr () (TBool True))] , Clause () [conPat () "[]" []] [Guard [] (litExpr () (TBool True))] , Clause () [conPat () "(::)" [varPat () "z", varPat () "zs"]] [Guard [] (litExpr () (TBool True))] ])
         (tList (tVar kTyp "a") `tArr` tBool)
 
 
@@ -520,7 +520,7 @@ testInferRecordExpr = do
         (tRecord (tRow "b" tInt (tRow "d" tInt tRowNil)))
 
     succeedInferExpr
-        (letExpr () (BFun () "withDefault" [varPat () "val"]) (funExpr () [ Clause () (conPat () "Some" [varPat () "y"]) [ Guard [] (varExpr () "y") ] , Clause () (conPat () "None" []) [ Guard [] (varExpr () "val") ] ]) (varExpr () "withDefault"))
+        (letExpr () (BFun () "withDefault" [varPat () "val"]) (funExpr () [ Clause () [conPat () "Some" [varPat () "y"]] [ Guard [] (varExpr () "y") ] , Clause () [conPat () "None" []] [ Guard [] (varExpr () "val") ] ]) (varExpr () "withDefault"))
         (tVar kTyp "a" `tArr` tApp kTyp (tCon kFun "Option") (tVar kTyp "a") `tArr` tVar kTyp "a")
 
 

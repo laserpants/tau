@@ -367,8 +367,8 @@ tChar = typ "Char"
 tString :: TypeT a
 tString = typ "String"
 
-tAtom :: TypeT a
-tAtom = typ "Atom"
+tSymbol :: TypeT a
+tSymbol = typ "Symbol"
 
 -- Lists
 

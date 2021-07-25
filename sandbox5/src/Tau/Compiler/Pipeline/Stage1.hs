@@ -9,6 +9,7 @@ import Data.Map.Strict (Map)
 import Data.Maybe (fromMaybe, fromJust)
 import Data.Tuple.Extra (second)
 import Data.Void
+import Data.Maybe
 import Tau.Compiler.Error
 import Tau.Compiler.Pipeline
 import Tau.Lang
@@ -109,7 +110,7 @@ translate = cata $ \case
     prefixOp1 (ONot t)    = varExpr t "not"
     prefixOp2 (OField t)  = varExpr t "@#getField"
     prefixOp2 op          = varExpr (op2Tag op) ("(" <> op2Symbol op <> ")")
-    expandClause (Clause t p gs) = [SimplifiedClause t [p] g | g <- gs]
+    expandClause (Clause t ps gs) = [SimplifiedClause t ps g | g <- gs]
 
 --foldRow 
 --  :: TypeInfoT [Error] (Maybe Type)
@@ -142,7 +143,8 @@ translateAppExpr
   -> [TargetExpr (TypeInfoT [e] (Maybe Type))] 
   -> TargetExpr (TypeInfoT [e] (Maybe Type))
 translateAppExpr t es = 
-    foldr yyy (appExpr (TypeInfo [] (gork <$> nodeType t) []) replaceHoles) holes
+    --foldr yyy (appExpr (TypeInfo [] (gork <$> nodeType t) []) replaceHoles) holes
+    foldr yyy (appExpr t replaceHoles) holes
   where
     yyy (a, n) b = lamExpr 
         (xyz (nodeType (targetExprTag a)) <$> targetExprTag b) 
@@ -167,17 +169,41 @@ translateAppExpr t es =
 
     xvar n = "^" <> intToText n
 
-    gork = cata $ \case
-      TArr _ t -> t
-      s        -> embed s
+--    gork = cata $ \case
+--      TArr _ t -> t
+--      s        -> embed s
 
 translateFunExpr
   :: TypeInfoT [e] (Maybe Type)
   -> [TargetSimplifiedClause (TypeInfoT [e] (Maybe Type))]
   -> TargetExpr (TypeInfoT [e] (Maybe Type))
-translateFunExpr t =
-    lamExpr t [varPat t1 "#0"] <<< patExpr t2 (varExpr t1 "#0")
+translateFunExpr t cs =
+--    lamExpr t [varPat t1 "#0"] (patExpr t2 (varExpr t1 "#0") cs)
+
+    lamExpr t [varPat (patternTag p) ("#" <> intToText n) | (p, n) <- zip ps [0..]] 
+--              (varExpr (TypeInfo [] (Just tInt) []) "XX")
+              (patExpr t5 xyz (gork <$> cs))
   where
+    gork (SimplifiedClause t [p] gs) = 
+        SimplifiedClause t [p] gs
+
+    gork (SimplifiedClause t ps gs) = 
+        SimplifiedClause t [p] gs
+      where
+        p = conPat (TypeInfo [] yy1 []) (tupleCon (length ps)) ps
+
+    xyz = case zzz of
+        [e] -> e
+        es -> conExpr (TypeInfo [] yy1 []) (tupleCon (length es)) es
+
+    yy1 = if any isNothing xx1 
+              then Nothing
+              else Just (tTuple (catMaybes xx1))
+
+    xx1 = nodeType . patternTag <$> ps
+        
+    zzz = [varExpr (patternTag p) ("#" <> intToText n) | (p, n) <- zip ps [0..]]
+
     t1 = TypeInfo [] (get cod) []
     t2 = TypeInfo [] (get dom) []
 
@@ -186,6 +212,9 @@ translateFunExpr t =
 
     cod (TArr t1 _) = t1
     dom (TArr _ t2) = t2
+
+    arity = length ps
+    SimplifiedClause t5 ps _:_ = cs
 
 targetExprTag :: TargetExpr t -> t
 targetExprTag = cata $ \case

@@ -61,7 +61,7 @@ instance Pretty Prim where
         TDouble  a -> pretty a
         TChar    a -> squotes (pretty a)
         TString  a -> dquotes (pretty a)
-        TAtom    a -> pretty a
+        TSymbol  a -> pretty a
 
 -- >>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>
 
@@ -438,6 +438,9 @@ instance Width (ProgExpr t) where
 
 instance Width (ProgPattern t) where
     widthOf = layoutWidth . pretty
+
+instance Width [ProgPattern t] where
+    widthOf _ = 10 -- TODO TODO TODO TODO TODO
 
 instance (Pretty a, Width a) => Width (Guard a) where
     widthOf (Guard [] _) = 0

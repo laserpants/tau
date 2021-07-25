@@ -136,7 +136,7 @@ unifyRows
   -> Type
   -> Type
   -> m (Substitution Type, Substitution Kind)
-unifyRows combineTypes combinePairs t u = 
+unifyRows combineTypes combinePairs t u = do
     fn (mapRep t, final t) (mapRep u, final u)
   where
     mapRep = foldr (uncurry (Map.insertWith (<>))) mempty . fields 

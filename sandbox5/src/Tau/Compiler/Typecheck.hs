@@ -61,7 +61,8 @@ inferExprType = cata $ \case
               t           -> embed t
 
         pure $ if isRecordType "##" (nodeType ti)
-            then conExpr (TypeInfo [] (nodeType (fixRecords <$> ti)) []) "#"
+            then -- TODO : Unify kind of row with kRow
+                conExpr (TypeInfo [] (nodeType (fixRecords <$> ti)) []) "#"
                      [varExpr (fromJust . unpackRecordType "##" <$> ti) a]
             else varExpr ti a
 
@@ -134,7 +135,7 @@ inferExprType = cata $ \case
             cs <- lift (traverse inferClauseType eqs)
             tellPredicates (clausePredicates =<< cs)
             -- Unify pattern clauses
-            forM_ cs $ \(Clause t p gs) -> do
+            forM_ cs $ \(Clause t [p] gs) -> do
                 forM_ gs (\(Guard _ e) -> unfiyWithNode (typeOf e))
                 unfiyWithNode (typeOf t)
                 e1 ## p
@@ -175,14 +176,14 @@ inferExprType = cata $ \case
 
     EFun _ eqs -> do
         (cs, ti, _) <- runNode $ do
-            ty <- newTVar 
             t1 <- thisNodeType
             cs <- lift (traverse inferClauseType eqs)
             tellPredicates (clausePredicates =<< cs)
             -- Unify pattern clauses
-            forM_ cs $ \(Clause t p gs) -> do
-                forM_ gs (\(Guard _ e) -> t ## e >> t1 ## (ty `tArr` typeOf e))
-                p ## ty
+            forM_ cs $ \(Clause t ps gs) -> do
+                forM_ gs (\(Guard _ e) -> do
+                    t1 ## foldr tArr (typeOf e) (typeOf <$> ps)
+                    t ## e)
             pure cs
         pure (funExpr ti cs)
 
@@ -219,7 +220,7 @@ inferExprType = cata $ \case
                     unfiyWithNode t
                     op <- inferOp2Type (OField ())
                     op ## (typeOf a `tArr` typeOf b `tArr` t) 
-                    pure (op, litExpr (TypeInfo [] tAtom []) (TAtom name), b)
+                    pure (op, litExpr (TypeInfo [] tSymbol []) (TSymbol name), b)
 
                 _ -> do
                     op <- inferOp2Type op2
@@ -413,26 +414,55 @@ inferOp2Type = \case
     OLte   _ -> opType OLte (Forall [kTyp] [InClass "Ord" 0] (tGen 0 `tArr` tGen 0 `tArr` tBool))
     OGte   _ -> opType OGte (Forall [kTyp] [InClass "Ord" 0] (tGen 0 `tArr` tGen 0 `tArr` tBool))
     ODot   _ -> opType ODot (Forall [kTyp, kTyp] [] ((tGen 0 `tArr` tGen 1) `tArr` tGen 0 `tArr` tGen 1))
-    OField _ -> opType OField (Forall [kTyp, kTyp] [] (tCon kTyp "Atom" `tArr` tGen 1 `tArr` tGen 0))
+    OField _ -> opType OField (Forall [kTyp, kTyp] [] (tCon kTyp "Symbol" `tArr` tGen 1 `tArr` tGen 0))
 
 inferClauseType
   :: ( MonadSupply Name m
      , MonadReader (ClassEnv, TypeEnv, KindEnv, ConstructorEnv) m
      , MonadState (Substitution Type, Substitution Kind, Context) m )
 --  => Type
-  => Clause t (ProgPattern t) (m (ProgExpr (TypeInfo [Error])))
+  => Clause t [ProgPattern t] (m (ProgExpr (TypeInfo [Error])))
   -> m (ProgClause (TypeInfo [Error]))
-inferClauseType eq@(Clause _ pat _) = do
-    ((p, gs), ti, _) <- runNode $ do
-        (p, (_, vs, _, _)) <- listen (patternNode (inferPatternType pat)) 
+inferClauseType eq@(Clause _ pats _) = do
+    ((ps, gs), ti, _) <- runNode $ do
+        (ps, (_, vs, _, _)) <- listen (traverse (patternNode . inferPatternType) pats)
         let schemes = toScheme <$$> vs
             Clause _ _ guards = local (inTypeEnv (Env.inserts schemes)) <$> eq
             (iffs, _) = unzip (guardToPair <$> guards)
         -- Iff-conditions must be Bool
         forM_ (concat iffs) unifyIffCondition
         gs <- traverse inferGuard guards
-        pure (p, gs)
-    pure (Clause ti p gs)
+        pure (ps, gs)
+
+--        (p, (_, vs, _, _)) <- listen (patternNode (inferPatternType pat)) 
+--        let schemes = toScheme <$$> vs
+--            Clause _ _ guards = local (inTypeEnv (Env.inserts schemes)) <$> eq
+--            (iffs, _) = unzip (guardToPair <$> guards)
+--        -- Iff-conditions must be Bool
+--        forM_ (concat iffs) unifyIffCondition
+--        gs <- traverse inferGuard guards
+--        pure (ps, gs)
+    pure (Clause ti ps gs)
+
+
+--inferClauseType
+--  :: ( MonadSupply Name m
+--     , MonadReader (ClassEnv, TypeEnv, KindEnv, ConstructorEnv) m
+--     , MonadState (Substitution Type, Substitution Kind, Context) m )
+----  => Type
+--  => Clause t (ProgPattern t) (m (ProgExpr (TypeInfo [Error])))
+--  -> m (ProgClause (TypeInfo [Error]))
+--inferClauseType eq@(Clause _ pat _) = do
+--    ((p, gs), ti, _) <- runNode $ do
+--        (p, (_, vs, _, _)) <- listen (patternNode (inferPatternType pat)) 
+--        let schemes = toScheme <$$> vs
+--            Clause _ _ guards = local (inTypeEnv (Env.inserts schemes)) <$> eq
+--            (iffs, _) = unzip (guardToPair <$> guards)
+--        -- Iff-conditions must be Bool
+--        forM_ (concat iffs) unifyIffCondition
+--        gs <- traverse inferGuard guards
+--        pure (p, gs)
+--    pure (Clause ti p gs)
 
 unifyIffCondition
   :: ( MonadSupply Name m
@@ -463,7 +493,7 @@ primType = \case
     TInteger{} -> Forall [kTyp] [InClass "Num" 0] (tGen 0)
     TFloat{}   -> Forall [kTyp] [InClass "Fractional" 0] (tGen 0)
     TDouble{}  -> Forall [kTyp] [InClass "Fractional" 0] (tGen 0)
-    TAtom{}    -> Forall [kTyp] [] (tGen 0)
+    TSymbol{}  -> Forall [kTyp] [] (tGen 0)
 
 exprNode
   :: ( MonadSupply Name m
@@ -677,6 +707,20 @@ runNode writer = do
     pure ( a
          , simplifyPredicates (TypeInfo (es <> es2) (applyBoth sub t) (applyBoth sub ps))
          , vs )
+
+--doUnifyKinds
+--  :: ( MonadSupply Name m
+--     , MonadReader (ClassEnv, TypeEnv, KindEnv, ConstructorEnv) m
+--     , MonadState (Substitution Type, Substitution Kind, Context) m )
+--  => Kind
+--  -> Kind 
+--  -> m [Error]
+--doUnifyKinds k1 k2 = do
+--    (_, sub) <- subs
+--    either pure (const []) <$> runExceptT (do
+--        -- TODO TODO Kind unification error???
+--        kindSub <- withExceptT undefined (unifyKinds (apply sub k1) (apply sub k2))
+--        modify (second3 (kindSub <>)))
 
 doUnify 
   :: ( MonadSupply Name m
@@ -1514,18 +1558,18 @@ subs = do
 --         propagate tv ty = do
 --             env <- gets thd3
 --             propagateClasses ty (fromMaybe mempty (Env.lookup tv env))
--- 
--- runUnifyKinds
---   :: ( MonadSupply Name m
---      , MonadReader (ClassEnv, TypeEnv, KindEnv, ConstructorEnv) m
---      , MonadState (Substitution Type, Substitution Kind, Context) m )
---   => Kind
---   -> Kind
---   -> m (Either Error ())
--- runUnifyKinds = runExceptT <$$> (\k1 k2 -> do
---     sub <- applyAnd unifyKinds (gets snd3) KindMismatch k1 k2
---     modify (second3 (sub <>)))
--- 
+
+--runUnifyKinds
+--  :: ( MonadSupply Name m
+--     , MonadReader (ClassEnv, TypeEnv, KindEnv, ConstructorEnv) m
+--     , MonadState (Substitution Type, Substitution Kind, Context) m )
+--  => Kind
+--  -> Kind
+--  -> m (Either Error ())
+--runUnifyKinds = runExceptT <$$> (\k1 k2 -> do
+--    sub <- applyAnd unifyKinds (gets snd3) KindMismatch k1 k2
+--    modify (second3 (sub <>)))
+
 -- --applyAnd
 -- --  :: ( Substitutable t1 a
 -- --     , Substitutable t2 a

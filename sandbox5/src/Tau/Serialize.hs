@@ -173,7 +173,7 @@ primJson = \case
     TDouble  a          -> makeRep "Prim" "TDouble"   [toJSON a]
     TChar    a          -> makeRep "Prim" "TChar"     [toJSON a]
     TString  a          -> makeRep "Prim" "TString"   [toJSON a]
-    TAtom    a          -> makeRep "Prim" "TAtom"     [toJSON a]
+    TSymbol  a          -> makeRep "Prim" "TSymbol"   [toJSON a]
 
 patternRep 
   :: ( ToRep t1

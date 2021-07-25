@@ -67,7 +67,7 @@ instance ToRep Bundle where
               , "stageX3" .= toRep stageX3Expr
               , "stage4"  .= toRep stage4Expr
               , "stage5"  .= toRep stage5Expr
-              , "stageX5" .= toRep stage5Expr
+              , "stageX5" .= toRep stageX5Expr
               , "stageX6" .= toRep stageX6Expr
               , "core"    .= toRep coreExpr
               ] <> valueField <> value2Field )
@@ -149,13 +149,13 @@ compileBundle expr = do
             let expr3 = Stage3.runTranslate (Stage3.translate expr2)
             let expr4 = Stage4.translate expr3
             let expr5 = Stage5.runTranslate (Stage5.translate expr4)
+--
+--            expr6 <- Stage6.translate expr5
 
-            expr6 <- Stage6.translate expr5
-
-            traceShowM "vv"
-            traceShowM (pretty exprX3)
-            traceShowM "vvvv"
-            traceShowM (pretty expr5)
+--            traceShowM "vv"
+--            traceShowM (pretty exprX3)
+--            traceShowM "vvvv"
+--            traceShowM (pretty expr5)
 
             pure (bundle
                     { stage1Expr  = Just expr1
@@ -167,8 +167,8 @@ compileBundle expr = do
                     , stage2Expr  = Just expr2
                     , stage3Expr  = Just expr3
                     , stage4Expr  = Just expr4
-                    , stage5Expr  = Just expr5
-                    , coreExpr    = Just expr6
+--                    , stage5Expr  = Just expr5
+--                    , coreExpr    = Just expr6
                     })
         else 
             pure bundle

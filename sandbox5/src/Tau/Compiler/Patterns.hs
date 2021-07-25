@@ -241,12 +241,12 @@ checkExhaustive = para $ \case
         EAnn   _ e                   -> e
         _                            -> pure True
 
-clausesAreExhaustive :: (Show t, Eq t, RowType t, MonadReader ConstructorEnv m) => [Clause t (ProgPattern t) (ProgExpr t)] -> m Bool
+clausesAreExhaustive :: (Show t, Eq t, RowType t, MonadReader ConstructorEnv m) => [Clause t [ProgPattern t] (ProgExpr t)] -> m Bool
 clausesAreExhaustive = exhaustive . fmap toMatrix
   where
-    toMatrix (Clause _ p guards)
-        | null guards           = [p]
-        | any isCatchAll guards = [p]
+    toMatrix (Clause _ ps guards)
+        | null guards           = ps
+        | any isCatchAll guards = ps
     toMatrix _ = 
         []
 

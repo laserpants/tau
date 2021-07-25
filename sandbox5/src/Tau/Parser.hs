@@ -10,7 +10,7 @@ import Data.Foldable (foldlM)
 import Data.Function ((&))
 import Data.Functor (($>))
 import Data.Maybe (fromMaybe, fromJust)
-import Data.Text (Text, pack, unpack)
+import Data.Text (Text, pack, unpack, strip)
 import Tau.Lang
 import Tau.Prog
 import Tau.Util hiding (parens, brackets, braces, commaSep)
@@ -27,7 +27,7 @@ runParserStack
   -> String 
   -> Text 
   -> Either (ParseErrorBundle Text Void) a
-runParserStack p s t = fromJust (evalSupply (runParserT p s t) (numSupply ""))
+runParserStack p s t = fromJust (evalSupply (runParserT p s (strip t)) (numSupply ""))
 
 -- >>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>
 
@@ -196,8 +196,11 @@ patternParser = makeExprParser (try (parens patternParser) <|> parser)
 operator :: [[Operator Parser (ProgExpr ())]]
 operator = 
     [
-      -- 10
+      -- 11
       [ Postfix postfixFunArgParser
+      ]
+      -- 10
+    , [ InfixL (symbol "." $> flip (op2Expr () (ODot ())))
       ]
       -- 9
     , [ InfixR (op2Expr () (OLarr ()) <$ symbol "<<")
@@ -237,9 +240,6 @@ operator =
       -- 1
     , [ InfixL (op2Expr () (OFpipe ()) <$ symbol "|>")
       , InfixR (op2Expr () (OBpipe ()) <$ symbol "<|")
-      ]
-      -- 0
-    , [ InfixL (symbol "." $> flip (op2Expr () (ODot ())))
       ]
     ]
 
@@ -294,7 +294,7 @@ exprParser = makeExprParser parseItem operator
 
     parseClause = 
         symbol "|" >> Clause ()
-            <$> patternParser
+            <$> (pure <$> patternParser)
             <*> (try guarded <|> nonGuarded)
 
     guarded = do

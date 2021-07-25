@@ -21,7 +21,7 @@ data Prim
     | TDouble  Double                    -- ^ Double precision floating point numbers
     | TChar    Char                      -- ^ Chars
     | TString  Text                      -- ^ Strings
-    | TAtom    Name                      -- ^ Symbolic constant (language internal)
+    | TSymbol  Name                      -- ^ Symbolic constant (language internal)
 
 -- >>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>
 
@@ -94,7 +94,7 @@ data Clause t p a = Clause
     , clausePatterns :: p
     , clauseGuard    :: [Guard a] }
 
-type ProgClause t = Clause t (ProgPattern t) (ProgExpr t)
+type ProgClause t = Clause t [ProgPattern t] (ProgExpr t)
 
 -- >>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>
 
@@ -133,7 +133,7 @@ type Expr t1 t2 t3 t4 t5 t6 t7 t8 t9 t10 t11 t12 t13 t14 t15 t16 e1 e2 e3 =
 type ProgExpr t = Expr t t t t t t t t t t t t t t t t
     (ProgBinding t) 
     [ProgPattern t] 
-    (Clause t (ProgPattern t))
+    (Clause t [ProgPattern t])
 
 -- >>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>
 
@@ -267,7 +267,7 @@ instance Functor Ast where
             EFix    t name e1 e2 -> fixExpr    (f t) name e1 e2
             ELam    t ps e       -> lamExpr    (f t) (mapPattern <$> ps) e
             EIf     t e1 e2 e3   -> ifExpr     (f t) e1 e2 e3
-            EPat    t e cs       -> patExpr    (f t) e (mapClause <$> cs)
+            EPat    t es cs      -> patExpr    (f t) es (mapClause <$> cs)
             EFun    t cs         -> funExpr    (f t) (mapClause <$> cs)
             EOp1    t op a       -> op1Expr    (f t) (mapOp1 op) a
             EOp2    t op a b     -> op2Expr    (f t) (mapOp2 op) a b
@@ -281,7 +281,7 @@ instance Functor Ast where
             BFun    t name ps    -> BFun       (f t) name (mapPattern <$> ps)
 
         mapClause = \case
-            Clause  t p gs       -> Clause     (f t) (mapPattern p) gs
+            Clause  t ps gs      -> Clause     (f t) (mapPattern <$> ps) gs
 
         mapPattern = cata $ \case
             PVar    t var        -> varPat     (f t) var
@@ -347,9 +347,9 @@ instance Foldable Ast where
             ERow    t _ a b      -> (f t:a <> b)
             EAnn    _ e          -> e
 
-        foldClause :: (t -> s -> s) -> Clause t (ProgPattern t) [s -> s] -> [s -> s]
+        foldClause :: (t -> s -> s) -> Clause t [ProgPattern t] [s -> s] -> [s -> s]
         foldClause f = \case
-            Clause  t p gs       -> (f t:foldPattern f p <> concatMap (foldGuard f) gs)
+            Clause  t ps gs      -> (f t:concatMap (foldPattern f) ps <> concatMap (foldGuard f) gs)
 
         foldGuard :: (t -> s -> s) -> Guard [s -> s] -> [s -> s]
         foldGuard f = \case
@@ -431,7 +431,7 @@ instance Traversable Ast where
             BFun    t name ps    -> BFun      <$> f t <*> pure name <*> traverse pattern ps
 
         clause = \case
-            Clause  t p gs       -> Clause    <$> f t <*> pattern p <*> traverse guard gs
+            Clause  t ps gs      -> Clause    <$> f t <*> traverse pattern ps <*> traverse guard gs
 
         guard = \case
             Guard es e           -> Guard     <$> sequenceA es <*> e
@@ -572,32 +572,32 @@ primName = \case
     TDouble  _ -> "Double"
     TChar    _ -> "Char"
     TString  _ -> "String"
-    TAtom    _ -> "Atom"
+    TSymbol  _ -> "Symbol"
 
 -- | Return the precedence of a binary operator
 opPrecedence :: Op2 t -> Int
 opPrecedence = \case
-    OEq    _ -> 4
-    ONeq   _ -> 4
-    OAnd   _ -> 3
-    OOr    _ -> 2
-    OAdd   _ -> 6
-    OSub   _ -> 6
-    OMul   _ -> 7
-    ODiv   _ -> 7
-    OPow   _ -> 8
-    OLt    _ -> 4
-    OGt    _ -> 4
-    OLte   _ -> 4
-    OGte   _ -> 4
-    OLarr  _ -> 9
-    ORarr  _ -> 9
-    OFpipe _ -> 0
-    OBpipe _ -> 0
-    OOpt   _ -> 3
-    OStrc  _ -> 5
-    ODot   _ -> 1
-    OField _ -> 1
+    OEq    _ -> 4   -- TODO! Update
+    ONeq   _ -> 4   -- TODO! Update
+    OAnd   _ -> 3   -- TODO! Update
+    OOr    _ -> 2   -- TODO! Update
+    OAdd   _ -> 6   -- TODO! Update
+    OSub   _ -> 6   -- TODO! Update
+    OMul   _ -> 7   -- TODO! Update
+    ODiv   _ -> 7   -- TODO! Update
+    OPow   _ -> 8   -- TODO! Update
+    OLt    _ -> 4   -- TODO! Update
+    OGt    _ -> 4   -- TODO! Update
+    OLte   _ -> 4   -- TODO! Update
+    OGte   _ -> 4   -- TODO! Update
+    OLarr  _ -> 9   -- TODO! Update
+    ORarr  _ -> 9   -- TODO! Update
+    OFpipe _ -> 0   -- TODO! Update
+    OBpipe _ -> 0   -- TODO! Update
+    OOpt   _ -> 3   -- TODO! Update
+    OStrc  _ -> 5   -- TODO! Update
+    ODot   _ -> 1   -- TODO! Update
+    OField _ -> 1   -- TODO! Update
 
 -- | Return the associativity of a binary operator
 opAssoc :: Op2 t -> Assoc

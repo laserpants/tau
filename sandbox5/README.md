@@ -79,11 +79,13 @@ add(_, 5)         <==>  ^0 => add(^0, 5)
 
     EAppX [_, add, 5]
 
-foo 
+foo = fun
   | (2, 3) => True
   | (3, 4) => True
   | (_, _) => False
 
+
+match x, y with
 
 
 
