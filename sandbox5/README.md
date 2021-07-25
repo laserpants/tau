@@ -55,9 +55,13 @@
 
 (_ - 1)
 
+let pred = _ - 1
+
 match xs with
   | val x :: _ => True
 
+match xs with
+  | .x :: _ => True
 
 
 

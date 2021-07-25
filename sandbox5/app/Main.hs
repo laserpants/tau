@@ -1420,34 +1420,34 @@ example1 = do -- foo1 expr
 --                  ]))
 
 
---    -- 5 factorial
---    expr = 
---        (fixExpr () "foldSucc"
---            (lamExpr () [varPat () "g", varPat () "a"] (funExpr () 
---                [ Clause () [conPat () "Succ" [varPat () "n"]] 
---                    [Guard [] (appExpr () 
---                        [ varExpr () "foldSucc"
---                        , varExpr () "g"
---                        , appExpr () [varExpr () "g", conExpr () "Succ" [varExpr () "n"], varExpr () "a"]
---                        , varExpr () "n"
---                        ])]
---                , Clause () [anyPat ()] 
---                    [Guard [] (varExpr () "a")]
---                ]))
---            (letExpr () 
---                (BFun () "toInt" [varPat () "n"])
---                (appExpr () 
---                    [ varExpr () "foldSucc"
---                    , lamExpr () [anyPat (), varPat () "x"] (op2Expr () (OAdd ()) (varExpr () "x") (litExpr () (TInteger 1)))
---                    , annExpr tInt (litExpr () (TInteger 0))
---                    , varExpr () "n"
---                    ])
---                (appExpr () 
---                    [ varExpr () "foldSucc"
---                    , lamExpr () [varPat () "n", varPat () "x"] (op2Expr () (OMul ()) (appExpr () [varExpr () "toInt", varExpr () "n"]) (varExpr () "x"))
---                    , annExpr tInt (litExpr () (TInteger 1))
---                    , conExpr () "Succ" [conExpr () "Succ" [conExpr () "Succ" [conExpr () "Succ" [conExpr () "Succ" [conExpr () "Zero" []]]]]]
---                    ])))
+    -- 5 factorial
+    expr = 
+        (fixExpr () "foldSucc"
+            (lamExpr () [varPat () "g", varPat () "a"] (funExpr () 
+                [ Clause () [conPat () "Succ" [varPat () "n"]] 
+                    [Guard [] (appExpr () 
+                        [ varExpr () "foldSucc"
+                        , varExpr () "g"
+                        , appExpr () [varExpr () "g", conExpr () "Succ" [varExpr () "n"], varExpr () "a"]
+                        , varExpr () "n"
+                        ])]
+                , Clause () [anyPat ()] 
+                    [Guard [] (varExpr () "a")]
+                ]))
+            (letExpr () 
+                (BFun () "toInt" [varPat () "n"])
+                (appExpr () 
+                    [ varExpr () "foldSucc"
+                    , lamExpr () [anyPat (), varPat () "x"] (op2Expr () (OAdd ()) (varExpr () "x") (litExpr () (TInteger 1)))
+                    , annExpr tInt (litExpr () (TInteger 0))
+                    , varExpr () "n"
+                    ])
+                (appExpr () 
+                    [ varExpr () "foldSucc"
+                    , lamExpr () [varPat () "n", varPat () "x"] (op2Expr () (OMul ()) (appExpr () [varExpr () "toInt", varExpr () "n"]) (varExpr () "x"))
+                    , annExpr tInt (litExpr () (TInteger 1))
+                    , conExpr () "Succ" [conExpr () "Succ" [conExpr () "Succ" [conExpr () "Succ" [conExpr () "Succ" [conExpr () "Zero" []]]]]]
+                    ])))
 
 
 
@@ -1728,43 +1728,43 @@ example1 = do -- foo1 expr
 
 
 
-    testList =
-        annExpr (tList tInt) (listExpr () [litExpr () (TInteger 1), litExpr () (TInteger 2), litExpr () (TInteger 3), litExpr () (TInteger 4)])
-
-    -- map over the list
-    expr = 
-      letExpr () 
-          (BPat () (varPat () "testList")) testList
-          (fixExpr () "loopList"
-              (lamExpr () [varPat () "g", varPat () "ys"] (patExpr () (varExpr () "ys")
-                  [ Clause () [conPat () "(::)" [varPat () "x", varPat () "xs"]]
-                        [Guard [] (appExpr () [varExpr () "g", conExpr () "Cons'" [varExpr () "x", varExpr () "xs", appExpr () [varExpr () "loopList", varExpr () "g", varExpr () "xs"]]])]
-                  , Clause () [conPat () "[]" []] 
-                        [Guard [] (appExpr () [varExpr () "g", conExpr () "Nil'" []])]
-                  ]))
-              --
-              -- let map = 
-              --
-              (letExpr ()
-                  (BFun () "map" [varPat () "f", varPat () "ys"])
-                  --
-                  -- ys.loopList(fun | Cons'(x, xs, a) => f(x) :: a | Nil' => [])
-                  -- 
-                  (op2Expr () (ODot ())
-                      (appExpr () 
-                          [ varExpr () "loopList"
-                          , funExpr () 
-                              [ Clause () [conPat () "Cons'" [varPat () "x", varPat () "xs", varPat () "a"]] [Guard [] (conExpr () "(::)" [appExpr () [varExpr () "f", varExpr () "x"], varExpr () "a"])]
-                              , Clause () [conPat () "Nil'" []] [Guard [] (conExpr () "[]" [])]
-                              ]
-                          ])
-                      (varExpr () "ys"))
-
-                  (appExpr () 
-                      [ varExpr () "map"
-                      , lamExpr () [varPat () "x"] (op2Expr () (OAdd ()) (varExpr () "x") (litExpr () (TInteger 1)))
-                      , testList
-                      ])))
+--    testList =
+--        annExpr (tList tInt) (listExpr () [litExpr () (TInteger 1), litExpr () (TInteger 2), litExpr () (TInteger 3), litExpr () (TInteger 4)])
+--
+--    -- map over the list
+--    expr = 
+--      letExpr () 
+--          (BPat () (varPat () "testList")) testList
+--          (fixExpr () "loopList"
+--              (lamExpr () [varPat () "g", varPat () "ys"] (patExpr () (varExpr () "ys")
+--                  [ Clause () [conPat () "(::)" [varPat () "x", varPat () "xs"]]
+--                        [Guard [] (appExpr () [varExpr () "g", conExpr () "Cons'" [varExpr () "x", varExpr () "xs", appExpr () [varExpr () "loopList", varExpr () "g", varExpr () "xs"]]])]
+--                  , Clause () [conPat () "[]" []] 
+--                        [Guard [] (appExpr () [varExpr () "g", conExpr () "Nil'" []])]
+--                  ]))
+--              --
+--              -- let map = 
+--              --
+--              (letExpr ()
+--                  (BFun () "map" [varPat () "f", varPat () "ys"])
+--                  --
+--                  -- ys.loopList(fun | Cons'(x, xs, a) => f(x) :: a | Nil' => [])
+--                  -- 
+--                  (op2Expr () (ODot ())
+--                      (appExpr () 
+--                          [ varExpr () "loopList"
+--                          , funExpr () 
+--                              [ Clause () [conPat () "Cons'" [varPat () "x", varPat () "xs", varPat () "a"]] [Guard [] (conExpr () "(::)" [appExpr () [varExpr () "f", varExpr () "x"], varExpr () "a"])]
+--                              , Clause () [conPat () "Nil'" []] [Guard [] (conExpr () "[]" [])]
+--                              ]
+--                          ])
+--                      (varExpr () "ys"))
+--
+--                  (appExpr () 
+--                      [ varExpr () "map"
+--                      , lamExpr () [varPat () "x"] (op2Expr () (OAdd ()) (varExpr () "x") (litExpr () (TInteger 1)))
+--                      , testList
+--                      ])))
 
 
 --    expr = r
