@@ -387,10 +387,10 @@ insertArgsExpr expr = foldrM fun expr . Env.toList
                     fnx t = var `elem` (fst <$> free t)
 
                 -- TODO
-                if Just False == (fnx . typeOf <$> (workingExprTag e))
-                    then error "Ambiguity"
-                    else if name `elem` set1
---                if name `elem` set1
+--                if Just False == (fnx . typeOf <$> (workingExprTag e))
+--                    then error "Ambiguity"
+--                    else if name `elem` set1
+                if name `elem` set1
                               then do
                                   let ty = tApp kTyp (tCon kFun name) (tVar kTyp var)
                                   lamExpr (tArr <$> Just ty <*> workingExprTag e) 
