@@ -340,15 +340,15 @@ exprParser = makeExprParser parseItem operator
 
 hasLiteralPattern :: ProgPattern () -> Bool
 hasLiteralPattern = cata $ \case
-    PLit{}       -> True
-    PCon _ _ ps  -> or ps
-    PAs _ _ p    -> p
-    POr _ p q    -> p || q
-    PTuple _ ps  -> or ps
-    PList _ ps   -> or ps
-    PRow _ _ p q -> p || q
-    PAnn _ p     -> p
-    _            -> False
+    PLit{}          -> True
+    PCon   _ _ ps   -> or ps
+    PAs    _ _ p    -> p
+    POr    _ p q    -> p || q
+    PTuple _ ps     -> or ps
+    PList  _ ps     -> or ps
+    PRow   _ _ p q  -> p || q
+    PAnn   _ p      -> p
+    _               -> False
 
 lambdaParser :: Parser (ProgExpr ())
 lambdaParser = do
