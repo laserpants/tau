@@ -38,7 +38,8 @@ import qualified Data.Text as Text
 --import qualified Tau.Compiler.Pipeline.Stage6 as Stage6
 
 parensIf :: Bool -> Doc a -> Doc a
-parensIf yes doc = if yes then parens doc else doc
+parensIf True doc = parens doc 
+parensIf _    doc = doc 
 
 commaSep :: [Doc a] -> Doc a
 commaSep = hsep . punctuate comma
