@@ -63,6 +63,9 @@ match xs with
 match xs with
   | .x :: _ => True
 
+match xs with
+  | !x :: _ => True
+
 
 
 let args = (5, 3)
@@ -123,6 +126,9 @@ reverse
 
 incrementEach : (Functor f, Num a) => f a -> f a
 incrementEach(xs) = xs.map(x => x + 1)
+
+
+incrementEach(xs) = xs.map(_ + 1)
 
 
 -- lambda
