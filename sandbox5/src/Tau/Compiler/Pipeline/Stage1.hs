@@ -90,7 +90,7 @@ translate = cata $ \case
     ERow    t lab a b    -> foldRowExpr t lab a b
     -- Translate operators to prefix form
     EOp1    t op a       -> appExpr t [prefixOp1 op, a]
-    EOp2    t op a b     -> appExpr t [prefixOp2 op, a, b]
+    EOp2    t op a b     -> translateAppExpr t [prefixOp2 op, a, b]
     -- Expand pattern clause guards and eliminate fun expressions
     EPat    t e cs       -> patExpr t e (expandClause =<< cs)
     EFun    t cs         -> translateFunExpr t (expandClause =<< cs)

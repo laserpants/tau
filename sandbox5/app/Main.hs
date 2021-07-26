@@ -1420,34 +1420,41 @@ example1 = do -- foo1 expr
 --                  ]))
 
 
-    -- 5 factorial
-    expr = 
-        (fixExpr () "foldSucc"
-            (lamExpr () [varPat () "g", varPat () "a"] (funExpr () 
-                [ Clause () [conPat () "Succ" [varPat () "n"]] 
-                    [Guard [] (appExpr () 
-                        [ varExpr () "foldSucc"
-                        , varExpr () "g"
-                        , appExpr () [varExpr () "g", conExpr () "Succ" [varExpr () "n"], varExpr () "a"]
-                        , varExpr () "n"
-                        ])]
-                , Clause () [anyPat ()] 
-                    [Guard [] (varExpr () "a")]
-                ]))
-            (letExpr () 
-                (BFun () "toInt" [varPat () "n"])
-                (appExpr () 
-                    [ varExpr () "foldSucc"
-                    , lamExpr () [anyPat (), varPat () "x"] (op2Expr () (OAdd ()) (varExpr () "x") (litExpr () (TInteger 1)))
-                    , annExpr tInt (litExpr () (TInteger 0))
-                    , varExpr () "n"
-                    ])
-                (appExpr () 
-                    [ varExpr () "foldSucc"
-                    , lamExpr () [varPat () "n", varPat () "x"] (op2Expr () (OMul ()) (appExpr () [varExpr () "toInt", varExpr () "n"]) (varExpr () "x"))
-                    , annExpr tInt (litExpr () (TInteger 1))
-                    , conExpr () "Succ" [conExpr () "Succ" [conExpr () "Succ" [conExpr () "Succ" [conExpr () "Succ" [conExpr () "Zero" []]]]]]
-                    ])))
+--    -- 5 factorial
+--    expr = 
+--        (fixExpr () "foldSucc"
+--            (lamExpr () [varPat () "g", varPat () "a"] (funExpr () 
+--                [ Clause () [conPat () "Succ" [varPat () "n"]] 
+--                    [Guard [] (appExpr () 
+--                        [ varExpr () "foldSucc"
+--                        , varExpr () "g"
+--                        , appExpr () [varExpr () "g", conExpr () "Succ" [varExpr () "n"], varExpr () "a"]
+--                        , varExpr () "n"
+--                        ])]
+--                , Clause () [anyPat ()] 
+--                    [Guard [] (varExpr () "a")]
+--                ]))
+--            (letExpr () 
+--                (BFun () "toInt" [varPat () "n"])
+--                (appExpr () 
+--                    [ varExpr () "foldSucc"
+--                    , lamExpr () [anyPat (), varPat () "x"] (op2Expr () (OAdd ()) (varExpr () "x") (litExpr () (TInteger 1)))
+--                    , annExpr tInt (litExpr () (TInteger 0))
+--                    , varExpr () "n"
+--                    ])
+--                (appExpr () 
+--                    [ varExpr () "foldSucc"
+--                    , lamExpr () [varPat () "n", varPat () "x"] (op2Expr () (OMul ()) (appExpr () [varExpr () "toInt", varExpr () "n"]) (varExpr () "x"))
+--                    , annExpr tInt (litExpr () (TInteger 1))
+--                    , conExpr () "Succ" [conExpr () "Succ" [conExpr () "Succ" [conExpr () "Succ" [conExpr () "Succ" [conExpr () "Zero" []]]]]]
+--                    ])))
+
+
+    expr =
+        appExpr ()
+            [ op2Expr () (OSub ()) (holeExpr ()) (annExpr tInt (litExpr () (TInteger 1)))
+            , litExpr () (TInteger 5)
+            ]
 
 
 

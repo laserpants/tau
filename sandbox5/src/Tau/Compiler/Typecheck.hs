@@ -224,8 +224,14 @@ inferExprType = cata $ \case
 
                 _ -> do
                     op <- inferOp2Type op2
-                    t1 <- thisNodeType
-                    op ## (typeOf a `tArr` typeOf b `tArr` t1) 
+                    --t1 <- thisNodeType
+                    --op ## (typeOf a `tArr` typeOf b `tArr` t1) 
+
+                    r <- thisNodeType
+                    t <- newTVar 
+                    r ## foldr tArr t (typeOf <$> filter isHole [a, b])
+                    op ## foldr tArr t (typeOf <$> [a, b])
+
                     pure (op, a, b)
 
         pure (op2Expr ti op a b)
