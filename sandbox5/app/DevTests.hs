@@ -1,3 +1,4 @@
+{-# LANGUAGE LambdaCase        #-}
 {-# LANGUAGE OverloadedStrings #-}
 module DevTests where
 
@@ -167,6 +168,7 @@ expr24_result = recordExpr () (rowExpr () "a" (annExpr tInt (litExpr () (TIntege
 
 -------------------------------------------------------------------------------
 
+-- Data "#" [Data "{a}" [Value (TInt 1),Data "{b}" [Value (TInt 2),Data "{}" []]]]
 expr25 :: ProgExpr ()
 expr25 = appExpr () [ lamExpr () [varPat () "z"] (recordExpr () (rowExpr () "a" (annExpr tInt (litExpr () (TInteger 1))) (appExpr () [varExpr () "_#", varExpr () "z"]))) , recordExpr () (rowExpr () "b" (annExpr tInt (litExpr () (TInt 2))) (conExpr () "{}" [])) ]
 
@@ -295,6 +297,133 @@ arbitraryTests = do
     a <- runExprTest expr8 
     let res8 = (a == Just (Value (TInt 8)))
 
+    a <- runExprTest expr9 
+    let res9 = (a == Just (Value (TInt 8)))
+
+    a <- runExprTest expr10
+    let res10 = (a == Just (Value (TInt 1)))
+
+    a <- runExprTest expr11
+    let res11 = (a == Just (Value (TInt 0)))
+
+    a <- runExprTest expr12
+    let res12 = (a == Just (Value (TInt 5)))
+
+    --
+
+    a <- runExprTest expr13
+    b <- runExprTest expr13_result
+
+    let res13 = (a == b)
+
+    --
+
+    a <- runExprTest expr14
+    let res14 = (a == Just (Value (TInt 10)))
+
+    a <- runExprTest expr15
+    let res15 = (a == Just (Value (TInt 2)))
+
+    a <- runExprTest expr16
+    let res16 = (a == Just (Value (TInt 4)))
+
+    a <- runExprTest expr17
+    let res17 = (a == Just (Value (TInt 0)))
+
+    a <- runExprTest expr18
+    let res18 = (a == Just (Value (TInt 5)))
+
+    a <- runExprTest expr19
+    let res19 = (a == Just (Value (TInt 3)))
+
+    a <- runExprTest expr20
+    let res20 = (a == Just (Value (TInt 8)))
+
+    --
+
+    a <- runExprTest expr21
+    b <- runExprTest expr21_result
+
+    let res21 = (a == b)
+
+    --
+
+    a <- runExprTest expr22
+    let res22 = (a == Just (Value (TInt 2)))
+
+    a <- runExprTest expr23
+    let res23 = (a == Just (Value (TInt 999)))
+
+    --
+
+    a <- runExprTest expr24
+    b <- runExprTest expr24_result
+
+    let res24 = (a == b)
+
+    --
+
+    a <- runExprTest expr25
+    let res25 = (a == Just (Data "#" [Data "{a}" [Value (TInt 1),Data "{b}" [Value (TInt 2),Data "{}" []]]]))
+
+    a <- runExprTest expr26
+    let res26 = isFunction a where
+        isFunction = \case { Just Closure{} -> True; _ -> False }
+
+    a <- runExprTest expr27
+    let res27 = isFunction a where
+        isFunction = \case { Just Closure{} -> True; _ -> False }
+
+    a <- runExprTest expr28
+    let res28 = (a == Just (Data "#" [Data "{}" []]))
+
+    --
+
+    a <- runExprTest expr29
+    b <- runExprTest expr29_result
+
+    let res29 = (a == b)
+
+    --
+
+    a <- runExprTest expr30
+    let res30 = (a == Just (Data "#" [Data "{b}" [Value (TInt 2),Data "{c}" [Value (TInt 3),Data "{}" []]]]))
+
+    --
+
+    a <- runExprTest expr31
+    b <- runExprTest expr31_result
+
+    let res31 = (a == b)
+
+    --
+
+    a <- runExprTest expr32
+    let res32 = (a == Just (Value (TInt 120)))
+
+    a <- runExprTest expr33
+    let res33 = (a == Just (Value (TInt 46)))
+
+    a <- runExprTest expr34
+    let res34 = (a == Just (Value (TInt 3)))
+
+    a <- runExprTest expr35
+    let res35 = (a == Just (Data "#" [Data "{}" []]))
+
+    a <- runExprTest expr36
+    let res36 = (a == Just (Value (TInt 5)))
+
+    a <- runExprTest expr37
+    let res37 = (a == Just (Value (TInt 2)))
+
+    a <- runExprTest expr38
+    let res38 = (a == Just (Value (TInt 124)))
+
+    a <- runExprTest expr39
+    let res39 = (a == Just (Value (TInt 2)))
+
+
+
 
 
     traceShowM res1
@@ -305,6 +434,37 @@ arbitraryTests = do
     traceShowM res6
     traceShowM res7
     traceShowM res8
+    traceShowM res9
+    traceShowM res10
+    traceShowM res11
+    traceShowM res12
+    traceShowM res13
+    traceShowM res14
+    traceShowM res15
+    traceShowM res16
+    traceShowM res17
+    traceShowM res18
+    traceShowM res19
+    traceShowM res20
+    traceShowM res21
+    traceShowM res22
+    traceShowM res23
+    traceShowM res24
+    traceShowM res25
+    traceShowM res26
+    traceShowM res27
+    traceShowM res28
+    traceShowM res29
+    traceShowM res30
+    traceShowM res31
+    traceShowM res32
+    traceShowM res33
+    traceShowM res34
+    traceShowM res35
+    traceShowM res36
+    traceShowM res37
+    traceShowM res38
+    traceShowM res39
 
     pure ()
 
