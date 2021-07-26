@@ -1452,10 +1452,14 @@ example1 = do -- foo1 expr
 
     expr =
         appExpr ()
-            [ op2Expr () (OSub ()) (holeExpr ()) (annExpr tInt (litExpr () (TInteger 1)))
-            , litExpr () (TInteger 5)
+            [ op2Expr () (OAdd ()) (holeExpr ()) (holeExpr ())
+            , annExpr tInt (litExpr () (TInteger 5))
+            , annExpr tInt (litExpr () (TInteger 5))
             ]
 
+
+
+--    expr = Fix (EApp () [Fix (EOp2 () (OAdd ()) (Fix (EVar () "z")) (Fix (EVar () "zz"))),Fix (ELit () (TInteger 5)),Fix (ELit () (TInteger 3))])
 
 
 --    expr = 

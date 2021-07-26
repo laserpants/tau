@@ -370,6 +370,14 @@ testExprParser = do
         "r.a + 100"
         (op2Expr () (OAdd ()) (op2Expr () (ODot ()) (varExpr () "a") (varExpr () "r")) (litExpr () (TInteger 100)))
 
+    succeedParse exprParser
+        "5 + _"
+        (op2Expr () (OAdd ()) (litExpr () (TInteger 5)) (holeExpr ()))
+
+    succeedParse exprParser
+        "_ + _"
+        (op2Expr () (OAdd ()) (holeExpr ()) (holeExpr ()))
+
 testTypeParser :: SpecWith ()
 testTypeParser = do
 

@@ -193,6 +193,15 @@ patternParser = makeExprParser (try (parens patternParser) <|> parser)
 
 -- >>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>
 
+
+
+--add_ :: Parser (ProgExpr () -> ProgExpr () -> ProgExpr ())
+--add_ = do -- op2Expr () (OAdd ()) <$ try (symbol "+" <* notFollowedBy (symbol "+"))
+--    pure xx
+--  where
+--    xx a b = op2Expr () (OAdd ()) a b
+
+
 operator :: [[Operator Parser (ProgExpr ())]]
 operator = 
     [
@@ -245,12 +254,13 @@ operator =
 
 postfixFunArgParser :: Parser (ProgExpr () -> ProgExpr ())
 postfixFunArgParser = do
-    args <- try (parens spaces $> [litExpr () TUnit]) <|> argParser exprWithHolesParser
+    --args <- try (parens spaces $> [litExpr () TUnit]) <|> argParser exprWithHolesParser
+    args <- try (parens spaces $> [litExpr () TUnit]) <|> argParser annExprParser
     pure (\fun -> appExpr () (fun:args))
-  where
-    exprWithHolesParser = try (symbol "_" *> symbol ":" *> (annExpr <$> typeParser <*> pure (holeExpr ())))
-        <|> symbol "_" *> pure (holeExpr ())
-        <|> annExprParser
+--  where
+--    exprWithHolesParser = try (symbol "_" *> symbol ":" *> (annExpr <$> typeParser <*> pure (holeExpr ())))
+--        <|> symbol "_" *> pure (holeExpr ())
+--        <|> annExprParser
 
 annExprParser :: Parser (ProgExpr ())
 annExprParser = makeExprParser (try lambdaParser <|> try (parens annExprParser) <|> exprParser)
@@ -267,6 +277,7 @@ exprParser = makeExprParser parseItem operator
         <|> parseFun
         <|> parseLet
         <|> parseMatch
+        <|> (symbol "_" *> pure (holeExpr ()))
         <|> parseVar
         <|> parseLit
         <|> parseCon
