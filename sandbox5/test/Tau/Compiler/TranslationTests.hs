@@ -170,7 +170,7 @@ testCompileBundle = do
             Just expr1 == (stage1Expr bundle)
 
         it "✔ Core         : ... TODO ..." $ 
-            Just coreExpr_ == (coreExpr bundle)
+            Just coreExpr_ == (stageX6Expr bundle)
 
         it ("✔ Evaluates to : " <> Text.pack (show value)) $
             (Just value) == evalExpr coreExpr_ testEvalEnv
