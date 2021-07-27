@@ -419,7 +419,7 @@ astTypeVars (Ast expr) = nub (exprTypeVars expr)
         EOp2    t op a b       -> typeVars (typeOf t) <> op2TypeVars op <> a <> b
         ETuple  t as           -> typeVars (typeOf t) <> concat as
         EList   t as           -> typeVars (typeOf t) <> concat as
-        ERow    t _ a b        -> typeVars (typeOf t) <> a <> b
+        ERow    t _ e r        -> typeVars (typeOf t) <> e <> r
         EAnn    _ a            -> a
 
     bindingTypeVars = \case
@@ -441,7 +441,7 @@ astTypeVars (Ast expr) = nub (exprTypeVars expr)
         PAny    t              -> typeVars (typeOf t)
         PTuple  t ps           -> typeVars (typeOf t) <> concat ps
         PList   t ps           -> typeVars (typeOf t) <> concat ps
-        PRow    t _ p q        -> typeVars (typeOf t) <> p <> q
+        PRow    t _ p r        -> typeVars (typeOf t) <> p <> r
         PAnn    _ p            -> p
 
     op1TypeVars = \case
