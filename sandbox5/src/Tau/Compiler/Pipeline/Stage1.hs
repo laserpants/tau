@@ -144,8 +144,30 @@ translateAppExpr
   -> TargetExpr (TypeInfoT [e] (Maybe Type))
 translateAppExpr t es = 
     --foldr yyy (appExpr (TypeInfo [] (gork <$> nodeType t) []) replaceHoles) holes
-    foldr yyy (appExpr t replaceHoles) holes
+    foldr yyy (appExpr t1 replaceHoles) holes
   where
+    t1 = (remArgs (length es - 1) <$$> targetExprTag (head es))
+
+    {-
+        test cases: 
+
+    expr =
+        appExpr ()
+            [ op2Expr () (OAdd ()) (holeExpr ()) (holeExpr ())
+            , annExpr tInt (litExpr () (TInteger 5))
+            , annExpr tInt (litExpr () (TInteger 5))
+            ]
+
+
+    expr =
+        appExpr ()
+            [ appExpr () [ varExpr () "(+)", holeExpr (), holeExpr () ]
+            , annExpr tInt (litExpr () (TInteger 5))
+            , annExpr tInt (litExpr () (TInteger 5))
+            ]
+
+    -}
+
     yyy (a, n) b = lamExpr 
         (xyz (nodeType (targetExprTag a)) <$> targetExprTag b) 
         [varPat (targetExprTag a) n] b
@@ -169,9 +191,10 @@ translateAppExpr t es =
 
     xvar n = "^" <> intToText n
 
---    gork = cata $ \case
---      TArr _ t -> t
---      s        -> embed s
+    remArgs :: Int -> Type -> Type
+    remArgs 0 t = t
+    remArgs n (Fix (TArr _ t2)) = remArgs (pred n) t2
+
 
 translateFunExpr
   :: TypeInfoT [e] (Maybe Type)
