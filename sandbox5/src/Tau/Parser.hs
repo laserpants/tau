@@ -228,7 +228,7 @@ operator =
       ]
       -- 5
     , [ InfixR (listExprCons () <$ symbol "::")
-      , InfixR (op2Expr () (OStrc ()) <$ symbol "++")
+      , InfixR (op2Expr () (OStr ()) <$ symbol "++")
       ]
       -- 4
     , [ InfixN (op2Expr () (OEq ()) <$ symbol "==")

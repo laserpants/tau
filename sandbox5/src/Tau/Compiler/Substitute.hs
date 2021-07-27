@@ -127,7 +127,7 @@ instance (Substitutable t a) => Substitutable (Op2 t) a where
         OFpipe t             -> OFpipe (apply sub t)
         OBpipe t             -> OBpipe (apply sub t)
         OOpt   t             -> OOpt   (apply sub t)
-        OStrc  t             -> OStrc  (apply sub t)
+        OStr   t             -> OStr   (apply sub t)
         ONdiv  t             -> ONdiv  (apply sub t)
         ODot   t             -> ODot   (apply sub t)
         OField t             -> OField (apply sub t)

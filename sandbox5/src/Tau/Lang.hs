@@ -72,7 +72,7 @@ data Op2 t
     | OFpipe t                           -- ^ Forward pipe operator
     | OBpipe t                           -- ^ Reverse pipe operator
     | OOpt   t                           -- ^ Option default operator
-    | OStrc  t                           -- ^ String concatenation operator
+    | OStr   t                           -- ^ String concatenation operator
     | ONdiv  t                           -- ^ Integral division
     | ODot   t                           -- ^ Dot operator
     | OField t                           -- ^ Field access operator
@@ -317,7 +317,7 @@ instance Functor Ast where
             OFpipe  t            -> OFpipe     (f t)
             OBpipe  t            -> OBpipe     (f t)
             OOpt    t            -> OOpt       (f t)
-            OStrc   t            -> OStrc      (f t)
+            OStr    t            -> OStr      (f t)
             ONdiv   t            -> ONdiv      (f t)
             ODot    t            -> ODot       (f t)
             OField  t            -> OField     (f t)
@@ -397,7 +397,7 @@ instance Foldable Ast where
             OFpipe  t            -> [f t]
             OBpipe  t            -> [f t]
             OOpt    t            -> [f t]
-            OStrc   t            -> [f t]
+            OStr    t            -> [f t]
             ONdiv   t            -> [f t]
             ODot    t            -> [f t] 
             OField  t            -> [f t] 
@@ -470,7 +470,7 @@ instance Traversable Ast where
             OFpipe  t            -> OFpipe    <$> f t  
             OBpipe  t            -> OBpipe    <$> f t  
             OOpt    t            -> OOpt      <$> f t  
-            OStrc   t            -> OStrc     <$> f t  
+            OStr    t            -> OStr     <$> f t  
             ONdiv   t            -> ONdiv     <$> f t  
             ODot    t            -> ODot      <$> f t   
             OField  t            -> OField    <$> f t   
@@ -542,7 +542,7 @@ op2Tag = \case
     OFpipe  t       -> t
     OBpipe  t       -> t
     OOpt    t       -> t
-    OStrc   t       -> t
+    OStr    t       -> t
     ONdiv   t       -> t
     ODot    t       -> t 
     OField  t       -> t 
@@ -593,7 +593,7 @@ opPrecedence = \case
     OFpipe _ -> 0   -- TODO! Update
     OBpipe _ -> 0   -- TODO! Update
     OOpt   _ -> 3   -- TODO! Update
-    OStrc  _ -> 5   -- TODO! Update
+    OStr   _ -> 5   -- TODO! Update
     ODot   _ -> 1   -- TODO! Update
     OField _ -> 1   -- TODO! Update
 
@@ -618,7 +618,7 @@ opAssoc = \case
     OFpipe _ -> AssocL
     OBpipe _ -> AssocR
     OOpt   _ -> AssocN
-    OStrc  _ -> AssocR
+    OStr   _ -> AssocR
     ODot   _ -> AssocL
     OField _ -> AssocL
 
@@ -644,7 +644,7 @@ op2Symbol = \case
     OFpipe  _ -> "|>"
     OBpipe  _ -> "<|"
     OOpt    _ -> "?"
-    OStrc   _ -> "++"
+    OStr    _ -> "++"
     ONdiv   _ -> "//"
     ODot    _ -> "."
     OField  _ -> "."
