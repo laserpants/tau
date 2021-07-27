@@ -271,7 +271,7 @@ instance Functor Ast where
             EOp2    t op a b     -> op2Expr    (f t) (mapOp2 op) a b
             ETuple  t es         -> tupleExpr  (f t) es
             EList   t es         -> listExpr   (f t) es
-            ERow    t lab a b    -> rowExpr    (f t) lab a b  
+            ERow    t lab e r    -> rowExpr    (f t) lab e r  
             EAnn    t e          -> annExpr    t e
 
         mapBind = \case
@@ -290,7 +290,7 @@ instance Functor Ast where
             PAny    t            -> anyPat     (f t)
             PTuple  t ps         -> tuplePat   (f t) ps
             PList   t ps         -> listPat    (f t) ps
-            PRow    t lab p q    -> rowPat     (f t) lab p q
+            PRow    t lab p r    -> rowPat     (f t) lab p r
             PAnn    t p          -> annPat     t p
 
         mapOp1 = \case
@@ -342,7 +342,7 @@ instance Foldable Ast where
             EOp2    t op a b     -> (f t:foldOp2 f op <> a <> b)
             ETuple  t es         -> (f t:concat es)
             EList   t es         -> (f t:concat es)
-            ERow    t _ a b      -> (f t:a <> b)
+            ERow    t _ e r      -> (f t:e <> r)
             EAnn    _ e          -> e
 
         foldClause :: (t -> s -> s) -> Clause t [ProgPattern t] [s -> s] -> [s -> s]
@@ -363,7 +363,7 @@ instance Foldable Ast where
             PAny    t            -> [f t]
             PTuple  t ps         -> (f t:concat ps)
             PList   t ps         -> (f t:concat ps)
-            PRow    t _ p q      -> (f t:p <> q)
+            PRow    t _ p r      -> (f t:p <> r)
             PAnn    _ p          -> p
 
         foldBind :: (t -> s -> s) -> Binding t (ProgPattern t) -> [s -> s]
@@ -421,7 +421,7 @@ instance Traversable Ast where
             EOp2    t op a b     -> op2Expr   <$> f t <*> op2 op <*> a <*> b
             ETuple  t es         -> tupleExpr <$> f t <*> sequenceA es
             EList   t es         -> listExpr  <$> f t <*> sequenceA es
-            ERow    t lab a b    -> rowExpr   <$> f t <*> pure lab <*> a <*> b
+            ERow    t lab e r    -> rowExpr   <$> f t <*> pure lab <*> e <*> r
             EAnn    t e          -> annExpr t <$> e
 
         binding = \case
@@ -443,7 +443,7 @@ instance Traversable Ast where
             PAny    t            -> anyPat    <$> f t
             PTuple  t ps         -> tuplePat  <$> f t <*> sequenceA ps
             PList   t ps         -> listPat   <$> f t <*> sequenceA ps
-            PRow    t lab p q    -> rowPat    <$> f t <*> pure lab <*> p <*> q
+            PRow    t lab p r    -> rowPat    <$> f t <*> pure lab <*> p <*> r
             PAnn    t p          -> annPat  t <$> p
 
         op1 = \case
