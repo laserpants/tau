@@ -293,6 +293,8 @@ kCon = embed1 KCon
 kArr :: Kind -> Kind -> Kind
 kArr = embed2 KArr
 
+infixr 1 `kArr`
+
 kTyp :: Kind
 kTyp = kCon "*"
 
@@ -301,8 +303,6 @@ kClass = kCon "Constraint"
 
 kRow :: Kind
 kRow = kCon "Row"
-
-infixr 1 `kArr`
 
 kFun :: Kind
 kFun = kTyp `kArr` kTyp

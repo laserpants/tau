@@ -1,6 +1,7 @@
 {-# LANGUAGE DeriveTraversable  #-}
-{-# LANGUAGE TemplateHaskell    #-}
+{-# LANGUAGE OverloadedStrings  #-}
 {-# LANGUAGE StandaloneDeriving #-}
+{-# LANGUAGE TemplateHaskell    #-}
 module Tau.Misc where
 
 import Data.Eq.Deriving
@@ -219,6 +220,25 @@ deriving instance Show Prim
 deriving instance Eq   Prim
 deriving instance Ord  Prim
 
+-- Type class instances for Pattern
+
+deriving instance (Show t1, Show t2, Show t3, Show t4, Show t5, Show t6, Show t7, Show t8, Show t9, Show t10, Show a) => 
+    Show (PatternF t1 t2 t3 t4 t5 t6 t7 t8 t9 t10 a)
+
+deriving instance (Eq t1, Eq t2, Eq t3, Eq t4, Eq t5, Eq t6, Eq t7, Eq t8, Eq t9, Eq t10, Eq a) => 
+    Eq (PatternF t1 t2 t3 t4 t5 t6 t7 t8 t9 t10 a)
+
+deriving instance (Ord t1, Ord t2, Ord t3, Ord t4, Ord t5, Ord t6, Ord t7, Ord t8, Ord t9, Ord t10, Ord a) => 
+    Ord (PatternF t1 t2 t3 t4 t5 t6 t7 t8 t9 t10 a)
+
+deriveShow1 ''PatternF
+deriveEq1   ''PatternF
+deriveOrd1  ''PatternF
+
+deriving instance Functor     (PatternF t1 t2 t3 t4 t5 t6 t7 t8 t9 t10)
+deriving instance Foldable    (PatternF t1 t2 t3 t4 t5 t6 t7 t8 t9 t10)
+deriving instance Traversable (PatternF t1 t2 t3 t4 t5 t6 t7 t8 t9 t10)
+
 -- Type class instances for Op1
 
 deriving instance (Show t) => Show (Op1 t)
@@ -230,6 +250,16 @@ deriving instance (Ord  t) => Ord  (Op1 t)
 deriving instance (Show t) => Show (Op2 t)
 deriving instance (Eq   t) => Eq   (Op2 t)
 deriving instance (Ord  t) => Ord  (Op2 t)
+
+-- Type class instances for Binding
+
+deriving instance (Show t, Show p) => Show (Binding t p)
+deriving instance (Eq   t, Eq   p) => Eq   (Binding t p)
+deriving instance (Ord  t, Ord  p) => Ord  (Binding t p)
+
+deriveShow1 ''Binding
+deriveEq1   ''Binding
+deriveOrd1  ''Binding
 
 -- Type class instances for Guard
 
@@ -303,6 +333,162 @@ type ProgExpr t u = Expr t t t t t t t t t t t t t t t t u
 -------------------------------------------------------------------------------
 -------------------------------------------------------------------------------
 
+-- Kind
+
+kVar :: Name -> Kind 
+kVar = embed1 KVar
+
+kCon :: Name -> Kind 
+kCon = embed1 KCon
+
+kArr :: Kind -> Kind -> Kind
+kArr = embed2 KArr
+
+infixr 1 `kArr`
+
+kTyp :: Kind
+kTyp = kCon "*"
+
+kClass :: Kind
+kClass = kCon "Constraint"
+
+kRow :: Kind
+kRow = kCon "Row"
+
+kFun :: Kind
+kFun = kTyp `kArr` kTyp
+
+kFun2 :: Kind
+kFun2 = kTyp `kArr` kTyp `kArr` kTyp
+
+-- Type
+
+tVar :: Kind -> Name -> TypeT a
+tVar = embed2 TVar
+
+tCon :: Kind -> Name -> TypeT a
+tCon = embed2 TCon
+
+tRow :: Name -> TypeT a -> TypeT a -> TypeT a
+tRow = embed3 TRow
+
+tApp :: Kind -> TypeT a -> TypeT a -> TypeT a
+tApp = embed3 TApp
+
+tArr :: TypeT a -> TypeT a -> TypeT a
+tArr = embed2 TArr
+
+infixr 1 `tArr`
+
+tGen :: a -> TypeT a
+tGen = embed1 TGen
+
+typ :: Name -> TypeT a
+typ = tCon kTyp
+
+-- Built-in types
+
+tVoid :: TypeT a
+tVoid = typ "Void"
+
+tUnit :: TypeT a
+tUnit = typ "Unit"
+
+tBool :: TypeT a
+tBool = typ "Bool"
+
+tNat :: TypeT a
+tNat = typ "Nat"
+
+tInt :: TypeT a
+tInt = typ "Int"
+
+tInteger :: TypeT a
+tInteger = typ "Integer"
+
+tFloat :: TypeT a
+tFloat = typ "Float"
+
+tDouble :: TypeT a
+tDouble = typ "Double"
+
+tChar :: TypeT a
+tChar = typ "Char"
+
+tString :: TypeT a
+tString = typ "String"
+
+tSymbol :: TypeT a
+tSymbol = typ "Symbol"
+
+-- Pattern
+
+varPat 
+  :: t1 
+  -> Name 
+  -> Pattern t1 t2 t3 t4 t5 t6 t7 t8 t9 t10
+varPat = embed2 PVar
+
+conPat 
+  :: t2 
+  -> Name 
+  -> [Pattern t1 t2 t3 t4 t5 t6 t7 t8 t9 t10] 
+  -> Pattern t1 t2 t3 t4 t5 t6 t7 t8 t9 t10
+conPat = embed3 PCon
+
+asPat 
+  :: t3 
+  -> Name 
+  -> Pattern t1 t2 t3 t4 t5 t6 t7 t8 t9 t10 
+  -> Pattern t1 t2 t3 t4 t5 t6 t7 t8 t9 t10
+asPat = embed3 PAs
+
+litPat 
+  :: t4 
+  -> Prim 
+  -> Pattern t1 t2 t3 t4 t5 t6 t7 t8 t9 t10
+litPat = embed2 PLit
+
+anyPat 
+  :: t5 
+  -> Pattern t1 t2 t3 t4 t5 t6 t7 t8 t9 t10
+anyPat = embed1 PAny
+
+orPat 
+  :: t6 
+  -> Pattern t1 t2 t3 t4 t5 t6 t7 t8 t9 t10 
+  -> Pattern t1 t2 t3 t4 t5 t6 t7 t8 t9 t10 
+  -> Pattern t1 t2 t3 t4 t5 t6 t7 t8 t9 t10
+orPat = embed3 POr
+
+tuplePat 
+  :: t7 
+  -> [Pattern t1 t2 t3 t4 t5 t6 t7 t8 t9 t10] 
+  -> Pattern t1 t2 t3 t4 t5 t6 t7 t8 t9 t10
+tuplePat = embed2 PTuple
+
+listPat 
+  :: t8 
+  -> [Pattern t1 t2 t3 t4 t5 t6 t7 t8 t9 t10] 
+  -> Pattern t1 t2 t3 t4 t5 t6 t7 t8 t9 t10
+listPat = embed2 PList
+
+rowPat
+  :: t9
+  -> Name
+  -> Pattern t1 t2 t3 t4 t5 t6 t7 t8 t9 t10
+  -> Pattern t1 t2 t3 t4 t5 t6 t7 t8 t9 t10
+  -> Pattern t1 t2 t3 t4 t5 t6 t7 t8 t9 t10
+rowPat = embed4 PRow
+
+annPat
+  :: t10
+  -> Pattern t1 t2 t3 t4 t5 t6 t7 t8 t9 t10
+  -> Pattern t1 t2 t3 t4 t5 t6 t7 t8 t9 t10
+annPat = embed2 PAnn
+
+-- Expr
+
 varExpr 
   :: (Functor e2, Functor e4) 
   => t1 
@@ -310,10 +496,127 @@ varExpr
   -> Expr t1 t2 t3 t4 t5 t6 t7 t8 t9 t10 t11 t12 t13 t14 t15 t16 t17 e1 e2 e3 e4
 varExpr = embed2 EVar
 
+conExpr 
+  :: (Functor e2, Functor e4) 
+  => t2 
+  -> Name 
+  -> [Expr t1 t2 t3 t4 t5 t6 t7 t8 t9 t10 t11 t12 t13 t14 t15 t16 t17 e1 e2 e3 e4] 
+  -> Expr t1 t2 t3 t4 t5 t6 t7 t8 t9 t10 t11 t12 t13 t14 t15 t16 t17 e1 e2 e3 e4
+conExpr = embed3 ECon
+
+litExpr 
+  :: (Functor e2, Functor e4) 
+  => t3 
+  -> Prim 
+  -> Expr t1 t2 t3 t4 t5 t6 t7 t8 t9 t10 t11 t12 t13 t14 t15 t16 t17 e1 e2 e3 e4
+litExpr = embed2 ELit
+
+appExpr 
+  :: (Functor e2, Functor e4) 
+  => t4 
+  -> [Expr t1 t2 t3 t4 t5 t6 t7 t8 t9 t10 t11 t12 t13 t14 t15 t16 t17 e1 e2 e3 e4] 
+  -> Expr t1 t2 t3 t4 t5 t6 t7 t8 t9 t10 t11 t12 t13 t14 t15 t16 t17 e1 e2 e3 e4
+appExpr = embed2 EApp
+
+fixExpr 
+  :: (Functor e2, Functor e4) 
+  => t5 
+  -> Name 
+  -> Expr t1 t2 t3 t4 t5 t6 t7 t8 t9 t10 t11 t12 t13 t14 t15 t16 t17 e1 e2 e3 e4
+  -> Expr t1 t2 t3 t4 t5 t6 t7 t8 t9 t10 t11 t12 t13 t14 t15 t16 t17 e1 e2 e3 e4
+  -> Expr t1 t2 t3 t4 t5 t6 t7 t8 t9 t10 t11 t12 t13 t14 t15 t16 t17 e1 e2 e3 e4
+fixExpr = embed4 EFix
+
+lamExpr 
+  :: (Functor e2, Functor e4) 
+  => t6 
+  -> e1
+  -> Expr t1 t2 t3 t4 t5 t6 t7 t8 t9 t10 t11 t12 t13 t14 t15 t16 t17 e1 e2 e3 e4
+  -> Expr t1 t2 t3 t4 t5 t6 t7 t8 t9 t10 t11 t12 t13 t14 t15 t16 t17 e1 e2 e3 e4
+lamExpr = embed3 ELam
+
+ifExpr 
+  :: (Functor e2, Functor e4) 
+  => t7 
+  -> Expr t1 t2 t3 t4 t5 t6 t7 t8 t9 t10 t11 t12 t13 t14 t15 t16 t17 e1 e2 e3 e4
+  -> Expr t1 t2 t3 t4 t5 t6 t7 t8 t9 t10 t11 t12 t13 t14 t15 t16 t17 e1 e2 e3 e4
+  -> Expr t1 t2 t3 t4 t5 t6 t7 t8 t9 t10 t11 t12 t13 t14 t15 t16 t17 e1 e2 e3 e4
+  -> Expr t1 t2 t3 t4 t5 t6 t7 t8 t9 t10 t11 t12 t13 t14 t15 t16 t17 e1 e2 e3 e4
+ifExpr = embed4 EIf
+
+patExpr 
+  :: (Functor e2, Functor e4) 
+  => t8 
+  -> Expr t1 t2 t3 t4 t5 t6 t7 t8 t9 t10 t11 t12 t13 t14 t15 t16 t17 e1 e2 e3 e4
+  -> [e2 (Expr t1 t2 t3 t4 t5 t6 t7 t8 t9 t10 t11 t12 t13 t14 t15 t16 t17 e1 e2 e3 e4)] 
+  -> Expr t1 t2 t3 t4 t5 t6 t7 t8 t9 t10 t11 t12 t13 t14 t15 t16 t17 e1 e2 e3 e4
+patExpr = embed3 EPat
+
+letExpr 
+  :: (Functor e2, Functor e4) 
+  => t9 
+  -> e3 
+  -> Expr t1 t2 t3 t4 t5 t6 t7 t8 t9 t10 t11 t12 t13 t14 t15 t16 t17 e1 e2 e3 e4
+  -> Expr t1 t2 t3 t4 t5 t6 t7 t8 t9 t10 t11 t12 t13 t14 t15 t16 t17 e1 e2 e3 e4
+  -> Expr t1 t2 t3 t4 t5 t6 t7 t8 t9 t10 t11 t12 t13 t14 t15 t16 t17 e1 e2 e3 e4
+letExpr = embed4 ELet
+
+funExpr 
+  :: (Functor e2, Functor e4) 
+  => t10 
+  -> [e4 (Expr t1 t2 t3 t4 t5 t6 t7 t8 t9 t10 t11 t12 t13 t14 t15 t16 t17 e1 e2 e3 e4)] 
+  -> Expr t1 t2 t3 t4 t5 t6 t7 t8 t9 t10 t11 t12 t13 t14 t15 t16 t17 e1 e2 e3 e4
+funExpr = embed2 EFun
+
+op1Expr 
+  :: (Functor e2, Functor e4) 
+  => t11 
+  -> Op1 t11 
+  -> Expr t1 t2 t3 t4 t5 t6 t7 t8 t9 t10 t11 t12 t13 t14 t15 t16 t17 e1 e2 e3 e4 
+  -> Expr t1 t2 t3 t4 t5 t6 t7 t8 t9 t10 t11 t12 t13 t14 t15 t16 t17 e1 e2 e3 e4
+op1Expr = embed3 EOp1
+
+op2Expr 
+  :: (Functor e2, Functor e4) 
+  => t12 
+  -> Op2 t12 
+  -> Expr t1 t2 t3 t4 t5 t6 t7 t8 t9 t10 t11 t12 t13 t14 t15 t16 t17 e1 e2 e3 e4 
+  -> Expr t1 t2 t3 t4 t5 t6 t7 t8 t9 t10 t11 t12 t13 t14 t15 t16 t17 e1 e2 e3 e4 
+  -> Expr t1 t2 t3 t4 t5 t6 t7 t8 t9 t10 t11 t12 t13 t14 t15 t16 t17 e1 e2 e3 e4 
+op2Expr = embed4 EOp2
+
+tupleExpr 
+  :: (Functor e2, Functor e4) 
+  => t13 
+  -> [Expr t1 t2 t3 t4 t5 t6 t7 t8 t9 t10 t11 t12 t13 t14 t15 t16 t17 e1 e2 e3 e4] 
+  -> Expr t1 t2 t3 t4 t5 t6 t7 t8 t9 t10 t11 t12 t13 t14 t15 t16 t17 e1 e2 e3 e4
+tupleExpr = embed2 ETuple
+
+listExpr 
+  :: (Functor e2, Functor e4) 
+  => t14 
+  -> [Expr t1 t2 t3 t4 t5 t6 t7 t8 t9 t10 t11 t12 t13 t14 t15 t16 t17 e1 e2 e3 e4] 
+  -> Expr t1 t2 t3 t4 t5 t6 t7 t8 t9 t10 t11 t12 t13 t14 t15 t16 t17 e1 e2 e3 e4
+listExpr = embed2 EList
+
+rowExpr
+  :: (Functor e2, Functor e4) 
+  => t15
+  -> Name
+  -> Expr t1 t2 t3 t4 t5 t6 t7 t8 t9 t10 t11 t12 t13 t14 t15 t16 t17 e1 e2 e3 e4
+  -> Expr t1 t2 t3 t4 t5 t6 t7 t8 t9 t10 t11 t12 t13 t14 t15 t16 t17 e1 e2 e3 e4
+  -> Expr t1 t2 t3 t4 t5 t6 t7 t8 t9 t10 t11 t12 t13 t14 t15 t16 t17 e1 e2 e3 e4
+rowExpr = embed4 ERow
+
+holeExpr 
+  :: (Functor e2, Functor e4) 
+  => t16 
+  -> Expr t1 t2 t3 t4 t5 t6 t7 t8 t9 t10 t11 t12 t13 t14 t15 t16 t17 e1 e2 e3 e4 
+holeExpr = embed1 EHole
+
 annExpr
   :: (Functor e2, Functor e4)
   => t17
   -> Expr t1 t2 t3 t4 t5 t6 t7 t8 t9 t10 t11 t12 t13 t14 t15 t16 t17 e1 e2 e3 e4
   -> Expr t1 t2 t3 t4 t5 t6 t7 t8 t9 t10 t11 t12 t13 t14 t15 t16 t17 e1 e2 e3 e4
 annExpr = embed2 EAnn
-

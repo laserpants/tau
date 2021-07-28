@@ -5,7 +5,6 @@ license:             BSD3
 author:              "Author name here"
 maintainer:          "example@example.com"
 copyright:           "2021 Author name here"
-
 extra-source-files:
 - README.md
 - ChangeLog.md
@@ -27,6 +26,8 @@ dependencies:
 - parser-combinators
 - recursion-schemes
 - text
+- text-show
+- transformers-supply
 
 library:
   source-dirs: src
