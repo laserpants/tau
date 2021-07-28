@@ -68,6 +68,7 @@ tagTree = cata alg
     tagBinding bind = do
         t <- freshName
         case bind of
+
             BPat _ p                -> BPat t <$> tagPattern p
             BFun _ name ps          -> BFun t name <$> traverse tagPattern ps
 
@@ -81,8 +82,8 @@ tagTree = cata alg
         t <- freshName
         pure $ case op of
 
-            ONeg   _    -> ONeg t
-            ONot   _    -> ONot t
+            ONeg   _    -> ONeg   t
+            ONot   _    -> ONot   t
 
     tagOp2 op = do
         t <- freshName
