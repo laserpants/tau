@@ -470,7 +470,7 @@ instance Traversable Ast where
             OFpipe  t            -> OFpipe    <$> f t  
             OBpipe  t            -> OBpipe    <$> f t  
             OOpt    t            -> OOpt      <$> f t  
-            OStr    t            -> OStr     <$> f t  
+            OStr    t            -> OStr      <$> f t  
             ONdiv   t            -> ONdiv     <$> f t  
             ODot    t            -> ODot      <$> f t   
             OField  t            -> OField    <$> f t   
