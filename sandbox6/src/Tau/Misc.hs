@@ -12,22 +12,22 @@
 module Tau.Misc where
 
 import Control.Arrow ((<<<), (>>>))
-import Control.Monad.Except
-import Control.Monad.Supply
-import Data.Eq.Deriving
+import Control.Monad (when)
+import Control.Monad.Except (MonadError, throwError)
+import Control.Monad.Supply (MonadSupply, demand)
+import Data.Eq.Deriving (deriveEq1)
 import Data.Fix (Fix)
-import Data.Functor.Foldable
-import Data.Functor.Identity
+import Data.Functor.Foldable (cata, para, project, embed)
 import Data.List (nub, intersect)
 import Data.Map.Strict (Map)
-import Data.Ord.Deriving
+import Data.Ord.Deriving (deriveOrd1)
 import Data.Set.Monad (Set)
 import Data.Text (Text)
-import Data.Void
+import Data.Void (Void)
 import Tau.Env (Env)
-import Tau.Util
-import Text.Show.Deriving
-import TextShow
+import Tau.Util (Name, embed1, embed2, embed3, embed4, letters)
+import Text.Show.Deriving (deriveShow1)
+import TextShow (showt)
 import qualified Data.Map.Strict as Map
 import qualified Data.Text as Text
 import qualified Tau.Env as Env
@@ -937,8 +937,6 @@ bindingTag = \case
 astTag :: Ast t -> t
 astTag = exprTag . astExpr
 
--- clauseTag (already defined)
-
 -------------------------------------------------------------------------------
 
 newtype Substitution a = Sub { getSub :: Map Name a }
@@ -995,7 +993,7 @@ instance (Substitutable t a, Substitutable p a) => Substitutable (Binding t p) a
 
 instance (Substitutable g a) => Substitutable (Choice g) a where
     apply sub = \case
-        Choice es e           -> Choice (apply sub es) (apply sub e)
+        Choice es e          -> Choice (apply sub es) (apply sub e)
 
 instance (Substitutable t a, Substitutable p a, Substitutable (Choice g) a) => Substitutable (Clause t p g) a where
     apply sub = \case

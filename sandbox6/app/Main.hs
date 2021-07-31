@@ -85,13 +85,13 @@ tagTree = cata alg
         BFun _ name ps          -> BFun <$> freshType <*> pure name <*> traverse tagPattern ps
 
     tagClause = \case
-        Clause _ ps guards      -> Clause <$> freshType
+        Clause _ ps choices     -> Clause <$> freshType
                                           <*> traverse tagPattern ps
-                                          <*> traverse sequence guards
+                                          <*> traverse sequence choices
     tagClause1 = \case
-        Clause _ p guards       -> Clause <$> freshType
+        Clause _ p choices      -> Clause <$> freshType
                                           <*> tagPattern p
-                                          <*> traverse sequence guards
+                                          <*> traverse sequence choices
     tagOp1 = \case
         ONeg   _                -> ONeg   <$> freshType
         ONot   _                -> ONot   <$> freshType
@@ -557,11 +557,11 @@ unifyTypes2 a b = do
 --             BPat _ p       -> BPat t <$> tagPattern p
 --             BFun _ name ps -> BFun t name <$> traverse tagPattern ps
 --
---     tagClause (Clause _ ps guards) =
---         Clause <$> freshType <*> traverse tagPattern ps <*> traverse sequence guards
+--     tagClause (Clause _ ps choices) =
+--         Clause <$> freshType <*> traverse tagPattern ps <*> traverse sequence choices
 --
---     tagClause1 (Clause _ p guards) =
---         Clause <$> freshType <*> tagPattern p <*> traverse sequence guards
+--     tagClause1 (Clause _ p choices) =
+--         Clause <$> freshType <*> tagPattern p <*> traverse sequence choices
 --
 --     tagOp1 op = do
 --         t <- freshType

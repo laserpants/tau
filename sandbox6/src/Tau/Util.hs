@@ -3,10 +3,11 @@
 {-# LANGUAGE UndecidableInstances  #-}
 module Tau.Util where
 
-import Control.Monad.Except
 import Control.Monad (replicateM)
-import Control.Monad.Supply
-import Data.Functor.Foldable
+import Control.Monad.Except (MonadError, ExceptT, throwError)
+import Control.Monad.Supply (MonadSupply, Supply, runSupply, supply, demand, provide)
+import Control.Monad.Trans (lift)
+import Data.Functor.Foldable (Base, Corecursive, embed)
 import Data.Text (Text, pack)
 
 type Name = Text
