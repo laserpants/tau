@@ -122,6 +122,12 @@ tagTree = cata alg
 
 -------------------------------------------------------------------------------
 
+freshType_ :: (MonadSupply Int f m) => m Type
+freshType_ = do
+    s <- demand
+    let st = showt s
+    pure (tVar (kVar ("$n" <> st)) ("$v" <> st))
+
 inferExprType
   :: ( MonadSupply Int f m
      , MonadReader (ClassEnv, TypeEnv, KindEnv, ConstructorEnv) m
@@ -131,24 +137,44 @@ inferExprType
 inferExprType = cata $ \case
 
     EVar t var -> do
-        res <- lookupScheme var
-        case res of
+        lookupScheme var >>= \case
             Nothing ->
                 pure (varExpr (TypeInfo [NotInScope var] t []) var)
 
             Just scheme -> do
                 (ty, ps) <- instantiate scheme
-                tryUnify t ty
-                pure (varExpr (TypeInfo [] t ps) var)
+                errs <- tryUnify t ty
+                pure (varExpr (TypeInfo errs t ps) var)
 
-    ECon t con es ->
-        undefined
+            -- TODO -- record types
 
-    ELit t prim ->
-        undefined
+    ECon t con exprs -> do
+        es <- sequence exprs
+        lookupScheme con >>= \case
+            Nothing ->
+                pure (conExpr (TypeInfo [ConstructorNotInScope con] t []) con es)
 
-    EApp t es ->
-        undefined
+            Just scheme -> do
+                (ty, ps) <- instantiate scheme
+                errs <- tryUnify ty (foldr tArr t (typeOf <$> es))
+                pure (conExpr (TypeInfo errs t ps) con es)
+
+    ELit t prim -> do
+        (ty, ps) <- instantiate (inferPrimType prim)
+        errs <- tryUnify t ty
+        pure (litExpr (TypeInfo errs t ps) prim)
+
+    EApp t exprs -> do
+        es <- sequence exprs
+        case es of
+            [] ->
+                error "Implementation error"
+--              pure (appExpr (TypeInfo [] t []) [])
+            f:args -> do
+                ty <- freshType_
+                errs1 <- tryUnify t (foldr tArr ty (typeOf <$> filter isHole args))
+                errs2 <- tryUnify (typeOf f) (foldr tArr ty (typeOf <$> args))
+                pure (appExpr (TypeInfo (errs1 <> errs2) t []) es)
 
     EFix t name e1 e2 ->
         undefined
@@ -184,7 +210,7 @@ inferExprType = cata $ \case
         undefined
 
     EHole t ->
-        undefined
+        pure (holeExpr (TypeInfo [] t []))
 
     EAnn t a ->
         undefined
@@ -227,6 +253,10 @@ inferPatternType = cata $ \case
     PAnn t p ->
         undefined
 
+inferPrimType :: Prim -> Scheme
+inferPrimType =
+    undefined
+
 #if !MIN_VERSION_transformers(0,6,0)
 hoistMaybe :: (Applicative m) => Maybe b -> MaybeT m b
 hoistMaybe = MaybeT . pure
@@ -242,13 +272,6 @@ lookupScheme name = runMaybeT $ do
     env <- askTypeEnv
     scheme <- hoistMaybe (Env.lookup name env)
     applySubsTo scheme
-
---    case Env.lookup name env of
---        Nothing ->
---            pure (Left (NotInScope name))
---
---        Just scheme ->
---            Right <$> applySubsTo scheme
 
 -- lookupScheme
 --   :: ( MonadSupply Int f m
@@ -305,9 +328,9 @@ tryUnify
   -> Type
   -> m [Error]
 tryUnify t1 t2 = go $ do
-    ta <- applySubsTo t1
-    tb <- applySubsTo t2
-    (typeSub, kindSub) <- withExceptT UnificationError (unifyTypes ta tb)
+    a <- applySubsTo t1
+    b <- applySubsTo t2
+    (typeSub, kindSub) <- withExceptT UnificationError (unifyTypes a b)
     modify (first3 (typeSub <>))
     modify (second3 (kindSub <>))
     forM_ (Map.toList (getSub typeSub)) $ \(tv, ty) -> do
@@ -382,6 +405,16 @@ askConstructorEnv
   :: MonadReader (ClassEnv, TypeEnv, KindEnv, ConstructorEnv) m
   => m ConstructorEnv
 askConstructorEnv = asks getConstructorEnv
+
+-------------------------------------------------------------------------------
+
+isHole
+  :: (Functor e2, Functor e4)
+  => Expr t1 t2 t3 t4 t5 t6 t7 t8 t9 t10 t11 t12 t13 t14 t15 t16 t17 e1 e2 e3 e4
+  -> Bool
+isHole = project >>> \case
+    EHole{} -> True
+    _       -> False
 
 -------------------------------------------------------------------------------
 

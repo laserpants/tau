@@ -23,6 +23,7 @@ main =
     hspec $ do
         describe "Unification"  testUnification
         describe "Substitution" testSubstitution
+        describe "Type vars"    testTypeVars
 
 _a :: Type
 _a = tVar kTyp "a"
@@ -265,7 +266,7 @@ succeedComposeAndApplyTo sub1 sub2 ty res =
 testSubstitution :: SpecWith ()
 testSubstitution = do
 
-    describe "apply to" $ do
+    describe "Apply to" $ do
 
         succeedApplyTo
             (mapsTo "a" tInt)
@@ -287,7 +288,7 @@ testSubstitution = do
             tInt
             tInt
 
-    describe "compose and apply to" $ do
+    describe "Compose and apply to" $ do
 
         succeedComposeAndApplyTo
             (fromList [ ("a", tInt) ])
@@ -336,3 +337,44 @@ testSubstitution = do
             (fromList [ ("a1", tVar kTyp "a2") ])
             (tVar kTyp "a1")
             (tVar kTyp "a4")
+
+-------------------------------------------------------------------------------
+
+-- Type tests
+
+succeedMatchTypeVars :: Type -> [(Name, Kind)] -> SpecWith ()
+succeedMatchTypeVars ty vars =
+    describe ("The free type variables in " <> "TODO") $ -- prettyPrint ty) $
+        it ("✔ are [" <> "TODO") -- Text.intercalate ", " (renderDoc . prettyTypePair <$> vars) <> "]")
+            (typeVars ty == vars)
+--  where
+--    prettyTypePair (n, k) = pretty n <+> ":" <+> pretty k
+
+testTypeVars :: SpecWith ()
+testTypeVars = do
+
+    succeedMatchTypeVars
+        _a
+        [("a", kTyp)]
+
+    succeedMatchTypeVars
+        (_a `tArr` _b)
+        [("a", kTyp), ("b", kTyp)]
+
+    succeedMatchTypeVars
+        (tList _a `tArr` _b)
+        [("a", kTyp), ("b", kTyp)]
+
+    succeedMatchTypeVars
+        tInt
+        []
+
+    succeedMatchTypeVars
+        (tApp kTyp (tVar kFun "m") _a)
+        [("m", kFun), ("a", kTyp)]
+
+-------------------------------------------------------------------------------
+
+-- Type inference tests
+
+

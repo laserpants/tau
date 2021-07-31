@@ -1148,6 +1148,7 @@ data Error
     = GenericError
     | UnificationError UnificationError
     | NotInScope Name
+    | ConstructorNotInScope Name
     | NoSuchClass Name
     | MissingInstance Name Type
 
