@@ -52,6 +52,23 @@
 
 
 
+type Color
+  = Rgb Byte Byte Byte
+  | Hsb Byte Byte Byte
+  | ColorName
+
+
+let color =
+  if color.is(Rgb) then 
+    ...
+  else
+    ...
+
+~isRgb(val) =
+  match val with
+    Rgb(_, _, _,_) -> True
+    _              -> False
+
 
 (_ - 1)
 
