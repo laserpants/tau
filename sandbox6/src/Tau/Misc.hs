@@ -339,9 +339,9 @@ type ProgExpr t u = Expr t t t t t t t t t t t t t t t t u
 newtype Ast t = Ast { astExpr :: ProgExpr t Void }
 
 data TypeInfoT e t = TypeInfo
-    { nodeErrors     :: e
-    , nodeType       :: t
-    , nodePredicates :: [Predicate] }
+    { nodeErrors      :: e
+    , nodeType        :: t
+    , nodePredicates  :: [Predicate] }
 
 type TypeInfo e = TypeInfoT e Type
 
