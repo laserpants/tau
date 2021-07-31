@@ -1,13 +1,12 @@
 {-# LANGUAGE LambdaCase        #-}
 {-# LANGUAGE OverloadedStrings #-}
-import Control.Monad.Except
-import Control.Monad.Supply
+import Control.Monad.Except (runExceptT)
 import Data.Either (isLeft, isRight)
-import Data.Functor.Foldable
+import Data.Functor.Foldable (cata, para, embed)
 import Data.Map.Strict (Map)
 import Data.Text (Text, unpack)
 import Tau.Misc
-import Tau.Util
+import Tau.Util (Name, runSupplyNats)
 import Test.Hspec hiding (describe, it)
 import qualified Data.Map.Strict as Map
 import qualified Test.Hspec as Hspec
@@ -428,5 +427,4 @@ testTupleCon = do
 -------------------------------------------------------------------------------
 
 -- Type inference tests
-
 
