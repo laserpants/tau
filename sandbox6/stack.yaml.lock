@@ -11,6 +11,13 @@ packages:
       sha256: 6a7813ced26110bae1957d44f8d64780d0664c24d2fb560f5c9fd9732939e77d
   original:
     hackage: transformers-supply-0.1.0@sha256:a71d9b6685a09193aab4811c73f53a6eddc6d606f6daf0337ab256e5eae7f2dc,2444
+- completed:
+    hackage: set-monad-0.3.0.0@sha256:4b6e63bf9aa80b0d64c078ce17aaf12b17f89cba581a98fdaa98efc824f93450,4051
+    pantry-tree:
+      size: 212
+      sha256: 90c8d19ab0e608e0e658e482b45d5758c66971d4f9a944d1a913507e5da94ebf
+  original:
+    hackage: set-monad-0.3.0.0@sha256:4b6e63bf9aa80b0d64c078ce17aaf12b17f89cba581a98fdaa98efc824f93450,4051
 snapshots:
 - completed:
     size: 585817

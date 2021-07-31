@@ -42,6 +42,7 @@ packages:
 #
 extra-deps: 
 - transformers-supply-0.1.0@sha256:a71d9b6685a09193aab4811c73f53a6eddc6d606f6daf0337ab256e5eae7f2dc,2444
+- set-monad-0.3.0.0@sha256:4b6e63bf9aa80b0d64c078ce17aaf12b17f89cba581a98fdaa98efc824f93450,4051
 
 # Override default flag values for local packages and extra-deps
 # flags: {}

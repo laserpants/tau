@@ -1,46 +1,36 @@
-{-# LANGUAGE DeriveTraversable  #-}
-{-# LANGUAGE OverloadedStrings  #-}
-{-# LANGUAGE StandaloneDeriving #-}
-{-# LANGUAGE TemplateHaskell    #-}
+{-# LANGUAGE DeriveTraversable     #-}
+{-# LANGUAGE FlexibleContexts      #-}
+{-# LANGUAGE FlexibleInstances     #-}
+{-# LANGUAGE LambdaCase            #-}
+{-# LANGUAGE MultiParamTypeClasses #-}
+{-# LANGUAGE OverloadedStrings     #-}
+{-# LANGUAGE RecordWildCards       #-}
+{-# LANGUAGE StandaloneDeriving    #-}
+{-# LANGUAGE StrictData            #-}
+{-# LANGUAGE TemplateHaskell       #-}
+{-# LANGUAGE TupleSections         #-}
 module Tau.Misc where
 
+import Control.Arrow ((<<<), (>>>))
+import Control.Monad.Except
+import Control.Monad.Supply
 import Data.Eq.Deriving
-import Data.Fix
+import Data.Fix (Fix)
 import Data.Functor.Foldable
+import Data.Functor.Identity
+import Data.List (nub, intersect)
+import Data.Map.Strict (Map)
 import Data.Ord.Deriving
+import Data.Set.Monad (Set)
 import Data.Text (Text)
 import Data.Void
+import Tau.Env (Env)
+import Tau.Util
 import Text.Show.Deriving
-
--------------------------------------------------------------------------------
--- Util
--------------------------------------------------------------------------------
-
-type Name = Text
-
-type Algebra f a = f a -> a
-
-(<$$>) :: (Functor f, Functor g) => (a -> b) -> f (g a) -> f (g b)
-(<$$>) f = ((f <$>) <$>)
-
-infixl 4 <$$>
-
---
-
-embed1 :: (Corecursive t) => (t1 -> Base t t) -> t1 -> t
-embed1 t a = embed (t a)
-
-embed2 :: (Corecursive t) => (t1 -> t2 -> Base t t) -> t1 -> t2 -> t
-embed2 t a b = embed (t a b)
-
-embed3 :: (Corecursive t) => (t1 -> t2 -> t3 -> Base t t) -> t1 -> t2 -> t3 -> t
-embed3 t a b c = embed (t a b c)
-
-embed4 :: (Corecursive t) => (t1 -> t2 -> t3 -> t4 -> Base t t) -> t1 -> t2 -> t3 -> t4 -> t
-embed4 t a b c d = embed (t a b c d)
-
-embed5 :: (Corecursive t) => (t1 -> t2 -> t3 -> t4 -> t5 -> Base t t) -> t1 -> t2 -> t3 -> t4 -> t5 -> t
-embed5 t a b c d e = embed (t a b c d e)
+import TextShow
+import qualified Data.Map.Strict as Map
+import qualified Data.Text as Text
+import qualified Tau.Env as Env
 
 -------------------------------------------------------------------------------
 -- Type
@@ -72,6 +62,23 @@ type Type = TypeT Void
 -- variables
 type Polytype = TypeT Int
 
+-- | Type class constraint
+data PredicateT a = InClass Name a
+
+-- | A standalone type class constraint
+type Predicate = PredicateT Type
+
+-- | Polymorphic type scheme
+data Scheme = Forall [Kind] [PredicateT Int] Polytype
+
+-- | Class of data types that carry type information
+class Typed a where
+    typeOf :: a -> Type
+
+-- | Class of data types that contain free type variables
+class FreeIn t where
+    free :: t -> [(Name, Kind)]
+
 -------------------------------------------------------------------------------
 -- Lang
 -------------------------------------------------------------------------------
@@ -89,49 +96,19 @@ data Prim
     | TSymbol  Name                      -- ^ Symbolic constant (language internal)
 
 data PatternF t1 t2 t3 t4 t5 t6 t7 t8 t9 t10 a
-    = PVar    t1  Name                   -- ^ Variable pattern
-    | PCon    t2  Name [a]               -- ^ Constuctor pattern
-    | PAs     t3  Name a                 -- ^ As-pattern
-    | PLit    t4  Prim                   -- ^ Literal pattern
+    = PVar    t1 Name                    -- ^ Variable pattern
+    | PCon    t2 Name [a]                -- ^ Constuctor pattern
+    | PAs     t3 Name a                  -- ^ As-pattern
+    | PLit    t4 Prim                    -- ^ Literal pattern
     | PAny    t5                         -- ^ Wildcard pattern
-    | POr     t6  a a                    -- ^ Or-pattern
-    | PTuple  t7  [a]                    -- ^ Tuple pattern
-    | PList   t8  [a]                    -- ^ List pattern
-    | PRow    t9  Name a a               -- ^ Row pattern
+    | POr     t6 a a                     -- ^ Or-pattern
+    | PTuple  t7 [a]                     -- ^ Tuple pattern
+    | PList   t8 [a]                     -- ^ List pattern
+    | PRow    t9 Name a a                -- ^ Row pattern
     | PAnn    t10 a                      -- ^ Explicit type annotation
 
 -- | Pattern
 type Pattern t1 t2 t3 t4 t5 t6 t7 t8 t9 t10 = Fix (PatternF t1 t2 t3 t4 t5 t6 t7 t8 t9 t10)
-
--- | Unary operators
-data Op1 t
-    = ONeg   t                           -- ^ Unary negation
-    | ONot   t                           -- ^ Logical NOT
-
--- | Binary operators
-data Op2 t
-    = OEq    t                           -- ^ Equal-to operator
-    | ONeq   t                           -- ^ Not-equal-to operator
-    | OAnd   t                           -- ^ Logical AND
-    | OOr    t                           -- ^ Logical OR
-    | OAdd   t                           -- ^ Addition operator
-    | OSub   t                           -- ^ Subtraction operator
-    | OMul   t                           -- ^ Multiplication operator
-    | ODiv   t                           -- ^ Division operator
-    | OPow   t                           -- ^ Exponentiation operator
-    | OMod   t                           -- ^ Modulo operator
-    | OLt    t                           -- ^ Strictly less-than operator
-    | OGt    t                           -- ^ Strictly greater-than operator
-    | OLte   t                           -- ^ Less-than-or-equal-to operator
-    | OGte   t                           -- ^ Greater-than-or-equal-to operator
-    | OLarr  t                           -- ^ Function composition operator
-    | ORarr  t                           -- ^ Reverse function composition
-    | OFpp   t                           -- ^ Forward pipe operator
-    | OBpp   t                           -- ^ Reverse pipe operator
-    | OOpt   t                           -- ^ Option default operator
-    | OStr   t                           -- ^ String concatenation operator
-    | ODot   t                           -- ^ Dot operator
-    | OField t                           -- ^ Field access operator
 
 data ExprF t1 t2 t3 t4 t5 t6 t7 t8 t9 t10 t11 t12 t13 t14 t15 t16 t17 e1 e2 e3 e4 a
     = EVar    t1  Name                   -- ^ Variable
@@ -169,6 +146,36 @@ data Clause t p a = Clause
     { clauseTag      :: t
     , clausePatterns :: p
     , clauseGuards   :: [Guard a] }
+
+-- | Unary operators
+data Op1 t
+    = ONeg   t                           -- ^ Unary negation
+    | ONot   t                           -- ^ Logical NOT
+
+-- | Binary operators
+data Op2 t
+    = OEq    t                           -- ^ Equal-to operator
+    | ONeq   t                           -- ^ Not-equal-to operator
+    | OAnd   t                           -- ^ Logical AND
+    | OOr    t                           -- ^ Logical OR
+    | OAdd   t                           -- ^ Addition operator
+    | OSub   t                           -- ^ Subtraction operator
+    | OMul   t                           -- ^ Multiplication operator
+    | ODiv   t                           -- ^ Division operator
+    | OPow   t                           -- ^ Exponentiation operator
+    | OMod   t                           -- ^ Modulo operator
+    | OLt    t                           -- ^ Strictly less-than operator
+    | OGt    t                           -- ^ Strictly greater-than operator
+    | OLte   t                           -- ^ Less-than-or-equal-to operator
+    | OGte   t                           -- ^ Greater-than-or-equal-to operator
+    | OLarr  t                           -- ^ Function composition operator
+    | ORarr  t                           -- ^ Reverse function composition
+    | OFpip  t                           -- ^ Forward pipe operator
+    | OBpip  t                           -- ^ Reverse pipe operator
+    | OOpt   t                           -- ^ Option default operator
+    | OStr   t                           -- ^ String concatenation operator
+    | ODot   t                           -- ^ Dot operator
+    | OField t                           -- ^ Field access operator
 
 -------------------------------------------------------------------------------
 -------------------------------------------------------------------------------
@@ -329,6 +336,142 @@ type ProgBinding t u = Binding t (ProgPattern t u)
 type ProgExpr t u = Expr t t t t t t t t t t t t t t t t u 
     [ProgPattern t u] (Clause t (ProgPattern t u)) (ProgBinding t u) (Clause t [ProgPattern t u])
 
+newtype Ast t = Ast { astExpr :: ProgExpr t Void }
+
+data TypeInfoT e t = TypeInfo
+    { nodeErrors     :: e 
+    , nodeType       :: t
+    , nodePredicates :: [Predicate] }
+
+type TypeInfo e = TypeInfoT e Type
+
+data ClassInfo p e = ClassInfo 
+    { classSignature  :: PredicateT p
+    , classPredicates :: [PredicateT p]
+    , classMethods    :: [(Name, e)] } 
+
+-- Environments
+
+type Context = Env (Set Name)
+
+type TypeEnv = Env Scheme
+
+type KindEnv = Env Kind
+
+type ClassEnv = Env 
+    ( ClassInfo Name Type                        -- Abstract interface
+    , [ClassInfo Type (Ast (TypeInfo Void))] )   -- Instances
+
+type ConstructorEnv = Env (Set Name, Int)
+
+-------------------------------------------------------------------------------
+
+-- Type class instances for Predicate
+
+deriving instance (Show a) => 
+    Show (PredicateT a)
+
+deriving instance (Eq a) => 
+    Eq (PredicateT a)
+
+deriving instance (Ord a) => 
+    Ord (PredicateT a)
+
+deriveShow1 ''PredicateT
+deriveEq1   ''PredicateT
+deriveOrd1  ''PredicateT
+
+deriving instance Functor     PredicateT
+deriving instance Foldable    PredicateT
+deriving instance Traversable PredicateT
+
+-- Type class instances for Scheme
+
+deriving instance Show Scheme
+deriving instance Eq   Scheme 
+deriving instance Ord  Scheme
+
+-- Type class instances for ClassInfo
+
+deriving instance (Show p, Show e) => Show (ClassInfo p e)
+deriving instance (Eq   p, Eq   e) => Eq   (ClassInfo p e)
+
+-- Typed instances
+
+instance Typed Type where
+    typeOf = id
+
+-- FreeIn instances
+
+instance (FreeIn t) => FreeIn [t] where
+    free = concatMap free
+
+instance FreeIn (TypeT a) where
+    free = nub . typeVars
+
+instance FreeIn Scheme where
+    free (Forall _ _ t) = free t
+
+-------------------------------------------------------------------------------
+
+-- Type class instances
+
+instance (Typed t) => Typed (ProgExpr t u) where
+    typeOf = typeOf . exprTag
+
+instance (Typed t) => Typed (ProgPattern t u) where
+    typeOf = typeOf . patternTag
+
+instance (Typed t) => Typed (Op1 t) where
+    typeOf = typeOf . op1Tag
+
+instance (Typed t) => Typed (Op2 t) where
+    typeOf = typeOf . op2Tag
+
+instance (Typed t) => Typed (Ast t) where
+    typeOf = typeOf . astTag
+
+-- More type class instances 
+
+deriving instance (Show e, Show t) => 
+    Show (TypeInfoT e t)
+
+deriving instance (Eq e, Eq t) => 
+    Eq (TypeInfoT e t)
+
+deriving instance Functor (TypeInfoT e)
+
+instance (Typed t) => Typed (TypeInfoT e t) where
+    typeOf = typeOf . nodeType 
+
+instance (Typed t) => Typed (Binding t p) where
+    typeOf = typeOf . bindingTag
+
+instance Typed Void where
+    typeOf _ = tVar kTyp "a" 
+
+instance Typed () where
+    typeOf _ = tVar kTyp "a" 
+
+instance FreeIn TypeEnv where
+    free = free . Env.elems
+
+instance FreeIn (TypeInfo e) where
+    free = free . nodeType
+
+instance (Substitutable Type a) => Substitutable (TypeInfo e) a where
+    apply sub = \case
+        TypeInfo e ty ps -> TypeInfo e (apply sub ty) (apply sub ps)
+
+instance (Substitutable Scheme t) => Substitutable TypeEnv t where
+    apply = Env.map . apply 
+
+instance (Substitutable Type t) => Substitutable (ClassInfo Type (Ast (TypeInfo e))) t where
+    apply sub ClassInfo{..} =
+        ClassInfo{ classPredicates = apply sub classPredicates
+                 , classSignature  = apply sub classSignature
+                 , .. }
+
 -------------------------------------------------------------------------------
 -------------------------------------------------------------------------------
 -------------------------------------------------------------------------------
@@ -420,6 +563,41 @@ tString = typ "String"
 
 tSymbol :: TypeT a
 tSymbol = typ "Symbol"
+
+-- Lists
+
+tListCon :: TypeT a
+tListCon = tCon kFun "List"
+
+tList :: TypeT a -> TypeT a
+tList = tApp kTyp tListCon
+
+-- Tuples
+
+tTupleCon :: Int -> TypeT a
+tTupleCon n = tCon (foldr kArr kTyp (replicate n kTyp)) (tupleCon n)
+
+tTuple :: [TypeT a] -> TypeT a
+tTuple types = foldl (tApp kTyp) (tTupleCon (length types)) types
+
+tPair :: TypeT a -> TypeT a -> TypeT a
+tPair t1 t2 = tTuple [t1, t2]
+
+tTriple :: TypeT a -> TypeT a -> TypeT a -> TypeT a
+tTriple t1 t2 t3 = tTuple [t1, t2, t3]
+
+-- Rows
+
+tRowNil :: TypeT a
+tRowNil = tCon kRow "{}"
+
+-- Records
+
+tRecordCon :: TypeT a
+tRecordCon = tCon (kArr kRow kTyp) "#"
+
+tRecord :: TypeT a -> TypeT a
+tRecord = tApp kTyp tRecordCon 
 
 -- Pattern
 
@@ -620,3 +798,521 @@ annExpr
   -> Expr t1 t2 t3 t4 t5 t6 t7 t8 t9 t10 t11 t12 t13 t14 t15 t16 t17 e1 e2 e3 e4
   -> Expr t1 t2 t3 t4 t5 t6 t7 t8 t9 t10 t11 t12 t13 t14 t15 t16 t17 e1 e2 e3 e4
 annExpr = embed2 EAnn
+
+-------------------------------------------------------------------------------
+-------------------------------------------------------------------------------
+-------------------------------------------------------------------------------
+
+kindOf :: Type -> Kind
+kindOf = project >>> \case
+    TVar a _     -> a
+    TCon a _     -> a
+    TApp a _ _   -> a
+    TArr{}       -> kTyp
+    TRow{}       -> kRow
+
+kindVars :: Kind -> [Name]
+kindVars = nub . cata (\case
+    KVar var     -> [var]
+    KArr k1 k2   -> k1 <> k2
+    _            -> [])
+
+typeVars :: TypeT a -> [(Name, Kind)]
+typeVars = nub . cata (\case
+    TVar k var   -> [(var, k)]
+    TApp _ t1 t2 -> t1 <> t2
+    TArr   t1 t2 -> t1 <> t2
+    TRow _ t1 t2 -> t1 <> t2
+    _            -> [])
+
+toPolytype :: Type -> Polytype
+toPolytype = cata $ \case
+    TVar k var   -> tVar k var
+    TCon k con   -> tCon k con
+    TApp k t1 t2 -> tApp k t1 t2
+    TArr   t1 t2 -> tArr t1 t2
+    TRow n t1 t2 -> tRow n t1 t2 
+
+fromPolytype :: [Type] -> Polytype -> Type
+fromPolytype ts = cata $ \case
+    TGen n       -> ts !! n
+    TApp k t1 t2 -> tApp k t1 t2
+    TVar k var   -> tVar k var
+    TCon k con   -> tCon k con
+    TArr   t1 t2 -> tArr t1 t2
+    TRow n t1 t2 -> tRow n t1 t2
+
+toScheme :: Type -> Scheme
+toScheme = Forall [] [] . toPolytype
+
+tupleCon :: Int -> Name
+tupleCon size = "(" <> Text.replicate (pred size) "," <> ")"
+
+predicateName :: PredicateT a -> Name
+predicateName (InClass name _) = name
+
+predicateType :: PredicateT a -> a
+predicateType (InClass _ t) = t
+
+getKindVar :: Kind -> Maybe Name
+getKindVar = project >>> \case
+    KVar v   -> Just v
+    _        -> Nothing
+
+getTypeVar :: Type -> Maybe Name
+getTypeVar = project >>> \case
+    TVar _ v -> Just v
+    _        -> Nothing
+
+-------------------------------------------------------------------------------
+-------------------------------------------------------------------------------
+-------------------------------------------------------------------------------
+
+exprTag :: (Functor e2, Functor e4) => Expr t t t t t t t t t t t t t t t t u e1 e2 e3 e4 -> t
+exprTag = cata $ \case
+    EVar    t _     -> t
+    EHole   t       -> t
+    ECon    t _ _   -> t
+    ELit    t _     -> t
+    EApp    t _     -> t
+    ELet    t _ _ _ -> t
+    EFix    t _ _ _ -> t
+    ELam    t _ _   -> t
+    EIf     t _ _ _ -> t
+    EPat    t _ _   -> t
+    EFun    t _     -> t
+    EOp1    t _ _   -> t
+    EOp2    t _ _ _ -> t
+    ETuple  t _     -> t
+    EList   t _     -> t
+    ERow    t _ _ _ -> t
+    EAnn    _ e     -> e
+
+patternTag :: Pattern t t t t t t t t t u -> t
+patternTag = cata $ \case
+    PVar    t _     -> t
+    PCon    t _ _   -> t
+    PLit    t _     -> t 
+    PAs     t _ _   -> t
+    POr     t _ _   -> t
+    PAny    t       -> t
+    PTuple  t _     -> t
+    PList   t _     -> t
+    PRow    t _ _ _ -> t
+    PAnn    _ p     -> p
+
+op1Tag :: Op1 t -> t
+op1Tag = \case
+    ONeg    t       -> t
+    ONot    t       -> t
+
+op2Tag :: Op2 t -> t
+op2Tag = \case
+    OEq     t       -> t
+    ONeq    t       -> t
+    OAnd    t       -> t
+    OOr     t       -> t
+    OAdd    t       -> t
+    OSub    t       -> t
+    OMul    t       -> t
+    ODiv    t       -> t
+    OPow    t       -> t
+    OMod    t       -> t
+    OLt     t       -> t
+    OGt     t       -> t
+    OLte    t       -> t
+    OGte    t       -> t
+    OLarr   t       -> t
+    ORarr   t       -> t
+    OFpip   t       -> t
+    OBpip   t       -> t
+    OOpt    t       -> t
+    OStr    t       -> t
+    ODot    t       -> t 
+    OField  t       -> t 
+
+bindingTag :: Binding t p -> t
+bindingTag = \case
+    BPat    t _     -> t
+    BFun    t _ _   -> t
+
+astTag :: Ast t -> t
+astTag = exprTag . astExpr 
+
+-------------------------------------------------------------------------------
+
+newtype Substitution a = Sub { getSub :: Map Name a }
+
+class Substitutable t a where
+    apply :: Substitution a -> t -> t
+
+instance Substitutable t a => Substitutable [t] a where
+    apply = fmap . apply
+
+deriving instance (Show a) => 
+    Show (Substitution a)
+
+deriving instance (Eq a) => 
+    Eq (Substitution a)
+
+deriving instance 
+    Functor Substitution
+
+instance Semigroup (Substitution Type) where
+    (<>) = compose
+
+instance Monoid (Substitution Type) where
+    mempty = nullSub
+
+instance Substitutable (TypeT a) (TypeT a) where
+    apply = typeSubstitute
+
+instance Substitutable Polytype Type where
+    apply sub = cata $ \case
+        TVar kind var        -> toPolytype (withDefault (tVar kind var) var sub)
+        ty                   -> embed ty
+
+instance (Substitutable t a) => Substitutable (PredicateT t) a where
+    apply = fmap . apply
+
+instance (Substitutable t a) => Substitutable (ProgPattern t u) a where
+    apply sub = cata $ \case
+        PVar    t var        -> varPat    (apply sub t) var
+        PCon    t con ps     -> conPat    (apply sub t) con ps
+        PLit    t prim       -> litPat    (apply sub t) prim
+        PAs     t as p       -> asPat     (apply sub t) as p
+        POr     t p q        -> orPat     (apply sub t) p q
+        PAny    t            -> anyPat    (apply sub t)
+        PTuple  t ps         -> tuplePat  (apply sub t) ps
+        PList   t ps         -> listPat   (apply sub t) ps
+        PRow    t lab p r    -> rowPat    (apply sub t) lab p r 
+        PAnn    t p          -> annPat    t p
+
+instance (Substitutable t a, Substitutable p a) => Substitutable (Binding t p) a where
+    apply sub = \case
+        BPat t p             -> BPat (apply sub t) (apply sub p)
+        BFun t name ps       -> BFun (apply sub t) name (apply sub ps)
+
+instance (Substitutable g a) => Substitutable (Guard g) a where
+    apply sub = \case
+        Guard es e           -> Guard (apply sub es) (apply sub e)
+
+instance (Substitutable t a, Substitutable p a, Substitutable (Guard g) a) => Substitutable (Clause t p g) a where
+    apply sub = \case
+        Clause  t p gs       -> Clause (apply sub t) (apply sub p) (apply sub gs)
+
+instance (Substitutable t a) => Substitutable (ProgExpr t u) a where
+    apply sub = cata $ \case
+        EVar    t var        -> varExpr    (apply sub t) var
+        EHole   t            -> holeExpr   (apply sub t)
+        ECon    t con es     -> conExpr    (apply sub t) con es
+        ELit    t prim       -> litExpr    (apply sub t) prim
+        EApp    t es         -> appExpr    (apply sub t) es
+        ELet    t bind e1 e2 -> letExpr    (apply sub t) (apply sub bind) e1 e2
+        EFix    t name e1 e2 -> fixExpr    (apply sub t) name e1 e2
+        ELam    t ps e       -> lamExpr    (apply sub t) (apply sub ps) e
+        EIf     t e1 e2 e3   -> ifExpr     (apply sub t) e1 e2 e3
+        EPat    t es cs      -> patExpr    (apply sub t) es (apply sub cs)
+        EFun    t cs         -> funExpr    (apply sub t) (apply sub cs)
+        EOp1    t op a       -> op1Expr    (apply sub t) (apply sub op) a
+        EOp2    t op a b     -> op2Expr    (apply sub t) (apply sub op) a b
+        ETuple  t es         -> tupleExpr  (apply sub t) es
+        EList   t es         -> listExpr   (apply sub t) es
+        ERow    t lab e r    -> rowExpr    (apply sub t) lab e r 
+        EAnn    t e          -> annExpr    t e
+
+instance (Substitutable t a) => Substitutable (Op1 t) a where
+    apply sub = \case
+        ONeg   t             -> ONeg   (apply sub t)
+        ONot   t             -> ONot   (apply sub t)
+
+instance (Substitutable t a) => Substitutable (Op2 t) a where
+    apply sub = \case
+        OEq    t             -> OEq    (apply sub t)
+        ONeq   t             -> ONeq   (apply sub t)
+        OAnd   t             -> OAnd   (apply sub t)
+        OOr    t             -> OOr    (apply sub t)
+        OAdd   t             -> OAdd   (apply sub t)
+        OSub   t             -> OSub   (apply sub t)
+        OMul   t             -> OMul   (apply sub t)
+        ODiv   t             -> ODiv   (apply sub t)
+        OPow   t             -> OPow   (apply sub t)
+        OMod   t             -> OMod   (apply sub t)
+        OLt    t             -> OLt    (apply sub t)
+        OGt    t             -> OGt    (apply sub t)
+        OLte   t             -> OLte   (apply sub t)
+        OGte   t             -> OGte   (apply sub t)
+        OLarr  t             -> OLarr  (apply sub t)
+        ORarr  t             -> ORarr  (apply sub t)
+        OFpip  t             -> OFpip   (apply sub t)
+        OBpip  t             -> OBpip   (apply sub t)
+        OOpt   t             -> OOpt   (apply sub t)
+        OStr   t             -> OStr   (apply sub t)
+        ODot   t             -> ODot   (apply sub t)
+        OField t             -> OField (apply sub t)
+
+instance (Substitutable t a) => Substitutable (Ast t) a where
+    apply sub = \case
+        Ast expr             -> Ast (apply sub expr)
+
+instance Substitutable Scheme Type where
+    apply sub = \case
+        Forall ks ps pt      -> Forall ks ps (apply sub pt)
+
+-------------------------------------------------------------------------------
+
+instance Semigroup (Substitution Kind) where
+    (<>) = compose
+
+instance Monoid (Substitution Kind) where
+    mempty = nullSub
+
+instance Substitutable Kind Kind where
+    apply = kindSubstitute
+
+instance Substitutable (TypeT a) Kind where
+    apply sub = cata $ \case
+        TVar k var           -> tVar (apply sub k) var
+        TCon k con           -> tCon (apply sub k) con
+        TApp k t1 t2         -> tApp (apply sub k) t1 t2
+        ty                   -> embed ty
+
+instance Substitutable Scheme Kind where
+    apply sub = \case
+        Forall ks ps pt      -> Forall (apply sub ks) ps (apply sub pt)
+
+-------------------------------------------------------------------------------
+
+nullSub :: Substitution a
+nullSub = Sub mempty
+
+compose :: (Substitutable a a) => Substitution a -> Substitution a -> Substitution a
+compose s1 s2 = Sub (fmap (apply s1) (getSub s2) `Map.union` getSub s1)
+
+mapsTo :: Name -> a -> Substitution a
+mapsTo name val = Sub (Map.singleton name val)
+
+withDefault :: a -> Name -> Substitution a -> a
+withDefault default_ name = Map.findWithDefault default_ name . getSub
+
+fromList :: [(Name, a)] -> Substitution a
+fromList = Sub . Map.fromList
+
+toList :: Substitution a -> [(Name, a)]
+toList = Map.toList . getSub
+
+domain :: Substitution a -> [Name]
+domain (Sub sub) = Map.keys sub 
+
+-------------------------------------------------------------------------------
+
+typeSubstitute :: Substitution (TypeT a) -> TypeT a -> TypeT a
+typeSubstitute sub = cata $ \case
+    TVar kind var -> withDefault (tVar kind var) var sub
+    ty            -> embed ty
+
+merge :: (Eq a) => Substitution a -> Substitution a -> Maybe (Substitution a)
+merge s1 s2 
+    | allEqual  = Just (Sub (getSub s1 `Map.union` getSub s2))
+    | otherwise = Nothing
+  where
+    allEqual = all (\v -> applySub s1 v == applySub s2 v) 
+        (domain s1 `intersect` domain s2)
+
+    applySub :: Substitution a -> Name -> Maybe a
+    applySub sub var = Map.lookup var (getSub sub)
+
+normalizer :: [(Name, Kind)] -> Substitution Type
+normalizer vars = fromList (zipWith (\(v, k) a -> (v, tVar k a)) vars letters)
+
+normalize :: Type -> Type
+normalize ty = apply (normalizer (typeVars ty)) ty
+
+-------------------------------------------------------------------------------
+
+kindSubstitute :: Substitution Kind -> Kind -> Kind
+kindSubstitute sub = cata $ \case 
+   KVar var   -> withDefault (kVar var) var sub
+   ty         -> embed ty
+
+applyBoth
+  :: (Substitutable t Type, Substitutable t Kind) 
+  => (Substitution Type, Substitution Kind) -> t -> t
+applyBoth (typeSub, kindSub) = apply kindSub . apply typeSub
+
+-------------------------------------------------------------------------------
+-------------------------------------------------------------------------------
+-------------------------------------------------------------------------------
+
+data Error 
+    = GenericError
+    | UnificationError UnificationError
+    | NotInScope Name
+    | NoSuchClass Name
+    | MissingInstance Name Type
+
+data UnificationError 
+    = InfiniteType
+    | InfiniteKind
+    | IncompatibleTypes
+    | IncompatibleKinds
+    | CannotMerge
+
+deriving instance Show Error
+deriving instance Eq   Error
+
+deriving instance Show UnificationError
+deriving instance Eq   UnificationError
+
+-------------------------------------------------------------------------------
+
+bindKind
+  :: (MonadError UnificationError m)
+  => Name
+  -> Kind
+  -> m (Substitution Kind)
+bindKind name kind
+    | getKindVar kind == Just name            = pure mempty
+    | name `elem` kindVars kind               = throwError InfiniteKind
+    | otherwise                               = pure (name `mapsTo` kind)
+
+unifyKinds
+  :: (MonadError UnificationError m)
+  => Kind
+  -> Kind
+  -> m (Substitution Kind)
+unifyKinds k l = fn (project k) (project l)
+  where
+    fn (KArr k1 k2) (KArr l1 l2)              = unifyKindPairs (k1, k2) (l1, l2)
+    fn (KVar name) _                          = bindKind name l
+    fn _ (KVar name)                          = bindKind name k
+    fn _ _ | k == l                           = pure mempty
+    fn _ _                                    = throwError IncompatibleKinds
+
+unifyKindPairs
+  :: (MonadError UnificationError m)
+  => (Kind, Kind)
+  -> (Kind, Kind)
+  -> m (Substitution Kind)
+unifyKindPairs (k1, k2) (l1, l2) = do
+    sub1 <- unifyKinds k1 l1
+    sub2 <- unifyKinds (apply sub1 k2) (apply sub1 l2)
+    pure (sub2 <> sub1)
+
+-------------------------------------------------------------------------------
+
+bindType
+  :: (MonadError UnificationError m)
+  => Name
+  -> Kind
+  -> Type
+  -> m (Substitution Type, Substitution Kind)
+bindType name kind ty
+    | getTypeVar ty == Just name              = (,) mempty <$> kindSub
+    | name `elem` (fst <$> free ty)           = throwError InfiniteType
+    | otherwise                               = (,) (name `mapsTo` ty) <$> kindSub
+  where
+    kindSub = unifyKinds kind (kindOf ty)
+
+unifyTypes
+  :: ( MonadSupply Int f m
+     , MonadError UnificationError m )
+  => Type
+  -> Type
+  -> m (Substitution Type, Substitution Kind)
+unifyTypes t u = fn (project t) (project u)
+  where
+    fn (TArr t1 t2) (TArr u1 u2)              = unifyTypePairs (t1, t2) (u1, u2)
+    fn (TApp _ t1 t2) (TApp _ u1 u2)          = unifyTypePairs (t1, t2) (u1, u2)
+    fn TRow{} TRow{}                          = unifyRows unifyTypes unifyTypePairs t u
+    fn (TVar kind name) _                     = bindType name kind u
+    fn _ (TVar kind name)                     = bindType name kind t
+    fn (TCon k1 a) (TCon k2 b) | a == b       = (mempty ,) <$> unifyKinds k1 k2
+    fn _ _                                    = throwError IncompatibleTypes
+
+matchTypes
+  :: ( MonadSupply Int f m
+     , MonadError UnificationError m )
+  => Type
+  -> Type
+  -> m (Substitution Type, Substitution Kind)
+matchTypes t u = fn (project t) (project u)
+  where
+    fn (TArr t1 t2) (TArr u1 u2)              = matchTypePairs (t1, t2) (u1, u2)
+    fn (TApp _ t1 t2) (TApp _ u1 u2)          = matchTypePairs (t1, t2) (u1, u2)
+    fn TRow{} TRow{}                          = unifyRows matchTypes matchTypePairs t u
+    fn (TVar kind name) _                     = bindType name kind u
+    fn (TCon k1 a) (TCon k2 b) | a == b       = (mempty ,) <$> unifyKinds k1 k2
+    fn _ _                                    = throwError IncompatibleTypes
+
+unifyTypePairs
+  :: ( MonadSupply Int f m
+     , MonadError UnificationError m )
+  => (Type, Type)
+  -> (Type, Type)
+  -> m (Substitution Type, Substitution Kind)
+unifyTypePairs (t1, t2) (u1, u2) = do
+    subs1 <- unifyTypes t1 u1
+    subs2 <- unifyTypes (applyBoth subs1 t2) (applyBoth subs1 u2)
+    pure (subs2 <> subs1)
+
+matchTypePairs
+  :: ( MonadSupply Int f m
+     , MonadError UnificationError m )
+  => (Type, Type)
+  -> (Type, Type)
+  -> m (Substitution Type, Substitution Kind)
+matchTypePairs (t1, t2) (u1, u2) = do
+    (typeSub1, kindSub1) <- matchTypes t1 u1
+    (typeSub2, kindSub2) <- matchTypes t2 u2
+    (,) <$> mergeSubs typeSub1 typeSub2 <*> mergeSubs kindSub1 kindSub2
+  where
+    mergeSubs sub1 sub2 = maybe (throwError CannotMerge) pure (merge sub1 sub2)
+
+-------------------------------------------------------------------------------
+
+unifyRows 
+  :: ( MonadSupply Int f m
+     , MonadError UnificationError m )
+  => (Type -> Type -> m (Substitution Type, Substitution Kind))
+  -> ((Type, Type) -> (Type, Type) -> m (Substitution Type, Substitution Kind))
+  -> Type
+  -> Type
+  -> m (Substitution Type, Substitution Kind)
+unifyRows combineTypes combinePairs t u =
+    fn (mapRep t, final t) (mapRep u, final u)
+  where
+    mapRep = foldr (uncurry (Map.insertWith (<>))) mempty . fields 
+
+    fromMap = 
+        Map.foldrWithKey (flip . foldr . tRow)
+
+    fields = para $ \case
+        TRow label ty rest -> (label, [fst ty]):snd rest
+        _                  -> []
+
+    final = cata $ \case
+        TRow _ _ r         -> r
+        t                  -> embed t
+
+    fn (m1, j) (m2, k)
+        | Map.null m1 && Map.null m2 = combineTypes j k
+        | Map.null m1 = combineTypes j (fromMap k m2)
+        | otherwise =
+            case Map.lookup a m2 of
+                Just (u:us) -> 
+                    combinePairs 
+                        (fromMap j (updateMap m1 ts), t) 
+                        (fromMap k (updateMap m2 us), u)
+                _ -> do
+                    when (k == j) $ throwError IncompatibleTypes
+                    s <- demand
+                    let tv = tVar kRow ("$r" <> showt s)
+                    combinePairs 
+                        (fromMap j (updateMap m1 ts), k) 
+                        (fromMap tv m2, tRow a t tv)
+      where
+        (a, t:ts) = Map.elemAt 0 m1
+        updateMap m = \case
+            [] -> Map.delete a m
+            ts -> Map.insert a ts m
