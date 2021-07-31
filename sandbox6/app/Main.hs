@@ -82,39 +82,37 @@ tagTree = cata alg
         Clause _ ps guards      -> Clause <$> freshType
                                           <*> traverse tagPattern ps
                                           <*> traverse sequence guards
-
     tagClause1 = \case
         Clause _ p guards       -> Clause <$> freshType
                                           <*> tagPattern p
                                           <*> traverse sequence guards
-
     tagOp1 = \case
-        ONeg   _    -> ONeg   <$> freshType
-        ONot   _    -> ONot   <$> freshType
+        ONeg   _                -> ONeg   <$> freshType
+        ONot   _                -> ONot   <$> freshType
 
     tagOp2 = \case
-        OEq    _    -> OEq    <$> freshType
-        ONeq   _    -> ONeq   <$> freshType
-        OAnd   _    -> OAnd   <$> freshType
-        OOr    _    -> OOr    <$> freshType
-        OAdd   _    -> OAdd   <$> freshType
-        OSub   _    -> OSub   <$> freshType
-        OMul   _    -> OMul   <$> freshType
-        ODiv   _    -> ODiv   <$> freshType
-        OPow   _    -> OPow   <$> freshType
-        OMod   _    -> OMod   <$> freshType
-        OLt    _    -> OLt    <$> freshType
-        OGt    _    -> OGt    <$> freshType
-        OLte   _    -> OLte   <$> freshType
-        OGte   _    -> OGte   <$> freshType
-        OLarr  _    -> OLarr  <$> freshType
-        ORarr  _    -> ORarr  <$> freshType
-        OFpip  _    -> OFpip  <$> freshType
-        OBpip  _    -> OBpip  <$> freshType
-        OOpt   _    -> OOpt   <$> freshType
-        OStr   _    -> OStr   <$> freshType
-        ODot   _    -> ODot   <$> freshType
-        OField _    -> OField <$> freshType
+        OEq    _                -> OEq    <$> freshType
+        ONeq   _                -> ONeq   <$> freshType
+        OAnd   _                -> OAnd   <$> freshType
+        OOr    _                -> OOr    <$> freshType
+        OAdd   _                -> OAdd   <$> freshType
+        OSub   _                -> OSub   <$> freshType
+        OMul   _                -> OMul   <$> freshType
+        ODiv   _                -> ODiv   <$> freshType
+        OPow   _                -> OPow   <$> freshType
+        OMod   _                -> OMod   <$> freshType
+        OLt    _                -> OLt    <$> freshType
+        OGt    _                -> OGt    <$> freshType
+        OLte   _                -> OLte   <$> freshType
+        OGte   _                -> OGte   <$> freshType
+        OLarr  _                -> OLarr  <$> freshType
+        ORarr  _                -> ORarr  <$> freshType
+        OFpip  _                -> OFpip  <$> freshType
+        OBpip  _                -> OBpip  <$> freshType
+        OOpt   _                -> OOpt   <$> freshType
+        OStr   _                -> OStr   <$> freshType
+        ODot   _                -> ODot   <$> freshType
+        OField _                -> OField <$> freshType
 
 -------------------------------------------------------------------------------
 

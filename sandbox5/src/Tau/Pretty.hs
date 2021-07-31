@@ -383,7 +383,7 @@ instance FunArgs Text where
 instance FunArgs [(ProgPattern t, Doc a)] where
     funArgs ps = funArgs (fst <$> ps)
 
-instance FunArgs [(ProgPattern t)] where
+instance FunArgs [ProgPattern t] where
     funArgs [p] = parensIf (useParens p) (pretty p)
       where
         useParens = project >>> \case
