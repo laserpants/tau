@@ -44,7 +44,7 @@ data KindF a
 -- | Kind
 type Kind = Fix KindF
 
-data TypeF k i a 
+data TypeF k i a
     = TVar k Name                        -- ^ Type variable
     | TCon k Name                        -- ^ Type constructor
     | TRow Name a a                      -- ^ Row type
@@ -52,13 +52,13 @@ data TypeF k i a
     | TArr a a                           -- ^ Function type
     | TGen i                             -- ^ Quantified type variable
 
--- | Type 
+-- | Type
 type TypeT i = Fix (TypeF Kind i)
 
 -- | Standalone type (a type that is not part of a type scheme)
 type Type = TypeT Void
 
--- | A type which appears in a type scheme and therefore may contain quantified 
+-- | A type which appears in a type scheme and therefore may contain quantified
 -- variables
 type Polytype = TypeT Int
 
@@ -89,7 +89,7 @@ data Prim
     | TBool    Bool                      -- ^ Booleans
     | TInt     Int                       -- ^ Bounded machine integers (32 or 64 bit)
     | TInteger Integer                   -- ^ Arbitrary precision (big) integers
-    | TFloat   Float                     -- ^ Single precision floating point numbers 
+    | TFloat   Float                     -- ^ Single precision floating point numbers
     | TDouble  Double                    -- ^ Double precision floating point numbers
     | TChar    Char                      -- ^ Chars
     | TString  Text                      -- ^ Strings
@@ -130,7 +130,7 @@ data ExprF t1 t2 t3 t4 t5 t6 t7 t8 t9 t10 t11 t12 t13 t14 t15 t16 t17 e1 e2 e3 e
     | EAnn    t17 a                      -- ^ Explicit type annotation
 
 -- | Language expression
-type Expr t1 t2 t3 t4 t5 t6 t7 t8 t9 t10 t11 t12 t13 t14 t15 t16 t17 e1 e2 e3 e4 = 
+type Expr t1 t2 t3 t4 t5 t6 t7 t8 t9 t10 t11 t12 t13 t14 t15 t16 t17 e1 e2 e3 e4 =
     Fix (ExprF t1 t2 t3 t4 t5 t6 t7 t8 t9 t10 t11 t12 t13 t14 t15 t16 t17 e1 e2 e3 e4)
 
 -- | Name binding-part of let expressions
@@ -183,13 +183,13 @@ data Op2 t
 
 -- Type class instances for Kind
 
-deriving instance (Show a) => 
+deriving instance (Show a) =>
     Show (KindF a)
 
-deriving instance (Eq a) => 
+deriving instance (Eq a) =>
     Eq (KindF a)
 
-deriving instance (Ord a) => 
+deriving instance (Ord a) =>
     Ord (KindF a)
 
 deriveShow1 ''KindF
@@ -202,13 +202,13 @@ deriving instance Traversable KindF
 
 -- Type class instances for Type
 
-deriving instance (Show k, Show i, Show a) => 
+deriving instance (Show k, Show i, Show a) =>
     Show (TypeF k i a)
 
-deriving instance (Eq k, Eq i, Eq a) => 
+deriving instance (Eq k, Eq i, Eq a) =>
     Eq (TypeF k i a)
 
-deriving instance (Ord k, Ord i, Ord a) => 
+deriving instance (Ord k, Ord i, Ord a) =>
     Ord (TypeF k i a)
 
 deriveShow1 ''TypeF
@@ -229,13 +229,13 @@ deriving instance Ord  Prim
 
 -- Type class instances for Pattern
 
-deriving instance (Show t1, Show t2, Show t3, Show t4, Show t5, Show t6, Show t7, Show t8, Show t9, Show t10, Show a) => 
+deriving instance (Show t1, Show t2, Show t3, Show t4, Show t5, Show t6, Show t7, Show t8, Show t9, Show t10, Show a) =>
     Show (PatternF t1 t2 t3 t4 t5 t6 t7 t8 t9 t10 a)
 
-deriving instance (Eq t1, Eq t2, Eq t3, Eq t4, Eq t5, Eq t6, Eq t7, Eq t8, Eq t9, Eq t10, Eq a) => 
+deriving instance (Eq t1, Eq t2, Eq t3, Eq t4, Eq t5, Eq t6, Eq t7, Eq t8, Eq t9, Eq t10, Eq a) =>
     Eq (PatternF t1 t2 t3 t4 t5 t6 t7 t8 t9 t10 a)
 
-deriving instance (Ord t1, Ord t2, Ord t3, Ord t4, Ord t5, Ord t6, Ord t7, Ord t8, Ord t9, Ord t10, Ord a) => 
+deriving instance (Ord t1, Ord t2, Ord t3, Ord t4, Ord t5, Ord t6, Ord t7, Ord t8, Ord t9, Ord t10, Ord a) =>
     Ord (PatternF t1 t2 t3 t4 t5 t6 t7 t8 t9 t10 a)
 
 deriveShow1 ''PatternF
@@ -284,13 +284,13 @@ deriving instance Traversable Choice
 
 -- Type class instances for Clause
 
-deriving instance (Show t, Show p, Show a) => 
+deriving instance (Show t, Show p, Show a) =>
     Show (Clause t p a)
 
-deriving instance (Eq t, Eq p, Eq a) => 
+deriving instance (Eq t, Eq p, Eq a) =>
     Eq (Clause t p a)
 
-deriving instance (Ord t, Ord p, Ord a) => 
+deriving instance (Ord t, Ord p, Ord a) =>
     Ord (Clause t p a)
 
 deriveShow1 ''Clause
@@ -331,24 +331,24 @@ deriving instance (Traversable e2, Traversable e4) =>
 
 type ProgPattern t u = Pattern t t t t t t t t t u
 
-type ProgBinding t u = Binding t (ProgPattern t u) 
+type ProgBinding t u = Binding t (ProgPattern t u)
 
-type ProgExpr t u = Expr t t t t t t t t t t t t t t t t u 
+type ProgExpr t u = Expr t t t t t t t t t t t t t t t t u
     [ProgPattern t u] (Clause t (ProgPattern t u)) (ProgBinding t u) (Clause t [ProgPattern t u])
 
 newtype Ast t = Ast { astExpr :: ProgExpr t Void }
 
 data TypeInfoT e t = TypeInfo
-    { nodeErrors     :: e 
+    { nodeErrors     :: e
     , nodeType       :: t
     , nodePredicates :: [Predicate] }
 
 type TypeInfo e = TypeInfoT e Type
 
-data ClassInfo p e = ClassInfo 
+data ClassInfo p e = ClassInfo
     { classSignature  :: PredicateT p
     , classPredicates :: [PredicateT p]
-    , classMethods    :: [(Name, e)] } 
+    , classMethods    :: [(Name, e)] }
 
 -- Environments
 
@@ -358,7 +358,7 @@ type TypeEnv = Env Scheme
 
 type KindEnv = Env Kind
 
-type ClassEnv = Env 
+type ClassEnv = Env
     ( ClassInfo Name Type                        -- Abstract interface
     , [ClassInfo Type (Ast (TypeInfo Void))] )   -- Instances
 
@@ -368,13 +368,13 @@ type ConstructorEnv = Env (Set Name, Int)
 
 -- Type class instances for Predicate
 
-deriving instance (Show a) => 
+deriving instance (Show a) =>
     Show (PredicateT a)
 
-deriving instance (Eq a) => 
+deriving instance (Eq a) =>
     Eq (PredicateT a)
 
-deriving instance (Ord a) => 
+deriving instance (Ord a) =>
     Ord (PredicateT a)
 
 deriveShow1 ''PredicateT
@@ -388,7 +388,7 @@ deriving instance Traversable PredicateT
 -- Type class instances for Scheme
 
 deriving instance Show Scheme
-deriving instance Eq   Scheme 
+deriving instance Eq   Scheme
 deriving instance Ord  Scheme
 
 -- Type class instances for ClassInfo
@@ -431,27 +431,27 @@ instance (Typed t) => Typed (Op2 t) where
 instance (Typed t) => Typed (Ast t) where
     typeOf = typeOf . astTag
 
--- More type class instances 
+-- More type class instances
 
-deriving instance (Show e, Show t) => 
+deriving instance (Show e, Show t) =>
     Show (TypeInfoT e t)
 
-deriving instance (Eq e, Eq t) => 
+deriving instance (Eq e, Eq t) =>
     Eq (TypeInfoT e t)
 
 deriving instance Functor (TypeInfoT e)
 
 instance (Typed t) => Typed (TypeInfoT e t) where
-    typeOf = typeOf . nodeType 
+    typeOf = typeOf . nodeType
 
 instance (Typed t) => Typed (Binding t p) where
     typeOf = typeOf . bindingTag
 
 instance Typed Void where
-    typeOf _ = tVar kTyp "a" 
+    typeOf _ = tVar kTyp "a"
 
 instance Typed () where
-    typeOf _ = tVar kTyp "a" 
+    typeOf _ = tVar kTyp "a"
 
 instance FreeIn TypeEnv where
     free = free . Env.elems
@@ -464,7 +464,7 @@ instance (Substitutable Type a) => Substitutable (TypeInfo e) a where
         TypeInfo e ty ps -> TypeInfo e (apply sub ty) (apply sub ps)
 
 instance (Substitutable Scheme t) => Substitutable TypeEnv t where
-    apply = Env.map . apply 
+    apply = Env.map . apply
 
 instance (Substitutable Type t) => Substitutable (ClassInfo Type (Ast (TypeInfo e))) t where
     apply sub ClassInfo{..} =
@@ -478,10 +478,10 @@ instance (Substitutable Type t) => Substitutable (ClassInfo Type (Ast (TypeInfo 
 
 -- Kind
 
-kVar :: Name -> Kind 
+kVar :: Name -> Kind
 kVar = embed1 KVar
 
-kCon :: Name -> Kind 
+kCon :: Name -> Kind
 kCon = embed1 KCon
 
 kArr :: Kind -> Kind -> Kind
@@ -597,57 +597,57 @@ tRecordCon :: TypeT a
 tRecordCon = tCon (kArr kRow kTyp) "#"
 
 tRecord :: TypeT a -> TypeT a
-tRecord = tApp kTyp tRecordCon 
+tRecord = tApp kTyp tRecordCon
 
 -- Pattern
 
-varPat 
-  :: t1 
-  -> Name 
+varPat
+  :: t1
+  -> Name
   -> Pattern t1 t2 t3 t4 t5 t6 t7 t8 t9 t10
 varPat = embed2 PVar
 
-conPat 
-  :: t2 
-  -> Name 
-  -> [Pattern t1 t2 t3 t4 t5 t6 t7 t8 t9 t10] 
+conPat
+  :: t2
+  -> Name
+  -> [Pattern t1 t2 t3 t4 t5 t6 t7 t8 t9 t10]
   -> Pattern t1 t2 t3 t4 t5 t6 t7 t8 t9 t10
 conPat = embed3 PCon
 
-asPat 
-  :: t3 
-  -> Name 
-  -> Pattern t1 t2 t3 t4 t5 t6 t7 t8 t9 t10 
+asPat
+  :: t3
+  -> Name
+  -> Pattern t1 t2 t3 t4 t5 t6 t7 t8 t9 t10
   -> Pattern t1 t2 t3 t4 t5 t6 t7 t8 t9 t10
 asPat = embed3 PAs
 
-litPat 
-  :: t4 
-  -> Prim 
+litPat
+  :: t4
+  -> Prim
   -> Pattern t1 t2 t3 t4 t5 t6 t7 t8 t9 t10
 litPat = embed2 PLit
 
-anyPat 
-  :: t5 
+anyPat
+  :: t5
   -> Pattern t1 t2 t3 t4 t5 t6 t7 t8 t9 t10
 anyPat = embed1 PAny
 
-orPat 
-  :: t6 
-  -> Pattern t1 t2 t3 t4 t5 t6 t7 t8 t9 t10 
-  -> Pattern t1 t2 t3 t4 t5 t6 t7 t8 t9 t10 
+orPat
+  :: t6
+  -> Pattern t1 t2 t3 t4 t5 t6 t7 t8 t9 t10
+  -> Pattern t1 t2 t3 t4 t5 t6 t7 t8 t9 t10
   -> Pattern t1 t2 t3 t4 t5 t6 t7 t8 t9 t10
 orPat = embed3 POr
 
-tuplePat 
-  :: t7 
-  -> [Pattern t1 t2 t3 t4 t5 t6 t7 t8 t9 t10] 
+tuplePat
+  :: t7
+  -> [Pattern t1 t2 t3 t4 t5 t6 t7 t8 t9 t10]
   -> Pattern t1 t2 t3 t4 t5 t6 t7 t8 t9 t10
 tuplePat = embed2 PTuple
 
-listPat 
-  :: t8 
-  -> [Pattern t1 t2 t3 t4 t5 t6 t7 t8 t9 t10] 
+listPat
+  :: t8
+  -> [Pattern t1 t2 t3 t4 t5 t6 t7 t8 t9 t10]
   -> Pattern t1 t2 t3 t4 t5 t6 t7 t8 t9 t10
 listPat = embed2 PList
 
@@ -667,118 +667,118 @@ annPat = embed2 PAnn
 
 -- Expr
 
-varExpr 
-  :: (Functor e2, Functor e4) 
-  => t1 
-  -> Name 
+varExpr
+  :: (Functor e2, Functor e4)
+  => t1
+  -> Name
   -> Expr t1 t2 t3 t4 t5 t6 t7 t8 t9 t10 t11 t12 t13 t14 t15 t16 t17 e1 e2 e3 e4
 varExpr = embed2 EVar
 
-conExpr 
-  :: (Functor e2, Functor e4) 
-  => t2 
-  -> Name 
-  -> [Expr t1 t2 t3 t4 t5 t6 t7 t8 t9 t10 t11 t12 t13 t14 t15 t16 t17 e1 e2 e3 e4] 
+conExpr
+  :: (Functor e2, Functor e4)
+  => t2
+  -> Name
+  -> [Expr t1 t2 t3 t4 t5 t6 t7 t8 t9 t10 t11 t12 t13 t14 t15 t16 t17 e1 e2 e3 e4]
   -> Expr t1 t2 t3 t4 t5 t6 t7 t8 t9 t10 t11 t12 t13 t14 t15 t16 t17 e1 e2 e3 e4
 conExpr = embed3 ECon
 
-litExpr 
-  :: (Functor e2, Functor e4) 
-  => t3 
-  -> Prim 
+litExpr
+  :: (Functor e2, Functor e4)
+  => t3
+  -> Prim
   -> Expr t1 t2 t3 t4 t5 t6 t7 t8 t9 t10 t11 t12 t13 t14 t15 t16 t17 e1 e2 e3 e4
 litExpr = embed2 ELit
 
-appExpr 
-  :: (Functor e2, Functor e4) 
-  => t4 
-  -> [Expr t1 t2 t3 t4 t5 t6 t7 t8 t9 t10 t11 t12 t13 t14 t15 t16 t17 e1 e2 e3 e4] 
+appExpr
+  :: (Functor e2, Functor e4)
+  => t4
+  -> [Expr t1 t2 t3 t4 t5 t6 t7 t8 t9 t10 t11 t12 t13 t14 t15 t16 t17 e1 e2 e3 e4]
   -> Expr t1 t2 t3 t4 t5 t6 t7 t8 t9 t10 t11 t12 t13 t14 t15 t16 t17 e1 e2 e3 e4
 appExpr = embed2 EApp
 
-fixExpr 
-  :: (Functor e2, Functor e4) 
-  => t5 
-  -> Name 
+fixExpr
+  :: (Functor e2, Functor e4)
+  => t5
+  -> Name
   -> Expr t1 t2 t3 t4 t5 t6 t7 t8 t9 t10 t11 t12 t13 t14 t15 t16 t17 e1 e2 e3 e4
   -> Expr t1 t2 t3 t4 t5 t6 t7 t8 t9 t10 t11 t12 t13 t14 t15 t16 t17 e1 e2 e3 e4
   -> Expr t1 t2 t3 t4 t5 t6 t7 t8 t9 t10 t11 t12 t13 t14 t15 t16 t17 e1 e2 e3 e4
 fixExpr = embed4 EFix
 
-lamExpr 
-  :: (Functor e2, Functor e4) 
-  => t6 
+lamExpr
+  :: (Functor e2, Functor e4)
+  => t6
   -> e1
   -> Expr t1 t2 t3 t4 t5 t6 t7 t8 t9 t10 t11 t12 t13 t14 t15 t16 t17 e1 e2 e3 e4
   -> Expr t1 t2 t3 t4 t5 t6 t7 t8 t9 t10 t11 t12 t13 t14 t15 t16 t17 e1 e2 e3 e4
 lamExpr = embed3 ELam
 
-ifExpr 
-  :: (Functor e2, Functor e4) 
-  => t7 
+ifExpr
+  :: (Functor e2, Functor e4)
+  => t7
   -> Expr t1 t2 t3 t4 t5 t6 t7 t8 t9 t10 t11 t12 t13 t14 t15 t16 t17 e1 e2 e3 e4
   -> Expr t1 t2 t3 t4 t5 t6 t7 t8 t9 t10 t11 t12 t13 t14 t15 t16 t17 e1 e2 e3 e4
   -> Expr t1 t2 t3 t4 t5 t6 t7 t8 t9 t10 t11 t12 t13 t14 t15 t16 t17 e1 e2 e3 e4
   -> Expr t1 t2 t3 t4 t5 t6 t7 t8 t9 t10 t11 t12 t13 t14 t15 t16 t17 e1 e2 e3 e4
 ifExpr = embed4 EIf
 
-patExpr 
-  :: (Functor e2, Functor e4) 
-  => t8 
+patExpr
+  :: (Functor e2, Functor e4)
+  => t8
   -> Expr t1 t2 t3 t4 t5 t6 t7 t8 t9 t10 t11 t12 t13 t14 t15 t16 t17 e1 e2 e3 e4
-  -> [e2 (Expr t1 t2 t3 t4 t5 t6 t7 t8 t9 t10 t11 t12 t13 t14 t15 t16 t17 e1 e2 e3 e4)] 
+  -> [e2 (Expr t1 t2 t3 t4 t5 t6 t7 t8 t9 t10 t11 t12 t13 t14 t15 t16 t17 e1 e2 e3 e4)]
   -> Expr t1 t2 t3 t4 t5 t6 t7 t8 t9 t10 t11 t12 t13 t14 t15 t16 t17 e1 e2 e3 e4
 patExpr = embed3 EPat
 
-letExpr 
-  :: (Functor e2, Functor e4) 
-  => t9 
-  -> e3 
+letExpr
+  :: (Functor e2, Functor e4)
+  => t9
+  -> e3
   -> Expr t1 t2 t3 t4 t5 t6 t7 t8 t9 t10 t11 t12 t13 t14 t15 t16 t17 e1 e2 e3 e4
   -> Expr t1 t2 t3 t4 t5 t6 t7 t8 t9 t10 t11 t12 t13 t14 t15 t16 t17 e1 e2 e3 e4
   -> Expr t1 t2 t3 t4 t5 t6 t7 t8 t9 t10 t11 t12 t13 t14 t15 t16 t17 e1 e2 e3 e4
 letExpr = embed4 ELet
 
-funExpr 
-  :: (Functor e2, Functor e4) 
-  => t10 
-  -> [e4 (Expr t1 t2 t3 t4 t5 t6 t7 t8 t9 t10 t11 t12 t13 t14 t15 t16 t17 e1 e2 e3 e4)] 
+funExpr
+  :: (Functor e2, Functor e4)
+  => t10
+  -> [e4 (Expr t1 t2 t3 t4 t5 t6 t7 t8 t9 t10 t11 t12 t13 t14 t15 t16 t17 e1 e2 e3 e4)]
   -> Expr t1 t2 t3 t4 t5 t6 t7 t8 t9 t10 t11 t12 t13 t14 t15 t16 t17 e1 e2 e3 e4
 funExpr = embed2 EFun
 
-op1Expr 
-  :: (Functor e2, Functor e4) 
-  => t11 
-  -> Op1 t11 
-  -> Expr t1 t2 t3 t4 t5 t6 t7 t8 t9 t10 t11 t12 t13 t14 t15 t16 t17 e1 e2 e3 e4 
+op1Expr
+  :: (Functor e2, Functor e4)
+  => t11
+  -> Op1 t11
+  -> Expr t1 t2 t3 t4 t5 t6 t7 t8 t9 t10 t11 t12 t13 t14 t15 t16 t17 e1 e2 e3 e4
   -> Expr t1 t2 t3 t4 t5 t6 t7 t8 t9 t10 t11 t12 t13 t14 t15 t16 t17 e1 e2 e3 e4
 op1Expr = embed3 EOp1
 
-op2Expr 
-  :: (Functor e2, Functor e4) 
-  => t12 
-  -> Op2 t12 
-  -> Expr t1 t2 t3 t4 t5 t6 t7 t8 t9 t10 t11 t12 t13 t14 t15 t16 t17 e1 e2 e3 e4 
-  -> Expr t1 t2 t3 t4 t5 t6 t7 t8 t9 t10 t11 t12 t13 t14 t15 t16 t17 e1 e2 e3 e4 
-  -> Expr t1 t2 t3 t4 t5 t6 t7 t8 t9 t10 t11 t12 t13 t14 t15 t16 t17 e1 e2 e3 e4 
+op2Expr
+  :: (Functor e2, Functor e4)
+  => t12
+  -> Op2 t12
+  -> Expr t1 t2 t3 t4 t5 t6 t7 t8 t9 t10 t11 t12 t13 t14 t15 t16 t17 e1 e2 e3 e4
+  -> Expr t1 t2 t3 t4 t5 t6 t7 t8 t9 t10 t11 t12 t13 t14 t15 t16 t17 e1 e2 e3 e4
+  -> Expr t1 t2 t3 t4 t5 t6 t7 t8 t9 t10 t11 t12 t13 t14 t15 t16 t17 e1 e2 e3 e4
 op2Expr = embed4 EOp2
 
-tupleExpr 
-  :: (Functor e2, Functor e4) 
-  => t13 
-  -> [Expr t1 t2 t3 t4 t5 t6 t7 t8 t9 t10 t11 t12 t13 t14 t15 t16 t17 e1 e2 e3 e4] 
+tupleExpr
+  :: (Functor e2, Functor e4)
+  => t13
+  -> [Expr t1 t2 t3 t4 t5 t6 t7 t8 t9 t10 t11 t12 t13 t14 t15 t16 t17 e1 e2 e3 e4]
   -> Expr t1 t2 t3 t4 t5 t6 t7 t8 t9 t10 t11 t12 t13 t14 t15 t16 t17 e1 e2 e3 e4
 tupleExpr = embed2 ETuple
 
-listExpr 
-  :: (Functor e2, Functor e4) 
-  => t14 
-  -> [Expr t1 t2 t3 t4 t5 t6 t7 t8 t9 t10 t11 t12 t13 t14 t15 t16 t17 e1 e2 e3 e4] 
+listExpr
+  :: (Functor e2, Functor e4)
+  => t14
+  -> [Expr t1 t2 t3 t4 t5 t6 t7 t8 t9 t10 t11 t12 t13 t14 t15 t16 t17 e1 e2 e3 e4]
   -> Expr t1 t2 t3 t4 t5 t6 t7 t8 t9 t10 t11 t12 t13 t14 t15 t16 t17 e1 e2 e3 e4
 listExpr = embed2 EList
 
 rowExpr
-  :: (Functor e2, Functor e4) 
+  :: (Functor e2, Functor e4)
   => t15
   -> Name
   -> Expr t1 t2 t3 t4 t5 t6 t7 t8 t9 t10 t11 t12 t13 t14 t15 t16 t17 e1 e2 e3 e4
@@ -786,10 +786,10 @@ rowExpr
   -> Expr t1 t2 t3 t4 t5 t6 t7 t8 t9 t10 t11 t12 t13 t14 t15 t16 t17 e1 e2 e3 e4
 rowExpr = embed4 ERow
 
-holeExpr 
-  :: (Functor e2, Functor e4) 
-  => t16 
-  -> Expr t1 t2 t3 t4 t5 t6 t7 t8 t9 t10 t11 t12 t13 t14 t15 t16 t17 e1 e2 e3 e4 
+holeExpr
+  :: (Functor e2, Functor e4)
+  => t16
+  -> Expr t1 t2 t3 t4 t5 t6 t7 t8 t9 t10 t11 t12 t13 t14 t15 t16 t17 e1 e2 e3 e4
 holeExpr = embed1 EHole
 
 annExpr
@@ -831,7 +831,7 @@ toPolytype = cata $ \case
     TCon k con   -> tCon k con
     TApp k t1 t2 -> tApp k t1 t2
     TArr   t1 t2 -> tArr t1 t2
-    TRow n t1 t2 -> tRow n t1 t2 
+    TRow n t1 t2 -> tRow n t1 t2
 
 fromPolytype :: [Type] -> Polytype -> Type
 fromPolytype ts = cata $ \case
@@ -892,7 +892,7 @@ patternTag :: Pattern t t t t t t t t t u -> t
 patternTag = cata $ \case
     PVar    t _     -> t
     PCon    t _ _   -> t
-    PLit    t _     -> t 
+    PLit    t _     -> t
     PAs     t _ _   -> t
     POr     t _ _   -> t
     PAny    t       -> t
@@ -928,8 +928,8 @@ op2Tag = \case
     OBpip   t       -> t
     OOpt    t       -> t
     OStr    t       -> t
-    ODot    t       -> t 
-    OField  t       -> t 
+    ODot    t       -> t
+    OField  t       -> t
 
 bindingTag :: Binding t p -> t
 bindingTag = \case
@@ -937,7 +937,7 @@ bindingTag = \case
     BFun    t _ _   -> t
 
 astTag :: Ast t -> t
-astTag = exprTag . astExpr 
+astTag = exprTag . astExpr
 
 -- clauseTag (already defined)
 
@@ -951,13 +951,13 @@ class Substitutable t a where
 instance Substitutable t a => Substitutable [t] a where
     apply = fmap . apply
 
-deriving instance (Show a) => 
+deriving instance (Show a) =>
     Show (Substitution a)
 
-deriving instance (Eq a) => 
+deriving instance (Eq a) =>
     Eq (Substitution a)
 
-deriving instance 
+deriving instance
     Functor Substitution
 
 instance Semigroup (Substitution Type) where
@@ -987,7 +987,7 @@ instance (Substitutable t a) => Substitutable (ProgPattern t u) a where
         PAny    t            -> anyPat    (apply sub t)
         PTuple  t ps         -> tuplePat  (apply sub t) ps
         PList   t ps         -> listPat   (apply sub t) ps
-        PRow    t lab p r    -> rowPat    (apply sub t) lab p r 
+        PRow    t lab p r    -> rowPat    (apply sub t) lab p r
         PAnn    t p          -> annPat    t p
 
 instance (Substitutable t a, Substitutable p a) => Substitutable (Binding t p) a where
@@ -1020,7 +1020,7 @@ instance (Substitutable t a) => Substitutable (ProgExpr t u) a where
         EOp2    t op a b     -> op2Expr    (apply sub t) (apply sub op) a b
         ETuple  t es         -> tupleExpr  (apply sub t) es
         EList   t es         -> listExpr   (apply sub t) es
-        ERow    t lab e r    -> rowExpr    (apply sub t) lab e r 
+        ERow    t lab e r    -> rowExpr    (apply sub t) lab e r
         EAnn    t e          -> annExpr    t e
 
 instance (Substitutable t a) => Substitutable (Op1 t) a where
@@ -1104,7 +1104,7 @@ toList :: Substitution a -> [(Name, a)]
 toList = Map.toList . getSub
 
 domain :: Substitution a -> [Name]
-domain (Sub sub) = Map.keys sub 
+domain (Sub sub) = Map.keys sub
 
 -------------------------------------------------------------------------------
 
@@ -1114,11 +1114,11 @@ typeSubstitute sub = cata $ \case
     ty            -> embed ty
 
 merge :: (Eq a) => Substitution a -> Substitution a -> Maybe (Substitution a)
-merge s1 s2 
+merge s1 s2
     | allEqual  = Just (Sub (getSub s1 `Map.union` getSub s2))
     | otherwise = Nothing
   where
-    allEqual = all (\v -> applySub s1 v == applySub s2 v) 
+    allEqual = all (\v -> applySub s1 v == applySub s2 v)
         (domain s1 `intersect` domain s2)
 
     applySub :: Substitution a -> Name -> Maybe a
@@ -1133,12 +1133,12 @@ normalize ty = apply (normalizer (typeVars ty)) ty
 -------------------------------------------------------------------------------
 
 kindSubstitute :: Substitution Kind -> Kind -> Kind
-kindSubstitute sub = cata $ \case 
+kindSubstitute sub = cata $ \case
    KVar var   -> withDefault (kVar var) var sub
    ty         -> embed ty
 
 applyBoth
-  :: (Substitutable t Type, Substitutable t Kind) 
+  :: (Substitutable t Type, Substitutable t Kind)
   => (Substitution Type, Substitution Kind) -> t -> t
 applyBoth (typeSub, kindSub) = apply kindSub . apply typeSub
 
@@ -1146,14 +1146,14 @@ applyBoth (typeSub, kindSub) = apply kindSub . apply typeSub
 -------------------------------------------------------------------------------
 -------------------------------------------------------------------------------
 
-data Error 
+data Error
     = GenericError
     | UnificationError UnificationError
     | NotInScope Name
     | NoSuchClass Name
     | MissingInstance Name Type
 
-data UnificationError 
+data UnificationError
     = InfiniteType
     | InfiniteKind
     | IncompatibleTypes
@@ -1273,7 +1273,7 @@ matchTypePairs (t1, t2) (u1, u2) = do
 
 -------------------------------------------------------------------------------
 
-unifyRows 
+unifyRows
   :: ( MonadSupply Int f m
      , MonadError UnificationError m )
   => (Type -> Type -> m (Substitution Type, Substitution Kind))
@@ -1284,9 +1284,9 @@ unifyRows
 unifyRows combineTypes combinePairs t u =
     fn (mapRep t, final t) (mapRep u, final u)
   where
-    mapRep = foldr (uncurry (Map.insertWith (<>))) mempty . fields 
+    mapRep = foldr (uncurry (Map.insertWith (<>))) mempty . fields
 
-    fromMap = 
+    fromMap =
         Map.foldrWithKey (flip . foldr . tRow)
 
     fields = para $ \case
@@ -1302,16 +1302,16 @@ unifyRows combineTypes combinePairs t u =
         | Map.null m1 = combineTypes j (fromMap k m2)
         | otherwise =
             case Map.lookup a m2 of
-                Just (u:us) -> 
-                    combinePairs 
-                        (fromMap j (updateMap m1 ts), t) 
+                Just (u:us) ->
+                    combinePairs
+                        (fromMap j (updateMap m1 ts), t)
                         (fromMap k (updateMap m2 us), u)
                 _ -> do
                     when (k == j) $ throwError IncompatibleTypes
                     s <- demand
                     let tv = tVar kRow ("$r" <> showt s)
-                    combinePairs 
-                        (fromMap j (updateMap m1 ts), k) 
+                    combinePairs
+                        (fromMap j (updateMap m1 ts), k)
                         (fromMap tv m2, tRow a t tv)
       where
         (a, t:ts) = Map.elemAt 0 m1

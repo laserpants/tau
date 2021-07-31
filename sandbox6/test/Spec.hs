@@ -21,7 +21,8 @@ it = Hspec.it . unpack
 main :: IO ()
 main =
     hspec $ do
-        describe "Unification" testUnification
+        describe "Unification"  testUnification
+        describe "Substitution" testSubstitution
 
 _a :: Type
 _a = tVar kTyp "a"
@@ -37,10 +38,10 @@ _c = tVar kTyp "c"
 -- Unification tests
 
 runUnify :: Type -> Type -> Either UnificationError (Substitution Type, Substitution Kind)
-runUnify t1 t2 = runSupplyNats (runExceptT (unifyTypes t1 t2)) 
+runUnify t1 t2 = runSupplyNats (runExceptT (unifyTypes t1 t2))
 
 testDescription :: Type -> Type -> Text
-testDescription t1 t2 = "TODO" -- "The types " <> prettyPrint t1 <> " and " <> prettyPrint t2 
+testDescription t1 t2 = "TODO" -- "The types " <> prettyPrint t1 <> " and " <> prettyPrint t2
 
 succeedUnifyTypes :: Type -> Type -> SpecWith ()
 succeedUnifyTypes t1 t2 = do
@@ -63,7 +64,7 @@ canonicalRep = cata $ \case
     TArr t1 t2       -> tArr t1 t2
     TRow label t1 t2 -> toCanonical (tRow label t1 t2)
   where
-    toCanonical t = 
+    toCanonical t =
         fromMap (baseRow t) (foldr (uncurry f) mempty (rowFields t))
 
     fromMap :: Type -> Map Name [Type] -> Type
@@ -118,7 +119,7 @@ testUnification = do
     succeedUnifyTypes
         (tList _a)
         (tList tInt)
-        
+
     succeedUnifyTypes
         (tList _a)
         (tList _b)
@@ -151,16 +152,16 @@ testUnification = do
 
         succeedUnifyTypes
             -- { name : a26 | a27 }
-            (tRow "name" (tVar kTyp "a26") (tVar kRow "a27"))     
+            (tRow "name" (tVar kTyp "a26") (tVar kRow "a27"))
             -- { id : Int, name : String }
-            (tRow "id" tInt (tRow "name" tString tRowNil))  
+            (tRow "id" tInt (tRow "name" tString tRowNil))
 
         succeedUnifyTypes
-            (tArr (tRow "name" (tVar kTyp "a26") (tVar kRow "a27")) (tVar kTyp "a"))   
+            (tArr (tRow "name" (tVar kTyp "a26") (tVar kRow "a27")) (tVar kTyp "a"))
             (tArr (tRow "id" tInt (tRow "name" tString tRowNil)) tInt)
 
         succeedUnifyTypes
-            (tArr (tRecord (tRow "name" (tVar kTyp "a26") (tVar kRow "a27"))) (tVar kTyp "a"))   
+            (tArr (tRecord (tRow "name" (tVar kTyp "a26") (tVar kRow "a27"))) (tVar kTyp "a"))
             (tArr (tRecord (tRow "id" tInt (tRow "name" tString tRowNil))) tInt)
 
         failUnifyTypes
@@ -249,7 +250,89 @@ testUnification = do
 
 -- Substitution tests
 
-testSubstitution :: SpecWith ()
-testSubstitution =
-    undefined
+succeedApplyTo :: Substitution Type -> Type -> Type -> SpecWith ()
+succeedApplyTo sub ty res =
+    describe "TODO" $ do -- ("apply " <> prettyPrint (show sub) <> " to " <> prettyPrint ty) $ do
+        it ("✔ returns: " <> "TODO") -- prettyPrint res)
+            (apply sub ty == res)
 
+succeedComposeAndApplyTo :: Substitution Type -> Substitution Type -> Type -> Type -> SpecWith ()
+succeedComposeAndApplyTo sub1 sub2 ty res =
+    describe ("apply TODO to ") $ do -- TODO <> prettyPrint ty) $ do
+        it ("✔ returns: ") --  <> prettyPrint res)
+            (apply (compose sub1 sub2) ty == res)
+
+testSubstitution :: SpecWith ()
+testSubstitution = do
+
+    describe "apply to" $ do
+
+        succeedApplyTo
+            (mapsTo "a" tInt)
+            _a
+            tInt
+
+        succeedApplyTo
+            (mapsTo "a" tInt)
+            (_a `tArr` _b)
+            (tInt `tArr` _b)
+
+        succeedApplyTo
+            (mapsTo "a" tInt)
+            (_a `tArr` _a)
+            (tInt `tArr` tInt)
+
+        succeedApplyTo
+            (mapsTo "a" tInt)
+            tInt
+            tInt
+
+    describe "compose and apply to" $ do
+
+        succeedComposeAndApplyTo
+            (fromList [ ("a", tInt) ])
+            (fromList [ ("b", tBool) ])
+            _a
+            tInt
+
+        succeedComposeAndApplyTo
+            (fromList [ ("a", tInt) ])
+            (fromList [ ("b", tBool) ])
+            _b
+            tBool
+
+        succeedComposeAndApplyTo
+            (fromList [ ("b", tBool) ])
+            (fromList [ ("a", tInt) ])
+            _a
+            tInt
+
+        succeedComposeAndApplyTo
+            (fromList [ ("b", tBool) ])
+            (fromList [ ("a", tInt) ])
+            _b
+            tBool
+
+        succeedComposeAndApplyTo
+            (fromList [ ("b", tBool) ])
+            (fromList [ ("a", tInt) ])
+            (_a `tArr` _b)
+            (tInt `tArr` tBool)
+
+        succeedComposeAndApplyTo
+            (fromList [ ("b", tBool) ])
+            (fromList [ ("a", tVar kTyp "b") ])
+            _a
+            tBool
+
+        succeedComposeAndApplyTo
+            (fromList [ ("b", tBool) ])
+            (fromList [ ("a", tVar kTyp "b") ])
+            _b
+            tBool
+
+        succeedComposeAndApplyTo
+            (compose (fromList [ ("a3", tVar kTyp "a4") ]) (fromList [ ("a2", tVar kTyp "a3") ]))
+            (fromList [ ("a1", tVar kTyp "a2") ])
+            (tVar kTyp "a1")
+            (tVar kTyp "a4")

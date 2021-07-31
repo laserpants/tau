@@ -17,7 +17,7 @@ import Data.Functor.Foldable
 import Data.Functor.Identity
 import Data.Maybe (fromMaybe)
 import Data.Set.Monad (Set)
-import Data.Tuple.Extra 
+import Data.Tuple.Extra
 import Data.Void
 import Tau.Misc
 import Tau.Util
@@ -38,12 +38,12 @@ freshType = do
     pure (tVar (kVar ("$k" <> st)) ("$a" <> st))
 
 runTagTree :: ProgExpr t u -> ProgExpr Type u
-runTagTree expr = runSupplyNats (tagTree expr) 
+runTagTree expr = runSupplyNats (tagTree expr)
 
 tagTree :: (MonadSupply Int f m) => ProgExpr t u -> m (ProgExpr Type u)
-tagTree = cata alg 
+tagTree = cata alg
   where
-    alg = \case 
+    alg = \case
         EVar   _ var            -> varExpr   <$> freshType <*> pure var
         ECon   _ con es         -> conExpr   <$> freshType <*> pure con <*> sequence es
         ELit   _ prim           -> litExpr   <$> freshType <*> pure prim
@@ -59,7 +59,7 @@ tagTree = cata alg
         ETuple _ es             -> tupleExpr <$> freshType <*> sequence es
         EList  _ es             -> listExpr  <$> freshType <*> sequence es
         ERow   _ name e r       -> rowExpr   <$> freshType <*> pure name <*> e <*> r
-        EHole  _                -> holeExpr  <$> freshType 
+        EHole  _                -> holeExpr  <$> freshType
         EAnn   t a              -> annExpr t <$> a
 
     tagPattern = cata $ \case
@@ -67,32 +67,32 @@ tagTree = cata alg
         PCon   _ name ps        -> conPat    <$> freshType <*> pure name <*> sequence ps
         PAs    _ name p         -> asPat     <$> freshType <*> pure name <*> p
         PLit   _ prim           -> litPat    <$> freshType <*> pure prim
-        PAny   _                -> anyPat    <$> freshType 
+        PAny   _                -> anyPat    <$> freshType
         POr    _ p q            -> orPat     <$> freshType <*> p <*> q
         PTuple _ ps             -> tuplePat  <$> freshType <*> sequence ps
         PList  _ ps             -> listPat   <$> freshType <*> sequence ps
         PRow   _ name p r       -> rowPat    <$> freshType <*> pure name <*> p <*> r
         PAnn   t p              -> annPat  t <$> p
 
-    tagBinding = \case 
+    tagBinding = \case
         BPat _ p                -> BPat <$> freshType <*> tagPattern p
         BFun _ name ps          -> BFun <$> freshType <*> pure name <*> traverse tagPattern ps
 
     tagClause = \case
-        Clause _ ps guards      -> Clause <$> freshType 
-                                          <*> traverse tagPattern ps 
-                                          <*> traverse sequence guards 
-
-    tagClause1 = \case 
-        Clause _ p guards       -> Clause <$> freshType 
-                                          <*> tagPattern p 
+        Clause _ ps guards      -> Clause <$> freshType
+                                          <*> traverse tagPattern ps
                                           <*> traverse sequence guards
 
-    tagOp1 = \case 
+    tagClause1 = \case
+        Clause _ p guards       -> Clause <$> freshType
+                                          <*> tagPattern p
+                                          <*> traverse sequence guards
+
+    tagOp1 = \case
         ONeg   _    -> ONeg   <$> freshType
         ONot   _    -> ONot   <$> freshType
 
-    tagOp2 = \case 
+    tagOp2 = \case
         OEq    _    -> OEq    <$> freshType
         ONeq   _    -> ONeq   <$> freshType
         OAnd   _    -> OAnd   <$> freshType
@@ -127,8 +127,8 @@ inferExprType
 inferExprType = cata $ \case
 
     EVar t var -> do
---        ty <- lookupScheme var >>= either 
---            (\e -> pure (TypeInfo [e] t [])) 
+--        ty <- lookupScheme var >>= either
+--            (\e -> pure (TypeInfo [e] t []))
 --            undefined -- instantiate
         --errs <- tryUnify t ty
         --pure (varExpr (TypeInfo errs t []) var)
@@ -137,7 +137,7 @@ inferExprType = cata $ \case
     ECon t con es ->
         undefined
 
-    ELit t prim ->          
+    ELit t prim ->
         undefined
 
     EApp t es ->
@@ -158,13 +158,13 @@ inferExprType = cata $ \case
     ELet t bind e1 e2 ->
         undefined
 
-    EFun t cs -> 
+    EFun t cs ->
         undefined
 
-    EOp1 t op a -> 
+    EOp1 t op a ->
         undefined
 
-    EOp2 t op a b -> 
+    EOp2 t op a b ->
         undefined
 
     ETuple t es ->
@@ -189,14 +189,14 @@ inferPatternType
   => ProgPattern Type Type
   -> m (ProgPattern (TypeInfo [Error]) Void)
 inferPatternType = cata $ \case
-    
-    PVar _ var -> 
+
+    PVar _ var ->
         undefined
 
     PCon _ name ps ->
         undefined
 
-    PAs _ name p ->   
+    PAs _ name p ->
         undefined
 
     PLit _ prim ->
@@ -216,15 +216,15 @@ inferPatternType = cata $ \case
 
     PRow _ name p r ->
         undefined
-    
+
     PAnn t p ->
         undefined
 
-lookupScheme 
+lookupScheme
   :: ( MonadSupply Int f m
      , MonadReader (ClassEnv, TypeEnv, KindEnv, ConstructorEnv) m
      , MonadState (Substitution Type, Substitution Kind, Context) m )
-  => Name 
+  => Name
   -> m (Either Error Scheme)
 lookupScheme name = do
     env <- askTypeEnv
@@ -238,8 +238,8 @@ lookupScheme name = do
 applySubsTo
   :: ( MonadState (Substitution Type, Substitution Kind, c) m
      , Substitutable t Type
-     , Substitutable t Kind ) 
-  => t 
+     , Substitutable t Kind )
+  => t
   -> m t
 applySubsTo t = do
     (typeSub, kindSub, _) <- get
@@ -287,9 +287,9 @@ tryUnify t1 t2 = go $ do
     go f = either pure (const []) <$> runExceptT f
 
 propagateClasses
-  :: ( MonadSupply Int f m 
-     , MonadReader (ClassEnv, TypeEnv, KindEnv, ConstructorEnv) m 
-     , MonadError Error m 
+  :: ( MonadSupply Int f m
+     , MonadReader (ClassEnv, TypeEnv, KindEnv, ConstructorEnv) m
+     , MonadError Error m
      , MonadState (Substitution Type, Substitution Kind, Context) m )
   => Type
   -> Set Name
@@ -297,14 +297,14 @@ propagateClasses
 propagateClasses (Fix (TVar _ var)) ps
     | Set.null ps = pure ()
     | otherwise   = modify (third3 (Env.insertWith Set.union var ps))
-propagateClasses ty ps = 
+propagateClasses ty ps =
     forM_ ps $ \name -> do
         ClassInfo{ classPredicates = preds } <- lookupClassInstance name ty
         sequence_ [propagateClasses t (Set.singleton a) | InClass a t <- preds]
 
 lookupClassInstance
   :: ( MonadSupply Int f m
-     , MonadReader (ClassEnv, TypeEnv, KindEnv, ConstructorEnv) m 
+     , MonadReader (ClassEnv, TypeEnv, KindEnv, ConstructorEnv) m
      , MonadError Error m )
   => Name
   -> Type
@@ -324,7 +324,7 @@ lookupClassInstance name ty = do
 getClassEnv :: (ClassEnv, TypeEnv, KindEnv, ConstructorEnv) -> ClassEnv
 getClassEnv (e, _, _, _) = e
 
-askClassEnv 
+askClassEnv
   :: MonadReader (ClassEnv, TypeEnv, KindEnv, ConstructorEnv) m
   => m ClassEnv
 askClassEnv = asks getClassEnv
@@ -332,7 +332,7 @@ askClassEnv = asks getClassEnv
 getTypeEnv :: (ClassEnv, TypeEnv, KindEnv, ConstructorEnv) -> TypeEnv
 getTypeEnv (_, e, _, _) = e
 
-askTypeEnv 
+askTypeEnv
   :: MonadReader (ClassEnv, TypeEnv, KindEnv, ConstructorEnv) m
   => m TypeEnv
 askTypeEnv = asks getTypeEnv
@@ -340,7 +340,7 @@ askTypeEnv = asks getTypeEnv
 getKindEnv :: (ClassEnv, TypeEnv, KindEnv, ConstructorEnv) -> KindEnv
 getKindEnv (_, _, e, _) = e
 
-askKindEnv 
+askKindEnv
   :: MonadReader (ClassEnv, TypeEnv, KindEnv, ConstructorEnv) m
   => m KindEnv
 askKindEnv = asks getKindEnv
@@ -348,7 +348,7 @@ askKindEnv = asks getKindEnv
 getConstructorEnv :: (ClassEnv, TypeEnv, KindEnv, ConstructorEnv) -> ConstructorEnv
 getConstructorEnv (_, _, _, e) = e
 
-askConstructorEnv 
+askConstructorEnv
   :: MonadReader (ClassEnv, TypeEnv, KindEnv, ConstructorEnv) m
   => m ConstructorEnv
 askConstructorEnv = asks getConstructorEnv
@@ -357,9 +357,9 @@ askConstructorEnv = asks getConstructorEnv
 
 
 test1 =
-    runSupplyNats (tagTree tree) 
+    runSupplyNats (tagTree tree)
   where
-    tree = 
+    tree =
         appExpr ()
             [ op2Expr () (OAdd ()) (holeExpr ()) (holeExpr ())
             , annExpr tInt (litExpr () (TInteger 5))
@@ -370,7 +370,7 @@ test1 =
 
 test2 = runSupplyNats subs
   where
-    subs = unifyTypes2 
+    subs = unifyTypes2
         (tRow "name" tString (tRow "id" tInt (tRow "shoeSize" tFloat tRowNil)))
         (tRow "shoeSize" tFloat (tVar kRow "r"))
 
@@ -394,123 +394,123 @@ unifyTypes2 a b = do
 
 
 -- tagTree :: (MonadSupply Int f m) => ProgExpr t u -> m (ProgExpr Name u)
--- tagTree = cata alg 
+-- tagTree = cata alg
 --   where
 --     alg expr = do
 --         t <- freshType
 --         case expr of
--- 
---             EVar _ var -> 
+--
+--             EVar _ var ->
 --                 pure (varExpr t var)
--- 
+--
 --             ECon _ con es ->
 --                 conExpr t con <$> sequence es
--- 
---             ELit _ prim ->          
+--
+--             ELit _ prim ->
 --                 pure (litExpr t prim)
--- 
+--
 --             EApp _ es ->
 --                 appExpr t <$> sequence es
--- 
+--
 --             EFix _ name e1 e2 ->
 --                 fixExpr t name <$> e1 <*> e2
--- 
+--
 --             ELam _ ps e ->
 --                 lamExpr t <$> traverse tagPattern ps <*> e
--- 
+--
 --             EIf _ e1 e2 e3 ->
 --                 ifExpr t <$> e1 <*> e2 <*> e3
--- 
+--
 --             EPat _ e cs ->
 --                 patExpr t <$> e <*> traverse tagClause1 cs
--- 
+--
 --             ELet _ bind e1 e2 ->
 --                 letExpr t <$> tagBinding bind <*> e1 <*> e2
--- 
---             EFun _ cs -> 
+--
+--             EFun _ cs ->
 --                 funExpr t <$> traverse tagClause cs
--- 
---             EOp1 _ op a -> 
+--
+--             EOp1 _ op a ->
 --                 op1Expr t <$> tagOp1 op <*> a
--- 
---             EOp2  _ op a b -> 
+--
+--             EOp2  _ op a b ->
 --                 op2Expr t <$> tagOp2 op <*> a <*> b
--- 
+--
 --             ETuple _ es ->
 --                 tupleExpr t <$> sequence es
--- 
+--
 --             EList _ es ->
 --                 listExpr t <$> sequence es
--- 
+--
 --             ERow _ name e r ->
 --                 rowExpr t name <$> e <*> r
--- 
+--
 --             EHole _ ->
 --                 pure (holeExpr t)
--- 
+--
 --             EAnn t a ->
 --                 annExpr t <$> a
--- 
+--
 --     tagPattern :: (MonadSupply Int f m) => ProgPattern t u -> m (ProgPattern Name u)
 --     tagPattern = cata alg
 --       where
 --         alg pat = do
 --             t <- freshType
 --             case pat of
--- 
---                 PVar _ var -> 
+--
+--                 PVar _ var ->
 --                     pure (varPat t var)
--- 
+--
 --                 PCon _ name ps ->
 --                     conPat t name <$> sequence ps
--- 
---                 PAs _ name p ->   
+--
+--                 PAs _ name p ->
 --                     asPat t name <$> p
--- 
+--
 --                 PLit _ prim ->
 --                     pure (litPat t prim)
--- 
+--
 --                 PAny _ ->
 --                     pure (anyPat t)
--- 
+--
 --                 POr _ p q ->
 --                     orPat t <$> p <*> q
--- 
+--
 --                 PTuple _ ps ->
 --                     tuplePat t <$> sequence ps
--- 
+--
 --                 PList _ ps ->
 --                     listPat t <$> sequence ps
--- 
+--
 --                 PRow _ name p r ->
 --                     rowPat t name <$> p <*> r
---                 
+--
 --                 PAnn t p ->
 --                     annPat t <$> p
--- 
+--
 --     tagBinding bind = do
 --         t <- freshType
 --         case bind of
 --             BPat _ p       -> BPat t <$> tagPattern p
 --             BFun _ name ps -> BFun t name <$> traverse tagPattern ps
--- 
---     tagClause (Clause _ ps guards) = 
---         Clause <$> freshType <*> traverse tagPattern ps <*> traverse sequence guards 
--- 
---     tagClause1 (Clause _ p guards) = 
+--
+--     tagClause (Clause _ ps guards) =
+--         Clause <$> freshType <*> traverse tagPattern ps <*> traverse sequence guards
+--
+--     tagClause1 (Clause _ p guards) =
 --         Clause <$> freshType <*> tagPattern p <*> traverse sequence guards
--- 
+--
 --     tagOp1 op = do
 --         t <- freshType
 --         pure $ case op of
--- 
+--
 --             ONeg   _ -> ONeg t
 --             ONot   _ -> ONot t
--- 
+--
 --     tagOp2 op = do
 --         t <- freshType
 --         pure $ case op of
--- 
+--
 --             OEq    _ -> OEq    t
 --             ONeq   _ -> ONeq   t
 --             OAnd   _ -> OAnd   t
