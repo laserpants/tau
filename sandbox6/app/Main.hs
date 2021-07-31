@@ -131,12 +131,15 @@ inferExprType
 inferExprType = cata $ \case
 
     EVar t var -> do
---        ty <- lookupScheme var >>= either
---            (\e -> pure (TypeInfo [e] t []))
---            undefined -- instantiate
-        --errs <- tryUnify t ty
-        --pure (varExpr (TypeInfo errs t []) var)
-        undefined
+        res <- lookupScheme var
+        case res of
+            Nothing ->
+                pure (varExpr (TypeInfo [NotInScope var] t []) var)
+
+            Just scheme -> do
+                (ty, ps) <- instantiate scheme
+                tryUnify t ty
+                pure (varExpr (TypeInfo [] t ps) var)
 
     ECon t con es ->
         undefined
@@ -234,8 +237,8 @@ lookupScheme
      , MonadReader (ClassEnv, TypeEnv, KindEnv, ConstructorEnv) m
      , MonadState (Substitution Type, Substitution Kind, Context) m )
   => Name
-  -> MaybeT m Scheme
-lookupScheme name = do
+  -> m (Maybe Scheme)
+lookupScheme name = runMaybeT $ do
     env <- askTypeEnv
     scheme <- hoistMaybe (Env.lookup name env)
     applySubsTo scheme
