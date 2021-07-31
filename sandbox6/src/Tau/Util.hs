@@ -46,3 +46,6 @@ demands n = replicateM n demand
 liftMaybe :: (MonadError e m) => e -> Maybe a -> m a
 liftMaybe err Nothing = throwError err
 liftMaybe _ (Just ok) = pure ok
+
+runSupplyNats :: Supply Int a -> a
+runSupplyNats a = runSupply a succ 0

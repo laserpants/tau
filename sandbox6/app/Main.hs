@@ -2,7 +2,6 @@
 {-# LANGUAGE LambdaCase            #-}
 {-# LANGUAGE OverloadedStrings     #-}
 {-# LANGUAGE RecordWildCards       #-}
-{-# LANGUAGE StandaloneDeriving    #-}
 {-# LANGUAGE StrictData            #-}
 module Main where
 
@@ -11,7 +10,6 @@ import Control.Monad.Except
 import Control.Monad.Reader
 import Control.Monad.State
 import Control.Monad.Supply
-import Data.Either.Extra 
 import Data.Either.Extra (eitherToMaybe)
 import Data.Fix (Fix(..))
 import Data.Function ((&))
@@ -40,7 +38,7 @@ freshType = do
     pure (tVar (kVar ("$k" <> st)) ("$a" <> st))
 
 runTagTree :: ProgExpr t u -> ProgExpr Type u
-runTagTree expr = runSupply (tagTree expr) succ 0
+runTagTree expr = runSupplyNats (tagTree expr) 
 
 tagTree :: (MonadSupply Int f m) => ProgExpr t u -> m (ProgExpr Type u)
 tagTree = cata alg 
@@ -229,7 +227,7 @@ lookupScheme
   => Name 
   -> m (Either Error Scheme)
 lookupScheme name = do
-    env <- asks getTypeEnv
+    env <- askTypeEnv
     case Env.lookup name env of
         Nothing ->
             pure (Left (NotInScope name))
@@ -359,7 +357,7 @@ askConstructorEnv = asks getConstructorEnv
 
 
 test1 =
-    runSupply (tagTree tree) (+1) 0
+    runSupplyNats (tagTree tree) 
   where
     tree = 
         appExpr ()
@@ -370,7 +368,7 @@ test1 =
 
 --
 
-test2 = runSupply subs (+1) 0
+test2 = runSupplyNats subs
   where
     subs = unifyTypes2 
         (tRow "name" tString (tRow "id" tInt (tRow "shoeSize" tFloat tRowNil)))
