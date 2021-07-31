@@ -176,7 +176,8 @@ inferExprType = cata $ \case
                 errs2 <- tryUnify (typeOf f) (foldr tArr ty (typeOf <$> args))
                 pure (appExpr (TypeInfo (errs1 <> errs2) t []) es)
 
-    EFix t name e1 e2 ->
+    EFix t name e1 e2 -> do
+        ty <- freshType_
         undefined
 
     ELam t ps e ->
@@ -254,8 +255,16 @@ inferPatternType = cata $ \case
         undefined
 
 inferPrimType :: Prim -> Scheme
-inferPrimType =
-    undefined
+inferPrimType = \case
+    TUnit      -> Forall [] [] tUnit
+    TBool{}    -> Forall [] [] tBool
+    TChar{}    -> Forall [] [] tChar
+    TString{}  -> Forall [] [] tString
+    TInt{}     -> Forall [kTyp] [InClass "Num" 0] (tGen 0)
+    TInteger{} -> Forall [kTyp] [InClass "Num" 0] (tGen 0)
+    TFloat{}   -> Forall [kTyp] [InClass "Fractional" 0] (tGen 0)
+    TDouble{}  -> Forall [kTyp] [InClass "Fractional" 0] (tGen 0)
+    TSymbol{}  -> Forall [kTyp] [] (tGen 0)
 
 #if !MIN_VERSION_transformers(0,6,0)
 hoistMaybe :: (Applicative m) => Maybe b -> MaybeT m b

@@ -24,6 +24,9 @@ main =
         describe "Unification"  testUnification
         describe "Substitution" testSubstitution
         describe "Type vars"    testTypeVars
+        describe "Kind of"      testKindOf
+        describe "toPolytype"   testToPolytype
+        describe "tupleCon"     testTupleCon
 
 _a :: Type
 _a = tVar kTyp "a"
@@ -372,6 +375,55 @@ testTypeVars = do
     succeedMatchTypeVars
         (tApp kTyp (tVar kFun "m") _a)
         [("m", kFun), ("a", kTyp)]
+
+testKindOf :: SpecWith ()
+testKindOf = do
+
+    describe "The kind of Bool" $ do
+        it "✔ is *"
+            (kindOf tBool == kTyp)
+
+    describe "The kind of (Int -> Int)" $ do
+        it "✔ is *"
+            (kindOf (tInt `tArr` tInt) == kTyp)
+
+    describe "The kind of (List a)" $ do
+        it "✔ is *"
+            (kindOf (tList _a) == kTyp)
+
+    describe "The kind of (List Int)" $ do
+        it "✔ is *"
+            (kindOf (tList tInt) == kTyp)
+
+    describe "The kind of List" $ do
+        it "✔ is * -> *"
+            (kindOf tListCon == kFun)
+
+testToPolytype :: SpecWith ()
+testToPolytype = do
+
+    describe "Upgrading a type variable" $ do
+        it "✔ returns the same type"
+            (toPolytype _a == (tVar kTyp "a" :: Polytype))
+
+    describe "Upgrading a type constructor" $ do
+        it "✔ returns the same type"
+            (toPolytype tInt == (tInt :: Polytype))
+
+testTupleCon :: SpecWith ()
+testTupleCon = do
+
+    describe "The pair constructor" $ do
+        it "✔ is (,)"
+            (tupleCon 2 == "(,)")
+
+    describe "The 3-tuple constructor" $ do
+        it "✔ is (,,)"
+            (tupleCon 3 == "(,,)")
+
+    describe "The 4-tuple constructor" $ do
+        it "✔ is (,,,)"
+            (tupleCon 4 == "(,,,)")
 
 -------------------------------------------------------------------------------
 
