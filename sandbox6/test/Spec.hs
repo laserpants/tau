@@ -19,7 +19,7 @@ it :: (Example a) => Text -> a -> SpecWith (Arg a)
 it = Hspec.it . unpack
 
 main :: IO ()
-main = 
+main =
     hspec $ do
         describe "Unification" testUnification
 
@@ -246,4 +246,10 @@ testUnification = do
             (tRow "name" tString (tRow "id" tInt tRowNil))
 
 -------------------------------------------------------------------------------
+
+-- Substitution tests
+
+testSubstitution :: SpecWith ()
+testSubstitution =
+    undefined
 

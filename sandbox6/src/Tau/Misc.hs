@@ -138,14 +138,14 @@ data Binding t p
     = BPat t p                           -- ^ Pattern binding
     | BFun t Name [p]                    -- ^ Function binding
 
--- | Pattern guard
-data Guard a = Guard [a] a
+-- | Pattern clause choice
+data Choice a = Choice [a] a
 
 -- | Pattern match clause
 data Clause t p a = Clause
     { clauseTag      :: t
     , clausePatterns :: p
-    , clauseGuards   :: [Guard a] }
+    , clauseChoices  :: [Choice a] }
 
 -- | Unary operators
 data Op1 t
@@ -268,19 +268,19 @@ deriveShow1 ''Binding
 deriveEq1   ''Binding
 deriveOrd1  ''Binding
 
--- Type class instances for Guard
+-- Type class instances for Choice
 
-deriving instance (Show a) => Show (Guard a)
-deriving instance (Eq   a) => Eq   (Guard a)
-deriving instance (Ord  a) => Ord  (Guard a)
+deriving instance (Show a) => Show (Choice a)
+deriving instance (Eq   a) => Eq   (Choice a)
+deriving instance (Ord  a) => Ord  (Choice a)
 
-deriveShow1 ''Guard
-deriveEq1   ''Guard
-deriveOrd1  ''Guard
+deriveShow1 ''Choice
+deriveEq1   ''Choice
+deriveOrd1  ''Choice
 
-deriving instance Functor     Guard
-deriving instance Foldable    Guard
-deriving instance Traversable Guard
+deriving instance Functor     Choice
+deriving instance Foldable    Choice
+deriving instance Traversable Choice
 
 -- Type class instances for Clause
 
@@ -939,6 +939,8 @@ bindingTag = \case
 astTag :: Ast t -> t
 astTag = exprTag . astExpr 
 
+-- clauseTag (already defined)
+
 -------------------------------------------------------------------------------
 
 newtype Substitution a = Sub { getSub :: Map Name a }
@@ -993,11 +995,11 @@ instance (Substitutable t a, Substitutable p a) => Substitutable (Binding t p) a
         BPat t p             -> BPat (apply sub t) (apply sub p)
         BFun t name ps       -> BFun (apply sub t) name (apply sub ps)
 
-instance (Substitutable g a) => Substitutable (Guard g) a where
+instance (Substitutable g a) => Substitutable (Choice g) a where
     apply sub = \case
-        Guard es e           -> Guard (apply sub es) (apply sub e)
+        Choice es e           -> Choice (apply sub es) (apply sub e)
 
-instance (Substitutable t a, Substitutable p a, Substitutable (Guard g) a) => Substitutable (Clause t p g) a where
+instance (Substitutable t a, Substitutable p a, Substitutable (Choice g) a) => Substitutable (Clause t p g) a where
     apply sub = \case
         Clause  t p gs       -> Clause (apply sub t) (apply sub p) (apply sub gs)
 
