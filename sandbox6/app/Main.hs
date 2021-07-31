@@ -1,3 +1,4 @@
+{-# LANGUAGE CPP                   #-}
 {-# LANGUAGE FlexibleContexts      #-}
 {-# LANGUAGE LambdaCase            #-}
 {-# LANGUAGE OverloadedStrings     #-}
@@ -9,6 +10,11 @@ import Control.Arrow
 import Control.Monad.Except
 import Control.Monad.Reader
 import Control.Monad.State
+#if MIN_VERSION_transformers(0,6,0)
+import Control.Monad.Trans.Maybe (MaybeT, hoistMaybe)
+#else
+import Control.Monad.Trans.Maybe (MaybeT(..))
+#endif
 import Control.Monad.Supply
 import Data.Either.Extra (eitherToMaybe)
 import Data.Fix (Fix(..))
@@ -218,20 +224,43 @@ inferPatternType = cata $ \case
     PAnn t p ->
         undefined
 
+#if !MIN_VERSION_transformers(0,6,0)
+hoistMaybe :: (Applicative m) => Maybe b -> MaybeT m b
+hoistMaybe = MaybeT . pure
+#endif
+
 lookupScheme
   :: ( MonadSupply Int f m
      , MonadReader (ClassEnv, TypeEnv, KindEnv, ConstructorEnv) m
      , MonadState (Substitution Type, Substitution Kind, Context) m )
   => Name
-  -> m (Either Error Scheme)
+  -> MaybeT m Scheme
 lookupScheme name = do
     env <- askTypeEnv
-    case Env.lookup name env of
-        Nothing ->
-            pure (Left (NotInScope name))
+    scheme <- hoistMaybe (Env.lookup name env)
+    applySubsTo scheme
 
-        Just scheme ->
-            Right <$> applySubsTo scheme
+--    case Env.lookup name env of
+--        Nothing ->
+--            pure (Left (NotInScope name))
+--
+--        Just scheme ->
+--            Right <$> applySubsTo scheme
+
+-- lookupScheme
+--   :: ( MonadSupply Int f m
+--      , MonadReader (ClassEnv, TypeEnv, KindEnv, ConstructorEnv) m
+--      , MonadState (Substitution Type, Substitution Kind, Context) m )
+--   => Name
+--   -> m (Either Error Scheme)
+-- lookupScheme name = do
+--     env <- askTypeEnv
+--     case Env.lookup name env of
+--         Nothing ->
+--             pure (Left (NotInScope name))
+--
+--         Just scheme ->
+--             Right <$> applySubsTo scheme
 
 applySubsTo
   :: ( MonadState (Substitution Type, Substitution Kind, c) m

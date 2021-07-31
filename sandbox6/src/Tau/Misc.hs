@@ -431,8 +431,6 @@ instance (Typed t) => Typed (Op2 t) where
 instance (Typed t) => Typed (Ast t) where
     typeOf = typeOf . astTag
 
--- More type class instances
-
 deriving instance (Show e, Show t) =>
     Show (TypeInfoT e t)
 
