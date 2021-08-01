@@ -479,89 +479,115 @@ instance (Substitutable Type t) => Substitutable (ClassInfo Type (Ast (TypeInfo 
 
 kVar :: Name -> Kind
 kVar = embed1 KVar
+{-# INLINE kVar #-}
 
 kCon :: Name -> Kind
 kCon = embed1 KCon
+{-# INLINE kCon #-}
 
 kArr :: Kind -> Kind -> Kind
 kArr = embed2 KArr
+{-# INLINE kArr #-}
 
 infixr 1 `kArr`
 
 kTyp :: Kind
 kTyp = kCon "*"
+{-# INLINE kTyp #-}
 
 kClass :: Kind
 kClass = kCon "Constraint"
+{-# INLINE kClass #-}
 
 kRow :: Kind
 kRow = kCon "Row"
+{-# INLINE kRow #-}
 
 kFun :: Kind
 kFun = kTyp `kArr` kTyp
+{-# INLINE kFun #-}
 
 kFun2 :: Kind
 kFun2 = kTyp `kArr` kTyp `kArr` kTyp
+{-# INLINE kFun2 #-}
 
 -- Type
 
 tVar :: Kind -> Name -> TypeT a
 tVar = embed2 TVar
+{-# INLINE tVar #-}
 
 tCon :: Kind -> Name -> TypeT a
 tCon = embed2 TCon
+{-# INLINE tCon #-}
 
 tRow :: Name -> TypeT a -> TypeT a -> TypeT a
 tRow = embed3 TRow
+{-# INLINE tRow #-}
 
 tApp :: Kind -> TypeT a -> TypeT a -> TypeT a
 tApp = embed3 TApp
+{-# INLINE tApp #-}
 
 tArr :: TypeT a -> TypeT a -> TypeT a
 tArr = embed2 TArr
+{-# INLINE tArr #-}
 
 infixr 1 `tArr`
 
 tGen :: a -> TypeT a
 tGen = embed1 TGen
+{-# INLINE tGen #-}
 
 typ :: Name -> TypeT a
 typ = tCon kTyp
+{-# INLINE typ #-}
 
 -- Built-in types
 
 tVoid :: TypeT a
 tVoid = typ "Void"
+{-# INLINE tVoid #-}
 
 tUnit :: TypeT a
 tUnit = typ "Unit"
+{-# INLINE tUnit #-}
 
 tBool :: TypeT a
 tBool = typ "Bool"
+{-# INLINE tBool #-}
 
 tNat :: TypeT a
 tNat = typ "Nat"
+{-# INLINE tNat #-}
 
 tInt :: TypeT a
 tInt = typ "Int"
+{-# INLINE tInt #-}
 
 tInteger :: TypeT a
 tInteger = typ "Integer"
+{-# INLINE tInteger #-}
 
 tFloat :: TypeT a
 tFloat = typ "Float"
+{-# INLINE tFloat #-}
 
 tDouble :: TypeT a
 tDouble = typ "Double"
+{-# INLINE tDouble #-}
 
 tChar :: TypeT a
 tChar = typ "Char"
+{-# INLINE tChar #-}
 
 tString :: TypeT a
 tString = typ "String"
+{-# INLINE tString #-}
 
 tSymbol :: TypeT a
 tSymbol = typ "Symbol"
+{-# INLINE tSymbol #-}
 
 -- Lists
 
@@ -589,6 +615,7 @@ tTriple t1 t2 t3 = tTuple [t1, t2, t3]
 
 tRowNil :: TypeT a
 tRowNil = tCon kRow "{}"
+{-# INLINE tRowNil #-}
 
 -- Records
 
@@ -605,6 +632,7 @@ varPat
   -> Name
   -> Pattern t1 t2 t3 t4 t5 t6 t7 t8 t9 t10
 varPat = embed2 PVar
+{-# INLINE varPat #-}
 
 conPat
   :: t2
@@ -612,6 +640,7 @@ conPat
   -> [Pattern t1 t2 t3 t4 t5 t6 t7 t8 t9 t10]
   -> Pattern t1 t2 t3 t4 t5 t6 t7 t8 t9 t10
 conPat = embed3 PCon
+{-# INLINE conPat #-}
 
 asPat
   :: t3
@@ -619,17 +648,20 @@ asPat
   -> Pattern t1 t2 t3 t4 t5 t6 t7 t8 t9 t10
   -> Pattern t1 t2 t3 t4 t5 t6 t7 t8 t9 t10
 asPat = embed3 PAs
+{-# INLINE asPat #-}
 
 litPat
   :: t4
   -> Prim
   -> Pattern t1 t2 t3 t4 t5 t6 t7 t8 t9 t10
 litPat = embed2 PLit
+{-# INLINE litPat #-}
 
 anyPat
   :: t5
   -> Pattern t1 t2 t3 t4 t5 t6 t7 t8 t9 t10
 anyPat = embed1 PAny
+{-# INLINE anyPat #-}
 
 orPat
   :: t6
@@ -637,18 +669,21 @@ orPat
   -> Pattern t1 t2 t3 t4 t5 t6 t7 t8 t9 t10
   -> Pattern t1 t2 t3 t4 t5 t6 t7 t8 t9 t10
 orPat = embed3 POr
+{-# INLINE orPat #-}
 
 tuplePat
   :: t7
   -> [Pattern t1 t2 t3 t4 t5 t6 t7 t8 t9 t10]
   -> Pattern t1 t2 t3 t4 t5 t6 t7 t8 t9 t10
 tuplePat = embed2 PTuple
+{-# INLINE tuplePat #-}
 
 listPat
   :: t8
   -> [Pattern t1 t2 t3 t4 t5 t6 t7 t8 t9 t10]
   -> Pattern t1 t2 t3 t4 t5 t6 t7 t8 t9 t10
 listPat = embed2 PList
+{-# INLINE listPat #-}
 
 rowPat
   :: t9
@@ -657,12 +692,14 @@ rowPat
   -> Pattern t1 t2 t3 t4 t5 t6 t7 t8 t9 t10
   -> Pattern t1 t2 t3 t4 t5 t6 t7 t8 t9 t10
 rowPat = embed4 PRow
+{-# INLINE rowPat #-}
 
 annPat
   :: t10
   -> Pattern t1 t2 t3 t4 t5 t6 t7 t8 t9 t10
   -> Pattern t1 t2 t3 t4 t5 t6 t7 t8 t9 t10
 annPat = embed2 PAnn
+{-# INLINE annPat #-}
 
 -- Expr
 
@@ -672,6 +709,7 @@ varExpr
   -> Name
   -> Expr t1 t2 t3 t4 t5 t6 t7 t8 t9 t10 t11 t12 t13 t14 t15 t16 t17 e1 e2 e3 e4
 varExpr = embed2 EVar
+{-# INLINE varExpr #-}
 
 conExpr
   :: (Functor e2, Functor e4)
@@ -680,6 +718,7 @@ conExpr
   -> [Expr t1 t2 t3 t4 t5 t6 t7 t8 t9 t10 t11 t12 t13 t14 t15 t16 t17 e1 e2 e3 e4]
   -> Expr t1 t2 t3 t4 t5 t6 t7 t8 t9 t10 t11 t12 t13 t14 t15 t16 t17 e1 e2 e3 e4
 conExpr = embed3 ECon
+{-# INLINE conExpr #-}
 
 litExpr
   :: (Functor e2, Functor e4)
@@ -687,6 +726,7 @@ litExpr
   -> Prim
   -> Expr t1 t2 t3 t4 t5 t6 t7 t8 t9 t10 t11 t12 t13 t14 t15 t16 t17 e1 e2 e3 e4
 litExpr = embed2 ELit
+{-# INLINE litExpr #-}
 
 appExpr
   :: (Functor e2, Functor e4)
@@ -694,6 +734,7 @@ appExpr
   -> [Expr t1 t2 t3 t4 t5 t6 t7 t8 t9 t10 t11 t12 t13 t14 t15 t16 t17 e1 e2 e3 e4]
   -> Expr t1 t2 t3 t4 t5 t6 t7 t8 t9 t10 t11 t12 t13 t14 t15 t16 t17 e1 e2 e3 e4
 appExpr = embed2 EApp
+{-# INLINE appExpr #-}
 
 fixExpr
   :: (Functor e2, Functor e4)
@@ -703,6 +744,7 @@ fixExpr
   -> Expr t1 t2 t3 t4 t5 t6 t7 t8 t9 t10 t11 t12 t13 t14 t15 t16 t17 e1 e2 e3 e4
   -> Expr t1 t2 t3 t4 t5 t6 t7 t8 t9 t10 t11 t12 t13 t14 t15 t16 t17 e1 e2 e3 e4
 fixExpr = embed4 EFix
+{-# INLINE fixExpr #-}
 
 lamExpr
   :: (Functor e2, Functor e4)
@@ -711,6 +753,7 @@ lamExpr
   -> Expr t1 t2 t3 t4 t5 t6 t7 t8 t9 t10 t11 t12 t13 t14 t15 t16 t17 e1 e2 e3 e4
   -> Expr t1 t2 t3 t4 t5 t6 t7 t8 t9 t10 t11 t12 t13 t14 t15 t16 t17 e1 e2 e3 e4
 lamExpr = embed3 ELam
+{-# INLINE lamExpr #-}
 
 ifExpr
   :: (Functor e2, Functor e4)
@@ -720,6 +763,7 @@ ifExpr
   -> Expr t1 t2 t3 t4 t5 t6 t7 t8 t9 t10 t11 t12 t13 t14 t15 t16 t17 e1 e2 e3 e4
   -> Expr t1 t2 t3 t4 t5 t6 t7 t8 t9 t10 t11 t12 t13 t14 t15 t16 t17 e1 e2 e3 e4
 ifExpr = embed4 EIf
+{-# INLINE ifExpr #-}
 
 patExpr
   :: (Functor e2, Functor e4)
@@ -728,6 +772,7 @@ patExpr
   -> [e2 (Expr t1 t2 t3 t4 t5 t6 t7 t8 t9 t10 t11 t12 t13 t14 t15 t16 t17 e1 e2 e3 e4)]
   -> Expr t1 t2 t3 t4 t5 t6 t7 t8 t9 t10 t11 t12 t13 t14 t15 t16 t17 e1 e2 e3 e4
 patExpr = embed3 EPat
+{-# INLINE patExpr #-}
 
 letExpr
   :: (Functor e2, Functor e4)
@@ -737,6 +782,7 @@ letExpr
   -> Expr t1 t2 t3 t4 t5 t6 t7 t8 t9 t10 t11 t12 t13 t14 t15 t16 t17 e1 e2 e3 e4
   -> Expr t1 t2 t3 t4 t5 t6 t7 t8 t9 t10 t11 t12 t13 t14 t15 t16 t17 e1 e2 e3 e4
 letExpr = embed4 ELet
+{-# INLINE letExpr #-}
 
 funExpr
   :: (Functor e2, Functor e4)
@@ -744,6 +790,7 @@ funExpr
   -> [e4 (Expr t1 t2 t3 t4 t5 t6 t7 t8 t9 t10 t11 t12 t13 t14 t15 t16 t17 e1 e2 e3 e4)]
   -> Expr t1 t2 t3 t4 t5 t6 t7 t8 t9 t10 t11 t12 t13 t14 t15 t16 t17 e1 e2 e3 e4
 funExpr = embed2 EFun
+{-# INLINE funExpr #-}
 
 op1Expr
   :: (Functor e2, Functor e4)
@@ -752,6 +799,7 @@ op1Expr
   -> Expr t1 t2 t3 t4 t5 t6 t7 t8 t9 t10 t11 t12 t13 t14 t15 t16 t17 e1 e2 e3 e4
   -> Expr t1 t2 t3 t4 t5 t6 t7 t8 t9 t10 t11 t12 t13 t14 t15 t16 t17 e1 e2 e3 e4
 op1Expr = embed3 EOp1
+{-# INLINE op1Expr #-}
 
 op2Expr
   :: (Functor e2, Functor e4)
@@ -761,6 +809,7 @@ op2Expr
   -> Expr t1 t2 t3 t4 t5 t6 t7 t8 t9 t10 t11 t12 t13 t14 t15 t16 t17 e1 e2 e3 e4
   -> Expr t1 t2 t3 t4 t5 t6 t7 t8 t9 t10 t11 t12 t13 t14 t15 t16 t17 e1 e2 e3 e4
 op2Expr = embed4 EOp2
+{-# INLINE op2Expr #-}
 
 tupleExpr
   :: (Functor e2, Functor e4)
@@ -768,6 +817,7 @@ tupleExpr
   -> [Expr t1 t2 t3 t4 t5 t6 t7 t8 t9 t10 t11 t12 t13 t14 t15 t16 t17 e1 e2 e3 e4]
   -> Expr t1 t2 t3 t4 t5 t6 t7 t8 t9 t10 t11 t12 t13 t14 t15 t16 t17 e1 e2 e3 e4
 tupleExpr = embed2 ETuple
+{-# INLINE tupleExpr #-}
 
 listExpr
   :: (Functor e2, Functor e4)
@@ -775,6 +825,7 @@ listExpr
   -> [Expr t1 t2 t3 t4 t5 t6 t7 t8 t9 t10 t11 t12 t13 t14 t15 t16 t17 e1 e2 e3 e4]
   -> Expr t1 t2 t3 t4 t5 t6 t7 t8 t9 t10 t11 t12 t13 t14 t15 t16 t17 e1 e2 e3 e4
 listExpr = embed2 EList
+{-# INLINE listExpr #-}
 
 rowExpr
   :: (Functor e2, Functor e4)
@@ -784,12 +835,14 @@ rowExpr
   -> Expr t1 t2 t3 t4 t5 t6 t7 t8 t9 t10 t11 t12 t13 t14 t15 t16 t17 e1 e2 e3 e4
   -> Expr t1 t2 t3 t4 t5 t6 t7 t8 t9 t10 t11 t12 t13 t14 t15 t16 t17 e1 e2 e3 e4
 rowExpr = embed4 ERow
+{-# INLINE rowExpr #-}
 
 holeExpr
   :: (Functor e2, Functor e4)
   => t16
   -> Expr t1 t2 t3 t4 t5 t6 t7 t8 t9 t10 t11 t12 t13 t14 t15 t16 t17 e1 e2 e3 e4
 holeExpr = embed1 EHole
+{-# INLINE holeExpr #-}
 
 annExpr
   :: (Functor e2, Functor e4)
@@ -797,6 +850,7 @@ annExpr
   -> Expr t1 t2 t3 t4 t5 t6 t7 t8 t9 t10 t11 t12 t13 t14 t15 t16 t17 e1 e2 e3 e4
   -> Expr t1 t2 t3 t4 t5 t6 t7 t8 t9 t10 t11 t12 t13 t14 t15 t16 t17 e1 e2 e3 e4
 annExpr = embed2 EAnn
+{-# INLINE annExpr #-}
 
 -------------------------------------------------------------------------------
 -------------------------------------------------------------------------------
@@ -1115,6 +1169,7 @@ instance Substitutable Scheme Kind where
 
 nullSub :: Substitution a
 nullSub = Sub mempty
+{-# INLINE nullSub #-}
 
 compose :: (Substitutable a a) => Substitution a -> Substitution a -> Substitution a
 compose s1 s2 = Sub (fmap (apply s1) (getSub s2) `Map.union` getSub s1)
@@ -1127,6 +1182,7 @@ withDefault default_ name = Map.findWithDefault default_ name . getSub
 
 fromList :: [(Name, a)] -> Substitution a
 fromList = Sub . Map.fromList
+{-# INLINE fromList #-}
 
 toList :: Substitution a -> [(Name, a)]
 toList = Map.toList . getSub

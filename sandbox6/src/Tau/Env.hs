@@ -11,6 +11,7 @@ newtype Env a = Env { getEnv :: Map Name a }
 
 empty :: Env a
 empty = Env mempty
+{-# INLINE empty #-}
 
 insert :: Name -> a -> Env a -> Env a
 insert var val (Env envMap) = Env (Map.insert var val envMap)
@@ -23,12 +24,15 @@ insertWith f var val (Env envMap) = Env (Map.insertWith f var val envMap)
 
 fromList :: [(Name, a)] -> Env a
 fromList = Env . Map.fromList
+{-# INLINE fromList #-}
 
 fromListWith :: (a -> a -> a) -> [(Name, a)] -> Env a
 fromListWith f = Env . Map.fromListWith f
+{-# INLINE fromListWith #-}
 
 toList :: Env a -> [(Name, a)]
 toList = Map.toList . getEnv
+{-# INLINE toList #-}
 
 union :: Env a -> Env a -> Env a
 union (Env a) (Env b) = Env (Map.union a b)
