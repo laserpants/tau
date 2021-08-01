@@ -28,6 +28,7 @@ import Data.Set.Monad (Set)
 import Data.Tuple.Extra
 import Data.Void
 import Tau.Misc
+import Tau.Serializers
 import Tau.Util
 import TextShow
 import qualified Data.Map.Strict as Map

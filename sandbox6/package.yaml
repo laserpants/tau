@@ -20,11 +20,13 @@ description:         Please see the README on GitHub at <https://github.com/gith
 
 dependencies:
 - base >= 4.7 && < 5
+- aeson
 - containers
 - data-fix
 - deriving-compat
 - extra
 - megaparsec
+- monad-supply
 - mtl
 - parser-combinators
 - recursion-schemes
@@ -32,7 +34,8 @@ dependencies:
 - text
 - text-show
 - transformers
-- monad-supply
+- unordered-containers
+- vector
 
 library:
   source-dirs: src
