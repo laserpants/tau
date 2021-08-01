@@ -1232,8 +1232,7 @@ applyBoth (typeSub, kindSub) = apply kindSub . apply typeSub
 -------------------------------------------------------------------------------
 
 data Error
-    = GenericError
-    | UnificationError UnificationError
+    = UnificationError UnificationError
     | NotInScope Name
     | ConstructorNotInScope Name
     | NoSuchClass Name
