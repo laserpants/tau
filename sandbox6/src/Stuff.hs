@@ -194,7 +194,10 @@ inferExprType = cata $ \case
         pure (fixExpr (TypeInfo (errs1 <> errs2) t []) name e1 e2)
 
     ELam t pats expr -> do
-        undefined
+        (ps, vss) <- unzip <$> traverse inferPatternType pats
+        e1 <- local (inTypeEnv (Env.inserts (toScheme <$$> concat vss))) expr
+        errs <- tryUnify t (foldr tArr (typeOf e1) (typeOf <$> ps))
+        pure (lamExpr (TypeInfo errs t []) ps e1)
 
     EIf t expr1 expr2 expr3 -> do
         e1 <- expr1
@@ -210,20 +213,42 @@ inferExprType = cata $ \case
         cs <- traverse inferClauseType clauses
         undefined
 
-    ELet t (BPat t1 pat) expr1 expr2 ->
+    ELet t (BPat bt pat) expr1 expr2 -> do
+        (p, vs) <- inferPatternType pat
+        e1 <- expr1
+        errs1 <- tryUnify (typeOf p) (typeOf e1)
+        schemes <- traverse (secondM generalize) vs
+        e2 <- local (inTypeEnv (Env.inserts schemes)) expr2
+        errs2 <- tryUnify t (typeOf e2)
         undefined
 
-    ELet t (BFun t1 f pats) expr1 expr2 ->
+    ELet t (BFun bt f pats) expr1 expr2 -> do
+        (ps, vss) <- unzip <$> traverse inferPatternType pats
+        e1 <- local (inTypeEnv (Env.inserts (toScheme <$$> concat vss))) expr1
+        t1 <- freshType_
+        errs1 <- tryUnify t1 (foldr tArr (typeOf e1) (typeOf <$> ps))
+        scheme <- generalize t1
+        e2 <- local (inTypeEnv (Env.insert f scheme)) expr2
+        errs2 <- tryUnify t (typeOf e2)
         undefined
 
     EFun t clauses ->
         undefined
 
-    EOp1 t op1 expr ->
-        undefined
+    EOp1 t op1 expr -> do
+        a <- expr
+        (op, ps) <- inferOp1Type op1
+        errs <- tryUnify (typeOf op) (typeOf a `tArr` t)
+        pure (op1Expr (TypeInfo errs t ps) op a)
 
-    EOp2 t op2 expr1 expr2 ->
-        undefined
+    EOp2 t op2 expr1 expr2 -> do
+        a <- expr1
+        b <- expr2
+        (op, ps) <- inferOp2Type op2
+        ty <- freshType_
+        errs1 <- tryUnify t (foldr tArr ty (typeOf <$> filter isHole [a, b]))
+        errs2 <- tryUnify (typeOf op) (foldr tArr ty (typeOf <$> [a, b]))
+        pure (op2Expr (TypeInfo (errs1 <> errs2) t ps) op a b)
 
     ETuple t exprs -> do
         es <- sequence exprs
@@ -322,6 +347,57 @@ inferPatternType = cata $ \case
         let TypeInfo errs1 t1 ps = patternTag p
         errs2 <- tryUnify t t1
         pure (setPatternTag (TypeInfo (errs1 <> errs2) t1 ps) p, vs)
+
+inferOp1Type
+  :: ( MonadSupply Int m
+     , MonadReader (ClassEnv, TypeEnv, KindEnv, ConstructorEnv) m
+     , MonadState (Substitution Type, Substitution Kind, Context) m )
+  => Op1 t
+  -> m (Op1 (TypeInfo [Error]), [Predicate])
+inferOp1Type = \case
+
+    ONeg _ -> undefined
+    ONot _ -> undefined
+
+inferOp2Type
+  :: ( MonadSupply Int m
+     , MonadReader (ClassEnv, TypeEnv, KindEnv, ConstructorEnv) m
+     , MonadState (Substitution Type, Substitution Kind, Context) m )
+  => Op2 t
+  -> m (Op2 (TypeInfo [Error]), [Predicate])
+inferOp2Type = \case
+
+    OEq    _ -> undefined
+    ONeq   _ -> undefined
+    OAnd   _ -> undefined
+    OOr    _ -> undefined
+    OAdd   _ -> undefined
+    OSub   _ -> undefined
+    OMul   _ -> undefined
+    ODiv   _ -> undefined
+    OPow   _ -> undefined
+    OMod   _ -> undefined
+    OLt    _ -> undefined
+    OGt    _ -> undefined
+    OLte   _ -> undefined
+    OGte   _ -> undefined
+    OLarr  _ -> undefined
+    ORarr  _ -> undefined
+    OFpip  _ -> undefined
+    OBpip  _ -> undefined
+    OOpt   _ -> undefined
+    OStr   _ -> undefined
+    ODot   _ -> undefined
+    OField _ -> undefined
+
+--opType
+--  :: ( MonadSupply Name m
+--     , MonadReader (ClassEnv, TypeEnv, KindEnv, ConstructorEnv) m
+--     , MonadState (Substitution Type, Substitution Kind, Context) m )
+--  => (TypeInfo [Error] -> a)
+--  -> Scheme
+--  -> WriterT Node m a
+opType = undefined
 
 inferPrimType :: Prim -> Scheme
 inferPrimType = \case
