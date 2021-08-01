@@ -1186,6 +1186,7 @@ fromList = Sub . Map.fromList
 
 toList :: Substitution a -> [(Name, a)]
 toList = Map.toList . getSub
+{-# INLINE toList #-}
 
 domain :: Substitution a -> [Name]
 domain (Sub sub) = Map.keys sub

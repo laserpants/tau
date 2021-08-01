@@ -210,7 +210,7 @@ inferExprType = cata $ \case
 
     EPat t expr clauses -> do
         e1 <- expr
-        cs <- traverse inferClauseType clauses
+        cs <- traverse inferClauseType1 clauses
         undefined
 
     ELet t (BPat bt pat) expr1 expr2 -> do
@@ -232,7 +232,8 @@ inferExprType = cata $ \case
         errs2 <- tryUnify t (typeOf e2)
         undefined
 
-    EFun t clauses ->
+    EFun t clauses -> do
+        cs <- traverse inferClauseType clauses
         undefined
 
     EOp1 t op1 expr -> do
@@ -352,52 +353,56 @@ inferOp1Type
   :: ( MonadSupply Int m
      , MonadReader (ClassEnv, TypeEnv, KindEnv, ConstructorEnv) m
      , MonadState (Substitution Type, Substitution Kind, Context) m )
-  => Op1 t
+  => Op1 Type
   -> m (Op1 (TypeInfo [Error]), [Predicate])
 inferOp1Type = \case
 
-    ONeg _ -> undefined
-    ONot _ -> undefined
+    ONeg   t -> opType t ONeg (Forall [kTyp] [InClass "Num" 0] (tGen 0 `tArr` tGen 0))
+    ONot   t -> opType t ONot (Forall [] [] (tBool `tArr` tBool))
 
 inferOp2Type
   :: ( MonadSupply Int m
      , MonadReader (ClassEnv, TypeEnv, KindEnv, ConstructorEnv) m
      , MonadState (Substitution Type, Substitution Kind, Context) m )
-  => Op2 t
+  => Op2 Type
   -> m (Op2 (TypeInfo [Error]), [Predicate])
 inferOp2Type = \case
 
-    OEq    _ -> undefined
-    ONeq   _ -> undefined
-    OAnd   _ -> undefined
-    OOr    _ -> undefined
-    OAdd   _ -> undefined
-    OSub   _ -> undefined
-    OMul   _ -> undefined
-    ODiv   _ -> undefined
-    OPow   _ -> undefined
-    OMod   _ -> undefined
-    OLt    _ -> undefined
-    OGt    _ -> undefined
-    OLte   _ -> undefined
-    OGte   _ -> undefined
-    OLarr  _ -> undefined
-    ORarr  _ -> undefined
-    OFpip  _ -> undefined
-    OBpip  _ -> undefined
-    OOpt   _ -> undefined
-    OStr   _ -> undefined
-    ODot   _ -> undefined
-    OField _ -> undefined
+    OEq    t -> opType t OEq  (Forall [kTyp] [InClass "Eq" 0] (tGen 0 `tArr` tGen 0 `tArr` tBool))
+    ONeq   t -> opType t ONeq (Forall [kTyp] [InClass "Eq" 0] (tGen 0 `tArr` tGen 0 `tArr` tBool))
+    OAnd   t -> opType t OAnd (Forall [] [] (tBool `tArr` tBool `tArr` tBool))
+    OOr    t -> opType t OOr  (Forall [] [] (tBool `tArr` tBool `tArr` tBool))
+    OAdd   t -> opType t OAdd (Forall [kTyp] [InClass "Num" 0] (tGen 0 `tArr` tGen 0 `tArr` tGen 0))
+    OSub   t -> opType t OSub (Forall [kTyp] [InClass "Num" 0] (tGen 0 `tArr` tGen 0 `tArr` tGen 0))
+    OMul   t -> opType t OMul (Forall [kTyp] [InClass "Num" 0] (tGen 0 `tArr` tGen 0 `tArr` tGen 0))
+    ODiv   t -> undefined
+    OPow   t -> undefined
+    OMod   t -> undefined
+    OLt    t -> opType t OLt  (Forall [kTyp] [InClass "Ord" 0] (tGen 0 `tArr` tGen 0 `tArr` tBool))
+    OGt    t -> opType t OGt  (Forall [kTyp] [InClass "Ord" 0] (tGen 0 `tArr` tGen 0 `tArr` tBool))
+    OLte   t -> opType t OLte (Forall [kTyp] [InClass "Ord" 0] (tGen 0 `tArr` tGen 0 `tArr` tBool))
+    OGte   t -> opType t OGte (Forall [kTyp] [InClass "Ord" 0] (tGen 0 `tArr` tGen 0 `tArr` tBool))
+    OLarr  t -> undefined
+    ORarr  t -> undefined
+    OFpip  t -> undefined
+    OBpip  t -> undefined
+    OOpt   t -> undefined
+    OStr   t -> opType t OOpt (Forall [] [] (tString `tArr` tString `tArr` tString))
+    ODot   t -> undefined
+    OField t -> undefined
 
---opType
---  :: ( MonadSupply Name m
---     , MonadReader (ClassEnv, TypeEnv, KindEnv, ConstructorEnv) m
---     , MonadState (Substitution Type, Substitution Kind, Context) m )
---  => (TypeInfo [Error] -> a)
---  -> Scheme
---  -> WriterT Node m a
-opType = undefined
+opType
+  :: ( MonadSupply Int m
+     , MonadReader (ClassEnv, TypeEnv, KindEnv, ConstructorEnv) m
+     , MonadState (Substitution Type, Substitution Kind, Context) m )
+  => Type
+  -> (TypeInfo [Error] -> a)
+  -> Scheme
+  -> m (a, [Predicate])
+opType t op scheme = do
+    (ty, ps) <- instantiate scheme
+    errs <- tryUnify t ty
+    pure (op (TypeInfo errs ty ps), ps)
 
 inferPrimType :: Prim -> Scheme
 inferPrimType = \case
@@ -415,9 +420,17 @@ inferClauseType
   :: ( MonadSupply Int m
      , MonadReader (ClassEnv, TypeEnv, KindEnv, ConstructorEnv) m
      , MonadState (Substitution Type, Substitution Kind, Context) m )
+  => Clause t [ProgPattern Type Type] (m (ProgExpr (TypeInfo [Error]) Void))
+  -> m (Clause (TypeInfoT [Error] t) [ProgPattern (TypeInfo [Error]) Void] (ProgExpr (TypeInfo [Error]) Void))
+inferClauseType = undefined
+
+inferClauseType1
+  :: ( MonadSupply Int m
+     , MonadReader (ClassEnv, TypeEnv, KindEnv, ConstructorEnv) m
+     , MonadState (Substitution Type, Substitution Kind, Context) m )
   => Clause t (ProgPattern Type Type) (m (ProgExpr (TypeInfo [Error]) Void))
   -> m (Clause (TypeInfoT [Error] t) (ProgPattern (TypeInfo [Error]) Void) (ProgExpr (TypeInfo [Error]) Void))
-inferClauseType eq@(Clause t pat _) = do
+inferClauseType1 eq@(Clause t pat _) = do
     (p, vs) <- inferPatternType pat
     let schemes = toScheme <$$> vs
         Clause _ _ choices = local (inTypeEnv (Env.inserts schemes)) <$> eq
@@ -726,8 +739,8 @@ test2 = runSupplyNats subs
     subs = unifyTypes2
         (tRow "name" tString (tRow "id" tInt (tRow "shoeSize" tFloat tRowNil)))
         (tRow "shoeSize" tFloat (tVar kRow "r"))
-
---
+    unifyTypes2 a b = do
+        runExceptT (unifyTypes a b) -- (+1) (0 :: Int)
 
 --instance MonadError (Either UnificationError a) where
 --
@@ -739,8 +752,6 @@ test2 = runSupplyNats subs
 ----  -> m (Substitution Type, Substitution Kind)
 ----unifyTypes2 :: Type -> Type -> SupplyT s0 (Either UnificationError) (Substitution Type, Substitution Kind)
 --unifyTypes2 :: Type -> Type -> Either UnificationError (Substitution Type, Substitution Kind)
-unifyTypes2 a b = do
-    runExceptT (unifyTypes a b) -- (+1) (0 :: Int)
 
 -------------------------------------------------------------------------------
 
@@ -748,9 +759,7 @@ test3 :: ProgExpr t Type -> (ProgExpr (TypeInfo [Error]) Void, (Substitution Typ
 test3 expr =
     runInfer mempty testClassEnv testTypeEnv testKindEnv testConstructorEnv (tagTree expr >>= inferExprType)
 
-
 test4 = test3 (varExpr () "xxx")
-
 
 -------------------------------------------------------------------------------
 -------------------------------------------------------------------------------
