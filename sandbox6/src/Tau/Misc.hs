@@ -336,7 +336,7 @@ type ProgBinding t u = Binding t (ProgPattern t u)
 type ProgExpr t u = Expr t t t t t t t t t t t t t t t t u
     [ProgPattern t u] (Clause t (ProgPattern t u)) (ProgBinding t u) (Clause t [ProgPattern t u])
 
-newtype Ast t = Ast { astExpr :: ProgExpr t Void }
+newtype Ast t u = Ast { astExpr :: ProgExpr t u }
 
 data TypeInfoT e t = TypeInfo
     { nodeErrors      :: e
@@ -359,8 +359,8 @@ type TypeEnv = Env Scheme
 type KindEnv = Env Kind
 
 type ClassEnv = Env
-    ( ClassInfo Name Type                        -- Abstract interface
-    , [ClassInfo Type (Ast (TypeInfo ()))] )     -- Instances
+    ( ClassInfo Name Type                         -- Abstract interface
+    , [ClassInfo Type (Ast (TypeInfo ()) Void)] ) -- Instances
 
 type ConstructorEnv = Env (Set Name, Int)
 
@@ -428,7 +428,7 @@ instance (Typed t) => Typed (Op1 t) where
 instance (Typed t) => Typed (Op2 t) where
     typeOf = typeOf . op2Tag
 
-instance (Typed t) => Typed (Ast t) where
+instance (Typed t) => Typed (Ast t u) where
     typeOf = typeOf . astTag
 
 deriving instance (Show e, Show t) =>
@@ -464,7 +464,7 @@ instance (Substitutable Type a) => Substitutable (TypeInfo e) a where
 instance (Substitutable Scheme t) => Substitutable TypeEnv t where
     apply = Env.map . apply
 
-instance (Substitutable Type t) => Substitutable (ClassInfo Type (Ast (TypeInfo e))) t where
+instance (Substitutable Type t) => Substitutable (ClassInfo Type (Ast (TypeInfo e) u)) t where
     apply sub ClassInfo{..} =
         ClassInfo{ classPredicates = apply sub classPredicates
                  , classSignature  = apply sub classSignature
@@ -934,8 +934,39 @@ bindingTag = \case
     BPat    t _     -> t
     BFun    t _ _   -> t
 
-astTag :: Ast t -> t
+astTag :: Ast t u -> t
 astTag = exprTag . astExpr
+
+setExprTag :: t -> ProgExpr t Void -> ProgExpr t Void
+setExprTag t = project >>> \case
+    EVar    _ var         -> varExpr    t var
+    EHole   _             -> holeExpr   t
+    ECon    _ con es      -> conExpr    t con es
+    ELit    _ prim        -> litExpr    t prim
+    EApp    _ es          -> appExpr    t es
+    ELet    _ bind e1 e2  -> letExpr    t bind e1 e2
+    EFix    _ name e1 e2  -> fixExpr    t name e1 e2
+    ELam    _ ps e        -> lamExpr    t ps e
+    EIf     _ e1 e2 e3    -> ifExpr     t e1 e2 e3
+    EPat    _ es cs       -> patExpr    t es cs
+    EFun    _ cs          -> funExpr    t cs
+    EOp1    _ op a        -> op1Expr    t op a
+    EOp2    _ op a b      -> op2Expr    t op a b
+    ETuple  _ es          -> tupleExpr  t es
+    EList   _ es          -> listExpr   t es
+    ERow    _ lab e r     -> rowExpr    t lab e r
+
+setPatternTag :: t -> ProgPattern t Void -> ProgPattern t Void
+setPatternTag t = project >>> \case
+    PVar    _ var         -> varPat     t var
+    PCon    _ con ps      -> conPat     t con ps
+    PLit    _ prim        -> litPat     t prim
+    PAs     _ as p        -> asPat      t as p
+    POr     _ p q         -> orPat      t p q
+    PAny    _             -> anyPat     t
+    PTuple  _ ps          -> tuplePat   t ps
+    PList   _ ps          -> listPat    t ps
+    PRow    _ lab p r     -> rowPat     t lab p r
 
 -------------------------------------------------------------------------------
 
@@ -1049,7 +1080,7 @@ instance (Substitutable t a) => Substitutable (Op2 t) a where
         ODot   t             -> ODot   (apply sub t)
         OField t             -> OField (apply sub t)
 
-instance (Substitutable t a) => Substitutable (Ast t) a where
+instance (Substitutable t a) => Substitutable (Ast t u) a where
     apply sub = \case
         Ast expr             -> Ast (apply sub expr)
 
