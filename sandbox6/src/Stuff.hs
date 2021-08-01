@@ -514,10 +514,9 @@ matchConstructor con n =
             pure (Left [ConstructorNotInScope con])
 
         Just (_, arity) ->
-            if arity /= n then
-                pure (Left [PatternArityMismatch con arity n])
-            else
-                maybeToEither [ConstructorNotInScope con] <$> lookupScheme con
+            if arity /= n 
+                then pure (Left [PatternArityMismatch con arity n])
+                else maybeToEither [ConstructorNotInScope con] <$> lookupScheme con
 
 applySubsTo
   :: ( MonadState (Substitution Type, Substitution Kind, c) m
@@ -885,10 +884,10 @@ testClassEnv = Env.fromList
         -- Instances
         , [ ClassInfo (InClass "Foo" tInt) []
             -- [ ( "foo", (Ast (litExpr (TypeInfo () tInt []) (TInt 5))) )
-            [ ( "foo", (Ast (litExpr (TypeInfo () tBool []) (TBool True))) ) ]
+            [ ( "foo", Ast (litExpr (TypeInfo () tBool []) (TBool True)) ) ]
           , ClassInfo (InClass "Foo" tInteger) []
             -- [ ( "foo", (Ast (litExpr (TypeInfo () tInt []) (TInt 7))) )
-            [ ( "foo", (Ast (litExpr (TypeInfo () tBool []) (TBool False))) ) ]
+            [ ( "foo", Ast (litExpr (TypeInfo () tBool []) (TBool False)) ) ]
           ]
         )
       )
