@@ -5,9 +5,11 @@ module Tau.Util where
 
 import Control.Monad (replicateM)
 import Control.Monad.Except (MonadError, ExceptT, throwError)
-import Control.Monad.Supply (MonadSupply, Supply, runSupply, supply, demand, provide)
+import Control.Monad.Supply (SupplyT, Supply, evalSupplyT, evalSupply)
 import Control.Monad.Trans (lift)
+import Control.Monad.Trans.Maybe (MaybeT, runMaybeT)
 import Data.Functor.Foldable (Base, Corecursive, embed)
+import Data.Maybe (fromJust)
 import Data.Text (Text, pack)
 
 type Name = Text
@@ -37,16 +39,12 @@ embed5 t a b c d e = embed (t a b c d e)
 letters :: [Text]
 letters = pack <$> ([1..] >>= flip replicateM ['a'..'z'])
 
-instance MonadSupply s f m => MonadSupply s f (ExceptT e m) where
-    supply  = lift . supply
-    provide = lift . provide
-
-demands :: (MonadSupply a f m) => Int -> m [a]
-demands n = replicateM n demand
-
 liftMaybe :: (MonadError e m) => e -> Maybe a -> m a
 liftMaybe err Nothing = throwError err
 liftMaybe _ (Just ok) = pure ok
 
 runSupplyNats :: Supply Int a -> a
-runSupplyNats a = runSupply a succ 0
+runSupplyNats = fromJust . flip evalSupply [0..]
+
+runSupplyNatsT :: (Monad m) => SupplyT Int (MaybeT m) a -> m a
+runSupplyNatsT = fmap fromJust . runMaybeT . flip evalSupplyT [0..]

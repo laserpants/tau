@@ -6,7 +6,7 @@
 {-# LANGUAGE StrictData            #-}
 module Main where
 
-import Control.Arrow
+import Control.Arrow ((<<<), (>>>))
 import Control.Monad.Except
 import Control.Monad.Reader
 import Control.Monad.State
@@ -21,7 +21,7 @@ import Data.Fix (Fix(..))
 import Data.Function ((&))
 import Data.Functor.Foldable
 import Data.Functor.Identity
-import Data.Maybe (fromMaybe)
+import Data.Maybe (fromMaybe, fromJust)
 import Data.Set.Monad (Set)
 import Data.Tuple.Extra
 import Data.Void
@@ -37,16 +37,16 @@ main = print "done"
 
 --
 
-freshType :: (MonadSupply Int f m) => m Type
+freshType :: (MonadSupply Int m) => m Type
 freshType = do
-    s <- demand
+    s <- supply
     let st = showt s
     pure (tVar (kVar ("$k" <> st)) ("$a" <> st))
 
 runTagTree :: ProgExpr t u -> ProgExpr Type u
 runTagTree expr = runSupplyNats (tagTree expr)
 
-tagTree :: (MonadSupply Int f m) => ProgExpr t u -> m (ProgExpr Type u)
+tagTree :: (MonadSupply Int m) => ProgExpr t u -> m (ProgExpr Type u)
 tagTree = cata alg
   where
     alg = \case
@@ -122,14 +122,14 @@ tagTree = cata alg
 
 -------------------------------------------------------------------------------
 
-freshType_ :: (MonadSupply Int f m) => m Type
+freshType_ :: (MonadSupply Int m) => m Type
 freshType_ = do
-    s <- demand
+    s <- supply
     let st = showt s
     pure (tVar (kVar ("$n" <> st)) ("$v" <> st))
 
 inferExprType
-  :: ( MonadSupply Int f m
+  :: ( MonadSupply Int m
      , MonadReader (ClassEnv, TypeEnv, KindEnv, ConstructorEnv) m
      , MonadState (Substitution Type, Substitution Kind, Context) m )
   => ProgExpr Type Type
@@ -169,7 +169,7 @@ inferExprType = cata $ \case
         case es of
             [] ->
                 error "Implementation error"
---              pure (appExpr (TypeInfo [] t []) [])
+
             f:args -> do
                 ty <- freshType_
                 errs1 <- tryUnify t (foldr tArr ty (typeOf <$> filter isHole args))
@@ -217,7 +217,7 @@ inferExprType = cata $ \case
         undefined
 
 inferPatternType
-  :: ( MonadSupply Int f m
+  :: ( MonadSupply Int m
      , MonadReader (ClassEnv, TypeEnv, KindEnv, ConstructorEnv) m
      , MonadState (Substitution Type, Substitution Kind, Context) m )
   => ProgPattern Type Type
@@ -272,7 +272,7 @@ hoistMaybe = MaybeT . pure
 #endif
 
 lookupScheme
-  :: ( MonadSupply Int f m
+  :: ( MonadSupply Int m
      , MonadReader (ClassEnv, TypeEnv, KindEnv, ConstructorEnv) m
      , MonadState (Substitution Type, Substitution Kind, Context) m )
   => Name
@@ -308,13 +308,13 @@ applySubsTo t = do
     pure (applyBoth (typeSub, kindSub) t)
 
 instantiate
-  :: ( MonadSupply Int f m
+  :: ( MonadSupply Int m
      , MonadReader (ClassEnv, TypeEnv, KindEnv, ConstructorEnv) m
      , MonadState (Substitution Type, Substitution Kind, Context) m )
   => Scheme
   -> m (Type, [Predicate])
 instantiate (Forall kinds preds ty) = do
-    names <- ("$v" <>) . showt <$$> demands (length kinds)
+    names <- ("$v" <>) . showt <$$> supplies (length kinds)
     let ts = zipWith tVar kinds names
         (pairs, ps) = unzip (fn <$> preds)
         fn p@(InClass tc ix) =
@@ -330,13 +330,13 @@ addToContext :: (MonadState (a, b, Context) m) => [(Name, Set Name)] -> m ()
 addToContext ps = modify (third3 (`insertAll` ps))
 
 tryUnify
-  :: ( MonadSupply Int f m
+  :: ( MonadSupply Int m
      , MonadReader (ClassEnv, TypeEnv, KindEnv, ConstructorEnv) m
      , MonadState (Substitution Type, Substitution Kind, Context) m )
   => Type
   -> Type
   -> m [Error]
-tryUnify t1 t2 = go $ do
+tryUnify t1 t2 = either pure (const []) <$> runExceptT (do
     a <- applySubsTo t1
     b <- applySubsTo t2
     (typeSub, kindSub) <- withExceptT UnificationError (unifyTypes a b)
@@ -344,12 +344,10 @@ tryUnify t1 t2 = go $ do
     modify (second3 (kindSub <>))
     forM_ (Map.toList (getSub typeSub)) $ \(tv, ty) -> do
         env <- gets thd3
-        propagateClasses ty (fromMaybe mempty (Env.lookup tv env))
-  where
-    go f = either pure (const []) <$> runExceptT f
+        propagateClasses ty (fromMaybe mempty (Env.lookup tv env)))
 
 propagateClasses
-  :: ( MonadSupply Int f m
+  :: ( MonadSupply Int m
      , MonadReader (ClassEnv, TypeEnv, KindEnv, ConstructorEnv) m
      , MonadError Error m
      , MonadState (Substitution Type, Substitution Kind, Context) m )
@@ -365,14 +363,14 @@ propagateClasses ty ps =
         sequence_ [propagateClasses t (Set.singleton a) | InClass a t <- preds]
 
 lookupClassInstance
-  :: ( MonadSupply Int f m
+  :: ( MonadSupply Int m
      , MonadReader (ClassEnv, TypeEnv, KindEnv, ConstructorEnv) m
      , MonadError Error m )
   => Name
   -> Type
-  -> m (ClassInfo Type (Ast (TypeInfo Void)))
+  -> m (ClassInfo Type (Ast (TypeInfo ())))
 lookupClassInstance name ty = do
-    env <- asks getClassEnv
+    env <- askClassEnv
     (_, insts) <- liftMaybe (NoSuchClass name) (Env.lookup name env)
     info <- sequence [tryMatch i | i <- insts]
     msum info & maybe (throwError (MissingInstance name ty)) pure
@@ -417,6 +415,44 @@ askConstructorEnv = asks getConstructorEnv
 
 -------------------------------------------------------------------------------
 
+type InferState  = StateT (Substitution Type, Substitution Kind, Context)
+type InferReader = ReaderT (ClassEnv, TypeEnv, KindEnv, ConstructorEnv)
+type InferSupply = SupplyT Int
+type InferStack a = InferReader (InferState (InferSupply (MaybeT a)))
+
+runInferState :: (Monad m) => Context -> InferState m a -> m (a, (Substitution Type, Substitution Kind, Context))
+runInferState context = flip runStateT (mempty, mempty, context)
+
+runInferReader :: (Monad m) => ClassEnv -> TypeEnv -> KindEnv -> ConstructorEnv -> InferReader m r -> m r
+runInferReader e1 e2 e3 e4 = flip runReaderT (e1, e2, e3, e4)
+
+runInferT
+  :: (Monad m)
+  => Context
+  -> ClassEnv
+  -> TypeEnv
+  -> KindEnv
+  -> ConstructorEnv
+  -> InferStack m a
+  -> m (a, (Substitution Type, Substitution Kind, Context))
+runInferT context classEnv typeEnv kindEnv constructorEnv =
+    runInferReader classEnv typeEnv kindEnv constructorEnv
+        >>> runInferState context
+        >>> runSupplyNatsT
+
+runInfer
+  :: Context
+  -> ClassEnv
+  -> TypeEnv
+  -> KindEnv
+  -> ConstructorEnv
+  -> InferStack Identity a
+  -> (a, (Substitution Type, Substitution Kind, Context))
+runInfer context classEnv typeEnv kindEnv constructorEnv =
+    runIdentity . runInferT context classEnv typeEnv kindEnv constructorEnv
+
+-------------------------------------------------------------------------------
+
 isHole
   :: (Functor e2, Functor e4)
   => Expr t1 t2 t3 t4 t5 t6 t7 t8 t9 t10 t11 t12 t13 t14 t15 t16 t17 e1 e2 e3 e4
@@ -426,7 +462,6 @@ isHole = project >>> \case
     _       -> False
 
 -------------------------------------------------------------------------------
-
 
 test1 =
     runSupplyNats (tagTree tree)
@@ -438,14 +473,13 @@ test1 =
             , annExpr tInt (litExpr () (TInteger 5))
             ]
 
---
+-------------------------------------------------------------------------------
 
 test2 = runSupplyNats subs
   where
     subs = unifyTypes2
         (tRow "name" tString (tRow "id" tInt (tRow "shoeSize" tFloat tRowNil)))
         (tRow "shoeSize" tFloat (tVar kRow "r"))
-
 
 --
 
@@ -462,7 +496,14 @@ test2 = runSupplyNats subs
 unifyTypes2 a b = do
     runExceptT (unifyTypes a b) -- (+1) (0 :: Int)
 
+-------------------------------------------------------------------------------
 
+test3 :: ProgExpr t Type -> (ProgExpr (TypeInfo [Error]) Void, (Substitution Type, Substitution Kind, Context))
+test3 expr =
+    runInfer mempty testClassEnv testTypeEnv testKindEnv testConstructorEnv (tagTree expr >>= inferExprType)
+
+
+test4 = test3 (varExpr () "xxx")
 
 
 -- tagTree :: (MonadSupply Int f m) => ProgExpr t u -> m (ProgExpr Name u)
@@ -606,3 +647,174 @@ unifyTypes2 a b = do
 --             ODot   _ -> ODot   t
 --             OField _ -> OField t
 
+
+-------------------------------------------------------------------------------
+-------------------------------------------------------------------------------
+-------------------------------------------------------------------------------
+
+testKindEnv :: KindEnv
+testKindEnv = Env.fromList
+    [ ( "Num" , kArr kTyp kClass )
+    ]
+
+testTypeEnv :: TypeEnv
+testTypeEnv = Env.fromList
+    [ ( "None"         , Forall [kTyp] [] (tApp kTyp (tCon kFun "Option") (tGen 0)) )
+    , ( "Some"         , Forall [kTyp] [] (tGen 0 `tArr` tApp kTyp (tCon kFun "Option") (tGen 0)) )
+    , ( "Zero"         , Forall []     [] (tCon kTyp "Nat") )
+    , ( "Succ"         , Forall []     [] (tCon kTyp "Nat" `tArr` tCon kTyp "Nat") )
+    , ( "Leaf"         , Forall [kTyp] [] (tApp kTyp (tCon kFun "Tree") (tGen 0)) )
+    , ( "Node"         , Forall [kTyp] [] (tGen 0 `tArr` tApp kTyp (tCon kFun "Tree") (tGen 0) `tArr` tApp kTyp (tCon kFun "Tree") (tGen 0) `tArr` tApp kTyp (tCon kFun "Tree") (tGen 0)) )
+    , ( "Leaf'"        , Forall [kTyp, kTyp] [] (tApp kTyp (tApp kFun (tCon kFun2 "Tree'") (tGen 0)) (tGen 1)) )
+    , ( "Node'"        , Forall [kTyp, kTyp] [] (tGen 0 `tArr` tApp kTyp (tCon kFun "Tree") (tGen 0) `tArr` tApp kTyp (tCon kFun "Tree") (tGen 0) `tArr` tGen 1 `tArr` tGen 1 `tArr` tApp kTyp (tApp kFun (tCon kFun2 "Tree'") (tGen 0)) (tGen 1)) )
+    , ( "Nil'"         , Forall [kTyp, kTyp] [] (tApp kTyp (tApp kFun (tCon kFun2 "List'") (tGen 0)) (tGen 1)) )
+    , ( "Cons'"        , Forall [kTyp, kTyp] [] (tGen 0 `tArr` tList (tGen 0) `tArr` tGen 1 `tArr` tApp kTyp (tApp kFun (tCon kFun2 "List'") (tGen 0)) (tGen 1)) )
+    , ( "Foo"          , Forall [] [] (tInt `tArr` tInt `tArr` tCon kTyp "Foo") )
+    , ( "id"           , Forall [kTyp] [] (tGen 0 `tArr` tGen 0) )
+    , ( "(::)"         , Forall [kTyp] [] (tGen 0 `tArr` tList (tGen 0) `tArr` tList (tGen 0)) )
+    , ( "(==)"         , Forall [kTyp] [InClass "Eq" 0] (tGen 0 `tArr` tGen 0 `tArr` tBool) )
+    , ( "testFun1"     , Forall [kTyp] [InClass "Num" 0, InClass "Eq" 0] (tGen 0 `tArr` tBool) )
+    , ( "length"       , Forall [kTyp] [] (tList (tGen 0) `tArr` tInt) )
+    , ( "[]"           , Forall [kTyp] [] (tList (tGen 0)) )
+    , ( "(+)"          , Forall [kTyp] [InClass "Num" 0] (tGen 0 `tArr` tGen 0 `tArr` tGen 0) )
+    , ( "(*)"          , Forall [kTyp] [InClass "Num" 0] (tGen 0 `tArr` tGen 0 `tArr` tGen 0) )
+    , ( "#"            , Forall [kRow] [] (tGen 0 `tArr` tApp kTyp tRecordCon (tGen 0)) )
+    , ( "{}"           , Forall [] [] tRowNil )
+    , ( "_#"           , Forall [kRow] [] (tApp kTyp (tCon (kArr kRow kTyp) "#") (tGen 0) `tArr` tGen 0) )
+    , ( "fromInteger"  , Forall [kTyp] [InClass "Num" 0] (tInteger `tArr` tGen 0) )
+    , ( "fn1"          , Forall [kTyp] [InClass "Num" 0] (tGen 0 `tArr` tGen 0 `tArr` tGen 0))
+    ]
+
+testClassEnv :: ClassEnv
+testClassEnv = Env.fromList
+    [ ( "Show"
+        -- Interface
+      , ( ClassInfo (InClass "Show" "a") []
+            [ ( "show", tVar kTyp "a" `tArr` tString )
+            ]
+        -- Instances
+        , [ ClassInfo (InClass "Show" tInt) []
+              [ ( "show", Ast (varExpr (TypeInfo () (tInt `tArr` tString) []) "@Int.Show") )
+              ]
+          , ClassInfo (InClass "Show" (tPair (tVar kTyp "a") (tVar kTyp "b"))) []
+              [ ( "show", Ast (varExpr (TypeInfo () (tPair (tVar kTyp "a") (tVar kTyp "b") `tArr` tString) []) "TODO") )
+              ]
+          ]
+        )
+      )
+    , ( "Ord"
+        -- Interface
+      , ( ClassInfo (InClass "Ord" "a") []
+            [ ( "(>)", tVar kTyp "a" `tArr` tVar kTyp "a" `tArr` tBool )
+            , ( "(<)", tVar kTyp "a" `tArr` tVar kTyp "a" `tArr` tBool )
+            , ( "(>=)", tVar kTyp "a" `tArr` tVar kTyp "a" `tArr` tBool )
+            , ( "(<=)", tVar kTyp "a" `tArr` tVar kTyp "a" `tArr` tBool )
+            ]
+        -- Instances
+        , [ ClassInfo (InClass "Ord" tInt) []
+              [ ( "(>)", Ast (varExpr (TypeInfo () (tInt `tArr` tInt `tArr` tBool) []) "@Int.(>)") )
+              , ( "(<)", Ast (varExpr (TypeInfo () (tInt `tArr` tInt `tArr` tBool) []) "@Int.(<)") )
+              , ( "(>=)", Ast (varExpr (TypeInfo () (tInt `tArr` tInt `tArr` tBool) []) "@Int.(>=)") )
+              , ( "(<=)", Ast (varExpr (TypeInfo () (tInt `tArr` tInt `tArr` tBool) []) "@Int.(<=)") )
+              ]
+          ]
+        )
+      )
+    , ( "Eq"
+        -- Interface
+      , ( ClassInfo (InClass "Eq" "a") [] -- [InClass "Ord" "a"]
+            [ ( "(==)", tVar kTyp "a" `tArr` tVar kTyp "a" `tArr` tBool )
+            , ( "(/=)", tVar kTyp "a" `tArr` tVar kTyp "a" `tArr` tBool )
+            ]
+        -- Instances
+        , [ ClassInfo (InClass "Eq" tInt) []
+            [ ( "(==)", Ast (varExpr (TypeInfo () (tInt `tArr` tInt `tArr` tBool) []) "@Int.(==)" ) )
+            , ( "(/=)", Ast (varExpr (TypeInfo () (tInt `tArr` tInt `tArr` tBool) []) "@Int.(/=)" ) )
+            ]
+          , ClassInfo (InClass "Eq" tInteger) []
+            [ ( "(==)", Ast (varExpr (TypeInfo () (tInt `tArr` tInt `tArr` tBool) []) "@Integer.(==)" ) )
+            , ( "(/=)", Ast (varExpr (TypeInfo () (tInt `tArr` tInt `tArr` tBool) []) "@Integer.(/=)" ) )
+            ]
+          , ClassInfo (InClass "Eq" tBool) []
+            [ ( "(==)", Ast (varExpr (TypeInfo () (tBool `tArr` tBool `tArr` tBool) []) "@Bool.(==)" ) )
+            , ( "(/=)", Ast (varExpr (TypeInfo () (tBool `tArr` tBool `tArr` tBool) []) "@Bool.(/=)" ) )
+            ]
+          , ClassInfo (InClass "Eq" tString) []
+            [ ( "(==)", Ast (varExpr (TypeInfo () (tString `tArr` tString `tArr` tString) []) "@String.(==)" ) )
+            , ( "(/=)", Ast (varExpr (TypeInfo () (tString `tArr` tString `tArr` tString) []) "@String.(/=)" ) )
+            ]
+          ]
+        )
+      )
+    , ( "Foo"
+        -- Interface
+      , ( ClassInfo (InClass "Foo" "a") []
+            -- [ ( "foo", tInt )
+            [ ( "foo", tBool )
+            ]
+        -- Instances
+        , [ ClassInfo (InClass "Foo" tInt) []
+            -- [ ( "foo", (Ast (litExpr (TypeInfo () tInt []) (TInt 5))) )
+            [ ( "foo", (Ast (litExpr (TypeInfo () tBool []) (TBool True))) ) ]
+          , ClassInfo (InClass "Foo" tInteger) []
+            -- [ ( "foo", (Ast (litExpr (TypeInfo () tInt []) (TInt 7))) )
+            [ ( "foo", (Ast (litExpr (TypeInfo () tBool []) (TBool False))) ) ]
+          ]
+        )
+      )
+    , ( "Num"
+        -- Interface
+      , ( ClassInfo (InClass "Num" "a") [InClass "Eq" "a", InClass "Foo" "a"]
+            [ ( "(+)"         , tVar kTyp "a" `tArr` tVar kTyp "a" `tArr` tVar kTyp "a" )
+            , ( "(*)"         , tVar kTyp "a" `tArr` tVar kTyp "a" `tArr` tVar kTyp "a" )
+            , ( "(-)"         , tVar kTyp "a" `tArr` tVar kTyp "a" `tArr` tVar kTyp "a" )
+            , ( "fromInteger" , tInteger `tArr` tVar kTyp "a" )
+            ]
+        -- Instances
+        , [ ClassInfo (InClass "Num" tInt) []
+            [ ( "(+)"         , Ast (varExpr (TypeInfo () (tInt `tArr` tInt `tArr` tInt) []) "@Int.(+)") )
+            , ( "(*)"         , Ast (varExpr (TypeInfo () (tInt `tArr` tInt `tArr` tInt) []) "@Int.(*)") )
+            , ( "(-)"         , Ast (varExpr (TypeInfo () (tInt `tArr` tInt `tArr` tInt) []) "@Int.(-)") )
+            , ( "fromInteger" , Ast (varExpr (TypeInfo () (tInteger `tArr` tInt) []) "@Int.fromInteger") )
+            ]
+          , ClassInfo (InClass "Num" tInteger) []
+            [ ( "(+)"         , Ast (varExpr (TypeInfo () (tInteger `tArr` tInteger `tArr` tInteger) []) "@Integer.(+)") )
+            , ( "(*)"         , Ast (varExpr (TypeInfo () (tInteger `tArr` tInteger `tArr` tInteger) []) "@Integer.(*)") )
+            , ( "(-)"         , Ast (varExpr (TypeInfo () (tInteger `tArr` tInteger `tArr` tInteger) []) "@Integer.(-)") )
+            , ( "fromInteger" , Ast (varExpr (TypeInfo () (tInteger `tArr` tInteger) []) "@Integer.id") )
+            ]
+          ]
+        )
+      )
+    ]
+
+constructorEnv :: [(Name, ([Name], Int))] -> ConstructorEnv
+constructorEnv = Env.fromList . (first Set.fromList <$$>)
+
+testConstructorEnv :: ConstructorEnv
+testConstructorEnv = constructorEnv
+    [ ("Some"     , ( ["Some", "None"], 1 ))
+    , ("None"     , ( ["Some", "None"], 0 ))
+    , ("Zero"     , ( ["Zero", "Succ"], 0 ))
+    , ("Succ"     , ( ["Zero", "Succ"], 1 ))
+    , ("Leaf"     , ( ["Leaf", "Node"], 0 ))
+    , ("Node"     , ( ["Leaf", "Node"], 3 ))
+    , ("Leaf'"    , ( ["Leaf'", "Node'"], 0 ))
+    , ("Node'"    , ( ["Leaf'", "Node'"], 5 ))
+    , ("[]"       , ( ["[]", "(::)"], 0 ))
+    , ("(::)"     , ( ["[]", "(::)"], 2 ))
+    , ("(,)"      , ( ["(,)"], 2 ))
+    , ("Foo"      , ( ["Foo"], 2 ))
+    , ("#"        , ( ["#"], 1 ))
+    , ("{}"       , ( ["{}"], 0 ))
+    , ("Cons'"    , ( ["Nil'", "Cons'"], 3 ))
+    , ("Nil'"     , ( ["Nil'", "Cons'"], 0 ))
+    ]
+
+-- testEvalEnv :: ValueEnv Eval
+-- testEvalEnv = Env.fromList
+--     [ -- ( "(,)" , constructor "(,)" 2 )
+--       ( "_#"  , fromJust (evalExpr (cLam "?0" (cPat (cVar "?0") [(["#", "?1"], cVar "?1")])) mempty) )
+--     , ( "(.)" , fromJust (evalExpr (cLam "f" (cLam "x" (cApp [cVar "f", cVar "x"]))) mempty) )
+-- --    , ( "fn1" , fromJust (evalExpr (cLam "?0" (cLam "?1" (cApp [cVar "@Integer.(+)", cVar "?0", cVar "?1"]))) mempty) )
+--     ]

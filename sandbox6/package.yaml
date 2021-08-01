@@ -32,7 +32,7 @@ dependencies:
 - text
 - text-show
 - transformers
-- transformers-supply
+- monad-supply
 
 library:
   source-dirs: src

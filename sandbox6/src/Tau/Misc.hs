@@ -14,7 +14,7 @@ module Tau.Misc where
 import Control.Arrow ((<<<), (>>>))
 import Control.Monad (when)
 import Control.Monad.Except (MonadError, throwError)
-import Control.Monad.Supply (MonadSupply, demand)
+import Control.Monad.Supply
 import Data.Eq.Deriving (deriveEq1)
 import Data.Fix (Fix)
 import Data.Functor.Foldable (cata, para, project, embed)
@@ -360,7 +360,7 @@ type KindEnv = Env Kind
 
 type ClassEnv = Env
     ( ClassInfo Name Type                        -- Abstract interface
-    , [ClassInfo Type (Ast (TypeInfo Void))] )   -- Instances
+    , [ClassInfo Type (Ast (TypeInfo ()))] )     -- Instances
 
 type ConstructorEnv = Env (Set Name, Int)
 
@@ -1214,7 +1214,7 @@ bindType name kind ty
     kindSub = unifyKinds kind (kindOf ty)
 
 unifyTypes
-  :: ( MonadSupply Int f m
+  :: ( MonadSupply Int m
      , MonadError UnificationError m )
   => Type
   -> Type
@@ -1230,7 +1230,7 @@ unifyTypes t u = fn (project t) (project u)
     fn _ _                                    = throwError IncompatibleTypes
 
 matchTypes
-  :: ( MonadSupply Int f m
+  :: ( MonadSupply Int m
      , MonadError UnificationError m )
   => Type
   -> Type
@@ -1245,7 +1245,7 @@ matchTypes t u = fn (project t) (project u)
     fn _ _                                    = throwError IncompatibleTypes
 
 unifyTypePairs
-  :: ( MonadSupply Int f m
+  :: ( MonadSupply Int m
      , MonadError UnificationError m )
   => (Type, Type)
   -> (Type, Type)
@@ -1256,7 +1256,7 @@ unifyTypePairs (t1, t2) (u1, u2) = do
     pure (subs2 <> subs1)
 
 matchTypePairs
-  :: ( MonadSupply Int f m
+  :: ( MonadSupply Int m
      , MonadError UnificationError m )
   => (Type, Type)
   -> (Type, Type)
@@ -1271,7 +1271,7 @@ matchTypePairs (t1, t2) (u1, u2) = do
 -------------------------------------------------------------------------------
 
 unifyRows
-  :: ( MonadSupply Int f m
+  :: ( MonadSupply Int m
      , MonadError UnificationError m )
   => (Type -> Type -> m (Substitution Type, Substitution Kind))
   -> ((Type, Type) -> (Type, Type) -> m (Substitution Type, Substitution Kind))
@@ -1305,7 +1305,7 @@ unifyRows combineTypes combinePairs t u =
                         (fromMap k (updateMap m2 us), u)
                 _ -> do
                     when (k == j) $ throwError IncompatibleTypes
-                    s <- demand
+                    s <- supply
                     let tv = tVar kRow ("$r" <> showt s)
                     combinePairs
                         (fromMap j (updateMap m1 ts), k)
