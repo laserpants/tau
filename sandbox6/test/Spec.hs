@@ -271,7 +271,7 @@ succeedComposeAndApplyTo sub1 sub2 ty res =
 testSubstitution :: SpecWith ()
 testSubstitution = do
 
-    describe "Apply to" $ do
+    describe "• Apply to" $ do
 
         succeedApplyTo
             (mapsTo "a" tInt)
@@ -293,7 +293,7 @@ testSubstitution = do
             tInt
             tInt
 
-    describe "Compose and apply to" $ do
+    describe "• Compose and apply to" $ do
 
         succeedComposeAndApplyTo
             (fromList [ ("a", tInt) ])

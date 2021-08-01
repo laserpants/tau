@@ -9,6 +9,7 @@ module Stuff where
 import Control.Arrow ((<<<), (>>>))
 import Control.Monad.Except
 import Control.Monad.Reader
+import Control.Monad.Writer
 import Control.Monad.State
 #if MIN_VERSION_transformers(0,6,0)
 import Control.Monad.Trans.Maybe (MaybeT, hoistMaybe)
@@ -21,6 +22,7 @@ import Data.Fix (Fix(..))
 import Data.Function ((&))
 import Data.Functor.Foldable
 import Data.Functor.Identity
+import Data.List.Extra (notNull)
 import Data.Maybe (fromMaybe, fromJust)
 import Data.Set.Monad (Set)
 import Data.Tuple.Extra
@@ -78,8 +80,8 @@ tagTree = cata alg
         PAnn   t p              -> annPat  t <$> p
 
     tagBinding = \case
-        BPat _ p                -> BPat <$> freshType <*> tagPattern p
-        BFun _ name ps          -> BFun <$> freshType <*> pure name <*> traverse tagPattern ps
+        BPat _ p                -> BPat   <$> freshType <*> tagPattern p
+        BFun _ name ps          -> BFun   <$> freshType <*> pure name <*> traverse tagPattern ps
 
     tagClause = \case
         Clause _ ps choices     -> Clause <$> freshType
@@ -131,7 +133,7 @@ inferAstType
      , MonadState (Substitution Type, Substitution Kind, Context) m )
   => Ast t Type
   -> m (Ast (TypeInfo [Error]) Void)
-inferAstType (Ast expr) = 
+inferAstType (Ast expr) =
     Ast <$> (tagTree expr >>= inferExprType >>= applySubsTo)
 
 inferExprType
@@ -182,39 +184,67 @@ inferExprType = cata $ \case
                 errs2 <- tryUnify (typeOf f) (foldr tArr ty (typeOf <$> args))
                 pure (appExpr (TypeInfo (errs1 <> errs2) t []) es)
 
-    EFix t name e1 e2 -> do
-        ty <- freshType_
+    EFix t name expr1 expr2 -> do
+        t1 <- freshType_
+        e1 <- local (inTypeEnv (Env.insert name (toScheme t1))) expr1
+        errs1 <- tryUnify t t1
+        scheme <- generalize (typeOf e1)
+        e2 <- local (inTypeEnv (Env.insert name scheme)) expr2
+        errs2 <- tryUnify t (typeOf e2)
+        pure (fixExpr (TypeInfo (errs1 <> errs2) t []) name e1 e2)
+
+    ELam t pats expr -> do
         undefined
 
-    ELam t ps e ->
+    EIf t expr1 expr2 expr3 -> do
+        e1 <- expr1
+        e2 <- expr2
+        e3 <- expr3
+        errs1 <- tryUnify (typeOf e1) tBool
+        errs2 <- tryUnify (typeOf e2) (typeOf e3)
+        errs3 <- tryUnify t (typeOf e2)
+        pure (ifExpr (TypeInfo (errs1 <> errs2 <> errs3) t []) e1 e2 e3)
+
+    EPat t expr clauses -> do
+        e1 <- expr
+        cs <- traverse inferClauseType clauses
         undefined
 
-    EIf t e1 e2 e3 ->
+    ELet t (BPat t1 pat) expr1 expr2 ->
         undefined
 
-    EPat t e cs ->
+    ELet t (BFun t1 f pats) expr1 expr2 ->
         undefined
 
-    ELet t bind e1 e2 ->
+    EFun t clauses ->
         undefined
 
-    EFun t cs ->
+    EOp1 t op1 expr ->
         undefined
 
-    EOp1 t op a ->
+    EOp2 t op2 expr1 expr2 ->
         undefined
 
-    EOp2 t op a b ->
-        undefined
+    ETuple t exprs -> do
+        es <- sequence exprs
+        errs <- tryUnify t (tTuple (typeOf <$> es))
+        pure (tupleExpr (TypeInfo errs t []) es)
 
-    ETuple t es ->
-        undefined
+    EList t exprs -> do
+        es <- sequence exprs
+        t1 <- case es of
+            []    -> freshType_
+            (e:_) -> pure (typeOf e)
 
-    EList t es ->
-        undefined
+        errss <- forM es (tryUnify t1 . typeOf)
+        errs1 <- tryUnify t (tList t1)
+        pure (listExpr (TypeInfo (errs1 <> concat errss) t []) es)
 
-    ERow t name e r ->
-        undefined
+    ERow t label expr row -> do
+        e <- expr
+        r <- row
+        errs <- tryUnify t (tRow label (typeOf e) (typeOf r))
+        pure (rowExpr (TypeInfo errs t []) label e r)
 
     EHole t ->
         pure (holeExpr (TypeInfo [] t []))
@@ -230,41 +260,68 @@ inferPatternType
      , MonadReader (ClassEnv, TypeEnv, KindEnv, ConstructorEnv) m
      , MonadState (Substitution Type, Substitution Kind, Context) m )
   => ProgPattern Type Type
-  -> m (ProgPattern (TypeInfo [Error]) Void)
+  -> m (ProgPattern (TypeInfo [Error]) Void, [(Name, Type)])
 inferPatternType = cata $ \case
 
-    PVar _ var ->
-        undefined
+    PVar t var ->
+        pure (varPat (TypeInfo [] t []) var, [(var, t)])
 
-    PCon _ name ps ->
-        undefined
+    PCon t con pats -> do
+        (ps, vss) <- unzip <$> sequence pats
+        matchConstructor con (length ps) >>= \case
+            Left errs ->
+                pure (conPat (TypeInfo errs t []) con ps, [])
 
-    PAs _ name p ->
-        undefined
+            Right scheme -> do
+                (ty, qs) <- instantiate scheme
+                errs <- tryUnify ty (foldr tArr t (typeOf <$> ps))
+                pure (conPat (TypeInfo errs t qs) con ps, concat vss)
 
-    PLit _ prim ->
-        undefined
+    PAs t name pat -> do
+        (p, vs) <- pat
+        errs <- tryUnify t (typeOf p)
+        pure (asPat (TypeInfo errs t []) name p, vs)
 
-    PAny _ ->
-        undefined
+    PLit t prim -> do
+        (ty, ps) <- instantiate (inferPrimType prim)
+        errs <- tryUnify t ty
+        pure (litPat (TypeInfo errs t ps) prim, [])
 
-    POr _ p q ->
-        undefined
+    PAny t ->
+        pure (anyPat (TypeInfo [] t []), [])
 
-    PTuple _ ps ->
-        undefined
+    POr t pat1 pat2 -> do
+        (p1, vs1) <- pat1
+        (p2, vs2) <- pat2
+        errs1 <- tryUnify t (typeOf p1)
+        errs2 <- tryUnify t (typeOf p2)
+        pure (orPat (TypeInfo (errs1 <> errs2) t []) p1 p2, vs1 <> vs2)
 
-    PList _ ps ->
-        undefined
+    PTuple t pats -> do
+        (ps, vss) <- unzip <$> sequence pats
+        errs <- tryUnify t (tTuple (typeOf <$> ps))
+        pure (tuplePat (TypeInfo errs t []) ps, concat vss)
 
-    PRow _ name p r ->
+    PList t pats -> do
+        (ps, vss) <- unzip <$> sequence pats
+        t1 <- case ps of
+            []    -> freshType_
+            (p:_) -> pure (typeOf p)
+
+        errss <- forM ps (tryUnify t1 . typeOf)
+        errs1 <- tryUnify t (tList t1)
+        pure (listPat (TypeInfo (errs1 <> concat errss) t []) ps, concat vss)
+
+    PRow t label pat row -> do
+        p <- pat
+        (r, vs) <- row
         undefined
 
     PAnn t pat -> do
-        p <- pat
+        (p, vs) <- pat
         let TypeInfo errs1 t1 ps = patternTag p
         errs2 <- tryUnify t t1
-        pure (setPatternTag (TypeInfo (errs1 <> errs2) t1 ps) p)
+        pure (setPatternTag (TypeInfo (errs1 <> errs2) t1 ps) p, vs)
 
 inferPrimType :: Prim -> Scheme
 inferPrimType = \case
@@ -277,6 +334,43 @@ inferPrimType = \case
     TFloat{}   -> Forall [kTyp] [InClass "Fractional" 0] (tGen 0)
     TDouble{}  -> Forall [kTyp] [InClass "Fractional" 0] (tGen 0)
     TSymbol{}  -> Forall [kTyp] [] (tGen 0)
+
+inferClauseType
+  :: ( MonadSupply Int m
+     , MonadReader (ClassEnv, TypeEnv, KindEnv, ConstructorEnv) m
+     , MonadState (Substitution Type, Substitution Kind, Context) m )
+  => Clause t (ProgPattern Type Type) (m (ProgExpr (TypeInfo [Error]) Void))
+  -> m (Clause (TypeInfoT [Error] t) (ProgPattern (TypeInfo [Error]) Void) (ProgExpr (TypeInfo [Error]) Void))
+inferClauseType eq@(Clause t pat _) = do
+    (p, vs) <- inferPatternType pat
+    let schemes = toScheme <$$> vs
+        Clause _ _ choices = local (inTypeEnv (Env.inserts schemes)) <$> eq
+        (whens, _) = unzip (choiceToPair <$> choices)
+    errss <- forM (concat whens) unifyWhen
+    gs <- traverse inferChoice choices
+    pure (Clause (TypeInfo (concat errss) t []) p gs)
+
+choiceToPair :: Choice a -> ([a], a)
+choiceToPair (Choice es e) = (es, e)
+
+unifyWhen
+  :: ( MonadSupply Int m
+     , MonadReader (ClassEnv, TypeEnv, KindEnv, ConstructorEnv) m
+     , MonadState (Substitution Type, Substitution Kind, Context) m )
+  => m (ProgExpr (TypeInfo [Error]) Void)
+  -> m [Error]
+unifyWhen expr = do
+    e <- expr
+    errs <- tryUnify tBool (typeOf e)
+    pure [NonBooleanGuard e | notNull errs]
+
+inferChoice
+  :: ( MonadSupply Int m
+     , MonadReader (ClassEnv, TypeEnv, KindEnv, ConstructorEnv) m
+     , MonadState (Substitution Type, Substitution Kind, Context) m )
+  => Choice (m (ProgExpr (TypeInfo [Error]) Void))
+  -> m (Choice (ProgExpr (TypeInfo [Error]) Void))
+inferChoice (Choice exprs expr) = Choice <$> sequence exprs <*> expr
 
 #if !MIN_VERSION_transformers(0,6,0)
 hoistMaybe :: (Applicative m) => Maybe b -> MaybeT m b
@@ -294,20 +388,42 @@ lookupScheme name = runMaybeT $ do
     scheme <- hoistMaybe (Env.lookup name env)
     applySubsTo scheme
 
--- lookupScheme
---   :: ( MonadSupply Int f m
---      , MonadReader (ClassEnv, TypeEnv, KindEnv, ConstructorEnv) m
---      , MonadState (Substitution Type, Substitution Kind, Context) m )
---   => Name
---   -> m (Either Error Scheme)
--- lookupScheme name = do
---     env <- askTypeEnv
---     case Env.lookup name env of
---         Nothing ->
---             pure (Left (NotInScope name))
---
---         Just scheme ->
---             Right <$> applySubsTo scheme
+lookupPredicates
+  :: (MonadState (Substitution Type, Substitution Kind, Context) m)
+  => [Name]
+  -> m [(Name, Name)]
+lookupPredicates vars = do
+    env <- gets thd3
+    pure $ do
+        v  <- vars
+        tc <- Set.toList (Env.findWithDefault mempty v env)
+        [(v, tc)]
+
+lookupConstructor
+  :: ( MonadSupply Int m
+     , MonadReader (ClassEnv, TypeEnv, KindEnv, ConstructorEnv) m
+     , MonadState (Substitution Type, Substitution Kind, Context) m )
+  => Name
+  -> m (Maybe (Set Name, Int))
+lookupConstructor con = Env.lookup con <$> askConstructorEnv
+
+matchConstructor
+  :: ( MonadSupply Int m
+     , MonadReader (ClassEnv, TypeEnv, KindEnv, ConstructorEnv) m
+     , MonadState (Substitution Type, Substitution Kind, Context) m )
+  => Name
+  -> Int
+  -> m (Either [Error] Scheme)
+matchConstructor con n =
+    lookupConstructor con >>= \case
+        Nothing ->
+            pure (Left [ConstructorNotInScope con])
+
+        Just (_, arity) ->
+            if arity /= n then
+                pure (Left [PatternArityMismatch con arity n])
+            else
+                maybeToEither [ConstructorNotInScope con] <$> lookupScheme con
 
 applySubsTo
   :: ( MonadState (Substitution Type, Substitution Kind, c) m
@@ -391,6 +507,24 @@ lookupClassInstance name ty = do
         sub <- eitherToMaybe <$> runExceptT (matchTypes (predicateType classSignature) ty)
         pure (applyBoth <$> sub <*> pure info)
 
+generalize
+  :: ( MonadSupply Int m
+     , MonadReader (ClassEnv, TypeEnv, KindEnv, ConstructorEnv) m
+     , MonadState (Substitution Type, Substitution Kind, Context) m )
+  => Type
+  -> m Scheme
+generalize ty = do
+    env <- askTypeEnv
+    (sub1, sub2, _) <- get
+    let ty1 = applyBoth (sub1, sub2) ty
+        frees = fst <$> free (applyBoth (sub1, sub2) env)
+        (vs, ks) = unzip $ filter ((`notElem` frees) . fst) (typeVars ty1)
+        ixd = Map.fromList (zip vs [0..])
+    ps <- lookupPredicates vs
+    pure (Forall ks (toPred ixd <$> ps) (apply (Sub (tGen <$> ixd)) (toPolytype ty1)))
+  where
+    toPred map (var, tc) = InClass tc (fromJust (Map.lookup var map))
+
 -------------------------------------------------------------------------------
 
 getClassEnv :: (ClassEnv, TypeEnv, KindEnv, ConstructorEnv) -> ClassEnv
@@ -424,6 +558,30 @@ askConstructorEnv
   :: MonadReader (ClassEnv, TypeEnv, KindEnv, ConstructorEnv) m
   => m ConstructorEnv
 askConstructorEnv = asks getConstructorEnv
+
+inClassEnv
+  :: (ClassEnv -> ClassEnv)
+  -> (ClassEnv, TypeEnv, KindEnv, ConstructorEnv)
+  -> (ClassEnv, TypeEnv, KindEnv, ConstructorEnv)
+inClassEnv f (e1, e2, e3, e4) = (f e1, e2, e3, e4)
+
+inTypeEnv
+  :: (TypeEnv -> TypeEnv)
+  -> (ClassEnv, TypeEnv, KindEnv, ConstructorEnv)
+  -> (ClassEnv, TypeEnv, KindEnv, ConstructorEnv)
+inTypeEnv f (e1, e2, e3, e4) = (e1, f e2, e3, e4)
+
+inKindEnv
+  :: (KindEnv -> KindEnv)
+  -> (ClassEnv, TypeEnv, KindEnv, ConstructorEnv)
+  -> (ClassEnv, TypeEnv, KindEnv, ConstructorEnv)
+inKindEnv f (e1, e2, e3, e4) = (e1, e2, f e3, e4)
+
+inConstructorEnv
+  :: (ConstructorEnv -> ConstructorEnv)
+  -> (ClassEnv, TypeEnv, KindEnv, ConstructorEnv)
+  -> (ClassEnv, TypeEnv, KindEnv, ConstructorEnv)
+inConstructorEnv f (e1, e2, e3, e4) = (e1, e2, e3, f e4)
 
 -------------------------------------------------------------------------------
 
@@ -516,148 +674,6 @@ test3 expr =
 
 
 test4 = test3 (varExpr () "xxx")
-
-
--- tagTree :: (MonadSupply Int f m) => ProgExpr t u -> m (ProgExpr Name u)
--- tagTree = cata alg
---   where
---     alg expr = do
---         t <- freshType
---         case expr of
---
---             EVar _ var ->
---                 pure (varExpr t var)
---
---             ECon _ con es ->
---                 conExpr t con <$> sequence es
---
---             ELit _ prim ->
---                 pure (litExpr t prim)
---
---             EApp _ es ->
---                 appExpr t <$> sequence es
---
---             EFix _ name e1 e2 ->
---                 fixExpr t name <$> e1 <*> e2
---
---             ELam _ ps e ->
---                 lamExpr t <$> traverse tagPattern ps <*> e
---
---             EIf _ e1 e2 e3 ->
---                 ifExpr t <$> e1 <*> e2 <*> e3
---
---             EPat _ e cs ->
---                 patExpr t <$> e <*> traverse tagClause1 cs
---
---             ELet _ bind e1 e2 ->
---                 letExpr t <$> tagBinding bind <*> e1 <*> e2
---
---             EFun _ cs ->
---                 funExpr t <$> traverse tagClause cs
---
---             EOp1 _ op a ->
---                 op1Expr t <$> tagOp1 op <*> a
---
---             EOp2  _ op a b ->
---                 op2Expr t <$> tagOp2 op <*> a <*> b
---
---             ETuple _ es ->
---                 tupleExpr t <$> sequence es
---
---             EList _ es ->
---                 listExpr t <$> sequence es
---
---             ERow _ name e r ->
---                 rowExpr t name <$> e <*> r
---
---             EHole _ ->
---                 pure (holeExpr t)
---
---             EAnn t a ->
---                 annExpr t <$> a
---
---     tagPattern :: (MonadSupply Int f m) => ProgPattern t u -> m (ProgPattern Name u)
---     tagPattern = cata alg
---       where
---         alg pat = do
---             t <- freshType
---             case pat of
---
---                 PVar _ var ->
---                     pure (varPat t var)
---
---                 PCon _ name ps ->
---                     conPat t name <$> sequence ps
---
---                 PAs _ name p ->
---                     asPat t name <$> p
---
---                 PLit _ prim ->
---                     pure (litPat t prim)
---
---                 PAny _ ->
---                     pure (anyPat t)
---
---                 POr _ p q ->
---                     orPat t <$> p <*> q
---
---                 PTuple _ ps ->
---                     tuplePat t <$> sequence ps
---
---                 PList _ ps ->
---                     listPat t <$> sequence ps
---
---                 PRow _ name p r ->
---                     rowPat t name <$> p <*> r
---
---                 PAnn t p ->
---                     annPat t <$> p
---
---     tagBinding bind = do
---         t <- freshType
---         case bind of
---             BPat _ p       -> BPat t <$> tagPattern p
---             BFun _ name ps -> BFun t name <$> traverse tagPattern ps
---
---     tagClause (Clause _ ps choices) =
---         Clause <$> freshType <*> traverse tagPattern ps <*> traverse sequence choices
---
---     tagClause1 (Clause _ p choices) =
---         Clause <$> freshType <*> tagPattern p <*> traverse sequence choices
---
---     tagOp1 op = do
---         t <- freshType
---         pure $ case op of
---
---             ONeg   _ -> ONeg t
---             ONot   _ -> ONot t
---
---     tagOp2 op = do
---         t <- freshType
---         pure $ case op of
---
---             OEq    _ -> OEq    t
---             ONeq   _ -> ONeq   t
---             OAnd   _ -> OAnd   t
---             OOr    _ -> OOr    t
---             OAdd   _ -> OAdd   t
---             OSub   _ -> OSub   t
---             OMul   _ -> OMul   t
---             ODiv   _ -> ODiv   t
---             OPow   _ -> OPow   t
---             OMod   _ -> OMod   t
---             OLt    _ -> OLt    t
---             OGt    _ -> OGt    t
---             OLte   _ -> OLte   t
---             OGte   _ -> OGte   t
---             OLarr  _ -> OLarr  t
---             ORarr  _ -> ORarr  t
---             OFpip  _ -> OFpip   t
---             OBpip  _ -> OBpip   t
---             OOpt   _ -> OOpt   t
---             OStr   _ -> OStr   t
---             ODot   _ -> ODot   t
---             OField _ -> OField t
 
 
 -------------------------------------------------------------------------------

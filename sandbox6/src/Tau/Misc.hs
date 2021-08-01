@@ -329,12 +329,13 @@ deriving instance (Traversable e2, Traversable e4) =>
 -- Prog
 -------------------------------------------------------------------------------
 
+type ProgExpr t u = Expr t t t t t t t t t t t t t t t t u [ProgPattern t u] 
+    (Clause t (ProgPattern t u)) (ProgBinding t u) 
+    (Clause t [ProgPattern t u])
+
 type ProgPattern t u = Pattern t t t t t t t t t u
-
 type ProgBinding t u = Binding t (ProgPattern t u)
-
-type ProgExpr t u = Expr t t t t t t t t t t t t t t t t u
-    [ProgPattern t u] (Clause t (ProgPattern t u)) (ProgBinding t u) (Clause t [ProgPattern t u])
+type ProgClause  t u = Clause t [ProgPattern t u] (ProgExpr t u)
 
 newtype Ast t u = Ast { astExpr :: ProgExpr t u }
 
@@ -1180,6 +1181,8 @@ data Error
     | ConstructorNotInScope Name
     | NoSuchClass Name
     | MissingInstance Name Type
+    | PatternArityMismatch Name Int Int 
+    | NonBooleanGuard (ProgExpr (TypeInfo [Error]) Void)
 
 data UnificationError
     = InfiniteType
