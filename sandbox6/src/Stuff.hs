@@ -234,7 +234,12 @@ inferExprType = cata $ \case
 
     EFun t clauses -> do
         cs <- traverse inferClauseType clauses
-        undefined
+        errss <- forM cs $ \(Clause ti ps gs) -> do
+            concat <$> forM gs (\(Choice _ e) -> do
+                errs1 <- tryUnify t (foldr tArr (typeOf e) (typeOf <$> ps))
+                errs2 <- tryUnify (typeOf ti) (typeOf e)
+                pure (errs1 <> errs2))
+        pure (funExpr (TypeInfo (concat errss) t []) cs)
 
     EOp1 t op1 expr -> do
         a <- expr
@@ -618,59 +623,71 @@ generalize ty = do
 
 getClassEnv :: (ClassEnv, TypeEnv, KindEnv, ConstructorEnv) -> ClassEnv
 getClassEnv (e, _, _, _) = e
+{-# INLINE getClassEnv #-}
 
 askClassEnv
   :: MonadReader (ClassEnv, TypeEnv, KindEnv, ConstructorEnv) m
   => m ClassEnv
 askClassEnv = asks getClassEnv
+{-# INLINE askClassEnv #-}
 
 getTypeEnv :: (ClassEnv, TypeEnv, KindEnv, ConstructorEnv) -> TypeEnv
 getTypeEnv (_, e, _, _) = e
+{-# INLINE getTypeEnv #-}
 
 askTypeEnv
   :: MonadReader (ClassEnv, TypeEnv, KindEnv, ConstructorEnv) m
   => m TypeEnv
 askTypeEnv = asks getTypeEnv
+{-# INLINE askTypeEnv #-}
 
 getKindEnv :: (ClassEnv, TypeEnv, KindEnv, ConstructorEnv) -> KindEnv
 getKindEnv (_, _, e, _) = e
+{-# INLINE getKindEnv #-}
 
 askKindEnv
   :: MonadReader (ClassEnv, TypeEnv, KindEnv, ConstructorEnv) m
   => m KindEnv
 askKindEnv = asks getKindEnv
+{-# INLINE askKindEnv #-}
 
 getConstructorEnv :: (ClassEnv, TypeEnv, KindEnv, ConstructorEnv) -> ConstructorEnv
 getConstructorEnv (_, _, _, e) = e
+{-# INLINE getConstructorEnv #-}
 
 askConstructorEnv
   :: MonadReader (ClassEnv, TypeEnv, KindEnv, ConstructorEnv) m
   => m ConstructorEnv
 askConstructorEnv = asks getConstructorEnv
+{-# INLINE askConstructorEnv #-}
 
 inClassEnv
   :: (ClassEnv -> ClassEnv)
   -> (ClassEnv, TypeEnv, KindEnv, ConstructorEnv)
   -> (ClassEnv, TypeEnv, KindEnv, ConstructorEnv)
 inClassEnv f (e1, e2, e3, e4) = (f e1, e2, e3, e4)
+{-# INLINE inClassEnv #-}
 
 inTypeEnv
   :: (TypeEnv -> TypeEnv)
   -> (ClassEnv, TypeEnv, KindEnv, ConstructorEnv)
   -> (ClassEnv, TypeEnv, KindEnv, ConstructorEnv)
 inTypeEnv f (e1, e2, e3, e4) = (e1, f e2, e3, e4)
+{-# INLINE inTypeEnv #-}
 
 inKindEnv
   :: (KindEnv -> KindEnv)
   -> (ClassEnv, TypeEnv, KindEnv, ConstructorEnv)
   -> (ClassEnv, TypeEnv, KindEnv, ConstructorEnv)
 inKindEnv f (e1, e2, e3, e4) = (e1, e2, f e3, e4)
+{-# INLINE inKindEnv #-}
 
 inConstructorEnv
   :: (ConstructorEnv -> ConstructorEnv)
   -> (ClassEnv, TypeEnv, KindEnv, ConstructorEnv)
   -> (ClassEnv, TypeEnv, KindEnv, ConstructorEnv)
 inConstructorEnv f (e1, e2, e3, e4) = (e1, e2, e3, f e4)
+{-# INLINE inConstructorEnv #-}
 
 -------------------------------------------------------------------------------
 
