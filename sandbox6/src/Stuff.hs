@@ -516,12 +516,12 @@ generalize
 generalize ty = do
     env <- askTypeEnv
     (sub1, sub2, _) <- get
-    let ty1 = applyBoth (sub1, sub2) ty
+    let t1 = applyBoth (sub1, sub2) ty
         frees = fst <$> free (applyBoth (sub1, sub2) env)
-        (vs, ks) = unzip $ filter ((`notElem` frees) . fst) (typeVars ty1)
+        (vs, ks) = unzip $ filter ((`notElem` frees) . fst) (typeVars t1)
         ixd = Map.fromList (zip vs [0..])
     ps <- lookupPredicates vs
-    pure (Forall ks (toPred ixd <$> ps) (apply (Sub (tGen <$> ixd)) (toPolytype ty1)))
+    pure (Forall ks (toPred ixd <$> ps) (apply (Sub (tGen <$> ixd)) (toPolytype t1)))
   where
     toPred map (var, tc) = InClass tc (fromJust (Map.lookup var map))
 
