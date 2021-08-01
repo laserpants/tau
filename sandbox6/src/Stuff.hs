@@ -427,7 +427,9 @@ inferClauseType
      , MonadState (Substitution Type, Substitution Kind, Context) m )
   => Clause t [ProgPattern Type Type] (m (ProgExpr (TypeInfo [Error]) Void))
   -> m (Clause (TypeInfoT [Error] t) [ProgPattern (TypeInfo [Error]) Void] (ProgExpr (TypeInfo [Error]) Void))
-inferClauseType = undefined
+inferClauseType clause =
+    traverse inferPatternType (clausePatterns clause)
+        >>= unifyClause clause . second concat . unzip
 
 inferClauseType1
   :: ( MonadSupply Int m
@@ -435,17 +437,28 @@ inferClauseType1
      , MonadState (Substitution Type, Substitution Kind, Context) m )
   => Clause t (ProgPattern Type Type) (m (ProgExpr (TypeInfo [Error]) Void))
   -> m (Clause (TypeInfoT [Error] t) (ProgPattern (TypeInfo [Error]) Void) (ProgExpr (TypeInfo [Error]) Void))
-inferClauseType1 eq@(Clause t pat _) = do
-    (p, vs) <- inferPatternType pat
+inferClauseType1 clause =
+    inferPatternType (clausePatterns clause)
+        >>= unifyClause clause
+
+unifyClause
+  :: ( MonadSupply Int m
+     , MonadReader (ClassEnv, TypeEnv, KindEnv, ConstructorEnv) m
+     , MonadState (Substitution Type, Substitution Kind, Context) m )
+  => Clause t p1 (m (ProgExpr (TypeInfo [Error]) Data.Void.Void))
+  -> (p2, [(Name, Type)])
+  -> m (Clause (TypeInfoT [Error] t) p2 (ProgExpr (TypeInfo [Error]) Data.Void.Void))
+unifyClause eq@(Clause t _ _) (ps, vs) = do
     let schemes = toScheme <$$> vs
         Clause _ _ choices = local (inTypeEnv (Env.inserts schemes)) <$> eq
         (whens, _) = unzip (choiceToPair <$> choices)
     errss <- forM (concat whens) unifyWhen
     gs <- traverse inferChoice choices
-    pure (Clause (TypeInfo (concat errss) t []) p gs)
+    pure (Clause (TypeInfo (concat errss) t []) ps gs)
 
 choiceToPair :: Choice a -> ([a], a)
 choiceToPair (Choice es e) = (es, e)
+{-# INLINE choiceToPair #-}
 
 unifyWhen
   :: ( MonadSupply Int m
@@ -514,7 +527,7 @@ matchConstructor con n =
             pure (Left [ConstructorNotInScope con])
 
         Just (_, arity) ->
-            if arity /= n 
+            if arity /= n
                 then pure (Left [PatternArityMismatch con arity n])
                 else maybeToEither [ConstructorNotInScope con] <$> lookupScheme con
 
@@ -776,6 +789,14 @@ test3 expr =
     runInfer mempty testClassEnv testTypeEnv testKindEnv testConstructorEnv (tagTree expr >>= inferExprType)
 
 test4 = test3 (varExpr () "xxx")
+
+test5expr :: ProgExpr () Type
+test5expr = funExpr () [ Clause () [conPat () "(::)" [varPat () "x", conPat () "(::)" [varPat () "y", varPat () "ys"]]] [Choice [] (litExpr () (TBool True))] , Clause () [conPat () "[]" []] [Choice [] (litExpr () (TBool True))] , Clause () [conPat () "(::)" [varPat () "z", varPat () "zs"]] [Choice [] (litExpr () (TBool True))] ]
+
+test5 = astExpr a
+  where
+    ast = Ast test5expr
+    (a, _) = runInfer mempty testClassEnv testTypeEnv testKindEnv testConstructorEnv (inferAstType ast)
 
 -------------------------------------------------------------------------------
 -------------------------------------------------------------------------------
