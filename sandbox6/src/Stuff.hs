@@ -30,6 +30,7 @@ import Data.Set.Monad (Set)
 import Data.Tuple.Extra
 import Data.Void
 import Tau.Misc
+import Tau.Prettyprinters
 import Tau.Serializers
 import Tau.Util
 import TextShow
