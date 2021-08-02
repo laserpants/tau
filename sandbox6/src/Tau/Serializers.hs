@@ -8,6 +8,7 @@ import Control.Arrow ((<<<), (>>>))
 import Data.Aeson
 import Data.Functor.Foldable (cata, para, project, embed)
 import Data.Text (Text)
+import Data.Void
 import Tau.Misc
 import Tau.Util
 import qualified Data.HashMap.Strict as HashMap
@@ -58,8 +59,20 @@ instance ToRep Predicate where
 instance ToRep (PredicateT Name) where
     toRep = withPretty predicateRep
 
+instance (ToRep t, ToRep e) => ToRep (TypeInfoT [e] t) where
+    toRep = typeInfoRep
+
 instance ToRep Text where
     toRep = textJson
+
+instance ToRep Error where
+    toRep = errorRep
+
+instance ToRep UnificationError where
+    toRep = unificationErrorRep
+
+instance ToRep Void where
+    toRep _ = ""
 
 typeJson :: Type -> Value
 typeJson = project >>> \case
@@ -181,6 +194,13 @@ instance FunArgsRep Text where
 
 instance (ToRep t, ToRep u) => FunArgsRep [ProgPattern t u] where
     toFunArgsRep = array . fmap toRep
+
+typeInfoRep :: (ToRep t, ToRep e) => TypeInfoT [e] t -> Value
+typeInfoRep = \case
+    TypeInfo e t ps -> makeRep "TypeInfoT" "TypeInfo"
+            [ makeRep "List" "Errors" [toRep e]
+            , toRep t
+            , makeRep "List" "Predicates" [toRep ps] ]
 
 textJson :: Text -> Value
 textJson s = makeRep "Name" "Name" [String s]

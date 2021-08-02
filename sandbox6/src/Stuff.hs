@@ -806,17 +806,20 @@ test5 = liftIO $ LBS.writeFile "/home/laserpants/code/tau-tooling/src/tmp/bundle
 
     bundle = Bundle
         { sourceExpr = test5expr
+        , typedExpr  = astExpr a
         }
 
 
 data Bundle = Bundle
     { sourceExpr  :: ProgExpr () Type
+    , typedExpr   :: ProgExpr (TypeInfo [Error]) Void
     } deriving (Show, Eq)
 
 instance ToRep Bundle where
     toRep Bundle{..} =
         object
             [ "source"  .= toRep sourceExpr
+            , "typed"   .= toRep typedExpr
             ]
 
 -------------------------------------------------------------------------------
