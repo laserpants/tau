@@ -1,12 +1,15 @@
-{-# LANGUAGE FlexibleInstances #-}
-{-# LANGUAGE LambdaCase        #-}
-{-# LANGUAGE OverloadedStrings #-}
+{-# LANGUAGE FlexibleInstances    #-}
+{-# LANGUAGE LambdaCase           #-}
+{-# LANGUAGE OverloadedStrings    #-}
+{-# LANGUAGE UndecidableInstances #-}
 module Tau.Serializers where
 
 import Control.Arrow ((<<<), (>>>))
 import Data.Aeson
 import Data.Functor.Foldable (cata, para, project, embed)
+import Data.Text (Text)
 import Tau.Misc
+import Tau.Util
 import qualified Data.HashMap.Strict as HashMap
 import qualified Data.Vector as Vector
 
@@ -31,32 +34,7 @@ instance ToRep () where
 instance (ToRep t1, ToRep t2, ToRep t3, ToRep t4, ToRep t5, ToRep t6, ToRep t7, ToRep t8, ToRep t9, ToRep t10) => ToRep (Pattern t1 t2 t3 t4 t5 t6 t7 t8 t9 t10) where
     toRep = withPretty patternRep
 
-instance
-    ( Functor e2
-    , Functor e4
-    , ToRep t1
-    , ToRep t2
-    , ToRep t3
-    , ToRep t4
-    , ToRep t5
-    , ToRep t6
-    , ToRep t7
-    , ToRep t8
-    , ToRep t9
-    , ToRep t10
-    , ToRep t11
-    , ToRep t12
-    , ToRep t13
-    , ToRep t14
-    , ToRep t15
-    , ToRep t16
-    , ToRep t17
-    , ToRep e1
---    , ToRep (e2 (Expr t1 t2 t3 t4 t5 t6 t7 t8 t9 t10 t11 t12 t13 t14 t15 t16 t17 e1 e2 e3 e4))
-    , ToRep e3
---    , ToRep (e4 (Expr t1 t2 t3 t4 t5 t6 t7 t8 t9 t10 t11 t12 t13 t14 t15 t16 t17 e1 e2 e3 e4))
-    ) => ToRep (Expr t1 t2 t3 t4 t5 t6 t7 t8 t9 t10 t11 t12 t13 t14 t15 t16 t17 e1 e2 e3 e4)
-  where
+instance (Functor e2, Functor e4, ToRep t1, ToRep t2, ToRep t3, ToRep t4, ToRep t5, ToRep t6, ToRep t7, ToRep t8, ToRep t9, ToRep t10, ToRep t11, ToRep t12, ToRep t13, ToRep t14, ToRep t15, ToRep t16, ToRep t17, ToRep e1, ToRep (e2 (Expr t1 t2 t3 t4 t5 t6 t7 t8 t9 t10 t11 t12 t13 t14 t15 t16 t17 e1 e2 e3 e4)), ToRep e3, ToRep (e4 (Expr t1 t2 t3 t4 t5 t6 t7 t8 t9 t10 t11 t12 t13 t14 t15 t16 t17 e1 e2 e3 e4)), FunArgsRep e1) => ToRep (Expr t1 t2 t3 t4 t5 t6 t7 t8 t9 t10 t11 t12 t13 t14 t15 t16 t17 e1 e2 e3 e4) where
     toRep = withPretty exprRep
 
 instance (ToRep a) => ToRep (Op1 a) where
@@ -64,6 +42,21 @@ instance (ToRep a) => ToRep (Op1 a) where
 
 instance (ToRep a) => ToRep (Op2 a) where
     toRep = withPretty op2Rep
+
+instance (ToRep t, ToRep p) => ToRep (Binding t p) where
+    toRep = bindingRep
+
+instance (ToRep a) => ToRep (Choice a) where
+    toRep = choiceRep
+
+instance ToRep Predicate where
+    toRep = withPretty predicateRep
+
+instance ToRep (PredicateT Name) where
+    toRep = withPretty predicateRep
+
+instance ToRep Text where
+    toRep = textJson
 
 typeJson :: Type -> Value
 typeJson = project >>> \case
@@ -108,27 +101,27 @@ patternRep = project >>> \case
     PAnn   t p          -> makeRep "Pattern" "PAnn"   [toRep t, toRep p]
 
 exprRep
-  :: (Functor e2, Functor e4, ToRep t1, ToRep t2, ToRep t3, ToRep t4, ToRep t5, ToRep t6, ToRep t7, ToRep t8, ToRep t9, ToRep t10, ToRep t11, ToRep t12, ToRep t13, ToRep t14, ToRep t15, ToRep t16, ToRep t17, ToRep e1, ToRep e3)
+  :: (Functor e2, Functor e4, ToRep t1, ToRep t2, ToRep t3, ToRep t4, ToRep t5, ToRep t6, ToRep t7, ToRep t8, ToRep t9, ToRep t10, ToRep t11, ToRep t12, ToRep t13, ToRep t14, ToRep t15, ToRep t16, ToRep t17, ToRep e1, ToRep e3, ToRep (e2 (Expr t1 t2 t3 t4 t5 t6 t7 t8 t9 t10 t11 t12 t13 t14 t15 t16 t17 e1 e2 e3 e4)), ToRep (e4 (Expr t1 t2 t3 t4 t5 t6 t7 t8 t9 t10 t11 t12 t13 t14 t15 t16 t17 e1 e2 e3 e4)), FunArgsRep e1)
   => Expr t1 t2 t3 t4 t5 t6 t7 t8 t9 t10 t11 t12 t13 t14 t15 t16 t17 e1 e2 e3 e4
   -> Value
 exprRep = project >>> \case
     EVar   t var        -> makeRep "Expr" "EVar"      [toRep t, String var]
     EHole  t            -> makeRep "Expr" "EHole"     [toRep t]
     ECon   t con es     -> makeRep "Expr" "ECon"      [toRep t, String con, toRep es]
---    ELit   t prim       -> makeRep "Expr" "ELit"      [toRep t, toRep prim]
---    EApp   t es         -> makeRep "Expr" "EApp"      [toRep t, toRep es]
---    EFix   t name e1 e2 -> makeRep "Expr" "EFix"      [toRep t, String name, toRep e1, toRep e2]
---    ELam   t ps e       -> makeRep "Expr" "ELam"      [toRep t, toFunArgsRep ps, toRep e]
---    EIf    t e1 e2 e3   -> makeRep "Expr" "EIf"       [toRep t, toRep e1, toRep e2, toRep e3]
---    EPat   t es cs      -> makeRep "Expr" "EPat"      [toRep t, toRep es, toRep cs]
---    ELet   t bind e1 e2 -> makeRep "Expr" "ELet"      [toRep t, toRep bind, toRep e1, toRep e2]
---    EFun   t cs         -> makeRep "Expr" "EFun"      [toRep t, toRep cs]
---    EOp1   t op a       -> makeRep "Expr" "EOp1"      [toRep t, toRep op, toRep a]
---    EOp2   t op a b     -> makeRep "Expr" "EOp2"      [toRep t, toRep op, toRep a, toRep b]
---    ETuple t es         -> makeRep "Expr" "ETuple"    [toRep t, toRep es]
---    EList  t es         -> makeRep "Expr" "EList"     [toRep t, toRep es]
---    ERow   t lab a b    -> makeRep "Expr" "ERow"      [toRep t, String lab, toRep a, toRep b]
---    EAnn   t a          -> makeRep "Expr" "EAnn"      [toRep t, toRep a]
+    ELit   t prim       -> makeRep "Expr" "ELit"      [toRep t, toRep prim]
+    EApp   t es         -> makeRep "Expr" "EApp"      [toRep t, toRep es]
+    EFix   t name e1 e2 -> makeRep "Expr" "EFix"      [toRep t, String name, toRep e1, toRep e2]
+    ELam   t ps e       -> makeRep "Expr" "ELam"      [toRep t, toFunArgsRep ps, toRep e]
+    EIf    t e1 e2 e3   -> makeRep "Expr" "EIf"       [toRep t, toRep e1, toRep e2, toRep e3]
+    EPat   t es cs      -> makeRep "Expr" "EPat"      [toRep t, toRep es, toRep cs]
+    ELet   t bind e1 e2 -> makeRep "Expr" "ELet"      [toRep t, toRep bind, toRep e1, toRep e2]
+    EFun   t cs         -> makeRep "Expr" "EFun"      [toRep t, toRep cs]
+    EOp1   t op a       -> makeRep "Expr" "EOp1"      [toRep t, toRep op, toRep a]
+    EOp2   t op a b     -> makeRep "Expr" "EOp2"      [toRep t, toRep op, toRep a, toRep b]
+    ETuple t es         -> makeRep "Expr" "ETuple"    [toRep t, toRep es]
+    EList  t es         -> makeRep "Expr" "EList"     [toRep t, toRep es]
+    ERow   t lab a b    -> makeRep "Expr" "ERow"      [toRep t, String lab, toRep a, toRep b]
+    EAnn   t a          -> makeRep "Expr" "EAnn"      [toRep t, toRep a]
 
 op1Rep :: (ToRep t) => Op1 t -> Value
 op1Rep = \case
@@ -159,6 +152,49 @@ op2Rep = \case
     OStr   t            -> makeRep "Op2" "OStr"       [toRep t]
     ODot   t            -> makeRep "Op2" "ODot"       [toRep t]
     OField t            -> makeRep "Op2" "OField"     [toRep t]
+
+bindingRep :: (ToRep t, ToRep p) => Binding t p -> Value
+bindingRep = \case
+    BPat t p            -> makeRep "Binding" "BPat"   [toRep t, toRep p]
+    BFun t name ps      -> makeRep "Binding" "BFun"   [toRep t, String name, toRep ps]
+
+choiceRep :: (ToRep a) => Choice a -> Value
+choiceRep = \case
+    Choice es e         -> makeRep "Choice" "Choice"  [toRep es, toRep e]
+
+predicateRep :: (ToRep a) => PredicateT a -> Value
+predicateRep = \case
+    InClass name a      -> makeRep "PredicateT" "InClass" [String name, toRep a]
+
+class FunArgsRep f where
+    toFunArgsRep :: f -> Value
+
+instance FunArgsRep Text where
+    toFunArgsRep t = array [toRep t]
+
+instance (ToRep t, ToRep u) => FunArgsRep [ProgPattern t u] where
+    toFunArgsRep = array . fmap toRep
+
+textJson :: Text -> Value
+textJson s = makeRep "Name" "Name" [String s]
+
+errorRep :: Error -> Value
+errorRep = \case
+    UnificationError err                -> String "UnificationError"
+    NotInScope name                     -> String "NotInScope"
+    ConstructorNotInScope name          -> String "ConstructorNotInScope"
+    NoSuchClass name                    -> String "NoSuchClass"
+    MissingInstance name t              -> String "MissingInstance"
+    PatternArityMismatch name m n       -> String "PatternArityMismatch"
+    NonBooleanGuard expr                -> String "NonBooleanGuard"
+
+unificationErrorRep :: UnificationError -> Value
+unificationErrorRep = \case
+    InfiniteType                        -> String "InfiniteType"
+    InfiniteKind                        -> String "InfiniteKind"
+    IncompatibleTypes                   -> String "IncompatibleTypes"
+    IncompatibleKinds                   -> String "IncompatibleKinds"
+    CannotMerge                         -> String "CannotMerge"
 
 -------------------------------------------------------------------------------
 
