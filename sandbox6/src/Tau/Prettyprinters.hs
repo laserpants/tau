@@ -156,4 +156,3 @@ instance Pretty (Pattern t1 t2 t3 t4 t5 t6 t7 t8 t9 t10) where
 
 instance (Functor e2, Functor e4) => Pretty (Expr t1 t2 t3 t4 t5 t6 t7 t8 t9 t10 t11 t12 t13 t14 t15 t16 t17 e1 e2 e3 e4) where
     pretty _ = "TODO"
-
