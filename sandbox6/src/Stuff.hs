@@ -68,7 +68,7 @@ tagTree = cata alg
         EOp2   _ op a b         -> op2Expr   <$> freshType <*> tagOp2 op <*> a <*> b
         ETuple _ es             -> tupleExpr <$> freshType <*> sequence es
         EList  _ es             -> listExpr  <$> freshType <*> sequence es
-        ERow   _ name e r       -> rowExpr   <$> freshType <*> pure name <*> e <*> r
+        ERow   _ lab e r        -> rowExpr   <$> freshType <*> pure lab <*> e <*> r
         EHole  _                -> holeExpr  <$> freshType
         EAnn   t a              -> annExpr t <$> a
 
@@ -81,7 +81,7 @@ tagTree = cata alg
         POr    _ p q            -> orPat     <$> freshType <*> p <*> q
         PTuple _ ps             -> tuplePat  <$> freshType <*> sequence ps
         PList  _ ps             -> listPat   <$> freshType <*> sequence ps
-        PRow   _ name p r       -> rowPat    <$> freshType <*> pure name <*> p <*> r
+        PRow   _ lab p r        -> rowPat    <$> freshType <*> pure lab <*> p <*> r
         PAnn   t p              -> annPat  t <$> p
 
     tagBinding = \case
