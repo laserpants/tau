@@ -46,6 +46,9 @@ instance (ToRep a) => ToRep (Op2 a) where
 instance (ToRep t, ToRep p) => ToRep (Binding t p) where
     toRep = bindingRep
 
+instance (ToRep t, ToRep p, ToRep a) => ToRep (Clause t p a) where
+    toRep = withPretty clauseRep
+
 instance (ToRep a) => ToRep (Choice a) where
     toRep = choiceRep
 
@@ -157,6 +160,10 @@ bindingRep :: (ToRep t, ToRep p) => Binding t p -> Value
 bindingRep = \case
     BPat t p            -> makeRep "Binding" "BPat"   [toRep t, toRep p]
     BFun t name ps      -> makeRep "Binding" "BFun"   [toRep t, String name, toRep ps]
+
+clauseRep :: (ToRep t, ToRep p, ToRep a) => Clause t p a -> Value
+clauseRep = \case
+    Clause t ps e       -> makeRep "Clause" "Clause"  [toRep t, toRep ps, toRep e]
 
 choiceRep :: (ToRep a) => Choice a -> Value
 choiceRep = \case

@@ -17,7 +17,9 @@ import Control.Monad.Trans.Maybe (MaybeT, hoistMaybe)
 import Control.Monad.Trans.Maybe (MaybeT(..))
 #endif
 import Control.Monad.Supply
+import Data.Aeson
 import Data.Either.Extra (eitherToMaybe)
+import Data.Aeson.Encode.Pretty
 import Data.Fix (Fix(..))
 import Data.Function ((&))
 import Data.Functor.Foldable
@@ -31,6 +33,7 @@ import Tau.Misc
 import Tau.Serializers
 import Tau.Util
 import TextShow
+import qualified Data.ByteString.Lazy as LBS
 import qualified Data.Map.Strict as Map
 import qualified Data.Set.Monad as Set
 import qualified Tau.Env as Env
@@ -794,10 +797,27 @@ test4 = test3 (varExpr () "xxx")
 test5expr :: ProgExpr () Type
 test5expr = funExpr () [ Clause () [conPat () "(::)" [varPat () "x", conPat () "(::)" [varPat () "y", varPat () "ys"]]] [Choice [] (litExpr () (TBool True))] , Clause () [conPat () "[]" []] [Choice [] (litExpr () (TBool True))] , Clause () [conPat () "(::)" [varPat () "z", varPat () "zs"]] [Choice [] (litExpr () (TBool True))] ]
 
-test5 = astExpr a
+test5 :: IO ()
+test5 = liftIO $ LBS.writeFile "/home/laserpants/code/tau-tooling/src/tmp/bundle.json" (encodePretty' defConfig{ confIndent = Spaces 2 } (toRep bundle))
+    -- astExpr a
   where
     ast = Ast test5expr
     (a, _) = runInfer mempty testClassEnv testTypeEnv testKindEnv testConstructorEnv (inferAstType ast)
+
+    bundle = Bundle
+        { sourceExpr = test5expr
+        }
+
+
+data Bundle = Bundle
+    { sourceExpr  :: ProgExpr () Type
+    } deriving (Show, Eq)
+
+instance ToRep Bundle where
+    toRep Bundle{..} =
+        object
+            [ "source"  .= toRep sourceExpr
+            ]
 
 -------------------------------------------------------------------------------
 -------------------------------------------------------------------------------
