@@ -8,8 +8,10 @@ import Control.Arrow ((<<<), (>>>))
 import Data.Aeson
 import Data.Functor.Foldable (cata, para, project, embed)
 import Data.Text (Text)
+import Data.Text.Prettyprint.Doc
 import Data.Void
 import Tau.Misc
+import Tau.Prettyprinters
 import Tau.Util
 import qualified Data.HashMap.Strict as HashMap
 import qualified Data.Vector as Vector
@@ -35,7 +37,7 @@ instance ToRep () where
 instance (ToRep t1, ToRep t2, ToRep t3, ToRep t4, ToRep t5, ToRep t6, ToRep t7, ToRep t8, ToRep t9, ToRep t10) => ToRep (Pattern t1 t2 t3 t4 t5 t6 t7 t8 t9 t10) where
     toRep = withPretty patternRep
 
-instance (Functor e2, Functor e4, ToRep t1, ToRep t2, ToRep t3, ToRep t4, ToRep t5, ToRep t6, ToRep t7, ToRep t8, ToRep t9, ToRep t10, ToRep t11, ToRep t12, ToRep t13, ToRep t14, ToRep t15, ToRep t16, ToRep t17, ToRep e1, ToRep (e2 (Expr t1 t2 t3 t4 t5 t6 t7 t8 t9 t10 t11 t12 t13 t14 t15 t16 t17 e1 e2 e3 e4)), ToRep e3, ToRep (e4 (Expr t1 t2 t3 t4 t5 t6 t7 t8 t9 t10 t11 t12 t13 t14 t15 t16 t17 e1 e2 e3 e4)), FunArgsRep e1) => ToRep (Expr t1 t2 t3 t4 t5 t6 t7 t8 t9 t10 t11 t12 t13 t14 t15 t16 t17 e1 e2 e3 e4) where
+instance (Functor e2, Functor e4, ToRep t1, ToRep t2, ToRep t3, ToRep t4, ToRep t5, ToRep t6, ToRep t7, ToRep t8, ToRep t9, ToRep t10, ToRep t11, ToRep t12, ToRep t13, ToRep t14, ToRep t15, ToRep t16, ToRep t17, ToRep e1, ToRep (e2 (Expr t1 t2 t3 t4 t5 t6 t7 t8 t9 t10 t11 t12 t13 t14 t15 t16 t17 e1 e2 e3 e4)), ToRep e3, ToRep (e4 (Expr t1 t2 t3 t4 t5 t6 t7 t8 t9 t10 t11 t12 t13 t14 t15 t16 t17 e1 e2 e3 e4)), FunArgsRep e1, Pretty e1) => ToRep (Expr t1 t2 t3 t4 t5 t6 t7 t8 t9 t10 t11 t12 t13 t14 t15 t16 t17 e1 e2 e3 e4) where
     toRep = withPretty exprRep
 
 instance (ToRep a) => ToRep (Op1 a) where
@@ -47,7 +49,7 @@ instance (ToRep a) => ToRep (Op2 a) where
 instance (ToRep t, ToRep p) => ToRep (Binding t p) where
     toRep = bindingRep
 
-instance (ToRep t, ToRep p, ToRep a) => ToRep (Clause t p a) where
+instance (Pretty p, Pretty a, ToRep t, ToRep p, ToRep a) => ToRep (Clause t p a) where
     toRep = withPretty clauseRep
 
 instance (ToRep a) => ToRep (Choice a) where
@@ -117,7 +119,7 @@ patternRep = project >>> \case
     PAnn   t p          -> makeRep "Pattern" "PAnn"   [toRep t, toRep p]
 
 exprRep
-  :: (Functor e2, Functor e4, ToRep t1, ToRep t2, ToRep t3, ToRep t4, ToRep t5, ToRep t6, ToRep t7, ToRep t8, ToRep t9, ToRep t10, ToRep t11, ToRep t12, ToRep t13, ToRep t14, ToRep t15, ToRep t16, ToRep t17, ToRep e1, ToRep e3, ToRep (e2 (Expr t1 t2 t3 t4 t5 t6 t7 t8 t9 t10 t11 t12 t13 t14 t15 t16 t17 e1 e2 e3 e4)), ToRep (e4 (Expr t1 t2 t3 t4 t5 t6 t7 t8 t9 t10 t11 t12 t13 t14 t15 t16 t17 e1 e2 e3 e4)), FunArgsRep e1)
+  :: (Functor e2, Functor e4, ToRep t1, ToRep t2, ToRep t3, ToRep t4, ToRep t5, ToRep t6, ToRep t7, ToRep t8, ToRep t9, ToRep t10, ToRep t11, ToRep t12, ToRep t13, ToRep t14, ToRep t15, ToRep t16, ToRep t17, ToRep e1, ToRep e3, ToRep (e2 (Expr t1 t2 t3 t4 t5 t6 t7 t8 t9 t10 t11 t12 t13 t14 t15 t16 t17 e1 e2 e3 e4)), ToRep (e4 (Expr t1 t2 t3 t4 t5 t6 t7 t8 t9 t10 t11 t12 t13 t14 t15 t16 t17 e1 e2 e3 e4)), FunArgsRep e1, Pretty e1)
   => Expr t1 t2 t3 t4 t5 t6 t7 t8 t9 t10 t11 t12 t13 t14 t15 t16 t17 e1 e2 e3 e4
   -> Value
 exprRep = project >>> \case
@@ -234,8 +236,7 @@ makeRep type_ constructor args = object
     [ "meta"     .= [type_, constructor]
     , "children" .= args ]
 
---withPretty :: (Pretty p) => (p -> Value) -> p -> Value
---withPretty f p = Object (HM.insert "pretty" (String (prettyPrint p)) obj)
-withPretty f p = Object (HashMap.insert "pretty" (String "TODO") obj)
+withPretty :: (Pretty p) => (p -> Value) -> p -> Value
+withPretty f p = Object (HashMap.insert "pretty" (String (prettyT p)) obj)
   where
     Object obj = f p

@@ -177,6 +177,12 @@ data Op2 t
     | ODot   t                           -- ^ Dot operator
     | OField t                           -- ^ Field access operator
 
+-- | Operator associativity
+data Assoc
+    = AssocL                             -- ^ Operator is left-associative
+    | AssocR                             -- ^ Operator is right-associative
+    | AssocN                             -- ^ Operator is non-associative
+
 -------------------------------------------------------------------------------
 -------------------------------------------------------------------------------
 -------------------------------------------------------------------------------
@@ -329,8 +335,8 @@ deriving instance (Traversable e2, Traversable e4) =>
 -- Prog
 -------------------------------------------------------------------------------
 
-type ProgExpr t u = Expr t t t t t t t t t t t t t t t t u [ProgPattern t u] 
-    (Clause t (ProgPattern t u)) (ProgBinding t u) 
+type ProgExpr t u = Expr t t t t t t t t t t t t t t t t u [ProgPattern t u]
+    (Clause t (ProgPattern t u)) (ProgBinding t u)
     (Clause t [ProgPattern t u])
 
 type ProgPattern t u = Pattern t t t t t t t t t u
@@ -1023,6 +1029,94 @@ setPatternTag t = project >>> \case
     PList   _ ps          -> listPat    t ps
     PRow    _ lab p r     -> rowPat     t lab p r
 
+primName :: Prim -> Name
+primName = \case
+    TUnit      -> "Unit"
+    TBool    _ -> "Bool"
+    TInt     _ -> "Int"
+    TInteger _ -> "Integer"
+    TFloat   _ -> "Float"
+    TDouble  _ -> "Double"
+    TChar    _ -> "Char"
+    TString  _ -> "String"
+    TSymbol  _ -> "Symbol"
+
+-- | Return the precedence of a binary operator
+opPrecedence :: Op2 t -> Int
+opPrecedence = \case
+    OEq    _ -> 4
+    ONeq   _ -> 4
+    OAnd   _ -> 3
+    OOr    _ -> 2
+    OAdd   _ -> 6
+    OSub   _ -> 6
+    OMul   _ -> 7
+    ODiv   _ -> 7
+    OPow   _ -> 8
+    OLt    _ -> 4
+    OGt    _ -> 4
+    OLte   _ -> 4
+    OGte   _ -> 4
+    OLarr  _ -> 9
+    ORarr  _ -> 9
+    OFpip  _ -> 1
+    OBpip  _ -> 1
+    OOpt   _ -> 3
+    OStr   _ -> 5
+    ODot   _ -> 10
+    OField _ -> 10
+
+-- | Return the associativity of a binary operator
+opAssoc :: Op2 t -> Assoc
+opAssoc = \case
+    OEq    _ -> AssocN
+    ONeq   _ -> AssocN
+    OAnd   _ -> AssocR
+    OOr    _ -> AssocR
+    OAdd   _ -> AssocL
+    OSub   _ -> AssocL
+    OMul   _ -> AssocL
+    ODiv   _ -> AssocL
+    OPow   _ -> AssocR
+    OLt    _ -> AssocN
+    OGt    _ -> AssocN
+    OLte   _ -> AssocN
+    OGte   _ -> AssocN
+    ORarr  _ -> AssocL
+    OLarr  _ -> AssocR
+    OFpip  _ -> AssocL
+    OBpip  _ -> AssocR
+    OOpt   _ -> AssocN
+    OStr   _ -> AssocR
+    ODot   _ -> AssocL
+    OField _ -> AssocL
+
+-- | Return the symbolic representation of a binary operator
+op2Symbol :: Op2 t -> Name
+op2Symbol = \case
+    OEq     _ -> "=="
+    ONeq    _ -> "/="
+    OAnd    _ -> "&&"
+    OOr     _ -> "||"
+    OAdd    _ -> "+"
+    OSub    _ -> "-"
+    OMul    _ -> "*"
+    ODiv    _ -> "/"
+    OPow    _ -> "^"
+    OMod    _ -> "%"
+    OLt     _ -> "<"
+    OGt     _ -> ">"
+    OLte    _ -> "<="
+    OGte    _ -> ">="
+    OLarr   _ -> "<<"
+    ORarr   _ -> ">>"
+    OFpip   _ -> "|>"
+    OBpip   _ -> "<|"
+    OOpt    _ -> "?"
+    OStr    _ -> "++"
+    ODot    _ -> "."
+    OField  _ -> "."
+
 -------------------------------------------------------------------------------
 
 newtype Substitution a = Sub { getSub :: Map Name a }
@@ -1237,7 +1331,7 @@ data Error
     | ConstructorNotInScope Name
     | NoSuchClass Name
     | MissingInstance Name Type
-    | PatternArityMismatch Name Int Int 
+    | PatternArityMismatch Name Int Int
     | NonBooleanGuard (ProgExpr (TypeInfo [Error]) Void)
 
 data UnificationError

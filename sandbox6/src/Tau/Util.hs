@@ -11,6 +11,8 @@ import Control.Monad.Trans.Maybe (MaybeT, runMaybeT)
 import Data.Functor.Foldable (Base, Corecursive, embed)
 import Data.Maybe (fromJust)
 import Data.Text (Text, pack)
+import Data.Text.Prettyprint.Doc
+import Data.Text.Prettyprint.Doc.Render.Text
 
 type Name = Text
 
@@ -57,3 +59,11 @@ runSupplyNats = fromJust . flip evalSupply [0..]
 
 runSupplyNatsT :: (Monad m) => SupplyT Int (MaybeT m) a -> m a
 runSupplyNatsT = fmap fromJust . runMaybeT . flip evalSupplyT [0..]
+
+-------------------------------------------------------------------------------
+
+renderDoc :: Doc a -> Text
+renderDoc = renderStrict . layoutPretty defaultLayoutOptions
+
+prettyT :: (Pretty p) => p -> Text
+prettyT = renderDoc . pretty
