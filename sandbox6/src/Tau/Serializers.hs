@@ -188,6 +188,10 @@ predicateRep :: (ToRep a) => PredicateT a -> Value
 predicateRep = \case
     InClass name a      -> makeRep "PredicateT" "InClass" [String name, toRep a]
 
+typeInfoRep :: (ToRep t, ToRep e) => TypeInfoT [e] t -> Value
+typeInfoRep = \case
+    TypeInfo e t ps     -> makeRep "TypeInfoT" "TypeInfo" [toRep e, toRep t, toRep ps]
+
 class FunArgsRep f where
     toFunArgsRep :: f -> Value
 
@@ -196,13 +200,6 @@ instance FunArgsRep Text where
 
 instance (ToRep t, ToRep u) => FunArgsRep [ProgPattern t u] where
     toFunArgsRep = array . fmap toRep
-
-typeInfoRep :: (ToRep t, ToRep e) => TypeInfoT [e] t -> Value
-typeInfoRep = \case
-    TypeInfo e t ps -> makeRep "TypeInfoT" "TypeInfo"
-            [ makeRep "List" "Errors" [toRep e]
-            , toRep t
-            , makeRep "List" "Predicates" [toRep ps] ]
 
 textJson :: Text -> Value
 textJson s = makeRep "Name" "Name" [String s]

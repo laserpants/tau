@@ -18,8 +18,8 @@ import Control.Monad.Trans.Maybe (MaybeT(..))
 #endif
 import Control.Monad.Supply
 import Data.Aeson
-import Data.Either.Extra (eitherToMaybe)
 import Data.Aeson.Encode.Pretty
+import Data.Either.Extra (eitherToMaybe)
 import Data.Fix (Fix(..))
 import Data.Function ((&))
 import Data.Functor.Foldable
@@ -29,6 +29,7 @@ import Data.Maybe (fromMaybe, fromJust)
 import Data.Set.Monad (Set)
 import Data.Tuple.Extra
 import Data.Void
+import Debug.Trace
 import Tau.Misc
 import Tau.Prettyprinters
 import Tau.Serializers
@@ -132,6 +133,12 @@ freshType_ = do
     let st = showt s
     pure (tVar (kVar ("$n" <> st)) ("$v" <> st))
 
+--freshType__ :: (MonadSupply Int m) => m Type
+--freshType__ = do
+--    s <- supply
+--    let st = showt s
+--    pure (tVar kTyp ("$v" <> st))
+
 inferAstType
   :: ( MonadSupply Int m
      , MonadReader (ClassEnv, TypeEnv, KindEnv, ConstructorEnv) m
@@ -225,7 +232,8 @@ inferExprType = cata $ \case
         schemes <- traverse (secondM generalize) vs
         e2 <- local (inTypeEnv (Env.inserts schemes)) expr2
         errs2 <- tryUnify t (typeOf e2)
-        undefined
+        errs3 <- tryUnify bt (typeOf e1)
+        pure (letExpr (TypeInfo (errs1 <> errs2 <> errs3) t []) (BPat (TypeInfo [] bt []) p) e1 e2)
 
     ELet t (BFun bt f pats) expr1 expr2 -> do
         (ps, vss) <- unzip <$> traverse inferPatternType pats
@@ -235,12 +243,15 @@ inferExprType = cata $ \case
         scheme <- generalize t1
         e2 <- local (inTypeEnv (Env.insert f scheme)) expr2
         errs2 <- tryUnify t (typeOf e2)
-        undefined
+        errs3 <- tryUnify t bt
+        t2 <- applySubsTo t
+        errss <- forM (zip (typeOf <$> ps) (unfoldArr t2)) $ uncurry tryUnify
+        pure (letExpr (TypeInfo (errs1 <> errs2 <> errs3 <> concat errss) t []) (BFun (TypeInfo [] bt []) f ps) e1 e2)
 
     EFun t clauses -> do
         cs <- traverse inferClauseType clauses
-        errss <- forM cs $ \(Clause ti ps gs) -> do
-            concat <$> forM gs (\(Choice _ e) -> do
+        errss <- forM cs $ \(Clause ti ps ds) -> do
+            concat <$> forM ds (\(Choice _ e) -> do
                 errs1 <- tryUnify t (foldr tArr (typeOf e) (typeOf <$> ps))
                 errs2 <- tryUnify (typeOf ti) (typeOf e)
                 pure (errs1 <> errs2))
@@ -290,6 +301,11 @@ inferExprType = cata $ \case
         let TypeInfo errs1 t1 ps = exprTag e
         errs2 <- tryUnify t t1
         pure (setExprTag (TypeInfo (errs1 <> errs2) t1 ps) e)
+
+unfoldArr :: Type -> [Type]
+unfoldArr = para $ \case
+    TArr a b   -> snd a <> snd b
+    t          -> [embed (fst <$> t)]
 
 inferPatternType
   :: ( MonadSupply Int m
@@ -796,7 +812,15 @@ test3 expr =
 test4 = test3 (varExpr () "xxx")
 
 test5expr :: ProgExpr () Type
-test5expr = funExpr () [ Clause () [conPat () "(::)" [varPat () "x", conPat () "(::)" [varPat () "y", varPat () "ys"]]] [Choice [] (litExpr () (TBool True))] , Clause () [conPat () "[]" []] [Choice [] (litExpr () (TBool True))] , Clause () [conPat () "(::)" [varPat () "z", varPat () "zs"]] [Choice [] (litExpr () (TBool True))] ]
+--test5expr = funExpr () [ Clause () [conPat () "(::)" [varPat () "x", conPat () "(::)" [varPat () "y", varPat () "ys"]]] [Choice [] (litExpr () (TBool True))] , Clause () [conPat () "[]" []] [Choice [] (litExpr () (TBool True))] , Clause () [conPat () "(::)" [varPat () "z", varPat () "zs"]] [Choice [] (litExpr () (TBool True))] ]
+--test5expr = varExpr () "(+)"
+--test5expr = fixExpr () "foldSucc" (lamExpr () [varPat () "g", varPat () "a"] (funExpr () [ Clause () [conPat () "Succ" [varPat () "n"]] [Choice [] (appExpr () [ varExpr () "foldSucc" , varExpr () "g" , appExpr () [varExpr () "g", conExpr () "Succ" [varExpr () "n"], varExpr () "a"] , varExpr () "n" ])] , Clause () [anyPat ()] [Choice [] (varExpr () "a")] ])) (letExpr () (BFun () "toInt" [varPat () "n"]) (appExpr () [ varExpr () "foldSucc" , lamExpr () [anyPat (), varPat () "x"] (op2Expr () (OAdd ()) (varExpr () "x") (litExpr () (TInteger 1))) , annExpr tInt (litExpr () (TInteger 0)) , varExpr () "n" ]) (appExpr () [ varExpr () "foldSucc" , lamExpr () [varPat () "n", varPat () "x"] (op2Expr () (OMul ()) (appExpr () [varExpr () "toInt", varExpr () "n"]) (varExpr () "x")) , annExpr tInt (litExpr () (TInteger 1)) , conExpr () "Succ" [conExpr () "Succ" [conExpr () "Succ" [conExpr () "Succ" [conExpr () "Succ" [conExpr () "Zero" []]]]]] ]))
+--test5expr = letExpr () (BFun () "withDefault" [varPat () "val"]) (funExpr () [ Clause () [conPat () "Some" [varPat () "y"]] [ Choice [] (varExpr () "y") ] , Clause () [conPat () "None" []] [ Choice [] (varExpr () "val") ] ]) (varExpr () "withDefault")
+--test5expr = letExpr () (BFun () "withDefault" [varPat () "x", varPat () "y"]) (varExpr () "(+)") (varExpr () "withDefault")
+--test5expr = letExpr () (BPat () (varPat () "f")) (varExpr () "(+)") (varExpr () "f")
+test5expr = letExpr () (BPat () (varPat () "f")) (lamExpr () [varPat () "x"] (varExpr () "(+)")) (varExpr () "f")
+
+
 
 test5 :: IO ()
 test5 = liftIO $ LBS.writeFile "/home/laserpants/code/tau-tooling/src/tmp/bundle.json" (encodePretty' defConfig{ confIndent = Spaces 2 } (toRep bundle))
