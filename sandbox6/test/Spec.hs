@@ -12,10 +12,11 @@ import Data.Void
 import Stuff
 import Tau.Misc
 import Tau.Prettyprinters
-import Tau.Util (Name, runSupplyNats, prettyT)
+import Tau.Util (Name, runSupplyNats, prettyT, renderDoc)
 import Test.Hspec hiding (describe, it)
 import TextShow (showt)
 import qualified Data.Map.Strict as Map
+import qualified Data.Text  as Text
 import qualified Test.Hspec as Hspec
 
 describe :: Text -> SpecWith () -> SpecWith ()
@@ -264,14 +265,14 @@ testUnification = do
 
 succeedApplyTo :: Substitution Type -> Type -> Type -> SpecWith ()
 succeedApplyTo sub ty res =
-    describe "TODO" $ do -- ("apply " <> prettyPrint (show sub) <> " to " <> prettyPrint ty) $ do
-        it ("✔ returns: " <> "TODO") -- prettyPrint res)
+    describe ("apply " <> prettyT (show sub) <> " to " <> prettyT ty) $ do
+        it ("✔ returns: " <> prettyT res)
             (apply sub ty == res)
 
 succeedComposeAndApplyTo :: Substitution Type -> Substitution Type -> Type -> Type -> SpecWith ()
 succeedComposeAndApplyTo sub1 sub2 ty res =
-    describe ("apply TODO to ") $ do -- TODO <> prettyPrint ty) $ do
-        it ("✔ returns: ") --  <> prettyPrint res)
+    describe ("apply to " <> prettyT ty) $ do
+        it ("✔ returns: "  <> prettyT res)
             (apply (compose sub1 sub2) ty == res)
 
 testSubstitution :: SpecWith ()
@@ -355,11 +356,11 @@ testSubstitution = do
 
 succeedMatchTypeVars :: Type -> [(Name, Kind)] -> SpecWith ()
 succeedMatchTypeVars ty vars =
-    describe ("The free type variables in " <> "TODO") $ -- prettyPrint ty) $
-        it ("✔ are [" <> "TODO") -- Text.intercalate ", " (renderDoc . prettyTypePair <$> vars) <> "]")
+    describe ("The free type variables in " <> prettyT ty) $
+        it ("✔ are [" <> Text.intercalate ", " (renderDoc . prettyTypePair <$> vars) <> "]")
             (typeVars ty == vars)
---  where
---    prettyTypePair (n, k) = pretty n <+> ":" <+> pretty k
+  where
+    prettyTypePair (n, k) = pretty n <+> ":" <+> pretty k
 
 testTypeVars :: SpecWith ()
 testTypeVars = do
@@ -439,8 +440,8 @@ testTupleCon = do
 
 succeedInferExpr :: ProgExpr () Type -> Type -> SpecWith ()
 succeedInferExpr expr ty = -- ps errs =
-    describe ("The inferred type of the expression " <> "TODO") $ do -- prettyPrint expr) $ do
-        it ("✔ is unifiable with " <> "TODO") $ -- prettyPrint ty) $
+    describe ("The inferred type of the expression " <> prettyT expr) $ do
+        it ("✔ is unifiable with " <> prettyT ty) $
             isRight res
   where
     (Ast e, (typeSub, kindSub, context)) =
