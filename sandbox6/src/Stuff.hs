@@ -813,16 +813,20 @@ test5expr :: ProgExpr () Type
 --test5expr = letExpr () (BFun () "withDefault" [varPat () "val"]) (funExpr () [ Clause () [conPat () "Some" [varPat () "y"]] [ Choice [] (varExpr () "y") ] , Clause () [conPat () "None" []] [ Choice [] (varExpr () "val") ] ]) (varExpr () "withDefault")
 --test5expr = letExpr () (BFun () "withDefault" [varPat () "x", varPat () "y"]) (varExpr () "(+)") (varExpr () "withDefault")
 --test5expr = letExpr () (BPat () (varPat () "f")) (varExpr () "(+)") (varExpr () "f")
-test5expr = letExpr () (BPat () (varPat () "f")) (lamExpr () [varPat () "x"] (varExpr () "(+)")) (varExpr () "f")
+--test5expr = letExpr () (BPat () (varPat () "f")) (lamExpr () [varPat () "x"] (varExpr () "(+)")) (varExpr () "f")
+
+test5expr = letExpr () (BPat () (varPat () "f")) (lamExpr () [varPat () "x"] (varExpr () "(+)")) (appExpr () [varExpr () "f", litExpr () (TInteger 9)]) 
 
 
 
 test5 :: IO ()
-test5 = liftIO $ LBS.writeFile "/home/laserpants/code/tau-tooling/src/tmp/bundle.json" (encodePretty' defConfig{ confIndent = Spaces 2 } (toRep bundle))
+test5 = do
+    traceShowM b
+    liftIO $ LBS.writeFile "/home/laserpants/code/tau-tooling/src/tmp/bundle.json" (encodePretty' defConfig{ confIndent = Spaces 2 } (toRep bundle))
     -- astExpr a
   where
     ast = Ast test5expr
-    (a, _) = runInfer mempty testClassEnv testTypeEnv testKindEnv testConstructorEnv (inferAstType ast)
+    (a, b) = runInfer mempty testClassEnv testTypeEnv testKindEnv testConstructorEnv (inferAstType ast)
 
     bundle = Bundle
         { sourceExpr = test5expr

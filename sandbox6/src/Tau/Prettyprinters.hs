@@ -112,17 +112,26 @@ instance Pretty Type where
 --                    TVar{}      -> False
 --                    _           -> True
 
-isTupleCon :: Name -> Bool
-isTupleCon con = Just True == (allCommas <$> stripped con)
-  where
-    allCommas = Text.all (== ',')
-    stripped  = Text.stripSuffix ")" <=< Text.stripPrefix "("
+--isTupleCon :: Name -> Bool
+--isTupleCon con = Just True == (allCommas <$> stripped con)
+--  where
+--    allCommas = Text.all (== ',')
+--    stripped  = Text.stripSuffix ")" <=< Text.stripPrefix "("
+--
+--isTupleType :: Type -> Bool
+--isTupleType = cata $ \case
+--    TCon _ con -> isTupleCon con
+--    TApp _ a _ -> a
+--    _          -> False
 
 isTupleType :: Type -> Bool
 isTupleType = cata $ \case
-    TCon _ con -> isTupleCon con
+    TCon _ con -> Just True == (allCommas <$> stripped con)
     TApp _ a _ -> a
     _          -> False
+  where
+    allCommas = Text.all (== ',')
+    stripped  = Text.stripSuffix ")" <=< Text.stripPrefix "("
 
 instance Pretty (PredicateT Name) where
     pretty (InClass n t) = pretty n <+> pretty t
