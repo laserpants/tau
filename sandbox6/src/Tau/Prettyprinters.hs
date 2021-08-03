@@ -112,11 +112,6 @@ instance Pretty Type where
 --                    TVar{}      -> False
 --                    _           -> True
 
-unfoldApp :: Type -> [Type]
-unfoldApp = para $ \case
-    TApp _ a b -> snd a <> snd b
-    t          -> [embed (fst <$> t)]
-
 isTupleCon :: Name -> Bool
 isTupleCon con = Just True == (allCommas <$> stripped con)
   where
