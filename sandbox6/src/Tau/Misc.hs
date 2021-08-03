@@ -923,6 +923,16 @@ getTypeVar = project >>> \case
     TVar _ v -> Just v
     _        -> Nothing
 
+unfoldArr :: Type -> [Type]
+unfoldArr = para $ \case
+    TArr a b   -> snd a <> snd b
+    t          -> [embed (fst <$> t)]
+
+unfoldApp :: Type -> [Type]
+unfoldApp = para $ \case
+    TApp _ a b -> snd a <> snd b
+    t          -> [embed (fst <$> t)]
+
 -------------------------------------------------------------------------------
 -------------------------------------------------------------------------------
 -------------------------------------------------------------------------------

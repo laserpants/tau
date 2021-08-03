@@ -302,11 +302,6 @@ inferExprType = cata $ \case
         errs2 <- tryUnify t t1
         pure (setExprTag (TypeInfo (errs1 <> errs2) t1 ps) e)
 
-unfoldArr :: Type -> [Type]
-unfoldArr = para $ \case
-    TArr a b   -> snd a <> snd b
-    t          -> [embed (fst <$> t)]
-
 inferPatternType
   :: ( MonadSupply Int m
      , MonadReader (ClassEnv, TypeEnv, KindEnv, ConstructorEnv) m
