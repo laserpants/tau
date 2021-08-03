@@ -243,10 +243,8 @@ inferExprType = cata $ \case
         scheme <- generalize t1
         e2 <- local (inTypeEnv (Env.insert f scheme)) expr2
         errs2 <- tryUnify t (typeOf e2)
-        errs3 <- tryUnify t bt
-        t2 <- applySubsTo t
-        errss <- forM (zip (typeOf <$> ps) (unfoldArr t2)) $ uncurry tryUnify
-        pure (letExpr (TypeInfo (errs1 <> errs2 <> errs3 <> concat errss) t []) (BFun (TypeInfo [] bt []) f ps) e1 e2)
+        errs3 <- tryUnify t1 bt
+        pure (letExpr (TypeInfo (errs1 <> errs2 <> errs3) t []) (BFun (TypeInfo [] bt []) f ps) e1 e2)
 
     EFun t clauses -> do
         cs <- traverse inferClauseType clauses
@@ -809,14 +807,16 @@ test4 = test3 (varExpr () "xxx")
 test5expr :: ProgExpr () Type
 --test5expr = funExpr () [ Clause () [conPat () "(::)" [varPat () "x", conPat () "(::)" [varPat () "y", varPat () "ys"]]] [Choice [] (litExpr () (TBool True))] , Clause () [conPat () "[]" []] [Choice [] (litExpr () (TBool True))] , Clause () [conPat () "(::)" [varPat () "z", varPat () "zs"]] [Choice [] (litExpr () (TBool True))] ]
 --test5expr = varExpr () "(+)"
---test5expr = fixExpr () "foldSucc" (lamExpr () [varPat () "g", varPat () "a"] (funExpr () [ Clause () [conPat () "Succ" [varPat () "n"]] [Choice [] (appExpr () [ varExpr () "foldSucc" , varExpr () "g" , appExpr () [varExpr () "g", conExpr () "Succ" [varExpr () "n"], varExpr () "a"] , varExpr () "n" ])] , Clause () [anyPat ()] [Choice [] (varExpr () "a")] ])) (letExpr () (BFun () "toInt" [varPat () "n"]) (appExpr () [ varExpr () "foldSucc" , lamExpr () [anyPat (), varPat () "x"] (op2Expr () (OAdd ()) (varExpr () "x") (litExpr () (TInteger 1))) , annExpr tInt (litExpr () (TInteger 0)) , varExpr () "n" ]) (appExpr () [ varExpr () "foldSucc" , lamExpr () [varPat () "n", varPat () "x"] (op2Expr () (OMul ()) (appExpr () [varExpr () "toInt", varExpr () "n"]) (varExpr () "x")) , annExpr tInt (litExpr () (TInteger 1)) , conExpr () "Succ" [conExpr () "Succ" [conExpr () "Succ" [conExpr () "Succ" [conExpr () "Succ" [conExpr () "Zero" []]]]]] ]))
+test5expr = fixExpr () "foldSucc" (lamExpr () [varPat () "g", varPat () "a"] (funExpr () [ Clause () [conPat () "Succ" [varPat () "n"]] [Choice [] (appExpr () [ varExpr () "foldSucc" , varExpr () "g" , appExpr () [varExpr () "g", conExpr () "Succ" [varExpr () "n"], varExpr () "a"] , varExpr () "n" ])] , Clause () [anyPat ()] [Choice [] (varExpr () "a")] ])) (letExpr () (BFun () "toInt" [varPat () "n"]) (appExpr () [ varExpr () "foldSucc" , lamExpr () [anyPat (), varPat () "x"] (op2Expr () (OAdd ()) (varExpr () "x") (litExpr () (TInteger 1))) , annExpr tInt (litExpr () (TInteger 0)) , varExpr () "n" ]) (appExpr () [ varExpr () "foldSucc" , lamExpr () [varPat () "n", varPat () "x"] (op2Expr () (OMul ()) (appExpr () [varExpr () "toInt", varExpr () "n"]) (varExpr () "x")) , annExpr tInt (litExpr () (TInteger 1)) , conExpr () "Succ" [conExpr () "Succ" [conExpr () "Succ" [conExpr () "Succ" [conExpr () "Succ" [conExpr () "Zero" []]]]]] ]))
 --test5expr = letExpr () (BFun () "withDefault" [varPat () "val"]) (funExpr () [ Clause () [conPat () "Some" [varPat () "y"]] [ Choice [] (varExpr () "y") ] , Clause () [conPat () "None" []] [ Choice [] (varExpr () "val") ] ]) (varExpr () "withDefault")
 --test5expr = letExpr () (BFun () "withDefault" [varPat () "x", varPat () "y"]) (varExpr () "(+)") (varExpr () "withDefault")
 --test5expr = letExpr () (BPat () (varPat () "f")) (varExpr () "(+)") (varExpr () "f")
 --test5expr = letExpr () (BPat () (varPat () "f")) (lamExpr () [varPat () "x"] (varExpr () "(+)")) (varExpr () "f")
-
-test5expr = letExpr () (BPat () (varPat () "f")) (lamExpr () [varPat () "x"] (varExpr () "(+)")) (appExpr () [varExpr () "f", litExpr () (TInteger 9)]) 
-
+--test5expr = letExpr () (BPat () (varPat () "f")) (lamExpr () [varPat () "x"] (varExpr () "(+)")) (appExpr () [varExpr () "f", litExpr () (TInteger 9)]) 
+--test5expr = letExpr () (BFun () "f" [varPat () "x", varPat () "y"]) (varExpr () "(+)") (appExpr () [varExpr () "f", litExpr () (TInteger 9)]) 
+--test5expr = letExpr () (BFun () "f" [annPat tInt (varPat () "x"), varPat () "y"]) (varExpr () "(+)") (appExpr () [varExpr () "f", litExpr () (TInteger 9)]) 
+--test5expr = letExpr () (BFun () "f" [varPat () "x", varPat () "y"]) (varExpr () "(+)") (appExpr () [varExpr () "f", litExpr () (TInteger 9)]) 
+--test5expr = letExpr () (BPat () (varPat () "f")) (lamExpr () [varPat () "x", varPat () "y"] (varExpr () "(+)")) (appExpr () [varExpr () "f", litExpr () (TInteger 9)]) 
 
 
 test5 :: IO ()
