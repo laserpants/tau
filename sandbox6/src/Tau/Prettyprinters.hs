@@ -128,9 +128,9 @@ instance Pretty (PredicateT Name) where
     pretty (InClass n t) = pretty n <+> pretty t
 
 instance Pretty Predicate where
-    pretty (InClass n t) = pretty n <+> parensIf (useParens t) (pretty t)
+    pretty (InClass n t) = pretty n <+> parensIf (parensRequired t) (pretty t)
       where
-        useParens = project >>> \case
+        parensRequired = project >>> \case
             TApp{} -> True
             TArr{} -> True
             _      -> False

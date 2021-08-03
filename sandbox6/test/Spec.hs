@@ -6,10 +6,15 @@ import Data.Functor.Foldable (cata, para, embed)
 import Data.Functor.Identity
 import Data.Map.Strict (Map)
 import Data.Text (Text, unpack)
+import Data.Text.Prettyprint.Doc
+import Data.Text.Prettyprint.Doc.Render.Text
+import Data.Void
 import Stuff
 import Tau.Misc
-import Tau.Util (Name, runSupplyNats)
+import Tau.Prettyprinters
+import Tau.Util (Name, runSupplyNats, prettyT)
 import Test.Hspec hiding (describe, it)
+import TextShow (showt)
 import qualified Data.Map.Strict as Map
 import qualified Test.Hspec as Hspec
 
@@ -29,6 +34,7 @@ main =
         describe "toPolytype"     testToPolytype
         describe "tupleCon"       testTupleCon
         describe "Type inference" testTypeInference
+        describe "Prettyprinters" testPrettyprinters
 
 _a :: Type
 _a = tVar kTyp "a"
@@ -523,4 +529,221 @@ testTypeInference = do
 --        (funExpr () [ Clause () [conPat () "(::)" [varPat () "x", conPat () "(::)" [varPat () "y", varPat () "ys"]]] [Choice [] (litExpr () (TBool True))] , Clause () [conPat () "[]" []] [Choice [] (litExpr () (TBool True))] , Clause () [conPat () "(::)" [varPat () "z", varPat () "zs"]] [Choice [] (litExpr () (TBool True))] ])
 --        (tList (tVar kTyp "a") `tArr` tBool)
 
+-------------------------------------------------------------------------------
+
+-- Prettyprinters tests
+
+suceedPrint :: (Pretty p) => p -> Text -> SpecWith ()
+suceedPrint p str =
+    describe output $
+        it "✔ OK" $
+            output == str
+  where
+    output = prettyT p
+
+suceedPrintType :: Type -> Text -> SpecWith ()
+suceedPrintType = suceedPrint
+
+suceedPrintPattern :: ProgPattern t u -> Text -> SpecWith ()
+suceedPrintPattern = suceedPrint
+
+suceedPrintExpr :: ProgExpr t u -> Text -> SpecWith ()
+suceedPrintExpr = suceedPrint
+
+testPrettyprinters :: SpecWith ()
+testPrettyprinters = do
+
+    describe "• Prim" $ do
+
+        suceedPrint
+            TUnit
+            "()"
+
+        suceedPrint
+            (TString "klingon")
+            "\"klingon\""
+
+        suceedPrint
+            (TChar 'a')
+            "'a'"
+
+    describe "• Type" $ do
+
+        suceedPrintType
+            (_a `tArr` _b)
+            "a -> b"
+
+        suceedPrintType
+            tInt
+            "Int"
+
+        suceedPrintType
+            (_a `tArr` _b `tArr` _c)
+            "a -> b -> c"
+
+        suceedPrintType
+            ((_a `tArr` _b) `tArr` _c)
+            "(a -> b) -> c"
+
+        suceedPrintType
+            (tList tInt `tArr` _b `tArr` _c)
+            "List Int -> b -> c"
+
+        suceedPrintType
+            (tList (tList tInt))
+            "List (List Int)"
+
+        suceedPrintType
+            (tList (tInt `tArr` _a))
+            "List (Int -> a)"
+
+        suceedPrintType
+            (tApp kTyp (tApp kFun (tCon kFun2 "C") tInt) tInt)
+            "C Int Int"
+
+        suceedPrintType
+            (tApp kTyp (tApp kFun (tCon kFun2 "C") tInt) tInt `tArr` _a)
+            "C Int Int -> a"
+
+        suceedPrintType
+            (tApp kTyp (tApp kFun (tCon kFun2 "C") (_a `tArr` _a)) tInt `tArr` _a)
+            "C (a -> a) Int -> a"
+
+        suceedPrintType
+            (tApp kTyp (tApp kFun (tCon kFun2 "C") (_a `tArr` _a)) (_b `tArr` _b) `tArr` _a)
+            "C (a -> a) (b -> b) -> a"
+
+        suceedPrintType
+            (tApp kTyp (tApp kFun (tCon kFun2 "C") (_a `tArr` _a)) (tApp kTyp (tCon kFun "D") _b) `tArr` _a)
+            "C (a -> a) (D b) -> a"
+
+    --    suceedPrintType
+    --        (tApp kTyp (tCon kTyp (kArr kRow kTyp) "#Record") (tApp kTyp (tApp kTyp (tCon (kArr kTyp (kArr kRow kRow)) "{id}") (tVar kTyp "a")) (tApp (tApp (tCon (kArr kTyp (kArr kRow kRow)) "{name}") (tVar kTyp "b")) (tVar kRow "r"))))
+    --        "{ id : a, name : b | r }"
+
+    --    suceedPrintType
+    --        (tApp (tCon (kArr kRow kTyp) "#Record") (tApp (tApp (tCon (kArr kTyp (kArr kRow kRow)) "{id}") (tVar kTyp "a")) (tApp (tApp (tCon (kArr kTyp (kArr kRow kRow)) "{name}") (tVar kTyp "b")) (tCon kRow "{}"))))
+    --        "{ id : a, name : b }"
+
+        suceedPrintType
+            (tApp kTyp (tApp kTyp (tCon (kArr kTyp (kArr kTyp kTyp)) "(,)") (tCon kTyp "String")) (tCon kTyp "Bool"))
+            "(String, Bool)"
+
+    describe "• Kind" $ do
+
+        suceedPrint
+            kRow
+            "Row"
+
+        suceedPrint
+            (kTyp `kArr` kTyp)
+            "* -> *"
+
+        suceedPrint
+            (kTyp `kArr` kTyp `kArr` kTyp)
+            "* -> * -> *"
+
+        suceedPrint
+            ((kTyp `kArr` kTyp) `kArr` kTyp)
+            "(* -> *) -> *"
+
+--    describe "• Pattern" $ do
+--
+--        suceedPrintPattern
+--            (varPat () "v")
+--            "v"
+--
+--        suceedPrintPattern
+--            (anyPat ())
+--            "_"
+--
+--        suceedPrintPattern
+--            (litPat () (TInt 5))
+--            "5"
+--
+--        suceedPrintPattern
+--            (orPat () (varPat () "v") (litPat () (TInt 5)))
+--            "v or 5"
+--
+--        suceedPrintPattern
+--            (asPat () "five" (litPat () (TInt 5)))
+--            "5 as five"
+--
+--        suceedPrintPattern
+--            (tuplePat () [varPat () "x", varPat () "y"])
+--            "(x, y)"
+--
+--        suceedPrintPattern
+--            (tuplePat () [varPat () "x", anyPat ()])
+--            "(x, _)"
+--
+--        suceedPrintPattern
+--            (listPat () [varPat () "x", anyPat ()])
+--            "[x, _]"
+--
+--        suceedPrintPattern
+--            (listPat () [])
+--            "[]"
+--
+--        suceedPrintPattern
+--            (litPat () TUnit)
+--            "()"
+--
+--    --    suceedPrintPattern
+--    --        (recordPat () (rExt "id" (varPat () "id") (rExt "name" (varPat () "name") rNil)))
+--    --        "{ id = id, name = name }"
+--    --
+--    --    suceedPrintPattern
+--    --        (recordPat () (rExt "name" (varPat () "name") (rExt "id" (varPat () "id") rNil)))
+--    --        "{ id = id, name = name }"
+--    --
+--    --    suceedPrintPattern
+--    --        (recordPat () (rExt "name" (anyPat ()) (rExt "id" (varPat () "id") rNil)))
+--    --        "{ id = id, name = _ }"
+--    --
+--    --    suceedPrintPattern
+--    --        (recordPat () (rExt "name" (varPat () "name") (rExt "id" (varPat () "id") (rVar (varPat () "r")))))
+--    --        "{ id = id, name = name | r }"
+--
+--        describe "• Constructor patterns" $ do
+--
+--            suceedPrintPattern
+--                (conPat () "C" [])
+--                "C"
+--
+--            suceedPrintPattern
+--                (conPat () "C" [varPat () "x", varPat () "y"])
+--                "C x y"
+--
+--            suceedPrintPattern
+--                (conPat () "C" [varPat () "x", conPat () "D" [varPat () "y", varPat () "z"]])
+--                "C x (D y z)"
+--
+--            suceedPrintPattern
+--                (conPat () "C" [varPat () "x", conPat () "D" []])
+--                "C x D"
+--
+--            suceedPrintPattern
+--                (conPat () "C" [orPat () (varPat () "x") (varPat () "y")])
+--                "C (x or y)"
+--
+--            suceedPrintPattern
+--                (conPat () "C" [varPat () "x", asPat () "d" (conPat () "D" [varPat () "y"])])
+--                "C x (D y as d)"
+
+    describe "• Predicates" $ do
+
+        suceedPrint
+            (InClass "Show" _a)
+            "Show a"
+
+        suceedPrint
+            (InClass "Eq" tInt :: Predicate)
+            "Eq Int"
+
+--    describe "• Expr" $ do
+--
+--        suceedPrintExpr
+--            (appExpr () [varExpr () "add", litExpr () (TInteger 3) :: ProgExpr () Void, holeExpr ()])
+--            "add(3, _)"
 
