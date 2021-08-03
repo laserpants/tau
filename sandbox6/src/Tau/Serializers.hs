@@ -234,6 +234,6 @@ makeRep type_ constructor args = object
     , "children" .= args ]
 
 withPretty :: (Pretty p) => (p -> Value) -> p -> Value
-withPretty f p = Object (HashMap.insert "pretty" (String (prettyT p)) obj)
+withPretty f p = Object (HashMap.insert "toStr" (String (prettyT p)) obj)
   where
     Object obj = f p
