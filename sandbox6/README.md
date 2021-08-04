@@ -21,3 +21,5 @@ Tau.Comp.Unification
 Tau.Comp.Pipeline
 
 Tau.Util
+
+Tau.Eval
