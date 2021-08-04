@@ -18,6 +18,7 @@ insert var val (Env envMap) = Env (Map.insert var val envMap)
 
 inserts :: [(Name, a)] -> Env a -> Env a
 inserts = flip (foldr (uncurry insert))
+{-# INLINE inserts #-}
 
 insertWith :: (a -> a -> a) -> Name -> a -> Env a -> Env a
 insertWith f var val (Env envMap) = Env (Map.insertWith f var val envMap)

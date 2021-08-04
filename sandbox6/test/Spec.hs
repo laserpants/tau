@@ -54,7 +54,7 @@ runUnify :: Type -> Type -> Either UnificationError (Substitution Type, Substitu
 runUnify t1 t2 = runSupplyNats (runExceptT (unifyTypes t1 t2))
 
 testDescription :: Type -> Type -> Text
-testDescription t1 t2 = "TODO" -- "The types " <> prettyPrint t1 <> " and " <> prettyPrint t2
+testDescription t1 t2 = "The types " <> prettyT t1 <> " and " <> prettyT t2
 
 succeedUnifyTypes :: Type -> Type -> SpecWith ()
 succeedUnifyTypes t1 t2 = do

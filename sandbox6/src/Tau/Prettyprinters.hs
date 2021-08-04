@@ -97,6 +97,8 @@ instance Pretty Type where
         TVar _ var -> pretty var
         TCon _ con -> pretty con
 
+        TRow{} -> "TODO"
+
 --        TRow label (t1, doc1) (t2, doc2) ->
 --            "{" <> pretty label <> "}" <+> parensIf parensRequiredL doc1
 --                                       <+> parensIf parensRequiredR doc2
