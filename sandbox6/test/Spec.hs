@@ -676,9 +676,9 @@ testPrettyprinters = do
             (tApp kTyp (tApp kFun (tCon kFun2 "C") (_a `tArr` _a)) (tApp kTyp (tCon kFun "D") _b) `tArr` _a)
             "C (a -> a) (D b) -> a"
 
-    --    suceedPrintType
-    --        (tApp kTyp (tCon kTyp (kArr kRow kTyp) "#Record") (tApp kTyp (tApp kTyp (tCon (kArr kTyp (kArr kRow kRow)) "{id}") (tVar kTyp "a")) (tApp (tApp (tCon (kArr kTyp (kArr kRow kRow)) "{name}") (tVar kTyp "b")) (tVar kRow "r"))))
-    --        "{ id : a, name : b | r }"
+        suceedPrintType
+            (tRecord (tRow "id" _a (tRow "name" _b (tVar kRow "r"))))
+            "{ id : a, name : b | r }"
 
     --    suceedPrintType
     --        (tApp (tCon (kArr kRow kTyp) "#Record") (tApp (tApp (tCon (kArr kTyp (kArr kRow kRow)) "{id}") (tVar kTyp "a")) (tApp (tApp (tCon (kArr kTyp (kArr kRow kRow)) "{name}") (tVar kTyp "b")) (tCon kRow "{}"))))

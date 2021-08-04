@@ -5,6 +5,7 @@ module Tau.Prettyprinters where
 
 import Control.Arrow ((<<<), (>>>))
 import Control.Monad
+import Data.Fix (Fix(..))
 import Data.Functor.Foldable (cata, para, project, embed)
 import Data.Text.Prettyprint.Doc
 import Data.Text.Prettyprint.Doc.Render.Text
@@ -24,6 +25,9 @@ prettyTuple = parens . commaSep
 
 prettyList_ :: [Doc a] -> Doc a
 prettyList_ = brackets . commaSep
+
+encloseSpace :: Doc a -> Doc a -> Doc a -> Doc a
+encloseSpace a b c = a <+> c <+> b
 
 instance Pretty Prim where
     pretty = \case
@@ -60,20 +64,21 @@ instance Pretty Type where
                     TArr{} -> True
                     _      -> False
 
---        TApp _ (Fix (TCon _ "#"), _) (t2, _) ->
---            if null fields
---                then maybe "{}" (\v -> "{" <+> pretty v <+> "}") final
---                else "{" <+> commaSep fields <+> maybe "}"
---                    (\v -> "|" <+> pretty v <+> "}") final
---          where
---            fields = flip para t2 $ \case
---                TRow label ty rest -> pretty label <+> ":" <+> pretty (fst ty):snd rest
---                _                  -> []
---
---            final = flip cata t2 $ \case
---                TRow _ _ r         -> r
---                TVar _ v           -> Just v
---                _                  -> Nothing
+        TApp _ (Fix (TCon _ "#"), _) (t2, _) ->
+            if null fields
+                then maybe "{}" (wrapped "{" "}") final
+                else "{" <+> commaSep fields <+> maybe "}" (wrapped "|" "}") final
+          where
+            wrapped p q = (encloseSpace p q . pretty)
+
+            fields = flip para t2 $ \case
+                TRow label ty rest -> pretty label <+> ":" <+> pretty (fst ty):snd rest
+                _                  -> []
+
+            final = flip cata t2 $ \case
+                TRow _ _ r         -> r
+                TVar _ v           -> Just v
+                _                  -> Nothing
 
         TApp k (t1, _) (t2, _) | isTupleType t1 ->
             let (_:ts) = unfoldApp (tApp k t1 t2)
