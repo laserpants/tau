@@ -988,6 +988,7 @@ exprTag = cata $ \case
     ETuple  t _     -> t
     EList   t _     -> t
     ERow    t _ _ _ -> t
+    ERecord t _     -> t
     EAnn    _ e     -> e
 
 patternTag :: Pattern t t t t t t t t t u -> t
@@ -1001,6 +1002,7 @@ patternTag = cata $ \case
     PTuple  t _     -> t
     PList   t _     -> t
     PRow    t _ _ _ -> t
+    PRecord t _     -> t
     PAnn    _ p     -> p
 
 op1Tag :: Op1 t -> t
@@ -1207,6 +1209,7 @@ instance (Substitutable t a) => Substitutable (ProgPattern t u) a where
         PTuple  t ps         -> tuplePat  (apply sub t) ps
         PList   t ps         -> listPat   (apply sub t) ps
         PRow    t lab p r    -> rowPat    (apply sub t) lab p r
+        PRecord t p          -> recordPat (apply sub t) p
         PAnn    t p          -> annPat    t p
 
 instance (Substitutable t a, Substitutable p a) => Substitutable (Binding t p) a where
@@ -1240,6 +1243,7 @@ instance (Substitutable t a) => Substitutable (ProgExpr t u) a where
         ETuple  t es         -> tupleExpr  (apply sub t) es
         EList   t es         -> listExpr   (apply sub t) es
         ERow    t lab e r    -> rowExpr    (apply sub t) lab e r
+        ERecord t e          -> recordExpr (apply sub t) e
         EAnn    t e          -> annExpr    t e
 
 instance (Substitutable t a) => Substitutable (Op1 t) a where

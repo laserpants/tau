@@ -55,35 +55,37 @@ tagTree :: (MonadSupply Int m) => ProgExpr t u -> m (ProgExpr Type u)
 tagTree = cata alg
   where
     alg = \case
-        EVar   _ var            -> varExpr   <$> freshType <*> pure var
-        ECon   _ con es         -> conExpr   <$> freshType <*> pure con <*> sequence es
-        ELit   _ prim           -> litExpr   <$> freshType <*> pure prim
-        EApp   _ es             -> appExpr   <$> freshType <*> sequence es
-        EFix   _ name e1 e2     -> fixExpr   <$> freshType <*> pure name <*> e1 <*> e2
-        ELam   _ ps e           -> lamExpr   <$> freshType <*> traverse tagPattern ps <*> e
-        EIf    _ e1 e2 e3       -> ifExpr    <$> freshType <*> e1 <*> e2 <*> e3
-        EPat   _ e cs           -> patExpr   <$> freshType <*> e <*> traverse tagClause1 cs
-        ELet   _ bind e1 e2     -> letExpr   <$> freshType <*> tagBinding bind <*> e1 <*> e2
-        EFun   _ cs             -> funExpr   <$> freshType <*> traverse tagClause cs
-        EOp1   _ op a           -> op1Expr   <$> freshType <*> tagOp1 op <*> a
-        EOp2   _ op a b         -> op2Expr   <$> freshType <*> tagOp2 op <*> a <*> b
-        ETuple _ es             -> tupleExpr <$> freshType <*> sequence es
-        EList  _ es             -> listExpr  <$> freshType <*> sequence es
-        ERow   _ lab e r        -> rowExpr   <$> freshType <*> pure lab <*> e <*> r
-        EHole  _                -> holeExpr  <$> freshType
-        EAnn   t a              -> annExpr t <$> a
+        EVar    _ var           -> varExpr    <$> freshType <*> pure var
+        ECon    _ con es        -> conExpr    <$> freshType <*> pure con <*> sequence es
+        ELit    _ prim          -> litExpr    <$> freshType <*> pure prim
+        EApp    _ es            -> appExpr    <$> freshType <*> sequence es
+        EFix    _ name e1 e2    -> fixExpr    <$> freshType <*> pure name <*> e1 <*> e2
+        ELam    _ ps e          -> lamExpr    <$> freshType <*> traverse tagPattern ps <*> e
+        EIf     _ e1 e2 e3      -> ifExpr     <$> freshType <*> e1 <*> e2 <*> e3
+        EPat    _ e cs          -> patExpr    <$> freshType <*> e <*> traverse tagClause1 cs
+        ELet    _ bind e1 e2    -> letExpr    <$> freshType <*> tagBinding bind <*> e1 <*> e2
+        EFun    _ cs            -> funExpr    <$> freshType <*> traverse tagClause cs
+        EOp1    _ op a          -> op1Expr    <$> freshType <*> tagOp1 op <*> a
+        EOp2    _ op a b        -> op2Expr    <$> freshType <*> tagOp2 op <*> a <*> b
+        ETuple  _ es            -> tupleExpr  <$> freshType <*> sequence es
+        EList   _ es            -> listExpr   <$> freshType <*> sequence es
+        ERow    _ lab e r       -> rowExpr    <$> freshType <*> pure lab <*> e <*> r
+        ERecord _ e             -> recordExpr <$> freshType <*> e
+        EHole   _               -> holeExpr   <$> freshType
+        EAnn    t a             -> annExpr t  <$> a
 
     tagPattern = cata $ \case
-        PVar   _ var            -> varPat    <$> freshType <*> pure var
-        PCon   _ name ps        -> conPat    <$> freshType <*> pure name <*> sequence ps
-        PAs    _ name p         -> asPat     <$> freshType <*> pure name <*> p
-        PLit   _ prim           -> litPat    <$> freshType <*> pure prim
-        PAny   _                -> anyPat    <$> freshType
-        POr    _ p q            -> orPat     <$> freshType <*> p <*> q
-        PTuple _ ps             -> tuplePat  <$> freshType <*> sequence ps
-        PList  _ ps             -> listPat   <$> freshType <*> sequence ps
-        PRow   _ lab p r        -> rowPat    <$> freshType <*> pure lab <*> p <*> r
-        PAnn   t p              -> annPat  t <$> p
+        PVar    _ var           -> varPat     <$> freshType <*> pure var
+        PCon    _ name ps       -> conPat     <$> freshType <*> pure name <*> sequence ps
+        PAs     _ name p        -> asPat      <$> freshType <*> pure name <*> p
+        PLit    _ prim          -> litPat     <$> freshType <*> pure prim
+        PAny    _               -> anyPat     <$> freshType
+        POr     _ p q           -> orPat      <$> freshType <*> p <*> q
+        PTuple  _ ps            -> tuplePat   <$> freshType <*> sequence ps
+        PList   _ ps            -> listPat    <$> freshType <*> sequence ps
+        PRow    _ lab p r       -> rowPat     <$> freshType <*> pure lab <*> p <*> r
+        PRecord _ p             -> recordPat  <$> freshType <*> p
+        PAnn    t p             -> annPat  t  <$> p
 
     tagBinding = \case
         BPat _ p                -> BPat   <$> freshType <*> tagPattern p
@@ -297,6 +299,11 @@ inferExprType = cata $ \case
         errs <- tryUnify t (tRow label (typeOf e) (typeOf r))
         pure (rowExpr (TypeInfo errs t []) label e r)
 
+    ERecord t expr -> do
+        e <- expr
+        errs <- tryUnify t (tRecord (typeOf e))
+        pure (recordExpr (TypeInfo errs t []) e)
+
     EHole t ->
         pure (holeExpr (TypeInfo [] t []))
 
@@ -364,9 +371,15 @@ inferPatternType = cata $ \case
         pure (listPat (TypeInfo (errs1 <> concat errss) t []) ps, concat vss)
 
     PRow t label pat row -> do
-        p <- pat
-        (r, vs) <- row
-        undefined
+        (p, vs1) <- pat
+        (r, vs2) <- row
+        errs <- tryUnify t (tRow label (typeOf p) (typeOf r))
+        pure (rowPat (TypeInfo errs t []) label p r, vs1 <> vs2)
+
+    PRecord t pat -> do
+        (p, vs) <- pat
+        errs <- tryUnify t (tRecord (typeOf p))
+        pure (recordPat (TypeInfo errs t []) p, vs)
 
     PAnn t pat -> do
         (p, vs) <- pat
@@ -412,9 +425,9 @@ inferOp2Type = \case
     OFpip  t -> undefined
     OBpip  t -> undefined
     OOpt   t -> undefined
-    OStr   t -> opType t OOpt (Forall [] [] (tString `tArr` tString `tArr` tString))
-    ODot   t -> undefined
-    OField t -> undefined
+    OStr   t -> opType t OOpt   (Forall [] [] (tString `tArr` tString `tArr` tString))
+    ODot   t -> opType t ODot   (Forall [kTyp, kTyp] [] ((tGen 0 `tArr` tGen 1) `tArr` tGen 0 `tArr` tGen 1))
+    OField t -> opType t OField (Forall [kTyp, kTyp] [] (tCon kTyp "Symbol" `tArr` tGen 1 `tArr` tGen 0))
 
 opType
   :: ( MonadSupply Int m
@@ -823,7 +836,9 @@ test5expr :: ProgExpr () Type
 --test5expr = letExpr () (BFun () "f" [annPat tInt (varPat () "x"), varPat () "y"]) (varExpr () "(+)") (appExpr () [varExpr () "f", litExpr () (TInteger 9)])
 --test5expr = letExpr () (BFun () "f" [varPat () "x", varPat () "y"]) (varExpr () "(+)") (appExpr () [varExpr () "f", litExpr () (TInteger 9)])
 --test5expr = letExpr () (BPat () (varPat () "f")) (lamExpr () [varPat () "x", varPat () "y"] (varExpr () "(+)")) (appExpr () [varExpr () "f", litExpr () (TInteger 9)])
-test5expr = lamExpr () [varPat () "x"] (patExpr () (varExpr () "x") [ Clause () (conPat () "(::)" [varPat () "x", conPat () "(::)" [varPat () "y", varPat () "ys"]]) [Choice [] (litExpr () (TBool True))] , Clause () (conPat () "[]" []) [Choice [] (litExpr () (TBool True))] , Clause () (conPat () "(::)" [varPat () "z", varPat () "zs"]) [Choice [] (litExpr () (TBool True))] ])
+--test5expr = lamExpr () [varPat () "x"] (patExpr () (varExpr () "x") [ Clause () (conPat () "(::)" [varPat () "x", conPat () "(::)" [varPat () "y", varPat () "ys"]]) [Choice [] (litExpr () (TBool True))] , Clause () (conPat () "[]" []) [Choice [] (litExpr () (TBool True))] , Clause () (conPat () "(::)" [varPat () "z", varPat () "zs"]) [Choice [] (litExpr () (TBool True))] ])
+--test5expr = appExpr () [ letExpr () (BPat () (varPat () "r")) (recordExpr () (rowExpr () "a" (annExpr tInt (litExpr () (TInt 1))) (rowExpr () "b" (annExpr tInt (litExpr () (TInt 2))) (conExpr () "{}" [])))) (lamExpr () [recordPat () (rowPat () "a" (varPat () "a") (varPat () "z"))] (varExpr () "a")) , recordExpr () (rowExpr () "a" (annExpr tInt (litExpr () (TInt 5))) (conExpr () "{}" [])) ]
+test5expr = (appExpr () [lamExpr () [varPat () "z"] (recordExpr () (rowExpr () "a" (annExpr tInt (litExpr () (TInteger 1))) (appExpr () [varExpr () "_#", varExpr () "z"]))), recordExpr () (rowExpr () "b" (annExpr tInt (litExpr () (TInt 2))) (conExpr () "{}" []))])
 
 
 test5 :: IO ()

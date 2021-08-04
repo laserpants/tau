@@ -78,111 +78,113 @@ instance ToRep Void where
 
 typeJson :: Type -> Value
 typeJson = project >>> \case
-    TVar k var          -> makeRep "Type" "TVar"      [toRep k, String var]
-    TCon k con          -> makeRep "Type" "TCon"      [toRep k, String con]
-    TApp k t1 t2        -> makeRep "Type" "TApp"      [toRep k, toRep t1, toRep t2]
-    TArr t1 t2          -> makeRep "Type" "TArr"      [toRep t1, toRep t2]
-    TRow label t1 t2    -> makeRep "Type" "TRow"      [String label, toRep t1, toRep t2]
+    TVar k var          -> makeRep "Type" "TVar"       [toRep k, String var]
+    TCon k con          -> makeRep "Type" "TCon"       [toRep k, String con]
+    TApp k t1 t2        -> makeRep "Type" "TApp"       [toRep k, toRep t1, toRep t2]
+    TArr t1 t2          -> makeRep "Type" "TArr"       [toRep t1, toRep t2]
+    TRow label t1 t2    -> makeRep "Type" "TRow"       [String label, toRep t1, toRep t2]
 
 kindJson :: Kind -> Value
 kindJson = project >>> \case
-    KVar var            -> makeRep "Kind" "KVar"      [String var]
-    KCon con            -> makeRep "Kind" "KCon"      [String con]
-    KArr k1 k2          -> makeRep "Kind" "KArr"      [toRep k1, toRep k2]
+    KVar var            -> makeRep "Kind" "KVar"       [String var]
+    KCon con            -> makeRep "Kind" "KCon"       [String con]
+    KArr k1 k2          -> makeRep "Kind" "KArr"       [toRep k1, toRep k2]
 
 primJson :: Prim -> Value
 primJson = \case
-    TUnit               -> makeRep "Prim" "TUnit"     [String "()"]
-    TBool    a          -> makeRep "Prim" "TBool"     [String (if a then "True" else "False")]
-    TInt     a          -> makeRep "Prim" "TInt"      [toJSON a]
-    TInteger a          -> makeRep "Prim" "TInteger"  [toJSON a]
-    TFloat   a          -> makeRep "Prim" "TFloat"    [toJSON a]
-    TDouble  a          -> makeRep "Prim" "TDouble"   [toJSON a]
-    TChar    a          -> makeRep "Prim" "TChar"     [toJSON a]
-    TString  a          -> makeRep "Prim" "TString"   [toJSON a]
-    TSymbol  a          -> makeRep "Prim" "TSymbol"   [toJSON a]
+    TUnit               -> makeRep "Prim" "TUnit"      [String "()"]
+    TBool    a          -> makeRep "Prim" "TBool"      [String (if a then "True" else "False")]
+    TInt     a          -> makeRep "Prim" "TInt"       [toJSON a]
+    TInteger a          -> makeRep "Prim" "TInteger"   [toJSON a]
+    TFloat   a          -> makeRep "Prim" "TFloat"     [toJSON a]
+    TDouble  a          -> makeRep "Prim" "TDouble"    [toJSON a]
+    TChar    a          -> makeRep "Prim" "TChar"      [toJSON a]
+    TString  a          -> makeRep "Prim" "TString"    [toJSON a]
+    TSymbol  a          -> makeRep "Prim" "TSymbol"    [toJSON a]
 
 patternRep
   :: (ToRep t1, ToRep t2, ToRep t3, ToRep t4, ToRep t5, ToRep t6, ToRep t7, ToRep t8, ToRep t9, ToRep t10)
   => Pattern t1 t2 t3 t4 t5 t6 t7 t8 t9 t10
   -> Value
 patternRep = project >>> \case
-    PVar   t var        -> makeRep "Pattern" "PVar"   [toRep t, String var]
-    PCon   t con ps     -> makeRep "Pattern" "PCon"   [toRep t, String con, toRep ps]
-    PLit   t prim       -> makeRep "Pattern" "PLit"   [toRep t, toRep prim]
-    PAs    t as p       -> makeRep "Pattern" "PAs"    [toRep t, String as, toRep p]
-    POr    t p q        -> makeRep "Pattern" "POr"    [toRep t, toRep p, toRep q]
-    PAny   t            -> makeRep "Pattern" "PAny"   [toRep t]
-    PTuple t ps         -> makeRep "Pattern" "PTuple" [toRep t, toRep ps]
-    PList  t ps         -> makeRep "Pattern" "PList"  [toRep t, toRep ps]
-    PRow   t lab a b    -> makeRep "Pattern" "PRow"   [toRep t, String lab, toRep a, toRep b]
-    PAnn   t p          -> makeRep "Pattern" "PAnn"   [toRep t, toRep p]
+    PVar    t var       -> makeRep "Pattern" "PVar"    [toRep t, String var]
+    PCon    t con ps    -> makeRep "Pattern" "PCon"    [toRep t, String con, toRep ps]
+    PLit    t prim      -> makeRep "Pattern" "PLit"    [toRep t, toRep prim]
+    PAs     t as p      -> makeRep "Pattern" "PAs"     [toRep t, String as, toRep p]
+    POr     t p q       -> makeRep "Pattern" "POr"     [toRep t, toRep p, toRep q]
+    PAny    t           -> makeRep "Pattern" "PAny"    [toRep t]
+    PTuple  t ps        -> makeRep "Pattern" "PTuple"  [toRep t, toRep ps]
+    PList   t ps        -> makeRep "Pattern" "PList"   [toRep t, toRep ps]
+    PRow    t lab a b   -> makeRep "Pattern" "PRow"    [toRep t, String lab, toRep a, toRep b]
+    PRecord t p         -> makeRep "Pattern" "PRecord" [toRep t, toRep p]
+    PAnn    t p         -> makeRep "Pattern" "PAnn"    [toRep t, toRep p]
 
 exprRep
   :: (Functor e2, Functor e4, ToRep t1, ToRep t2, ToRep t3, ToRep t4, ToRep t5, ToRep t6, ToRep t7, ToRep t8, ToRep t9, ToRep t10, ToRep t11, ToRep t12, ToRep t13, ToRep t14, ToRep t15, ToRep t16, ToRep t17, ToRep e1, ToRep e3, ToRep (e2 (Expr t1 t2 t3 t4 t5 t6 t7 t8 t9 t10 t11 t12 t13 t14 t15 t16 t17 e1 e2 e3 e4)), ToRep (e4 (Expr t1 t2 t3 t4 t5 t6 t7 t8 t9 t10 t11 t12 t13 t14 t15 t16 t17 e1 e2 e3 e4)), FunArgsRep e1, Pretty e1)
   => Expr t1 t2 t3 t4 t5 t6 t7 t8 t9 t10 t11 t12 t13 t14 t15 t16 t17 e1 e2 e3 e4
   -> Value
 exprRep = project >>> \case
-    EVar   t var        -> makeRep "Expr" "EVar"      [toRep t, String var]
-    EHole  t            -> makeRep "Expr" "EHole"     [toRep t]
-    ECon   t con es     -> makeRep "Expr" "ECon"      [toRep t, String con, toRep es]
-    ELit   t prim       -> makeRep "Expr" "ELit"      [toRep t, toRep prim]
-    EApp   t es         -> makeRep "Expr" "EApp"      [toRep t, toRep es]
-    EFix   t name e1 e2 -> makeRep "Expr" "EFix"      [toRep t, String name, toRep e1, toRep e2]
-    ELam   t ps e       -> makeRep "Expr" "ELam"      [toRep t, toFunArgsRep ps, toRep e]
-    EIf    t e1 e2 e3   -> makeRep "Expr" "EIf"       [toRep t, toRep e1, toRep e2, toRep e3]
-    EPat   t es cs      -> makeRep "Expr" "EPat"      [toRep t, toRep es, toRep cs]
-    ELet   t bind e1 e2 -> makeRep "Expr" "ELet"      [toRep t, toRep bind, toRep e1, toRep e2]
-    EFun   t cs         -> makeRep "Expr" "EFun"      [toRep t, toRep cs]
-    EOp1   t op a       -> makeRep "Expr" "EOp1"      [toRep t, toRep op, toRep a]
-    EOp2   t op a b     -> makeRep "Expr" "EOp2"      [toRep t, toRep op, toRep a, toRep b]
-    ETuple t es         -> makeRep "Expr" "ETuple"    [toRep t, toRep es]
-    EList  t es         -> makeRep "Expr" "EList"     [toRep t, toRep es]
-    ERow   t lab a b    -> makeRep "Expr" "ERow"      [toRep t, String lab, toRep a, toRep b]
-    EAnn   t a          -> makeRep "Expr" "EAnn"      [toRep t, toRep a]
+    EVar    t var       -> makeRep "Expr" "EVar"       [toRep t, String var]
+    EHole   t           -> makeRep "Expr" "EHole"      [toRep t]
+    ECon    t con es    -> makeRep "Expr" "ECon"       [toRep t, String con, toRep es]
+    ELit    t prim      -> makeRep "Expr" "ELit"       [toRep t, toRep prim]
+    EApp    t es        -> makeRep "Expr" "EApp"       [toRep t, toRep es]
+    EFix    t n e1 e2   -> makeRep "Expr" "EFix"       [toRep t, String n, toRep e1, toRep e2]
+    ELam    t ps e      -> makeRep "Expr" "ELam"       [toRep t, toFunArgsRep ps, toRep e]
+    EIf     t e1 e2 e3  -> makeRep "Expr" "EIf"        [toRep t, toRep e1, toRep e2, toRep e3]
+    EPat    t es cs     -> makeRep "Expr" "EPat"       [toRep t, toRep es, toRep cs]
+    ELet    t b e1 e2   -> makeRep "Expr" "ELet"       [toRep t, toRep b, toRep e1, toRep e2]
+    EFun    t cs        -> makeRep "Expr" "EFun"       [toRep t, toRep cs]
+    EOp1    t op a      -> makeRep "Expr" "EOp1"       [toRep t, toRep op, toRep a]
+    EOp2    t op a b    -> makeRep "Expr" "EOp2"       [toRep t, toRep op, toRep a, toRep b]
+    ETuple  t es        -> makeRep "Expr" "ETuple"     [toRep t, toRep es]
+    EList   t es        -> makeRep "Expr" "EList"      [toRep t, toRep es]
+    ERow    t lab a b   -> makeRep "Expr" "ERow"       [toRep t, String lab, toRep a, toRep b]
+    ERecord t e         -> makeRep "Expr" "ERecord"    [toRep t, toRep e]
+    EAnn    t a         -> makeRep "Expr" "EAnn"       [toRep t, toRep a]
 
 op1Rep :: (ToRep t) => Op1 t -> Value
 op1Rep = \case
-    ONeg   t            -> makeRep "Op1" "ONeg"       [toRep t]
-    ONot   t            -> makeRep "Op1" "ONot"       [toRep t]
+    ONeg   t            -> makeRep "Op1" "ONeg"        [toRep t]
+    ONot   t            -> makeRep "Op1" "ONot"        [toRep t]
 
 op2Rep :: (ToRep t) => Op2 t -> Value
 op2Rep = \case
-    OEq    t            -> makeRep "Op2" "OEq"        [toRep t]
-    ONeq   t            -> makeRep "Op2" "ONeq"       [toRep t]
-    OAnd   t            -> makeRep "Op2" "OAnd"       [toRep t]
-    OOr    t            -> makeRep "Op2" "OOr"        [toRep t]
-    OAdd   t            -> makeRep "Op2" "OAdd"       [toRep t]
-    OSub   t            -> makeRep "Op2" "OSub"       [toRep t]
-    OMul   t            -> makeRep "Op2" "OMul"       [toRep t]
-    ODiv   t            -> makeRep "Op2" "ODiv"       [toRep t]
-    OPow   t            -> makeRep "Op2" "OPow"       [toRep t]
-    OMod   t            -> makeRep "Op2" "OMod"       [toRep t]
-    OLt    t            -> makeRep "Op2" "OLt"        [toRep t]
-    OGt    t            -> makeRep "Op2" "OGt"        [toRep t]
-    OLte   t            -> makeRep "Op2" "OLte"       [toRep t]
-    OGte   t            -> makeRep "Op2" "OGte"       [toRep t]
-    OLarr  t            -> makeRep "Op2" "OLarr"      [toRep t]
-    ORarr  t            -> makeRep "Op2" "ORarr"      [toRep t]
-    OFpip  t            -> makeRep "Op2" "OFpipe"     [toRep t]
-    OBpip  t            -> makeRep "Op2" "OBpipe"     [toRep t]
-    OOpt   t            -> makeRep "Op2" "OOpt"       [toRep t]
-    OStr   t            -> makeRep "Op2" "OStr"       [toRep t]
-    ODot   t            -> makeRep "Op2" "ODot"       [toRep t]
-    OField t            -> makeRep "Op2" "OField"     [toRep t]
+    OEq    t            -> makeRep "Op2" "OEq"         [toRep t]
+    ONeq   t            -> makeRep "Op2" "ONeq"        [toRep t]
+    OAnd   t            -> makeRep "Op2" "OAnd"        [toRep t]
+    OOr    t            -> makeRep "Op2" "OOr"         [toRep t]
+    OAdd   t            -> makeRep "Op2" "OAdd"        [toRep t]
+    OSub   t            -> makeRep "Op2" "OSub"        [toRep t]
+    OMul   t            -> makeRep "Op2" "OMul"        [toRep t]
+    ODiv   t            -> makeRep "Op2" "ODiv"        [toRep t]
+    OPow   t            -> makeRep "Op2" "OPow"        [toRep t]
+    OMod   t            -> makeRep "Op2" "OMod"        [toRep t]
+    OLt    t            -> makeRep "Op2" "OLt"         [toRep t]
+    OGt    t            -> makeRep "Op2" "OGt"         [toRep t]
+    OLte   t            -> makeRep "Op2" "OLte"        [toRep t]
+    OGte   t            -> makeRep "Op2" "OGte"        [toRep t]
+    OLarr  t            -> makeRep "Op2" "OLarr"       [toRep t]
+    ORarr  t            -> makeRep "Op2" "ORarr"       [toRep t]
+    OFpip  t            -> makeRep "Op2" "OFpipe"      [toRep t]
+    OBpip  t            -> makeRep "Op2" "OBpipe"      [toRep t]
+    OOpt   t            -> makeRep "Op2" "OOpt"        [toRep t]
+    OStr   t            -> makeRep "Op2" "OStr"        [toRep t]
+    ODot   t            -> makeRep "Op2" "ODot"        [toRep t]
+    OField t            -> makeRep "Op2" "OField"      [toRep t]
 
 bindingRep :: (ToRep t, ToRep p) => Binding t p -> Value
 bindingRep = \case
-    BPat t p            -> makeRep "Binding" "BPat"   [toRep t, toRep p]
-    BFun t name ps      -> makeRep "Binding" "BFun"   [toRep t, String name, toRep ps]
+    BPat t p            -> makeRep "Binding" "BPat"    [toRep t, toRep p]
+    BFun t name ps      -> makeRep "Binding" "BFun"    [toRep t, String name, toRep ps]
 
 clauseRep :: (ToRep t, ToRep p, ToRep a) => Clause t p a -> Value
 clauseRep = \case
-    Clause t ps e       -> makeRep "Clause" "Clause"  [toRep t, toRep ps, toRep e]
+    Clause t ps e       -> makeRep "Clause" "Clause"   [toRep t, toRep ps, toRep e]
 
 choiceRep :: (ToRep a) => Choice a -> Value
 choiceRep = \case
-    Choice es e         -> makeRep "Choice" "Choice"  [toRep es, toRep e]
+    Choice es e         -> makeRep "Choice" "Choice"   [toRep es, toRep e]
 
 predicateRep :: (ToRep a) => PredicateT a -> Value
 predicateRep = \case
