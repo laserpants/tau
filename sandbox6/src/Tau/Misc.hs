@@ -105,6 +105,7 @@ data PatternF t1 t2 t3 t4 t5 t6 t7 t8 t9 t10 a
     | PTuple  t7 [a]                     -- ^ Tuple pattern
     | PList   t8 [a]                     -- ^ List pattern
     | PRow    t9 Name a a                -- ^ Row pattern
+    | PRecord t9 a                       -- ^ Record pattern
     | PAnn    t10 a                      -- ^ Explicit type annotation
 
 -- | Pattern
@@ -126,6 +127,7 @@ data ExprF t1 t2 t3 t4 t5 t6 t7 t8 t9 t10 t11 t12 t13 t14 t15 t16 t17 e1 e2 e3 e
     | ETuple  t13 [a]                    -- ^ Tuple
     | EList   t14 [a]                    -- ^ List literal
     | ERow    t15 Name a a               -- ^ Row expression
+    | ERecord t15 a                      -- ^ Record expression
     | EHole   t16                        -- ^ Blank argument in partial function application
     | EAnn    t17 a                      -- ^ Explicit type annotation
 
@@ -716,6 +718,13 @@ rowPat
 rowPat = embed4 PRow
 {-# INLINE rowPat #-}
 
+recordPat
+  :: t9
+  -> Pattern t1 t2 t3 t4 t5 t6 t7 t8 t9 t10
+  -> Pattern t1 t2 t3 t4 t5 t6 t7 t8 t9 t10
+recordPat = embed2 PRecord
+{-# INLINE recordPat #-}
+
 annPat
   :: t10
   -> Pattern t1 t2 t3 t4 t5 t6 t7 t8 t9 t10
@@ -858,6 +867,14 @@ rowExpr
   -> Expr t1 t2 t3 t4 t5 t6 t7 t8 t9 t10 t11 t12 t13 t14 t15 t16 t17 e1 e2 e3 e4
 rowExpr = embed4 ERow
 {-# INLINE rowExpr #-}
+
+recordExpr
+  :: (Functor e2, Functor e4)
+  => t15
+  -> Expr t1 t2 t3 t4 t5 t6 t7 t8 t9 t10 t11 t12 t13 t14 t15 t16 t17 e1 e2 e3 e4
+  -> Expr t1 t2 t3 t4 t5 t6 t7 t8 t9 t10 t11 t12 t13 t14 t15 t16 t17 e1 e2 e3 e4
+recordExpr = embed2 ERecord
+{-# INLINE recordExpr #-}
 
 holeExpr
   :: (Functor e2, Functor e4)
