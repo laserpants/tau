@@ -1450,12 +1450,14 @@ example1 = do -- foo1 expr
 --                    ])))
 
 
-    expr =
-        appExpr ()
-            [ op2Expr () (OAdd ()) (holeExpr ()) (holeExpr ())
-            , annExpr tInt (litExpr () (TInteger 5))
-            , annExpr tInt (litExpr () (TInteger 5))
-            ]
+--    expr =
+--        appExpr ()
+--            [ op2Expr () (OAdd ()) (holeExpr ()) (holeExpr ())
+--            , annExpr tInt (litExpr () (TInteger 5))
+--            , annExpr tInt (litExpr () (TInteger 5))
+--            ]
+
+    expr = (Fix (ELam () [Fix (PCon () "#" [Fix (PRow () "b" (Fix (PLit () (TBool True))) (Fix (PRow () "a" (Fix (PLit () (TBool True))) (Fix (PVar () "c")))))])] (Fix (EVar () "c"))))
 
 
 --    expr =
@@ -1463,12 +1465,7 @@ example1 = do -- foo1 expr
 --            [ appExpr () [ varExpr () "(+)", holeExpr (), holeExpr () ]
 --            , annExpr tInt (litExpr () (TInteger 5))
 --            , annExpr tInt (litExpr () (TInteger 5))
---            ]
-
-
-
-
-
+--            ] 
 --    expr = Fix (EApp () [Fix (EOp2 () (OAdd ()) (Fix (EVar () "z")) (Fix (EVar () "zz"))),Fix (ELit () (TInteger 5)),Fix (ELit () (TInteger 3))])
 
 
