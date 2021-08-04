@@ -114,15 +114,6 @@ instance Pretty Type where
 --                    TVar{}      -> False
 --                    _           -> True
 
-isTupleType :: Type -> Bool
-isTupleType = cata $ \case
-    TCon _ con -> Just True == (allCommas <$> stripped con)
-    TApp _ a _ -> a
-    _          -> False
-  where
-    allCommas = Text.all (== ',')
-    stripped  = Text.stripSuffix ")" <=< Text.stripPrefix "("
-
 instance Pretty (PredicateT Name) where
     pretty (InClass n t) = pretty n <+> pretty t
 
@@ -153,3 +144,42 @@ instance Pretty (Pattern t1 t2 t3 t4 t5 t6 t7 t8 t9 t10) where
 
 instance (Functor e2, Functor e4) => Pretty (Expr t1 t2 t3 t4 t5 t6 t7 t8 t9 t10 t11 t12 t13 t14 t15 t16 t17 e1 e2 e3 e4) where
     pretty _ = "TODO"
+
+instance Pretty Product where
+    pretty (Mul con types) =
+        pretty con <+> hsep (prettyType <$> types)
+      where
+        prettyType t = parensIf (useParens t) (pretty t)
+        useParens = project >>> \case
+            TApp _ a _ | isRecordType "#" a -> False
+            TApp{} -> True
+            TCon{} -> True
+            _      -> False
+
+instance Pretty Datatype where
+    pretty (Sum con vars prods) =
+        case prods of
+            []   -> lhs
+            [p]  -> lhs <+> "=" <+> pretty p
+            p:ps -> lhs <+> nest 2 (line' <> vsep (pre "=" p:(pre "|" <$> ps)))
+      where
+        pre a p = a <+> pretty p
+        lhs = "type"
+            <+> pretty con
+            <> if null vars then ""
+                            else " " <> hsep (pretty <$> vars)
+
+isTupleType :: Type -> Bool
+isTupleType = cata $ \case
+    TCon _ con -> Just True == (allCommas <$> stripped con)
+    TApp _ a _ -> a
+    _          -> False
+  where
+    allCommas = Text.all (== ',')
+    stripped  = Text.stripSuffix ")" <=< Text.stripPrefix "("
+
+isRecordType :: Name -> Type -> Bool
+isRecordType con = cata $ \case
+    TCon _ c | con == c -> True
+    TApp _ a _ -> a
+    _          -> False

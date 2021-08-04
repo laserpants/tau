@@ -371,6 +371,12 @@ type ClassEnv = Env
 
 type ConstructorEnv = Env (Set Name, Int)
 
+-- | Product type
+data Product = Mul Name [Type]
+
+-- | Sum type
+data Datatype = Sum Name [Name] [Product]
+
 -------------------------------------------------------------------------------
 
 -- Type class instances for Predicate
@@ -418,6 +424,16 @@ instance FreeIn (TypeT a) where
 
 instance FreeIn Scheme where
     free (Forall _ _ t) = free t
+
+-- Type class instances for Product and Datatype
+
+deriving instance Show Product
+deriving instance Eq   Product
+deriving instance Ord  Product
+
+deriving instance Show Datatype
+deriving instance Eq   Datatype
+deriving instance Ord  Datatype
 
 -------------------------------------------------------------------------------
 
