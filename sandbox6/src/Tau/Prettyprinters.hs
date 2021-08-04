@@ -40,9 +40,9 @@ instance Pretty Prim where
 instance Pretty Kind where
     pretty = para $ \case
         KArr (k1, doc1) (_, doc2) ->
-            parensIf addLeft doc1 <+> "->" <+> doc2
+            parensIf parensRequiredL doc1 <+> "->" <+> doc2
           where
-            addLeft =
+            parensRequiredL =
                 case project k1 of
                     KArr{} -> True
                     _      -> False
@@ -53,9 +53,9 @@ instance Pretty Kind where
 instance Pretty Type where
     pretty = para $ \case
         TArr (t1, doc1) (_, doc2) ->
-            parensIf addLeft doc1 <+> "->" <+> doc2
+            parensIf parensRequiredL doc1 <+> "->" <+> doc2
           where
-            addLeft =
+            parensRequiredL =
                 case project t1 of
                     TArr{} -> True
                     _      -> False
@@ -80,14 +80,14 @@ instance Pretty Type where
              in prettyTuple (pretty <$> ts)
 
         TApp _ (t1, doc1) (t2, doc2) ->
-            parensIf addLeft doc1 <+> parensIf addRight doc2
+            parensIf parensRequiredL doc1 <+> parensIf parensRequiredR doc2
           where
-            addLeft =
+            parensRequiredL =
                 case project t1 of
                     TArr{} -> True
                     _      -> False
 
-            addRight =
+            parensRequiredR =
                 case project t2 of
                     TApp{} -> True
                     TArr{} -> True
@@ -98,31 +98,19 @@ instance Pretty Type where
         TCon _ con -> pretty con
 
 --        TRow label (t1, doc1) (t2, doc2) ->
---            "{" <> pretty label <> "}" <+> parensIf addLeft doc1
---                                       <+> parensIf addRight doc2
+--            "{" <> pretty label <> "}" <+> parensIf parensRequiredL doc1
+--                                       <+> parensIf parensRequiredR doc2
 --          where
---            addLeft =
+--            parensRequiredL =
 --                case project t1 of
 --                    TArr{} -> True
 --                    _      -> False
 --
---            addRight =
+--            parensRequiredR =
 --                case project t2 of
 --                    TCon _ "{}" -> False
 --                    TVar{}      -> False
 --                    _           -> True
-
---isTupleCon :: Name -> Bool
---isTupleCon con = Just True == (allCommas <$> stripped con)
---  where
---    allCommas = Text.all (== ',')
---    stripped  = Text.stripSuffix ")" <=< Text.stripPrefix "("
---
---isTupleType :: Type -> Bool
---isTupleType = cata $ \case
---    TCon _ con -> isTupleCon con
---    TApp _ a _ -> a
---    _          -> False
 
 isTupleType :: Type -> Bool
 isTupleType = cata $ \case
@@ -145,7 +133,10 @@ instance Pretty Predicate where
             _      -> False
 
 instance (Pretty p, Pretty a) => Pretty (Clause t p a) where
-    pretty (Clause _ p cs) = "TODO" -- pipe <+> pretty p <+> prettyChoice cs
+    pretty (Clause _ p cs) = pipe <+> pretty p <+> pretty cs
+
+instance Pretty (Choice a) where
+    pretty (Choice es e) = "TODO"
 
 instance Pretty (Op1 t) where
     pretty = \case
