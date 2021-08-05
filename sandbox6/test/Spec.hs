@@ -1008,6 +1008,10 @@ testPrettyprinters = do
     describe "• Expr" $ do
 
         suceedPrintExpr
-            (appExpr () [varExpr () "add", litExpr () (TInteger 3) :: ProgExpr () Void, holeExpr ()])
+            (appExpr () [varExpr () "add", litExpr () (TInteger 3), holeExpr ()])
             "add(3, _)"
+
+        suceedPrintExpr
+            (tupleExpr () [varExpr () "x", litExpr () (TInt 5)])
+            "(x, 5)"
 
