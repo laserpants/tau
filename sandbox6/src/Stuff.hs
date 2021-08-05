@@ -129,28 +129,6 @@ tagTree = cata alg
 
 -------------------------------------------------------------------------------
 
-freshType_ :: (MonadSupply Int m) => m Type
-freshType_ = do
-    s <- supply
-    let st = showt s
-    pure (tVar (kVar ("$n" <> st)) ("$v" <> st))
-
---freshType__ :: (MonadSupply Int m) => m Type
---freshType__ = do
---    s <- supply
---    let st = showt s
---    pure (tVar kRow ("$v" <> st))
-
---makeRowKind
---  :: ( MonadSupply Int m
---     , MonadReader (ClassEnv, TypeEnv, KindEnv, ConstructorEnv) m
---     , MonadState (Substitution Type, Substitution Kind, Context) m )
---  => Type
---  -> m [Error]
---makeRowKind t = do
---    s <- supply
---    tryUnify t (tVar kRow ("$v" <> showt s))
-
 inferAstType
   :: ( MonadSupply Int m
      , MonadReader (ClassEnv, TypeEnv, KindEnv, ConstructorEnv) m
@@ -178,8 +156,6 @@ inferExprType = cata $ \case
                 errs <- tryUnify t ty
                 pure (varExpr (TypeInfo errs t ps) var)
 
-            -- TODO -- record types
-
     ECon t con exprs -> do
         es <- sequence exprs
         lookupScheme con >>= \case
@@ -203,13 +179,13 @@ inferExprType = cata $ \case
                 error "Implementation error"
 
             f:args -> do
-                ty <- freshType_
+                ty <- fresh
                 errs1 <- tryUnify t (foldr tArr ty (typeOf <$> filter isHole args))
                 errs2 <- tryUnify (typeOf f) (foldr tArr ty (typeOf <$> args))
                 pure (appExpr (TypeInfo (errs1 <> errs2) t []) es)
 
     EFix t name expr1 expr2 -> do
-        t1 <- freshType_
+        t1 <- fresh
         e1 <- local (inTypeEnv (Env.insert name (toScheme t1))) expr1
         errs1 <- tryUnify (typeOf e1) t1
         scheme <- generalize (typeOf e1)
@@ -256,7 +232,7 @@ inferExprType = cata $ \case
     ELet t (BFun bt f pats) expr1 expr2 -> do
         (ps, vss) <- unzip <$> traverse inferPatternType pats
         e1 <- local (inTypeEnv (Env.inserts (toScheme <$$> concat vss))) expr1
-        t1 <- freshType_
+        t1 <- fresh
         errs1 <- tryUnify t1 (foldr tArr (typeOf e1) (typeOf <$> ps))
         scheme <- generalize t1
         e2 <- local (inTypeEnv (Env.insert f scheme)) expr2
@@ -283,7 +259,7 @@ inferExprType = cata $ \case
         a <- expr1
         b <- expr2
         (op, ps) <- inferOp2Type op2
-        ty <- freshType_
+        ty <- fresh
         errs1 <- tryUnify t (foldr tArr ty (typeOf <$> filter isHole [a, b]))
         errs2 <- tryUnify (typeOf op) (foldr tArr ty (typeOf <$> [a, b]))
         pure (op2Expr (TypeInfo (errs1 <> errs2) t ps) op a b)
@@ -296,7 +272,7 @@ inferExprType = cata $ \case
     EList t exprs -> do
         es <- sequence exprs
         t1 <- case es of
-            []    -> freshType_
+            []    -> fresh
             (e:_) -> pure (typeOf e)
 
         errss <- forM es (tryUnify t1 . typeOf)
@@ -375,7 +351,7 @@ inferPatternType = cata $ \case
     PList t pats -> do
         (ps, vss) <- unzip <$> sequence pats
         t1 <- case ps of
-            []    -> freshType_
+            []    -> fresh
             (p:_) -> pure (typeOf p)
 
         errss <- forM ps (tryUnify t1 . typeOf)
@@ -530,6 +506,12 @@ inferChoice (Choice exprs expr) = Choice <$> sequence exprs <*> expr
 hoistMaybe :: (Applicative m) => Maybe b -> MaybeT m b
 hoistMaybe = MaybeT . pure
 #endif
+
+fresh :: (MonadSupply Int m) => m Type
+fresh = do
+    s <- supply
+    let st = showt s
+    pure (tVar (kVar ("$n" <> st)) ("$v" <> st))
 
 lookupScheme
   :: ( MonadSupply Int m
