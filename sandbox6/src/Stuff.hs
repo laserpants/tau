@@ -306,8 +306,10 @@ inferExprType = cata $ \case
     ERow t label expr row -> do
         e <- expr
         r <- row
-        errs <- tryUnify t (tRow label (typeOf e) (typeOf r))
-        pure (rowExpr (TypeInfo errs t []) label e r)
+        errs1 <- tryUnify t (tRow label (typeOf e) (typeOf r))
+        (ty, _) <- instantiate (Forall [kTyp, kRow] [] (tRow label (tGen 0) (tGen 1)))
+        errs2 <- tryUnify t ty
+        pure (rowExpr (TypeInfo (errs1 <> errs2) t []) label e r)
 
     ERecord t expr -> do
         e <- expr
@@ -383,8 +385,10 @@ inferPatternType = cata $ \case
     PRow t label pat row -> do
         (p, vs1) <- pat
         (r, vs2) <- row
-        errs <- tryUnify t (tRow label (typeOf p) (typeOf r))
-        pure (rowPat (TypeInfo errs t []) label p r, vs1 <> vs2)
+        errs1 <- tryUnify t (tRow label (typeOf p) (typeOf r))
+        (ty, _) <- instantiate (Forall [kTyp, kRow] [] (tRow label (tGen 0) (tGen 1)))
+        errs2 <- tryUnify t ty
+        pure (rowPat (TypeInfo (errs1 <> errs2) t []) label p r, vs1 <> vs2)
 
     PRecord t pat -> do
         (p, vs) <- pat

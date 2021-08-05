@@ -102,22 +102,20 @@ instance Pretty Type where
         TVar _ var -> pretty var
         TCon _ con -> pretty con
 
-        TRow{} -> "TODO"
+        TRow label (t1, doc1) (t2, doc2) ->
+            "{" <> pretty label <> "}" <+> parensIf parensRequiredL doc1
+                                       <+> parensIf parensRequiredR doc2
+          where
+            parensRequiredL =
+                case project t1 of
+                    TArr{} -> True
+                    _      -> False
 
---        TRow label (t1, doc1) (t2, doc2) ->
---            "{" <> pretty label <> "}" <+> parensIf parensRequiredL doc1
---                                       <+> parensIf parensRequiredR doc2
---          where
---            parensRequiredL =
---                case project t1 of
---                    TArr{} -> True
---                    _      -> False
---
---            parensRequiredR =
---                case project t2 of
---                    TCon _ "{}" -> False
---                    TVar{}      -> False
---                    _           -> True
+            parensRequiredR =
+                case project t2 of
+                    TCon _ "{}" -> False
+                    TVar{}      -> False
+                    _           -> True
 
 instance Pretty (PredicateT Name) where
     pretty (InClass n t) = pretty n <+> pretty t
