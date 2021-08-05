@@ -1,11 +1,12 @@
-{-# LANGUAGE FlexibleInstances     #-}
-{-# LANGUAGE LambdaCase            #-}
-{-# LANGUAGE OverloadedStrings     #-}
+{-# LANGUAGE FlexibleInstances #-}
+{-# LANGUAGE LambdaCase        #-}
+{-# LANGUAGE OverloadedStrings #-}
 module Tau.Prettyprinters where
 
 import Control.Arrow ((<<<), (>>>))
 import Control.Monad
 import Data.Fix (Fix(..))
+import Data.Function ((&))
 import Data.Functor.Foldable (cata, para, project, embed)
 import Data.Text.Prettyprint.Doc
 import Data.Text.Prettyprint.Doc.Render.Text
@@ -142,11 +143,53 @@ instance Pretty (Op1 t) where
 instance Pretty (Op2 t) where
     pretty = pretty . op2Symbol
 
-instance Pretty (Pattern t1 t2 t3 t4 t5 t6 t7 t8 t9 t10) where
-    pretty _ = "TODO"
+instance (Pretty t10) => Pretty (Pattern t1 t2 t3 t4 t5 t6 t7 t8 t9 t10) where
+    pretty = para $ \case
 
-instance (Functor e2, Functor e4) => Pretty (Expr t1 t2 t3 t4 t5 t6 t7 t8 t9 t10 t11 t12 t13 t14 t15 t16 t17 e1 e2 e3 e4) where
-    pretty _ = "TODO"
+        PCon _ con []                    -> pretty con
+        PCon _ con ps                    -> pretty con <> prettyTuple (snd <$> ps)
+
+        expr -> snd <$> expr & \case
+            PVar    _ var                -> pretty var
+            PLit    _ prim               -> pretty prim
+            PAs     _ name p             -> p <+> "as" <+> pretty name
+            POr     _ p q                -> p <+> "or" <+> q
+            PAny    _                    -> "_"
+            PTuple  _ ps                 -> prettyTuple ps
+            PList   _ ps                 -> prettyList_ ps
+            PAnn    t p                  -> p <+> ":" <+> pretty t
+
+            _ -> "TODO"
+
+instance (Functor e2, Functor e4, Pretty t17) => Pretty (Expr t1 t2 t3 t4 t5 t6 t7 t8 t9 t10 t11 t12 t13 t14 t15 t16 t17 e1 e2 e3 e4) where
+    pretty = para $ \case
+
+        EApp _ ((e, doc1):es) ->
+            parensIf parensRequiredL doc1 <> prettyArgs es
+          where
+            prettyArgs [(Fix (ELit _ TUnit), _)] = "()"
+            prettyArgs args = parens (commaSep (snd <$> args))
+
+            parensRequiredL =
+                case project e of
+                    EVar{} -> False
+                    _      -> True
+
+        expr -> snd <$> expr & \case
+            EVar    _ var                -> pretty var
+            EHole   _                    -> "_"
+            ELit    _ prim               -> pretty prim
+--            EIf     _ e1 e2 e3           -> prettyIf e1 e2 e3
+--            EFix    _ name e1 e2         -> prettyFix name e1 e2
+            EOp1    _ op a               -> pretty op <> a
+            EOp2    _ (ODot _) a b       -> b <> "." <> a
+            EOp2    _ (OField _) a b     -> b <> "." <> a
+            EOp2    _ op a b             -> a <+> pretty op <+> b
+            ETuple  _ es                 -> prettyTuple es
+            EList   _ es                 -> prettyList_ es
+            EAnn    t e                  -> e <+> ":" <+> pretty t
+
+            _ -> "TODO"
 
 instance Pretty Product where
     pretty (Mul con types) =

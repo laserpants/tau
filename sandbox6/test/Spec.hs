@@ -808,10 +808,10 @@ suceedPrint p str =
 suceedPrintType :: Type -> Text -> SpecWith ()
 suceedPrintType = suceedPrint
 
-suceedPrintPattern :: ProgPattern t u -> Text -> SpecWith ()
+suceedPrintPattern :: ProgPattern t Void -> Text -> SpecWith ()
 suceedPrintPattern = suceedPrint
 
-suceedPrintExpr :: ProgExpr t u -> Text -> SpecWith ()
+suceedPrintExpr :: ProgExpr t Void -> Text -> SpecWith ()
 suceedPrintExpr = suceedPrint
 
 testPrettyprinters :: SpecWith ()
@@ -885,9 +885,9 @@ testPrettyprinters = do
             (tRecord (tRow "id" _a (tRow "name" _b (tVar kRow "r"))))
             "{ id : a, name : b | r }"
 
-    --    suceedPrintType
-    --        (tApp (tCon (kArr kRow kTyp) "#Record") (tApp (tApp (tCon (kArr kTyp (kArr kRow kRow)) "{id}") (tVar kTyp "a")) (tApp (tApp (tCon (kArr kTyp (kArr kRow kRow)) "{name}") (tVar kTyp "b")) (tCon kRow "{}"))))
-    --        "{ id : a, name : b }"
+        suceedPrintType
+            (tRecord (tRow "id" _a (tRow "name" _b tRowNil)))
+            "{ id : a, name : b }"
 
         suceedPrintType
             (tApp kTyp (tApp kTyp (tCon (kArr kTyp (kArr kTyp kTyp)) "(,)") (tCon kTyp "String")) (tCon kTyp "Bool"))
@@ -911,48 +911,48 @@ testPrettyprinters = do
             ((kTyp `kArr` kTyp) `kArr` kTyp)
             "(* -> *) -> *"
 
---    describe "• Pattern" $ do
---
---        suceedPrintPattern
---            (varPat () "v")
---            "v"
---
---        suceedPrintPattern
---            (anyPat ())
---            "_"
---
---        suceedPrintPattern
---            (litPat () (TInt 5))
---            "5"
---
---        suceedPrintPattern
---            (orPat () (varPat () "v") (litPat () (TInt 5)))
---            "v or 5"
---
---        suceedPrintPattern
---            (asPat () "five" (litPat () (TInt 5)))
---            "5 as five"
---
---        suceedPrintPattern
---            (tuplePat () [varPat () "x", varPat () "y"])
---            "(x, y)"
---
---        suceedPrintPattern
---            (tuplePat () [varPat () "x", anyPat ()])
---            "(x, _)"
---
---        suceedPrintPattern
---            (listPat () [varPat () "x", anyPat ()])
---            "[x, _]"
---
---        suceedPrintPattern
---            (listPat () [])
---            "[]"
---
---        suceedPrintPattern
---            (litPat () TUnit)
---            "()"
---
+    describe "• Pattern" $ do
+
+        suceedPrintPattern
+            (varPat () "v")
+            "v"
+
+        suceedPrintPattern
+            (anyPat ())
+            "_"
+
+        suceedPrintPattern
+            (litPat () (TInt 5))
+            "5"
+
+        suceedPrintPattern
+            (orPat () (varPat () "v") (litPat () (TInt 5)))
+            "v or 5"
+
+        suceedPrintPattern
+            (asPat () "five" (litPat () (TInt 5)))
+            "5 as five"
+
+        suceedPrintPattern
+            (tuplePat () [varPat () "x", varPat () "y"])
+            "(x, y)"
+
+        suceedPrintPattern
+            (tuplePat () [varPat () "x", anyPat ()])
+            "(x, _)"
+
+        suceedPrintPattern
+            (listPat () [varPat () "x", anyPat ()])
+            "[x, _]"
+
+        suceedPrintPattern
+            (listPat () [])
+            "[]"
+
+        suceedPrintPattern
+            (litPat () TUnit)
+            "()"
+
 --    --    suceedPrintPattern
 --    --        (recordPat () (rExt "id" (varPat () "id") (rExt "name" (varPat () "name") rNil)))
 --    --        "{ id = id, name = name }"
@@ -968,32 +968,32 @@ testPrettyprinters = do
 --    --    suceedPrintPattern
 --    --        (recordPat () (rExt "name" (varPat () "name") (rExt "id" (varPat () "id") (rVar (varPat () "r")))))
 --    --        "{ id = id, name = name | r }"
---
---        describe "• Constructor patterns" $ do
---
---            suceedPrintPattern
---                (conPat () "C" [])
---                "C"
---
---            suceedPrintPattern
---                (conPat () "C" [varPat () "x", varPat () "y"])
---                "C x y"
---
---            suceedPrintPattern
---                (conPat () "C" [varPat () "x", conPat () "D" [varPat () "y", varPat () "z"]])
---                "C x (D y z)"
---
---            suceedPrintPattern
---                (conPat () "C" [varPat () "x", conPat () "D" []])
---                "C x D"
---
---            suceedPrintPattern
---                (conPat () "C" [orPat () (varPat () "x") (varPat () "y")])
---                "C (x or y)"
---
---            suceedPrintPattern
---                (conPat () "C" [varPat () "x", asPat () "d" (conPat () "D" [varPat () "y"])])
---                "C x (D y as d)"
+
+        describe "• Constructor patterns" $ do
+
+            suceedPrintPattern
+                (conPat () "C" [])
+                "C"
+
+            suceedPrintPattern
+                (conPat () "C" [varPat () "x", varPat () "y"])
+                "C(x, y)"
+
+            suceedPrintPattern
+                (conPat () "C" [varPat () "x", conPat () "D" [varPat () "y", varPat () "z"]])
+                "C(x, D(y, z))"
+
+            suceedPrintPattern
+                (conPat () "C" [varPat () "x", conPat () "D" []])
+                "C(x, D)"
+
+            suceedPrintPattern
+                (conPat () "C" [orPat () (varPat () "x") (varPat () "y")])
+                "C(x or y)"
+
+            suceedPrintPattern
+                (conPat () "C" [varPat () "x", asPat () "d" (conPat () "D" [varPat () "y"])])
+                "C(x, D(y) as d)"
 
     describe "• Predicates" $ do
 
@@ -1005,9 +1005,9 @@ testPrettyprinters = do
             (InClass "Eq" tInt :: Predicate)
             "Eq Int"
 
---    describe "• Expr" $ do
---
---        suceedPrintExpr
---            (appExpr () [varExpr () "add", litExpr () (TInteger 3) :: ProgExpr () Void, holeExpr ()])
---            "add(3, _)"
+    describe "• Expr" $ do
+
+        suceedPrintExpr
+            (appExpr () [varExpr () "add", litExpr () (TInteger 3) :: ProgExpr () Void, holeExpr ()])
+            "add(3, _)"
 
