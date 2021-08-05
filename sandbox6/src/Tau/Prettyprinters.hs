@@ -197,7 +197,7 @@ instance Pretty Product where
       where
         prettyType t = parensIf (useParens t) (pretty t)
         useParens = project >>> \case
-            TApp _ a _ | isRecordType "#" a -> False
+            TApp _ a _ | isRecordType a -> False
             TApp{} -> True
             TCon{} -> True
             _      -> False
@@ -224,8 +224,8 @@ isTupleType = cata $ \case
     allCommas = Text.all (== ',')
     stripped  = Text.stripSuffix ")" <=< Text.stripPrefix "("
 
-isRecordType :: Name -> Type -> Bool
-isRecordType con = cata $ \case
-    TCon _ c | con == c -> True
+isRecordType :: Type -> Bool
+isRecordType = cata $ \case
+    TCon _ c | "#" == c -> True
     TApp _ a _ -> a
     _          -> False
