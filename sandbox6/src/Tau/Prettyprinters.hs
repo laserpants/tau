@@ -232,3 +232,6 @@ isRecordType = cata $ \case
     TCon _ c | "#" == c -> True
     TApp _ a _ -> a
     _          -> False
+
+instance Pretty Error where
+    pretty = pretty . show

@@ -26,10 +26,7 @@ import qualified Tau.Env as Env
 
 type TInfo = TypeInfo [Error]
 
-exhaustivePatternsCheck
-  :: (MonadReader ConstructorEnv m)
-  => ProgExpr TInfo Void
-  -> m (ProgExpr TInfo Void)
+exhaustivePatternsCheck :: (MonadReader ConstructorEnv m) => ProgExpr TInfo Void -> m (ProgExpr TInfo Void)
 exhaustivePatternsCheck = para $ \case
 
     EPat t expr clauses ->

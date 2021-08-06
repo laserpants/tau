@@ -68,13 +68,16 @@ instance ToRep Text where
     toRep = textJson
 
 instance ToRep Error where
-    toRep = errorRep
+    toRep = withPretty errorRep
 
 instance ToRep UnificationError where
     toRep = unificationErrorRep
 
 instance ToRep Void where
     toRep _ = ""
+
+instance ToRep Int where
+    toRep = toJSON
 
 typeJson :: Type -> Value
 typeJson = project >>> \case
@@ -208,21 +211,22 @@ textJson s = makeRep "Name" "Name" [String s]
 
 errorRep :: Error -> Value
 errorRep = \case
-    UnificationError err                -> String "UnificationError"
-    NotInScope name                     -> String "NotInScope"
-    ConstructorNotInScope name          -> String "ConstructorNotInScope"
-    NoSuchClass name                    -> String "NoSuchClass"
-    MissingInstance name t              -> String "MissingInstance"
-    PatternArityMismatch name m n       -> String "PatternArityMismatch"
-    NonBooleanGuard expr                -> String "NonBooleanGuard"
+    UnificationError err                -> makeRep "Error" "UnificationError"       [toRep err]
+    NotInScope name                     -> makeRep "Error" "NotInScope"             [toRep name]
+    ConstructorNotInScope name          -> makeRep "Error" "ConstructorNotInScope"  [toRep name]
+    NoSuchClass name                    -> makeRep "Error" "NoSuchClass"            [toRep name]
+    MissingInstance name t              -> makeRep "Error" "MissingInstance"        [toRep name, toRep t]
+    PatternArityMismatch name m n       -> makeRep "Error" "PatternArityMismatch"   [toRep name, toRep m, toRep n]
+    NonBooleanGuard expr                -> makeRep "Error" "NonBooleanGuard"        [toRep expr]
+    NonExhaustivePatterns               -> makeRep "Error" "NonExhaustivePatterns"  []
 
 unificationErrorRep :: UnificationError -> Value
 unificationErrorRep = \case
-    InfiniteType                        -> String "InfiniteType"
-    InfiniteKind                        -> String "InfiniteKind"
-    IncompatibleTypes                   -> String "IncompatibleTypes"
-    IncompatibleKinds                   -> String "IncompatibleKinds"
-    CannotMerge                         -> String "CannotMerge"
+    InfiniteType                        -> makeRep "Error" "InfiniteType"           []
+    InfiniteKind                        -> makeRep "Error" "InfiniteKind"           []
+    IncompatibleTypes                   -> makeRep "Error" "IncompatibleTypes"      []
+    IncompatibleKinds                   -> makeRep "Error" "IncompatibleKinds"      []
+    CannotMerge                         -> makeRep "Error" "CannotMerge"            []
 
 -------------------------------------------------------------------------------
 
