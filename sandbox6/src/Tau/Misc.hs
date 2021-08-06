@@ -19,16 +19,19 @@ import Data.Eq.Deriving (deriveEq1)
 import Data.Fix (Fix)
 import Data.Functor.Foldable (cata, para, project, embed)
 import Data.List (nub, intersect)
+import Data.List.Extra (notNull)
 import Data.Map.Strict (Map)
 import Data.Ord.Deriving (deriveOrd1)
 import Data.Set.Monad (Set)
 import Data.Text (Text)
+import Data.Tuple.Extra (first)
 import Data.Void (Void)
 import Tau.Env (Env)
-import Tau.Util (Name, embed1, embed2, embed3, embed4, letters)
+import Tau.Util (Name, embed1, embed2, embed3, embed4, letters, (<$$>))
 import Text.Show.Deriving (deriveShow1)
 import TextShow (showt)
 import qualified Data.Map.Strict as Map
+import qualified Data.Set.Monad as Set
 import qualified Data.Text as Text
 import qualified Tau.Env as Env
 
@@ -348,7 +351,7 @@ data CoreF a
     | CIf  a ~a ~a              -- ^ If-clause
     | CPat a (CMatrix a)        -- ^ Pattern match clause matrix
 
--- | Core language expression used for interpreted program evaluation and code 
+-- | Core language expression used for interpreted program evaluation and code
 -- generation
 type Core = Fix CoreF
 
@@ -501,6 +504,21 @@ deriving instance Ord  Product
 deriving instance Show Datatype
 deriving instance Eq   Datatype
 deriving instance Ord  Datatype
+
+deriving instance (Show t, Show u) => Show (Ast t u)
+deriving instance (Eq   t, Eq   u) => Eq   (Ast t u)
+deriving instance (Ord  t, Ord  u) => Ord  (Ast t u)
+
+-------------------------------------------------------------------------------
+
+addErrors :: [e] -> TypeInfoT [e] t -> TypeInfoT [e] t
+addErrors errs TypeInfo{..} = TypeInfo{ nodeErrors = errs <> nodeErrors, .. }
+
+hasErrors :: ProgExpr (TypeInfoT [e] t) u -> Bool
+hasErrors = foldrExprTag (\ti rest -> rest || notNull (nodeErrors ti)) False
+
+constructorEnv :: [(Name, ([Name], Int))] -> ConstructorEnv
+constructorEnv = Env.fromList . (first Set.fromList <$$>)
 
 -------------------------------------------------------------------------------
 
@@ -956,6 +974,46 @@ annExpr
 annExpr = embed2 EAnn
 {-# INLINE annExpr #-}
 
+-- List cons constructors
+
+listExprCons
+  :: (Functor e2, Functor e4)
+  => t2
+  -> Expr t1 t2 t3 t4 t5 t6 t7 t8 t9 t10 t11 t12 t13 t14 t15 t16 t17 e1 e2 e3 e4
+  -> Expr t1 t2 t3 t4 t5 t6 t7 t8 t9 t10 t11 t12 t13 t14 t15 t16 t17 e1 e2 e3 e4
+  -> Expr t1 t2 t3 t4 t5 t6 t7 t8 t9 t10 t11 t12 t13 t14 t15 t16 t17 e1 e2 e3 e4
+listExprCons t hd tl = conExpr t "(::)" [hd, tl]
+{-# INLINE listExprCons #-}
+
+listPatCons
+  :: t2
+  -> Pattern t1 t2 t3 t4 t5 t6 t7 t8 t9 t10
+  -> Pattern t1 t2 t3 t4 t5 t6 t7 t8 t9 t10
+  -> Pattern t1 t2 t3 t4 t5 t6 t7 t8 t9 t10
+listPatCons t hd tl = conPat t "(::)" [hd, tl]
+{-# INLINE listPatCons #-}
+
+-- Row constructor
+
+rowExprCons
+  :: (Functor e2, Functor e4)
+  => t2
+  -> Name
+  -> Expr t1 t2 t3 t4 t5 t6 t7 t8 t9 t10 t11 t12 t13 t14 t15 t16 t17 e1 e2 e3 e4
+  -> Expr t1 t2 t3 t4 t5 t6 t7 t8 t9 t10 t11 t12 t13 t14 t15 t16 t17 e1 e2 e3 e4
+  -> Expr t1 t2 t3 t4 t5 t6 t7 t8 t9 t10 t11 t12 t13 t14 t15 t16 t17 e1 e2 e3 e4
+rowExprCons t label expr row = conExpr t ("{" <> label <> "}") [expr, row]
+{-# INLINE rowExprCons #-}
+
+rowPatCons
+  :: t2
+  -> Name
+  -> Pattern t1 t2 t3 t4 t5 t6 t7 t8 t9 t10
+  -> Pattern t1 t2 t3 t4 t5 t6 t7 t8 t9 t10
+  -> Pattern t1 t2 t3 t4 t5 t6 t7 t8 t9 t10
+rowPatCons t label pat row = conPat t ("{" <> label <> "}") [pat, row]
+{-# INLINE rowPatCons #-}
+
 -------------------------------------------------------------------------------
 -------------------------------------------------------------------------------
 -------------------------------------------------------------------------------
@@ -1229,6 +1287,242 @@ op2Symbol = \case
 
 -------------------------------------------------------------------------------
 
+mapExprTag :: (a -> b) -> ProgExpr a u -> ProgExpr b u
+mapExprTag f = cata $ \case
+
+    EVar    t var            -> varExpr    (f t) var
+    EHole   t                -> holeExpr   (f t)
+    ECon    t con es         -> conExpr    (f t) con es
+    ELit    t prim           -> litExpr    (f t) prim
+    EApp    t es             -> appExpr    (f t) es
+    ELet    t bind e1 e2     -> letExpr    (f t) (mapBind bind) e1 e2
+    EFix    t name e1 e2     -> fixExpr    (f t) name e1 e2
+    ELam    t ps e           -> lamExpr    (f t) (mapPattern <$> ps) e
+    EIf     t e1 e2 e3       -> ifExpr     (f t) e1 e2 e3
+    EPat    t es cs          -> patExpr    (f t) es (mapClause1 <$> cs)
+    EFun    t cs             -> funExpr    (f t) (mapClause <$> cs)
+    EOp1    t op a           -> op1Expr    (f t) (mapOp1 op) a
+    EOp2    t op a b         -> op2Expr    (f t) (mapOp2 op) a b
+    ETuple  t es             -> tupleExpr  (f t) es
+    EList   t es             -> listExpr   (f t) es
+    ERow    t lab e r        -> rowExpr    (f t) lab e r
+    ERecord t r              -> recordExpr (f t) r
+    EAnn    t e              -> annExpr    t e
+  where
+    mapBind = \case
+        BPat    t p          -> BPat       (f t) (mapPattern p)
+        BFun    t name ps    -> BFun       (f t) name (mapPattern <$> ps)
+
+    mapClause = \case
+        Clause  t ps cs      -> Clause     (f t) (mapPattern <$> ps) cs
+
+    mapClause1 = \case
+        Clause  t p cs       -> Clause     (f t) (mapPattern p) cs
+
+    mapPattern = cata $ \case
+        PVar    t var        -> varPat     (f t) var
+        PCon    t con ps     -> conPat     (f t) con ps
+        PLit    t prim       -> litPat     (f t) prim
+        PAs     t as p       -> asPat      (f t) as p
+        POr     t p q        -> orPat      (f t) p q
+        PAny    t            -> anyPat     (f t)
+        PTuple  t ps         -> tuplePat   (f t) ps
+        PList   t ps         -> listPat    (f t) ps
+        PRow    t lab p r    -> rowPat     (f t) lab p r
+        PRecord t r          -> recordPat  (f t) r
+        PAnn    t p          -> annPat     t p
+
+    mapOp1 = \case
+        ONeg    t            -> ONeg       (f t)
+        ONot    t            -> ONot       (f t)
+
+    mapOp2 = \case
+        OEq     t            -> OEq        (f t)
+        ONeq    t            -> ONeq       (f t)
+        OAnd    t            -> OAnd       (f t)
+        OOr     t            -> OOr        (f t)
+        OAdd    t            -> OAdd       (f t)
+        OSub    t            -> OSub       (f t)
+        OMul    t            -> OMul       (f t)
+        ODiv    t            -> ODiv       (f t)
+        OPow    t            -> OPow       (f t)
+        OMod    t            -> OMod       (f t)
+        OLt     t            -> OLt        (f t)
+        OGt     t            -> OGt        (f t)
+        OLte    t            -> OLte       (f t)
+        OGte    t            -> OGte       (f t)
+        OLarr   t            -> OLarr      (f t)
+        ORarr   t            -> ORarr      (f t)
+        OFpip   t            -> OFpip      (f t)
+        OBpip   t            -> OBpip      (f t)
+        OOpt    t            -> OOpt       (f t)
+        OStr    t            -> OStr       (f t)
+        ODot    t            -> ODot       (f t)
+        OField  t            -> OField     (f t)
+
+foldrExprTag :: (a -> b -> b) -> b -> ProgExpr a u -> b
+foldrExprTag f s e = foldr1 (.) (foldExpr f e) s
+  where
+    foldExpr :: (a -> b -> b) -> ProgExpr a u -> [b -> b]
+    foldExpr f = cata $ \case
+
+        EVar    t _          -> [f t]
+        EHole   t            -> [f t]
+        ECon    t _ es       -> (f t:concat es)
+        ELit    t _          -> [f t]
+        EApp    t es         -> (f t:concat es)
+        ELet    t bind e1 e2 -> (f t:foldBind f bind <> e1 <> e2)
+        EFix    t _ e1 e2    -> (f t:e1 <> e2)
+        ELam    t ps e       -> (f t:concatMap (foldPattern f) ps <> e)
+        EIf     t e1 e2 e3   -> (f t:e1 <> e2 <> e3)
+        EPat    t e cs       -> (f t:e <> concatMap (foldClause1 f) cs)
+        EFun    t cs         -> (f t:concatMap (foldClause f) cs)
+        EOp1    t op a       -> (f t:foldOp1 f op <> a)
+        EOp2    t op a b     -> (f t:foldOp2 f op <> a <> b)
+        ETuple  t es         -> (f t:concat es)
+        EList   t es         -> (f t:concat es)
+        ERow    t _ e r      -> (f t:e <> r)
+        ERecord t r          -> (f t:r)
+        EAnn    _ e          -> e
+
+    foldClause :: (t -> s -> s) -> Clause t [ProgPattern t u] [s -> s] -> [s -> s]
+    foldClause f = \case
+        Clause  t ps cs      -> (f t:concatMap (foldPattern f) ps <> concatMap (foldChoice f) cs)
+
+    foldClause1 :: (t -> s -> s) -> Clause t (ProgPattern t u) [s -> s] -> [s -> s]
+    foldClause1 f = \case
+        Clause  t p cs       -> (f t:foldPattern f p <> concatMap (foldChoice f) cs)
+
+    foldChoice :: (t -> s -> s) -> Choice [s -> s] -> [s -> s]
+    foldChoice f = \case
+        Choice es e          -> concat (e:es)
+
+    foldPattern :: (t -> s -> s) -> ProgPattern t u -> [s -> s]
+    foldPattern f = cata $ \case
+        PVar    t _          -> [f t]
+        PCon    t _ ps       -> (f t:concat ps)
+        PLit    t _          -> [f t]
+        PAs     t _ p        -> (f t:p)
+        POr     t p q        -> (f t:p <> q)
+        PAny    t            -> [f t]
+        PTuple  t ps         -> (f t:concat ps)
+        PList   t ps         -> (f t:concat ps)
+        PRow    t _ p r      -> (f t:p <> r)
+        PAnn    _ p          -> p
+
+    foldBind :: (t -> s -> s) -> Binding t (ProgPattern t u) -> [s -> s]
+    foldBind f = \case
+        BPat    t p          -> (f t:foldPattern f p)
+        BFun    t _ ps       -> (f t:concatMap (foldPattern f) ps)
+
+    foldOp1 :: (t -> s -> s) -> Op1 t -> [s -> s]
+    foldOp1 f = \case
+        ONeg    t            -> [f t]
+        ONot    t            -> [f t]
+
+    foldOp2 :: (t -> s -> s) -> Op2 t -> [s -> s]
+    foldOp2 f = \case
+        OEq     t            -> [f t]
+        ONeq    t            -> [f t]
+        OAnd    t            -> [f t]
+        OOr     t            -> [f t]
+        OAdd    t            -> [f t]
+        OSub    t            -> [f t]
+        OMul    t            -> [f t]
+        ODiv    t            -> [f t]
+        OPow    t            -> [f t]
+        OMod    t            -> [f t]
+        OLt     t            -> [f t]
+        OGt     t            -> [f t]
+        OLte    t            -> [f t]
+        OGte    t            -> [f t]
+        OLarr   t            -> [f t]
+        ORarr   t            -> [f t]
+        OFpip   t            -> [f t]
+        OBpip   t            -> [f t]
+        OOpt    t            -> [f t]
+        OStr    t            -> [f t]
+        ODot    t            -> [f t]
+        OField  t            -> [f t]
+
+traverseExprTag :: (Applicative f) => (a -> f b) -> ProgExpr a u -> f (ProgExpr b u)
+traverseExprTag f = cata $ \case
+
+        EVar    t var        -> varExpr    <$> f t <*> pure var
+        EHole   t            -> holeExpr   <$> f t
+        ECon    t con es     -> conExpr    <$> f t <*> pure con <*> sequenceA es
+        ELit    t prim       -> litExpr    <$> f t <*> pure prim
+        EApp    t es         -> appExpr    <$> f t <*> sequenceA es
+        ELet    t bind e1 e2 -> letExpr    <$> f t <*> binding bind <*> e1 <*> e2
+        EFix    t name e1 e2 -> fixExpr    <$> f t <*> pure name <*> e1 <*> e2
+        ELam    t ps e       -> lamExpr    <$> f t <*> traverse pattern_ ps <*> e
+        EIf     t e1 e2 e3   -> ifExpr     <$> f t <*> e1 <*> e2 <*> e3
+        EPat    t e cs       -> patExpr    <$> f t <*> e <*> traverse clause1 cs
+        EFun    t cs         -> funExpr    <$> f t <*> traverse clause cs
+        EOp1    t op a       -> op1Expr    <$> f t <*> op1 op <*> a
+        EOp2    t op a b     -> op2Expr    <$> f t <*> op2 op <*> a <*> b
+        ETuple  t es         -> tupleExpr  <$> f t <*> sequenceA es
+        EList   t es         -> listExpr   <$> f t <*> sequenceA es
+        ERow    t lab e r    -> rowExpr    <$> f t <*> pure lab <*> e <*> r
+        ERecord t r          -> recordExpr <$> f t <*> r
+        EAnn    t e          -> annExpr  t <$> e
+  where
+    binding = \case
+        BPat    t p          -> BPat       <$> f t <*> pattern_ p
+        BFun    t name ps    -> BFun       <$> f t <*> pure name <*> traverse pattern_ ps
+
+    clause = \case
+        Clause  t ps cs      -> Clause     <$> f t <*> traverse pattern_ ps <*> traverse choice cs
+
+    clause1 = \case
+        Clause  t p cs       -> Clause     <$> f t <*> pattern_ p <*> traverse choice cs
+
+    choice = \case
+        Choice es e          -> Choice     <$> sequenceA es <*> e
+
+    pattern_ = cata $ \case
+        PVar    t var        -> varPat     <$> f t <*> pure var
+        PCon    t con ps     -> conPat     <$> f t <*> pure con <*> sequenceA ps
+        PLit    t prim       -> litPat     <$> f t <*> pure prim
+        PAs     t as p       -> asPat      <$> f t <*> pure as <*> p
+        POr     t p q        -> orPat      <$> f t <*> p <*> q
+        PAny    t            -> anyPat     <$> f t
+        PTuple  t ps         -> tuplePat   <$> f t <*> sequenceA ps
+        PList   t ps         -> listPat    <$> f t <*> sequenceA ps
+        PRow    t lab p r    -> rowPat     <$> f t <*> pure lab <*> p <*> r
+        PRecord t r          -> recordPat  <$> f t <*> r
+        PAnn    t p          -> annPat   t <$> p
+
+    op1 = \case
+        ONeg    t            -> ONeg       <$> f t
+        ONot    t            -> ONot       <$> f t
+
+    op2 = \case
+        OEq     t            -> OEq        <$> f t
+        ONeq    t            -> ONeq       <$> f t
+        OAnd    t            -> OAnd       <$> f t
+        OOr     t            -> OOr        <$> f t
+        OAdd    t            -> OAdd       <$> f t
+        OSub    t            -> OSub       <$> f t
+        OMul    t            -> OMul       <$> f t
+        ODiv    t            -> ODiv       <$> f t
+        OPow    t            -> OPow       <$> f t
+        OMod    t            -> OMod       <$> f t
+        OLt     t            -> OLt        <$> f t
+        OGt     t            -> OGt        <$> f t
+        OLte    t            -> OLte       <$> f t
+        OGte    t            -> OGte       <$> f t
+        OLarr   t            -> OLarr      <$> f t
+        ORarr   t            -> ORarr      <$> f t
+        OFpip   t            -> OFpip      <$> f t
+        OBpip   t            -> OBpip      <$> f t
+        OOpt    t            -> OOpt       <$> f t
+        OStr    t            -> OStr       <$> f t
+        ODot    t            -> ODot       <$> f t
+        OField  t            -> OField     <$> f t
+
+-------------------------------------------------------------------------------
+
 newtype Substitution a = Sub { getSub :: Map Name a }
 
 class Substitutable t a where
@@ -1286,9 +1580,9 @@ instance (Substitutable g a) => Substitutable (Choice g) a where
     apply sub = \case
         Choice es e          -> Choice (apply sub es) (apply sub e)
 
-instance (Substitutable t a, Substitutable p a, Substitutable (Choice g) a) => Substitutable (Clause t p g) a where
+instance (Substitutable t a, Substitutable p a, Substitutable (Choice c) a) => Substitutable (Clause t p c) a where
     apply sub = \case
-        Clause  t p gs       -> Clause (apply sub t) (apply sub p) (apply sub gs)
+        Clause  t p cs       -> Clause (apply sub t) (apply sub p) (apply sub cs)
 
 instance (Substitutable t a) => Substitutable (ProgExpr t u) a where
     apply sub = cata $ \case
@@ -1445,6 +1739,7 @@ data Error
     | MissingInstance Name Type
     | PatternArityMismatch Name Int Int
     | NonBooleanGuard (ProgExpr (TypeInfo [Error]) Void)
+    | NonExhaustivePatterns
 
 data UnificationError
     = InfiniteType

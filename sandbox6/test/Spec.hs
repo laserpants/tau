@@ -1015,3 +1015,20 @@ testPrettyprinters = do
             (tupleExpr () [varExpr () "x", litExpr () (TInt 5)])
             "(x, 5)"
 
+        describe "• Datatype expressions" $ do
+
+            suceedPrintExpr
+                (conExpr () "C" [])
+                "C"
+
+            suceedPrintExpr
+                (conExpr () "C" [varExpr () "x", varExpr () "y"])
+                "C(x, y)"
+
+            suceedPrintExpr
+                (conExpr () "C" [varExpr () "x", conExpr () "D" [varExpr () "y", varExpr () "z"]])
+                "C(x, D(y, z))"
+
+            suceedPrintExpr
+                (conExpr () "C" [varExpr () "x", conExpr () "D" []])
+                "C(x, D)"

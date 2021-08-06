@@ -33,6 +33,7 @@ import Debug.Trace
 import Tau.Misc
 import Tau.Prettyprinters
 import Tau.Serializers
+import Tau.Tree
 import Tau.Util
 import TextShow
 import qualified Data.ByteString.Lazy as LBS
@@ -1007,9 +1008,6 @@ testClassEnv = Env.fromList
         )
       )
     ]
-
-constructorEnv :: [(Name, ([Name], Int))] -> ConstructorEnv
-constructorEnv = Env.fromList . (first Set.fromList <$$>)
 
 testConstructorEnv :: ConstructorEnv
 testConstructorEnv = constructorEnv
