@@ -10,6 +10,7 @@ import Control.Monad.Extra (andM, anyM, (||^))
 import Control.Monad.Reader
 import Data.Function ((&))
 import Data.Functor.Foldable (cata, para, project, embed)
+import Data.Map.Strict (Map)
 import Data.Tuple.Extra (both)
 import Data.Void (Void)
 import Tau.Misc
@@ -220,12 +221,12 @@ foldRow r = fromMap final mapRep
   where
     mapRep = foldr (uncurry (Map.insertWith (<>))) mempty fields
 
---    fromMap :: (RowType t) => ProgPattern t -> Map Name [ProgPattern t] -> ProgPattern t
-    fromMap p ps = 
+    fromMap :: ProgPattern TInfo u -> Map Name [ProgPattern TInfo u] -> ProgPattern TInfo u
+    fromMap p ps =
         fst (Map.foldrWithKey (flip . foldr . fn) (p, patternTag p) ps)
-      where 
-        fn name p (q, t0) = 
-            let t1 = rowType name (patternTag p) t0
+      where
+        fn name p (q, t0) =
+            let t1 = TypeInfo [] (tRow name (nodeType (patternTag p)) (nodeType t0)) []
              in (rowPat t1 name p q, t1)
 
     fields = flip para r $ \case
@@ -235,8 +236,6 @@ foldRow r = fromMap final mapRep
     final = flip cata r $ \case
         PRow _ _ _ r        -> r
         p                   -> embed p
-
-rowType = undefined -- lab a b = TypeInfo [] (rowType lab (nodeType a) (nodeType b)) []
 
 groupPatterns :: ProgPattern TInfo u -> PatternGroup TInfo u
 groupPatterns = project >>> \case
