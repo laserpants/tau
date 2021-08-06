@@ -14,6 +14,7 @@ import Data.Tuple.Extra (both)
 import Data.Void (Void)
 import Tau.Misc
 import Tau.Util
+import qualified Data.Map.Strict as Map
 import qualified Data.Set.Monad as Set
 import qualified Data.Text as Text
 import qualified Tau.Env as Env
@@ -22,43 +23,45 @@ import qualified Tau.Env as Env
 -- Preflight
 -------------------------------------------------------------------------------
 
+type TInfo = TypeInfo [Error]
+
 exhaustivePatternsCheck
   :: (MonadReader ConstructorEnv m)
-  => ProgExpr (TypeInfo [Error]) Void
-  -> m (ProgExpr (TypeInfo [Error]) Void)
+  => ProgExpr TInfo Void
+  -> m (ProgExpr TInfo Void)
 exhaustivePatternsCheck = para $ \case
 
     EPat t expr clauses ->
-        patExpr <$> check clausesAreExhaustive (patToList <$> (fst <$$> clauses)) t 
-                <*> snd expr 
+        patExpr <$> check clausesAreExhaustive (patToList <$> (fst <$$> clauses)) t
+                <*> snd expr
                 <*> traverse sequence (snd <$$> clauses)
 
     EFun t clauses ->
-        funExpr <$> check clausesAreExhaustive (fst <$$> clauses) t 
+        funExpr <$> check clausesAreExhaustive (fst <$$> clauses) t
                 <*> traverse sequence (snd <$$> clauses)
 
     expr -> snd <$> expr & \case
 
-        ELet t bind@(BPat _ p) e1 e2 -> 
+        ELet t bind@(BPat _ p) e1 e2 ->
             letExpr <$> check exhaustive [[p]] t
-                    <*> pure bind 
-                    <*> e1 
+                    <*> pure bind
+                    <*> e1
                     <*> e2
 
-        ELet t bind@(BFun _ _ ps) e1 e2 -> 
+        ELet t bind@(BFun _ _ ps) e1 e2 ->
             letExpr <$> check andM [exhaustive [[p]] | p <- ps] t
                     <*> pure bind
                     <*> e1
                     <*> e2
 
-        ELam t ps e -> 
+        ELam t ps e ->
             lamExpr <$> check andM [exhaustive [[p]] | p <- ps] t
                     <*> pure ps
                     <*> e
 
         EVar    t var         -> pure (varExpr t var)
         EHole   t             -> pure (holeExpr t)
-        ECon    t con es      -> conExpr t con <$> sequence es 
+        ECon    t con es      -> conExpr t con <$> sequence es
         ELit    t prim        -> pure (litExpr t prim)
         EApp    t es          -> appExpr t <$> sequence es
         EFix    t name e1 e2  -> fixExpr t name <$> e1 <*> e2
@@ -67,7 +70,7 @@ exhaustivePatternsCheck = para $ \case
         EOp2    t op a b      -> op2Expr t op <$> a <*> b
         ETuple  t es          -> tupleExpr t <$> sequence es
         EList   t es          -> listExpr t <$> sequence es
-        ERow    t lab e r     -> rowExpr t lab <$> e <*> r 
+        ERow    t lab e r     -> rowExpr t lab <$> e <*> r
 
   where
     check f as ti = do
@@ -76,11 +79,11 @@ exhaustivePatternsCheck = para $ \case
 
     patToList (Clause t p a) = Clause t [p] a
 
-exhaustive :: (MonadReader ConstructorEnv m) => [[ProgPattern t u]] -> m Bool
+exhaustive :: (MonadReader ConstructorEnv m) => [[ProgPattern TInfo u]] -> m Bool
 exhaustive []         = pure False
 exhaustive pss@(ps:_) = not <$> useful pss (anyPat . patternTag <$> ps)
 
-clausesAreExhaustive :: (MonadReader ConstructorEnv m) => [Clause t [ProgPattern t u] (ProgExpr t u)] -> m Bool
+clausesAreExhaustive :: (MonadReader ConstructorEnv m) => [Clause t [ProgPattern TInfo u] (ProgExpr t u)] -> m Bool
 clausesAreExhaustive = exhaustive . fmap toMatrix
   where
     toMatrix (Clause _ ps choices)
@@ -97,11 +100,11 @@ clausesAreExhaustive = exhaustive . fmap toMatrix
         _                               -> False
 
 data PatternGroup t u
-    = ConGroup Name [ProgPattern t u] 
+    = ConGroup Name [ProgPattern t u]
     | OrPattern (ProgPattern t u) (ProgPattern t u)
     | WildcardPattern
 
-useful :: (MonadReader ConstructorEnv m) => [[ProgPattern t u]] -> [ProgPattern t u] -> m Bool
+useful :: (MonadReader ConstructorEnv m) => [[ProgPattern TInfo u]] -> [ProgPattern TInfo u] -> m Bool
 useful pss ps = step3 (step2 . step1 <$$> pss) (step2 . step1 <$> ps)
   where
     step1 = cata $ \case
@@ -113,11 +116,11 @@ useful pss ps = step3 (step2 . step1 <$$> pss) (step2 . step1 <$> ps)
         p              -> embed p
 
     step3 [] _ = pure True      -- Zero rows (0x0 matrix)
-    step3 (p1:_) qs 
+    step3 (p1:_) qs
         | null p1 = pure False  -- One or more rows but no columns
         | null qs = error "Implementation error (step3)"
 
-    step3 pss (q:qs) = 
+    step3 pss (q:qs) =
         case groupPatterns q of
             ConGroup con rs  ->
                 let special = specialized con (patternTag <$> rs)
@@ -128,20 +131,20 @@ useful pss ps = step3 (step2 . step1 <$$> pss) (step2 . step1 <$> ps)
                 if isComplete
                     then cs & anyM (\(con, rs) -> do
                         let special = specialized con (patternTag <$> rs)
-                         in step3 (special pss) (head (special [q:qs]))) 
-                    else 
+                         in step3 (special pss) (head (special [q:qs])))
+                    else
                         step3 (defaultMatrix pss) qs
-            OrPattern a b -> 
+            OrPattern a b ->
                 step3 pss (a:qs) ||^ step3 pss (b:qs)
 
---    complete :: (MonadReader ConstructorEnv m) => [Name] -> m Bool
+    complete :: (MonadReader ConstructorEnv m) => [Name] -> m Bool
     complete [] = pure False
     complete names@(name:_) = do
         defined <- ask
         pure (lookupCon (defined `Env.union` builtIn) name == Set.fromList names)
 
     lookupCon :: Env.Env (Set.Set Name, Int) -> Name -> Set.Set Name
-    lookupCon constructors con 
+    lookupCon constructors con
         | isTupleCon con || isRowCon con = Set.singleton con
         | otherwise = maybe mempty fst (Env.lookup con constructors)
 
@@ -153,15 +156,15 @@ useful pss ps = step3 (step2 . step1 <$$> pss) (step2 . step1 <$> ps)
         , ("#Integer",  ( [], 1 ))
         , ("#Float",    ( [], 1 ))
         , ("#Char",     ( [], 1 ))
-        , ("#String",   ( [], 1 )) 
-        , ("#",         ( ["#"], 1 )) 
-        , ("[]",        ( ["[]", "(::)"], 0 )) 
-        , ("(::)",      ( ["[]", "(::)"], 2 )) 
-        , ("Zero",      ( ["Zero", "Succ"], 0 )) 
-        , ("Succ",      ( ["Zero", "Succ"], 1 )) 
+        , ("#String",   ( [], 1 ))
+        , ("#",         ( ["#"], 1 ))
+        , ("[]",        ( ["[]", "(::)"], 0 ))
+        , ("(::)",      ( ["[]", "(::)"], 2 ))
+        , ("Zero",      ( ["Zero", "Succ"], 0 ))
+        , ("Succ",      ( ["Zero", "Succ"], 1 ))
         ]
 
-specialized :: Name -> [t] -> [[ProgPattern t u]] -> [[ProgPattern t u]]
+specialized :: Name -> [TInfo] -> [[ProgPattern TInfo u]] -> [[ProgPattern TInfo u]]
 specialized name ts = (rec =<<)
   where
     rec [] = error "Implementation error (specialized)"
@@ -178,10 +181,10 @@ specialized name ts = (rec =<<)
             POr    _ p1 p2    -> rec (p1:ps) <> rec (p2:ps)
             _                 -> [(anyPat <$> ts) <> ps]
 
-defaultMatrix :: [[ProgPattern t u]] -> [[ProgPattern t u]]
+defaultMatrix :: [[ProgPattern TInfo u]] -> [[ProgPattern TInfo u]]
 defaultMatrix = (fun =<<)
   where
-    fun :: [ProgPattern t u] -> [[ProgPattern t u]]
+    fun :: [ProgPattern TInfo u] -> [[ProgPattern TInfo u]]
     fun (p:ps) =
         case project p of
             PCon{}            -> []
@@ -206,39 +209,59 @@ isRowCon con = ("{", "}") == fstLst con
     fstLst ""  = ("", "")
     fstLst con = both Text.singleton (Text.head con, Text.last con)
 
-foldList :: t -> [ProgPattern t u] -> ProgPattern t u
+foldList :: TInfo -> [ProgPattern TInfo u] -> ProgPattern TInfo u
 foldList t = foldr (listPatCons t) (conPat t "[]" [])
 
-foldTuple :: t -> [ProgPattern t u] -> ProgPattern t u
+foldTuple :: TInfo -> [ProgPattern TInfo u] -> ProgPattern TInfo u
 foldTuple t elems = conPat t (tupleCon (length elems)) elems
 
-foldRow :: ProgPattern t u -> ProgPattern t u
-foldRow = undefined
-
-groupPatterns :: ProgPattern t u -> PatternGroup t u
-groupPatterns = project >>> \case
-    PCon   _ con rs  -> ConGroup con rs
-    PTuple t elems   -> groupPatterns (foldTuple t elems)
-    PList  t elems   -> groupPatterns (foldList t elems)
-    PLit   t lit     -> groupPatterns (conPat t (prim lit) [])
-    PAs    _ _ a     -> groupPatterns a
-    POr    _ a b     -> OrPattern a b
-    _                -> WildcardPattern
-
-headCons :: [[ProgPattern t u]] -> [(Name, [ProgPattern t u])]
-headCons = (>>= fun) 
+foldRow :: ProgPattern TInfo u -> ProgPattern TInfo u
+foldRow r = fromMap final mapRep
   where
-    fun :: [ProgPattern t u] -> [(Name, [ProgPattern t u])]
+    mapRep = foldr (uncurry (Map.insertWith (<>))) mempty fields
+
+--    fromMap :: (RowType t) => ProgPattern t -> Map Name [ProgPattern t] -> ProgPattern t
+    fromMap p ps = 
+        fst (Map.foldrWithKey (flip . foldr . fn) (p, patternTag p) ps)
+      where 
+        fn name p (q, t0) = 
+            let t1 = rowType name (patternTag p) t0
+             in (rowPat t1 name p q, t1)
+
+    fields = flip para r $ \case
+        PRow _ label p rest -> (label, [fst p]):snd rest
+        _                   -> []
+
+    final = flip cata r $ \case
+        PRow _ _ _ r        -> r
+        p                   -> embed p
+
+rowType = undefined -- lab a b = TypeInfo [] (rowType lab (nodeType a) (nodeType b)) []
+
+groupPatterns :: ProgPattern TInfo u -> PatternGroup TInfo u
+groupPatterns = project >>> \case
+    PCon   _ con rs           -> ConGroup con rs
+    PTuple t elems            -> groupPatterns (foldTuple t elems)
+    PList  t elems            -> groupPatterns (foldList t elems)
+    PLit   t lit              -> groupPatterns (conPat t (prim lit) [])
+    PAs    _ _ a              -> groupPatterns a
+    POr    _ a b              -> OrPattern a b
+    _                         -> WildcardPattern
+
+headCons :: [[ProgPattern TInfo u]] -> [(Name, [ProgPattern TInfo u])]
+headCons = (>>= fun)
+  where
+    fun :: [ProgPattern TInfo u] -> [(Name, [ProgPattern TInfo u])]
     fun [] = error "Implementation error (headCons)"
-    fun (p:ps) = 
+    fun (p:ps) =
         case project p of
-            PLit   _ p               -> [(prim p, [])]
-            PCon   _ name rs         -> [(name, rs)]
-            PTuple t elems           -> fun (foldTuple t elems:ps)
-            PList  t elems           -> fun (foldList t elems:ps)
-            PAs    _ _ q             -> fun (q:ps)
-            POr    _ a b             -> fun (a:ps) <> fun (b:ps)
-            _                        -> []
+            PLit   _ p        -> [(prim p, [])]
+            PCon   _ name rs  -> [(name, rs)]
+            PTuple t elems    -> fun (foldTuple t elems:ps)
+            PList  t elems    -> fun (foldList t elems:ps)
+            PAs    _ _ q      -> fun (q:ps)
+            POr    _ a b      -> fun (a:ps) <> fun (b:ps)
+            _                 -> []
 
 prim :: Prim -> Name
 prim (TBool True)  = "#True"
