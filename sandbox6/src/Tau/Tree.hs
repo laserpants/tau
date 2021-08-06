@@ -69,6 +69,7 @@ exhaustivePatternsCheck = para $ \case
         ETuple  t es          -> tupleExpr t <$> sequence es
         EList   t es          -> listExpr t <$> sequence es
         ERow    t lab e r     -> rowExpr t lab <$> e <*> r
+        ERecord t r           -> recordExpr t <$> r
 
   where
     check f as ti = do
