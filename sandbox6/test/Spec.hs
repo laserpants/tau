@@ -1004,6 +1004,10 @@ testPrettyprinters = do
             "{ id : a, name : b }"
 
         suceedPrintType
+            (tRecord tRowNil)
+            "{}"
+
+        suceedPrintType
             (tApp kTyp (tApp kTyp (tCon (kArr kTyp (kArr kTyp kTyp)) "(,)") (tCon kTyp "String")) (tCon kTyp "Bool"))
             "(String, Bool)"
 
@@ -1067,21 +1071,9 @@ testPrettyprinters = do
             (litPat () TUnit)
             "()"
 
---    --    suceedPrintPattern
---    --        (recordPat () (rExt "id" (varPat () "id") (rExt "name" (varPat () "name") rNil)))
---    --        "{ id = id, name = name }"
---    --
---    --    suceedPrintPattern
---    --        (recordPat () (rExt "name" (varPat () "name") (rExt "id" (varPat () "id") rNil)))
---    --        "{ id = id, name = name }"
---    --
---    --    suceedPrintPattern
---    --        (recordPat () (rExt "name" (anyPat ()) (rExt "id" (varPat () "id") rNil)))
---    --        "{ id = id, name = _ }"
---    --
---    --    suceedPrintPattern
---    --        (recordPat () (rExt "name" (varPat () "name") (rExt "id" (varPat () "id") (rVar (varPat () "r")))))
---    --        "{ id = id, name = name | r }"
+        suceedPrintPattern
+            (recordPat () (rowPat () "id" (varPat () "id") (rowPat () "name" (varPat () "name") (conPat () "{}" []))))
+            "{ id = id, name = name }"
 
         describe "• Constructor patterns" $ do
 
@@ -1109,6 +1101,12 @@ testPrettyprinters = do
                 (conPat () "C" [varPat () "x", asPat () "d" (conPat () "D" [varPat () "y"])])
                 "C(x, D(y) as d)"
 
+            describe "• List constructor patterns" $ do
+
+                suceedPrintPattern
+                    (conPat () "(::)" [varPat () "x", varPat () "xs"])
+                    "x :: xs"
+
     describe "• Predicates" $ do
 
         suceedPrint
@@ -1129,6 +1127,10 @@ testPrettyprinters = do
             (tupleExpr () [varExpr () "x", litExpr () (TInt 5)])
             "(x, 5)"
 
+        suceedPrintExpr
+            (recordExpr () (rowExpr () "id" (varExpr () "id") (rowExpr () "name" (varExpr () "name") (conExpr () "{}" []))))
+            "{ id = id, name = name }"
+
         describe "• Datatype expressions" $ do
 
             suceedPrintExpr
@@ -1146,3 +1148,9 @@ testPrettyprinters = do
             suceedPrintExpr
                 (conExpr () "C" [varExpr () "x", conExpr () "D" []])
                 "C(x, D)"
+
+            describe "• List constructor" $ do
+
+                suceedPrintExpr
+                    (conExpr () "(::)" [varExpr () "x", varExpr () "xs"])
+                    "x :: xs"

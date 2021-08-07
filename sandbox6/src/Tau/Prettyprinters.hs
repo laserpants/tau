@@ -146,10 +146,13 @@ instance Pretty (Op2 t) where
 instance (Pretty t10) => Pretty (Pattern t1 t2 t3 t4 t5 t6 t7 t8 t9 t10) where
     pretty = para $ \case
 
+        PCon _ "(::)" [hd, tl]           -> snd hd <+> "::" <+> snd tl
         PCon _ con []                    -> pretty con
         PCon _ con ps                    -> pretty con <> prettyTuple (snd <$> ps)
 
-        expr -> snd <$> expr & \case
+        PRecord _ r                      -> prettyRecord (fst r)
+
+        pat -> snd <$> pat & \case
             PVar    _ var                -> pretty var
             PLit    _ prim               -> pretty prim
             PAs     _ name p             -> p <+> "as" <+> pretty name
@@ -161,13 +164,32 @@ instance (Pretty t10) => Pretty (Pattern t1 t2 t3 t4 t5 t6 t7 t8 t9 t10) where
 
             _ -> "TODO"
 
+      where
+        prettyRecord = project >>> \case
+            PVar _ v                     -> pretty v
+            r@PRow{}                     -> "{" <+> commaSep (fields (embed r)) <> final (embed r) <+> "}"
+            PCon _ "{}" []               -> "{}"
+            PCon _ con []                -> pretty con
+            PCon _ con ps                -> pretty con <> prettyTuple (pretty <$> ps)
+
+        fields = para $ \case
+            PRow _ label p rest          -> pretty label <+> "=" <+> pretty (fst p):snd rest
+            _                            -> []
+
+        final = cata $ \case
+            PRow _ _ _ r                 -> r
+            PVar _ v                     -> " " <> pipe <+> pretty v
+            _                            -> ""
+
 instance (Functor e2, Functor e4, Pretty t17) => Pretty (Expr t1 t2 t3 t4 t5 t6 t7 t8 t9 t10 t11 t12 t13 t14 t15 t16 t17 e1 e2 e3 e4) where
     pretty = para $ \case
 
+        ECon _ "(::)" [hd, tl]           -> snd hd <+> "::" <+> snd tl
         ECon _ con []                    -> pretty con
         ECon _ con ps                    -> pretty con <> prettyTuple (snd <$> ps)
 
         EApp _ ((e, doc1):es) ->
+
             parensIf parensRequiredL doc1 <> prettyArgs es
           where
             prettyArgs [(Fix (ELit _ TUnit), _)] = "()"
@@ -177,6 +199,8 @@ instance (Functor e2, Functor e4, Pretty t17) => Pretty (Expr t1 t2 t3 t4 t5 t6 
                 case project e of
                     EVar{} -> False
                     _      -> True
+
+        ERecord _ r                      -> prettyRecord (fst r)
 
         expr -> snd <$> expr & \case
             EVar    _ var                -> pretty var
@@ -193,6 +217,24 @@ instance (Functor e2, Functor e4, Pretty t17) => Pretty (Expr t1 t2 t3 t4 t5 t6 
             EAnn    t e                  -> e <+> ":" <+> pretty t
 
             _ -> "TODO"
+
+      where
+        prettyRecord = project >>> \case
+            EVar _ v                     -> pretty v
+            r@ERow{}                     -> "{" <+> commaSep (fields (embed r)) <> final (embed r) <+> "}"
+            ECon _ "{}" []               -> "{}"
+            ECon _ con []                -> pretty con
+            ECon _ con es                -> pretty con <> prettyTuple (pretty <$> es)
+
+        fields = para $ \case
+            ERow _ label p rest          -> pretty label <+> "=" <+> pretty (fst p):snd rest
+            _                            -> []
+
+        final = cata $ \case
+            ERow _ _ _ r                 -> r
+            EVar _ v                     -> " " <> pipe <+> pretty v
+            EApp _ (_:a:_)               -> a
+            _                            -> ""
 
 instance Pretty Product where
     pretty (Mul con types) =
