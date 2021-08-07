@@ -16,7 +16,7 @@ import Control.Monad (when)
 import Control.Monad.Except (MonadError, throwError)
 import Control.Monad.Supply
 import Data.Eq.Deriving (deriveEq1)
-import Data.Fix (Fix)
+import Data.Fix (Fix(..))
 import Data.Functor.Foldable (cata, para, project, embed)
 import Data.List (nub, intersect)
 import Data.List.Extra (notNull)
@@ -1096,6 +1096,12 @@ lookupRowType :: Name -> Type -> Maybe Type
 lookupRowType name = para $ \case
     TRow label (r, _) (_, next) -> if name == label then Just r else next
     _                           -> Nothing
+
+unpackRecordType :: Type -> Maybe Type
+unpackRecordType = para $ \case
+    TApp _ (Fix (TCon _ c), _) (t, _) | "#" == c -> Just t
+    TApp _ (_, a) _ -> a
+    _               -> Nothing
 
 -------------------------------------------------------------------------------
 -------------------------------------------------------------------------------
