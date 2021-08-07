@@ -420,20 +420,20 @@ inferOp2Type = \case
     OAdd   t -> opType t OAdd (Forall [kTyp] [InClass "Num" 0] (tGen 0 `tArr` tGen 0 `tArr` tGen 0))
     OSub   t -> opType t OSub (Forall [kTyp] [InClass "Num" 0] (tGen 0 `tArr` tGen 0 `tArr` tGen 0))
     OMul   t -> opType t OMul (Forall [kTyp] [InClass "Num" 0] (tGen 0 `tArr` tGen 0 `tArr` tGen 0))
-    ODiv   t -> undefined
-    OPow   t -> undefined
-    OMod   t -> undefined
+    ODiv   t -> undefined -- TODO
+    OPow   t -> undefined -- TODO
+    OMod   t -> undefined -- TODO
     OLt    t -> opType t OLt  (Forall [kTyp] [InClass "Ord" 0] (tGen 0 `tArr` tGen 0 `tArr` tBool))
     OGt    t -> opType t OGt  (Forall [kTyp] [InClass "Ord" 0] (tGen 0 `tArr` tGen 0 `tArr` tBool))
     OLte   t -> opType t OLte (Forall [kTyp] [InClass "Ord" 0] (tGen 0 `tArr` tGen 0 `tArr` tBool))
     OGte   t -> opType t OGte (Forall [kTyp] [InClass "Ord" 0] (tGen 0 `tArr` tGen 0 `tArr` tBool))
-    OLarr  t -> undefined
-    ORarr  t -> undefined
-    OFpip  t -> undefined
-    OBpip  t -> undefined
-    OOpt   t -> undefined
-    OStr   t -> opType t OOpt   (Forall [] [] (tString `tArr` tString `tArr` tString))
-    ODot   t -> opType t ODot   (Forall [kTyp, kTyp] [] ((tGen 0 `tArr` tGen 1) `tArr` tGen 0 `tArr` tGen 1))
+    OLarr  t -> opType t OLarr (Forall [kTyp, kTyp, kTyp] [] ((tGen 1 `tArr` tGen 2) `tArr` (tGen 0 `tArr` tGen 1) `tArr` tGen 0 `tArr` tGen 2))
+    ORarr  t -> opType t ORarr (Forall [kTyp, kTyp, kTyp] [] ((tGen 0 `tArr` tGen 1) `tArr` (tGen 1 `tArr` tGen 2) `tArr` tGen 0 `tArr` tGen 2))
+    OFpip  t -> opType t OFpip (Forall [kTyp, kTyp] [] (tGen 0 `tArr` (tGen 0 `tArr` tGen 1) `tArr` tGen 1))
+    OBpip  t -> opType t OBpip (Forall [kTyp, kTyp] [] ((tGen 0 `tArr` tGen 1) `tArr` tGen 0 `tArr` tGen 1))
+    OOpt   t -> opType t OOpt (Forall [kTyp] [] (tApp kTyp (tCon kFun "Option") (tGen 0) `tArr` tGen 0 `tArr` tGen 0))
+    OStr   t -> opType t OOpt (Forall [] [] (tString `tArr` tString `tArr` tString))
+    ODot   t -> opType t ODot (Forall [kTyp, kTyp] [] ((tGen 0 `tArr` tGen 1) `tArr` tGen 0 `tArr` tGen 1))
     OField t -> opType t OField (Forall [kTyp, kTyp] [] (tCon kTyp "Symbol" `tArr` tGen 1 `tArr` tGen 0))
 
 opType
