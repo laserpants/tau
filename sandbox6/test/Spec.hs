@@ -907,6 +907,16 @@ testTypeInference = do
             tInt
             [NonExhaustivePatterns]
 
+        succeedInferExpr
+            (funExpr () [ Clause () [litPat () (TBool True), litPat () (TBool True)] [Choice [] (litExpr () (TInt 1))] , Clause () [litPat () (TBool False), litPat () (TBool False)] [Choice [] (litExpr () (TInt 2))] , Clause () [varPat () "x", varPat () "y"] [Choice [] (litExpr () (TInt 3))] ])
+            _a
+            []
+
+        succeedInferExpr
+            (funExpr () [ Clause () [litPat () (TBool True), litPat () (TBool True)] [Choice [] (litExpr () (TInt 1))] , Clause () [litPat () (TBool False), litPat () (TBool False)] [Choice [] (litExpr () (TInt 2))] ])
+            _a
+            [NonExhaustivePatterns]
+
 -------------------------------------------------------------------------------
 
 -- Prettyprinters tests

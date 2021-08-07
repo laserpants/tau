@@ -360,21 +360,19 @@ s1_translate = cata $ \case
 translateAppExpr :: TInfo -> [S1Expr TInfo] -> S1Expr TInfo
 translateAppExpr t es = appExpr t es
 
---translateFunExpr :: TInfo -> [MonoClause TInfo (ProgPattern TInfo Void) (S1Expr TInfo)] -> S1Expr TInfo
+translateFunExpr :: TInfo -> [MonoClause TInfo (ProgPattern TInfo Void) (S1Expr TInfo)] -> S1Expr TInfo
 translateFunExpr t cs@(MonoClause _ ps _:_) =
-    lamExpr t (xxx varPat) (patExpr (TypeInfo [] (tVar kTyp "TODO") []) e cs) -- (gork <$> cs))
+    lamExpr t (args varPat) (patExpr (TypeInfo [] (tVar kTyp "TODO") []) e (gork <$> cs))
   where
-    e = case xxx varExpr of
+    e = case args varExpr of
         [e] -> e
         es  -> conExpr (TypeInfo [] (tVar kTyp "TODO") []) (tupleCon (length es)) es
 
-    xxx con = [con (patternTag p) ("#" <> showt n) | (p, n) <- zip ps ([0..] :: [Int])]
+    args con = [con (patternTag p) ("#" <> showt n) | (p, n) <- zip ps ([0..] :: [Int])]
 
---    gork (MonoClause t ps ds) = MonoClause t [r] ds
---      where
---        r = case ps of
---                p -> MonoClause t p ds
-----            _   -> MonoClause t [q] ds
-
---        q = conPat (TypeInfo [] (tVar kTyp "TODO") []) (tupleCon (length ps)) ps
+    gork clause@(MonoClause t ps ds)
+        | length ps < 2 = clause
+        | otherwise     = MonoClause t [q] ds
+      where
+        q = conPat (TypeInfo [] (tVar kTyp "TODO") []) (tupleCon (length ps)) ps
 
