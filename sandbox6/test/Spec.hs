@@ -1,3 +1,4 @@
+{-# LANGUAGE FlexibleContexts  #-}
 {-# LANGUAGE LambdaCase        #-}
 {-# LANGUAGE OverloadedStrings #-}
 import Control.Monad.Except (runExceptT)
@@ -55,12 +56,19 @@ _c = tVar kTyp "c"
 runUnify :: Type -> Type -> Either UnificationError (Substitution Type, Substitution Kind)
 runUnify t1 t2 = runSupplyNats (runExceptT (unifyTypes t1 t2))
 
+runMatch :: Type -> Type -> Either UnificationError (Substitution Type, Substitution Kind)
+runMatch t1 t2 = runSupplyNats (runExceptT (matchTypes t1 t2))
+
 testDescription :: Type -> Type -> Text
 testDescription t1 t2 = "The types " <> prettyT t1 <> " and " <> prettyT t2
 
-succeedUnifyTypes :: Type -> Type -> SpecWith ()
-succeedUnifyTypes t1 t2 = do
-    let result = runUnify t1 t2
+succeedWithResult
+  :: (Substitutable Type a1, Substitutable Type a2)
+  => Type
+  -> Type
+  -> Either UnificationError (Substitution a1, Substitution a2)
+  -> SpecWith ()
+succeedWithResult t1 t2 result =
     describe (testDescription t1 t2) $ do
         it "✔ yields a substitution" $
             isRight result
@@ -70,6 +78,12 @@ succeedUnifyTypes t1 t2 = do
                 r1 = apply kindSub (apply typeSub t1)
                 r2 = apply kindSub (apply typeSub t2)
             canonicalRep r1 == canonicalRep r2
+
+succeedUnifyTypes :: Type -> Type -> SpecWith ()
+succeedUnifyTypes t1 t2 = succeedWithResult t1 t2 (runUnify t1 t2)
+
+succeedMatchTypes :: Type -> Type -> SpecWith ()
+succeedMatchTypes t1 t2 = succeedWithResult t1 t2 (runMatch t1 t2)
 
 canonicalRep :: Type -> Type
 canonicalRep = cata $ \case
@@ -102,6 +116,13 @@ failUnifyTypes t1 t2 = do
     let result = runUnify t1 t2
     describe (testDescription t1 t2) $
         it "✗ fails to unify" $
+            isLeft result
+
+failMatchTypes :: Type -> Type -> SpecWith ()
+failMatchTypes t1 t2 = do
+    let result = runMatch t1 t2
+    describe (testDescription t1 t2) $
+        it "✗ fails to match" $
             isLeft result
 
 testUnification :: SpecWith ()
@@ -163,7 +184,7 @@ testUnification = do
         tUnit
         tInt
 
-    describe "Row types" $ do
+    describe "• Row types" $ do
 
         succeedUnifyTypes
             -- { name : a26 | a27 }
@@ -261,6 +282,16 @@ testUnification = do
             (tRow "name" tString (tRow "id" (tVar kTyp "a") tRowNil))
             (tRow "name" tString (tRow "id" tInt tRowNil))
 
+    describe "• Matching (one-way unification)" $ do
+
+        succeedMatchTypes
+            (tVar kTyp "a")
+            tInt
+
+        failMatchTypes
+            tInt
+            (tVar kTyp "a")
+
 -------------------------------------------------------------------------------
 
 -- Substitution tests
@@ -356,8 +387,8 @@ testSubstitution = do
 
 -- Type tests
 
-succeedMatchTypeVars :: Type -> [(Name, Kind)] -> SpecWith ()
-succeedMatchTypeVars ty vars =
+succeedHasFreeTypeVars :: Type -> [(Name, Kind)] -> SpecWith ()
+succeedHasFreeTypeVars ty vars =
     describe ("The free type variables in " <> prettyT ty) $
         it ("✔ are [" <> Text.intercalate ", " (renderDoc . prettyTypePair <$> vars) <> "]")
             (typeVars ty == vars)
@@ -367,23 +398,23 @@ succeedMatchTypeVars ty vars =
 testTypeVars :: SpecWith ()
 testTypeVars = do
 
-    succeedMatchTypeVars
+    succeedHasFreeTypeVars
         _a
         [("a", kTyp)]
 
-    succeedMatchTypeVars
+    succeedHasFreeTypeVars
         (_a `tArr` _b)
         [("a", kTyp), ("b", kTyp)]
 
-    succeedMatchTypeVars
+    succeedHasFreeTypeVars
         (tList _a `tArr` _b)
         [("a", kTyp), ("b", kTyp)]
 
-    succeedMatchTypeVars
+    succeedHasFreeTypeVars
         tInt
         []
 
-    succeedMatchTypeVars
+    succeedHasFreeTypeVars
         (tApp kTyp (tVar kFun "m") _a)
         [("m", kFun), ("a", kTyp)]
 
@@ -456,7 +487,7 @@ succeedInferExpr expr ty errs =
     (Ast e, (typeSub, kindSub, context)) =
         runInfer mempty testClassEnv testTypeEnv testKindEnv testConstructorEnv (inferAstType (Ast expr))
 
-    res = runUnify (typeOf (applyBoth (typeSub, kindSub) e)) ty
+    res = runMatch ty (typeOf (applyBoth (typeSub, kindSub) e))
     e1  = runReader (exhaustivePatternsCheck e) testConstructorEnv
 
 testTypeInference :: SpecWith ()
