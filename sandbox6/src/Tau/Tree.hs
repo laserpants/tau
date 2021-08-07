@@ -1,20 +1,26 @@
-{-# LANGUAGE FlexibleContexts  #-}
-{-# LANGUAGE LambdaCase        #-}
-{-# LANGUAGE OverloadedStrings #-}
-{-# LANGUAGE StrictData        #-}
+{-# LANGUAGE DeriveTraversable  #-}
+{-# LANGUAGE FlexibleContexts   #-}
+{-# LANGUAGE LambdaCase         #-}
+{-# LANGUAGE OverloadedStrings  #-}
+{-# LANGUAGE StandaloneDeriving #-}
+{-# LANGUAGE StrictData         #-}
+{-# LANGUAGE TemplateHaskell    #-}
 module Tau.Tree where
 
 import Control.Arrow ((>>>))
 import Control.Monad ((<=<))
 import Control.Monad.Extra (andM, anyM, (||^))
 import Control.Monad.Reader
+import Data.Eq.Deriving
 import Data.Function ((&))
 import Data.Functor.Foldable (cata, para, project, embed)
 import Data.Map.Strict (Map)
+import Data.Ord.Deriving
 import Data.Tuple.Extra (both)
 import Data.Void (Void)
 import Tau.Misc
 import Tau.Util
+import Text.Show.Deriving
 import qualified Data.Map.Strict as Map
 import qualified Data.Set.Monad as Set
 import qualified Data.Text as Text
@@ -279,4 +285,77 @@ prim TString{}     = "#String"
 -------------------------------------------------------------------------------
 -------------------------------------------------------------------------------
 
+data DesugaredClause t p a = DesugaredClause t [p] (Choice a) 
+
+type S1Expr = Expr TInfo TInfo TInfo TInfo TInfo TInfo TInfo TInfo TInfo TInfo TInfo TInfo TInfo TInfo TInfo TInfo Void [ProgPattern TInfo Void]
+    (DesugaredClause TInfo (ProgPattern TInfo Void)) (ProgBinding TInfo Void)
+    (DesugaredClause TInfo [ProgPattern TInfo Void])
+
+-------------------------------------------------------------------------------
+
+deriving instance (Show t, Show p, Show a) => 
+    Show (DesugaredClause t p a)
+
+deriving instance (Eq t, Eq p, Eq a) => 
+    Eq (DesugaredClause t p a)
+
+deriving instance (Ord t, Ord p, Ord a) => 
+    Ord (DesugaredClause t p a)
+
+deriving instance Functor     (DesugaredClause t p)
+deriving instance Foldable    (DesugaredClause t p)
+deriving instance Traversable (DesugaredClause t p)
+
+deriveShow1 ''DesugaredClause
+deriveEq1   ''DesugaredClause
+deriveOrd1  ''DesugaredClause
+
+-- deriving instance (Show t) => Show (DesugaredPattern t)
+-- deriving instance (Eq   t) => Eq   (DesugaredPattern t)
+
+-------------------------------------------------------------------------------
+
+-- S1. Desugaring
+
+s1translate :: ProgExpr TInfo Void -> S1Expr
+s1translate = cata $ \case
+
+    -- Translate tuples, lists, records, and row expressions
+    ETuple  t es                -> conExpr t (tupleCon (length es)) es
+    EList   t es                -> foldr (listExprCons t) (conExpr t "[]" []) es
+    ERow    t lab e r           -> conExpr t ("{" <> lab <> "}") [e, r]
+    ERecord t r                 -> conExpr t "#" [r]
+
+    -- Translate operators to prefix form
+    EOp1    t op a              -> appExpr t [prefixOp1 op, a]
+    EOp2    t op a b            -> translateAppExpr t [prefixOp2 op, a, b]
+
+    -- Expand pattern clause guards and eliminate fun expressions
+    EPat    t e cs              -> patExpr t e (expandClause . patToList =<< cs)
+    EFun    t cs                -> translateFunExpr t (expandClause =<< cs)
+
+    -- Remove holes in function application expressions
+    EApp    t es                -> translateAppExpr t es
+    EHole   t                   -> varExpr t "^" 
+
+    -- Other expressions do not change, except sub-expressions
+    EVar    t var               -> varExpr t var
+    ECon    t con es            -> conExpr t con es
+    ELit    t prim              -> litExpr t prim
+    EFix    t name e1 e2        -> fixExpr t name e1 e2
+    ELam    t ps e              -> lamExpr t ps e
+    ELet    t bind e1 e2        -> letExpr t bind e1 e2
+    EIf     t e1 e2 e3          -> ifExpr  t e1 e2 e3
+  where
+    prefixOp1 (ONeg t)    = varExpr t "negate"
+    prefixOp1 (ONot t)    = varExpr t "not"
+    prefixOp2 (OField t)  = varExpr t "@(#)get_field"
+    prefixOp2 op          = varExpr (op2Tag op) ("(" <> op2Symbol op <> ")")
+
+    patToList (Clause t p a)      = Clause t [p] a
+    expandClause (Clause t ps gs) = [DesugaredClause t ps g | g <- gs]
+
+translateAppExpr t es = undefined
+
+translateFunExpr t cs = undefined
 
