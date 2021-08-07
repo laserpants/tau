@@ -12,6 +12,7 @@ import Data.Text.Prettyprint.Doc
 import Data.Void
 import Tau.Misc
 import Tau.Prettyprinters
+import Tau.Tree
 import Tau.Util
 import qualified Data.HashMap.Strict as HashMap
 import qualified Data.Vector as Vector
@@ -51,6 +52,9 @@ instance (ToRep t, ToRep p) => ToRep (Binding t p) where
 
 instance (Pretty p, Pretty a, ToRep t, ToRep p, ToRep a) => ToRep (Clause t p a) where
     toRep = withPretty clauseRep
+
+instance (Pretty p, Pretty a, ToRep t, ToRep p, ToRep a) => ToRep (MonoClause t p a) where
+    toRep = withPretty monoClauseRep
 
 instance (ToRep a) => ToRep (Choice a) where
     toRep = choiceRep
@@ -184,6 +188,10 @@ bindingRep = \case
 clauseRep :: (ToRep t, ToRep p, ToRep a) => Clause t p a -> Value
 clauseRep = \case
     Clause t ps e       -> makeRep "Clause" "Clause"   [toRep t, toRep ps, toRep e]
+
+monoClauseRep :: (ToRep t, ToRep p, ToRep a) => MonoClause t p a -> Value
+monoClauseRep = \case
+    MonoClause t ps e   -> makeRep "MonoClause" "MonoClause" [toRep t, toRep ps, toRep e]
 
 choiceRep :: (ToRep a) => Choice a -> Value
 choiceRep = \case

@@ -21,6 +21,7 @@ import Data.Void (Void)
 import Tau.Misc
 import Tau.Util
 import Text.Show.Deriving
+import TextShow (showt)
 import qualified Data.Map.Strict as Map
 import qualified Data.Set.Monad as Set
 import qualified Data.Text as Text
@@ -285,30 +286,30 @@ prim TString{}     = "#String"
 -------------------------------------------------------------------------------
 -------------------------------------------------------------------------------
 
-data DesugaredClause t p a = DesugaredClause t [p] (Choice a) 
+data MonoClause t p a = MonoClause t [p] (Choice a) 
 
-type S1Expr = Expr TInfo TInfo TInfo TInfo TInfo TInfo TInfo TInfo TInfo TInfo TInfo TInfo TInfo TInfo TInfo TInfo Void [ProgPattern TInfo Void]
-    (DesugaredClause TInfo (ProgPattern TInfo Void)) (ProgBinding TInfo Void)
-    (DesugaredClause TInfo [ProgPattern TInfo Void])
+type S1Expr t = Expr t t t t t t t t t t t t t t t t Void [ProgPattern t Void]
+    (MonoClause t (ProgPattern t Void)) (ProgBinding t Void)
+    (MonoClause t [ProgPattern t Void])
 
 -------------------------------------------------------------------------------
 
 deriving instance (Show t, Show p, Show a) => 
-    Show (DesugaredClause t p a)
+    Show (MonoClause t p a)
 
 deriving instance (Eq t, Eq p, Eq a) => 
-    Eq (DesugaredClause t p a)
+    Eq (MonoClause t p a)
 
 deriving instance (Ord t, Ord p, Ord a) => 
-    Ord (DesugaredClause t p a)
+    Ord (MonoClause t p a)
 
-deriving instance Functor     (DesugaredClause t p)
-deriving instance Foldable    (DesugaredClause t p)
-deriving instance Traversable (DesugaredClause t p)
+deriving instance Functor     (MonoClause t p)
+deriving instance Foldable    (MonoClause t p)
+deriving instance Traversable (MonoClause t p)
 
-deriveShow1 ''DesugaredClause
-deriveEq1   ''DesugaredClause
-deriveOrd1  ''DesugaredClause
+deriveShow1 ''MonoClause
+deriveEq1   ''MonoClause
+deriveOrd1  ''MonoClause
 
 -- deriving instance (Show t) => Show (DesugaredPattern t)
 -- deriving instance (Eq   t) => Eq   (DesugaredPattern t)
@@ -317,8 +318,8 @@ deriveOrd1  ''DesugaredClause
 
 -- S1. Desugaring
 
-s1translate :: ProgExpr TInfo Void -> S1Expr
-s1translate = cata $ \case
+s1_translate :: ProgExpr TInfo Void -> S1Expr TInfo
+s1_translate = cata $ \case
 
     -- Translate tuples, lists, records, and row expressions
     ETuple  t es                -> conExpr t (tupleCon (length es)) es
@@ -353,9 +354,27 @@ s1translate = cata $ \case
     prefixOp2 op          = varExpr (op2Tag op) ("(" <> op2Symbol op <> ")")
 
     patToList (Clause t p a)      = Clause t [p] a
-    expandClause (Clause t ps gs) = [DesugaredClause t ps g | g <- gs]
+    expandClause (Clause t ps gs) = [MonoClause t ps g | g <- gs]
 
-translateAppExpr t es = undefined
+-- TODO
+translateAppExpr :: TInfo -> [S1Expr TInfo] -> S1Expr TInfo
+translateAppExpr t es = appExpr t es
 
-translateFunExpr t cs = undefined
+--translateFunExpr :: TInfo -> [MonoClause TInfo (ProgPattern TInfo Void) (S1Expr TInfo)] -> S1Expr TInfo
+translateFunExpr t cs@(MonoClause _ ps _:_) =
+    lamExpr t (xxx varPat) (patExpr (TypeInfo [] (tVar kTyp "TODO") []) e cs) -- (gork <$> cs))
+  where
+    e = case xxx varExpr of
+        [e] -> e
+        es  -> conExpr (TypeInfo [] (tVar kTyp "TODO") []) (tupleCon (length es)) es
+
+    xxx con = [con (patternTag p) ("#" <> showt n) | (p, n) <- zip ps ([0..] :: [Int])]
+
+--    gork (MonoClause t ps ds) = MonoClause t [r] ds
+--      where
+--        r = case ps of
+--                p -> MonoClause t p ds
+----            _   -> MonoClause t [q] ds
+
+--        q = conPat (TypeInfo [] (tVar kTyp "TODO") []) (tupleCon (length ps)) ps
 

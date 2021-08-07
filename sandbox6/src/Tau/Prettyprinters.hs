@@ -11,6 +11,7 @@ import Data.Functor.Foldable (cata, para, project, embed)
 import Data.Text.Prettyprint.Doc
 import Data.Text.Prettyprint.Doc.Render.Text
 import Tau.Misc
+import Tau.Tree
 import Tau.Util
 import qualified Data.Text as Text
 
@@ -131,6 +132,9 @@ instance Pretty Predicate where
 
 instance (Pretty p, Pretty a) => Pretty (Clause t p a) where
     pretty (Clause _ p cs) = pipe <+> pretty p <+> pretty cs
+
+instance (Pretty p, Pretty a) => Pretty (MonoClause t p a) where
+    pretty (MonoClause _ p cs) = pipe <+> pretty p <+> pretty cs
 
 instance Pretty (Choice a) where
     pretty (Choice es e) = "TODO"
