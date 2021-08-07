@@ -318,12 +318,6 @@ inferExprType = cata $ \case
         errs2 <- tryUnify t t1
         pure (setExprTag (TypeInfo (errs1 <> errs2) t1 ps) e)
 
-unpackRecordType :: Type -> Maybe Type
-unpackRecordType = para $ \case
-    TApp _ (Fix (TCon _ c), _) (t, _) | "#" == c -> Just t
-    TApp _ (_, a) _ -> a
-    _               -> Nothing
-
 inferPatternType
   :: ( MonadSupply Int m
      , MonadReader (ClassEnv, TypeEnv, KindEnv, ConstructorEnv) m
@@ -792,6 +786,12 @@ runInfer context classEnv typeEnv kindEnv constructorEnv =
     runIdentity . runInferT context classEnv typeEnv kindEnv constructorEnv
 
 -------------------------------------------------------------------------------
+
+unpackRecordType :: Type -> Maybe Type
+unpackRecordType = para $ \case
+    TApp _ (Fix (TCon _ c), _) (t, _) | "#" == c -> Just t
+    TApp _ (_, a) _ -> a
+    _               -> Nothing
 
 isHole
   :: (Functor e2, Functor e4)
