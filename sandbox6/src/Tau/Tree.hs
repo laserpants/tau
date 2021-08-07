@@ -173,11 +173,12 @@ specialized name ts = (rec =<<)
                 | con == name -> [rs <> ps]
                 | otherwise   -> []
 
-            PLit   t lit      -> rec (conPat t (prim lit) []:ps)
-            PTuple t elems    -> rec (foldTuple t elems:ps)
-            PList  t elems    -> rec (foldList t elems:ps)
-            PAs    _ _ q      -> rec (q:ps)
-            POr    _ p1 p2    -> rec (p1:ps) <> rec (p2:ps)
+            PLit    t lit     -> rec (conPat t (prim lit) []:ps)
+            PTuple  t elems   -> rec (foldTuple t elems:ps)
+            PList   t elems   -> rec (foldList t elems:ps)
+            PRecord t row     -> rec (conPat t "#" [row]:ps)
+            PAs     _ _ q     -> rec (q:ps)
+            POr     _ p1 p2   -> rec (p1:ps) <> rec (p2:ps)
             _                 -> [(anyPat <$> ts) <> ps]
 
 defaultMatrix :: [[ProgPattern TInfo u]] -> [[ProgPattern TInfo u]]
@@ -190,6 +191,7 @@ defaultMatrix = (fun =<<)
             PTuple{}          -> []
             PList{}           -> []
             PRow{}            -> []
+            PRecord{}         -> []
             PLit{}            -> []
             PAnn _ p          -> fun (p:ps)
             PAs  _ _ q        -> fun (q:ps)
@@ -228,21 +230,22 @@ foldRow r = fromMap final mapRep
              in (rowPat t1 name p q, t1)
 
     fields = flip para r $ \case
-        PRow _ label p rest -> (label, [fst p]):snd rest
-        _                   -> []
+        PRow _ label p rest   -> (label, [fst p]):snd rest
+        _                     -> []
 
     final = flip cata r $ \case
-        PRow _ _ _ r        -> r
-        p                   -> embed p
+        PRow _ _ _ r          -> r
+        p                     -> embed p
 
 groupPatterns :: ProgPattern TInfo u -> PatternGroup TInfo u
 groupPatterns = project >>> \case
-    PCon   _ con rs           -> ConGroup con rs
-    PTuple t elems            -> groupPatterns (foldTuple t elems)
-    PList  t elems            -> groupPatterns (foldList t elems)
-    PLit   t lit              -> groupPatterns (conPat t (prim lit) [])
-    PAs    _ _ a              -> groupPatterns a
-    POr    _ a b              -> OrPattern a b
+    PCon    _ con rs          -> ConGroup con rs
+    PTuple  t elems           -> groupPatterns (foldTuple t elems)
+    PList   t elems           -> groupPatterns (foldList t elems)
+    PRecord t row             -> groupPatterns (conPat t "#" [row])
+    PLit    t lit             -> groupPatterns (conPat t (prim lit) [])
+    PAs     _ _ a             -> groupPatterns a
+    POr     _ a b             -> OrPattern a b
     _                         -> WildcardPattern
 
 headCons :: [[ProgPattern TInfo u]] -> [(Name, [ProgPattern TInfo u])]
@@ -252,12 +255,13 @@ headCons = (>>= fun)
     fun [] = error "Implementation error (headCons)"
     fun (p:ps) =
         case project p of
-            PLit   _ p        -> [(prim p, [])]
-            PCon   _ name rs  -> [(name, rs)]
-            PTuple t elems    -> fun (foldTuple t elems:ps)
-            PList  t elems    -> fun (foldList t elems:ps)
-            PAs    _ _ q      -> fun (q:ps)
-            POr    _ a b      -> fun (a:ps) <> fun (b:ps)
+            PLit    _ p       -> [(prim p, [])]
+            PCon    _ name rs -> [(name, rs)]
+            PTuple  t elems   -> fun (foldTuple t elems:ps)
+            PList   t elems   -> fun (foldList t elems:ps)
+            PRecord t row     -> fun (conPat t "#" [row]:ps)
+            PAs     _ _ q     -> fun (q:ps)
+            POr     _ a b     -> fun (a:ps) <> fun (b:ps)
             _                 -> []
 
 prim :: Prim -> Name

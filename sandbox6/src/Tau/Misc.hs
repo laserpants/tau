@@ -29,7 +29,7 @@ import Data.Void (Void)
 import Tau.Env (Env)
 import Tau.Util (Name, embed1, embed2, embed3, embed4, letters, (<$$>))
 import Text.Show.Deriving (deriveShow1)
-import TextShow (showt)
+import TextShow
 import qualified Data.Map.Strict as Map
 import qualified Data.Set.Monad as Set
 import qualified Data.Text as Text
@@ -516,6 +516,9 @@ addErrors errs TypeInfo{..} = TypeInfo{ nodeErrors = errs <> nodeErrors, .. }
 
 hasErrors :: ProgExpr (TypeInfoT [e] t) u -> Bool
 hasErrors = foldrExprTag (\ti rest -> rest || notNull (nodeErrors ti)) False
+
+allErrors :: ProgExpr (TypeInfoT [e] t) u -> [e]
+allErrors = foldrExprTag (\ti es -> nodeErrors ti <> es) []
 
 constructorEnv :: [(Name, ([Name], Int))] -> ConstructorEnv
 constructorEnv = Env.fromList . (first Set.fromList <$$>)
@@ -1089,6 +1092,11 @@ unfoldApp = para $ \case
     TApp _ a b -> snd a <> snd b
     t          -> [embed (fst <$> t)]
 
+lookupRowType :: Name -> Type -> Maybe Type
+lookupRowType name = para $ \case
+    TRow label (r, _) (_, next) -> if name == label then Just r else next
+    _                           -> Nothing
+
 -------------------------------------------------------------------------------
 -------------------------------------------------------------------------------
 -------------------------------------------------------------------------------
@@ -1408,6 +1416,7 @@ foldrExprTag f s e = foldr1 (.) (foldExpr f e) s
         PTuple  t ps         -> (f t:concat ps)
         PList   t ps         -> (f t:concat ps)
         PRow    t _ p r      -> (f t:p <> r)
+        PRecord t r          -> (f t:r)
         PAnn    _ p          -> p
 
     foldBind :: (t -> s -> s) -> Binding t (ProgPattern t u) -> [s -> s]
