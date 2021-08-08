@@ -1872,6 +1872,7 @@ compileTypeclasses expr = do
 --        (foldr (\(InClass n t) -> Map.insertWith (<>) t [n]) mempty ts)
 --    pure (Map.foldrWithKey (\k ns ps -> [InClass n k | n <- ns] <> ps) [] fromType)
 
+--        Show         %v15
 dictTVar3 name (TVar _ var) = do
     info <- get
     classEnv <- askClassEnv

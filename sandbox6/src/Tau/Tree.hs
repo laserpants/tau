@@ -12,18 +12,22 @@ import Control.Arrow ((>>>))
 import Control.Monad ((<=<))
 import Control.Monad.Extra (andM, anyM, (||^))
 import Control.Monad.Reader
+import Control.Monad.State
 import Control.Monad.Supply
 import Control.Monad.Writer
+import Data.Either (fromRight)
 import Data.Eq.Deriving
 import Data.Fix (Fix(..))
-import Data.Foldable (foldrM)
+import Data.Foldable (foldrM, foldlM)
 import Data.Function ((&))
 import Data.Functor.Foldable (cata, para, project, embed)
+import Data.List (nub, tails, partition, find, groupBy)
 import Data.Map.Strict (Map)
 import Data.Maybe (fromJust)
 import Data.Ord.Deriving
 import Data.Tuple.Extra (both)
 import Data.Void (Void)
+import Tau.Env (Env)
 import Tau.Misc
 import Tau.Util
 import Text.Show.Deriving
@@ -288,6 +292,35 @@ prim TDouble{}     = "#Double"
 prim TChar{}       = "#Char"
 prim TString{}     = "#String"
 
+ambiguityCheck 
+  :: ( MonadReader (ClassEnv, TypeEnv, KindEnv, ConstructorEnv) m ) 
+  => ProgExpr TInfo Void 
+  -> WriterT Name m (ProgExpr TInfo Void)
+ambiguityCheck = cata $ \case
+
+    EVar t var -> do
+        classEnv <- askClassEnv
+        let vs = filter (tIsVar . predicateType) (nodePredicates t)
+        -- qs <- fromRight (error "impl") <$> reduce classEnv vs  
+        undefined
+
+    EHole   t             -> pure (holeExpr t)
+    ECon    t con es      -> conExpr t con <$> sequence es
+    ELit    t prim        -> pure (litExpr t prim)
+    EApp    t es          -> appExpr t <$> sequence es
+    ELet    t bind e1 e2  -> letExpr t bind <$> e1 <*> e2
+    EFix    t name e1 e2  -> fixExpr t name <$> e1 <*> e2
+    ELam    t ps e        -> lamExpr t ps <$> e 
+    EIf     t e1 e2 e3    -> ifExpr t <$> e1 <*> e2 <*> e3
+    EPat    t es cs       -> patExpr t <$> es <*> traverse sequence cs
+    EFun    t cs          -> funExpr t <$> traverse sequence cs
+    EOp1    t op a        -> op1Expr t op <$> a
+    EOp2    t op a b      -> op2Expr t op <$> a <*> b
+    ETuple  t es          -> tupleExpr t <$> sequence es
+    EList   t es          -> listExpr t <$> sequence es
+    ERow    t lab e r     -> rowExpr t lab <$> e <*> r
+    ERecord t r           -> recordExpr t <$> r
+
 -------------------------------------------------------------------------------
 -------------------------------------------------------------------------------
 -------------------------------------------------------------------------------
@@ -430,8 +463,8 @@ nats = enumFrom 0
 -------------------------------------------------------------------------------
 
 type Stage2Expr t = Expr t t t t t t t t Void Void Void Name
-    (MonoClause t (Pattern TInfo TInfo TInfo Void Void Void)) (ProgBinding t Void)
-    (MonoClause t [Pattern TInfo TInfo TInfo Void Void Void])
+    (MonoClause t (Pattern t t t Void Void Void)) (ProgBinding t Void)
+    (MonoClause t [Pattern t t t Void Void Void])
 
 s2ExprTag :: Stage2Expr t -> t
 s2ExprTag = cata $ \case
@@ -595,3 +628,93 @@ freshName
 freshName = ("$e" <>) . showt <$> supply
 
 -------------------------------------------------------------------------------
+
+type Stage3Expr t = Expr t t t t t t t t Void Void Void Name
+    (MonoClause t (Pattern t t t Void Void Void)) (ProgBinding t Void)
+    (MonoClause t [Pattern t t t Void Void Void])
+
+-------------------------------------------------------------------------------
+
+-- S3. Typeclass expansion
+
+s3_translate
+  :: ( MonadSupply Int m
+     , MonadReader (ClassEnv, TypeEnv, KindEnv, ConstructorEnv) m )
+  => Stage2Expr TInfo
+  -> StateT (Env [(Name, Name)]) m (Stage3Expr Type)
+s3_translate expr = do
+    e <- walk expr
+    s <- getAndReset 
+    insertArgsExpr e s
+  where
+    walk
+      :: ( MonadSupply Int m
+         , MonadReader (ClassEnv, TypeEnv, KindEnv, ConstructorEnv) m )
+      => Stage2Expr TInfo
+      -> StateT (Env [(Name, Name)]) m (Stage3Expr Type) 
+    walk = cata $ \case 
+
+        EPat t expr cs -> do
+            e <- expr
+            s <- getAndReset
+            patExpr (nodeType t) <$> insertArgsExpr e s <*> (translateClauses <$$> traverse sequence cs)
+
+        EFix t var expr1 expr2 -> do
+            e <- expr1
+            s <- getAndReset
+            fixExpr (nodeType t) var <$> insertArgsExpr e s <*> expr2
+
+        EVar t var -> do
+            let (vs, ts) = partition (tIsVar . predicateType) (nodePredicates t)
+
+            classEnv <- askClassEnv
+            fromType <- traverse (reduceSet classEnv) 
+                (foldr (\(InClass n t) -> Map.insertWith (<>) t [n]) mempty ts)
+
+            let ps = Map.foldrWithKey (\k ns ps -> [InClass n k | n <- ns] <> ps) [] fromType
+            e1 <- foldlM applyNonVarPredicates (varExpr (nodeType t) var) (tails ps)
+
+            qs <- fromRight (error "Implementation error") <$> reduce classEnv vs  
+            foldlM applyVarPredicates e1 (tails qs)
+
+        ELit   t prim      -> pure (litExpr (nodeType t) prim)
+        ECon   t con es    -> conExpr (nodeType t) con <$> sequence es
+        EApp   t es        -> appExpr (nodeType t) <$> sequence es
+        ELam   t name e    -> lamExpr (nodeType t) name <$> e
+        EIf    t e1 e2 e3  -> ifExpr  (nodeType t) <$> e1 <*> e2 <*> e3
+
+    translatePatterns = cata $ \case
+        PVar   t var       -> varPat  (nodeType t) var
+        PCon   t con ps    -> conPat  (nodeType t) con ps
+        PAs    t as p      -> asPat   (nodeType t) as p
+
+    translateClauses = \case
+        MonoClause t ps g -> 
+            MonoClause (nodeType t) (translatePatterns <$> ps) g
+
+insertArgsExpr
+  :: ( MonadSupply Int m
+     , MonadReader (ClassEnv, TypeEnv, KindEnv, ConstructorEnv) m )
+  => x
+  -> Env [(Name, Name)] 
+  -> StateT (Env [(Name, Name)]) m (Stage3Expr Type)
+insertArgsExpr = undefined
+
+applyVarPredicates
+  :: ( MonadSupply Int m
+     , MonadReader (ClassEnv, TypeEnv, KindEnv, ConstructorEnv) m )
+  => x
+  -> [Predicate]
+  -> StateT (Env [(Name, Name)]) m (Stage3Expr Type)
+applyVarPredicates = undefined
+
+applyNonVarPredicates
+  :: ( MonadSupply Int m
+     , MonadReader (ClassEnv, TypeEnv, KindEnv, ConstructorEnv) m )
+  => x
+  -> [Predicate]
+  -> StateT (Env [(Name, Name)]) m (Stage3Expr Type)
+applyNonVarPredicates = undefined
+
+reduceSet = undefined
+reduce = undefined

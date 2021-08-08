@@ -679,76 +679,6 @@ generalize ty = do
 
 -------------------------------------------------------------------------------
 
-getClassEnv :: (ClassEnv, TypeEnv, KindEnv, ConstructorEnv) -> ClassEnv
-getClassEnv (e, _, _, _) = e
-{-# INLINE getClassEnv #-}
-
-askClassEnv
-  :: MonadReader (ClassEnv, TypeEnv, KindEnv, ConstructorEnv) m
-  => m ClassEnv
-askClassEnv = asks getClassEnv
-{-# INLINE askClassEnv #-}
-
-getTypeEnv :: (ClassEnv, TypeEnv, KindEnv, ConstructorEnv) -> TypeEnv
-getTypeEnv (_, e, _, _) = e
-{-# INLINE getTypeEnv #-}
-
-askTypeEnv
-  :: MonadReader (ClassEnv, TypeEnv, KindEnv, ConstructorEnv) m
-  => m TypeEnv
-askTypeEnv = asks getTypeEnv
-{-# INLINE askTypeEnv #-}
-
-getKindEnv :: (ClassEnv, TypeEnv, KindEnv, ConstructorEnv) -> KindEnv
-getKindEnv (_, _, e, _) = e
-{-# INLINE getKindEnv #-}
-
-askKindEnv
-  :: MonadReader (ClassEnv, TypeEnv, KindEnv, ConstructorEnv) m
-  => m KindEnv
-askKindEnv = asks getKindEnv
-{-# INLINE askKindEnv #-}
-
-getConstructorEnv :: (ClassEnv, TypeEnv, KindEnv, ConstructorEnv) -> ConstructorEnv
-getConstructorEnv (_, _, _, e) = e
-{-# INLINE getConstructorEnv #-}
-
-askConstructorEnv
-  :: MonadReader (ClassEnv, TypeEnv, KindEnv, ConstructorEnv) m
-  => m ConstructorEnv
-askConstructorEnv = asks getConstructorEnv
-{-# INLINE askConstructorEnv #-}
-
-inClassEnv
-  :: (ClassEnv -> ClassEnv)
-  -> (ClassEnv, TypeEnv, KindEnv, ConstructorEnv)
-  -> (ClassEnv, TypeEnv, KindEnv, ConstructorEnv)
-inClassEnv f (e1, e2, e3, e4) = (f e1, e2, e3, e4)
-{-# INLINE inClassEnv #-}
-
-inTypeEnv
-  :: (TypeEnv -> TypeEnv)
-  -> (ClassEnv, TypeEnv, KindEnv, ConstructorEnv)
-  -> (ClassEnv, TypeEnv, KindEnv, ConstructorEnv)
-inTypeEnv f (e1, e2, e3, e4) = (e1, f e2, e3, e4)
-{-# INLINE inTypeEnv #-}
-
-inKindEnv
-  :: (KindEnv -> KindEnv)
-  -> (ClassEnv, TypeEnv, KindEnv, ConstructorEnv)
-  -> (ClassEnv, TypeEnv, KindEnv, ConstructorEnv)
-inKindEnv f (e1, e2, e3, e4) = (e1, e2, f e3, e4)
-{-# INLINE inKindEnv #-}
-
-inConstructorEnv
-  :: (ConstructorEnv -> ConstructorEnv)
-  -> (ClassEnv, TypeEnv, KindEnv, ConstructorEnv)
-  -> (ClassEnv, TypeEnv, KindEnv, ConstructorEnv)
-inConstructorEnv f (e1, e2, e3, e4) = (e1, e2, e3, f e4)
-{-# INLINE inConstructorEnv #-}
-
--------------------------------------------------------------------------------
-
 type InferState  = StateT (Substitution Type, Substitution Kind, Context)
 type InferReader = ReaderT (ClassEnv, TypeEnv, KindEnv, ConstructorEnv)
 type InferSupply = SupplyT Int
@@ -784,16 +714,6 @@ runInfer
   -> (a, (Substitution Type, Substitution Kind, Context))
 runInfer context classEnv typeEnv kindEnv constructorEnv =
     runIdentity . runInferT context classEnv typeEnv kindEnv constructorEnv
-
--------------------------------------------------------------------------------
-
-isHole
-  :: (Functor e2, Functor e4)
-  => Expr t1 t2 t3 t4 t5 t6 t7 t8 t9 t10 t11 e1 e2 e3 e4
-  -> Bool
-isHole = project >>> \case
-    EHole{} -> True
-    _       -> False
 
 -------------------------------------------------------------------------------
 
@@ -856,7 +776,7 @@ test5expr :: ProgExpr () Type
 --test5expr = letExpr () (BPat () (varPat () "r")) (recordExpr () (rowExpr () "z" (annExpr tInt (litExpr () (TInteger 1))) (conExpr () "{}" []))) (recordExpr () (rowExpr () "a" (annExpr tInt (litExpr () (TInteger 1))) (rowExpr () "b" (annExpr tInt (litExpr () (TInteger 2))) (rowExpr () "d" (annExpr tInt (litExpr () (TInteger 3))) (appExpr () [varExpr () "_#", varExpr () "r"])))))
 --test5expr = let testList = annExpr (tList tInt) (listExpr () [litExpr () (TInteger 1), litExpr () (TInteger 2), litExpr () (TInteger 3), litExpr () (TInteger 4)]) in letExpr () (BPat () (varPat () "testList")) testList (fixExpr () "loopList" (lamExpr () [varPat () "g", varPat () "ys"] (patExpr () (varExpr () "ys") [ Clause () (conPat () "(::)" [varPat () "x", varPat () "xs"]) [Choice [] (appExpr () [varExpr () "g", conExpr () "Cons'" [varExpr () "x", varExpr () "xs", appExpr () [varExpr () "loopList", varExpr () "g", varExpr () "xs"]]])] , Clause () (conPat () "[]" []) [Choice [] (appExpr () [varExpr () "g", conExpr () "Nil'" []])] ])) (letExpr () (BFun () "map" [varPat () "f", varPat () "ys"]) (op2Expr () (ODot ()) (appExpr () [ varExpr () "loopList" , funExpr () [ Clause () [conPat () "Cons'" [varPat () "x", varPat () "xs", varPat () "a"]] [Choice [] (conExpr () "(::)" [appExpr () [varExpr () "f", varExpr () "x"], varExpr () "a"])] , Clause () [conPat () "Nil'" []] [Choice [] (conExpr () "[]" [])] ] ]) (varExpr () "ys")) (appExpr () [ varExpr () "map" , lamExpr () [varPat () "x"] (op2Expr () (OAdd ()) (varExpr () "x") (litExpr () (TInteger 1))) , testList ])))
 --test5expr = lamExpr () [recordPat () (varPat () "z")] (recordExpr () (rowExpr () "a" (annExpr tInt (litExpr () (TInteger 1))) (varExpr () "z")))
-test5expr = lamExpr () [recordPat () (rowPat () "a" (varPat () "a") (varPat () "z"))] (recordExpr () (varExpr () "z"))
+--test5expr = lamExpr () [recordPat () (rowPat () "a" (varPat () "a") (varPat () "z"))] (recordExpr () (varExpr () "z"))
 --test5expr = letExpr () (BFun () "withDefault" [varPat () "val"]) (funExpr () [ Clause () [conPat () "Some" [varPat () "y"]] [ Choice [] (varExpr () "y") ] ]) (varExpr () "withDefault")
 --test5expr = appExpr () [ letExpr () (BPat () (varPat () "r")) (recordExpr () (rowExpr () "a" (annExpr tInt (litExpr () (TInt 1))) (rowExpr () "b" (annExpr tInt (litExpr () (TInt 2))) (conExpr () "{}" [])))) (lamExpr () [recordPat () (rowPat () "a" (varPat () "a") (varPat () "z"))] (varExpr () "a")) , recordExpr () (rowExpr () "a" (annExpr tInt (litExpr () (TInt 5))) (conExpr () "{}" [])) ]
 --test5expr = (op2Expr () (ODot ()) (varExpr () "a") (recordExpr () (rowExpr () "a" (annExpr tInt (litExpr () (TInt 1))) (rowExpr () "b" (annExpr tInt (litExpr () (TInt 2))) (conExpr () "{}" [])))))
@@ -885,6 +805,12 @@ test5expr = lamExpr () [recordPat () (rowPat () "a" (varPat () "a") (varPat () "
 --            , annExpr tInt (litExpr () (TInteger 5))
 --            , annExpr tInt (litExpr () (TInteger 5))
 --            ]
+
+test5expr =
+        letExpr () (BFun () "f" [varPat () "x"])
+            (litExpr () (TInteger 11))
+            (lamExpr () [varPat () "x"]
+                (appExpr () [varExpr () "show", appExpr () [varExpr () "read", varExpr () "x"]]))
 
 test5 :: IO ()
 test5 = do
@@ -964,6 +890,9 @@ testTypeEnv = Env.fromList
     , ( "_#"           , Forall [kRow] [] (tApp kTyp (tCon (kArr kRow kTyp) "#") (tGen 0) `tArr` tGen 0) )
     , ( "fromInteger"  , Forall [kTyp] [InClass "Num" 0] (tInteger `tArr` tGen 0) )
     , ( "fn1"          , Forall [kTyp] [InClass "Num" 0] (tGen 0 `tArr` tGen 0 `tArr` tGen 0))
+
+    , ( "show"         , Forall [kTyp] [InClass "Show" 0] (tGen 0 `tArr` tString) )
+    , ( "read"         , Forall [kTyp] [InClass "Read" 0] (tString `tArr` tGen 0) )
     ]
 
 testClassEnv :: ClassEnv

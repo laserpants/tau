@@ -5,6 +5,7 @@ module Tau.Util where
 
 import Control.Monad (replicateM)
 import Control.Monad.Except (MonadError, ExceptT, throwError)
+import Control.Monad.State (MonadState, get, put)
 import Control.Monad.Supply (SupplyT, Supply, evalSupplyT, evalSupply)
 import Control.Monad.Trans (lift)
 import Control.Monad.Trans.Maybe (MaybeT, runMaybeT)
@@ -53,6 +54,10 @@ liftMaybe _ (Just ok) = pure ok
 maybeToEither :: a -> Maybe b -> Either a b
 maybeToEither = flip maybe Right . Left
 {-# INLINE maybeToEither #-}
+
+getAndReset :: (Monoid a, MonadState a m) => m a
+getAndReset = get <* put mempty
+{-# INLINE getAndReset #-}
 
 runSupplyNats :: Supply Int a -> a
 runSupplyNats = fromJust . flip evalSupply [0..]

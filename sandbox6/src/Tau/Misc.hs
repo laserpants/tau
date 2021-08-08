@@ -14,6 +14,7 @@ module Tau.Misc where
 import Control.Arrow ((<<<), (>>>))
 import Control.Monad (when)
 import Control.Monad.Except (MonadError, throwError)
+import Control.Monad.Reader
 import Control.Monad.Supply
 import Data.Eq.Deriving (deriveEq1)
 import Data.Fix (Fix(..))
@@ -453,6 +454,76 @@ data Datatype = Sum Name [Name] [Product]
 
 -------------------------------------------------------------------------------
 
+getClassEnv :: (ClassEnv, TypeEnv, KindEnv, ConstructorEnv) -> ClassEnv
+getClassEnv (e, _, _, _) = e
+{-# INLINE getClassEnv #-}
+
+askClassEnv
+  :: MonadReader (ClassEnv, TypeEnv, KindEnv, ConstructorEnv) m
+  => m ClassEnv
+askClassEnv = asks getClassEnv
+{-# INLINE askClassEnv #-}
+
+getTypeEnv :: (ClassEnv, TypeEnv, KindEnv, ConstructorEnv) -> TypeEnv
+getTypeEnv (_, e, _, _) = e
+{-# INLINE getTypeEnv #-}
+
+askTypeEnv
+  :: MonadReader (ClassEnv, TypeEnv, KindEnv, ConstructorEnv) m
+  => m TypeEnv
+askTypeEnv = asks getTypeEnv
+{-# INLINE askTypeEnv #-}
+
+getKindEnv :: (ClassEnv, TypeEnv, KindEnv, ConstructorEnv) -> KindEnv
+getKindEnv (_, _, e, _) = e
+{-# INLINE getKindEnv #-}
+
+askKindEnv
+  :: MonadReader (ClassEnv, TypeEnv, KindEnv, ConstructorEnv) m
+  => m KindEnv
+askKindEnv = asks getKindEnv
+{-# INLINE askKindEnv #-}
+
+getConstructorEnv :: (ClassEnv, TypeEnv, KindEnv, ConstructorEnv) -> ConstructorEnv
+getConstructorEnv (_, _, _, e) = e
+{-# INLINE getConstructorEnv #-}
+
+askConstructorEnv
+  :: MonadReader (ClassEnv, TypeEnv, KindEnv, ConstructorEnv) m
+  => m ConstructorEnv
+askConstructorEnv = asks getConstructorEnv
+{-# INLINE askConstructorEnv #-}
+
+inClassEnv
+  :: (ClassEnv -> ClassEnv)
+  -> (ClassEnv, TypeEnv, KindEnv, ConstructorEnv)
+  -> (ClassEnv, TypeEnv, KindEnv, ConstructorEnv)
+inClassEnv f (e1, e2, e3, e4) = (f e1, e2, e3, e4)
+{-# INLINE inClassEnv #-}
+
+inTypeEnv
+  :: (TypeEnv -> TypeEnv)
+  -> (ClassEnv, TypeEnv, KindEnv, ConstructorEnv)
+  -> (ClassEnv, TypeEnv, KindEnv, ConstructorEnv)
+inTypeEnv f (e1, e2, e3, e4) = (e1, f e2, e3, e4)
+{-# INLINE inTypeEnv #-}
+
+inKindEnv
+  :: (KindEnv -> KindEnv)
+  -> (ClassEnv, TypeEnv, KindEnv, ConstructorEnv)
+  -> (ClassEnv, TypeEnv, KindEnv, ConstructorEnv)
+inKindEnv f (e1, e2, e3, e4) = (e1, e2, f e3, e4)
+{-# INLINE inKindEnv #-}
+
+inConstructorEnv
+  :: (ConstructorEnv -> ConstructorEnv)
+  -> (ClassEnv, TypeEnv, KindEnv, ConstructorEnv)
+  -> (ClassEnv, TypeEnv, KindEnv, ConstructorEnv)
+inConstructorEnv f (e1, e2, e3, e4) = (e1, e2, e3, f e4)
+{-# INLINE inConstructorEnv #-}
+
+-------------------------------------------------------------------------------
+
 -- Type class instances for Predicate
 
 deriving instance (Show a) =>
@@ -707,9 +778,11 @@ tSymbol = typ "Symbol"
 
 tListCon :: TypeT a
 tListCon = tCon kFun "List"
+{-# INLINE tListCon #-}
 
 tList :: TypeT a -> TypeT a
 tList = tApp kTyp tListCon
+{-# INLINE tList #-}
 
 -- Tuples
 
@@ -738,6 +811,35 @@ tRecordCon = tCon (kArr kRow kTyp) "#"
 
 tRecord :: TypeT a -> TypeT a
 tRecord = tApp kTyp tRecordCon
+
+--
+
+tIsVar :: TypeT a -> Bool
+tIsVar = project >>> \case
+    TVar{}  -> True
+    _       -> False
+
+tIsCon :: TypeT a -> Bool
+tIsCon = project >>> \case
+    TCon{}  -> True
+    _       -> False
+
+tIsRow :: TypeT a -> Bool
+tIsRow = project >>> \case
+    TRow{}  -> True
+    _       -> False
+
+tIsApp :: TypeT a -> Bool
+tIsApp = project >>> \case
+    TApp{}  -> True
+    _       -> False
+
+tIsArr :: TypeT a -> Bool
+tIsArr = project >>> \case
+    TArr{}  -> True
+    _       -> False
+
+-------------------------------------------------------------------------------
 
 -- Pattern
 
@@ -1020,6 +1122,30 @@ rowPatCons
   -> Pattern t1 t2 t3 t4 t5 t6
 rowPatCons t label pat row = conPat t ("{" <> label <> "}") [pat, row]
 {-# INLINE rowPatCons #-}
+
+isVar
+  :: (Functor e2, Functor e4)
+  => Expr t1 t2 t3 t4 t5 t6 t7 t8 t9 t10 t11 e1 e2 e3 e4
+  -> Bool
+isVar = project >>> \case
+    EVar{}  -> True
+    _       -> False
+
+isCon
+  :: (Functor e2, Functor e4)
+  => Expr t1 t2 t3 t4 t5 t6 t7 t8 t9 t10 t11 e1 e2 e3 e4
+  -> Bool
+isCon = project >>> \case
+    ECon{}  -> True
+    _       -> False
+
+isHole
+  :: (Functor e2, Functor e4)
+  => Expr t1 t2 t3 t4 t5 t6 t7 t8 t9 t10 t11 e1 e2 e3 e4
+  -> Bool
+isHole = project >>> \case
+    EHole{} -> True
+    _       -> False
 
 -------------------------------------------------------------------------------
 -------------------------------------------------------------------------------

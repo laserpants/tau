@@ -75,6 +75,7 @@ super1 env name = name:super env name
 
 instances :: ClassEnv -> Name -> [Instance]
 instances env name = fromMaybe [] (snd <$> Env.lookup name env)
+-- maybe [] snd (Env.lookup name env) 
 
 bySuper :: ClassEnv -> Predicate -> [Predicate]
 bySuper env self@(InClass name ty) =
