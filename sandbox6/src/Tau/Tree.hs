@@ -294,11 +294,11 @@ prim TString{}     = "#String"
 
 data MonoClause t p a = MonoClause t [p] (Choice a)
 
-type S1Expr t = Expr t t t t t t t t t Void Void Void Void Void Void Void Void [ProgPattern t Void]
+type Stage1Expr t = Expr t t t t t t t t t Void Void Void Void Void Void Void Void [ProgPattern t Void]
     (MonoClause t (ProgPattern t Void)) (ProgBinding t Void)
     (MonoClause t [ProgPattern t Void])
 
-s1ExprTag :: S1Expr t -> t
+s1ExprTag :: Stage1Expr t -> t
 s1ExprTag = cata $ \case
 
     EVar    t _        -> t
@@ -330,14 +330,14 @@ deriveShow1 ''MonoClause
 deriveEq1   ''MonoClause
 deriveOrd1  ''MonoClause
 
-instance (Typed t) => Typed (S1Expr t) where
+instance (Typed t) => Typed (Stage1Expr t) where
     typeOf = typeOf . s1ExprTag
 
 -------------------------------------------------------------------------------
 
 -- S1. Desugaring
 
-s1_translate :: ProgExpr TInfo Void -> S1Expr TInfo
+s1_translate :: ProgExpr TInfo Void -> Stage1Expr TInfo
 s1_translate = cata $ \case
 
     -- Translate tuples, lists, records, and row expressions
@@ -375,18 +375,18 @@ s1_translate = cata $ \case
     patToList (Clause t p a)      = Clause t [p] a
     expandClause (Clause t ps gs) = [MonoClause t ps g | g <- gs]
 
-translateAppExpr :: TInfo -> [S1Expr TInfo] -> S1Expr TInfo
+translateAppExpr :: TInfo -> [Stage1Expr TInfo] -> Stage1Expr TInfo
 translateAppExpr t es =
     foldr go
         (appExpr (remArgs (length es - 1) <$> s1ExprTag (head es)) replaceHoles)
         holes
   where
-    go :: (S1Expr TInfo, Name) -> S1Expr TInfo -> S1Expr TInfo
+    go :: (Stage1Expr TInfo, Name) -> Stage1Expr TInfo -> Stage1Expr TInfo
     go (e, n) body = lamExpr
         (tArr (nodeType (s1ExprTag e)) <$> s1ExprTag body)
         [varPat (s1ExprTag e) n] body
 
-    holes :: [(S1Expr TInfo, Name)]
+    holes :: [(Stage1Expr TInfo, Name)]
     holes = zip (filter (hole . project) es) ["^" <> showt n | n <- nats]
 
     replaceHoles = fromJust (evalSupply (mapM f es) nats)
@@ -406,8 +406,8 @@ translateAppExpr t es =
 
 translateFunExpr
   :: TInfo
-  -> [MonoClause TInfo (ProgPattern TInfo Void) (S1Expr TInfo)]
-  -> S1Expr TInfo
+  -> [MonoClause TInfo (ProgPattern TInfo Void) (Stage1Expr TInfo)]
+  -> Stage1Expr TInfo
 translateFunExpr t cs@(MonoClause _ ps (Choice _ e1):_) =
     lamExpr t (args varPat) (patExpr (s1ExprTag e1) e (toClause <$> cs))
 --    lamExpr t (args varPat) (patExpr (TypeInfo [] (typeOf e1) []) e (toClause <$> cs))  -- ???
@@ -429,11 +429,11 @@ nats = enumFrom 0
 
 -------------------------------------------------------------------------------
 
-type S2Expr t = Expr t t t t t t t t Void Void Void Void Void Void Void Void Void Name
+type Stage2Expr t = Expr t t t t t t t t Void Void Void Void Void Void Void Void Void Name
     (MonoClause t (Pattern TInfo TInfo TInfo Void Void Void Void Void Void Void)) (ProgBinding t Void)
     (MonoClause t [Pattern TInfo TInfo TInfo Void Void Void Void Void Void Void])
 
-s2ExprTag :: S2Expr t -> t
+s2ExprTag :: Stage2Expr t -> t
 s2ExprTag = cata $ \case
 
     EVar    t _        -> t
@@ -452,8 +452,8 @@ s2ExprTag = cata $ \case
 s2_translate
   :: ( MonadSupply Int m
      , MonadReader (ClassEnv, TypeEnv, KindEnv, ConstructorEnv) m )
-  => S1Expr TInfo
-  -> m (S2Expr TInfo)
+  => Stage1Expr TInfo
+  -> m (Stage2Expr TInfo)
 s2_translate = cata $ \case
 
     ELet t bind e1 e2 -> do
@@ -481,9 +481,9 @@ translateLet
      , MonadReader (ClassEnv, TypeEnv, KindEnv, ConstructorEnv) m )
   => TInfo
   -> Binding TInfo (ProgPattern TInfo Void)
-  -> S2Expr TInfo
-  -> S2Expr TInfo
-  -> m (S2Expr TInfo)
+  -> Stage2Expr TInfo
+  -> Stage2Expr TInfo
+  -> m (Stage2Expr TInfo)
 translateLet t bind e1 e2 =
     case project <$> bind of
         BPat _ (PVar _ var) ->
@@ -501,8 +501,8 @@ translateLambda
      , MonadReader (ClassEnv, TypeEnv, KindEnv, ConstructorEnv) m )
   => TInfo
   -> [ProgPattern TInfo Void]
-  -> S2Expr TInfo
-  -> m (S2Expr TInfo)
+  -> Stage2Expr TInfo
+  -> m (Stage2Expr TInfo)
 translateLambda t pats expr =
     case project <$> pats of
         [PVar _ var] -> pure (lamExpr t var expr)
@@ -519,9 +519,9 @@ translateMatchExpr
   :: ( MonadSupply Int m
      , MonadReader (ClassEnv, TypeEnv, KindEnv, ConstructorEnv) m )
   => TInfo
-  -> S2Expr TInfo
-  -> [MonoClause TInfo (ProgPattern TInfo Void) (S2Expr TInfo)]
-  -> m (S2Expr TInfo)
+  -> Stage2Expr TInfo
+  -> [MonoClause TInfo (ProgPattern TInfo Void) (Stage2Expr TInfo)]
+  -> m (Stage2Expr TInfo)
 translateMatchExpr t expr clauses =
     patExpr t expr . concat <$> traverse expandClausePatterns clauses
   where
@@ -567,7 +567,7 @@ translateMatchExpr t expr clauses =
             PAs  t name a    -> asPat t name <$> a
             POr  _ a b       -> a <> b
 
-translateLiteral :: S2Expr TInfo -> S2Expr TInfo
+translateLiteral :: Stage2Expr TInfo -> Stage2Expr TInfo
 translateLiteral = cata $ \case
 
     ELit t (TInt n) -> appExpr t

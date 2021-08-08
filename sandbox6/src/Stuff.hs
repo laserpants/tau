@@ -909,15 +909,15 @@ test5 = do
         { sourceExpr = test5expr
         --, typedExpr  = astExpr a
         , typedExpr  = c
-        , s1Expr     = d
-        , s2Expr     = f
+        , stage1Expr = d
+        , stage2Expr = f
         }
 
 data Bundle = Bundle
     { sourceExpr  :: ProgExpr () Type
     , typedExpr   :: ProgExpr (TypeInfo [Error]) Void
-    , s1Expr      :: S1Expr (TypeInfo [Error])
-    , s2Expr      :: S2Expr (TypeInfo [Error])
+    , stage1Expr  :: Stage1Expr (TypeInfo [Error])
+    , stage2Expr  :: Stage2Expr (TypeInfo [Error])
     } deriving (Show, Eq)
 
 instance ToRep Bundle where
@@ -925,8 +925,8 @@ instance ToRep Bundle where
         object
             [ "source"  .= toRep sourceExpr
             , "typed"   .= toRep typedExpr
-            , "stage1"  .= toRep s1Expr
-            , "stage2"  .= toRep s2Expr
+            , "stage1"  .= toRep stage1Expr
+            , "stage2"  .= toRep stage2Expr
             ]
 
 -------------------------------------------------------------------------------
