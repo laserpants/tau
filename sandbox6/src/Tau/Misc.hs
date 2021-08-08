@@ -11,15 +11,17 @@
 {-# LANGUAGE TupleSections         #-}
 module Tau.Misc where
 
-import Control.Monad.Extra (allM, (||^))
 import Control.Arrow ((<<<), (>>>))
 import Control.Monad (when)
 import Control.Monad.Except (MonadError, throwError, runExceptT)
+import Control.Monad.Extra (allM, (||^))
 import Control.Monad.Reader
 import Control.Monad.Supply
 import Data.Either.Combinators (fromRight, rightToMaybe)
+import Data.Either.Extra (eitherToMaybe)
 import Data.Eq.Deriving (deriveEq1)
 import Data.Fix (Fix(..))
+import Data.Function ((&))
 import Data.Functor.Foldable (cata, para, project, embed)
 import Data.List (nub, intersect)
 import Data.List.Extra (notNull)
@@ -30,7 +32,7 @@ import Data.Text (Text)
 import Data.Tuple.Extra (first)
 import Data.Void (Void)
 import Tau.Env (Env)
-import Tau.Util (Name, embed1, embed2, embed3, embed4, letters, (<$$>))
+import Tau.Util (Name, embed1, embed2, embed3, embed4, letters, (<$$>), liftMaybe)
 import Text.Show.Deriving (deriveShow1)
 import TextShow
 import qualified Data.Map.Strict as Map
@@ -2171,3 +2173,21 @@ liftU
 liftU m (InClass c1 t1) (InClass c2 t2)
     | c1 == c2  = m t1 t2
     | otherwise = throwError ClassMismatch
+
+-------------------------------------------------------------------------------
+
+withClassInfo
+  :: (MonadError Error m, MonadSupply Int m)
+  => ([PredicateT Name] -> ClassInfo Type (Ast (TypeInfo ()) Void) -> m a)
+  -> Name
+  -> Type
+  -> ClassEnv
+  -> m a
+withClassInfo fn name ty env = do
+    (ClassInfo{..}, insts) <- liftMaybe (NoSuchClass name) (Env.lookup name env)
+    info <- sequence [tryMatch i | i <- insts]
+    msum info & maybe (throwError (MissingInstance name ty)) (fn classPredicates)
+  where
+    tryMatch info@ClassInfo{..} = do
+        sub <- eitherToMaybe <$> runExceptT (matchTypes (predicateType classSignature) ty)
+        pure (applyBoth <$> sub <*> pure info)

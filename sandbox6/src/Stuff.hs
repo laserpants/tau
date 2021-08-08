@@ -831,12 +831,15 @@ test5 = do
 
     f = translateLiteral e
 
+    g = runSupplyNats (runReaderT (evalStateT (s3_translate f) mempty) (testClassEnv, testTypeEnv, testKindEnv, testConstructorEnv))
+
     bundle = Bundle
         { sourceExpr = test5expr
         --, typedExpr  = astExpr a
         , typedExpr  = c
         , stage1Expr = d
         , stage2Expr = f
+        , stage3Expr = g
         }
 
 data Bundle = Bundle
@@ -844,6 +847,7 @@ data Bundle = Bundle
     , typedExpr   :: ProgExpr (TypeInfo [Error]) Void
     , stage1Expr  :: Stage1Expr (TypeInfo [Error])
     , stage2Expr  :: Stage2Expr (TypeInfo [Error])
+    , stage3Expr  :: Stage3Expr Type
     } deriving (Show, Eq)
 
 instance ToRep Bundle where
@@ -853,6 +857,7 @@ instance ToRep Bundle where
             , "typed"   .= toRep typedExpr
             , "stage1"  .= toRep stage1Expr
             , "stage2"  .= toRep stage2Expr
+            , "stage3"  .= toRep stage3Expr
             ]
 
 -------------------------------------------------------------------------------
@@ -897,7 +902,19 @@ testTypeEnv = Env.fromList
 
 testClassEnv :: ClassEnv
 testClassEnv = Env.fromList
-    [ ( "Show"
+    [ ( "Read"
+        -- Interface
+      , ( ClassInfo (InClass "Read" "a") []
+            [ ( "read", tString `tArr` tVar kTyp "a"  )
+            ]
+        -- Instances
+        , [ ClassInfo (InClass "Show" tInt) []
+              [ ( "read", Ast (varExpr (TypeInfo () (tString `tArr` tString) []) "@Int.read") )
+              ]
+          ]
+        )
+      )
+    , ( "Show"
         -- Interface
       , ( ClassInfo (InClass "Show" "a") []
             [ ( "show", tVar kTyp "a" `tArr` tString )
