@@ -1,5 +1,6 @@
 {-# LANGUAGE DeriveTraversable  #-}
 {-# LANGUAGE FlexibleContexts   #-}
+{-# LANGUAGE FlexibleInstances  #-}
 {-# LANGUAGE LambdaCase         #-}
 {-# LANGUAGE OverloadedStrings  #-}
 {-# LANGUAGE StandaloneDeriving #-}
@@ -11,10 +12,15 @@ import Control.Arrow ((>>>))
 import Control.Monad ((<=<))
 import Control.Monad.Extra (andM, anyM, (||^))
 import Control.Monad.Reader
+import Control.Monad.Supply
+import Control.Monad.Writer
 import Data.Eq.Deriving
+import Data.Fix (Fix(..))
+import Data.Foldable (foldrM)
 import Data.Function ((&))
 import Data.Functor.Foldable (cata, para, project, embed)
 import Data.Map.Strict (Map)
+import Data.Maybe (fromJust)
 import Data.Ord.Deriving
 import Data.Tuple.Extra (both)
 import Data.Void (Void)
@@ -286,21 +292,34 @@ prim TString{}     = "#String"
 -------------------------------------------------------------------------------
 -------------------------------------------------------------------------------
 
-data MonoClause t p a = MonoClause t [p] (Choice a) 
+data MonoClause t p a = MonoClause t [p] (Choice a)
 
-type S1Expr t = Expr t t t t t t t t t t t t t t t t Void [ProgPattern t Void]
+type S1Expr t = Expr t t t t t t t t t Void Void Void Void Void Void Void Void [ProgPattern t Void]
     (MonoClause t (ProgPattern t Void)) (ProgBinding t Void)
     (MonoClause t [ProgPattern t Void])
 
+s1ExprTag :: S1Expr t -> t
+s1ExprTag = cata $ \case
+
+    EVar    t _        -> t
+    ECon    t _ _      -> t
+    ELit    t _        -> t
+    EApp    t _        -> t
+    EFix    t _ _ _    -> t
+    ELam    t _ _      -> t
+    EIf     t _ _ _    -> t
+    EPat    t _ _      -> t
+    ELet    t _ _ _    -> t
+
 -------------------------------------------------------------------------------
 
-deriving instance (Show t, Show p, Show a) => 
+deriving instance (Show t, Show p, Show a) =>
     Show (MonoClause t p a)
 
-deriving instance (Eq t, Eq p, Eq a) => 
+deriving instance (Eq t, Eq p, Eq a) =>
     Eq (MonoClause t p a)
 
-deriving instance (Ord t, Ord p, Ord a) => 
+deriving instance (Ord t, Ord p, Ord a) =>
     Ord (MonoClause t p a)
 
 deriving instance Functor     (MonoClause t p)
@@ -311,8 +330,8 @@ deriveShow1 ''MonoClause
 deriveEq1   ''MonoClause
 deriveOrd1  ''MonoClause
 
--- deriving instance (Show t) => Show (DesugaredPattern t)
--- deriving instance (Eq   t) => Eq   (DesugaredPattern t)
+instance (Typed t) => Typed (S1Expr t) where
+    typeOf = typeOf . s1ExprTag
 
 -------------------------------------------------------------------------------
 
@@ -337,7 +356,7 @@ s1_translate = cata $ \case
 
     -- Remove holes in function application expressions
     EApp    t es                -> translateAppExpr t es
-    EHole   t                   -> varExpr t "^" 
+    EHole   t                   -> varExpr t "^"
 
     -- Other expressions do not change, except sub-expressions
     EVar    t var               -> varExpr t var
@@ -356,23 +375,223 @@ s1_translate = cata $ \case
     patToList (Clause t p a)      = Clause t [p] a
     expandClause (Clause t ps gs) = [MonoClause t ps g | g <- gs]
 
--- TODO
 translateAppExpr :: TInfo -> [S1Expr TInfo] -> S1Expr TInfo
-translateAppExpr t es = appExpr t es
+translateAppExpr t es =
+    foldr go
+        (appExpr (remArgs (length es - 1) <$> s1ExprTag (head es)) replaceHoles)
+        holes
+  where
+    go :: (S1Expr TInfo, Name) -> S1Expr TInfo -> S1Expr TInfo
+    go (e, n) body = lamExpr
+        (tArr (nodeType (s1ExprTag e)) <$> s1ExprTag body)
+        [varPat (s1ExprTag e) n] body
 
-translateFunExpr :: TInfo -> [MonoClause TInfo (ProgPattern TInfo Void) (S1Expr TInfo)] -> S1Expr TInfo
-translateFunExpr t cs@(MonoClause _ ps _:_) =
-    lamExpr t (args varPat) (patExpr (TypeInfo [] (tVar kTyp "TODO") []) e (gork <$> cs))
+    holes :: [(S1Expr TInfo, Name)]
+    holes = zip (filter (hole . project) es) ["^" <> showt n | n <- nats]
+
+    replaceHoles = fromJust (evalSupply (mapM f es) nats)
+      where
+        f e | hole (project e) = do
+                n <- supply
+                pure (varExpr (s1ExprTag e) ("^" <> showt n))
+            | otherwise =
+                pure e
+
+    hole (EVar _ "^") = True
+    hole _            = False
+
+    remArgs :: Int -> Type -> Type
+    remArgs 0 t = t
+    remArgs n (Fix (TArr _ t2)) = remArgs (pred n) t2
+
+translateFunExpr
+  :: TInfo
+  -> [MonoClause TInfo (ProgPattern TInfo Void) (S1Expr TInfo)]
+  -> S1Expr TInfo
+translateFunExpr t cs@(MonoClause _ ps (Choice _ e1):_) =
+    lamExpr t (args varPat) (patExpr (s1ExprTag e1) e (toClause <$> cs))
+--    lamExpr t (args varPat) (patExpr (TypeInfo [] (typeOf e1) []) e (toClause <$> cs))  -- ???
   where
     e = case args varExpr of
         [e] -> e
-        es  -> conExpr (TypeInfo [] (tVar kTyp "TODO") []) (tupleCon (length es)) es
+        es  -> conExpr (TypeInfo [] (tTuple (typeOf <$> es)) []) (tupleCon (length es)) es
 
-    args con = [con (patternTag p) ("#" <> showt n) | (p, n) <- zip ps ([0..] :: [Int])]
+    args con = [con (patternTag p) ("#" <> showt n) | (p, n) <- zip ps nats]
 
-    gork clause@(MonoClause t ps ds)
+    toClause clause@(MonoClause t ps ds)
         | length ps < 2 = clause
         | otherwise     = MonoClause t [q] ds
       where
-        q = conPat (TypeInfo [] (tVar kTyp "TODO") []) (tupleCon (length ps)) ps
+        q = conPat (TypeInfo [] (tTuple (typeOf <$> ps)) []) (tupleCon (length ps)) ps
 
+nats :: [Int]
+nats = enumFrom 0
+
+-------------------------------------------------------------------------------
+
+type S2Expr t = Expr t t t t t t t t Void Void Void Void Void Void Void Void Void Name
+    (MonoClause t (Pattern TInfo TInfo TInfo Void Void Void Void Void Void Void)) (ProgBinding t Void)
+    (MonoClause t [Pattern TInfo TInfo TInfo Void Void Void Void Void Void Void])
+
+s2ExprTag :: S2Expr t -> t
+s2ExprTag = cata $ \case
+
+    EVar    t _        -> t
+    ECon    t _ _      -> t
+    ELit    t _        -> t
+    EApp    t _        -> t
+    EFix    t _ _ _    -> t
+    ELam    t _ _      -> t
+    EIf     t _ _ _    -> t
+    EPat    t _ _      -> t
+
+-------------------------------------------------------------------------------
+
+-- S2. Simplification
+
+s2_translate
+  :: ( MonadSupply Int m
+     , MonadReader (ClassEnv, TypeEnv, KindEnv, ConstructorEnv) m )
+  => S1Expr TInfo
+  -> m (S2Expr TInfo)
+s2_translate = cata $ \case
+
+    ELet t bind e1 e2 -> do
+        a <- e1
+        b <- e2
+        translateLet t bind a b
+
+    ELam t ps expr ->
+        expr >>= translateLambda t ps
+
+    EPat t expr clauses -> do
+        e <- expr
+        cs <- traverse sequence clauses
+        translateMatchExpr t e cs
+
+    ELit    t prim       -> pure (litExpr t prim)
+    EVar    t var        -> pure (varExpr t var)
+    ECon    t con exs    -> conExpr t con <$> sequence exs
+    EFix    t name e1 e2 -> fixExpr t name <$> e1 <*> e2
+    EApp    t es         -> appExpr t <$> sequence es
+    EIf     t e1 e2 e3   -> ifExpr  t <$> e1 <*> e2 <*> e3
+
+translateLet
+  :: ( MonadSupply Int m
+     , MonadReader (ClassEnv, TypeEnv, KindEnv, ConstructorEnv) m )
+  => TInfo
+  -> Binding TInfo (ProgPattern TInfo Void)
+  -> S2Expr TInfo
+  -> S2Expr TInfo
+  -> m (S2Expr TInfo)
+translateLet t bind e1 e2 =
+    case project <$> bind of
+        BPat _ (PVar _ var) ->
+            pure (fixExpr t var e1 e2)
+
+        BPat _ pat -> do
+            translateMatchExpr t e1 [MonoClause t [embed pat] (Choice [] e2)]
+
+        BFun t f ps -> do
+            e <- translateLambda t (embed <$> ps) e1
+            translateMatchExpr t e [MonoClause t [varPat t f] (Choice [] e2)]
+
+translateLambda
+  :: ( MonadSupply Int m
+     , MonadReader (ClassEnv, TypeEnv, KindEnv, ConstructorEnv) m )
+  => TInfo
+  -> [ProgPattern TInfo Void]
+  -> S2Expr TInfo
+  -> m (S2Expr TInfo)
+translateLambda t pats expr =
+    case project <$> pats of
+        [PVar _ var] -> pure (lamExpr t var expr)
+        _            -> fst <$> foldrM fn (expr, s2ExprTag expr) pats
+  where
+    fn pat (expr, t) = do
+        var <- freshName
+        let ti = TypeInfo [] (nodeType (patternTag pat) `tArr` nodeType t) []
+        e <- translateMatchExpr t (varExpr (patternTag pat) var)
+                                  [MonoClause t [pat] (Choice [] expr)]
+        pure (lamExpr ti var e, ti)
+
+translateMatchExpr
+  :: ( MonadSupply Int m
+     , MonadReader (ClassEnv, TypeEnv, KindEnv, ConstructorEnv) m )
+  => TInfo
+  -> S2Expr TInfo
+  -> [MonoClause TInfo (ProgPattern TInfo Void) (S2Expr TInfo)]
+  -> m (S2Expr TInfo)
+translateMatchExpr t expr clauses =
+    patExpr t expr . concat <$> traverse expandClausePatterns clauses
+  where
+    expandClausePatterns (MonoClause t ps (Choice es e)) = do
+        (qs, ds) <- runWriterT (traverse expandPatterns1 ps)
+        pure (expandPatterns2 [MonoClause t qs (Choice (es <> ds) e)])
+
+    expandPatterns1 = cata $ \case
+
+        PLit t prim -> do
+            var <- freshName
+            tell [ appExpr (TypeInfo [] tBool [])
+                     [ varExpr (TypeInfo [] (nodeType t `tArr` nodeType t `tArr` tBool) []) "(==)"
+                     , varExpr (TypeInfo [] (nodeType t) []) var
+                     , litExpr t prim ] ]
+            pure (varPat t var)
+
+        PRow t lab p q -> do
+            a <- p
+            b <- q
+            pure (conPat t ("{" <> lab <> "}") [a, b])
+
+        PRecord t r -> do
+            a <- r
+            pure (conPat t "#" [a])
+
+        PTuple  t ps      -> conPat t (tupleCon (length ps)) <$> sequence ps
+        PList   t ps      -> foldr (listPatCons t) (conPat t "[]" []) <$> sequence ps
+        PAny    t         -> varPat t <$> freshName
+
+        PVar    t var     -> pure (varPat t var)
+        PCon    t con ps  -> conPat t con <$> sequence ps
+        PAs     t name a  -> asPat t name <$> a
+        POr     t a b     -> orPat t <$> a <*> b
+
+    expandPatterns2= concatMap $ \(MonoClause t ps g) ->
+        [MonoClause t qs g | qs <- traverse fn ps]
+      where
+        fn = cata $ \case
+
+            PVar t var       -> pure (varPat t var)
+            PCon t con ps    -> conPat t con <$> sequence ps
+            PAs  t name a    -> asPat t name <$> a
+            POr  _ a b       -> a <> b
+
+translateLiteral :: S2Expr TInfo -> S2Expr TInfo
+translateLiteral = cata $ \case
+
+    ELit t (TInt n) -> appExpr t
+        [ varExpr (t{ nodeType = tArr tInteger (nodeType t) }) "fromInteger"
+        , litExpr (TypeInfo [] tInteger []) (TInteger (fromIntegral n)) ]
+
+    ELit t (TInteger n) -> appExpr t
+        [ varExpr (t{ nodeType = tArr tInteger (nodeType t) }) "fromInteger"
+        , litExpr (TypeInfo [] tInteger []) (TInteger n) ]
+
+    ELit t (TFloat r) -> appExpr t
+        [ varExpr (t{ nodeType = tArr tDouble (nodeType t) }) "fromDouble"
+        , litExpr (TypeInfo [] tDouble []) (TDouble (fromRational (toRational r))) ]
+
+    ELit t (TDouble r) -> appExpr t
+        [ varExpr (t{ nodeType = tArr tDouble (nodeType t) }) "fromDouble"
+        , litExpr (TypeInfo [] tDouble []) (TDouble r) ]
+
+    e -> embed e
+
+freshName
+  :: ( MonadSupply Int m
+     , MonadReader (ClassEnv, TypeEnv, KindEnv, ConstructorEnv) m )
+  => m Name
+freshName = ("$e" <>) . showt <$> supply
+
+-------------------------------------------------------------------------------

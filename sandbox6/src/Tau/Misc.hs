@@ -279,6 +279,10 @@ deriveShow1 ''Binding
 deriveEq1   ''Binding
 deriveOrd1  ''Binding
 
+deriving instance Functor     (Binding t)
+deriving instance Foldable    (Binding t)
+deriving instance Traversable (Binding t)
+
 -- Type class instances for Choice
 
 deriving instance (Show a) => Show (Choice a)

@@ -1457,7 +1457,14 @@ example1 = do -- foo1 expr
 --            , annExpr tInt (litExpr () (TInteger 5))
 --            ]
 
-    expr = (Fix (ELam () [Fix (PCon () "#" [Fix (PRow () "b" (Fix (PLit () (TBool True))) (Fix (PRow () "a" (Fix (PLit () (TBool True))) (Fix (PVar () "c")))))])] (Fix (EVar () "c"))))
+--    expr = (Fix (ELam () [Fix (PCon () "#" [Fix (PRow () "b" (Fix (PLit () (TBool True))) (Fix (PRow () "a" (Fix (PLit () (TBool True))) (Fix (PVar () "c")))))])] (Fix (EVar () "c"))))
+
+    expr = funExpr () 
+              [ Clause () [litPat () (TBool True), litPat () (TBool True)] [Guard [] (litExpr () (TInt 1))]
+              , Clause () [litPat () (TBool False), litPat () (TBool False)] [Guard [] (litExpr () (TInt 2))]
+              , Clause () [varPat () "x", varPat () "y"] [Guard [] (litExpr () (TInt 3))]
+              ]
+
 
 
 --    expr =

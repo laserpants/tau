@@ -856,7 +856,7 @@ test5expr :: ProgExpr () Type
 --test5expr = letExpr () (BPat () (varPat () "r")) (recordExpr () (rowExpr () "z" (annExpr tInt (litExpr () (TInteger 1))) (conExpr () "{}" []))) (recordExpr () (rowExpr () "a" (annExpr tInt (litExpr () (TInteger 1))) (rowExpr () "b" (annExpr tInt (litExpr () (TInteger 2))) (rowExpr () "d" (annExpr tInt (litExpr () (TInteger 3))) (appExpr () [varExpr () "_#", varExpr () "r"])))))
 --test5expr = let testList = annExpr (tList tInt) (listExpr () [litExpr () (TInteger 1), litExpr () (TInteger 2), litExpr () (TInteger 3), litExpr () (TInteger 4)]) in letExpr () (BPat () (varPat () "testList")) testList (fixExpr () "loopList" (lamExpr () [varPat () "g", varPat () "ys"] (patExpr () (varExpr () "ys") [ Clause () (conPat () "(::)" [varPat () "x", varPat () "xs"]) [Choice [] (appExpr () [varExpr () "g", conExpr () "Cons'" [varExpr () "x", varExpr () "xs", appExpr () [varExpr () "loopList", varExpr () "g", varExpr () "xs"]]])] , Clause () (conPat () "[]" []) [Choice [] (appExpr () [varExpr () "g", conExpr () "Nil'" []])] ])) (letExpr () (BFun () "map" [varPat () "f", varPat () "ys"]) (op2Expr () (ODot ()) (appExpr () [ varExpr () "loopList" , funExpr () [ Clause () [conPat () "Cons'" [varPat () "x", varPat () "xs", varPat () "a"]] [Choice [] (conExpr () "(::)" [appExpr () [varExpr () "f", varExpr () "x"], varExpr () "a"])] , Clause () [conPat () "Nil'" []] [Choice [] (conExpr () "[]" [])] ] ]) (varExpr () "ys")) (appExpr () [ varExpr () "map" , lamExpr () [varPat () "x"] (op2Expr () (OAdd ()) (varExpr () "x") (litExpr () (TInteger 1))) , testList ])))
 --test5expr = lamExpr () [recordPat () (varPat () "z")] (recordExpr () (rowExpr () "a" (annExpr tInt (litExpr () (TInteger 1))) (varExpr () "z")))
---test5expr = lamExpr () [recordPat () (rowPat () "a" (varPat () "a") (varPat () "z"))] (recordExpr () (varExpr () "z"))
+test5expr = lamExpr () [recordPat () (rowPat () "a" (varPat () "a") (varPat () "z"))] (recordExpr () (varExpr () "z"))
 --test5expr = letExpr () (BFun () "withDefault" [varPat () "val"]) (funExpr () [ Clause () [conPat () "Some" [varPat () "y"]] [ Choice [] (varExpr () "y") ] ]) (varExpr () "withDefault")
 --test5expr = appExpr () [ letExpr () (BPat () (varPat () "r")) (recordExpr () (rowExpr () "a" (annExpr tInt (litExpr () (TInt 1))) (rowExpr () "b" (annExpr tInt (litExpr () (TInt 2))) (conExpr () "{}" [])))) (lamExpr () [recordPat () (rowPat () "a" (varPat () "a") (varPat () "z"))] (varExpr () "a")) , recordExpr () (rowExpr () "a" (annExpr tInt (litExpr () (TInt 5))) (conExpr () "{}" [])) ]
 --test5expr = (op2Expr () (ODot ()) (varExpr () "a") (recordExpr () (rowExpr () "a" (annExpr tInt (litExpr () (TInt 1))) (rowExpr () "b" (annExpr tInt (litExpr () (TInt 2))) (conExpr () "{}" [])))))
@@ -864,17 +864,27 @@ test5expr :: ProgExpr () Type
 --test5expr = op2Expr () (ODot ()) (varExpr () "c") (op2Expr () (ODot ()) (varExpr () "b") (op2Expr () (ODot ()) (varExpr () "a") (recordExpr () (rowExpr () "a" (recordExpr () (rowExpr () "b" (recordExpr () (rowExpr () "c" (litExpr () (TString "d")) (conExpr () "{}" []))) (conExpr () "{}" []))) (conExpr () "{}" [])))))
 --test5expr = appExpr () [ letExpr () (BPat () (varPat () "r")) (recordExpr () (rowExpr () "a" (annExpr tInt (litExpr () (TInt 1))) (rowExpr () "b" (annExpr tInt (litExpr () (TInt 2))) (conExpr () "{}" [])))) (lamExpr () [recordPat () (rowPat () "a" (varPat () "a") (varPat () "z"))] (varExpr () "a")) , recordExpr () (rowExpr () "a" (annExpr tInt (litExpr () (TInt 5))) (conExpr () "{}" [])) ]
 --test5expr = op2Expr () (ODot ()) (varExpr () "c") (op2Expr () (ODot ()) (varExpr () "b") (op2Expr () (ODot ()) (varExpr () "a") (recordExpr () (rowExpr () "a" (recordExpr () (rowExpr () "b" (recordExpr () (rowExpr () "c" (litExpr () (TString "d")) (conExpr () "{}" []))) (conExpr () "{}" []))) (conExpr () "{}" [])))))
-test5expr = funExpr () 
-    [ Clause () [litPat () (TBool True), litPat () (TBool True)] [Choice [] (litExpr () (TInt 1))]
-    , Clause () [litPat () (TBool False), litPat () (TBool False)] [Choice [] (litExpr () (TInt 2))]
-    , Clause () [varPat () "x", varPat () "y"] [Choice [] (litExpr () (TInt 3))]
-    ]
+
+--test5expr = funExpr () 
+--    [ Clause () [litPat () (TBool True), litPat () (TBool True)] [Choice [] (litExpr () (TInt 1))]
+--    , Clause () [litPat () (TBool False), litPat () (TBool False)] [Choice [] (litExpr () (TInt 2))]
+--    , Clause () [varPat () "x", varPat () "y"] [Choice [] (litExpr () (TInt 3))]
+--    ]
 
 --test5expr = funExpr () 
 --    [ Clause () [litPat () (TBool True)] [Choice [] (litExpr () (TInt 1))]
 --    , Clause () [litPat () (TBool False)] [Choice [] (litExpr () (TInt 2))]
 ----    , Clause () [varPat () "x", varPat () "y"] [Choice [] (litExpr () (TInt 3))]
 --    ]
+
+--test5expr = appExpr () [varExpr () "(+)", holeExpr (), holeExpr ()]
+
+--test5expr =
+--        appExpr ()
+--            [ op2Expr () (OAdd ()) (holeExpr ()) (holeExpr ())
+--            , annExpr tInt (litExpr () (TInteger 5))
+--            , annExpr tInt (litExpr () (TInteger 5))
+--            ]
 
 test5 :: IO ()
 test5 = do
@@ -890,18 +900,24 @@ test5 = do
     c = runReader (exhaustivePatternsCheck (astExpr a)) testConstructorEnv
 
     d = s1_translate c
+    
+    e = runSupplyNats (runReaderT (s2_translate d) (testClassEnv, testTypeEnv, testKindEnv, testConstructorEnv))
+
+    f = translateLiteral e
 
     bundle = Bundle
         { sourceExpr = test5expr
         --, typedExpr  = astExpr a
         , typedExpr  = c
         , s1Expr     = d
+        , s2Expr     = f
         }
 
 data Bundle = Bundle
     { sourceExpr  :: ProgExpr () Type
     , typedExpr   :: ProgExpr (TypeInfo [Error]) Void
     , s1Expr      :: S1Expr (TypeInfo [Error])
+    , s2Expr      :: S2Expr (TypeInfo [Error])
     } deriving (Show, Eq)
 
 instance ToRep Bundle where
@@ -910,6 +926,7 @@ instance ToRep Bundle where
             [ "source"  .= toRep sourceExpr
             , "typed"   .= toRep typedExpr
             , "stage1"  .= toRep s1Expr
+            , "stage2"  .= toRep s2Expr
             ]
 
 -------------------------------------------------------------------------------
