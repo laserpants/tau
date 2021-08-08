@@ -98,23 +98,23 @@ data Prim
     | TString  Text                      -- ^ Strings
     | TSymbol  Name                      -- ^ Symbolic constant (language internal)
 
-data PatternF t1 t2 t3 t4 t5 t6 t7 t8 t9 t10 a
+data PatternF t1 t2 t3 t4 t5 t6 a
     = PVar    t1 Name                    -- ^ Variable pattern
     | PCon    t2 Name [a]                -- ^ Constuctor pattern
     | PAs     t3 Name a                  -- ^ As-pattern
-    | PLit    t4 Prim                    -- ^ Literal pattern
+    | POr     t4 a a                     -- ^ Or-pattern
+    | PLit    t5 Prim                    -- ^ Literal pattern
     | PAny    t5                         -- ^ Wildcard pattern
-    | POr     t6 a a                     -- ^ Or-pattern
-    | PTuple  t7 [a]                     -- ^ Tuple pattern
-    | PList   t8 [a]                     -- ^ List pattern
-    | PRow    t9 Name a a                -- ^ Row pattern
-    | PRecord t9 a                       -- ^ Record pattern
-    | PAnn    t10 a                      -- ^ Explicit type annotation
+    | PTuple  t5 [a]                     -- ^ Tuple pattern
+    | PList   t5 [a]                     -- ^ List pattern
+    | PRow    t5 Name a a                -- ^ Row pattern
+    | PRecord t5 a                       -- ^ Record pattern
+    | PAnn    t6 a                       -- ^ Explicit type annotation
 
 -- | Pattern
-type Pattern t1 t2 t3 t4 t5 t6 t7 t8 t9 t10 = Fix (PatternF t1 t2 t3 t4 t5 t6 t7 t8 t9 t10)
+type Pattern t1 t2 t3 t4 t5 t6 = Fix (PatternF t1 t2 t3 t4 t5 t6)
 
-data ExprF t1 t2 t3 t4 t5 t6 t7 t8 t9 t10 t11 t12 t13 t14 t15 t16 t17 e1 e2 e3 e4 a
+data ExprF t1 t2 t3 t4 t5 t6 t7 t8 t9 t10 t11 e1 e2 e3 e4 a
     = EVar    t1  Name                   -- ^ Variable
     | ECon    t2  Name [a]               -- ^ Data constructor
     | ELit    t3  Prim                   -- ^ Literal value
@@ -125,18 +125,18 @@ data ExprF t1 t2 t3 t4 t5 t6 t7 t8 t9 t10 t11 t12 t13 t14 t15 t16 t17 e1 e2 e3 e
     | EPat    t8  a [e2 a]               -- ^ Match expressions
     | ELet    t9  e3 a a                 -- ^ Let expression
     | EFun    t10 [e4 a]                 -- ^ Fun expression
-    | EOp1    t11 (Op1 t11) a            -- ^ Unary operator
-    | EOp2    t12 (Op2 t12) a a          -- ^ Binary operator
-    | ETuple  t13 [a]                    -- ^ Tuple
-    | EList   t14 [a]                    -- ^ List literal
-    | ERow    t15 Name a a               -- ^ Row expression
-    | ERecord t15 a                      -- ^ Record expression
-    | EHole   t16                        -- ^ Blank argument in partial function application
-    | EAnn    t17 a                      -- ^ Explicit type annotation
+    | EOp1    t10 (Op1 t10) a            -- ^ Unary operator
+    | EOp2    t10 (Op2 t10) a a          -- ^ Binary operator
+    | ETuple  t10 [a]                    -- ^ Tuple
+    | EList   t10 [a]                    -- ^ List literal
+    | ERow    t10 Name a a               -- ^ Row expression
+    | ERecord t10 a                      -- ^ Record expression
+    | EHole   t10                        -- ^ Blank argument in partial function application
+    | EAnn    t11 a                      -- ^ Explicit type annotation
 
 -- | Language expression
-type Expr t1 t2 t3 t4 t5 t6 t7 t8 t9 t10 t11 t12 t13 t14 t15 t16 t17 e1 e2 e3 e4 =
-    Fix (ExprF t1 t2 t3 t4 t5 t6 t7 t8 t9 t10 t11 t12 t13 t14 t15 t16 t17 e1 e2 e3 e4)
+type Expr t1 t2 t3 t4 t5 t6 t7 t8 t9 t10 t11 e1 e2 e3 e4 =
+    Fix (ExprF t1 t2 t3 t4 t5 t6 t7 t8 t9 t10 t11 e1 e2 e3 e4)
 
 -- | Name binding-part of let expressions
 data Binding t p
@@ -240,22 +240,22 @@ deriving instance Ord  Prim
 
 -- Type class instances for Pattern
 
-deriving instance (Show t1, Show t2, Show t3, Show t4, Show t5, Show t6, Show t7, Show t8, Show t9, Show t10, Show a) =>
-    Show (PatternF t1 t2 t3 t4 t5 t6 t7 t8 t9 t10 a)
+deriving instance (Show t1, Show t2, Show t3, Show t4, Show t5, Show t6, Show a) =>
+    Show (PatternF t1 t2 t3 t4 t5 t6 a)
 
-deriving instance (Eq t1, Eq t2, Eq t3, Eq t4, Eq t5, Eq t6, Eq t7, Eq t8, Eq t9, Eq t10, Eq a) =>
-    Eq (PatternF t1 t2 t3 t4 t5 t6 t7 t8 t9 t10 a)
+deriving instance (Eq t1, Eq t2, Eq t3, Eq t4, Eq t5, Eq t6, Eq a) =>
+    Eq (PatternF t1 t2 t3 t4 t5 t6 a)
 
-deriving instance (Ord t1, Ord t2, Ord t3, Ord t4, Ord t5, Ord t6, Ord t7, Ord t8, Ord t9, Ord t10, Ord a) =>
-    Ord (PatternF t1 t2 t3 t4 t5 t6 t7 t8 t9 t10 a)
+deriving instance (Ord t1, Ord t2, Ord t3, Ord t4, Ord t5, Ord t6, Ord a) =>
+    Ord (PatternF t1 t2 t3 t4 t5 t6 a)
 
 deriveShow1 ''PatternF
 deriveEq1   ''PatternF
 deriveOrd1  ''PatternF
 
-deriving instance Functor     (PatternF t1 t2 t3 t4 t5 t6 t7 t8 t9 t10)
-deriving instance Foldable    (PatternF t1 t2 t3 t4 t5 t6 t7 t8 t9 t10)
-deriving instance Traversable (PatternF t1 t2 t3 t4 t5 t6 t7 t8 t9 t10)
+deriving instance Functor     (PatternF t1 t2 t3 t4 t5 t6)
+deriving instance Foldable    (PatternF t1 t2 t3 t4 t5 t6)
+deriving instance Traversable (PatternF t1 t2 t3 t4 t5 t6)
 
 -- Type class instances for Op1
 
@@ -318,27 +318,27 @@ deriving instance Traversable (Clause t p)
 
 -- Type class instances for Expr
 
-deriving instance (Show t1, Show t2, Show t3, Show t4, Show t5, Show t6, Show t7, Show t8, Show t9, Show t10, Show t11, Show t12, Show t13, Show t14, Show t15, Show t16, Show t17, Show e1, Show (e2 a), Show e3, Show (e4 a), Show a) =>
-    Show (ExprF t1 t2 t3 t4 t5 t6 t7 t8 t9 t10 t11 t12 t13 t14 t15 t16 t17 e1 e2 e3 e4 a)
+deriving instance (Show t1, Show t2, Show t3, Show t4, Show t5, Show t6, Show t7, Show t8, Show t9, Show t10, Show t11, Show e1, Show (e2 a), Show e3, Show (e4 a), Show a) =>
+    Show (ExprF t1 t2 t3 t4 t5 t6 t7 t8 t9 t10 t11 e1 e2 e3 e4 a)
 
-deriving instance (Eq t1, Eq t2, Eq t3, Eq t4, Eq t5, Eq t6, Eq t7, Eq t8, Eq t9, Eq t10, Eq t11, Eq t12, Eq t13, Eq t14, Eq t15, Eq t16, Eq t17, Eq e1, Eq (e2 a), Eq e3, Eq (e4 a), Eq a) =>
-    Eq (ExprF t1 t2 t3 t4 t5 t6 t7 t8 t9 t10 t11 t12 t13 t14 t15 t16 t17 e1 e2 e3 e4 a)
+deriving instance (Eq t1, Eq t2, Eq t3, Eq t4, Eq t5, Eq t6, Eq t7, Eq t8, Eq t9, Eq t10, Eq t11, Eq e1, Eq (e2 a), Eq e3, Eq (e4 a), Eq a) =>
+    Eq (ExprF t1 t2 t3 t4 t5 t6 t7 t8 t9 t10 t11 e1 e2 e3 e4 a)
 
-deriving instance (Ord t1, Ord t2, Ord t3, Ord t4, Ord t5, Ord t6, Ord t7, Ord t8, Ord t9, Ord t10, Ord t11, Ord t12, Ord t13, Ord t14, Ord t15, Ord t16, Ord t17, Ord e1, Ord (e2 a), Ord e3, Ord (e4 a), Ord a) =>
-    Ord (ExprF t1 t2 t3 t4 t5 t6 t7 t8 t9 t10 t11 t12 t13 t14 t15 t16 t17 e1 e2 e3 e4 a)
+deriving instance (Ord t1, Ord t2, Ord t3, Ord t4, Ord t5, Ord t6, Ord t7, Ord t8, Ord t9, Ord t10, Ord t11, Ord e1, Ord (e2 a), Ord e3, Ord (e4 a), Ord a) =>
+    Ord (ExprF t1 t2 t3 t4 t5 t6 t7 t8 t9 t10 t11 e1 e2 e3 e4 a)
 
 deriveShow1 ''ExprF
 deriveEq1   ''ExprF
 deriveOrd1  ''ExprF
 
 deriving instance (Functor e2, Functor e4) =>
-    Functor (ExprF t1 t2 t3 t4 t5 t6 t7 t8 t9 t10 t11 t12 t13 t14 t15 t16 t17 e1 e2 e3 e4)
+    Functor (ExprF t1 t2 t3 t4 t5 t6 t7 t8 t9 t10 t11 e1 e2 e3 e4)
 
 deriving instance (Foldable e2, Foldable e4) =>
-    Foldable (ExprF t1 t2 t3 t4 t5 t6 t7 t8 t9 t10 t11 t12 t13 t14 t15 t16 t17 e1 e2 e3 e4)
+    Foldable (ExprF t1 t2 t3 t4 t5 t6 t7 t8 t9 t10 t11 e1 e2 e3 e4)
 
 deriving instance (Traversable e2, Traversable e4) =>
-    Traversable (ExprF t1 t2 t3 t4 t5 t6 t7 t8 t9 t10 t11 t12 t13 t14 t15 t16 t17 e1 e2 e3 e4)
+    Traversable (ExprF t1 t2 t3 t4 t5 t6 t7 t8 t9 t10 t11 e1 e2 e3 e4)
 
 -------------------------------------------------------------------------------
 -- Core
@@ -409,11 +409,11 @@ cPat = embed2 CPat
 -- Prog
 -------------------------------------------------------------------------------
 
-type ProgExpr t u = Expr t t t t t t t t t t t t t t t t u [ProgPattern t u]
+type ProgExpr t u = Expr t t t t t t t t t t u [ProgPattern t u]
     (Clause t (ProgPattern t u)) (ProgBinding t u)
     (Clause t [ProgPattern t u])
 
-type ProgPattern t u = Pattern t t t t t t t t t u
+type ProgPattern t u = Pattern t t t t t u
 type ProgBinding t u = Binding t (ProgPattern t u)
 type ProgClause  t u = Clause t [ProgPattern t u] (ProgExpr t u)
 
@@ -744,81 +744,81 @@ tRecord = tApp kTyp tRecordCon
 varPat
   :: t1
   -> Name
-  -> Pattern t1 t2 t3 t4 t5 t6 t7 t8 t9 t10
+  -> Pattern t1 t2 t3 t4 t5 t6
 varPat = embed2 PVar
 {-# INLINE varPat #-}
 
 conPat
   :: t2
   -> Name
-  -> [Pattern t1 t2 t3 t4 t5 t6 t7 t8 t9 t10]
-  -> Pattern t1 t2 t3 t4 t5 t6 t7 t8 t9 t10
+  -> [Pattern t1 t2 t3 t4 t5 t6]
+  -> Pattern t1 t2 t3 t4 t5 t6
 conPat = embed3 PCon
 {-# INLINE conPat #-}
 
 asPat
   :: t3
   -> Name
-  -> Pattern t1 t2 t3 t4 t5 t6 t7 t8 t9 t10
-  -> Pattern t1 t2 t3 t4 t5 t6 t7 t8 t9 t10
+  -> Pattern t1 t2 t3 t4 t5 t6
+  -> Pattern t1 t2 t3 t4 t5 t6
 asPat = embed3 PAs
 {-# INLINE asPat #-}
 
 litPat
-  :: t4
+  :: t5
   -> Prim
-  -> Pattern t1 t2 t3 t4 t5 t6 t7 t8 t9 t10
+  -> Pattern t1 t2 t3 t4 t5 t6
 litPat = embed2 PLit
 {-# INLINE litPat #-}
 
 anyPat
   :: t5
-  -> Pattern t1 t2 t3 t4 t5 t6 t7 t8 t9 t10
+  -> Pattern t1 t2 t3 t4 t5 t6
 anyPat = embed1 PAny
 {-# INLINE anyPat #-}
 
 orPat
-  :: t6
-  -> Pattern t1 t2 t3 t4 t5 t6 t7 t8 t9 t10
-  -> Pattern t1 t2 t3 t4 t5 t6 t7 t8 t9 t10
-  -> Pattern t1 t2 t3 t4 t5 t6 t7 t8 t9 t10
+  :: t4
+  -> Pattern t1 t2 t3 t4 t5 t6
+  -> Pattern t1 t2 t3 t4 t5 t6
+  -> Pattern t1 t2 t3 t4 t5 t6
 orPat = embed3 POr
 {-# INLINE orPat #-}
 
 tuplePat
-  :: t7
-  -> [Pattern t1 t2 t3 t4 t5 t6 t7 t8 t9 t10]
-  -> Pattern t1 t2 t3 t4 t5 t6 t7 t8 t9 t10
+  :: t5
+  -> [Pattern t1 t2 t3 t4 t5 t6]
+  -> Pattern t1 t2 t3 t4 t5 t6
 tuplePat = embed2 PTuple
 {-# INLINE tuplePat #-}
 
 listPat
-  :: t8
-  -> [Pattern t1 t2 t3 t4 t5 t6 t7 t8 t9 t10]
-  -> Pattern t1 t2 t3 t4 t5 t6 t7 t8 t9 t10
+  :: t5
+  -> [Pattern t1 t2 t3 t4 t5 t6]
+  -> Pattern t1 t2 t3 t4 t5 t6
 listPat = embed2 PList
 {-# INLINE listPat #-}
 
 rowPat
-  :: t9
+  :: t5
   -> Name
-  -> Pattern t1 t2 t3 t4 t5 t6 t7 t8 t9 t10
-  -> Pattern t1 t2 t3 t4 t5 t6 t7 t8 t9 t10
-  -> Pattern t1 t2 t3 t4 t5 t6 t7 t8 t9 t10
+  -> Pattern t1 t2 t3 t4 t5 t6
+  -> Pattern t1 t2 t3 t4 t5 t6
+  -> Pattern t1 t2 t3 t4 t5 t6
 rowPat = embed4 PRow
 {-# INLINE rowPat #-}
 
 recordPat
-  :: t9
-  -> Pattern t1 t2 t3 t4 t5 t6 t7 t8 t9 t10
-  -> Pattern t1 t2 t3 t4 t5 t6 t7 t8 t9 t10
+  :: t5
+  -> Pattern t1 t2 t3 t4 t5 t6
+  -> Pattern t1 t2 t3 t4 t5 t6
 recordPat = embed2 PRecord
 {-# INLINE recordPat #-}
 
 annPat
-  :: t10
-  -> Pattern t1 t2 t3 t4 t5 t6 t7 t8 t9 t10
-  -> Pattern t1 t2 t3 t4 t5 t6 t7 t8 t9 t10
+  :: t6
+  -> Pattern t1 t2 t3 t4 t5 t6
+  -> Pattern t1 t2 t3 t4 t5 t6
 annPat = embed2 PAnn
 {-# INLINE annPat #-}
 
@@ -828,7 +828,7 @@ varExpr
   :: (Functor e2, Functor e4)
   => t1
   -> Name
-  -> Expr t1 t2 t3 t4 t5 t6 t7 t8 t9 t10 t11 t12 t13 t14 t15 t16 t17 e1 e2 e3 e4
+  -> Expr t1 t2 t3 t4 t5 t6 t7 t8 t9 t10 t11 e1 e2 e3 e4
 varExpr = embed2 EVar
 {-# INLINE varExpr #-}
 
@@ -836,8 +836,8 @@ conExpr
   :: (Functor e2, Functor e4)
   => t2
   -> Name
-  -> [Expr t1 t2 t3 t4 t5 t6 t7 t8 t9 t10 t11 t12 t13 t14 t15 t16 t17 e1 e2 e3 e4]
-  -> Expr t1 t2 t3 t4 t5 t6 t7 t8 t9 t10 t11 t12 t13 t14 t15 t16 t17 e1 e2 e3 e4
+  -> [Expr t1 t2 t3 t4 t5 t6 t7 t8 t9 t10 t11 e1 e2 e3 e4]
+  -> Expr t1 t2 t3 t4 t5 t6 t7 t8 t9 t10 t11 e1 e2 e3 e4
 conExpr = embed3 ECon
 {-# INLINE conExpr #-}
 
@@ -845,15 +845,15 @@ litExpr
   :: (Functor e2, Functor e4)
   => t3
   -> Prim
-  -> Expr t1 t2 t3 t4 t5 t6 t7 t8 t9 t10 t11 t12 t13 t14 t15 t16 t17 e1 e2 e3 e4
+  -> Expr t1 t2 t3 t4 t5 t6 t7 t8 t9 t10 t11 e1 e2 e3 e4
 litExpr = embed2 ELit
 {-# INLINE litExpr #-}
 
 appExpr
   :: (Functor e2, Functor e4)
   => t4
-  -> [Expr t1 t2 t3 t4 t5 t6 t7 t8 t9 t10 t11 t12 t13 t14 t15 t16 t17 e1 e2 e3 e4]
-  -> Expr t1 t2 t3 t4 t5 t6 t7 t8 t9 t10 t11 t12 t13 t14 t15 t16 t17 e1 e2 e3 e4
+  -> [Expr t1 t2 t3 t4 t5 t6 t7 t8 t9 t10 t11 e1 e2 e3 e4]
+  -> Expr t1 t2 t3 t4 t5 t6 t7 t8 t9 t10 t11 e1 e2 e3 e4
 appExpr = embed2 EApp
 {-# INLINE appExpr #-}
 
@@ -861,9 +861,9 @@ fixExpr
   :: (Functor e2, Functor e4)
   => t5
   -> Name
-  -> Expr t1 t2 t3 t4 t5 t6 t7 t8 t9 t10 t11 t12 t13 t14 t15 t16 t17 e1 e2 e3 e4
-  -> Expr t1 t2 t3 t4 t5 t6 t7 t8 t9 t10 t11 t12 t13 t14 t15 t16 t17 e1 e2 e3 e4
-  -> Expr t1 t2 t3 t4 t5 t6 t7 t8 t9 t10 t11 t12 t13 t14 t15 t16 t17 e1 e2 e3 e4
+  -> Expr t1 t2 t3 t4 t5 t6 t7 t8 t9 t10 t11 e1 e2 e3 e4
+  -> Expr t1 t2 t3 t4 t5 t6 t7 t8 t9 t10 t11 e1 e2 e3 e4
+  -> Expr t1 t2 t3 t4 t5 t6 t7 t8 t9 t10 t11 e1 e2 e3 e4
 fixExpr = embed4 EFix
 {-# INLINE fixExpr #-}
 
@@ -871,27 +871,27 @@ lamExpr
   :: (Functor e2, Functor e4)
   => t6
   -> e1
-  -> Expr t1 t2 t3 t4 t5 t6 t7 t8 t9 t10 t11 t12 t13 t14 t15 t16 t17 e1 e2 e3 e4
-  -> Expr t1 t2 t3 t4 t5 t6 t7 t8 t9 t10 t11 t12 t13 t14 t15 t16 t17 e1 e2 e3 e4
+  -> Expr t1 t2 t3 t4 t5 t6 t7 t8 t9 t10 t11 e1 e2 e3 e4
+  -> Expr t1 t2 t3 t4 t5 t6 t7 t8 t9 t10 t11 e1 e2 e3 e4
 lamExpr = embed3 ELam
 {-# INLINE lamExpr #-}
 
 ifExpr
   :: (Functor e2, Functor e4)
   => t7
-  -> Expr t1 t2 t3 t4 t5 t6 t7 t8 t9 t10 t11 t12 t13 t14 t15 t16 t17 e1 e2 e3 e4
-  -> Expr t1 t2 t3 t4 t5 t6 t7 t8 t9 t10 t11 t12 t13 t14 t15 t16 t17 e1 e2 e3 e4
-  -> Expr t1 t2 t3 t4 t5 t6 t7 t8 t9 t10 t11 t12 t13 t14 t15 t16 t17 e1 e2 e3 e4
-  -> Expr t1 t2 t3 t4 t5 t6 t7 t8 t9 t10 t11 t12 t13 t14 t15 t16 t17 e1 e2 e3 e4
+  -> Expr t1 t2 t3 t4 t5 t6 t7 t8 t9 t10 t11 e1 e2 e3 e4
+  -> Expr t1 t2 t3 t4 t5 t6 t7 t8 t9 t10 t11 e1 e2 e3 e4
+  -> Expr t1 t2 t3 t4 t5 t6 t7 t8 t9 t10 t11 e1 e2 e3 e4
+  -> Expr t1 t2 t3 t4 t5 t6 t7 t8 t9 t10 t11 e1 e2 e3 e4
 ifExpr = embed4 EIf
 {-# INLINE ifExpr #-}
 
 patExpr
   :: (Functor e2, Functor e4)
   => t8
-  -> Expr t1 t2 t3 t4 t5 t6 t7 t8 t9 t10 t11 t12 t13 t14 t15 t16 t17 e1 e2 e3 e4
-  -> [e2 (Expr t1 t2 t3 t4 t5 t6 t7 t8 t9 t10 t11 t12 t13 t14 t15 t16 t17 e1 e2 e3 e4)]
-  -> Expr t1 t2 t3 t4 t5 t6 t7 t8 t9 t10 t11 t12 t13 t14 t15 t16 t17 e1 e2 e3 e4
+  -> Expr t1 t2 t3 t4 t5 t6 t7 t8 t9 t10 t11 e1 e2 e3 e4
+  -> [e2 (Expr t1 t2 t3 t4 t5 t6 t7 t8 t9 t10 t11 e1 e2 e3 e4)]
+  -> Expr t1 t2 t3 t4 t5 t6 t7 t8 t9 t10 t11 e1 e2 e3 e4
 patExpr = embed3 EPat
 {-# INLINE patExpr #-}
 
@@ -899,85 +899,85 @@ letExpr
   :: (Functor e2, Functor e4)
   => t9
   -> e3
-  -> Expr t1 t2 t3 t4 t5 t6 t7 t8 t9 t10 t11 t12 t13 t14 t15 t16 t17 e1 e2 e3 e4
-  -> Expr t1 t2 t3 t4 t5 t6 t7 t8 t9 t10 t11 t12 t13 t14 t15 t16 t17 e1 e2 e3 e4
-  -> Expr t1 t2 t3 t4 t5 t6 t7 t8 t9 t10 t11 t12 t13 t14 t15 t16 t17 e1 e2 e3 e4
+  -> Expr t1 t2 t3 t4 t5 t6 t7 t8 t9 t10 t11 e1 e2 e3 e4
+  -> Expr t1 t2 t3 t4 t5 t6 t7 t8 t9 t10 t11 e1 e2 e3 e4
+  -> Expr t1 t2 t3 t4 t5 t6 t7 t8 t9 t10 t11 e1 e2 e3 e4
 letExpr = embed4 ELet
 {-# INLINE letExpr #-}
 
 funExpr
   :: (Functor e2, Functor e4)
   => t10
-  -> [e4 (Expr t1 t2 t3 t4 t5 t6 t7 t8 t9 t10 t11 t12 t13 t14 t15 t16 t17 e1 e2 e3 e4)]
-  -> Expr t1 t2 t3 t4 t5 t6 t7 t8 t9 t10 t11 t12 t13 t14 t15 t16 t17 e1 e2 e3 e4
+  -> [e4 (Expr t1 t2 t3 t4 t5 t6 t7 t8 t9 t10 t11 e1 e2 e3 e4)]
+  -> Expr t1 t2 t3 t4 t5 t6 t7 t8 t9 t10 t11 e1 e2 e3 e4
 funExpr = embed2 EFun
 {-# INLINE funExpr #-}
 
 op1Expr
   :: (Functor e2, Functor e4)
-  => t11
-  -> Op1 t11
-  -> Expr t1 t2 t3 t4 t5 t6 t7 t8 t9 t10 t11 t12 t13 t14 t15 t16 t17 e1 e2 e3 e4
-  -> Expr t1 t2 t3 t4 t5 t6 t7 t8 t9 t10 t11 t12 t13 t14 t15 t16 t17 e1 e2 e3 e4
+  => t10
+  -> Op1 t10
+  -> Expr t1 t2 t3 t4 t5 t6 t7 t8 t9 t10 t11 e1 e2 e3 e4
+  -> Expr t1 t2 t3 t4 t5 t6 t7 t8 t9 t10 t11 e1 e2 e3 e4
 op1Expr = embed3 EOp1
 {-# INLINE op1Expr #-}
 
 op2Expr
   :: (Functor e2, Functor e4)
-  => t12
-  -> Op2 t12
-  -> Expr t1 t2 t3 t4 t5 t6 t7 t8 t9 t10 t11 t12 t13 t14 t15 t16 t17 e1 e2 e3 e4
-  -> Expr t1 t2 t3 t4 t5 t6 t7 t8 t9 t10 t11 t12 t13 t14 t15 t16 t17 e1 e2 e3 e4
-  -> Expr t1 t2 t3 t4 t5 t6 t7 t8 t9 t10 t11 t12 t13 t14 t15 t16 t17 e1 e2 e3 e4
+  => t10
+  -> Op2 t10
+  -> Expr t1 t2 t3 t4 t5 t6 t7 t8 t9 t10 t11 e1 e2 e3 e4
+  -> Expr t1 t2 t3 t4 t5 t6 t7 t8 t9 t10 t11 e1 e2 e3 e4
+  -> Expr t1 t2 t3 t4 t5 t6 t7 t8 t9 t10 t11 e1 e2 e3 e4
 op2Expr = embed4 EOp2
 {-# INLINE op2Expr #-}
 
 tupleExpr
   :: (Functor e2, Functor e4)
-  => t13
-  -> [Expr t1 t2 t3 t4 t5 t6 t7 t8 t9 t10 t11 t12 t13 t14 t15 t16 t17 e1 e2 e3 e4]
-  -> Expr t1 t2 t3 t4 t5 t6 t7 t8 t9 t10 t11 t12 t13 t14 t15 t16 t17 e1 e2 e3 e4
+  => t10
+  -> [Expr t1 t2 t3 t4 t5 t6 t7 t8 t9 t10 t11 e1 e2 e3 e4]
+  -> Expr t1 t2 t3 t4 t5 t6 t7 t8 t9 t10 t11 e1 e2 e3 e4
 tupleExpr = embed2 ETuple
 {-# INLINE tupleExpr #-}
 
 listExpr
   :: (Functor e2, Functor e4)
-  => t14
-  -> [Expr t1 t2 t3 t4 t5 t6 t7 t8 t9 t10 t11 t12 t13 t14 t15 t16 t17 e1 e2 e3 e4]
-  -> Expr t1 t2 t3 t4 t5 t6 t7 t8 t9 t10 t11 t12 t13 t14 t15 t16 t17 e1 e2 e3 e4
+  => t10
+  -> [Expr t1 t2 t3 t4 t5 t6 t7 t8 t9 t10 t11 e1 e2 e3 e4]
+  -> Expr t1 t2 t3 t4 t5 t6 t7 t8 t9 t10 t11 e1 e2 e3 e4
 listExpr = embed2 EList
 {-# INLINE listExpr #-}
 
 rowExpr
   :: (Functor e2, Functor e4)
-  => t15
+  => t10
   -> Name
-  -> Expr t1 t2 t3 t4 t5 t6 t7 t8 t9 t10 t11 t12 t13 t14 t15 t16 t17 e1 e2 e3 e4
-  -> Expr t1 t2 t3 t4 t5 t6 t7 t8 t9 t10 t11 t12 t13 t14 t15 t16 t17 e1 e2 e3 e4
-  -> Expr t1 t2 t3 t4 t5 t6 t7 t8 t9 t10 t11 t12 t13 t14 t15 t16 t17 e1 e2 e3 e4
+  -> Expr t1 t2 t3 t4 t5 t6 t7 t8 t9 t10 t11 e1 e2 e3 e4
+  -> Expr t1 t2 t3 t4 t5 t6 t7 t8 t9 t10 t11 e1 e2 e3 e4
+  -> Expr t1 t2 t3 t4 t5 t6 t7 t8 t9 t10 t11 e1 e2 e3 e4
 rowExpr = embed4 ERow
 {-# INLINE rowExpr #-}
 
 recordExpr
   :: (Functor e2, Functor e4)
-  => t15
-  -> Expr t1 t2 t3 t4 t5 t6 t7 t8 t9 t10 t11 t12 t13 t14 t15 t16 t17 e1 e2 e3 e4
-  -> Expr t1 t2 t3 t4 t5 t6 t7 t8 t9 t10 t11 t12 t13 t14 t15 t16 t17 e1 e2 e3 e4
+  => t10
+  -> Expr t1 t2 t3 t4 t5 t6 t7 t8 t9 t10 t11 e1 e2 e3 e4
+  -> Expr t1 t2 t3 t4 t5 t6 t7 t8 t9 t10 t11 e1 e2 e3 e4
 recordExpr = embed2 ERecord
 {-# INLINE recordExpr #-}
 
 holeExpr
   :: (Functor e2, Functor e4)
-  => t16
-  -> Expr t1 t2 t3 t4 t5 t6 t7 t8 t9 t10 t11 t12 t13 t14 t15 t16 t17 e1 e2 e3 e4
+  => t10
+  -> Expr t1 t2 t3 t4 t5 t6 t7 t8 t9 t10 t11 e1 e2 e3 e4
 holeExpr = embed1 EHole
 {-# INLINE holeExpr #-}
 
 annExpr
   :: (Functor e2, Functor e4)
-  => t17
-  -> Expr t1 t2 t3 t4 t5 t6 t7 t8 t9 t10 t11 t12 t13 t14 t15 t16 t17 e1 e2 e3 e4
-  -> Expr t1 t2 t3 t4 t5 t6 t7 t8 t9 t10 t11 t12 t13 t14 t15 t16 t17 e1 e2 e3 e4
+  => t11
+  -> Expr t1 t2 t3 t4 t5 t6 t7 t8 t9 t10 t11 e1 e2 e3 e4
+  -> Expr t1 t2 t3 t4 t5 t6 t7 t8 t9 t10 t11 e1 e2 e3 e4
 annExpr = embed2 EAnn
 {-# INLINE annExpr #-}
 
@@ -986,17 +986,17 @@ annExpr = embed2 EAnn
 listExprCons
   :: (Functor e2, Functor e4)
   => t2
-  -> Expr t1 t2 t3 t4 t5 t6 t7 t8 t9 t10 t11 t12 t13 t14 t15 t16 t17 e1 e2 e3 e4
-  -> Expr t1 t2 t3 t4 t5 t6 t7 t8 t9 t10 t11 t12 t13 t14 t15 t16 t17 e1 e2 e3 e4
-  -> Expr t1 t2 t3 t4 t5 t6 t7 t8 t9 t10 t11 t12 t13 t14 t15 t16 t17 e1 e2 e3 e4
+  -> Expr t1 t2 t3 t4 t5 t6 t7 t8 t9 t10 t11 e1 e2 e3 e4
+  -> Expr t1 t2 t3 t4 t5 t6 t7 t8 t9 t10 t11 e1 e2 e3 e4
+  -> Expr t1 t2 t3 t4 t5 t6 t7 t8 t9 t10 t11 e1 e2 e3 e4
 listExprCons t hd tl = conExpr t "(::)" [hd, tl]
 {-# INLINE listExprCons #-}
 
 listPatCons
   :: t2
-  -> Pattern t1 t2 t3 t4 t5 t6 t7 t8 t9 t10
-  -> Pattern t1 t2 t3 t4 t5 t6 t7 t8 t9 t10
-  -> Pattern t1 t2 t3 t4 t5 t6 t7 t8 t9 t10
+  -> Pattern t1 t2 t3 t4 t5 t6
+  -> Pattern t1 t2 t3 t4 t5 t6
+  -> Pattern t1 t2 t3 t4 t5 t6
 listPatCons t hd tl = conPat t "(::)" [hd, tl]
 {-# INLINE listPatCons #-}
 
@@ -1006,18 +1006,18 @@ rowExprCons
   :: (Functor e2, Functor e4)
   => t2
   -> Name
-  -> Expr t1 t2 t3 t4 t5 t6 t7 t8 t9 t10 t11 t12 t13 t14 t15 t16 t17 e1 e2 e3 e4
-  -> Expr t1 t2 t3 t4 t5 t6 t7 t8 t9 t10 t11 t12 t13 t14 t15 t16 t17 e1 e2 e3 e4
-  -> Expr t1 t2 t3 t4 t5 t6 t7 t8 t9 t10 t11 t12 t13 t14 t15 t16 t17 e1 e2 e3 e4
+  -> Expr t1 t2 t3 t4 t5 t6 t7 t8 t9 t10 t11 e1 e2 e3 e4
+  -> Expr t1 t2 t3 t4 t5 t6 t7 t8 t9 t10 t11 e1 e2 e3 e4
+  -> Expr t1 t2 t3 t4 t5 t6 t7 t8 t9 t10 t11 e1 e2 e3 e4
 rowExprCons t label expr row = conExpr t ("{" <> label <> "}") [expr, row]
 {-# INLINE rowExprCons #-}
 
 rowPatCons
   :: t2
   -> Name
-  -> Pattern t1 t2 t3 t4 t5 t6 t7 t8 t9 t10
-  -> Pattern t1 t2 t3 t4 t5 t6 t7 t8 t9 t10
-  -> Pattern t1 t2 t3 t4 t5 t6 t7 t8 t9 t10
+  -> Pattern t1 t2 t3 t4 t5 t6
+  -> Pattern t1 t2 t3 t4 t5 t6
+  -> Pattern t1 t2 t3 t4 t5 t6
 rowPatCons t label pat row = conPat t ("{" <> label <> "}") [pat, row]
 {-# INLINE rowPatCons #-}
 
@@ -1111,7 +1111,7 @@ unpackRecordType = para $ \case
 -------------------------------------------------------------------------------
 -------------------------------------------------------------------------------
 
-exprTag :: (Functor e2, Functor e4) => Expr t t t t t t t t t t t t t t t t u e1 e2 e3 e4 -> t
+exprTag :: (Functor e2, Functor e4) => Expr t t t t t t t t t t u e1 e2 e3 e4 -> t
 exprTag = cata $ \case
     EVar    t _     -> t
     EHole   t       -> t
@@ -1132,7 +1132,7 @@ exprTag = cata $ \case
     ERecord t _     -> t
     EAnn    _ e     -> e
 
-patternTag :: Pattern t t t t t t t t t u -> t
+patternTag :: Pattern t t t t t u -> t
 patternTag = cata $ \case
     PVar    t _     -> t
     PCon    t _ _   -> t

@@ -789,7 +789,7 @@ runInfer context classEnv typeEnv kindEnv constructorEnv =
 
 isHole
   :: (Functor e2, Functor e4)
-  => Expr t1 t2 t3 t4 t5 t6 t7 t8 t9 t10 t11 t12 t13 t14 t15 t16 t17 e1 e2 e3 e4
+  => Expr t1 t2 t3 t4 t5 t6 t7 t8 t9 t10 t11 e1 e2 e3 e4
   -> Bool
 isHole = project >>> \case
     EHole{} -> True
@@ -865,13 +865,13 @@ test5expr = lamExpr () [recordPat () (rowPat () "a" (varPat () "a") (varPat () "
 --test5expr = appExpr () [ letExpr () (BPat () (varPat () "r")) (recordExpr () (rowExpr () "a" (annExpr tInt (litExpr () (TInt 1))) (rowExpr () "b" (annExpr tInt (litExpr () (TInt 2))) (conExpr () "{}" [])))) (lamExpr () [recordPat () (rowPat () "a" (varPat () "a") (varPat () "z"))] (varExpr () "a")) , recordExpr () (rowExpr () "a" (annExpr tInt (litExpr () (TInt 5))) (conExpr () "{}" [])) ]
 --test5expr = op2Expr () (ODot ()) (varExpr () "c") (op2Expr () (ODot ()) (varExpr () "b") (op2Expr () (ODot ()) (varExpr () "a") (recordExpr () (rowExpr () "a" (recordExpr () (rowExpr () "b" (recordExpr () (rowExpr () "c" (litExpr () (TString "d")) (conExpr () "{}" []))) (conExpr () "{}" []))) (conExpr () "{}" [])))))
 
---test5expr = funExpr () 
+--test5expr = funExpr ()
 --    [ Clause () [litPat () (TBool True), litPat () (TBool True)] [Choice [] (litExpr () (TInt 1))]
 --    , Clause () [litPat () (TBool False), litPat () (TBool False)] [Choice [] (litExpr () (TInt 2))]
 --    , Clause () [varPat () "x", varPat () "y"] [Choice [] (litExpr () (TInt 3))]
 --    ]
 
---test5expr = funExpr () 
+--test5expr = funExpr ()
 --    [ Clause () [litPat () (TBool True)] [Choice [] (litExpr () (TInt 1))]
 --    , Clause () [litPat () (TBool False)] [Choice [] (litExpr () (TInt 2))]
 ----    , Clause () [varPat () "x", varPat () "y"] [Choice [] (litExpr () (TInt 3))]
@@ -900,7 +900,7 @@ test5 = do
     c = runReader (exhaustivePatternsCheck (astExpr a)) testConstructorEnv
 
     d = s1_translate c
-    
+
     e = runSupplyNats (runReaderT (s2_translate d) (testClassEnv, testTypeEnv, testKindEnv, testConstructorEnv))
 
     f = translateLiteral e

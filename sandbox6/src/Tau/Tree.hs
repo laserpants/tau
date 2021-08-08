@@ -294,7 +294,7 @@ prim TString{}     = "#String"
 
 data MonoClause t p a = MonoClause t [p] (Choice a)
 
-type Stage1Expr t = Expr t t t t t t t t t Void Void Void Void Void Void Void Void [ProgPattern t Void]
+type Stage1Expr t = Expr t t t t t t t t t Void Void [ProgPattern t Void]
     (MonoClause t (ProgPattern t Void)) (ProgBinding t Void)
     (MonoClause t [ProgPattern t Void])
 
@@ -429,9 +429,9 @@ nats = enumFrom 0
 
 -------------------------------------------------------------------------------
 
-type Stage2Expr t = Expr t t t t t t t t Void Void Void Void Void Void Void Void Void Name
-    (MonoClause t (Pattern TInfo TInfo TInfo Void Void Void Void Void Void Void)) (ProgBinding t Void)
-    (MonoClause t [Pattern TInfo TInfo TInfo Void Void Void Void Void Void Void])
+type Stage2Expr t = Expr t t t t t t t t Void Void Void Name
+    (MonoClause t (Pattern TInfo TInfo TInfo Void Void Void)) (ProgBinding t Void)
+    (MonoClause t [Pattern TInfo TInfo TInfo Void Void Void])
 
 s2ExprTag :: Stage2Expr t -> t
 s2ExprTag = cata $ \case
