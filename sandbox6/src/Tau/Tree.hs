@@ -3,6 +3,7 @@
 {-# LANGUAGE FlexibleInstances  #-}
 {-# LANGUAGE LambdaCase         #-}
 {-# LANGUAGE OverloadedStrings  #-}
+{-# LANGUAGE RecordWildCards    #-}
 {-# LANGUAGE StandaloneDeriving #-}
 {-# LANGUAGE StrictData         #-}
 {-# LANGUAGE TemplateHaskell    #-}
@@ -10,6 +11,7 @@ module Tau.Tree where
 
 import Control.Arrow ((>>>))
 import Control.Monad ((<=<))
+import Control.Monad.Except
 import Control.Monad.Extra (andM, anyM, (||^))
 import Control.Monad.Reader
 import Control.Monad.State
@@ -23,9 +25,9 @@ import Data.Function ((&))
 import Data.Functor.Foldable (cata, para, project, embed)
 import Data.List (nub, tails, partition, find, groupBy)
 import Data.Map.Strict (Map)
-import Data.Maybe (fromJust)
+import Data.Maybe (fromMaybe, fromJust)
 import Data.Ord.Deriving
-import Data.Tuple.Extra (both)
+import Data.Tuple.Extra (both, first, second)
 import Data.Void (Void)
 import Tau.Env (Env)
 import Tau.Misc
@@ -292,16 +294,16 @@ prim TDouble{}     = "#Double"
 prim TChar{}       = "#Char"
 prim TString{}     = "#String"
 
-ambiguityCheck 
-  :: ( MonadReader (ClassEnv, TypeEnv, KindEnv, ConstructorEnv) m ) 
-  => ProgExpr TInfo Void 
+ambiguityCheck
+  :: ( MonadReader (ClassEnv, TypeEnv, KindEnv, ConstructorEnv) m )
+  => ProgExpr TInfo Void
   -> WriterT Name m (ProgExpr TInfo Void)
 ambiguityCheck = cata $ \case
 
     EVar t var -> do
         classEnv <- askClassEnv
         let vs = filter (tIsVar . predicateType) (nodePredicates t)
-        -- qs <- fromRight (error "impl") <$> reduce classEnv vs  
+        -- qs <- fromRight (error "impl") <$> reduce classEnv vs
         undefined
 
     EHole   t             -> pure (holeExpr t)
@@ -310,7 +312,7 @@ ambiguityCheck = cata $ \case
     EApp    t es          -> appExpr t <$> sequence es
     ELet    t bind e1 e2  -> letExpr t bind <$> e1 <*> e2
     EFix    t name e1 e2  -> fixExpr t name <$> e1 <*> e2
-    ELam    t ps e        -> lamExpr t ps <$> e 
+    ELam    t ps e        -> lamExpr t ps <$> e
     EIf     t e1 e2 e3    -> ifExpr t <$> e1 <*> e2 <*> e3
     EPat    t es cs       -> patExpr t <$> es <*> traverse sequence cs
     EFun    t cs          -> funExpr t <$> traverse sequence cs
@@ -590,7 +592,7 @@ translateMatchExpr t expr clauses =
         PAs     t name a  -> asPat t name <$> a
         POr     t a b     -> orPat t <$> a <*> b
 
-    expandPatterns2= concatMap $ \(MonoClause t ps g) ->
+    expandPatterns2 = concatMap $ \(MonoClause t ps g) ->
         [MonoClause t qs g | qs <- traverse fn ps]
       where
         fn = cata $ \case
@@ -644,15 +646,15 @@ s3_translate
   -> StateT (Env [(Name, Name)]) m (Stage3Expr Type)
 s3_translate expr = do
     e <- walk expr
-    s <- getAndReset 
+    s <- getAndReset
     insertArgsExpr e s
   where
     walk
       :: ( MonadSupply Int m
          , MonadReader (ClassEnv, TypeEnv, KindEnv, ConstructorEnv) m )
       => Stage2Expr TInfo
-      -> StateT (Env [(Name, Name)]) m (Stage3Expr Type) 
-    walk = cata $ \case 
+      -> StateT (Env [(Name, Name)]) m (Stage3Expr Type)
+    walk = cata $ \case
 
         EPat t expr cs -> do
             e <- expr
@@ -668,13 +670,13 @@ s3_translate expr = do
             let (vs, ts) = partition (tIsVar . predicateType) (nodePredicates t)
 
             classEnv <- askClassEnv
-            fromType <- traverse (reduceSet classEnv) 
+            fromType <- traverse (reduceSet classEnv)
                 (foldr (\(InClass n t) -> Map.insertWith (<>) t [n]) mempty ts)
 
             let ps = Map.foldrWithKey (\k ns ps -> [InClass n k | n <- ns] <> ps) [] fromType
             e1 <- foldlM applyNonVarPredicates (varExpr (nodeType t) var) (tails ps)
 
-            qs <- fromRight (error "Implementation error") <$> reduce classEnv vs  
+            qs <- fromRight (error "Implementation error") <$> reduce classEnv vs
             foldlM applyVarPredicates e1 (tails qs)
 
         ELit   t prim      -> pure (litExpr (nodeType t) prim)
@@ -689,24 +691,69 @@ s3_translate expr = do
         PAs    t as p      -> asPat   (nodeType t) as p
 
     translateClauses = \case
-        MonoClause t ps g -> 
+        MonoClause t ps g ->
             MonoClause (nodeType t) (translatePatterns <$> ps) g
 
-insertArgsExpr
+dictTVar
   :: ( MonadSupply Int m
      , MonadReader (ClassEnv, TypeEnv, KindEnv, ConstructorEnv) m )
-  => x
-  -> Env [(Name, Name)] 
-  -> StateT (Env [(Name, Name)]) m (Stage3Expr Type)
-insertArgsExpr = undefined
+  => Name
+  -> TypeF k i a
+  -> StateT (Env [(Name, Name)]) m Name
+dictTVar name (TVar _ var) = do
+    info <- get
+    classEnv <- askClassEnv
+    maybe fresh pure (lookupVar info classEnv)
+  where
+    fresh = do
+        dv <- ("$dict" <>) . showt <$> supply
+        modify (Env.alter (\vs -> Just $ (name, dv):fromMaybe [] vs) var)
+        pure dv
+
+    lookupVar info classEnv = do
+        varEnv <- Env.lookup var info
+        snd <$> find (elem name . fst) (first (super1 classEnv) <$> varEnv)
 
 applyVarPredicates
   :: ( MonadSupply Int m
      , MonadReader (ClassEnv, TypeEnv, KindEnv, ConstructorEnv) m )
-  => x
+  => Stage3Expr Type
   -> [Predicate]
   -> StateT (Env [(Name, Name)]) m (Stage3Expr Type)
-applyVarPredicates = undefined
+applyVarPredicates expr [] = pure expr
+applyVarPredicates expr (InClass name ty:ps) = do
+    tv <- dictTVar name (project ty)
+    case project expr of
+        EVar t var -> do
+            all <- baz
+            if var `elem` (fst <$> all)
+                then pure (appExpr tempT -- (workingExprTag2 expr)
+                    [ varExpr tempT "@(#)get_field"
+                    , litExpr tSymbol (TSymbol var)
+                    , varExpr tempT tv ])
+                else pure (appExpr tempT -- zz1
+                    [ expr -- setWorkingExprTag2 (yy (InClass name ty) zz1) expr
+                    , varExpr tempT tv ])
+        _ ->
+            pure (appExpr tempT [expr, varExpr tempT tv ])
+  where
+    baz = do
+        env <- askClassEnv
+        fromRight (error ("No class " <> show name))   -- TODO
+            <$> runExceptT (lookupAllMethods name env)
+
+tempT = tVar kTyp "TODO"
+
+lookupAllMethods
+  :: (MonadSupply Int m, MonadError Error m)
+  => Name
+  -> ClassEnv
+  -> m [(Name, Type)]
+lookupAllMethods name env = do
+    (ClassInfo{..}, _) <- liftMaybe (NoSuchClass name) (Env.lookup name env)
+    super <- concat <$$> forM classPredicates $ \(InClass name _) ->
+        lookupAllMethods name env
+    pure (super <> classMethods)
 
 applyNonVarPredicates
   :: ( MonadSupply Int m
@@ -716,5 +763,10 @@ applyNonVarPredicates
   -> StateT (Env [(Name, Name)]) m (Stage3Expr Type)
 applyNonVarPredicates = undefined
 
-reduceSet = undefined
-reduce = undefined
+insertArgsExpr
+  :: ( MonadSupply Int m
+     , MonadReader (ClassEnv, TypeEnv, KindEnv, ConstructorEnv) m )
+  => x
+  -> Env [(Name, Name)]
+  -> StateT (Env [(Name, Name)]) m (Stage3Expr Type)
+insertArgsExpr = undefined

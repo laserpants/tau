@@ -26,6 +26,7 @@ dependencies:
 - containers
 - data-fix
 - deriving-compat
+- either
 - extra
 - megaparsec
 - monad-supply
