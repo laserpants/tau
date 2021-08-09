@@ -1074,27 +1074,22 @@ substitute name subst = para $ \case
 
 -------------------------------------------------------------------------------
 
-coreTranslate :: (Monad m) => Stage4Expr t -> m Core
+coreTranslate :: Stage4Expr t -> Core
 coreTranslate = cata $ \case
 
-    EVar _ var       -> pure (cVar var)
-    ELit _ lit       -> pure (cLit lit)
-    EApp _ exs       -> sequenceExs exs
-    EFix _ var e1 e2 -> cLet var <$> e1 <*> e2
-    ELam _ var e1    -> cLam var <$> e1
-    EIf  _ e1 e2 e3  -> cIf <$> e1 <*> e2 <*> e3
-    ECon _ con exs   -> sequenceExs (pure (cVar con):exs)
-    EPat _ eq cs     -> cPat <$> eq <*> traverse desugarClause cs
-
-desugarClause :: (Monad m) => MonoClause t (PatternLight t) (m Core) -> m ([Name], Core)
-desugarClause (MonoClause t [SCon _ con ps] (Choice [] e)) =
-    (,) (con:ps) <$> e
-desugarClause _ =
-    error "Implementation error"
-
-sequenceExs :: (Monad m) => [m Core] -> m Core
-sequenceExs = (fun <$>) . sequence
+    EVar _ var       -> cVar var
+    ELit _ lit       -> cLit lit
+    EApp _ exs       -> flatten exs
+    EFix _ var e1 e2 -> cLet var e1 e2
+    ELam _ var e1    -> cLam var e1
+    EIf  _ e1 e2 e3  -> cIf e1 e2 e3
+    ECon _ con exs   -> flatten (cVar con:exs)
+    EPat _ eq cs     -> cPat eq (desugarClause <$> cs)
   where
-    fun = \case
+    flatten = \case
         [e] -> e
         es  -> cApp es
+
+    desugarClause = \case
+        MonoClause t [SCon _ con ps] (Choice [] e) -> (con:ps, e)
+        _ -> error "Implementation error"

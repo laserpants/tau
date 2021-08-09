@@ -1200,7 +1200,7 @@ succeedRunExpr expr result =
 
     h = runSupplyNats (s4_translate g)
 
-    i = runIdentity (coreTranslate h)
+    i = coreTranslate h
 
     j = evalExpr i testEvalEnv
 
