@@ -220,7 +220,7 @@ instance (Functor e2, Functor e4, Pretty t4) => Pretty (Expr t1 t2 t3 t4 e1 e2 e
             EOp2    _ (ODot _) a b       -> b <> "." <> a
             EOp2    _ (OField _) a b     -> b <> "." <> a
             EOp2    _ op a b             -> a <+> pretty op <+> b
-            ETuple  _ es                 -> prettyTuple es
+            ETuple  _ es                 -> tupled es
             EList   _ es                 -> prettyList_ es
             EAnn    t e                  -> e <+> ":" <+> pretty t
 

@@ -19,7 +19,7 @@ import Tau.Eval
 import Tau.Misc
 import Tau.Prettyprinters
 import Tau.Tree
-import Tau.Util (Name, runSupplyNats, prettyT, renderDoc)
+import Tau.Util (Name, runSupplyNats, prettyT, prettyW, renderDoc)
 import Test.Hspec hiding (describe, it)
 import qualified Data.Map.Strict as Map
 import qualified Data.Text  as Text
@@ -943,6 +943,14 @@ suceedPrintPattern = suceedPrint
 suceedPrintExpr :: ProgExpr t Void -> Text -> SpecWith ()
 suceedPrintExpr = suceedPrint
 
+suceedPrintExprW :: Int -> ProgExpr t Void -> Text -> SpecWith ()
+suceedPrintExprW w expr str =
+    describe output $
+        it "✔ OK" $
+            output == str
+  where
+    output = prettyW w expr
+
 testPrettyprinters :: SpecWith ()
 testPrettyprinters = do
 
@@ -1145,6 +1153,10 @@ testPrettyprinters = do
         suceedPrintExpr
             (tupleExpr () [varExpr () "x", litExpr () (TInt 5)])
             "(x, 5)"
+
+        suceedPrintExprW 10
+            (tupleExpr () [varExpr () "z", varExpr () "y", varExpr () "x", litExpr () (TInt 5)])
+            "( z\n, y\n, x\n, 5 )"
 
         suceedPrintExpr
             (recordExpr () (rowExpr () "id" (varExpr () "id") (rowExpr () "name" (varExpr () "name") (conExpr () "{}" []))))
