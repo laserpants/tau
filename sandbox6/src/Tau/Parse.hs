@@ -195,18 +195,14 @@ typeFragmentParser = tVar <$> kindVar <*> nameParser
 datatypeParser :: Parser Datatype
 datatypeParser = do
     keyword "type"
-    con <- constructorParser
-    tvs <- many nameParser <* symbol "="
-    prods <- productParser `sepBy` symbol "|"
-    pure (Sum con tvs prods)
+    Sum <$> constructorParser
+        <*> many nameParser <* symbol "="
+        <*> productParser `sepBy` symbol "|"
 
 productParser :: Parser Product
-productParser = do
-    data_ <- constructorParser
-    types <- many item
-    pure (Mul data_ (insertKinds <$> types))
-  where
-    item = try (parens typeParser) <|> typeFragmentParser
+productParser =
+    Mul <$> constructorParser
+        <*> many (insertKinds <$> (try (parens typeParser) <|> typeFragmentParser))
 
 insertKinds :: Type -> Type
 insertKinds = go kTyp
