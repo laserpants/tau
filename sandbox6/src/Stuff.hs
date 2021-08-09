@@ -1065,8 +1065,6 @@ testConstructorEnv = constructorEnv
 
 testEvalEnv :: ValueEnv Eval
 testEvalEnv = Env.fromList
-    [ -- ( "(,)" , constructor "(,)" 2 )
-      ( "_#"  , fromJust (evalExpr (cLam "?0" (cPat (cVar "?0") [(["#", "?1"], cVar "?1")])) mempty) )
+    [ ( "_#"  , fromJust (evalExpr (cLam "?0" (cPat (cVar "?0") [(["#", "?1"], cVar "?1")])) mempty) )
     , ( "(.)" , fromJust (evalExpr (cLam "f" (cLam "x" (cApp [cVar "f", cVar "x"]))) mempty) )
---    , ( "fn1" , fromJust (evalExpr (cLam "?0" (cLam "?1" (cApp [cVar "@Integer.(+)", cVar "?0", cVar "?1"]))) mempty) )
     ]
