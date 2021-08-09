@@ -843,7 +843,7 @@ test5 = do
 
     i = runIdentity (coreTranslate h)
 
-    j = evalExpr i testEvalEnv2
+    j = evalExpr i testEvalEnv
 
     bundle = Bundle
         { sourceExpr = test5expr
@@ -1056,8 +1056,8 @@ testConstructorEnv = constructorEnv
     , ("Nil'"     , ( ["Nil'", "Cons'"], 0 ))
     ]
 
-testEvalEnv2 :: ValueEnv Eval
-testEvalEnv2 = Env.fromList
+testEvalEnv :: ValueEnv Eval
+testEvalEnv = Env.fromList
     [ -- ( "(,)" , constructor "(,)" 2 )
       ( "_#"  , fromJust (evalExpr (cLam "?0" (cPat (cVar "?0") [(["#", "?1"], cVar "?1")])) mempty) )
     , ( "(.)" , fromJust (evalExpr (cLam "f" (cLam "x" (cApp [cVar "f", cVar "x"]))) mempty) )
