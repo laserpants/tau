@@ -332,7 +332,7 @@ ambiguityCheck = cata $ \case
 
 data MonoClause t p a = MonoClause t [p] (Choice a)
 
-type Stage1Expr t = Expr t t t t t t t t t Void Void [ProgPattern t Void]
+type Stage1Expr t = Expr t t Void Void [ProgPattern t Void]
     (MonoClause t (ProgPattern t Void)) (ProgBinding t Void) []
 
 stage1ExprTag :: Stage1Expr t -> t
@@ -466,8 +466,8 @@ nats = enumFrom 0
 
 -------------------------------------------------------------------------------
 
-type Stage2Expr t = Expr t t t t t t t t Void Void Void Name
-    (MonoClause t (Pattern t t t Void Void Void)) Void []
+type Stage2Expr t = Expr t Void Void Void Name
+    (MonoClause t (Pattern t Void Void Void)) Void []
 
 stage2ExprTag :: Stage2Expr t -> t
 stage2ExprTag = cata $ \case
@@ -633,8 +633,8 @@ freshName = ("$e" <>) . showt <$> supply
 
 -------------------------------------------------------------------------------
 
-type Stage3Expr t = Expr t t t t t t t t Void Void Void Name
-    (MonoClause t (Pattern t t t Void Void Void)) Void []
+type Stage3Expr t = Expr t Void Void Void Name
+    (MonoClause t (Pattern t Void Void Void)) Void []
 
 stage3ExprTag :: Stage3Expr t -> t
 stage3ExprTag = cata $ \case
@@ -874,7 +874,7 @@ replaceVar from to = cata $ \case
 
 data PatternLight t = SCon t Name [Name]
 
-type Stage4Expr t = Expr t t t t t t t t Void Void Void Name
+type Stage4Expr t = Expr t Void Void Void Name
     (MonoClause t (PatternLight t)) Void []
 
 data Labeled a
@@ -884,8 +884,8 @@ data Labeled a
 data ConsGroup t = ConsGroup
     { consName     :: Name
     , consType     :: t
-    , consPatterns :: [Pattern t t t Void Void Void]
-    , consClauses  :: [MonoClause t (Pattern t t t Void Void Void) (Stage4Expr t)] }
+    , consPatterns :: [Pattern t Void Void Void]
+    , consClauses  :: [MonoClause t (Pattern t Void Void Void) (Stage4Expr t)] }
 
 stage4ExprTag :: Stage4Expr t -> t
 stage4ExprTag = cata $ \case
@@ -931,7 +931,7 @@ s4_translate = cata $ \case
 compilePatterns
   :: (MonadSupply Int m)
   => Stage4Expr Type
-  -> [MonoClause Type (Pattern Type Type Type Void Void Void) (Stage4Expr Type)]
+  -> [MonoClause Type (Pattern Type Void Void Void) (Stage4Expr Type)]
   -> m (Stage4Expr Type)
 compilePatterns u qs =
     compileMatch [u] qs (varExpr (tVar (kVar "<FAIL>") "<FAIL>") "<FAIL>")
@@ -991,7 +991,9 @@ compilePatterns u qs =
         expr <- compileMatch (vars <> us) consClauses c
         pure (MonoClause t [SCon consType consName pats] (Choice [] expr))
 
-    clauseGroups :: [MonoClause t (Pattern t t t Void Void Void) a] -> [Labeled [MonoClause t (Pattern t t t Void Void Void) a]]
+    clauseGroups
+      :: [MonoClause t (Pattern t Void Void Void) a]
+      -> [Labeled [MonoClause t (Pattern t Void Void Void) a]]
     clauseGroups = cata alg . fmap labeledClause where
         alg Nil                                        = []
         alg (Cons (Constructor e) (Constructor es:ts)) = Constructor (e:es):ts
@@ -1002,7 +1004,7 @@ compilePatterns u qs =
     patternInfo
       :: (MonadSupply Int m)
       => (t -> Name -> a)
-      -> [Pattern t t t Void Void Void]
+      -> [Pattern t Void Void Void]
       -> m ([(Text, t)], [Stage4Expr t], [a])
     patternInfo con pats = do
         vars <- ("$f" <>) . showt <$$> supplies (length pats)
@@ -1015,7 +1017,9 @@ compilePatterns u qs =
            PCon    t _ _ -> t
            PAs     t _ _ -> t
 
-    labeledClause :: MonoClause t (Pattern t t t Void Void Void) a -> Labeled (MonoClause t (Pattern t t t Void Void Void) a)
+    labeledClause
+      :: MonoClause t (Pattern t Void Void Void) a
+      -> Labeled (MonoClause t (Pattern t Void Void Void) a)
     labeledClause eq@(MonoClause _ (p:_) _) = flip cata p $ \case
         PCon{}    -> Constructor eq
         PVar{}    -> Variable eq
@@ -1023,7 +1027,7 @@ compilePatterns u qs =
 
     consGroups
       :: Stage4Expr t
-      -> [MonoClause t (Pattern t t t Void Void Void) (Stage4Expr t)]
+      -> [MonoClause t (Pattern t Void Void Void) (Stage4Expr t)]
       -> [ConsGroup t]
     consGroups u cs = concatMap group_ (groupSortOn fst (info u <$> cs))
       where
@@ -1035,8 +1039,8 @@ compilePatterns u qs =
 
     info
       :: Stage4Expr t
-      -> MonoClause t (Pattern t t t Void Void Void) (Stage4Expr t)
-      -> (Name, (t, [Pattern t t t Void Void Void], MonoClause t (Pattern t t t Void Void Void) (Stage4Expr t)))
+      -> MonoClause t (Pattern t Void Void Void) (Stage4Expr t)
+      -> (Name, (t, [Pattern t Void Void Void], MonoClause t (Pattern t Void Void Void) (Stage4Expr t)))
     info u (MonoClause t (p:qs) (Choice exs e)) =
         case project p of
             PCon _ con ps -> (con, (t, ps, MonoClause t (ps <> qs) (Choice exs e)))

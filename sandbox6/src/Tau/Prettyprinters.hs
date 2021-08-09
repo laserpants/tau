@@ -147,7 +147,7 @@ instance Pretty (Op1 t) where
 instance Pretty (Op2 t) where
     pretty = pretty . op2Symbol
 
-instance (Pretty t6) => Pretty (Pattern t1 t2 t3 t4 t5 t6) where
+instance (Pretty t4) => Pretty (Pattern t1 t2 t3 t4) where
     pretty = para $ \case
 
         PCon _ "(::)" [hd, tl]           -> snd hd <+> "::" <+> snd tl
@@ -189,7 +189,7 @@ instance Pretty (PatternLight t) where
     pretty (SCon _ con []) = pretty con
     pretty (SCon _ con ps) = prettyTuple (pretty <$> ps)
 
-instance (Functor e2, Functor e4, Pretty t11) => Pretty (Expr t1 t2 t3 t4 t5 t6 t7 t8 t9 t10 t11 e1 e2 e3 e4) where
+instance (Functor e2, Functor e4, Pretty t4) => Pretty (Expr t1 t2 t3 t4 e1 e2 e3 e4) where
     pretty = para $ \case
 
         ECon _ "(::)" [hd, tl]           -> snd hd <+> "::" <+> snd tl
