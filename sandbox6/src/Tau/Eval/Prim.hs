@@ -6,8 +6,7 @@ module Tau.Eval.Prim where
 
 import Data.Text (Text)
 import Tau.Env (Env)
-import Tau.Misc
-import Tau.Util
+import Tau.Misc (Prim(..))
 import qualified Data.Text as Text
 import qualified Tau.Env as Env
 

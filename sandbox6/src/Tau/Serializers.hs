@@ -275,8 +275,8 @@ unificationErrorRep = \case
     IncompatibleTypes                   -> makeRep "Error" "IncompatibleTypes"      []
     IncompatibleKinds                   -> makeRep "Error" "IncompatibleKinds"      []
     CannotMerge                         -> makeRep "Error" "CannotMerge"            []
-    ContextReductionFailed              -> makerep "Error" "ContextReductionFailed" []
-    ClassMismatch                       -> makerep "Error" "ClassMismatch"          []
+    ContextReductionFailed              -> makeRep "Error" "ContextReductionFailed" []
+    ClassMismatch                       -> makeRep "Error" "ClassMismatch"          []
 
 -------------------------------------------------------------------------------
 
