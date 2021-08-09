@@ -3,16 +3,19 @@
 {-# LANGUAGE OverloadedStrings #-}
 import Control.Monad.Except (runExceptT)
 import Control.Monad.Reader
+import Control.Monad.State
 import Data.Either (isLeft, isRight)
 import Data.Fix (Fix(..))
 import Data.Functor.Foldable (cata, para, embed)
 import Data.Functor.Identity
 import Data.Map.Strict (Map)
+import Data.Maybe (fromJust)
 import Data.Text (Text, pack, unpack)
 import Data.Text.Prettyprint.Doc
 import Data.Text.Prettyprint.Doc.Render.Text
 import Data.Void
 import Stuff
+import Tau.Eval
 import Tau.Misc
 import Tau.Prettyprinters
 import Tau.Tree
@@ -20,6 +23,7 @@ import Tau.Util (Name, runSupplyNats, prettyT, renderDoc)
 import Test.Hspec hiding (describe, it)
 import qualified Data.Map.Strict as Map
 import qualified Data.Text  as Text
+import qualified Tau.Env as Env
 import qualified Test.Hspec as Hspec
 
 describe :: Text -> SpecWith () -> SpecWith ()
@@ -1164,3 +1168,65 @@ testPrettyprinters = do
                 suceedPrintExpr
                     (conExpr () "(::)" [varExpr () "x", varExpr () "xs"])
                     "x :: xs"
+
+-------------------------------------------------------------------------------
+
+-- Flight tests
+
+succeedRunExpr :: ProgExpr () Type -> Maybe (Value Eval) -> SpecWith ()
+succeedRunExpr expr result =
+    describe ("TODO " <> prettyT expr) $ do
+        it "✔ TODO" $
+            result == j
+  where
+    ast = Ast expr
+    (a, b) = runInfer mempty testClassEnv testTypeEnv testKindEnv testConstructorEnv (inferAstType ast)
+
+    c :: ProgExpr TInfo Void
+    c = runReader (exhaustivePatternsCheck (astExpr a)) testConstructorEnv
+
+    d = s1_translate c
+
+    e = runSupplyNats (runReaderT (s2_translate d) (testClassEnv, testTypeEnv, testKindEnv, testConstructorEnv))
+
+    f = translateLiteral e
+
+    g = runSupplyNats (runReaderT (evalStateT (s3_translate f) mempty) (testClassEnv, testTypeEnv, testKindEnv, testConstructorEnv))
+
+    h = runSupplyNats (s4_translate g)
+
+    i = runIdentity (coreTranslate h)
+
+    j = evalExpr i testEvalEnv
+
+--    describe ("The inferred type of the expression " <> prettyT expr) $ do
+--        it ("✔ is unifiable with " <> prettyT ty) $
+--            isRight res
+--        if null errs
+--            then
+--                it "✔ contains no errors" $
+--                    not (hasErrors e1)
+--            else
+--                it ("✔ contains errors: " <> pack (show errs)) $
+--                    and [err `elem` allErrors e1 | err <- errs]
+--  where
+--    (Ast e, (typeSub, kindSub, context)) =
+--        runInfer mempty testClassEnv testTypeEnv testKindEnv testConstructorEnv (inferAstType (Ast expr))
+--
+--    res = runMatch ty (typeOf (applyBoth (typeSub, kindSub) e))
+--    e1  = runReader (exhaustivePatternsCheck e) testConstructorEnv
+
+testFlight :: SpecWith ()
+testFlight = do
+
+    succeedRunExpr
+        (fixExpr () "loopList" (lamExpr () [varPat () "g", varPat () "ys"] (patExpr () (varExpr () "ys") [ Clause () (conPat () "(::)" [varPat () "x", varPat () "xs"]) [Choice [] (appExpr () [varExpr () "g", conExpr () "Cons'" [varExpr () "x", varExpr () "xs", appExpr () [varExpr () "loopList", varExpr () "g", varExpr () "xs"]]])] , Clause () (conPat () "[]" []) [Choice [] (appExpr () [varExpr () "g", conExpr () "Nil'" []])] ])) (letExpr () (BFun () "length" [varPat () "xs"]) (op2Expr () (ODot ()) (appExpr () [ varExpr () "loopList" , funExpr () [ Clause () [conPat () "Cons'" [anyPat (), anyPat (), varPat () "a"]] [Choice [] (op2Expr () (OAdd ()) (litExpr () (TInteger 1)) (varExpr () "a"))] , Clause () [conPat () "Nil'" []] [Choice [] (annExpr tInt (litExpr () (TInteger 0)))] ] ]) (varExpr () "xs")) (letExpr () (BPat () (varPat () "xs")) (annExpr (tList tInt) (listExpr () [litExpr () (TInteger 2)])) (patExpr () (varExpr () "xs") [ Clause () (conPat () "(::)" [varPat () "x", anyPat ()]) [Choice [op2Expr () (OLte ()) (appExpr () [varExpr () "length", varExpr () "xs"]) (litExpr () (TInteger 3))] (varExpr () "x")] , Clause () (anyPat ()) [Choice [] (litExpr () (TInteger 0))] ]))))
+        (Just (Value (TInt 2)))
+
+testEvalEnv :: ValueEnv Eval
+testEvalEnv = Env.fromList
+    [ -- ( "(,)" , constructor "(,)" 2 )
+      ( "_#"  , fromJust (evalExpr (cLam "?0" (cPat (cVar "?0") [(["#", "?1"], cVar "?1")])) mempty) )
+    , ( "(.)" , fromJust (evalExpr (cLam "f" (cLam "x" (cApp [cVar "f", cVar "x"]))) mempty) )
+--    , ( "fn1" , fromJust (evalExpr (cLam "?0" (cLam "?1" (cApp [cVar "@Integer.(+)", cVar "?0", cVar "?1"]))) mempty) )
+    ]
