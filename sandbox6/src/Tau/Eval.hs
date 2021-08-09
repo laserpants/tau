@@ -112,16 +112,11 @@ closure var a = pure (Closure var a mempty)
 evalVar :: (MonadFail m, MonadReader (ValueEnv m) m) => Name -> m (Value m)
 evalVar var = 
     case Text.stripPrefix "@" var of
-        Just "#getField" ->
+        Just "(#)get_field" ->
             closure "?a" $ do 
                 Just (Value (TSymbol name)) <- asks (Env.lookup "?a")
                 closure "?b" $ do
                     Just (Data "#" fields) <- asks (Env.lookup "?b")
-                    --traceShowM "b****"
-                    --traceShowM name
-                    --traceShowM fields
-                    --traceShowM "e****"
-                    --traceShowM name
                     getField name fields
 
         Just prim ->
