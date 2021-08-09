@@ -16,15 +16,16 @@ import Tau.Misc
 import Tau.Util hiding (parens, brackets, braces, commaSep)
 import Text.Megaparsec
 import Text.Megaparsec.Char
+import TextShow
 import qualified Text.Megaparsec.Char as Megaparsec
 import qualified Text.Megaparsec.Char.Lexer as Lexer
 
 type Parser = ParsecT Void Text (Supply Int)
 
-runParserStack 
-  :: ParsecT Void Text (Supply Int) a 
-  -> String 
-  -> Text 
+runParserStack
+  :: ParsecT Void Text (Supply Int) a
+  -> String
+  -> Text
   -> Either (ParseErrorBundle Text Void) a
 runParserStack p s t = runSupplyNats (runParserT p s (strip t))
 
@@ -92,13 +93,49 @@ word parser = lexeme $ try $ do
 
 -------------------------------------------------------------------------------
 
+nameParser :: Parser Text
+nameParser = word (withInitial (lowerChar <|> char '_'))
+
+constructorParser :: Parser Name
+constructorParser = word (withInitial upperChar)
+
+commaSep :: Parser a -> Parser [a]
+commaSep parser = parser `sepBy1` symbol ","
+
+elements :: Parser a -> Parser [a]
+elements = brackets . commaSep
+
+components :: Parser a -> Parser [a]
+components = parens . commaSep
+
+fields :: Name -> Parser a -> Parser [(Name, a)]
+fields stor parser = commaSep $ (,) <$> nameParser <*> (symbol stor *> parser)
+
+rowParser
+  :: Text
+  -> Parser a
+  -> (Name -> a -> a -> a)
+  -> (Name -> a)
+  -> a
+  -> Parser a
+rowParser stor parser rowCon varCon empty = braces $ do
+    pairs <- fields stor parser
+    rest <- optional (symbol "|" *> nameParser)
+    pure $ case pairs of
+        [] -> empty
+        (label, value):row -> do
+            let next = maybe empty varCon rest
+            foldr (uncurry rowCon) (rowCon label value next) row
+
+-------------------------------------------------------------------------------
+
 primParser :: Parser Prim
 primParser = parseUnit
-    <|> parseTrue 
+    <|> parseTrue
     <|> parseFalse
     <|> parseChar
     <|> parseString
-    <|> try parseFloat 
+    <|> try parseFloat
     <|> parseIntegral
   where
     parseUnit      = symbol "()" $> TUnit
@@ -109,4 +146,45 @@ primParser = parseUnit
     parseFloat     = TDouble <$> lexeme Lexer.float
     parseIntegral  = TInteger <$> lexeme Lexer.decimal
     chars          = char '\"' *> manyTill Lexer.charLiteral (char '\"')
+
+-------------------------------------------------------------------------------
+
+kindVar :: Parser Kind
+kindVar = lift (kVar . ("k" <>) . showt <$> supply)
+
+typeParser :: Parser Type
+typeParser = makeExprParser (try (parens typeParser) <|> parser)
+    [[ InfixR (tArr <$ symbol "->") ]]
+  where
+    parser = do
+        (t:ts) <- some typeFragmentParser
+        foldlM (\s t -> kindVar >>= \k -> pure (tApp k s t)) t ts
+
+typeFragmentParser :: Parser Type
+typeFragmentParser = tVar <$> kindVar <*> nameParser
+    <|> builtIn
+    <|> tCon <$> kindVar <*> constructorParser
+    <|> tTuple <$> components typeParser
+    <|> recordTypeParser
+  where
+    recordTypeParser :: Parser Type
+    recordTypeParser =
+        symbol "{}" $> tRecord tRowNil
+            <|> tRecord <$> rowParser ":" typeParser tRow (tVar kRow) tRowNil
+
+    builtIn :: Parser Type
+    builtIn = builtInType "Integer" kTyp
+          <|> builtInType "Int"     kTyp
+          <|> builtInType "Unit"    kTyp
+          <|> builtInType "Bool"    kTyp
+          <|> builtInType "Float"   kTyp
+          <|> builtInType "Double"  kTyp
+          <|> builtInType "Char"    kTyp
+          <|> builtInType "String"  kTyp
+          <|> builtInType "Nat"     kTyp
+          <|> builtInType "List"    kFun
+          <|> builtInType "Option"  kFun
+
+    builtInType :: Name -> Kind -> Parser Type
+    builtInType name kind = keyword name $> tCon kind name
 
