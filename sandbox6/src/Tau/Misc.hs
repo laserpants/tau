@@ -120,15 +120,15 @@ data PatternF t1 t2 t3 t4 a
 type Pattern t1 t2 t3 t4 = Fix (PatternF t1 t2 t3 t4)
 
 data ExprF t1 t2 t3 t4 e1 e2 e3 e4 a
-    = EVar    t1  Name                   -- ^ Variable
-    | ECon    t1  Name [a]               -- ^ Data constructor
-    | ELit    t1  Prim                   -- ^ Literal value
-    | EApp    t1  [a]                    -- ^ Function application
-    | EFix    t1  Name a a               -- ^ Recursive let
-    | ELam    t1  e1 a                   -- ^ Lambda abstraction
-    | EIf     t1  a a a                  -- ^ If-clause
-    | EPat    t1  a [e2 a]               -- ^ Match expressions
-    | ELet    t2  e3 a a                 -- ^ Let expression
+    = EVar    t1 Name                    -- ^ Variable
+    | ECon    t1 Name [a]                -- ^ Data constructor
+    | ELit    t1 Prim                    -- ^ Literal value
+    | EApp    t1 [a]                     -- ^ Function application
+    | EFix    t1 Name a a                -- ^ Recursive let
+    | ELam    t1 e1 a                    -- ^ Lambda abstraction
+    | EIf     t1 a a a                   -- ^ If-clause
+    | EPat    t1 a [e2 a]                -- ^ Match expressions
+    | ELet    t2 e3 a a                  -- ^ Let expression
     | EFun    t3 [e4 a]                  -- ^ Fun expression
     | EOp1    t3 (Op1 t3) a              -- ^ Unary operator
     | EOp2    t3 (Op2 t3) a a            -- ^ Binary operator
@@ -140,8 +140,7 @@ data ExprF t1 t2 t3 t4 e1 e2 e3 e4 a
     | EAnn    t4 a                       -- ^ Explicit type annotation
 
 -- | Language expression
-type Expr t1 t2 t3 t4 e1 e2 e3 e4 =
-    Fix (ExprF t1 t2 t3 t4 e1 e2 e3 e4)
+type Expr t1 t2 t3 t4 e1 e2 e3 e4 = Fix (ExprF t1 t2 t3 t4 e1 e2 e3 e4)
 
 -- | Name binding-part of let expressions
 data Binding t p
@@ -447,8 +446,8 @@ type TypeEnv = Env Scheme
 type KindEnv = Env Kind
 
 type ClassEnv = Env
-    ( ClassInfo Name Type                         -- Abstract interface
-    , [ClassInfo Type (Ast (TypeInfo ()) Void)] ) -- Instances
+    ( ClassInfo Name Type                          -- Abstract interface
+    , [ClassInfo Type (Ast (TypeInfo ()) Void)] )  -- Instances
 
 type ConstructorEnv = Env (Set Name, Int)
 
@@ -849,84 +848,47 @@ tIsArr = project >>> \case
 
 -- Pattern
 
-varPat
-  :: t1
-  -> Name
-  -> Pattern t1 t2 t3 t4
+varPat :: t1 -> Name -> Pattern t1 t2 t3 t4
 varPat = embed2 PVar
 {-# INLINE varPat #-}
 
-conPat
-  :: t1
-  -> Name
-  -> [Pattern t1 t2 t3 t4]
-  -> Pattern t1 t2 t3 t4
+conPat :: t1 -> Name -> [Pattern t1 t2 t3 t4] -> Pattern t1 t2 t3 t4
 conPat = embed3 PCon
 {-# INLINE conPat #-}
 
-asPat
-  :: t1
-  -> Name
-  -> Pattern t1 t2 t3 t4
-  -> Pattern t1 t2 t3 t4
+asPat :: t1 -> Name -> Pattern t1 t2 t3 t4 -> Pattern t1 t2 t3 t4
 asPat = embed3 PAs
 {-# INLINE asPat #-}
 
-litPat
-  :: t3
-  -> Prim
-  -> Pattern t1 t2 t3 t4
+litPat :: t3 -> Prim -> Pattern t1 t2 t3 t4
 litPat = embed2 PLit
 {-# INLINE litPat #-}
 
-anyPat
-  :: t3
-  -> Pattern t1 t2 t3 t4
+anyPat :: t3 -> Pattern t1 t2 t3 t4
 anyPat = embed1 PAny
 {-# INLINE anyPat #-}
 
-orPat
-  :: t2
-  -> Pattern t1 t2 t3 t4
-  -> Pattern t1 t2 t3 t4
-  -> Pattern t1 t2 t3 t4
+orPat :: t2 -> Pattern t1 t2 t3 t4 -> Pattern t1 t2 t3 t4 -> Pattern t1 t2 t3 t4
 orPat = embed3 POr
 {-# INLINE orPat #-}
 
-tuplePat
-  :: t3
-  -> [Pattern t1 t2 t3 t4]
-  -> Pattern t1 t2 t3 t4
+tuplePat :: t3 -> [Pattern t1 t2 t3 t4] -> Pattern t1 t2 t3 t4
 tuplePat = embed2 PTuple
 {-# INLINE tuplePat #-}
 
-listPat
-  :: t3
-  -> [Pattern t1 t2 t3 t4]
-  -> Pattern t1 t2 t3 t4
+listPat :: t3 -> [Pattern t1 t2 t3 t4] -> Pattern t1 t2 t3 t4
 listPat = embed2 PList
 {-# INLINE listPat #-}
 
-rowPat
-  :: t3
-  -> Name
-  -> Pattern t1 t2 t3 t4
-  -> Pattern t1 t2 t3 t4
-  -> Pattern t1 t2 t3 t4
+rowPat :: t3 -> Name -> Pattern t1 t2 t3 t4 -> Pattern t1 t2 t3 t4 -> Pattern t1 t2 t3 t4
 rowPat = embed4 PRow
 {-# INLINE rowPat #-}
 
-recordPat
-  :: t3
-  -> Pattern t1 t2 t3 t4
-  -> Pattern t1 t2 t3 t4
+recordPat :: t3 -> Pattern t1 t2 t3 t4 -> Pattern t1 t2 t3 t4
 recordPat = embed2 PRecord
 {-# INLINE recordPat #-}
 
-annPat
-  :: t4
-  -> Pattern t1 t2 t3 t4
-  -> Pattern t1 t2 t3 t4
+annPat :: t4 -> Pattern t1 t2 t3 t4 -> Pattern t1 t2 t3 t4
 annPat = embed2 PAnn
 {-# INLINE annPat #-}
 
