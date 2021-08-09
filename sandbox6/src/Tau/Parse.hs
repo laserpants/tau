@@ -2,6 +2,7 @@
 {-# LANGUAGE OverloadedStrings #-}
 module Tau.Parse where
 
+import Control.Arrow ((<<<), (>>>))
 import Control.Monad
 import Control.Monad.Combinators.Expr
 import Control.Monad.Supply
@@ -9,6 +10,7 @@ import Control.Monad.Trans (lift)
 import Data.Foldable (foldlM)
 import Data.Function ((&))
 import Data.Functor (($>))
+import Data.Functor.Foldable
 import Data.Maybe (fromMaybe, fromJust)
 import Data.Text (Text, pack, unpack, strip)
 import Data.Void
@@ -187,4 +189,47 @@ typeFragmentParser = tVar <$> kindVar <*> nameParser
 
     builtInType :: Name -> Kind -> Parser Type
     builtInType name kind = keyword name $> tCon kind name
+
+-------------------------------------------------------------------------------
+
+datatypeParser :: Parser Datatype
+datatypeParser = do
+    keyword "type"
+    con <- constructorParser
+    tvs <- many nameParser <* symbol "="
+    prods <- productParser `sepBy` symbol "|"
+    pure (Sum con tvs prods)
+
+productParser :: Parser Product
+productParser = do
+    data_ <- constructorParser
+    types <- many item
+    pure (Mul data_ (insertKinds <$> types))
+  where
+    item = try (parens typeParser) <|> typeFragmentParser
+
+insertKinds :: Type -> Type
+insertKinds = go kTyp
+  where
+    go :: Kind -> Type -> Type
+    go k = project >>> \case
+        TVar _ var   -> tVar k var
+        TCon _ con   -> tCon k con
+        TRow lab a b -> tRow lab (insertKinds a) (setKind kRow b)
+        TArr a b     -> tArr (insertKinds a) (insertKinds b)
+        TApp _ a b   -> tApp k (go (kArr k1 k) a) rhs
+          where
+            k1 = case project a of
+                TCon _ "#"  -> kRow
+                _           -> kTyp
+            rhs = case project (insertKinds b) of
+                TCon _ "{}" -> tCon kRow "{}"
+                t           -> setKind kTyp (embed t)
+
+    setKind :: Kind -> Type -> Type
+    setKind k = project >>> \case
+        TVar _ var   -> tVar k var
+        TCon _ con   -> tCon k con
+        TApp _ a b   -> tApp k a b
+        t            -> embed t
 
