@@ -71,7 +71,7 @@ instance Pretty Type where
                 then maybe "{}" (wrapped "{" "}") final
                 else "{" <+> commaSep fields <+> maybe "}" (wrapped "|" "}") final
           where
-            wrapped p q = (encloseSpace p q . pretty)
+            wrapped p q = encloseSpace p q . pretty
 
             fields = flip para t2 $ \case
                 TRow label ty rest -> pretty label <+> ":" <+> pretty (fst ty):snd rest

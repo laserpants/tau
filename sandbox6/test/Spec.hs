@@ -960,6 +960,10 @@ testPrettyprinters = do
             (TChar 'a')
             "'a'"
 
+        suceedPrint
+            (TFloat 3.14)
+            "3.14"
+
     describe "• Type" $ do
 
         suceedPrintType
