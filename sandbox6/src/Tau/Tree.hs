@@ -424,18 +424,18 @@ translateAppExpr t es =
         [varPat (stage1ExprTag e) n] body
 
     holes :: [(Stage1Expr TInfo, Name)]
-    holes = zip (filter (hole . project) es) ["^" <> showt n | n <- nats]
+    holes = zip (filter (hollow . project) es) ["^" <> showt n | n <- nats]
 
     replaceHoles = fromJust (evalSupply (mapM f es) nats)
       where
-        f e | hole (project e) = do
+        f e | hollow (project e) = do
                 n <- supply
                 pure (varExpr (stage1ExprTag e) ("^" <> showt n))
             | otherwise =
                 pure e
 
-    hole (EVar _ "^") = True
-    hole _            = False
+    hollow (EVar _ "^") = True
+    hollow _            = False
 
     remArgs :: Int -> Type -> Type
     remArgs 0 t = t
@@ -599,10 +599,10 @@ translateMatchExpr t expr clauses =
       where
         fn = cata $ \case
 
-            PVar t var       -> pure (varPat t var)
-            PCon t con ps    -> conPat t con <$> sequence ps
-            PAs  t name a    -> asPat t name <$> a
-            POr  _ a b       -> a <> b
+            PVar t var    -> pure (varPat t var)
+            PCon t con ps -> conPat t con <$> sequence ps
+            PAs  t name a -> asPat t name <$> a
+            POr  _ a b    -> a <> b
 
 translateLiteral :: Stage2Expr TInfo -> Stage2Expr TInfo
 translateLiteral = cata $ \case
@@ -662,11 +662,6 @@ s3_translate expr = do
     s <- getAndReset
     insertArgsExpr e s
   where
---    walk
---      :: ( MonadSupply Int m
---         , MonadReader (ClassEnv, TypeEnv, KindEnv, ConstructorEnv) m )
---      => Stage2Expr TInfo
---      -> StateT (Env [(Name, Name)]) m (Stage3Expr Type)
     walk = cata $ \case
 
         EPat t expr cs -> do
@@ -836,6 +831,7 @@ translateMethod ast = do
   where
     expr = mapExprTag zzz (astExpr ast)
     zzz (TypeInfo () ty ps) = TypeInfo [] ty ps
+    -- TODO: name
 
 insertArgsExpr
   :: ( MonadSupply Int m
@@ -854,7 +850,6 @@ insertArgsExpr expr = foldrM fun expr . Env.toList
     fun (var, vs) e = do
         classEnv <- askClassEnv
         set1 <- reduceSet classEnv (fst <$> vs)
---        let set2 = [(x, b) | (a, b) <- vs, x <- super1 classEnv a, a `elem` set1]
         let set2 = [(x, b) | (a, b) <- vs, a `elem` set1, x <- super1 classEnv a]
         pure (foldr (fun2 set1 set2) e vs)
       where
