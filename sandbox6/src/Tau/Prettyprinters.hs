@@ -185,6 +185,10 @@ instance (Pretty t6) => Pretty (Pattern t1 t2 t3 t4 t5 t6) where
             PVar _ v                     -> " " <> pipe <+> pretty v
             _                            -> ""
 
+instance Pretty (PatternLight t) where
+    pretty (SCon _ con []) = pretty con
+    pretty (SCon _ con ps) = prettyTuple (pretty <$> ps)
+
 instance (Functor e2, Functor e4, Pretty t11) => Pretty (Expr t1 t2 t3 t4 t5 t6 t7 t8 t9 t10 t11 e1 e2 e3 e4) where
     pretty = para $ \case
 
@@ -239,6 +243,32 @@ instance (Functor e2, Functor e4, Pretty t11) => Pretty (Expr t1 t2 t3 t4 t5 t6 
             EVar _ v                     -> " " <> pipe <+> pretty v
             EApp _ (_:a:_)               -> a
             _                            -> ""
+
+instance Pretty Core where
+    pretty = para $ \case
+
+        CApp ((e, doc1):es) ->
+            parensIf parensRequiredL doc1 <> prettyArgs es
+          where
+            prettyArgs args = parens (commaSep (snd <$> args))
+
+            parensRequiredL =
+                case project e of
+                    CVar{} -> False
+                    _      -> True
+
+        expr -> snd <$> expr & \case
+
+            CVar var                     -> pretty var
+            CLit prim                    -> pretty prim
+            CLet name e1 e2              -> "TODO" -- prettyLet (pretty name <+> "=") e1 e2
+            CLam name e1                 -> "TODO" -- prettyLam (pretty name) e1
+            CIf  e1 e2 e3                -> "TODO" -- prettyIf e1 e2 e3
+            CPat e1 cs                   -> nest 2 (vsep ["match" <+> e1 <+> "with", coreClauses cs])
+
+coreClauses cs = vsep (prettyClause <$> cs)
+  where
+    prettyClause (ns, e) = pipe <+> prettyTuple (pretty <$> ns) <+> "=>" <+> e
 
 instance Pretty Product where
     pretty (Mul con types) =

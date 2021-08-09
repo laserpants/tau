@@ -31,6 +31,7 @@ import Data.Tuple.Extra
 import Data.Void
 import Debug.Trace
 import Tau.Misc
+import Tau.Eval
 import Tau.Prettyprinters
 import Tau.Serializers
 import Tau.Tree
@@ -785,6 +786,11 @@ test5expr :: ProgExpr () Type
 --test5expr = appExpr () [ letExpr () (BPat () (varPat () "r")) (recordExpr () (rowExpr () "a" (annExpr tInt (litExpr () (TInt 1))) (rowExpr () "b" (annExpr tInt (litExpr () (TInt 2))) (conExpr () "{}" [])))) (lamExpr () [recordPat () (rowPat () "a" (varPat () "a") (varPat () "z"))] (varExpr () "a")) , recordExpr () (rowExpr () "a" (annExpr tInt (litExpr () (TInt 5))) (conExpr () "{}" [])) ]
 --test5expr = op2Expr () (ODot ()) (varExpr () "c") (op2Expr () (ODot ()) (varExpr () "b") (op2Expr () (ODot ()) (varExpr () "a") (recordExpr () (rowExpr () "a" (recordExpr () (rowExpr () "b" (recordExpr () (rowExpr () "c" (litExpr () (TString "d")) (conExpr () "{}" []))) (conExpr () "{}" []))) (conExpr () "{}" [])))))
 
+test5expr = fixExpr () "loopList" (lamExpr () [varPat () "g", varPat () "ys"] (patExpr () (varExpr () "ys") [ Clause () (conPat () "(::)" [varPat () "x", varPat () "xs"]) [Choice [] (appExpr () [varExpr () "g", conExpr () "Cons'" [varExpr () "x", varExpr () "xs", appExpr () [varExpr () "loopList", varExpr () "g", varExpr () "xs"]]])] , Clause () (conPat () "[]" []) [Choice [] (appExpr () [varExpr () "g", conExpr () "Nil'" []])] ])) (letExpr () (BFun () "length" [varPat () "xs"]) (op2Expr () (ODot ()) (appExpr () [ varExpr () "loopList" , funExpr () [ Clause () [conPat () "Cons'" [anyPat (), anyPat (), varPat () "a"]] [Choice [] (op2Expr () (OAdd ()) (litExpr () (TInteger 1)) (varExpr () "a"))] , Clause () [conPat () "Nil'" []] [Choice [] (annExpr tInt (litExpr () (TInteger 0)))] ] ]) (varExpr () "xs")) (letExpr () (BPat () (varPat () "xs")) (annExpr (tList tInt) (listExpr () [litExpr () (TInteger 2)])) (patExpr () (varExpr () "xs") [ Clause () (conPat () "(::)" [varPat () "x", anyPat ()]) [Choice [op2Expr () (OLte ()) (appExpr () [varExpr () "length", varExpr () "xs"]) (litExpr () (TInteger 3))] (varExpr () "x")] , Clause () (anyPat ()) [Choice [] (litExpr () (TInteger 0))] ])))
+
+--test5expr = 
+--            (appExpr () [ lamExpr () [varPat () "x", varPat () "y"] (patExpr () (tupleExpr () [varExpr () "x", varExpr () "y"]) [ Clause () (tuplePat () [annPat tInt (litPat () (TInteger 1)), varPat () "x"])  [ Choice [op2Expr () (ONeq ()) (varExpr () "x") (litExpr () (TInteger 0))] (varExpr () "x") , Choice [] (annExpr tInt (litExpr () (TInteger 0))) ] , Clause () (anyPat ()) [ Choice [] (annExpr tInt (litExpr () (TInteger 100))) ] ]) , litExpr () (TInteger 1) , litExpr () (TInteger 5) ])
+
 --test5expr = funExpr ()
 --    [ Clause () [litPat () (TBool True), litPat () (TBool True)] [Choice [] (litExpr () (TInt 1))]
 --    , Clause () [litPat () (TBool False), litPat () (TBool False)] [Choice [] (litExpr () (TInt 2))]
@@ -805,12 +811,12 @@ test5expr :: ProgExpr () Type
 --            , annExpr tInt (litExpr () (TInteger 5))
 --            , annExpr tInt (litExpr () (TInteger 5))
 --            ]
-
-test5expr =
-        letExpr () (BFun () "f" [varPat () "x"])
-            (litExpr () (TInteger 11))
-            (lamExpr () [varPat () "x"]
-                (appExpr () [varExpr () "show", appExpr () [varExpr () "read", varExpr () "x"]]))
+--
+--test5expr =
+--        letExpr () (BFun () "f" [varPat () "x"])
+--            (litExpr () (TInteger 11))
+--            (lamExpr () [varPat () "x"]
+--                (appExpr () [varExpr () "show", appExpr () [varExpr () "read", varExpr () "x"]]))
 
 test5 :: IO ()
 test5 = do
@@ -833,6 +839,12 @@ test5 = do
 
     g = runSupplyNats (runReaderT (evalStateT (s3_translate f) mempty) (testClassEnv, testTypeEnv, testKindEnv, testConstructorEnv))
 
+    h = runSupplyNats (s4_translate g)
+
+    i = runIdentity (coreTranslate h)
+
+    j = evalExpr i testEvalEnv2
+
     bundle = Bundle
         { sourceExpr = test5expr
         --, typedExpr  = astExpr a
@@ -840,6 +852,9 @@ test5 = do
         , stage1Expr = d
         , stage2Expr = f
         , stage3Expr = g
+        , stage4Expr = h
+        , coreExpr   = i
+        , value      = j
         }
 
 data Bundle = Bundle
@@ -848,6 +863,9 @@ data Bundle = Bundle
     , stage1Expr  :: Stage1Expr (TypeInfo [Error])
     , stage2Expr  :: Stage2Expr (TypeInfo [Error])
     , stage3Expr  :: Stage3Expr Type
+    , stage4Expr  :: Stage4Expr Type
+    , coreExpr    :: Core
+    , value       :: Maybe (Tau.Eval.Value Eval)
     } deriving (Show, Eq)
 
 instance ToRep Bundle where
@@ -858,6 +876,9 @@ instance ToRep Bundle where
             , "stage1"  .= toRep stage1Expr
             , "stage2"  .= toRep stage2Expr
             , "stage3"  .= toRep stage3Expr
+            , "stage4"  .= toRep stage4Expr
+            , "core"    .= toRep coreExpr
+            , "value"   .= toRep value
             ]
 
 -------------------------------------------------------------------------------
@@ -1035,10 +1056,10 @@ testConstructorEnv = constructorEnv
     , ("Nil'"     , ( ["Nil'", "Cons'"], 0 ))
     ]
 
--- testEvalEnv :: ValueEnv Eval
--- testEvalEnv = Env.fromList
---     [ -- ( "(,)" , constructor "(,)" 2 )
---       ( "_#"  , fromJust (evalExpr (cLam "?0" (cPat (cVar "?0") [(["#", "?1"], cVar "?1")])) mempty) )
---     , ( "(.)" , fromJust (evalExpr (cLam "f" (cLam "x" (cApp [cVar "f", cVar "x"]))) mempty) )
--- --    , ( "fn1" , fromJust (evalExpr (cLam "?0" (cLam "?1" (cApp [cVar "@Integer.(+)", cVar "?0", cVar "?1"]))) mempty) )
---     ]
+testEvalEnv2 :: ValueEnv Eval
+testEvalEnv2 = Env.fromList
+    [ -- ( "(,)" , constructor "(,)" 2 )
+      ( "_#"  , fromJust (evalExpr (cLam "?0" (cPat (cVar "?0") [(["#", "?1"], cVar "?1")])) mempty) )
+    , ( "(.)" , fromJust (evalExpr (cLam "f" (cLam "x" (cApp [cVar "f", cVar "x"]))) mempty) )
+--    , ( "fn1" , fromJust (evalExpr (cLam "?0" (cLam "?1" (cApp [cVar "@Integer.(+)", cVar "?0", cVar "?1"]))) mempty) )
+    ]

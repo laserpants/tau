@@ -147,7 +147,7 @@ expandLitAndAnyPatterns = traverse expandClause
         PLit t prim -> do
             var <- varSupply
             tell [ appExpr (TypeInfo [] (Just tBool) [])
-                   [ varExpr (eqFunType t) ("(==)")
+                   [ varExpr (eqFunType t) "(==)"
                    , varExpr (TypeInfo [] (nodeType t) []) var
                    , litExpr t prim ]]
             pure (varPat t var)

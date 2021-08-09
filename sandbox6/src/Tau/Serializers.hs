@@ -7,21 +7,27 @@ module Tau.Serializers where
 import Control.Arrow ((<<<), (>>>))
 import Data.Aeson
 import Data.Functor.Foldable (cata, para, project, embed)
-import Data.Text (Text)
+import Data.Text (Text, pack)
 import Data.Text.Prettyprint.Doc
 import Data.Void
+import Tau.Eval hiding (Value)
 import Tau.Misc
 import Tau.Prettyprinters
 import Tau.Tree
 import Tau.Util
 import qualified Data.HashMap.Strict as HashMap
 import qualified Data.Vector as Vector
+import qualified Tau.Eval as Tau
 
 class ToRep t where
     toRep :: t -> Value
 
 instance (ToRep t) => ToRep [t] where
     toRep ts = array (toRep <$> ts)
+
+instance (ToRep t) => ToRep (Maybe t) where
+    toRep Nothing  = makeRep "-" "-" []
+    toRep (Just t) = toRep t
 
 instance ToRep Type where
     toRep = withPretty typeJson
@@ -40,6 +46,9 @@ instance (ToRep t1, ToRep t2, ToRep t3, ToRep t4, ToRep t5, ToRep t6, Pretty t6)
 
 instance (Functor e2, Functor e4, ToRep t1, ToRep t2, ToRep t3, ToRep t4, ToRep t5, ToRep t6, ToRep t7, ToRep t8, ToRep t9, ToRep t10, ToRep t11, ToRep e1, ToRep (e2 (Expr t1 t2 t3 t4 t5 t6 t7 t8 t9 t10 t11 e1 e2 e3 e4)), ToRep e3, ToRep (e4 (Expr t1 t2 t3 t4 t5 t6 t7 t8 t9 t10 t11 e1 e2 e3 e4)), FunArgsRep e1, Pretty e1, Pretty t11) => ToRep (Expr t1 t2 t3 t4 t5 t6 t7 t8 t9 t10 t11 e1 e2 e3 e4) where
     toRep = withPretty exprRep
+
+instance (ToRep t) => ToRep (PatternLight t) where
+    toRep = withPretty patternLightRep
 
 instance (ToRep a) => ToRep (Op1 a) where
     toRep = withPretty op1Rep
@@ -67,6 +76,12 @@ instance ToRep (PredicateT Name) where
 
 instance (ToRep t, ToRep e) => ToRep (TypeInfoT [e] t) where
     toRep = typeInfoRep
+
+instance ToRep Core where
+    toRep = withPretty coreRep
+
+instance ToRep (Tau.Value Eval) where
+    toRep = valueRep
 
 instance ToRep Text where
     toRep = textJson
@@ -125,6 +140,10 @@ patternRep = project >>> \case
     PRow    t lab a b   -> makeRep "Pattern" "PRow"    [toRep t, String lab, toRep a, toRep b]
     PRecord t p         -> makeRep "Pattern" "PRecord" [toRep t, toRep p]
     PAnn    t p         -> makeRep "Pattern" "PAnn"    [toRep t, toRep p]
+
+patternLightRep :: (ToRep t) => PatternLight t -> Value
+patternLightRep = \case
+    SCon t p ps         -> makeRep "PatternLight" "SCon" [toRep t, toRep p, toRep ps]
 
 exprRep
   :: (Functor e2, Functor e4, ToRep t1, ToRep t2, ToRep t3, ToRep t4, ToRep t5, ToRep t6, ToRep t7, ToRep t8, ToRep t9, ToRep t10, ToRep t11, ToRep e1, ToRep e3, ToRep (e2 (Expr t1 t2 t3 t4 t5 t6 t7 t8 t9 t10 t11 e1 e2 e3 e4)), ToRep (e4 (Expr t1 t2 t3 t4 t5 t6 t7 t8 t9 t10 t11 e1 e2 e3 e4)), FunArgsRep e1, Pretty e1, Pretty t11)
@@ -205,6 +224,27 @@ typeInfoRep :: (ToRep t, ToRep e) => TypeInfoT [e] t -> Value
 typeInfoRep = \case
     TypeInfo e t ps     -> makeRep "TypeInfoT" "TypeInfo" [toRep e, toRep t, toRep ps]
 
+coreRep :: Core -> Value
+coreRep = project >>> \case
+    CVar var            -> makeRep "Core" "CVar"       [String var]
+    CLit prim           -> makeRep "Core" "CLit"       [toRep prim]
+    CApp es             -> makeRep "Core" "CApp"       [toRep es]
+    CLet name e1 e2     -> makeRep "Core" "CLet"       [String name, toRep e1, toRep e2]
+    CLam name e         -> makeRep "Core" "CLam"       [String name, toRep e]
+    CIf  e1 e2 e3       -> makeRep "Core" "CIf"        [toRep e1, toRep e2, toRep e3]
+    CPat e cs           -> makeRep "Core" "CPat"       [toRep e, array (concatMap coreClausesRep cs)]
+
+coreClausesRep :: ([Name], Core) -> [Value]
+coreClausesRep (names, e) = [toRep names, toRep e]
+
+valueRep :: Tau.Value Eval -> Value
+valueRep = \case
+    Tau.Value prim      -> makeRep "Value" "Value"     [toRep prim]
+    Tau.Data con args   -> makeRep "Value" "Data"      [String con, toRep args]
+    Tau.PrimFun f _ vs  -> makeRep "Value" "PrimFun"   [String f, String "<<internal>>", toRep vs]
+    Tau.Closure f _ _   -> makeRep "Value" "Closure"   [String f, String "<<internal>>", String "<<internal>>"]
+    Tau.Fail err        -> makeRep "Value" "Fail"      [String (pack err)]
+
 class FunArgsRep f where
     toFunArgsRep :: f -> Value
 
@@ -217,6 +257,7 @@ instance (ToRep t, ToRep u, Pretty u) => FunArgsRep [ProgPattern t u] where
 textJson :: Text -> Value
 textJson s = makeRep "Name" "Name" [String s]
 
+-- TODO: asdd misgging constructors
 errorRep :: Error -> Value
 errorRep = \case
     UnificationError err                -> makeRep "Error" "UnificationError"       [toRep err]
