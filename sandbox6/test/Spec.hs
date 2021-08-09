@@ -17,10 +17,12 @@ import Data.Void
 import Stuff
 import Tau.Eval
 import Tau.Misc
+import Tau.Parse
 import Tau.Prettyprinters
 import Tau.Tree
 import Tau.Util (Name, runSupplyNats, prettyT, prettyW, renderDoc)
 import Test.Hspec hiding (describe, it)
+import Text.Megaparsec
 import qualified Data.Map.Strict as Map
 import qualified Data.Text  as Text
 import qualified Tau.Env as Env
@@ -44,6 +46,7 @@ main =
         describe "Type inference" testTypeInference
         describe "Prettyprinters" testPrettyprinters
         describe "Flight"         testFlight
+        describe "Parse"          testParse
 
 _a :: Type
 _a = tVar kTyp "a"
@@ -1351,3 +1354,55 @@ testFlight = do
     succeedRunExpr
         (appExpr () [ funExpr () [ Clause () [litPat () (TBool True), conPat () "Some" [litPat () (TBool True)]] [ Choice [] (annExpr tInt (litExpr () (TInt 1))) ] , Clause () [litPat () (TBool True), conPat () "Some" [litPat () (TBool False)]] [ Choice [] (litExpr () (TInt 2)) ] , Clause () [anyPat (), anyPat ()] [ Choice [] (litExpr () (TInt 3)) ] ] , litExpr () (TBool True) , conExpr () "Some" [litExpr () (TBool False)] ])
         (Just (Value (TInt 2)))
+
+-------------------------------------------------------------------------------
+
+-- Parser tests
+
+succeedParseType :: Parser Type -> Text -> Type -> SpecWith ()
+succeedParseType parser input expected =
+    describe input $
+        it ("✔ parses to " <> prettyT expected) $
+            isRight $ do
+                result <- runParserStack parser "" input
+                pure (runUnify result expected)
+
+succeedParse :: (Pretty a, Eq a) => Parser a -> Text -> a -> SpecWith ()
+succeedParse parser input expected =
+    describe input $
+        it ("✔ parses to " <> prettyT expected) $
+            result == expected
+  where
+    Right result = runParserStack parser "" input
+
+failParse :: (Eq a) => Parser a -> Text -> SpecWith ()
+failParse parser input =
+    describe input $
+        it "✗ fails to parse" $
+            isLeft (runParserStack parser "" input)
+
+testParse :: SpecWith ()
+testParse = do
+
+    describe "• Prim" $ do
+
+        succeedParse primParser
+            "5"
+            (TInteger 5)
+
+        succeedParse primParser
+            "5.3"
+            (TDouble 5.3)
+
+        succeedParse primParser
+            "True"
+            (TBool True)
+
+        succeedParse primParser
+            "'x'"
+            (TChar 'x')
+
+        succeedParse primParser
+            "\"klingon\""
+            (TString "klingon")
+
