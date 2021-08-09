@@ -257,7 +257,6 @@ instance (ToRep t, ToRep u, Pretty u) => FunArgsRep [ProgPattern t u] where
 textJson :: Text -> Value
 textJson s = makeRep "Name" "Name" [String s]
 
--- TODO: asdd misgging constructors
 errorRep :: Error -> Value
 errorRep = \case
     UnificationError err                -> makeRep "Error" "UnificationError"       [toRep err]
@@ -276,6 +275,8 @@ unificationErrorRep = \case
     IncompatibleTypes                   -> makeRep "Error" "IncompatibleTypes"      []
     IncompatibleKinds                   -> makeRep "Error" "IncompatibleKinds"      []
     CannotMerge                         -> makeRep "Error" "CannotMerge"            []
+    ContextReductionFailed              -> makerep "Error" "ContextReductionFailed" []
+    ClassMismatch                       -> makerep "Error" "ClassMismatch"          []
 
 -------------------------------------------------------------------------------
 
