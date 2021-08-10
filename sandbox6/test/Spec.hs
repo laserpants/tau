@@ -1928,3 +1928,11 @@ testParse = do
             "x : Int => x + 1"
             (lamExpr () [annPat tInt (varPat () "x")] (op2Expr () (OAdd ()) (varExpr () "x") (litExpr () (TInteger 1))))
 
+        succeedParse annExprParser
+            "Some(x) => x + 1 | None => 0"
+            (funExpr () [ Clause () [conPat () "Some" [varPat () "x"]] [Choice [] (op2Expr () (OAdd ()) (varExpr () "x") (litExpr () (TInteger 1)))] , Clause () [conPat () "None" []] [Choice [] (litExpr () (TInteger 0))] ])
+
+        succeedParse annExprParser
+            "match (x, y) with | (1, x) when(x /= 0) => x otherwise => 0 | _ => 100"
+            (patExpr () (tupleExpr () [varExpr () "x", varExpr () "y"]) [ Clause () (tuplePat () [litPat () (TInteger 1), varPat () "x"]) [Choice [op2Expr () (ONeq ()) (varExpr () "x") (litExpr () (TInteger 0))] (varExpr () "x"), Choice [] (litExpr () (TInteger 0))] , Clause () (anyPat ()) [Choice [] (litExpr () (TInteger 100))] ])
+

@@ -326,26 +326,53 @@ postfixFunArgParser = do
     pure (\fun -> appExpr () (fun:args))
 
 annExprParser :: Parser (ProgExpr () Type)
-annExprParser = makeExprParser (try lambdaParser <|> try (parens annExprParser) <|> exprParser)
+annExprParser = makeExprParser (try funParser <|> try (parens annExprParser) <|> exprParser)
     [ [ Postfix postfixFunArgParser ]
     , [ Postfix (symbol ":" *> (annExpr <$> typeParser)) ] ]
 
-lambdaParser :: Parser (ProgExpr () Type)
-lambdaParser =
-    lamExpr () <$> (try (argParser annPatternParser) <|> pure <$> annPatternParser)
-               <*> (symbol "=>" *> annExprParser)
+funParser :: Parser (ProgExpr () Type)
+funParser = do
+    optional (symbol "|")
+    cs <- clauseParser parser `sepBy1` symbol "|"
+    case cs of
+        [Clause _ ps [Choice [] e]] -> pure (lamExpr () ps e)
+        _                           -> pure (funExpr () cs)
+  where
+    parser = try (argParser annPatternParser) <|> pure <$> annPatternParser
+
+clauseParser :: Parser p -> Parser (Clause () p (ProgExpr () Type))
+clauseParser parser = Clause () <$> parser <*> (try guarded <|> nonGuarded)
+  where
+    guarded = do
+        whens <- some whenClause
+        last <- optional (keyword "otherwise" *> symbol "=>" *> annExprParser)
+        pure (whens <> maybe [] (pure . Choice []) last)
+
+    whenClause = Choice
+        <$> (keyword "when" *> argParser exprParser <* symbol "=>")
+        <*> annExprParser
+
+    nonGuarded = do
+        expr <- symbol "=>" *> annExprParser
+        pure [Choice [] expr]
+
+matchParser :: Parser (ProgExpr () Type)
+matchParser = do
+    expr <- keyword "match" *> annExprParser <* keyword "with"
+    optional (symbol "|")
+    cs <- clauseParser annPatternParser `sepBy1` symbol "|"
+    pure (patExpr () expr cs)
 
 exprParser :: Parser (ProgExpr () Type)
 exprParser = makeExprParser parseItem operator
   where
-    parseItem = try lambdaParser
+    parseItem = try funParser
         <|> try (parens exprParser)
         <|> parser
 
     parser = parseIf
---        <|> parseFun
 --        <|> parseLet
---        <|> parseMatch
+        <|> matchParser
         <|> symbol "_" $> holeExpr ()
         <|> parseVar
         <|> parseLit
