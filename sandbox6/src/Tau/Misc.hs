@@ -1803,6 +1803,7 @@ toList = Map.toList . getSub
 
 domain :: Substitution a -> [Name]
 domain (Sub sub) = Map.keys sub
+{-# INLINE domain #-}
 
 -------------------------------------------------------------------------------
 
@@ -2122,17 +2123,17 @@ unifyClass, matchClass
   => Predicate
   -> Predicate
   -> m (Substitution Type, Substitution Kind)
-unifyClass = liftU unifyTypes
-matchClass = liftU matchTypes
+unifyClass = lifted unifyTypes
+matchClass = lifted matchTypes
 
-liftU
+lifted
   :: ( MonadError UnificationError m
      , MonadSupply Int m )
   => (Type -> Type -> m a)
   -> Predicate
   -> Predicate
   -> m a
-liftU m (InClass c1 t1) (InClass c2 t2)
+lifted m (InClass c1 t1) (InClass c2 t2)
     | c1 == c2  = m t1 t2
     | otherwise = throwError ClassMismatch
 

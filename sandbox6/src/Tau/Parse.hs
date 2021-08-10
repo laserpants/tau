@@ -129,6 +129,11 @@ rowParser stor parser rowCon varCon empty = braces $ do
             let next = maybe empty varCon rest
             foldr (uncurry rowCon) (rowCon label value next) row
 
+argParser :: Parser p -> Parser [p]
+argParser parser = components parser >>= \case
+    [] -> fail "Expected one or more function arguments"
+    ps -> pure ps
+
 -------------------------------------------------------------------------------
 
 primParser :: Parser Prim
@@ -228,4 +233,142 @@ insertKinds = go kTyp
         TCon _ con   -> tCon k con
         TApp _ a b   -> tApp k a b
         t            -> embed t
+
+-------------------------------------------------------------------------------
+
+annPatternParser :: Parser (ProgPattern () Type)
+annPatternParser = makeExprParser (try (parens annPatternParser) <|> patternParser)
+    [[ Postfix (symbol ":" *> (annPat <$> typeParser)) ]]
+
+patternParser :: Parser (ProgPattern () Type)
+patternParser = makeExprParser (try (parens patternParser) <|> parser)
+    [ [ InfixR (orPat () <$ symbol "or") ]
+    , [ Postfix parseAsPattern ]
+    , [ InfixR (listPatCons () <$ symbol "::") ] ]
+  where
+    parser = parseWildcard
+      <|> parseVar
+      <|> parseLit
+      <|> parseCon
+      <|> parseList
+      <|> parseTuple
+      <|> parseRecord
+
+    parseWildcard  = symbol "_" $> anyPat ()
+    parseAsPattern = keyword "as" >> asPat () <$> nameParser
+    parseVar       = varPat   () <$> nameParser
+    parseLit       = litPat   () <$> primParser
+    parseTuple     = tuplePat () <$> components annPatternParser
+    parseCon       = conPat   () <$> constructorParser
+                                 <*> (fromMaybe [] <$> optional (components annPatternParser))
+
+    parseList =
+        try (brackets spaces $> conPat () "[]" [])
+            <|> listPat () <$> elements annPatternParser
+
+    parseRecord =
+        try (braces spaces $> recordPat () (conPat () "{}" []))
+            <|> recordPat () <$> rowParser "=" annPatternParser (rowPat ()) (varPat ()) (conPat () "{}" [])
+
+-------------------------------------------------------------------------------
+
+operator :: [[Operator Parser (ProgExpr () Type)]]
+operator =
+    [
+      -- 10
+      [ InfixL (symbol "." $> flip (op2Expr () (ODot ())))
+      ]
+      -- 9
+    , [ InfixR (op2Expr () (OLarr ()) <$ symbol "<<")
+      , InfixL (op2Expr () (ORarr ()) <$ symbol ">>")
+      ]
+      -- 8
+    , [ InfixR (op2Expr () (OPow ()) <$ symbol "^")
+      ]
+      -- 7
+    , [ InfixL (op2Expr () (OMul ()) <$ symbol "*")
+      , InfixL (op2Expr () (ODiv ()) <$ try (symbol "/" <* notFollowedBy (symbol "=")))
+      ]
+      -- 6
+    , [ InfixL (op2Expr () (OAdd ()) <$ try (symbol "+" <* notFollowedBy (symbol "+")))
+      , InfixL (op2Expr () (OSub ()) <$ symbol "-")
+      ]
+      -- 5
+    , [ InfixR (listExprCons () <$ symbol "::")
+      , InfixR (op2Expr () (OStr ()) <$ symbol "++")
+      ]
+      -- 4
+    , [ InfixN (op2Expr () (OEq ()) <$ symbol "==")
+      , InfixN (op2Expr () (ONeq ()) <$ symbol "/=")
+      , InfixN (op2Expr () (OLt ()) <$ try (symbol "<" <* notFollowedBy (symbol "=")))
+      , InfixN (op2Expr () (OGt ()) <$ try (symbol ">" <* notFollowedBy (symbol "=")))
+      , InfixN (op2Expr () (OLte ()) <$ symbol "<=")
+      , InfixN (op2Expr () (OGte ()) <$ symbol ">=")
+      ]
+      -- 3
+    , [ InfixR (op2Expr () (OAnd ()) <$ symbol "&&")
+      , InfixN (op2Expr () (OOpt ()) <$ symbol "?")
+      ]
+      -- 2
+    , [ InfixR (op2Expr () (OOr ()) <$ symbol "||")
+      , Prefix (op1Expr () (ONot ()) <$ (keyword "not" *> spaces))
+      ]
+      -- 1
+    , [ InfixL (op2Expr () (OFpip ()) <$ symbol "|>")
+      , InfixR (op2Expr () (OBpip ()) <$ symbol "<|")
+      ]
+    ]
+
+postfixFunArgParser :: Parser (ProgExpr () Type -> ProgExpr () Type)
+postfixFunArgParser = do
+    args <- try (parens spaces $> [litExpr () TUnit]) <|> argParser annExprParser
+    pure (\fun -> appExpr () (fun:args))
+
+annExprParser :: Parser (ProgExpr () Type)
+annExprParser = makeExprParser (try lambdaParser <|> try (parens annExprParser) <|> exprParser)
+    [ [ Postfix postfixFunArgParser ]
+    , [ Postfix (symbol ":" *> (annExpr <$> typeParser)) ] ]
+
+lambdaParser :: Parser (ProgExpr () Type)
+lambdaParser =
+    lamExpr () <$> (try (argParser annPatternParser) <|> pure <$> annPatternParser)
+               <*> (symbol "=>" *> annExprParser)
+
+exprParser :: Parser (ProgExpr () Type)
+exprParser = makeExprParser parseItem operator
+  where
+    parseItem = try lambdaParser
+        <|> try (parens exprParser)
+        <|> parser
+
+    parser = parseIf
+--        <|> parseFun
+--        <|> parseLet
+--        <|> parseMatch
+        <|> symbol "_" $> holeExpr ()
+        <|> parseVar
+        <|> parseLit
+        <|> parseCon
+        <|> parseList
+        <|> parseTuple
+--        <|> parseRecord
+
+    parseIf = ifExpr ()
+        <$> (keyword "if"   *> annExprParser)
+        <*> (keyword "then" *> annExprParser)
+        <*> (keyword "else" *> annExprParser)
+
+    parseVar       = varExpr   () <$> nameParser
+    parseLit       = litExpr   () <$> primParser
+    parseTuple     = tupleExpr () <$> components exprParser
+    parseCon       = conExpr   () <$> constructorParser
+                                  <*> (fromMaybe [] <$> optional (components annExprParser))
+
+    parseList =
+        try (brackets spaces $> conExpr () "[]" [])
+            <|> listExpr () <$> elements annExprParser
+
+--    parseRecord =
+--        try (braces spaces $> recordExpr () (conExpr () "{}" []))
+--            <|> recordExpr () <$> rowParser "=" annExprParser rowExpr varExpr emptyRowExpr
 

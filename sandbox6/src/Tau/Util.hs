@@ -77,6 +77,8 @@ renderDocW w = renderStrict . layoutPretty layoutOptions
 
 prettyT :: (Pretty p) => p -> Text
 prettyT = renderDoc . pretty
+{-# INLINE prettyT #-}
 
 prettyW :: (Pretty p) => Int -> p -> Text
 prettyW w = renderDocW w . pretty
+{-# INLINE prettyW #-}
