@@ -28,14 +28,12 @@ data Value m
     | Data Name [Value m]
     | PrimFun Name Fun [Value m]
     | Closure Name (m (Value m)) ~(ValueEnv m)
---    | Fail String -- TODO temp
 
 instance Show (Value m) where
     show (Value lit)           = "Value " <> "(" <> show lit <> ")"
     show (Data name lit)       = "Data " <> show name <> " " <> show lit
     show (PrimFun name _ args) = "PrimFun " <> show name <> " " <> show args
     show Closure{}             = "<<function>>"
---    show (Fail err)            = err
 
 instance Eq (Value m) where
     (==) (Value v) (Value w)             = v == w
@@ -62,21 +60,14 @@ eval
   -> m (Value m)
 eval = cata $ \case
 
-    CVar var ->
-        evalVar var
-
-    CLit lit ->
-        pure (Value lit)
-
-    CApp exs ->
-        foldl1 evalApp exs
+    CVar var    -> evalVar var
+    CLit lit    -> pure (Value lit)
+    CApp exs    -> foldl1 evalApp exs
+    CLam var e1 -> asks (Closure var e1)
 
     CLet var e1 e2 -> do
         val <- e1
         local (Env.insert var val) e2
-
-    CLam var e1 ->
-        asks (Closure var e1)
 
     CIf e1 e2 e3 -> do
         Value (TBool isTrue) <- e1
