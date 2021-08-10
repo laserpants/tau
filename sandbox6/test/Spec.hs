@@ -487,16 +487,17 @@ succeedInferExpr expr ty errs =
         if null errs
             then
                 it "✔ contains no errors" $
-                    not (hasErrors e1)
+                    not (hasErrors e2)
             else
                 it ("✔ contains errors: " <> pack (show errs)) $
-                    and [err `elem` allErrors e1 | err <- errs]
+                    and [err `elem` allErrors e2 | err <- errs]
   where
     (Ast e, (typeSub, kindSub, context)) =
         runInfer mempty testClassEnv testTypeEnv testKindEnv testConstructorEnv (inferAstType (Ast expr))
 
     res = runMatch ty (typeOf (applyBoth (typeSub, kindSub) e))
     e1  = runReader (exhaustivePatternsCheck e) testConstructorEnv
+    e2  = runReader (ambiguityCheck e1) (testClassEnv, testTypeEnv, testKindEnv, testConstructorEnv)
 
 testTypeInference :: SpecWith ()
 testTypeInference = do
@@ -562,6 +563,11 @@ testTypeInference = do
         (funExpr () [ Clause () [conPat () "(::)" [varPat () "x", conPat () "(::)" [varPat () "y", varPat () "ys"]]] [Choice [] (litExpr () (TBool True))] , Clause () [conPat () "[]" []] [Choice [] (litExpr () (TBool True))] , Clause () [conPat () "(::)" [varPat () "z", varPat () "zs"]] [Choice [] (litExpr () (TBool True))] ])
         (tList (tVar kTyp "a") `tArr` tBool)
         []
+
+    succeedInferExpr
+        (letExpr () (BFun () "f" [varPat () "x"]) (litExpr () (TInteger 11)) (lamExpr () [varPat () "x"] (appExpr () [varExpr () "show", appExpr () [varExpr () "read", varExpr () "x"]])))
+        (tString `tArr` tString)
+        [Ambiguous "$v15"]
 
     describe "• Records" $ do
 
@@ -1205,7 +1211,9 @@ succeedRunExpr expr result =
     c :: ProgExpr TInfo Void
     c = runReader (exhaustivePatternsCheck (astExpr a)) testConstructorEnv
 
-    d = s1_translate c
+    c1 = runReader (ambiguityCheck c) (testClassEnv, testTypeEnv, testKindEnv, testConstructorEnv)
+
+    d = s1_translate c1
 
     e = runSupplyNats (runReaderT (s2_translate d) (testClassEnv, testTypeEnv, testKindEnv, testConstructorEnv))
 

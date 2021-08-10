@@ -32,6 +32,7 @@ import Data.Text (Text)
 import Data.Tuple.Extra
 import Data.Tuple.Extra (both, first, second, firstM, secondM)
 import Data.Void (Void)
+import Debug.Trace
 import Tau.Env (Env)
 import Tau.Misc
 import Tau.Util
@@ -300,31 +301,59 @@ prim TString{}     = "#String"
 ambiguityCheck
   :: ( MonadReader (ClassEnv, TypeEnv, KindEnv, ConstructorEnv) m )
   => ProgExpr TInfo Void
-  -> WriterT Name m (ProgExpr TInfo Void)
-ambiguityCheck = cata $ \case
+  -> m (ProgExpr TInfo Void)
+ambiguityCheck expr = do
+    (a, vs) <- runStateT (walk expr) mempty
+    pure (insertExprErrors (checkAmb (exprTag a) vs) a)
+  where
+    walk
+      :: ( MonadReader (ClassEnv, TypeEnv, KindEnv, ConstructorEnv) m )
+      => ProgExpr TInfo Void
+      -> StateT [Name] m (ProgExpr TInfo Void)
+    walk = cata $ \case
 
-    EVar t var -> do
-        classEnv <- askClassEnv
-        let vs = filter (tIsVar . predicateType) (nodePredicates t)
-        -- qs <- fromRight (error "impl") <$> reduce classEnv vs
-        undefined
+        EVar t var -> do
+            classEnv <- askClassEnv
+            let vs = filter (tIsVar . predicateType) (nodePredicates t)
+            forM_ (project <$$> vs) $ \(InClass _ (TVar _ v)) ->
+                modify (v :)
+            pure (varExpr t var)
 
-    EHole   t             -> pure (holeExpr t)
-    ECon    t con es      -> conExpr t con <$> sequence es
-    ELit    t prim        -> pure (litExpr t prim)
-    EApp    t es          -> appExpr t <$> sequence es
-    ELet    t bind e1 e2  -> letExpr t bind <$> e1 <*> e2
-    EFix    t name e1 e2  -> fixExpr t name <$> e1 <*> e2
-    ELam    t ps e        -> lamExpr t ps <$> e
-    EIf     t e1 e2 e3    -> ifExpr t <$> e1 <*> e2 <*> e3
-    EPat    t es cs       -> patExpr t <$> es <*> traverse sequence cs
-    EFun    t cs          -> funExpr t <$> traverse sequence cs
-    EOp1    t op a        -> op1Expr t op <$> a
-    EOp2    t op a b      -> op2Expr t op <$> a <*> b
-    ETuple  t es          -> tupleExpr t <$> sequence es
-    EList   t es          -> listExpr t <$> sequence es
-    ERow    t lab e r     -> rowExpr t lab <$> e <*> r
-    ERecord t r           -> recordExpr t <$> r
+        EPat t expr clauses -> do
+            e <- expr
+            cs <- traverse sequence clauses
+            vs <- nub <$> getAndReset
+            pure (patExpr (addErrors (checkAmb t vs) t) e cs)
+
+        ELet t bind expr1 expr2 -> do
+            e1 <- expr1
+            e2 <- expr2
+            vs <- nub <$> getAndReset
+            pure (letExpr (addErrors (checkAmb t vs) t) bind e1 e2)
+
+        EFix t name expr1 expr2 -> do
+            e1 <- expr1
+            e2 <- expr2
+            vs <- nub <$> getAndReset
+            pure (fixExpr (addErrors (checkAmb t vs) t) name e1 e2)
+
+        EHole   t             -> pure (holeExpr t)
+        ECon    t con es      -> conExpr t con <$> sequence es
+        ELit    t prim        -> pure (litExpr t prim)
+        EApp    t es          -> appExpr t <$> sequence es
+        ELam    t ps e        -> lamExpr t ps <$> e
+        EIf     t e1 e2 e3    -> ifExpr t <$> e1 <*> e2 <*> e3
+        EFun    t cs          -> funExpr t <$> traverse sequence cs
+        EOp1    t op a        -> op1Expr t op <$> a
+        EOp2    t op a b      -> op2Expr t op <$> a <*> b
+        ETuple  t es          -> tupleExpr t <$> sequence es
+        EList   t es          -> listExpr t <$> sequence es
+        ERow    t lab e r     -> rowExpr t lab <$> e <*> r
+        ERecord t r           -> recordExpr t <$> r
+
+    checkAmb :: TInfo -> [Name] -> [Error]
+    checkAmb t = let freeVars = fst <$> free (nodeType t) in
+        concatMap (\v -> [Ambiguous v | v `notElem` freeVars])
 
 -------------------------------------------------------------------------------
 -------------------------------------------------------------------------------

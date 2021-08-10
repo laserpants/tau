@@ -603,6 +603,10 @@ allErrors = foldrExprTag (\ti es -> nodeErrors ti <> es) []
 constructorEnv :: [(Name, ([Name], Int))] -> ConstructorEnv
 constructorEnv = Env.fromList . (first Set.fromList <$$>)
 
+insertExprErrors :: [e] -> ProgExpr (TypeInfoT [e] t) u -> ProgExpr (TypeInfoT [e] t) u
+insertExprErrors errs = mapExprTag (\TypeInfo{..} ->
+    TypeInfo{ nodeErrors = errs <> nodeErrors, .. })
+
 -------------------------------------------------------------------------------
 
 -- Type class instances
@@ -1854,6 +1858,7 @@ data Error
     | PatternArityMismatch Name Int Int
     | NonBooleanGuard (ProgExpr (TypeInfo [Error]) Void)
     | NonExhaustivePatterns
+    | Ambiguous Name
 
 data UnificationError
     = InfiniteType
