@@ -371,7 +371,7 @@ exprParser = makeExprParser parseItem operator
         <|> parser
 
     parser = parseIf
---        <|> parseLet
+        <|> parseLet
         <|> matchParser
         <|> symbol "_" $> holeExpr ()
         <|> parseVar
@@ -386,11 +386,28 @@ exprParser = makeExprParser parseItem operator
         <*> (keyword "then" *> annExprParser)
         <*> (keyword "else" *> annExprParser)
 
-    parseVar       = varExpr   () <$> nameParser
-    parseLit       = litExpr   () <$> primParser
-    parseTuple     = tupleExpr () <$> components exprParser
-    parseCon       = conExpr   () <$> constructorParser
-                                  <*> (fromMaybe [] <$> optional (components annExprParser))
+    parseVar   = varExpr   () <$> nameParser
+    parseLit   = litExpr   () <$> primParser
+    parseTuple = tupleExpr () <$> components exprParser
+    parseCon   = conExpr   () <$> constructorParser
+                              <*> (fromMaybe [] <$> optional (components annExprParser))
+
+    parseLet = do
+        keyword "let"
+        bind <- try parseFunLet <|> parseNormalLet
+        expr <- (funParser <|> (symbol "=" *> annExprParser)) <* symbol "in"
+        letExpr () bind expr <$> annExprParser
+
+    parseNormalLet = do
+        p <- annPatternParser
+        if hasLiteralPattern p
+            then fail "Literal patterns cannot be used in let bindings"
+            else pure (BPat () p)
+
+    parseFunLet = BFun () <$> nameParser <*> parseFunArg
+
+    parseFunArg =
+        try (parens spaces $> [litPat () TUnit]) <|> argParser annPatternParser
 
     parseList =
         try (brackets spaces $> conExpr () "[]" [])
@@ -400,3 +417,14 @@ exprParser = makeExprParser parseItem operator
         try (braces spaces $> recordExpr () (conExpr () "{}" []))
             <|> recordExpr () <$> rowParser "=" annExprParser (rowExpr ()) (varExpr ()) (conExpr () "{}" [])
 
+hasLiteralPattern :: ProgPattern () u -> Bool
+hasLiteralPattern = cata $ \case
+    PLit{}          -> True
+    PCon   _ _ ps   -> or ps
+    PAs    _ _ p    -> p
+    POr    _ p q    -> p || q
+    PTuple _ ps     -> or ps
+    PList  _ ps     -> or ps
+    PRow   _ _ p q  -> p || q
+    PAnn   _ p      -> p
+    _               -> False
