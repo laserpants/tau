@@ -353,7 +353,7 @@ ambiguityCheck expr = do
 
     checkAmb :: TInfo -> [Name] -> [Error]
     checkAmb t = let freeVars = fst <$> free (nodeType t) in
-        concatMap (\v -> [Ambiguous v | v `notElem` freeVars])
+        concatMap (\v -> [AmbiguousType v | v `notElem` freeVars])
 
 -------------------------------------------------------------------------------
 -------------------------------------------------------------------------------

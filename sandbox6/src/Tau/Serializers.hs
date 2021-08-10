@@ -267,7 +267,7 @@ errorRep = \case
     PatternArityMismatch name m n       -> makeRep "Error" "PatternArityMismatch"   [toRep name, toRep m, toRep n]
     NonBooleanGuard expr                -> makeRep "Error" "NonBooleanGuard"        [toRep expr]
     NonExhaustivePatterns               -> makeRep "Error" "NonExhaustivePatterns"  []
-    Ambiguous var                       -> makeRep "Error" "Ambiguous"              [toRep var]
+    AmbiguousType var                   -> makeRep "Error" "AmbiguousType"          [toRep var]
 
 unificationErrorRep :: UnificationError -> Value
 unificationErrorRep = \case

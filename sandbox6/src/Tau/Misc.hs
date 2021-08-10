@@ -1833,6 +1833,13 @@ normalizer vars = fromList (zipWith (\(v, k) a -> (v, tVar k a)) vars letters)
 normalize :: Type -> Type
 normalize ty = apply (normalizer (typeVars ty)) ty
 
+normalizeExpr :: ProgExpr (TypeInfo [e]) u -> ProgExpr (TypeInfo [e]) u
+normalizeExpr expr = apply sub expr
+  where
+    sub :: Substitution Type
+    sub = fromList [(v, tVar k a) | ((v, k), a) <- zip vars letters]
+    vars = foldrExprTag (\t vs -> free (nodeType t) <> vs) [] expr
+
 -------------------------------------------------------------------------------
 
 kindSubstitute :: Substitution Kind -> Kind -> Kind
@@ -1858,7 +1865,7 @@ data Error
     | PatternArityMismatch Name Int Int
     | NonBooleanGuard (ProgExpr (TypeInfo [Error]) Void)
     | NonExhaustivePatterns
-    | Ambiguous Name
+    | AmbiguousType Name
 
 data UnificationError
     = InfiniteType

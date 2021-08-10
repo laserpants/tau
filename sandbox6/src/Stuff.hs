@@ -817,12 +817,17 @@ test5expr :: ProgExpr () Type
 --            , annExpr tInt (litExpr () (TInteger 5))
 --            , annExpr tInt (litExpr () (TInteger 5))
 --            ]
+--
+--test5expr =
+--        letExpr () (BFun () "f" [varPat () "x"])
+--            (litExpr () (TInteger 11))
+--            (lamExpr () [varPat () "x"]
+--                (appExpr () [varExpr () "show", appExpr () [varExpr () "read", varExpr () "x"]]))
 
-test5expr =
-        letExpr () (BFun () "f" [varPat () "x"])
-            (litExpr () (TInteger 11))
-            (lamExpr () [varPat () "x"]
-                (appExpr () [varExpr () "show", appExpr () [varExpr () "read", varExpr () "x"]]))
+---- let 
+--test5expr = letExpr () (BFun () "f" [recordPat () (varPat () "z")]) (recordExpr () (rowExpr () "a" (annExpr tInt (litExpr () (TInteger 1))) (varExpr () "z"))) (appExpr () [varExpr () "f", recordExpr () (rowExpr () "b" (annExpr tInt (litExpr () (TInt 2))) (conExpr () "{}" []))])
+
+test5expr = appExpr () [ letExpr () (BPat () (varPat () "r")) (recordExpr () (rowExpr () "a" (annExpr tInt (litExpr () (TInt 1))) (rowExpr () "b" (annExpr tInt (litExpr () (TInt 2))) (conExpr () "{}" [])))) (lamExpr () [recordPat () (rowPat () "a" (varPat () "a") (varPat () "z"))] (varExpr () "a")) , recordExpr () (rowExpr () "a" (annExpr tInt (litExpr () (TInt 5))) (conExpr () "{}" [])) ]
 
 test5 :: IO ()
 test5 = do
@@ -838,8 +843,9 @@ test5 = do
     c = runReader (exhaustivePatternsCheck (astExpr a)) testConstructorEnv
 
     c1 = runReader (ambiguityCheck c) (testClassEnv, testTypeEnv, testKindEnv, testConstructorEnv)
+    c2 = normalizeExpr c1
 
-    d = s1_translate c1
+    d = s1_translate c2
 
     e = runSupplyNats (runReaderT (s2_translate d) (testClassEnv, testTypeEnv, testKindEnv, testConstructorEnv))
 
@@ -857,6 +863,7 @@ test5 = do
         { sourceExpr = test5expr
         --, typedExpr  = astExpr a
         , typedExpr  = c1
+        , normalExpr = c2
         , stage1Expr = d
         , stage2Expr = f
         , stage3Expr = g
@@ -868,6 +875,7 @@ test5 = do
 data Bundle = Bundle
     { sourceExpr  :: ProgExpr () Type
     , typedExpr   :: ProgExpr (TypeInfo [Error]) Void
+    , normalExpr  :: ProgExpr (TypeInfo [Error]) Void
     , stage1Expr  :: Stage1Expr (TypeInfo [Error])
     , stage2Expr  :: Stage2Expr (TypeInfo [Error])
     , stage3Expr  :: Stage3Expr Type
@@ -881,6 +889,7 @@ instance ToRep Bundle where
         object
             [ "source"  .= toRep sourceExpr
             , "typed"   .= toRep typedExpr
+            , "normal"  .= toRep normalExpr
             , "stage1"  .= toRep stage1Expr
             , "stage2"  .= toRep stage2Expr
             , "stage3"  .= toRep stage3Expr
@@ -921,8 +930,6 @@ testTypeEnv = Env.fromList
     , ( "(*)"          , Forall [kTyp] [InClass "Num" 0] (tGen 0 `tArr` tGen 0 `tArr` tGen 0) )
     , ( "#"            , Forall [kRow] [] (tGen 0 `tArr` tApp kTyp tRecordCon (tGen 0)) )
     , ( "{}"           , Forall [] [] tRowNil )
-
-    -- TODO: remove
     , ( "_#"           , Forall [kRow] [] (tApp kTyp (tCon (kArr kRow kTyp) "#") (tGen 0) `tArr` tGen 0) )
     , ( "fromInteger"  , Forall [kTyp] [InClass "Num" 0] (tInteger `tArr` tGen 0) )
     , ( "fn1"          , Forall [kTyp] [InClass "Num" 0] (tGen 0 `tArr` tGen 0 `tArr` tGen 0))
