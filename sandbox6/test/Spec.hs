@@ -1656,14 +1656,14 @@ testParse = do
 --        succeedParse annExprParser
 --            "let f(x) = (1, 2) in z"
 --            (letExpr () (BFun () "f" [varPat () "x"]) (tupleExpr () [litExpr () (TInteger 1), litExpr () (TInteger 2)]) (varExpr () "z"))
---
---        succeedParse annExprParser
---            "{ x = 5 }"
---            (recordExpr () (rowExpr () "x" (litExpr () (TInteger 5)) (emptyRowExpr ())))
---
---        succeedParse annExprParser
---            "{ x = { y = 5 } }"
---            (recordExpr () (rowExpr () "x" (recordExpr () (rowExpr () "y" (litExpr () (TInteger 5)) (emptyRowExpr ()))) (emptyRowExpr ())))
+
+        succeedParse annExprParser
+            "{ x = 5 }"
+            (recordExpr () (rowExpr () "x" (litExpr () (TInteger 5)) (conExpr () "{}" [])))
+
+        succeedParse annExprParser
+            "{ x = { y = 5 } }"
+            (recordExpr () (rowExpr () "x" (recordExpr () (rowExpr () "y" (litExpr () (TInteger 5)) (conExpr () "{}" []))) (conExpr () "{}" [])))
 
         succeedParse annExprParser
             "(x) => x"
@@ -1673,29 +1673,29 @@ testParse = do
             "x => x"
             (lamExpr () [varPat () "x"] (varExpr () "x"))
 
---        succeedParse annExprParser
---            "(x) => { x = 5 }"
---            (lamExpr () [varPat () "x"] (recordExpr () (rowExpr () "x" (litExpr () (TInteger 5)) (emptyRowExpr ()))))
---
---        succeedParse annExprParser
---            "x => { x = 5 }"
---            (lamExpr () [varPat () "x"] (recordExpr () (rowExpr () "x" (litExpr () (TInteger 5)) (emptyRowExpr ()))))
---
---        succeedParse annExprParser
---            "(x => { x = 5 })"
---            (lamExpr () [varPat () "x"] (recordExpr () (rowExpr () "x" (litExpr () (TInteger 5)) (emptyRowExpr ()))))
---
---        succeedParse annExprParser
---            "((x => { x = 5 }))"
---            (lamExpr () [varPat () "x"] (recordExpr () (rowExpr () "x" (litExpr () (TInteger 5)) (emptyRowExpr ()))))
---
---        succeedParse annExprParser
---            "((x) => { x = 5 })"
---            (lamExpr () [varPat () "x"] (recordExpr () (rowExpr () "x" (litExpr () (TInteger 5)) (emptyRowExpr ()))))
---
---        succeedParse annExprParser
---            "((x) => ({ x = 5 }))"
---            (lamExpr () [varPat () "x"] (recordExpr () (rowExpr () "x" (litExpr () (TInteger 5)) (emptyRowExpr ()))))
+        succeedParse annExprParser
+            "(x) => { x = 5 }"
+            (lamExpr () [varPat () "x"] (recordExpr () (rowExpr () "x" (litExpr () (TInteger 5)) (conExpr () "{}" []))))
+
+        succeedParse annExprParser
+            "x => { x = 5 }"
+            (lamExpr () [varPat () "x"] (recordExpr () (rowExpr () "x" (litExpr () (TInteger 5)) (conExpr () "{}" []))))
+
+        succeedParse annExprParser
+            "(x => { x = 5 })"
+            (lamExpr () [varPat () "x"] (recordExpr () (rowExpr () "x" (litExpr () (TInteger 5)) (conExpr () "{}" []))))
+
+        succeedParse annExprParser
+            "((x => { x = 5 }))"
+            (lamExpr () [varPat () "x"] (recordExpr () (rowExpr () "x" (litExpr () (TInteger 5)) (conExpr () "{}" []))))
+
+        succeedParse annExprParser
+            "((x) => { x = 5 })"
+            (lamExpr () [varPat () "x"] (recordExpr () (rowExpr () "x" (litExpr () (TInteger 5)) (conExpr () "{}" []))))
+
+        succeedParse annExprParser
+            "((x) => ({ x = 5 }))"
+            (lamExpr () [varPat () "x"] (recordExpr () (rowExpr () "x" (litExpr () (TInteger 5)) (conExpr () "{}" []))))
 
         succeedParse annExprParser
             "(x) => x + 1"
@@ -1748,14 +1748,14 @@ testParse = do
 --                    , Clause () [conPat () "None" []] [Guard [] (varExpr () "val")]
 --                    ])
 --                (conExpr () "Some" [litExpr () (TInteger 3)]))
---
---        succeedParse annExprParser
---            "{ a = True | b }"
---            (recordExpr () (rowExpr () "a" (litExpr () (TBool True)) (appExpr () [varExpr () "_#", varExpr () "b"])))
---
---        succeedParse annExprParser
---            "{}"
---            (recordExpr () (conExpr () "{}" []))
+
+        succeedParse annExprParser
+            "{ a = True | b }"
+            (recordExpr () (rowExpr () "a" (litExpr () (TBool True)) (varExpr () "b")))
+
+        succeedParse annExprParser
+            "{}"
+            (recordExpr () (conExpr () "{}" []))
 
         succeedParse annExprParser
             "(x, y) => x"
@@ -1915,10 +1915,10 @@ testParse = do
 --        succeedParse annExprParser
 --            "(let x = (1, 2) : Int in z : Int) : Int"
 --            (annExpr tInt (letExpr () (BPat () (varPat () "x")) (annExpr tInt (tupleExpr () [litExpr () (TInteger 1), litExpr () (TInteger 2)])) (annExpr tInt (varExpr () "z"))))
---
---        succeedParse annExprParser
---            "{ x = 5 : Int }"
---            (recordExpr () (rowExpr () "x" (annExpr tInt (litExpr () (TInteger 5))) (emptyRowExpr ())))
+
+        succeedParse annExprParser
+            "{ x = 5 : Int }"
+            (recordExpr () (rowExpr () "x" (annExpr tInt (litExpr () (TInteger 5))) (conExpr () "{}" [])))
 
         succeedParse annExprParser
             "(x : Int) => x + 1"

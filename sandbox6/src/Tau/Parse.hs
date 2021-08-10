@@ -352,7 +352,7 @@ exprParser = makeExprParser parseItem operator
         <|> parseCon
         <|> parseList
         <|> parseTuple
---        <|> parseRecord
+        <|> parseRecord
 
     parseIf = ifExpr ()
         <$> (keyword "if"   *> annExprParser)
@@ -369,7 +369,7 @@ exprParser = makeExprParser parseItem operator
         try (brackets spaces $> conExpr () "[]" [])
             <|> listExpr () <$> elements annExprParser
 
---    parseRecord =
---        try (braces spaces $> recordExpr () (conExpr () "{}" []))
---            <|> recordExpr () <$> rowParser "=" annExprParser rowExpr varExpr emptyRowExpr
+    parseRecord =
+        try (braces spaces $> recordExpr () (conExpr () "{}" []))
+            <|> recordExpr () <$> rowParser "=" annExprParser (rowExpr ()) (varExpr ()) (conExpr () "{}" [])
 
