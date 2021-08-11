@@ -857,10 +857,17 @@ test5expr :: ProgExpr () Type
 --test5expr = appExpr () [lamExpr () [recordPat () (rowPat () "a" (varPat () "a") (varPat () "z"))] (varExpr () "z"), recordExpr () (rowExpr () "a" (litExpr () (TInteger 1)) (rowExpr () "b" (litExpr () (TInteger 2)) (conExpr () "{}" [])))]
 
 --        -- let f(z) = { a = 1 : Int | z } in f({ b = 2 : Int })
-test5expr = letExpr ()
-    (BFun () "f" [varPat () "z"])
-    (recordExpr () (rowExpr () "a" (annExpr tInt (litExpr () (TInteger 1))) (varExpr () "z")))
-    (appExpr () [varExpr () "f", recordExpr () (rowExpr () "b" (annExpr tInt (litExpr () (TInteger 2))) (conExpr () "{}" []))])
+--test5expr = letExpr ()
+--    (BFun () "f" [varPat () "z"])
+--    (recordExpr () (rowExpr () "a" (annExpr tInt (litExpr () (TInteger 1))) (varExpr () "z")))
+--    (appExpr () [varExpr () "f", recordExpr () (rowExpr () "b" (annExpr tInt (litExpr () (TInteger 2))) (conExpr () "{}" []))])
+
+--test5expr = lamExpr () [varPat () "z"] (recordExpr () (rowExpr () "a" (annExpr tInt (litExpr () (TInteger 1))) (varExpr () "z")))
+
+--test5expr = appExpr () [lamExpr () [varPat () "z"] (recordExpr () (rowExpr () "a" (annExpr tInt (litExpr () (TInteger 1))) (varExpr () "z"))), recordExpr () (conExpr () "{}" [])]
+
+test5expr =
+        (letExpr () (BFun () "f" [varPat () "z"]) (recordExpr () (rowExpr () "a" (annExpr tInt (litExpr () (TInteger 1))) (varExpr () "z"))) (appExpr () [varExpr () "f", recordExpr () (rowExpr () "b" (annExpr tInt (litExpr () (TInt 2))) (conExpr () "{}" []))]))
 
 
 test5 :: IO ()
