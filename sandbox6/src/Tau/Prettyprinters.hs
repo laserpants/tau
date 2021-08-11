@@ -8,8 +8,8 @@ import Control.Monad
 import Data.Fix (Fix(..))
 import Data.Function ((&))
 import Data.Functor.Foldable (cata, para, project, embed)
-import Data.Text.Prettyprint.Doc
 import Data.List (intercalate, intersperse)
+import Data.Text.Prettyprint.Doc
 import Data.Text.Prettyprint.Doc.Render.Text
 import Tau.Misc
 import Tau.Tree
@@ -30,7 +30,7 @@ prettyList_ :: [Doc a] -> Doc a
 prettyList_ = brackets . commaSep
 
 encloseSpace :: Doc a -> Doc a -> Doc a -> Doc a
-encloseSpace a b c = a <+> c <+> b
+encloseSpace l r d = l <+> d <+> r
 
 instance Pretty Prim where
     pretty = \case
@@ -131,18 +131,83 @@ instance Pretty Predicate where
             TArr{} -> True
             _      -> False
 
---
---
---
+isTupleType :: Type -> Bool
+isTupleType = cata $ \case
+    TCon _ con -> Just True == (allCommas <$> stripped con)
+    TApp _ a _ -> a
+    _          -> False
+  where
+    allCommas = Text.all (== ',')
+    stripped  = Text.stripSuffix ")" <=< Text.stripPrefix "("
 
-instance (Pretty p, Pretty a) => Pretty (Clause t p a) where
-    pretty (Clause _ p cs) = pipe <+> pretty p <+> pretty cs
+isRecordType :: Type -> Bool
+isRecordType = cata $ \case
+    TCon _ c | "#" == c -> True
+    TApp _ a _ -> a
+    _          -> False
 
-instance (Pretty p, Pretty a) => Pretty (MonoClause t p a) where
-    pretty (MonoClause _ p cs) = pipe <+> pretty p <+> pretty cs
+instance Pretty Product where
+    pretty (Mul con types) = pretty con <> rhs 
+      where
+        rhs 
+          | null types = ""
+          | otherwise  = " " <> hsep (prettyType <$> types)
+        prettyType t = parensIf (parensRequired t) (pretty t)
+        parensRequired = project >>> \case
+            TApp _ a _ | isRecordType a -> False
+            TApp{} -> True
+            TCon{} -> True
+            _      -> False
 
-instance Pretty (Choice a) where
-    pretty (Choice es e) = "TODO"
+instance Pretty Datatype where
+    pretty (Sum con vars prods) =
+        case prods of
+            []   -> lhs
+            [p]  -> lhs <+> "=" <+> pretty p
+            p:ps -> group (lhs <+> nest 2 (line' <> vsep (pre "=" p:(pre "|" <$> ps))))
+      where
+        pre a p = a <+> pretty p
+        lhs = "type"
+            <+> pretty con
+            <> if null vars then "" else " " <> hsep (pretty <$> vars)
+
+prettyRecord :: [Either (Name, Doc a) (Doc a)] -> Doc a
+prettyRecord es = group (cat (fn <$> zip [0..] es) <+> "}")
+  where
+    fn (n, Left (lab, doc)) = 
+        (if 0 == n then "{" else ",") <+> pretty lab <+> "=" <+> doc
+
+    fn (_, Right doc) = flatAlt "|" " |" <+> doc
+
+instance (Pretty t4) => Pretty (Pattern t1 t2 t3 t4) where
+    pretty = para $ \case
+
+        PCon _ "(::)" [hd, tl]           -> snd hd <+> "::" <+> snd tl
+        PCon _ con []                    -> pretty con
+        PCon _ con ps                    -> pretty con <> prettyTuple (snd <$> ps)
+
+        PRecord _ r                      -> prettyRecord (unfoldRow (fst r))
+
+        pat -> snd <$> pat & \case
+            PVar    _ var                -> pretty var
+            PLit    _ prim               -> pretty prim
+            PAs     _ name p             -> p <+> "as" <+> pretty name
+            POr     _ p q                -> p <+> "or" <+> q
+            PAny    _                    -> "_"
+            PTuple  _ ps                 -> tupled ps
+            PList   _ ps                 -> list ps
+            PAnn    t p                  -> p <+> ":" <+> pretty t
+
+      where
+        unfoldRow = para $ \case
+
+            PRow _ lab p r               -> Left (lab, pretty (fst p)):snd r
+            PCon{}                       -> []
+            p                            -> [Right (pretty (embed (fst <$> p)))]
+
+instance Pretty (PatternLight t) where
+    pretty (SCon _ con []) = pretty con
+    pretty (SCon _ con ps) = prettyTuple (pretty <$> ps)
 
 instance Pretty (Op1 t) where
     pretty = \case
@@ -152,47 +217,9 @@ instance Pretty (Op1 t) where
 instance Pretty (Op2 t) where
     pretty = pretty . op2Symbol
 
-instance (Pretty t4) => Pretty (Pattern t1 t2 t3 t4) where
-    pretty = para $ \case
-
-        PCon _ "(::)" [hd, tl]           -> snd hd <+> "::" <+> snd tl
-        PCon _ con []                    -> pretty con
-        PCon _ con ps                    -> pretty con <> prettyTuple (snd <$> ps)
-
-        PRecord _ r                      -> prettyRecord (fst r)
-
-        pat -> snd <$> pat & \case
-            PVar    _ var                -> pretty var
-            PLit    _ prim               -> pretty prim
-            PAs     _ name p             -> p <+> "as" <+> pretty name
-            POr     _ p q                -> p <+> "or" <+> q
-            PAny    _                    -> "_"
-            PTuple  _ ps                 -> prettyTuple ps
-            PList   _ ps                 -> prettyList_ ps
-            PAnn    t p                  -> p <+> ":" <+> pretty t
-
-            _ -> "TODO"
-
-      where
-        prettyRecord = project >>> \case
-            PVar _ v                     -> pretty v
-            r@PRow{}                     -> "{" <+> commaSep (fields (embed r)) <> final (embed r) <+> "}"
-            PCon _ "{}" []               -> "{}"
-            PCon _ con []                -> pretty con
-            PCon _ con ps                -> pretty con <> prettyTuple (pretty <$> ps)
-
-        fields = para $ \case
-            PRow _ label p rest          -> pretty label <+> "=" <+> pretty (fst p):snd rest
-            _                            -> []
-
-        final = cata $ \case
-            PRow _ _ _ r                 -> r
-            PVar _ v                     -> " " <> pipe <+> pretty v
-            _                            -> ""
-
-instance Pretty (PatternLight t) where
-    pretty (SCon _ con []) = pretty con
-    pretty (SCon _ con ps) = prettyTuple (pretty <$> ps)
+--
+--
+--
 
 instance (Functor e2, Functor e4, Pretty t4) => Pretty (Expr t1 t2 t3 t4 e1 e2 e3 e4) where
     pretty = para $ \case
@@ -202,7 +229,6 @@ instance (Functor e2, Functor e4, Pretty t4) => Pretty (Expr t1 t2 t3 t4 e1 e2 e
         ECon _ con ps                    -> pretty con <> prettyTuple (snd <$> ps)
 
         EApp _ ((e, doc1):es) ->
-
             parensIf parensRequiredL doc1 <> prettyArgs es
           where
             prettyArgs [(Fix (ELit _ TUnit), _)] = "()"
@@ -213,7 +239,7 @@ instance (Functor e2, Functor e4, Pretty t4) => Pretty (Expr t1 t2 t3 t4 e1 e2 e
                     EVar{} -> False
                     _      -> True
 
-        ERecord _ r                      -> prettyRecord (fst r)
+        ERecord _ r                      -> prettyRecord (unfoldRow (fst r))
 
         expr -> snd <$> expr & \case
             EVar    _ var                -> pretty var
@@ -221,40 +247,34 @@ instance (Functor e2, Functor e4, Pretty t4) => Pretty (Expr t1 t2 t3 t4 e1 e2 e
             ELit    _ prim               -> pretty prim
 --            EIf     _ e1 e2 e3           -> prettyIf e1 e2 e3
 --            EFix    _ name e1 e2         -> prettyFix name e1 e2
+--            ELet    _ e1 e2
+--            EFix    _ e1 e2
             EOp1    _ op a               -> pretty op <> a
             EOp2    _ (ODot _) a b       -> b <> "." <> a
             EOp2    _ (OField _) a b     -> b <> "." <> a
             EOp2    _ op a b             -> a <+> pretty op <+> b
             ETuple  _ es                 -> tupled es
-            EList   _ es                 -> prettyList_ es
+            EList   _ es                 -> list es
             EAnn    t e                  -> e <+> ":" <+> pretty t
-
-            _ -> "TODO"
+            _                            -> "TODO"
 
       where
-        prettyRecord = project >>> \case
-            EVar _ v                     -> pretty v
-            r@ERow{}                     -> "{" <+> commaSep (fields (embed r)) <> final (embed r) <+> "}"
---            r@ERow{}                     -> vsep (((", " <>) <$> fields (embed r)) <> final (embed r))
-            ECon _ "{}" []               -> "{}"
-            ECon _ con []                -> pretty con
-            ECon _ con es                -> pretty con <> prettyTuple (pretty <$> es)
+        unfoldRow = para $ \case
 
-        fields = para $ \case
-            ERow _ label p rest          -> pretty label <+> "=" <+> pretty (fst p):snd rest
-            _                            -> []
+            ERow _ lab e r               -> Left (lab, pretty (fst e)):snd r
+            ECon{}                       -> []
+            e                            -> [Right (pretty (embed (fst <$> e)))]
 
-        --final = cata $ \case
-        --    ERow _ _ _ r                 -> r
-        --    EVar _ v                     -> [pipe <+> pretty v]
-        --    EApp _ (_:a:_)               -> a
-        --    _                            -> []
 
-        final = cata $ \case
-            ERow _ _ _ r                 -> r
-            EVar _ v                     -> " " <> pipe <+> pretty v
-            EApp _ (_:a:_)               -> a
-            _                            -> ""
+
+instance (Pretty p, Pretty a) => Pretty (Clause t p a) where
+    pretty (Clause _ p cs) = pipe <+> pretty p <+> pretty cs
+
+instance (Pretty p, Pretty a) => Pretty (MonoClause t p a) where
+    pretty (MonoClause _ p cs) = pipe <+> pretty p <+> pretty cs
+
+instance Pretty (Choice a) where
+    pretty (Choice es e) = "TODO"
 
 instance Pretty Core where
     pretty = para $ \case
@@ -281,46 +301,6 @@ instance Pretty Core where
 --coreClauses cs = vsep (prettyClause <$> cs)
 --  where
 --    prettyClause (ns, e) = pipe <+> prettyTuple (pretty <$> ns) <+> "=>" <+> e
-
-instance Pretty Product where
-    pretty (Mul con types) = pretty con <> rhs 
-      where
-        rhs 
-          | null types = ""
-          | otherwise  = hsep (prettyType <$> types)
-        prettyType t = parensIf (parensRequired t) (pretty t)
-        parensRequired = project >>> \case
-            TApp _ a _ | isRecordType a -> False
-            TApp{} -> True
-            TCon{} -> True
-            _      -> False
-
-instance Pretty Datatype where
-    pretty (Sum con vars prods) =
-        case prods of
-            []   -> lhs
-            [p]  -> lhs <+> "=" <+> pretty p
-            p:ps -> group (lhs <+> nest 2 (line' <> vsep (pre "=" p:(pre "|" <$> ps))))
-      where
-        pre a p = a <+> pretty p
-        lhs = "type"
-            <+> pretty con
-            <> if null vars then "" else " " <> hsep (pretty <$> vars)
-
-isTupleType :: Type -> Bool
-isTupleType = cata $ \case
-    TCon _ con -> Just True == (allCommas <$> stripped con)
-    TApp _ a _ -> a
-    _          -> False
-  where
-    allCommas = Text.all (== ',')
-    stripped  = Text.stripSuffix ")" <=< Text.stripPrefix "("
-
-isRecordType :: Type -> Bool
-isRecordType = cata $ \case
-    TCon _ c | "#" == c -> True
-    TApp _ a _ -> a
-    _          -> False
 
 instance Pretty Error where
     pretty = pretty . show
