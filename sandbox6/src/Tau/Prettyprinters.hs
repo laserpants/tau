@@ -174,6 +174,7 @@ instance Pretty Datatype where
             <> if null vars then "" else " " <> hsep (pretty <$> vars)
 
 prettyRecord :: [Either (Name, Doc a) (Doc a)] -> Doc a
+prettyRecord [] = "{}"
 prettyRecord es = group (cat (fn <$> zip [0..] es) <+> "}")
   where
     fn (n, Left (lab, doc)) =

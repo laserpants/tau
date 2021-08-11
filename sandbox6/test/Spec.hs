@@ -1197,6 +1197,12 @@ testPrettyprinters = do
                     (conExpr () "(::)" [varExpr () "x", varExpr () "xs"])
                     "x :: xs"
 
+        describe "• Records" $ do
+
+            suceedPrintExpr
+                (recordExpr () (conExpr () "{}" []))
+                "{}"
+
 -------------------------------------------------------------------------------
 
 -- Flight tests
