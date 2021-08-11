@@ -1169,6 +1169,10 @@ testPrettyprinters = do
             (recordExpr () (rowExpr () "id" (varExpr () "id") (rowExpr () "name" (varExpr () "name") (conExpr () "{}" []))))
             "{ id = id, name = name }"
 
+--        suceedPrintExprW 10
+--            (recordExpr () (rowExpr () "id" (varExpr () "id") (rowExpr () "name" (varExpr () "name") (conExpr () "{}" []))))
+--            "{ id = id\n, name = name\n }"
+
         describe "• Datatype expressions" $ do
 
             suceedPrintExpr

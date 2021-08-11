@@ -9,6 +9,7 @@ import Data.Fix (Fix(..))
 import Data.Function ((&))
 import Data.Functor.Foldable (cata, para, project, embed)
 import Data.Text.Prettyprint.Doc
+import Data.List (intercalate, intersperse)
 import Data.Text.Prettyprint.Doc.Render.Text
 import Tau.Misc
 import Tau.Tree
@@ -130,6 +131,10 @@ instance Pretty Predicate where
             TArr{} -> True
             _      -> False
 
+--
+--
+--
+
 instance (Pretty p, Pretty a) => Pretty (Clause t p a) where
     pretty (Clause _ p cs) = pipe <+> pretty p <+> pretty cs
 
@@ -230,6 +235,7 @@ instance (Functor e2, Functor e4, Pretty t4) => Pretty (Expr t1 t2 t3 t4 e1 e2 e
         prettyRecord = project >>> \case
             EVar _ v                     -> pretty v
             r@ERow{}                     -> "{" <+> commaSep (fields (embed r)) <> final (embed r) <+> "}"
+--            r@ERow{}                     -> vsep (((", " <>) <$> fields (embed r)) <> final (embed r))
             ECon _ "{}" []               -> "{}"
             ECon _ con []                -> pretty con
             ECon _ con es                -> pretty con <> prettyTuple (pretty <$> es)
@@ -237,6 +243,12 @@ instance (Functor e2, Functor e4, Pretty t4) => Pretty (Expr t1 t2 t3 t4 e1 e2 e
         fields = para $ \case
             ERow _ label p rest          -> pretty label <+> "=" <+> pretty (fst p):snd rest
             _                            -> []
+
+        --final = cata $ \case
+        --    ERow _ _ _ r                 -> r
+        --    EVar _ v                     -> [pipe <+> pretty v]
+        --    EApp _ (_:a:_)               -> a
+        --    _                            -> []
 
         final = cata $ \case
             ERow _ _ _ r                 -> r
@@ -264,18 +276,20 @@ instance Pretty Core where
             CLet name e1 e2              -> "TODO" -- prettyLet (pretty name <+> "=") e1 e2
             CLam name e1                 -> "TODO" -- prettyLam (pretty name) e1
             CIf  e1 e2 e3                -> "TODO" -- prettyIf e1 e2 e3
-            CPat e1 cs                   -> nest 2 (vsep ["match" <+> e1 <+> "with", coreClauses cs])
+            CPat e1 cs                   -> "TODO" -- nest 2 (vsep ["match" <+> e1 <+> "with", coreClauses cs])
 
-coreClauses cs = vsep (prettyClause <$> cs)
-  where
-    prettyClause (ns, e) = pipe <+> prettyTuple (pretty <$> ns) <+> "=>" <+> e
+--coreClauses cs = vsep (prettyClause <$> cs)
+--  where
+--    prettyClause (ns, e) = pipe <+> prettyTuple (pretty <$> ns) <+> "=>" <+> e
 
 instance Pretty Product where
-    pretty (Mul con types) =
-        pretty con <+> hsep (prettyType <$> types)
+    pretty (Mul con types) = pretty con <> rhs 
       where
-        prettyType t = parensIf (useParens t) (pretty t)
-        useParens = project >>> \case
+        rhs 
+          | null types = ""
+          | otherwise  = hsep (prettyType <$> types)
+        prettyType t = parensIf (parensRequired t) (pretty t)
+        parensRequired = project >>> \case
             TApp _ a _ | isRecordType a -> False
             TApp{} -> True
             TCon{} -> True
@@ -286,13 +300,12 @@ instance Pretty Datatype where
         case prods of
             []   -> lhs
             [p]  -> lhs <+> "=" <+> pretty p
-            p:ps -> lhs <+> nest 2 (line' <> vsep (pre "=" p:(pre "|" <$> ps)))
+            p:ps -> group (lhs <+> nest 2 (line' <> vsep (pre "=" p:(pre "|" <$> ps))))
       where
         pre a p = a <+> pretty p
         lhs = "type"
             <+> pretty con
-            <> if null vars then ""
-                            else " " <> hsep (pretty <$> vars)
+            <> if null vars then "" else " " <> hsep (pretty <$> vars)
 
 isTupleType :: Type -> Bool
 isTupleType = cata $ \case
