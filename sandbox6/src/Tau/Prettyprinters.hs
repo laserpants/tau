@@ -1,6 +1,7 @@
-{-# LANGUAGE FlexibleInstances #-}
-{-# LANGUAGE LambdaCase        #-}
-{-# LANGUAGE OverloadedStrings #-}
+{-# LANGUAGE FlexibleInstances     #-}
+{-# LANGUAGE LambdaCase            #-}
+{-# LANGUAGE OverloadedStrings     #-}
+{-# LANGUAGE UndecidableInstances  #-}
 module Tau.Prettyprinters where
 
 import Control.Arrow ((<<<), (>>>))
@@ -9,6 +10,7 @@ import Data.Fix (Fix(..))
 import Data.Function ((&))
 import Data.Functor.Foldable (cata, para, project, embed)
 import Data.List (intercalate, intersperse)
+import Data.Text (Text)
 import Data.Text.Prettyprint.Doc
 import Data.Text.Prettyprint.Doc.Render.Text
 import Tau.Misc
@@ -147,9 +149,9 @@ isRecordType = cata $ \case
     _          -> False
 
 instance Pretty Product where
-    pretty (Mul con types) = pretty con <> rhs 
+    pretty (Mul con types) = pretty con <> rhs
       where
-        rhs 
+        rhs
           | null types = ""
           | otherwise  = " " <> hsep (prettyType <$> types)
         prettyType t = parensIf (parensRequired t) (pretty t)
@@ -174,7 +176,7 @@ instance Pretty Datatype where
 prettyRecord :: [Either (Name, Doc a) (Doc a)] -> Doc a
 prettyRecord es = group (cat (fn <$> zip [0..] es) <+> "}")
   where
-    fn (n, Left (lab, doc)) = 
+    fn (n, Left (lab, doc)) =
         (if 0 == n then "{" else ",") <+> pretty lab <+> "=" <+> doc
 
     fn (_, Right doc) = flatAlt "|" " |" <+> doc
@@ -217,11 +219,31 @@ instance Pretty (Op1 t) where
 instance Pretty (Op2 t) where
     pretty = pretty . op2Symbol
 
---
---
---
+instance (Pretty u) => Pretty (Binding t (Pattern t t t u)) where
+    pretty = \case
+        BPat _ p    -> pretty p
+        BFun _ f ps -> pretty f <> prettyArgs ps
+          where
+            prettyArgs [Fix (PLit _ TUnit)] = "()"
+            prettyArgs args = parens (commaSep (pretty <$> args))
 
-instance (Functor e2, Functor e4, Pretty t4) => Pretty (Expr t1 t2 t3 t4 e1 e2 e3 e4) where
+class FunArgs f where
+    funArgs :: f -> Doc a
+
+instance FunArgs Text where
+    funArgs = pretty
+
+instance (Pretty u) => FunArgs [ProgPattern t u] where
+    funArgs [p] = parensIf (parensRequired p) (pretty p)
+      where
+        parensRequired = project >>> \case
+            PVar{} -> False
+            PLit{} -> False
+            _      -> True
+
+    funArgs ps = tupled (pretty <$> ps)
+
+instance (FunArgs e1, Functor e2, Functor e4, Pretty e3, Pretty t4, Pretty (e2 (Expr t1 t2 t3 t4 e1 e2 e3 e4))) => Pretty (Expr t1 t2 t3 t4 e1 e2 e3 e4) where
     pretty = para $ \case
 
         ECon _ "(::)" [hd, tl]           -> snd hd <+> "::" <+> snd tl
@@ -240,15 +262,19 @@ instance (Functor e2, Functor e4, Pretty t4) => Pretty (Expr t1 t2 t3 t4 e1 e2 e
                     _      -> True
 
         ERecord _ r                      -> prettyRecord (unfoldRow (fst r))
+        ELam    _ ps e                   -> prettyLam (funArgs ps) (snd e)
+        ELet    _ bind e1 e2             -> prettyLet "let" (pretty bind) (letRhs e1) (snd e2)
+        EFix    _ name e1 e2             -> prettyLet "fix" (pretty name) (snd e1) (snd e2)
+        EPat    _ e1 cs                  -> group (nest 2 (vsep ["match" <+> snd e1 <+> "with", clauses (fst <$$> cs)]))
+--        EFun    _ cs                     -> group (nest 2 (vsep ["fun", clauses (fst <$$> cs)]))
 
         expr -> snd <$> expr & \case
             EVar    _ var                -> pretty var
             EHole   _                    -> "_"
             ELit    _ prim               -> pretty prim
---            EIf     _ e1 e2 e3           -> prettyIf e1 e2 e3
---            EFix    _ name e1 e2         -> prettyFix name e1 e2
---            ELet    _ e1 e2
---            EFix    _ e1 e2
+            EIf     _ e1 e2 e3           -> prettyIf e1 e2 e3
+--            EPat
+--            EFun
             EOp1    _ op a               -> pretty op <> a
             EOp2    _ (ODot _) a b       -> b <> "." <> a
             EOp2    _ (OField _) a b     -> b <> "." <> a
@@ -259,13 +285,36 @@ instance (Functor e2, Functor e4, Pretty t4) => Pretty (Expr t1 t2 t3 t4 e1 e2 e
             _                            -> "TODO"
 
       where
+        --clauses :: (Pretty (e2 (Expr t1 t2 t3 t4 e1 e2 e3 e4))) => [e2 (Expr t1 t2 t3 t4 e1 e2 e3 e4)] -> Doc a
+        clauses cs = vsep (pretty <$> cs)
+
+        letRhs :: (FunArgs e1, Functor e2, Functor e4, Pretty e3, Pretty t4) => (Expr t1 t2 t3 t4 e1 e2 e3 e4, Doc a) -> Doc a
+        letRhs (expr, doc) =
+            case project expr of
+                EFun _ cs -> line' -- <> clauses cs
+                _         -> group (vsep ["=", doc])
+
         unfoldRow = para $ \case
 
             ERow _ lab e r               -> Left (lab, pretty (fst e)):snd r
             ECon{}                       -> []
             e                            -> [Right (pretty (embed (fst <$> e)))]
 
+prettyIf :: Doc a -> Doc a -> Doc a -> Doc a
+prettyIf e1 e2 e3 =
+    "if" <> softline <> e1 <> space <> group (nest 2 (line' <> vsep
+        [ group (nest 2 (vsep ["then", e2]))
+        , group (nest 2 (vsep ["else", e3]))
+        ]))
 
+prettyLam :: Doc a -> Doc a -> Doc a
+prettyLam args body = group (nest 2 (vsep [args <+> "=>", body]))
+
+prettyLet :: Doc a -> Doc a -> Doc a -> Doc a -> Doc a
+prettyLet kword bind e1 e2 =
+    group (nest 2 (vsep
+        [ kword <+> bind <+> e1
+        , nest 2 (vsep ["in", e2]) ]))
 
 instance (Pretty p, Pretty a) => Pretty (Clause t p a) where
     pretty (Clause _ p cs) = pipe <+> pretty p <+> pretty cs
@@ -275,6 +324,10 @@ instance (Pretty p, Pretty a) => Pretty (MonoClause t p a) where
 
 instance Pretty (Choice a) where
     pretty (Choice es e) = "TODO"
+
+--
+--
+--
 
 instance Pretty Core where
     pretty = para $ \case
