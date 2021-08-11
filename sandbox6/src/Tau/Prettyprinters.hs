@@ -286,13 +286,13 @@ instance (FunArgs e1, Functor e2, Functor e4, Pretty e3, Pretty t4, Pretty (e2 (
             _                            -> "TODO"
 
       where
-        --clauses :: (Pretty (e2 (Expr t1 t2 t3 t4 e1 e2 e3 e4))) => [e2 (Expr t1 t2 t3 t4 e1 e2 e3 e4)] -> Doc a
+--        clauses :: (Pretty (e2 (Expr t1 t2 t3 t4 e1 e2 e3 e4))) => [e2 (Expr t1 t2 t3 t4 e1 e2 e3 e4)] -> Doc a
         clauses cs = vsep (pretty <$> cs)
 
         letRhs :: (FunArgs e1, Functor e2, Functor e4, Pretty e3, Pretty t4) => (Expr t1 t2 t3 t4 e1 e2 e3 e4, Doc a) -> Doc a
         letRhs (expr, doc) =
             case project expr of
-                EFun _ cs -> line' -- <> clauses cs
+                EFun _ cs -> line' -- <> vsep (pretty <$> cs) -- clauses cs
                 _         -> group (vsep ["=", doc])
 
         unfoldRow = para $ \case
