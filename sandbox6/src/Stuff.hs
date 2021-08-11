@@ -139,7 +139,16 @@ inferAstType
   => Ast t Type
   -> m (Ast (TypeInfo [Error]) Void)
 inferAstType (Ast expr) =
-    Ast <$> (tagTree expr >>= inferExprType >>= applySubsTo)
+    Ast <$> (tagTree (preproc expr) >>= inferExprType >>= applySubsTo)
+  where
+    preproc = cata $ \case
+        ERow t label expr row -> rowExpr t label expr next
+          where
+            next = case project row of
+                EVar _ v -> appExpr t [varExpr t "_#", varExpr t v]
+                _        -> row
+
+        e -> embed e
 
 inferExprType
   :: ( MonadSupply Int m
@@ -152,7 +161,15 @@ inferExprType = cata $ \case
     EVar t var -> do
         lookupScheme var >>= \case
             Nothing ->
-                pure (varExpr (TypeInfo [NotInScope var] t []) var)
+                -- Special case for record/row types
+                lookupScheme ("#" <> var) >>= \case
+                    Just scheme -> do
+                        (ty, ps) <- instantiate scheme
+                        errs <- tryUnify t ty
+                        pure (recordExpr (TypeInfo errs (tRecord t) ps) (varExpr (TypeInfo [] t []) var))
+
+                    Nothing ->
+                        pure (varExpr (TypeInfo [NotInScope var] t []) var)
 
             Just scheme -> do
                 (ty, ps) <- instantiate scheme
@@ -383,7 +400,13 @@ inferPatternType = cata $ \case
         errs1 <- tryUnify t (tRow label (typeOf p) (typeOf r))
         (ty, _) <- instantiate (Forall [kTyp, kRow] [] (tRow label (tGen 0) (tGen 1)))
         errs2 <- tryUnify t ty
-        pure (rowPat (TypeInfo (errs1 <> errs2) t []) label p r, vs1 <> vs2)
+        pure (rowPat (TypeInfo (errs1 <> errs2) t []) label p r, vs1 <> tag vs2 r)
+      where
+        -- { ... | r }
+        tag :: [(Name, Type)] -> ProgPattern (TypeInfo [Error]) Void -> [(Name, Type)]
+        tag vs = project >>> \case
+              PVar t v -> [("#" <> v, nodeType t)]
+              _        -> vs
 
     PRecord t pat -> do
         (p, vs) <- pat
@@ -824,10 +847,21 @@ test5expr :: ProgExpr () Type
 --            (lamExpr () [varPat () "x"]
 --                (appExpr () [varExpr () "show", appExpr () [varExpr () "read", varExpr () "x"]]))
 
----- let 
+---- let
 --test5expr = letExpr () (BFun () "f" [recordPat () (varPat () "z")]) (recordExpr () (rowExpr () "a" (annExpr tInt (litExpr () (TInteger 1))) (varExpr () "z"))) (appExpr () [varExpr () "f", recordExpr () (rowExpr () "b" (annExpr tInt (litExpr () (TInt 2))) (conExpr () "{}" []))])
 
-test5expr = appExpr () [ letExpr () (BPat () (varPat () "r")) (recordExpr () (rowExpr () "a" (annExpr tInt (litExpr () (TInt 1))) (rowExpr () "b" (annExpr tInt (litExpr () (TInt 2))) (conExpr () "{}" [])))) (lamExpr () [recordPat () (rowPat () "a" (varPat () "a") (varPat () "z"))] (varExpr () "a")) , recordExpr () (rowExpr () "a" (annExpr tInt (litExpr () (TInt 5))) (conExpr () "{}" [])) ]
+--test5expr = appExpr () [ letExpr () (BPat () (varPat () "r")) (recordExpr () (rowExpr () "a" (annExpr tInt (litExpr () (TInt 1))) (rowExpr () "b" (annExpr tInt (litExpr () (TInt 2))) (conExpr () "{}" [])))) (lamExpr () [recordPat () (rowPat () "a" (varPat () "a") (varPat () "z"))] (varExpr () "a")) , recordExpr () (rowExpr () "a" (annExpr tInt (litExpr () (TInt 5))) (conExpr () "{}" [])) ]
+
+
+--        -- (({ a = a | z }) => z)({ a = 1, b = 2 })
+--test5expr = appExpr () [lamExpr () [recordPat () (rowPat () "a" (varPat () "a") (varPat () "z"))] (varExpr () "z"), recordExpr () (rowExpr () "a" (litExpr () (TInteger 1)) (rowExpr () "b" (litExpr () (TInteger 2)) (conExpr () "{}" [])))]
+
+--        -- let f(z) = { a = 1 : Int | z } in f({ b = 2 : Int })
+test5expr = letExpr ()
+    (BFun () "f" [varPat () "z"])
+    (recordExpr () (rowExpr () "a" (annExpr tInt (litExpr () (TInteger 1))) (varExpr () "z")))
+    (appExpr () [varExpr () "f", recordExpr () (rowExpr () "b" (annExpr tInt (litExpr () (TInteger 2))) (conExpr () "{}" []))])
+
 
 test5 :: IO ()
 test5 = do
