@@ -44,7 +44,7 @@ instance ToRep () where
 instance (ToRep t1, ToRep t2, ToRep t3, ToRep t4, Pretty t4) => ToRep (Pattern t1 t2 t3 t4) where
     toRep = withPretty patternRep
 
-instance (FunArgs e1, Functor e2, Functor e4, ToRep t1, ToRep t2, ToRep t3, ToRep t4, ToRep e1, ToRep (e2 (Expr t1 t2 t3 t4 e1 e2 e3 e4)), ToRep e3, ToRep (e4 (Expr t1 t2 t3 t4 e1 e2 e3 e4)), FunArgsRep e1, Pretty e1, Pretty e3, Pretty t4, Pretty (e2 (Expr t1 t2 t3 t4 e1 e2 e3 e4))) => ToRep (Expr t1 t2 t3 t4 e1 e2 e3 e4) where
+instance (FunArgs e1, Functor e2, Functor e4, ToRep t1, ToRep t2, ToRep t3, ToRep t4, ToRep e1, ToRep (e2 (Expr t1 t2 t3 t4 e1 e2 e3 e4)), ToRep e3, ToRep (e4 (Expr t1 t2 t3 t4 e1 e2 e3 e4)), FunArgsRep e1, Pretty e1, Pretty e3, Pretty t4, Pretty (e2 (Expr t1 t2 t3 t4 e1 e2 e3 e4)), Pretty (e4 (Expr t1 t2 t3 t4 e1 e2 e3 e4))) => ToRep (Expr t1 t2 t3 t4 e1 e2 e3 e4) where
     toRep = withPretty exprRep
 
 instance (ToRep t) => ToRep (PatternLight t) where
@@ -59,7 +59,7 @@ instance (ToRep a) => ToRep (Op2 a) where
 instance (ToRep t, ToRep p) => ToRep (Binding t p) where
     toRep = bindingRep
 
-instance (Pretty p, Pretty a, ToRep t, ToRep p, ToRep a) => ToRep (Clause t p a) where
+instance (Pretty p, Pretty a, ToRep t, ToRep p, ToRep a, Patterns p) => ToRep (Clause t p a) where
     toRep = withPretty clauseRep
 
 instance (Pretty p, Pretty a, ToRep t, ToRep p, ToRep a) => ToRep (MonoClause t p a) where
@@ -146,7 +146,7 @@ patternLightRep = \case
     SCon t p ps         -> makeRep "PatternLight" "SCon" [toRep t, toRep p, toRep ps]
 
 exprRep
-  :: (FunArgs e1, Functor e2, Functor e4, ToRep t1, ToRep t2, ToRep t3, ToRep t4, ToRep e1, ToRep e3, ToRep (e2 (Expr t1 t2 t3 t4 e1 e2 e3 e4)), ToRep (e4 (Expr t1 t2 t3 t4 e1 e2 e3 e4)), FunArgsRep e1, Pretty e1, Pretty e3, Pretty t4, Pretty (e2 (Expr t1 t2 t3 t4 e1 e2 e3 e4)))
+  :: (FunArgs e1, Functor e2, Functor e4, ToRep t1, ToRep t2, ToRep t3, ToRep t4, ToRep e1, ToRep e3, ToRep (e2 (Expr t1 t2 t3 t4 e1 e2 e3 e4)), ToRep (e4 (Expr t1 t2 t3 t4 e1 e2 e3 e4)), FunArgsRep e1, Pretty e1, Pretty e3, Pretty t4, Pretty (e2 (Expr t1 t2 t3 t4 e1 e2 e3 e4)), Pretty (e4 (Expr t1 t2 t3 t4 e1 e2 e3 e4)))
   => Expr t1 t2 t3 t4 e1 e2 e3 e4
   -> Value
 exprRep = project >>> \case

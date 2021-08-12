@@ -1119,3 +1119,37 @@ testEvalEnv = Env.fromList
     [ ( "_#"  , fromJust (evalExpr (cLam "?0" (cPat (cVar "?0") [(["#", "?1"], cVar "?1")])) mempty) )
     , ( "(.)" , fromJust (evalExpr (cLam "f" (cLam "x" (cApp [cVar "f", cVar "x"]))) mempty) )
     ]
+
+--testx = (fixExpr () "loopList" (lamExpr () [varPat () "g", varPat () "ys"] (patExpr () (varExpr () "ys") [ Clause () (conPat () "(::)" [varPat () "x", varPat () "xs"]) [Choice [] (appExpr () [varExpr () "g", conExpr () "Cons'" [varExpr () "x", varExpr () "xs", appExpr () [varExpr () "loopList", varExpr () "g", varExpr () "xs"]]])] , Clause () (conPat () "[]" []) [Choice [] (appExpr () [varExpr () "g", conExpr () "Nil'" []])] ])) (letExpr () (BFun () "length" [varPat () "xs"]) (op2Expr () (ODot ()) (appExpr () [ varExpr () "loopList" , funExpr () [ Clause () [conPat () "Cons'" [anyPat (), anyPat (), varPat () "a"]] [Choice [] (op2Expr () (OAdd ()) (litExpr () (TInteger 1)) (varExpr () "a"))] , Clause () [conPat () "Nil'" []] [Choice [] (annExpr tInt (litExpr () (TInteger 0)))] ] ]) (varExpr () "xs")) (letExpr () (BPat () (varPat () "xs")) (annExpr (tList tInt) (listExpr () [litExpr () (TInteger 2)])) (patExpr () (varExpr () "xs") [ Clause () (conPat () "(::)" [varPat () "x", anyPat ()]) [Choice [op2Expr () (OLte ()) (appExpr () [varExpr () "length", varExpr () "xs"]) (litExpr () (TInteger 3))] (varExpr () "x")] , Clause () (anyPat ()) [Choice [] (litExpr () (TInteger 0))] ]))))
+
+testx :: ProgExpr () Type
+testx = 
+    patExpr () (varExpr () "x") 
+        [ Clause () (conPat () "Some" [varPat () "x"]) 
+            [ Choice [op2Expr () (OEq ()) (varExpr () "x") (litExpr () (TInteger 111))] (litExpr () (TInteger 4)) 
+            , Choice [op2Expr () (OEq ()) (varExpr () "x") (litExpr () (TInteger 112))] (litExpr () (TInteger 5))  
+            , Choice [] (litExpr () (TInteger 6)) 
+            ]
+        , Clause () (conPat () "None" []) 
+            [ Choice [appExpr () [varExpr () "predicate", varExpr () "x"]] (litExpr () (TInteger 7)) 
+            , Choice [] (litExpr () (TInteger 8)) 
+            ]
+        , Clause () (anyPat ()) 
+            [ Choice [] (litExpr () (TInteger 9)) ]
+        ]
+
+testy :: ProgExpr () Type
+testy = 
+    funExpr () 
+        [ Clause () [conPat () "Some" [varPat () "x"]] 
+            [ Choice [op2Expr () (OEq ()) (varExpr () "x") (litExpr () (TInteger 111))] (litExpr () (TInteger 4)) 
+            , Choice [op2Expr () (OEq ()) (varExpr () "x") (litExpr () (TInteger 112))] (litExpr () (TInteger 5))  
+            , Choice [] (litExpr () (TInteger 6)) 
+            ]
+        , Clause () [conPat () "None" []] 
+            [ Choice [appExpr () [varExpr () "predicate", varExpr () "x"]] (litExpr () (TInteger 7)) 
+            , Choice [] (litExpr () (TInteger 8)) 
+            ]
+        , Clause () [anyPat ()] 
+            [ Choice [] (litExpr () (TInteger 9)) ]
+        ]

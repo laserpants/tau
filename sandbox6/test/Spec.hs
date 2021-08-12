@@ -23,6 +23,7 @@ import Tau.Tree
 import Tau.Util (Name, runSupplyNats, prettyT, prettyW, renderDoc)
 import Test.Hspec hiding (describe, it)
 import Text.Megaparsec
+import TextShow
 import qualified Data.Map.Strict as Map
 import qualified Data.Text  as Text
 import qualified Tau.Env as Env
@@ -1209,8 +1210,8 @@ testPrettyprinters = do
 
 succeedRunExpr :: ProgExpr () Type -> Maybe (Value Eval) -> SpecWith ()
 succeedRunExpr expr result =
-    describe ("TODO " <> prettyT expr) $ do
-        it "✔ TODO" $
+    describe (prettyT expr) $ do
+        it ("✔ evaluates to " <> prettyT (show result)) $
             result == j
   where
     ast = Ast expr

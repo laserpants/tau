@@ -16,6 +16,7 @@ import Data.Text.Prettyprint.Doc.Render.Text
 import Tau.Misc
 import Tau.Tree
 import Tau.Util
+import TextShow
 import qualified Data.Text as Text
 
 parensIf :: Bool -> Doc a -> Doc a
@@ -244,7 +245,7 @@ instance (Pretty u) => FunArgs [ProgPattern t u] where
 
     funArgs ps = tupled (pretty <$> ps)
 
-instance (FunArgs e1, Functor e2, Functor e4, Pretty e3, Pretty t4, Pretty (e2 (Expr t1 t2 t3 t4 e1 e2 e3 e4))) => Pretty (Expr t1 t2 t3 t4 e1 e2 e3 e4) where
+instance (FunArgs e1, Functor e2, Functor e4, Pretty e3, Pretty t4, Pretty (e2 (Expr t1 t2 t3 t4 e1 e2 e3 e4)), Pretty (e4 (Expr t1 t2 t3 t4 e1 e2 e3 e4))) => Pretty (Expr t1 t2 t3 t4 e1 e2 e3 e4) where
     pretty = para $ \case
 
         ECon _ "(::)" [hd, tl]           -> snd hd <+> "::" <+> snd tl
@@ -266,16 +267,14 @@ instance (FunArgs e1, Functor e2, Functor e4, Pretty e3, Pretty t4, Pretty (e2 (
         ELam    _ ps e                   -> prettyLam (funArgs ps) (snd e)
         ELet    _ bind e1 e2             -> prettyLet "let" (pretty bind) (letRhs e1) (snd e2)
         EFix    _ name e1 e2             -> prettyLet "fix" (pretty name) (snd e1) (snd e2)
-        EPat    _ e1 cs                  -> group (nest 2 (vsep ["match" <+> snd e1 <+> "with", clauses (fst <$$> cs)]))
---        EFun    _ cs                     -> group (nest 2 (vsep ["fun", clauses (fst <$$> cs)]))
+        EPat    _ e1 cs                  -> group (nest 2 (vsep ["match" <+> snd e1 <+> "with", clauses1 (fst <$$> cs)]))
+        EFun    _ cs                     -> group (clauses (fst <$$> cs))
 
         expr -> snd <$> expr & \case
             EVar    _ var                -> pretty var
             EHole   _                    -> "_"
             ELit    _ prim               -> pretty prim
             EIf     _ e1 e2 e3           -> prettyIf e1 e2 e3
---            EPat
---            EFun
             EOp1    _ op a               -> pretty op <> a
             EOp2    _ (ODot _) a b       -> b <> "." <> a
             EOp2    _ (OField _) a b     -> b <> "." <> a
@@ -283,23 +282,28 @@ instance (FunArgs e1, Functor e2, Functor e4, Pretty e3, Pretty t4, Pretty (e2 (
             ETuple  _ es                 -> tupled es
             EList   _ es                 -> list es
             EAnn    t e                  -> e <+> ":" <+> pretty t
-            _                            -> "TODO"
+            ERow{}                       -> "???"
 
       where
---        clauses :: (Pretty (e2 (Expr t1 t2 t3 t4 e1 e2 e3 e4))) => [e2 (Expr t1 t2 t3 t4 e1 e2 e3 e4)] -> Doc a
-        clauses cs = vsep (pretty <$> cs)
-
-        letRhs :: (FunArgs e1, Functor e2, Functor e4, Pretty e3, Pretty t4) => (Expr t1 t2 t3 t4 e1 e2 e3 e4, Doc a) -> Doc a
-        letRhs (expr, doc) =
-            case project expr of
-                EFun _ cs -> line' -- <> vsep (pretty <$> cs) -- clauses cs
-                _         -> group (vsep ["=", doc])
-
         unfoldRow = para $ \case
 
             ERow _ lab e r               -> Left (lab, pretty (fst e)):snd r
             ECon{}                       -> []
             e                            -> [Right (pretty (embed (fst <$> e)))]
+
+clauses1 :: Pretty p => [p] -> Doc a
+clauses1 cs = vsep (pre "|" <$> cs)
+  where 
+    pre a p = a <+> pretty p
+
+clauses :: Pretty p => [p] -> Doc a
+clauses cs = encloseSep "" "" "| " (pretty <$> cs)
+
+letRhs :: (FunArgs e1, Functor e2, Functor e4, Pretty e3, Pretty t4, Pretty (e4 (Expr t1 t2 t3 t4 e1 e2 e3 e4))) => (Expr t1 t2 t3 t4 e1 e2 e3 e4, Doc a) -> Doc a
+letRhs (expr, doc) =
+    case project expr of
+        EFun _ cs -> line' <> vsep (pretty <$> cs) 
+        _         -> group (vsep ["=", doc])
 
 prettyIf :: Doc a -> Doc a -> Doc a -> Doc a
 prettyIf e1 e2 e3 =
@@ -317,11 +321,21 @@ prettyLet kword bind e1 e2 =
         [ kword <+> bind <+> e1
         , nest 2 (vsep ["in", e2]) ]))
 
-instance (Pretty p, Pretty a) => Pretty (Clause t p a) where
-    pretty (Clause _ p cs) = pipe <+> pretty p <+> pretty cs
+class Patterns p where
+    prettyPatterns :: p -> Doc a
+
+instance (Pretty u) => Patterns (ProgPattern t u) where
+    prettyPatterns = pretty
+
+instance (Pretty u) => Patterns [ProgPattern t u] where
+    prettyPatterns [p] = pretty p
+    prettyPatterns ps  = parens (commaSep (pretty <$> ps))
+
+instance (Pretty p, Pretty a, Patterns p) => Pretty (Clause t p a) where
+    pretty (Clause _ p cs) = prettyPatterns p <+> pretty cs
 
 instance (Pretty p, Pretty a) => Pretty (MonoClause t p a) where
-    pretty (MonoClause _ p cs) = pipe <+> pretty p <+> pretty cs
+    pretty (MonoClause _ p cs) = pretty p <+> pretty cs
 
 instance Pretty (Choice a) where
     pretty (Choice es e) = "TODO"
