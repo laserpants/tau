@@ -884,8 +884,9 @@ insertArgsExpr expr = foldrM fun expr . Env.toList
       where
         fun2 set1 set2 (name, dv) e =
             if name `elem` set1
-                then
-                    lamExpr tempT dv e
+                then do
+                    let ty = tApp kTyp (tCon kFun name) (tVar kTyp var)
+                    lamExpr (ty `tArr` stage2ExprTag e) dv e
                 else
                     replaceVar dv (fromJust (lookup name set2)) e
 
