@@ -268,7 +268,7 @@ instance (FunArgs e1, Functor e2, Functor e4, Pretty e3, Pretty t4, Pretty (e2 (
         ELet    _ bind e1 e2             -> prettyLet "let" (pretty bind) (letRhs e1) (snd e2)
         EFix    _ name e1 e2             -> prettyLet "fix" (pretty name) (snd e1) (snd e2)
         EPat    _ e1 cs                  -> group (nest 2 (vsep ["match" <+> snd e1 <+> "with", clauses1 (fst <$$> cs)]))
-        EFun    _ cs                     -> group (clauses (fst <$$> cs))
+        EFun    _ cs                     -> "!!!!" -- group (clauses (fst <$$> cs))
 
         expr -> snd <$> expr & \case
             EVar    _ var                -> pretty var
@@ -290,14 +290,6 @@ instance (FunArgs e1, Functor e2, Functor e4, Pretty e3, Pretty t4, Pretty (e2 (
             ERow _ lab e r               -> Left (lab, pretty (fst e)):snd r
             ECon{}                       -> []
             e                            -> [Right (pretty (embed (fst <$> e)))]
-
-clauses1 :: Pretty p => [p] -> Doc a
-clauses1 cs = vsep (pre "|" <$> cs)
-  where 
-    pre a p = a <+> pretty p
-
-clauses :: Pretty p => [p] -> Doc a
-clauses cs = encloseSep "" "" "| " (pretty <$> cs)
 
 letRhs :: (FunArgs e1, Functor e2, Functor e4, Pretty e3, Pretty t4, Pretty (e4 (Expr t1 t2 t3 t4 e1 e2 e3 e4))) => (Expr t1 t2 t3 t4 e1 e2 e3 e4, Doc a) -> Doc a
 letRhs (expr, doc) =
@@ -321,6 +313,14 @@ prettyLet kword bind e1 e2 =
         [ kword <+> bind <+> e1
         , nest 2 (vsep ["in", e2]) ]))
 
+clauses1 :: Pretty p => [p] -> Doc a
+clauses1 cs = vsep (pre "|" <$> cs)
+  where 
+    pre a p = a <+> pretty p
+
+clauses :: Pretty p => [p] -> Doc a
+clauses cs = encloseSep "" "" " | " (pretty <$> cs)
+
 class Patterns p where
     prettyPatterns :: p -> Doc a
 
@@ -332,13 +332,33 @@ instance (Pretty u) => Patterns [ProgPattern t u] where
     prettyPatterns ps  = parens (commaSep (pretty <$> ps))
 
 instance (Pretty p, Pretty a, Patterns p) => Pretty (Clause t p a) where
-    pretty (Clause _ p cs) = prettyPatterns p <+> pretty cs
+    pretty (Clause _ p cs) = prettyPatterns p <+> prettyChoices cs
 
 instance (Pretty p, Pretty a) => Pretty (MonoClause t p a) where
-    pretty (MonoClause _ p cs) = pretty p <+> pretty cs
+    pretty (MonoClause _ p cs) = pretty p <+> prettyChoices cs
 
-instance Pretty (Choice a) where
-    pretty (Choice es e) = "TODO"
+class Choices c where
+    prettyChoices :: c -> Doc a
+
+instance (Pretty a) => Choices (Choice a) where
+    prettyChoices (Choice [] e) = "=>" <+> pretty e
+    prettyChoices choice = prettyChoice "" choice
+
+instance (Pretty a) => Choices [Choice a] where
+    prettyChoices [Choice [] e] = "=>" <+> pretty e
+    prettyChoices (c:cs) = line' <> sep (flatAlt (indent 2 zyx) zyx:fmap (prettyChoice ", ") cs)
+      where
+        zyx = (prettyChoice "" c)
+
+--prettyChoice x (Choice es e) = flatAlt (indent 2 zzz) zzz <+> "=>" <+> pretty e 
+prettyChoice x (Choice es e) = flatAlt (indent 2 zzz) zzz <+> "=>" <+> pretty e 
+  where
+    zzz = (prettyWhens x es)
+
+--prettyWhens :: (Pretty p) => [p] -> Doc a
+prettyWhens x = \case 
+    [] -> x <> "otherwise"
+    es -> x <> "when" <> tupled (pretty <$> es)
 
 --
 --

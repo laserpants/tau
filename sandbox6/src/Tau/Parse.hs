@@ -344,13 +344,20 @@ clauseParser :: Parser p -> Parser (Clause () p (ProgExpr () Type))
 clauseParser parser = Clause () <$> parser <*> (try guarded <|> nonGuarded)
   where
     guarded = do
-        whens <- some whenClause
-        last <- optional (keyword "otherwise" *> symbol "=>" *> annExprParser)
-        pure (whens <> maybe [] (pure . Choice []) last)
+        try withCatchAll <|> (whenClause `sepBy1` whenClause)
+
+    withCatchAll = do
+        whens <- manyTill (whenClause <* symbol ",") (keyword "otherwise")
+        final <- symbol "=>" *> annExprParser
+        pure (whens <> [Choice [] final])
 
     whenClause = Choice
         <$> (keyword "when" *> argParser exprParser <* symbol "=>")
         <*> annExprParser
+
+    otherwise = do
+        keyword "otherwise" *> symbol "=>" 
+        Choice [] <$> annExprParser
 
     nonGuarded = do
         expr <- symbol "=>" *> annExprParser

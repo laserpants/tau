@@ -183,16 +183,18 @@ stuff((3, 4))
 
 let f 
   | Some x 
-      when x > 3  => 5
-      when x <= 0 => 1
-  | None          => 0
+      when(x > 3)  => 5
+      when(x <= 0) => 1
+      otherwise    => 3
+  | None           => 0
 
 
 let f = fun
-  | Some x 
-      when x > 3 => 5
-      when x < 0 => 1
-  | None         => 0
+  | Some(x) 
+      when(x > 3) => 5
+    , when(x < 0) => 1
+    , otherwise   => 3 
+  | None          => 0
 
 let f of
   | Some x 
@@ -263,6 +265,15 @@ someFun(Some x, y, z) =
         when(x x > 3) => xx
         when(p)       => 1
     | (_, _, _)      => 0
+
+
+someFun(Some x, y, z) =
+  match (x, y, z) with
+    | (Some(xx), _, _)
+        when(x x > 3) = xx
+        when(p)       = 1
+    | (_, _, _)       = 0
+
 
 
   match (x, y) with
