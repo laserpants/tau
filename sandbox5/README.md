@@ -52,6 +52,11 @@
 
 
 
+let 
+  x = run_some_fun(a + b : List Int)
+  in
+    x + 3
+
 type Color
   = Rgb Byte Byte Byte
   | Hsb Byte Byte Byte
@@ -119,6 +124,17 @@ foo = fun
 
 
 match x, y with
+
+
+
+
+grok : Option int -> int -> int
+grok 
+  | (Some x) 1 when(x > 100) = 0  
+  | None     1               = 1 
+  | _        _               = 2
+  where
+    valid = true
 
 
 
