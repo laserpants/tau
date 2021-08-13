@@ -27,15 +27,16 @@ import Data.Functor.Identity
 import Data.List.Extra (notNull)
 import Data.Maybe (fromMaybe, fromJust)
 import Data.Set.Monad (Set)
+import Data.Text (Text)
 import Data.Tuple.Extra
 import Data.Void
 import Debug.Trace
-import Tau.Misc
 import Tau.Eval
+import Tau.Misc
+import Tau.Parse
 import Tau.Prettyprinters
 import Tau.Serializers
 import Tau.Tree
-import Tau.Parse
 import Tau.Util
 import TextShow
 import qualified Data.ByteString.Lazy as LBS
@@ -868,6 +869,38 @@ test5expr :: ProgExpr () Type
 
 test5expr =
         (letExpr () (BFun () "f" [varPat () "z"]) (recordExpr () (rowExpr () "a" (annExpr tInt (litExpr () (TInteger 1))) (varExpr () "z"))) (appExpr () [varExpr () "f", recordExpr () (rowExpr () "b" (annExpr tInt (litExpr () (TInt 2))) (conExpr () "{}" []))]))
+
+runBundle :: Text -> Bundle
+runBundle input =
+    case runParserStack annExprParser "" input of
+        Left err -> traceShow "error" (error (show err))
+        Right expr -> traceShow expr (compileBundle expr)
+
+compileBundle :: ProgExpr () Type -> Bundle
+compileBundle expr = Bundle
+    { sourceExpr = expr
+    , typedExpr  = c1
+    , normalExpr = c2
+    , stage1Expr = d
+    , stage2Expr = f
+    , stage3Expr = g
+    , stage4Expr = h
+    , coreExpr   = i
+    , value      = j }
+  where
+    ast = Ast expr
+    (a, b) = runInfer mempty testClassEnv testTypeEnv testKindEnv testConstructorEnv (inferAstType ast)
+    c :: ProgExpr TInfo Void
+    c = runReader (exhaustivePatternsCheck (astExpr a)) testConstructorEnv
+    c1 = runReader (ambiguityCheck c) (testClassEnv, testTypeEnv, testKindEnv, testConstructorEnv)
+    c2 = normalizeExpr c1
+    d = s1_translate c2
+    e = runSupplyNats (runReaderT (s2_translate d) (testClassEnv, testTypeEnv, testKindEnv, testConstructorEnv))
+    f = translateLiteral e
+    g = runSupplyNats (runReaderT (evalStateT (s3_translate f) mempty) (testClassEnv, testTypeEnv, testKindEnv, testConstructorEnv))
+    h = runSupplyNats (s4_translate g)
+    i = coreTranslate h
+    j = evalExpr i testEvalEnv
 
 
 test5 :: IO ()
