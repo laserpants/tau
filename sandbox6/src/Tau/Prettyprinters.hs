@@ -71,6 +71,9 @@ instance Pretty Type where
                     _      -> False
 
         TApp _ (Fix (TCon _ "#"), _) (t2, _) ->
+            --
+            -- Record types
+            --
             if null fields
                 then maybe "{}" (wrapped "{" "}") final
                 else "{" <+> commaSep fields <+> maybe "}" (wrapped "|" "}") final
@@ -268,7 +271,7 @@ instance (FunArgs e1, Functor e2, Functor e4, Pretty e3, Pretty t4, Pretty (e2 (
         ELet    _ bind e1 e2             -> prettyLet "let" (pretty bind) (letRhs e1) (snd e2)
         EFix    _ name e1 e2             -> prettyLet "fix" (pretty name) (snd e1) (snd e2)
         EPat    _ e1 cs                  -> group (nest 2 (vsep ["match" <+> snd e1 <+> "with", clauses1 (fst <$$> cs)]))
-        EFun    _ cs                     -> "!!!!" -- group (clauses (fst <$$> cs))
+        EFun    _ cs                     -> group (clauses (fst <$$> cs))
 
         expr -> snd <$> expr & \case
             EVar    _ var                -> pretty var
@@ -291,12 +294,6 @@ instance (FunArgs e1, Functor e2, Functor e4, Pretty e3, Pretty t4, Pretty (e2 (
             ECon{}                       -> []
             e                            -> [Right (pretty (embed (fst <$> e)))]
 
-letRhs :: (FunArgs e1, Functor e2, Functor e4, Pretty e3, Pretty t4, Pretty (e4 (Expr t1 t2 t3 t4 e1 e2 e3 e4))) => (Expr t1 t2 t3 t4 e1 e2 e3 e4, Doc a) -> Doc a
-letRhs (expr, doc) =
-    case project expr of
-        EFun _ cs -> line' <> vsep (pretty <$> cs) 
-        _         -> group (vsep ["=", doc])
-
 prettyIf :: Doc a -> Doc a -> Doc a -> Doc a
 prettyIf e1 e2 e3 =
     "if" <> softline <> e1 <> space <> group (nest 2 (line' <> vsep
@@ -312,6 +309,12 @@ prettyLet kword bind e1 e2 =
     group (nest 2 (vsep
         [ kword <+> bind <+> e1
         , nest 2 (vsep ["in", e2]) ]))
+
+letRhs :: (FunArgs e1, Functor e2, Functor e4, Pretty e3, Pretty t4, Pretty (e4 (Expr t1 t2 t3 t4 e1 e2 e3 e4))) => (Expr t1 t2 t3 t4 e1 e2 e3 e4, Doc a) -> Doc a
+letRhs (expr, doc) =
+    case project expr of
+        EFun _ cs -> line' <> vsep (pretty <$> cs) 
+        _         -> group (vsep ["=", doc])
 
 clauses1 :: Pretty p => [p] -> Doc a
 clauses1 cs = vsep (pre "|" <$> cs)
@@ -355,10 +358,10 @@ prettyChoice x (Choice es e) = flatAlt (indent 2 zzz) zzz <+> "=>" <+> pretty e
   where
     zzz = (prettyWhens x es)
 
---prettyWhens :: (Pretty p) => [p] -> Doc a
-prettyWhens x = \case 
-    [] -> x <> "otherwise"
-    es -> x <> "when" <> tupled (pretty <$> es)
+prettyWhens :: (Pretty p) => Doc a -> [p] -> Doc a
+prettyWhens stor = \case 
+    [] -> stor <> "otherwise"
+    es -> stor <> "when" <> parens (commaSep (pretty <$> es))
 
 --
 --
