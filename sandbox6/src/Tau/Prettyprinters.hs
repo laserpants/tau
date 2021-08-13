@@ -313,8 +313,10 @@ prettyLet kword bind e1 e2 =
 letRhs :: (FunArgs e1, Functor e2, Functor e4, Pretty e3, Pretty t4, Pretty (e4 (Expr t1 t2 t3 t4 e1 e2 e3 e4))) => (Expr t1 t2 t3 t4 e1 e2 e3 e4, Doc a) -> Doc a
 letRhs (expr, doc) =
     case project expr of
-        EFun _ cs -> line' <> vsep (pretty <$> cs) 
+        EFun _ cs -> line' <> vsep (pre "|" <$> cs) 
         _         -> group (vsep ["=", doc])
+  where 
+    pre a p = a <+> pretty p
 
 clauses1 :: Pretty p => [p] -> Doc a
 clauses1 cs = vsep (pre "|" <$> cs)
