@@ -309,14 +309,14 @@ ambiguityCheck expr = do
     walk
       :: ( MonadReader (ClassEnv, TypeEnv, KindEnv, ConstructorEnv) m )
       => ProgExpr TInfo Void
-      -> StateT [Name] m (ProgExpr TInfo Void)
+      -> StateT [(Name, Name)] m (ProgExpr TInfo Void)
     walk = cata $ \case
 
         EVar t var -> do
             classEnv <- askClassEnv
             let vs = filter (tIsVar . predicateType) (nodePredicates t)
-            forM_ (project <$$> vs) $ \(InClass _ (TVar _ v)) ->
-                modify (v :)
+            forM_ (project <$$> vs) $ \(InClass name (TVar _ v)) ->
+                modify ((name, v) :)
             pure (varExpr t var)
 
         EPat t expr clauses -> do
@@ -351,9 +351,9 @@ ambiguityCheck expr = do
         ERow    t lab e r     -> rowExpr t lab <$> e <*> r
         ERecord t r           -> recordExpr t <$> r
 
-    checkAmbg :: TInfo -> [Name] -> [Error]
+    checkAmbg :: TInfo -> [(Name, Name)] -> [Error]
     checkAmbg t = let freeVars = fst <$> free (nodeType t) in
-        concatMap (\v -> [AmbiguousType v | v `notElem` freeVars])
+        concatMap (\(n, v) -> [AmbiguousType n v | v `notElem` freeVars])
 
 -------------------------------------------------------------------------------
 -------------------------------------------------------------------------------
@@ -744,7 +744,7 @@ dictTVar name (TVar _ var) = do
     maybe fresh pure (lookupVar info classEnv)
   where
     fresh = do
-        dv <- ("$dict" <>) . showt <$> supply
+        dv <- (\n -> "$dict" <> showt n <> "_" <> name) <$> supply
         modify (Env.alter (\vs -> Just $ (name, dv):fromMaybe [] vs) var)
         pure dv
 

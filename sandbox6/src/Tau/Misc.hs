@@ -1865,7 +1865,7 @@ data Error
     | PatternArityMismatch Name Int Int
     | NonBooleanGuard (ProgExpr (TypeInfo [Error]) Void)
     | NonExhaustivePatterns
-    | AmbiguousType Name
+    | AmbiguousType Name Name
 
 data UnificationError
     = InfiniteType

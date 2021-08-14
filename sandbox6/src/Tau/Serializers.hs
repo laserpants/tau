@@ -7,6 +7,7 @@ module Tau.Serializers where
 import Control.Arrow ((<<<), (>>>))
 import Data.Aeson
 import Data.Functor.Foldable (cata, para, project, embed)
+import Data.Set.Monad (Set)
 import Data.Text (Text, pack)
 import Data.Text.Prettyprint.Doc
 import Data.Void
@@ -16,7 +17,9 @@ import Tau.Prettyprinters
 import Tau.Tree
 import Tau.Util
 import qualified Data.HashMap.Strict as HashMap
+import qualified Data.Set.Monad as Set
 import qualified Data.Vector as Vector
+import qualified Tau.Env as Env
 import qualified Tau.Eval as Tau
 
 class ToRep t where
@@ -97,6 +100,9 @@ instance ToRep Void where
 
 instance ToRep Int where
     toRep = toJSON
+
+instance ToRep Context where
+    toRep = contextRep
 
 typeJson :: Type -> Value
 typeJson = project >>> \case
@@ -266,7 +272,7 @@ errorRep = \case
     PatternArityMismatch name m n       -> makeRep "Error" "PatternArityMismatch"   [toRep name, toRep m, toRep n]
     NonBooleanGuard expr                -> makeRep "Error" "NonBooleanGuard"        [toRep expr]
     NonExhaustivePatterns               -> makeRep "Error" "NonExhaustivePatterns"  []
-    AmbiguousType var                   -> makeRep "Error" "AmbiguousType"          [toRep var]
+    AmbiguousType name var              -> makeRep "Error" "AmbiguousType"          [toRep name, toRep var]
 
 unificationErrorRep :: UnificationError -> Value
 unificationErrorRep = \case
@@ -277,6 +283,11 @@ unificationErrorRep = \case
     CannotMerge                         -> makeRep "Error" "CannotMerge"            []
     ContextReductionFailed              -> makeRep "Error" "ContextReductionFailed" []
     ClassMismatch                       -> makeRep "Error" "ClassMismatch"          []
+
+contextRep :: Context -> Value
+contextRep ctx = makeRep "Context" "Context" (kvp <$> (Set.toList <$$> Env.toList ctx))
+  where
+    kvp (k, v) = array [toRep k, toRep v]
 
 -------------------------------------------------------------------------------
 

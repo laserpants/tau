@@ -886,10 +886,11 @@ compileBundle expr = Bundle
     , stage3Expr = g
     , stage4Expr = h
     , coreExpr   = i
-    , value      = j }
+    , value      = j
+    , context    = ctx }
   where
     ast = Ast expr
-    (a, b) = runInfer mempty testClassEnv testTypeEnv testKindEnv testConstructorEnv (inferAstType ast)
+    (a, (_, _, ctx)) = runInfer mempty testClassEnv testTypeEnv testKindEnv testConstructorEnv (inferAstType ast)
     c :: ProgExpr TInfo Void
     c = runReader (exhaustivePatternsCheck (astExpr a)) testConstructorEnv
     c1 = runReader (ambiguityCheck c) (testClassEnv, testTypeEnv, testKindEnv, testConstructorEnv)
@@ -911,7 +912,7 @@ test5 = do
     -- astExpr a
   where
     ast = Ast test5expr
-    (a, b) = runInfer mempty testClassEnv testTypeEnv testKindEnv testConstructorEnv (inferAstType ast)
+    (a, (_, _, ctx)) = runInfer mempty testClassEnv testTypeEnv testKindEnv testConstructorEnv (inferAstType ast)
 
     c :: ProgExpr TInfo Void
     c = runReader (exhaustivePatternsCheck (astExpr a)) testConstructorEnv
@@ -944,6 +945,7 @@ test5 = do
         , stage4Expr = h
         , coreExpr   = i
         , value      = j
+        , context    = ctx
         }
 
 data Bundle = Bundle
@@ -956,6 +958,7 @@ data Bundle = Bundle
     , stage4Expr  :: Stage4Expr Type
     , coreExpr    :: Core
     , value       :: Maybe (Tau.Eval.Value Eval)
+    , context     :: Context
     } deriving (Show, Eq)
 
 instance ToRep Bundle where
@@ -970,6 +973,7 @@ instance ToRep Bundle where
             , "stage4"  .= toRep stage4Expr
             , "core"    .= toRep coreExpr
             , "value"   .= toRep value
+            , "context" .= toRep context
             ]
 
 -------------------------------------------------------------------------------
@@ -1156,33 +1160,33 @@ testEvalEnv = Env.fromList
 --testx = (fixExpr () "loopList" (lamExpr () [varPat () "g", varPat () "ys"] (patExpr () (varExpr () "ys") [ Clause () (conPat () "(::)" [varPat () "x", varPat () "xs"]) [Choice [] (appExpr () [varExpr () "g", conExpr () "Cons'" [varExpr () "x", varExpr () "xs", appExpr () [varExpr () "loopList", varExpr () "g", varExpr () "xs"]]])] , Clause () (conPat () "[]" []) [Choice [] (appExpr () [varExpr () "g", conExpr () "Nil'" []])] ])) (letExpr () (BFun () "length" [varPat () "xs"]) (op2Expr () (ODot ()) (appExpr () [ varExpr () "loopList" , funExpr () [ Clause () [conPat () "Cons'" [anyPat (), anyPat (), varPat () "a"]] [Choice [] (op2Expr () (OAdd ()) (litExpr () (TInteger 1)) (varExpr () "a"))] , Clause () [conPat () "Nil'" []] [Choice [] (annExpr tInt (litExpr () (TInteger 0)))] ] ]) (varExpr () "xs")) (letExpr () (BPat () (varPat () "xs")) (annExpr (tList tInt) (listExpr () [litExpr () (TInteger 2)])) (patExpr () (varExpr () "xs") [ Clause () (conPat () "(::)" [varPat () "x", anyPat ()]) [Choice [op2Expr () (OLte ()) (appExpr () [varExpr () "length", varExpr () "xs"]) (litExpr () (TInteger 3))] (varExpr () "x")] , Clause () (anyPat ()) [Choice [] (litExpr () (TInteger 0))] ]))))
 
 testx :: ProgExpr () Type
-testx = 
-    patExpr () (varExpr () "x") 
-        [ Clause () (conPat () "Some" [varPat () "x"]) 
-            [ Choice [op2Expr () (OEq ()) (varExpr () "x") (litExpr () (TInteger 111))] (litExpr () (TInteger 4)) 
-            , Choice [op2Expr () (OEq ()) (varExpr () "x") (litExpr () (TInteger 112))] (litExpr () (TInteger 5))  
-            , Choice [] (litExpr () (TInteger 6)) 
+testx =
+    patExpr () (varExpr () "x")
+        [ Clause () (conPat () "Some" [varPat () "x"])
+            [ Choice [op2Expr () (OEq ()) (varExpr () "x") (litExpr () (TInteger 111))] (litExpr () (TInteger 4))
+            , Choice [op2Expr () (OEq ()) (varExpr () "x") (litExpr () (TInteger 112))] (litExpr () (TInteger 5))
+            , Choice [] (litExpr () (TInteger 6))
             ]
-        , Clause () (conPat () "None" []) 
-            [ Choice [appExpr () [varExpr () "predicate", varExpr () "x"]] (litExpr () (TInteger 7)) 
-            , Choice [] (litExpr () (TInteger 8)) 
+        , Clause () (conPat () "None" [])
+            [ Choice [appExpr () [varExpr () "predicate", varExpr () "x"]] (litExpr () (TInteger 7))
+            , Choice [] (litExpr () (TInteger 8))
             ]
-        , Clause () (anyPat ()) 
+        , Clause () (anyPat ())
             [ Choice [] (litExpr () (TInteger 9)) ]
         ]
 
 testy :: ProgExpr () Type
-testy = 
-    funExpr () 
-        [ Clause () [conPat () "Some" [varPat () "x"]] 
-            [ Choice [op2Expr () (OEq ()) (varExpr () "x") (litExpr () (TInteger 111))] (litExpr () (TInteger 4)) 
-            , Choice [op2Expr () (OEq ()) (varExpr () "x") (litExpr () (TInteger 112))] (litExpr () (TInteger 5))  
-            , Choice [] (litExpr () (TInteger 6)) 
+testy =
+    funExpr ()
+        [ Clause () [conPat () "Some" [varPat () "x"]]
+            [ Choice [op2Expr () (OEq ()) (varExpr () "x") (litExpr () (TInteger 111))] (litExpr () (TInteger 4))
+            , Choice [op2Expr () (OEq ()) (varExpr () "x") (litExpr () (TInteger 112))] (litExpr () (TInteger 5))
+            , Choice [] (litExpr () (TInteger 6))
             ]
-        , Clause () [conPat () "None" []] 
-            [ Choice [appExpr () [varExpr () "predicate", varExpr () "x"]] (litExpr () (TInteger 7)) 
-            , Choice [] (litExpr () (TInteger 8)) 
+        , Clause () [conPat () "None" []]
+            [ Choice [appExpr () [varExpr () "predicate", varExpr () "x"]] (litExpr () (TInteger 7))
+            , Choice [] (litExpr () (TInteger 8))
             ]
-        , Clause () [anyPat ()] 
+        , Clause () [anyPat ()]
             [ Choice [] (litExpr () (TInteger 9)) ]
         ]
