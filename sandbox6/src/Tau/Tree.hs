@@ -399,6 +399,15 @@ deriveOrd1  ''MonoClause
 instance (Typed t) => Typed (Stage1Expr t) where
     typeOf = typeOf . stage1ExprTag
 
+predToType :: Predicate -> Type
+predToType (InClass name ty) = tApp kTyp (tCon kFun name) ty
+
+cod :: Type -> Type
+cod (Fix (TArr _ t)) = t
+
+nats :: [Int]
+nats = enumFrom 0
+
 -------------------------------------------------------------------------------
 
 -- S1. Desugaring
@@ -489,9 +498,6 @@ translateFunExpr t cs@(MonoClause _ ps (Choice _ e1):_) =
         | otherwise     = MonoClause t [q] ds
       where
         q = conPat (TypeInfo [] (tTuple (typeOf <$> ps)) []) (tupleCon (length ps)) ps
-
-nats :: [Int]
-nats = enumFrom 0
 
 -------------------------------------------------------------------------------
 
@@ -665,6 +671,18 @@ freshName = ("$e" <>) . showt <$> supply
 type Stage3Expr t = Expr t Void Void Void Name
     (MonoClause t (Pattern t Void Void Void)) Void []
 
+setStage3ExprTag :: t -> Stage3Expr t -> Stage3Expr t
+setStage3ExprTag t = project >>> \case
+
+    EVar    _ var      -> varExpr t var
+    ECon    _ con es   -> conExpr t con es
+    ELit    _ prim     -> litExpr t prim
+    EApp    _ es       -> appExpr t es
+    EFix    _ n e1 e2  -> fixExpr t n e1 e2
+    ELam    _ ps e     -> lamExpr t ps e
+    EIf     _ e1 e2 e3 -> ifExpr  t e1 e2 e3
+    EPat    _ es cs    -> patExpr t es cs
+
 stage3ExprTag :: Stage3Expr t -> t
 stage3ExprTag = cata $ \case
 
@@ -761,26 +779,30 @@ applyVarPredicates
 applyVarPredicates expr [] = pure expr
 applyVarPredicates expr (InClass name ty:ps) = do
     tv <- dictTVar name (project ty)
+    let t1 = tApp kTyp (tCon kFun name) ty
+        t2 = foldr (tArr . predToType) (stage3ExprTag expr) ps
     case project expr of
         EVar t var -> do
             all <- baz
             if var `elem` (fst <$> all)
-                then pure (appExpr tempT -- (workingExprTag2 expr)
-                    [ varExpr tempT "@(#)get_field"
+                then pure (appExpr (stage3ExprTag expr)
+                    [ varExpr (tSymbol `tArr` t1 `tArr` t) "@(#)get_field"
                     , litExpr tSymbol (TSymbol var)
-                    , varExpr tempT tv ])
-                else pure (appExpr tempT -- zz1
-                    [ expr -- setWorkingExprTag2 (yy (InClass name ty) zz1) expr
-                    , varExpr tempT tv ])
+                    , varExpr t1 tv ])
+                else
+                    pure (appExpr t2
+                        [ setStage3ExprTag ((tArr . predToType) (InClass name ty) t2) expr
+                        , varExpr t1 tv ])
         _ ->
-            pure (appExpr tempT [expr, varExpr tempT tv ])
+            pure (appExpr (cod t2) [expr, varExpr t1 tv])
   where
     baz = do
         env <- askClassEnv
         fromRight (error ("No class " <> show name))   -- TODO
             <$> runExceptT (lookupAllMethods name env)
 
-tempT = tVar kTyp "TODO"
+tempT :: Int -> Type
+tempT n = tVar kTyp ("TODO" <> showt n)
 
 -- TODO: rename?
 lookupAllMethods
@@ -825,11 +847,11 @@ applyNonVarPredicates expr (InClass name ty:ps) = do
                     pure e
 
                 Nothing ->
-                    pure (appExpr tempT -- zz1
+                    pure (appExpr (tempT 1) -- zz1
                         [ expr -- setWorkingExprTag2 (yy (InClass name ty) zz1) expr
                         , buildDict dictMap ])
         _ ->
-            pure (appExpr tempT -- (cod <$> workingExprTag2 expr) -- TODO
+            pure (appExpr (tempT 2) -- (cod <$> workingExprTag2 expr) -- TODO
                 [ expr
                 , buildDict dictMap ])
   where
@@ -840,13 +862,13 @@ applyNonVarPredicates expr (InClass name ty:ps) = do
               . fromRight (error ("No instance " <> show name <> " " <> show ty))
 
     buildDict map =
-        conExpr tempT "#"
+        conExpr (tempT 3) "#"
             [foldr fn (conExpr tRowNil "{}" []) map]
 --        conExpr (Just (tApp kTyp (tCon kFun name) ty)) "#"
 --            [foldr fn (conExpr (Just tRowNil) "{}" []) map]
       where
         fn (name, expr) e =
-            let row = tRow name tempT tempT -- (workingExprTag2 expr) (workingExprTag2 e)
+            let row = tRow name (tempT 4) (tempT 5) -- (workingExprTag2 expr) (workingExprTag2 e)
              in rowExprCons row name expr e
 
 translateMethod
