@@ -204,6 +204,7 @@ instance (Pretty t4) => Pretty (Pattern t1 t2 t3 t4) where
             PTuple  _ ps                 -> tupled ps
             PList   _ ps                 -> list ps
             PAnn    t p                  -> p <+> ":" <+> pretty t
+            PRow{}                       -> "???"
 
       where
         unfoldRow = para $ \case

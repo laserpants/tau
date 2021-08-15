@@ -813,9 +813,6 @@ applyVarPredicates expr (InClass name ty:ps) = do
         fromRight (error ("No class " <> show name))   -- TODO
             <$> runExceptT (lookupAllMethods name env)
 
-tempT :: Int -> Type
-tempT n = tVar kTyp ("TODO" <> showt n)
-
 -- TODO: rename?
 lookupAllMethods
   :: (MonadSupply Int m, MonadError Error m)
@@ -863,9 +860,8 @@ applyNonVarPredicates expr (InClass name ty:ps) = do
                     pure (appExpr t2
                         [ setStage2ExprTag ((tArr . predToType) (InClass name ty) t2) expr
                         , buildDict dictMap ])
-        _ -> 
-            -- TODO TODO
-            pure (appExpr (tempT 2) -- (cod <$> workingExprTag2 expr) -- TODO
+        _ ->
+            pure (appExpr (cod (stage3ExprTag expr))
                 [ expr
                 , buildDict dictMap ])
   where

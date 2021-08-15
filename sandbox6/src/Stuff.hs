@@ -901,7 +901,7 @@ compileBundle expr = Bundle
     g = runSupplyNats (runReaderT (evalStateT (s3_translate f) mempty) (testClassEnv, testTypeEnv, testKindEnv, testConstructorEnv))
     h = runSupplyNats (s4_translate g)
     i = coreTranslate h
-    j = evalExpr i testEvalEnv
+    j = Nothing -- TODO -- evalExpr i testEvalEnv
 
 
 test5 :: IO ()
