@@ -11,4 +11,5 @@ import qualified Data.ByteString.Lazy.Char8 as B
 main :: IO ()
 main = do
     [p] <- getArgs
-    B.putStrLn (encodePretty' defConfig{ confIndent = Spaces 2 } (toRep (runBundle (pack p))))
+    -- B.putStrLn (encodePretty' defConfig{ confIndent = Spaces 2 } (toRep (runBundle (pack p))))
+    B.putStrLn (encode (toRep (runBundle (pack p))))
