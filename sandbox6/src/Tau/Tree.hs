@@ -718,23 +718,21 @@ s3_translate
   -> StateT (Env [(Name, Name)]) m (Stage3Expr Type)
 s3_translate expr = do
     e <- walk expr
-    s <- getAndReset
-    insertArgsExpr e s
+    insertArgsExpr e
   where
     walk = cata $ \case
 
         EPat t expr cs -> do
             e <- expr
-            s <- getAndReset
-            patExpr (nodeType t) <$> insertArgsExpr e s
+            patExpr (nodeType t) <$> insertArgsExpr e
                                  <*> (translateClauses <$$> traverse sequence cs)
 
         EFix t var expr1 expr2 -> do
             e <- expr1
-            s <- getAndReset
-            fixExpr (nodeType t) var <$> insertArgsExpr e s <*> expr2
+            fixExpr (nodeType t) var <$> insertArgsExpr e <*> expr2
 
         EVar t var -> do
+--            traceShowM (nodePredicates t)
             let (vs, ts) = partition (tIsVar . predicateType) (nodePredicates t)
 
             classEnv <- askClassEnv
@@ -896,9 +894,12 @@ insertArgsExpr
   :: ( MonadSupply Int m
      , MonadReader (ClassEnv, TypeEnv, KindEnv, ConstructorEnv) m )
   => Stage3Expr Type
-  -> Env [(Name, Name)]
   -> StateT (Env [(Name, Name)]) m (Stage3Expr Type)
-insertArgsExpr expr = foldrM fun expr . Env.toList
+--insertArgsExpr expr = getAndReset >>= foldrM fun expr . Env.toList 
+insertArgsExpr expr = do 
+    s <- getAndReset 
+    traceShowM s
+    foldrM fun expr (Env.toList s)
   where
     fun
       :: ( MonadSupply Int m
@@ -915,8 +916,8 @@ insertArgsExpr expr = foldrM fun expr . Env.toList
         fun2 set1 set2 (name, dv) e =
             if name `elem` set1
                 then do
-                    let ty = tApp kTyp (tCon kFun name) (tVar kTyp var)
-                    lamExpr (ty `tArr` stage2ExprTag e) dv e
+                    --let ty = tApp kTyp (tCon kFun name) (tVar kTyp var)
+                    lamExpr (predToType (InClass name (tVar kTyp var)) `tArr` stage2ExprTag e) dv e
                 else
                     replaceVar dv (fromJust (lookup name set2)) e
 
