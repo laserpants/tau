@@ -23,3 +23,32 @@ Tau.Comp.Pipeline
 Tau.Util
 
 Tau.Eval
+
+
+
+
+
+let
+  fn
+    | ("foo", Some(y)) 
+        when(y == 1)    => 1
+      , when(y == 2)    => 2 
+      , otherwise       => 4
+    | (_, None)         => 0 : Int
+    | (_, _)            => 999 : Int
+  in
+    fn( "baz"
+      , Some(2 : Int) )
+
+
+let
+  fn
+    | ("foo", Some(y)) 
+        when(y == 1) = 1
+      , when(y == 2) = 2 
+      , otherwise    = 4
+    | (_, None)      = 0 : Int
+    | (_, _)         = 999 : Int
+  in
+    fn( "baz"
+      , Some(2 : Int) )

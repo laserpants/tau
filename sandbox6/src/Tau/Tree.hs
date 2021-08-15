@@ -504,6 +504,18 @@ translateFunExpr t cs@(MonoClause _ ps (Choice _ e1):_) =
 type Stage2Expr t = Expr t Void Void Void Name
     (MonoClause t (Pattern t Void Void Void)) Void []
 
+setStage2ExprTag :: t -> Stage2Expr t -> Stage2Expr t
+setStage2ExprTag t = project >>> \case
+
+    EVar    _ var      -> varExpr t var
+    ECon    _ con es   -> conExpr t con es
+    ELit    _ prim     -> litExpr t prim
+    EApp    _ es       -> appExpr t es
+    EFix    _ n e1 e2  -> fixExpr t n e1 e2
+    ELam    _ ps e     -> lamExpr t ps e
+    EIf     _ e1 e2 e3 -> ifExpr  t e1 e2 e3
+    EPat    _ es cs    -> patExpr t es cs
+
 stage2ExprTag :: Stage2Expr t -> t
 stage2ExprTag = cata $ \case
 
@@ -846,11 +858,13 @@ applyNonVarPredicates expr (InClass name ty:ps) = do
                 Just e ->
                     pure e
 
-                Nothing ->
-                    pure (appExpr (tempT 1) -- zz1
-                        [ expr -- setWorkingExprTag2 (yy (InClass name ty) zz1) expr
+                Nothing -> do
+                    let t2 = foldr (tArr . predToType) (stage3ExprTag expr) ps
+                    pure (appExpr t2
+                        [ setStage2ExprTag ((tArr . predToType) (InClass name ty) t2) expr
                         , buildDict dictMap ])
-        _ ->
+        _ -> 
+            -- TODO TODO
             pure (appExpr (tempT 2) -- (cod <$> workingExprTag2 expr) -- TODO
                 [ expr
                 , buildDict dictMap ])
@@ -862,13 +876,11 @@ applyNonVarPredicates expr (InClass name ty:ps) = do
               . fromRight (error ("No instance " <> show name <> " " <> show ty))
 
     buildDict map =
-        conExpr (tempT 3) "#"
+        conExpr (tApp kTyp (tCon kFun name) ty) "#"
             [foldr fn (conExpr tRowNil "{}" []) map]
---        conExpr (Just (tApp kTyp (tCon kFun name) ty)) "#"
---            [foldr fn (conExpr (Just tRowNil) "{}" []) map]
       where
         fn (name, expr) e =
-            let row = tRow name (tempT 4) (tempT 5) -- (workingExprTag2 expr) (workingExprTag2 e)
+            let row = tRow name (stage3ExprTag expr) (stage3ExprTag e)
              in rowExprCons row name expr e
 
 translateMethod
