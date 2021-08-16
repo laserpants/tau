@@ -878,17 +878,19 @@ runBundle input =
         Right expr -> (compileBundle expr)
 
 compileBundle :: ProgExpr () Type -> Bundle
-compileBundle expr = Bundle
-    { sourceExpr = expr
-    , typedExpr  = c1
-    , normalExpr = c2
-    , stage1Expr = d
-    , stage2Expr = f
-    , stage3Expr = g
-    , stage4Expr = h
-    , coreExpr   = i
-    , value      = j
-    , context    = ctx }
+compileBundle expr = 
+    traceShow c
+      $ Bundle
+          { sourceExpr = expr
+          , typedExpr  = c1
+          , normalExpr = c2
+          , stage1Expr = d
+          , stage2Expr = f
+          , stage3Expr = g
+          , stage4Expr = h
+          , coreExpr   = i
+          , value      = j
+          , context    = ctx }
   where
     ast = Ast expr
     (a, (_, _, ctx)) = runInfer mempty testClassEnv testTypeEnv testKindEnv testConstructorEnv (inferAstType ast)

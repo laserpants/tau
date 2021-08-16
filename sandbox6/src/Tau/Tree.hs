@@ -302,8 +302,7 @@ ambiguityCheck
   :: ( MonadReader (ClassEnv, TypeEnv, KindEnv, ConstructorEnv) m )
   => ProgExpr TInfo Void
   -> m (ProgExpr TInfo Void)
-ambiguityCheck expr = pure expr -- do
-  {-
+--ambiguityCheck expr = pure expr -- do
 ambiguityCheck expr = do
     (a, vs) <- runStateT (walk expr) mempty
     pure (insertExprErrors (checkAmbg (exprTag a) vs) a)
@@ -356,7 +355,6 @@ ambiguityCheck expr = do
     checkAmbg :: TInfo -> [(Name, Name)] -> [Error]
     checkAmbg t = let freeVars = fst <$> free (nodeType t) in
         concatMap (\(n, v) -> [AmbiguousType n v | v `notElem` freeVars])
--}
 
 -------------------------------------------------------------------------------
 -------------------------------------------------------------------------------
