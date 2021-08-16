@@ -302,6 +302,8 @@ ambiguityCheck
   :: ( MonadReader (ClassEnv, TypeEnv, KindEnv, ConstructorEnv) m )
   => ProgExpr TInfo Void
   -> m (ProgExpr TInfo Void)
+ambiguityCheck expr = pure expr -- do
+  {-
 ambiguityCheck expr = do
     (a, vs) <- runStateT (walk expr) mempty
     pure (insertExprErrors (checkAmbg (exprTag a) vs) a)
@@ -354,6 +356,7 @@ ambiguityCheck expr = do
     checkAmbg :: TInfo -> [(Name, Name)] -> [Error]
     checkAmbg t = let freeVars = fst <$> free (nodeType t) in
         concatMap (\(n, v) -> [AmbiguousType n v | v `notElem` freeVars])
+-}
 
 -------------------------------------------------------------------------------
 -------------------------------------------------------------------------------
@@ -404,9 +407,6 @@ predToType (InClass name ty) = tApp kTyp (tCon kFun name) ty
 
 cod :: Type -> Type
 cod (Fix (TArr _ t)) = t
-
-nats :: [Int]
-nats = enumFrom 0
 
 -------------------------------------------------------------------------------
 
@@ -715,7 +715,7 @@ s3_translate
   :: ( MonadSupply Int m
      , MonadReader (ClassEnv, TypeEnv, KindEnv, ConstructorEnv) m )
   => Stage2Expr TInfo
-  -> StateT (Env [(Name, Name)]) m (Stage3Expr Type)
+  -> StateT [(Name, (Name, Name))] m (Stage3Expr Type)
 s3_translate expr = do
     e <- walk expr
     insertArgsExpr e
@@ -732,7 +732,6 @@ s3_translate expr = do
             fixExpr (nodeType t) var <$> insertArgsExpr e <*> expr2
 
         EVar t var -> do
---            traceShowM (nodePredicates t)
             let (vs, ts) = partition (tIsVar . predicateType) (nodePredicates t)
 
             classEnv <- askClassEnv
@@ -765,7 +764,7 @@ dictTVar
      , MonadReader (ClassEnv, TypeEnv, KindEnv, ConstructorEnv) m )
   => Name
   -> TypeF k i a
-  -> StateT (Env [(Name, Name)]) m Name
+  -> StateT [(Name, (Name, Name))] m Name
 dictTVar name (TVar _ var) = do
     info <- get
     classEnv <- askClassEnv
@@ -773,19 +772,19 @@ dictTVar name (TVar _ var) = do
   where
     fresh = do
         dv <- (\n -> "$dict" <> showt n <> "_" <> name) <$> supply
-        modify (Env.alter (\vs -> Just $ (name, dv):fromMaybe [] vs) var)
+        modify ((var, (name, dv)) :)
         pure dv
 
     lookupVar info classEnv = do
-        varEnv <- Env.lookup var info
-        snd <$> find (elem name . fst) (first (super1 classEnv) <$> varEnv)
+        let varEnv = filter ((==) var . fst) info
+        snd <$> find (elem name . fst) (first (super1 classEnv) . snd <$> varEnv)
 
 applyVarPredicates
   :: ( MonadSupply Int m
      , MonadReader (ClassEnv, TypeEnv, KindEnv, ConstructorEnv) m )
   => Stage3Expr Type
   -> [Predicate]
-  -> StateT (Env [(Name, Name)]) m (Stage3Expr Type)
+  -> StateT [(Name, (Name, Name))] m (Stage3Expr Type)
 applyVarPredicates expr [] = pure expr
 applyVarPredicates expr (InClass name ty:ps) = do
     tv <- dictTVar name (project ty)
@@ -842,7 +841,7 @@ applyNonVarPredicates
      , MonadReader (ClassEnv, TypeEnv, KindEnv, ConstructorEnv) m )
   => Stage3Expr Type
   -> [Predicate]
-  -> StateT (Env [(Name, Name)]) m (Stage3Expr Type)
+  -> StateT [(Name, (Name, Name))] m (Stage3Expr Type)
 applyNonVarPredicates expr [] = pure expr
 applyNonVarPredicates expr (InClass name ty:ps) = do
     dictMap <- collectMethods
@@ -894,32 +893,54 @@ insertArgsExpr
   :: ( MonadSupply Int m
      , MonadReader (ClassEnv, TypeEnv, KindEnv, ConstructorEnv) m )
   => Stage3Expr Type
-  -> StateT (Env [(Name, Name)]) m (Stage3Expr Type)
+  -> StateT [(Name, (Name, Name))] m (Stage3Expr Type)
 --insertArgsExpr expr = getAndReset >>= foldrM fun expr . Env.toList 
 insertArgsExpr expr = do 
     s <- getAndReset 
-    traceShowM s
-    foldrM fun expr (Env.toList s)
-  where
-    fun
-      :: ( MonadSupply Int m
-         , MonadReader (ClassEnv, TypeEnv, KindEnv, ConstructorEnv) m )
-      => (Name, [(Name, Name)])
-      -> Stage3Expr Type
-      -> StateT (Env [(Name, Name)]) m (Stage3Expr Type)
-    fun (var, vs) e = do
-        classEnv <- askClassEnv
+    classEnv <- askClassEnv
+
+    let abc :: Map Name [(Name, Name)]
+        abc = foldr (\(var, rrrr) -> Map.insertWith (<>) var [rrrr]) mempty s
+
+    x <- forM abc $ \vs -> do
         set1 <- reduceSet classEnv (fst <$> vs)
-        let set2 = [(x, b) | (a, b) <- vs, a `elem` set1, x <- super1 classEnv a]
-        pure (foldr (fun2 set1 set2) e vs)
-      where
-        fun2 set1 set2 (name, dv) e =
-            if name `elem` set1
-                then do
-                    --let ty = tApp kTyp (tCon kFun name) (tVar kTyp var)
-                    lamExpr (predToType (InClass name (tVar kTyp var)) `tArr` stage2ExprTag e) dv e
-                else
-                    replaceVar dv (fromJust (lookup name set2)) e
+        pure (set1, [(p, b) | (a, b) <- vs, a `elem` set1, p <- super1 classEnv a])
+
+    foldrM (fun x) expr (reverse s)
+  where
+    --fun
+    --  :: ( MonadSupply Int m
+    --     , MonadReader (ClassEnv, TypeEnv, KindEnv, ConstructorEnv) m )
+    --  => (Name, (Name, Name))
+    --  -> Stage3Expr Type
+    --  -> StateT [(Name, (Name, Name))] m (Stage3Expr Type)
+    fun x (var, (name, dv)) e = do
+
+        let (ddd, eee) = fromJust (Map.lookup var x)
+
+        if name `elem` ddd
+            then pure (lamExpr (predToType (InClass name (tVar kTyp var)) `tArr` stage2ExprTag e) dv e)
+            else pure (replaceVar dv (fromJust (lookup name eee)) e)
+
+--    fun
+--      :: ( MonadSupply Int m
+--         , MonadReader (ClassEnv, TypeEnv, KindEnv, ConstructorEnv) m )
+--      => (Name, [(Name, Name)])
+--      -> Stage3Expr Type
+--      -> StateT [(Name, (Name, Name))] m (Stage3Expr Type)
+--    fun (var, vs) e = do
+--        classEnv <- askClassEnv
+--        set1 <- reduceSet classEnv (fst <$> vs)
+--        let set2 = [(x, b) | (a, b) <- vs, a `elem` set1, x <- super1 classEnv a]
+--        pure (foldr (fun2 set1 set2) e vs)
+--      where
+--        fun2 set1 set2 (name, dv) e =
+--            if name `elem` set1
+--                then do
+--                    --let ty = tApp kTyp (tCon kFun name) (tVar kTyp var)
+--                    lamExpr (predToType (InClass name (tVar kTyp var)) `tArr` stage2ExprTag e) dv e
+--                else
+--                    replaceVar dv (fromJust (lookup name set2)) e
 
 replaceVar :: Name -> Name -> Stage3Expr Type -> Stage3Expr Type
 replaceVar from to = cata $ \case

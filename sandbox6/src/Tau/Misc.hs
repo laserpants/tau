@@ -31,8 +31,9 @@ import Data.Set.Monad (Set)
 import Data.Text (Text)
 import Data.Tuple.Extra (first)
 import Data.Void (Void)
+import Debug.Trace
 import Tau.Env (Env)
-import Tau.Util (Name, embed1, embed2, embed3, embed4, letters, (<$$>), liftMaybe)
+import Tau.Util (Name, embed1, embed2, embed3, embed4, letters, (<$$>), liftMaybe, nats)
 import Text.Show.Deriving (deriveShow1)
 import TextShow
 import qualified Data.Map.Strict as Map
@@ -1837,8 +1838,8 @@ normalizeExpr :: ProgExpr (TypeInfo [e]) u -> ProgExpr (TypeInfo [e]) u
 normalizeExpr expr = apply sub expr
   where
     sub :: Substitution Type
-    sub = fromList [(v, tVar k a) | ((v, k), a) <- zip vars letters]
-    vars = foldrExprTag (\t vs -> free (nodeType t) <> vs) [] expr
+    sub = fromList [(v, tVar k a) | ((v, k), a) <- zip vars (("a" <>) . showt <$> tail nats)]
+    vars = nub (foldrExprTag (\t vs -> free (nodeType t) <> vs) [] expr)
 
 -------------------------------------------------------------------------------
 

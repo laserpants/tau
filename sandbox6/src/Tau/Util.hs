@@ -59,11 +59,14 @@ getAndReset :: (Monoid a, MonadState a m) => m a
 getAndReset = get <* put mempty
 {-# INLINE getAndReset #-}
 
+nats :: [Int]
+nats = enumFrom 0
+
 runSupplyNats :: Supply Int a -> a
-runSupplyNats = fromJust . flip evalSupply [0..]
+runSupplyNats = fromJust . flip evalSupply nats
 
 runSupplyNatsT :: (Monad m) => SupplyT Int (MaybeT m) a -> m a
-runSupplyNatsT = fmap fromJust . runMaybeT . flip evalSupplyT [0..]
+runSupplyNatsT = fmap fromJust . runMaybeT . flip evalSupplyT nats
 
 -------------------------------------------------------------------------------
 

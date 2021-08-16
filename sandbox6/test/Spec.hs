@@ -1389,6 +1389,10 @@ testFlight = do
         (appExpr () [ lamExpr () [recordPat () (rowPat () "a" (varPat () "a") (varPat () "z"))] (varExpr () "z") , recordExpr () (rowExpr () "a" (annExpr tInt (litExpr () (TInt 1))) (rowExpr () "b" (annExpr tInt (litExpr () (TInt 2))) (rowExpr () "d" (annExpr tInt (litExpr () (TInt 3))) (conExpr () "{}" [])))) ])
         (Just (Data "#" [Data "{b}" [Value (TInt 2), Data "{d}" [Value (TInt 3), Data "{}" []]]]))
 
+    succeedRunExpr
+        (letExpr () (BFun () "f" [varPat () "x"]) (op2Expr () (OGt ()) (varExpr () "x") (litExpr () (TInteger 6))) (appExpr () [varExpr () "f", annExpr tInt (litExpr () (TInteger 4))]))
+        (Just (Value (TBool False)))
+
 -------------------------------------------------------------------------------
 
 -- Parser tests

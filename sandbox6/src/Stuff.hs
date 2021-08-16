@@ -874,7 +874,8 @@ runBundle :: Text -> Bundle
 runBundle input =
     case runParserStack annExprParser "" input of
         Left err -> traceShow "error" (error (show err))
-        Right expr -> traceShow expr (compileBundle expr)
+        --Right expr -> traceShow expr (compileBundle expr)
+        Right expr -> (compileBundle expr)
 
 compileBundle :: ProgExpr () Type -> Bundle
 compileBundle expr = Bundle
@@ -1038,6 +1039,9 @@ testClassEnv = Env.fromList
         -- Instances
         , [ ClassInfo (InClass "Show" tInt) []
               [ ( "show", Ast (varExpr (TypeInfo () (tInt `tArr` tString) []) "@Int.Show") )
+              ]
+          , ClassInfo (InClass "Show" tString) []
+              [ ( "show", Ast (varExpr (TypeInfo () (tString `tArr` tString) []) "@String.id") )
               ]
           , ClassInfo (InClass "Show" (tPair (tVar kTyp "a") (tVar kTyp "b"))) []
               [ ( "show", Ast (varExpr (TypeInfo () (tPair (tVar kTyp "a") (tVar kTyp "b") `tArr` tString) []) "TODO") )
