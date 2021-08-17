@@ -287,7 +287,7 @@ unificationErrorRep = \case
 contextRep :: Context -> Value
 contextRep ctx = makeRep "Context" "Context" (kvp <$> (Set.toList <$$> Env.toList ctx))
   where
-    kvp (k, v) = array [toRep k, toRep v]
+    kvp (k, v) = makeRep "ContextKeyValue" "ContextKeyValue" [toRep k, toRep v]
 
 -------------------------------------------------------------------------------
 
