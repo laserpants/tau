@@ -37,8 +37,9 @@ encloseSpace l r d = l <+> d <+> r
 
 instance Pretty Prim where
     pretty = \case
-        TUnit      -> "()"
-        TBool    a -> pretty a
+        TUnit       -> "()"
+        TBool True  -> "true"
+        TBool False -> "false"
         TInt     a -> pretty a
         TInteger a -> pretty a
         TFloat   a -> pretty a

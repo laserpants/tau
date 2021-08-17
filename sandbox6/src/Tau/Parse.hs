@@ -72,6 +72,8 @@ reserved :: [Text]
 reserved =
     [ "and"
     , "as"
+    , "true"
+    , "false"
     , "else"
     , "fun"
     , "if"
@@ -146,8 +148,8 @@ primParser = parseUnit
     <|> parseIntegral
   where
     parseUnit      = symbol "()" $> TUnit
-    parseTrue      = keyword "True"  $> TBool True
-    parseFalse     = keyword "False" $> TBool False
+    parseTrue      = keyword "true"  $> TBool True
+    parseFalse     = keyword "false" $> TBool False
     parseChar      = TChar <$> surroundedBy (symbol "'") printChar
     parseString    = lexeme (TString . pack <$> chars)
     parseFloat     = TDouble <$> lexeme Lexer.float

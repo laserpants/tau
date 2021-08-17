@@ -648,7 +648,7 @@ testTypeInference = do
             tBool
             []
 
-        -- let c(_) = True in { a = (), b = 2 }.c
+        -- let c(_) = true in { a = (), b = 2 }.c
         succeedInferExpr
             (letExpr () (BFun () "c" [anyPat ()])
                 (litExpr () (TBool True))
@@ -1447,7 +1447,7 @@ testParse = do
             (TDouble 5.3)
 
         succeedParse primParser
-            "True"
+            "true"
             (TBool True)
 
         succeedParse primParser
@@ -1774,7 +1774,7 @@ testParse = do
             (letExpr () (BFun () "withDefault" [varPat () "val"]) (funExpr () [ Clause () [conPat () "Some" [varPat () "y"]] [Choice [] (varExpr () "y")] , Clause () [conPat () "None" []] [Choice [] (varExpr () "val")] ]) (conExpr () "Some" [litExpr () (TInteger 3)]))
 
         succeedParse annExprParser
-            "{ a = True | b }"
+            "{ a = true | b }"
             (recordExpr () (rowExpr () "a" (litExpr () (TBool True)) (varExpr () "b")))
 
         succeedParse annExprParser
