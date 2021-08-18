@@ -199,8 +199,8 @@ typeFragmentParser = tVar <$> kindVar <*> nameParser
 
 -------------------------------------------------------------------------------
 
-datatypeParser :: Parser Datatype
-datatypeParser = do
+typedeclParser :: Parser Typedecl
+typedeclParser = do
     keyword "type"
     Sum <$> constructorParser
         <*> many nameParser <* symbol "="
@@ -358,7 +358,7 @@ clauseParser parser = Clause () <$> parser <*> (try guarded <|> nonGuarded)
         <*> annExprParser
 
     otherwise = do
-        keyword "otherwise" *> symbol "=>" 
+        keyword "otherwise" *> symbol "=>"
         Choice [] <$> annExprParser
 
     nonGuarded = do
@@ -410,7 +410,7 @@ exprParser = makeExprParser parseItem operator
     parseNormalLet = do
         p <- annPatternParser
         if hasLiteralPattern p
-            then fail "Literal patterns cannot be used in let bindings"
+            then fail "Literal patterns are not allowed in let-bindings"
             else pure (BPat () p)
 
     parseFunLet = BFun () <$> nameParser <*> parseFunArg

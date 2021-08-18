@@ -302,7 +302,6 @@ ambiguityCheck
   :: ( MonadReader (ClassEnv, TypeEnv, KindEnv, ConstructorEnv) m )
   => ProgExpr TInfo Void
   -> m (ProgExpr TInfo Void)
---ambiguityCheck expr = pure expr -- do
 ambiguityCheck expr = do
     (a, vs) <- runStateT (walk expr) mempty
     pure (insertExprErrors (checkAmbg (exprTag a) vs) a)
@@ -892,9 +891,8 @@ insertArgsExpr
      , MonadReader (ClassEnv, TypeEnv, KindEnv, ConstructorEnv) m )
   => Stage3Expr Type
   -> StateT [(Name, (Name, Name))] m (Stage3Expr Type)
---insertArgsExpr expr = getAndReset >>= foldrM fun expr . Env.toList 
-insertArgsExpr expr = do 
-    s <- getAndReset 
+insertArgsExpr expr = do
+    s <- getAndReset
     classEnv <- askClassEnv
 
     let abc :: Map Name [(Name, Name)]

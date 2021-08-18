@@ -1,3 +1,4 @@
+{-# LANGUAGE FlexibleContexts      #-}
 {-# LANGUAGE FlexibleInstances     #-}
 {-# LANGUAGE LambdaCase            #-}
 {-# LANGUAGE OverloadedStrings     #-}
@@ -40,13 +41,13 @@ instance Pretty Prim where
         TUnit       -> "()"
         TBool True  -> "true"
         TBool False -> "false"
-        TInt     a -> pretty a
-        TInteger a -> pretty a
-        TFloat   a -> pretty a
-        TDouble  a -> pretty a
-        TChar    a -> squotes (pretty a)
-        TString  a -> dquotes (pretty a)
-        TSymbol  a -> pretty a
+        TInt     a  -> pretty a
+        TInteger a  -> pretty a
+        TFloat   a  -> pretty a
+        TDouble  a  -> pretty a
+        TChar    a  -> squotes (pretty a)
+        TString  a  -> dquotes (pretty a)
+        TSymbol  a  -> pretty a
 
 instance Pretty Kind where
     pretty = para $ \case
@@ -163,10 +164,9 @@ instance Pretty Product where
         parensRequired = project >>> \case
             TApp _ a _ | isRecordType a -> False
             TApp{} -> True
-            TCon{} -> True
             _      -> False
 
-instance Pretty Datatype where
+instance Pretty Typedecl where
     pretty (Sum con vars prods) =
         case prods of
             []   -> lhs
@@ -192,7 +192,7 @@ instance (Pretty t4) => Pretty (Pattern t1 t2 t3 t4) where
 
         PCon _ "(::)" [hd, tl]           -> snd hd <+> "::" <+> snd tl
         PCon _ con []                    -> pretty con
-        PCon _ con ps                    -> pretty con <> prettyTuple (snd <$> ps)
+        PCon _ con ps                    -> pretty con <> align (tupled (snd <$> ps))
 
         PRecord _ r                      -> prettyRecord (unfoldRow (fst r))
 
@@ -232,7 +232,7 @@ instance (Pretty u) => Pretty (Binding t (Pattern t t t u)) where
         BFun _ f ps -> pretty f <> prettyArgs ps
           where
             prettyArgs [Fix (PLit _ TUnit)] = "()"
-            prettyArgs args = parens (commaSep (pretty <$> args))
+            prettyArgs args = align (tupled (pretty <$> args)) -- funArgs args -- parens (commaSep (pretty <$> args))
 
 class FunArgs f where
     funArgs :: f -> Doc a
@@ -248,14 +248,14 @@ instance (Pretty u) => FunArgs [ProgPattern t u] where
             PLit{} -> False
             _      -> True
 
-    funArgs ps = tupled (pretty <$> ps)
+    funArgs ps = align (tupled (pretty <$> ps))
 
 instance (FunArgs e1, Functor e2, Functor e4, Pretty e3, Pretty t4, Pretty (e2 (Expr t1 t2 t3 t4 e1 e2 e3 e4)), Pretty (e4 (Expr t1 t2 t3 t4 e1 e2 e3 e4))) => Pretty (Expr t1 t2 t3 t4 e1 e2 e3 e4) where
     pretty = para $ \case
 
         ECon _ "(::)" [hd, tl]           -> snd hd <+> "::" <+> snd tl
         ECon _ con []                    -> pretty con
-        ECon _ con ps                    -> pretty con <> prettyTuple (snd <$> ps)
+        ECon _ con ps                    -> pretty con <> align (tupled (snd <$> ps)) -- prettyTuple (snd <$> ps)
 
         EApp _ ((e, doc1):es) ->
             parensIf parensRequiredL doc1 <> prettyArgs es
@@ -309,20 +309,21 @@ prettyLam args body = group (nest 2 (vsep [args <+> "=>", body]))
 prettyLet :: Doc a -> Doc a -> Doc a -> Doc a -> Doc a
 prettyLet kword bind e1 e2 =
     group (nest 2 (vsep
-        [ kword <+> bind <+> e1
+        [ kword
+        , bind <+> nest 2 e1
         , nest 2 (vsep ["in", e2]) ]))
 
 letRhs :: (FunArgs e1, Functor e2, Functor e4, Pretty e3, Pretty t4, Pretty (e4 (Expr t1 t2 t3 t4 e1 e2 e3 e4))) => (Expr t1 t2 t3 t4 e1 e2 e3 e4, Doc a) -> Doc a
 letRhs (expr, doc) =
     case project expr of
-        EFun _ cs -> line' <> vsep (pre "|" <$> cs) 
+        EFun _ cs -> line' <> vsep (pre "|" <$> cs)
         _         -> group (vsep ["=", doc])
-  where 
+  where
     pre a p = a <+> pretty p
 
 clauses1 :: Pretty p => [p] -> Doc a
 clauses1 cs = vsep (pre "|" <$> cs)
-  where 
+  where
     pre a p = a <+> pretty p
 
 clauses :: Pretty p => [p] -> Doc a
@@ -357,13 +358,13 @@ instance (Pretty a) => Choices [Choice a] where
       where
         zyx = (prettyChoice "" c)
 
---prettyChoice x (Choice es e) = flatAlt (indent 2 zzz) zzz <+> "=>" <+> pretty e 
-prettyChoice x (Choice es e) = flatAlt (indent 2 zzz) zzz <+> "=>" <+> pretty e 
+--prettyChoice x (Choice es e) = flatAlt (indent 2 zzz) zzz <+> "=>" <+> pretty e
+prettyChoice x (Choice es e) = flatAlt (indent 2 zzz) zzz <+> "=>" <+> pretty e
   where
     zzz = (prettyWhens x es)
 
 prettyWhens :: (Pretty p) => Doc a -> [p] -> Doc a
-prettyWhens stor = \case 
+prettyWhens stor = \case
     [] -> stor <> "otherwise"
     es -> stor <> "when" <> parens (commaSep (pretty <$> es))
 

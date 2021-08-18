@@ -951,6 +951,9 @@ suceedPrintPattern = suceedPrint
 suceedPrintExpr :: ProgExpr t Void -> Text -> SpecWith ()
 suceedPrintExpr = suceedPrint
 
+suceedPrintTypedecl :: Typedecl -> Text -> SpecWith ()
+suceedPrintTypedecl = suceedPrint
+
 suceedPrintExprW :: Int -> ProgExpr t Void -> Text -> SpecWith ()
 suceedPrintExprW w expr str =
     describe output $
@@ -1174,7 +1177,7 @@ testPrettyprinters = do
 --            (recordExpr () (rowExpr () "id" (varExpr () "id") (rowExpr () "name" (varExpr () "name") (conExpr () "{}" []))))
 --            "{ id = id\n, name = name\n }"
 
-        describe "• Datatype expressions" $ do
+        describe "• Typedecl expressions" $ do
 
             suceedPrintExpr
                 (conExpr () "C" [])
@@ -1203,6 +1206,12 @@ testPrettyprinters = do
             suceedPrintExpr
                 (recordExpr () (conExpr () "{}" []))
                 "{}"
+
+        describe "• Type declarations" $ do
+
+            suceedPrintTypedecl
+                (Sum "List" ["a"] [Mul "A" [Fix (TCon (Fix (KCon "*")) "Int"),Fix (TCon (Fix (KCon "*")) "Bool")]])
+                "type List a = A Int Bool"
 
 -------------------------------------------------------------------------------
 
@@ -1422,17 +1431,17 @@ failParse parser input =
 testParse :: SpecWith ()
 testParse = do
 
-    describe "• Datatype" $ do
+    describe "• Typedecl" $ do
 
-        succeedParse datatypeParser
+        succeedParse typedeclParser
             "type List a = Nil | Cons a (List a)"
             (Sum "List" ["a"] [ Mul "Nil" [] , Mul "Cons" [tVar kTyp "a", tApp kTyp (tCon kFun "List") (tVar kTyp "a")]])
 
-        succeedParse datatypeParser
+        succeedParse typedeclParser
             "type User = User { name : String }"
             (Sum "User" [] [ Mul "User" [ tRecord (tRow "name" tString tRowNil) ] ])
 
-        succeedParse datatypeParser
+        succeedParse typedeclParser
             "type User a = User { name : String | a }"
             (Sum "User" ["a"] [ Mul "User" [ tRecord (tRow "name" tString (tVar kRow "a")) ] ])
 

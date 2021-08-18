@@ -148,7 +148,9 @@ data Binding t p
     = BPat t p                           -- ^ Pattern binding
     | BFun t Name [p]                    -- ^ Function binding
 
--- | Pattern clause choice
+-- | Pattern clause choice. A pattern matching clause consists of one or more choices,
+-- each of which is a (possibly empty) list of predicates, known as guards, and a target
+-- expression.
 data Choice a = Choice [a] a
 
 -- | Pattern match clause
@@ -455,8 +457,8 @@ type ConstructorEnv = Env (Set Name, Int)
 -- | Product type
 data Product = Mul Name [Type]
 
--- | Sum type
-data Datatype = Sum Name [Name] [Product]
+-- | A type declaration is a sum of products
+data Typedecl = Sum Name [Name] [Product]
 
 -------------------------------------------------------------------------------
 
@@ -576,15 +578,15 @@ instance FreeIn (TypeT a) where
 instance FreeIn Scheme where
     free (Forall _ _ t) = free t
 
--- Type class instances for Product and Datatype
+-- Type class instances for Product and Typedecl
 
 deriving instance Show Product
 deriving instance Eq   Product
 deriving instance Ord  Product
 
-deriving instance Show Datatype
-deriving instance Eq   Datatype
-deriving instance Ord  Datatype
+deriving instance Show Typedecl
+deriving instance Eq   Typedecl
+deriving instance Ord  Typedecl
 
 deriving instance (Show t, Show u) => Show (Ast t u)
 deriving instance (Eq   t, Eq   u) => Eq   (Ast t u)
