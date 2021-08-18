@@ -146,6 +146,9 @@ inferAstType (Ast expr) =
         ERow t label expr row -> rowExpr t label expr next
           where
             next = case project row of
+                -- To make the types align, a special deconstructor function
+                -- of type { r } -> r is applied to the final row if it is
+                -- a variable.
                 EVar _ v -> appExpr t [varExpr t "_#", varExpr t v]
                 _        -> row
 
@@ -878,7 +881,7 @@ runBundle input =
         Right expr -> (compileBundle expr)
 
 compileBundle :: ProgExpr () Type -> Bundle
-compileBundle expr = 
+compileBundle expr =
     traceShow c
       $ Bundle
           { sourceExpr = expr
