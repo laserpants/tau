@@ -929,12 +929,6 @@ insertArgsExpr expr = do
 
     foldrM (fun x) expr (reverse s)
   where
-    --fun
-    --  :: ( MonadSupply Int m
-    --     , MonadReader (ClassEnv, TypeEnv, KindEnv, ConstructorEnv) m )
-    --  => (Name, (Name, Name))
-    --  -> Stage3Expr Type
-    --  -> StateT [(Name, (Name, Name))] m (Stage3Expr Type)
     fun x (var, (name, dv)) e = do
 
         let (ddd, eee) = fromJust (Map.lookup var x)
