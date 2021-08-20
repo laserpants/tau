@@ -728,10 +728,8 @@ s3_translate
      , MonadReader ([Name], (ClassEnv, TypeEnv, KindEnv, ConstructorEnv)) m )
   => Stage2Expr TInfo
   -> StateT [(Name, (Name, Name))] m (Stage3Expr Type)
-s3_translate expr = do
-    e <- walk expr
-    insertArgsExpr e
-  where
+s3_translate expr = walk expr >>= insertArgsExpr where
+
     walk = cata $ \case
 
         EPat t expr cs -> do
