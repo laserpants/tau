@@ -364,6 +364,19 @@ data MonoClause t p a = MonoClause t [p] (Choice a)
 type Stage1Expr t = Expr t t Void Void [ProgPattern t Void]
     (MonoClause t (ProgPattern t Void)) (ProgBinding t Void) []
 
+setStage1ExprTag :: t -> Stage1Expr t -> Stage1Expr t
+setStage1ExprTag t = project >>> \case
+
+    EVar    _ var      -> varExpr t var
+    ECon    _ con es   -> conExpr t con es
+    ELit    _ prim     -> litExpr t prim
+    EApp    _ es       -> appExpr t es
+    EFix    _ n e1 e2  -> fixExpr t n e1 e2
+    ELam    _ ps e     -> lamExpr t ps e
+    EIf     _ e1 e2 e3 -> ifExpr  t e1 e2 e3
+    EPat    _ es cs    -> patExpr t es cs
+    ELet    _ e1 e2 e3 -> letExpr t e1 e2 e3
+
 stage1ExprTag :: Stage1Expr t -> t
 stage1ExprTag = cata $ \case
 
@@ -481,8 +494,10 @@ translateFunExpr
   -> [MonoClause TInfo (ProgPattern TInfo Void) (Stage1Expr TInfo)]
   -> Stage1Expr TInfo
 translateFunExpr t cs@(MonoClause _ ps (Choice _ e1):_) =
-    lamExpr t (args varPat) (patExpr (stage1ExprTag e1) e (toClause <$> cs))
---    lamExpr t (args varPat) (patExpr (TypeInfo [] (typeOf e1) []) e (toClause <$> cs))  -- ???
+    lamExpr t (args varPat) (patExpr
+        (TypeInfo [] (typeOf e1) [])
+        (setStage1ExprTag (TypeInfo [] (typeOf e) []) e)
+        (toClause <$> cs))
   where
     e = case args varExpr of
         [e] -> e
@@ -710,7 +725,7 @@ stage3ExprTag = cata $ \case
 
 s3_translate
   :: ( MonadSupply Int m
-     , MonadReader (ClassEnv, TypeEnv, KindEnv, ConstructorEnv) m )
+     , MonadReader ([Name], (ClassEnv, TypeEnv, KindEnv, ConstructorEnv)) m )
   => Stage2Expr TInfo
   -> StateT [(Name, (Name, Name))] m (Stage3Expr Type)
 s3_translate expr = do
@@ -722,16 +737,16 @@ s3_translate expr = do
         EPat t expr cs -> do
             e <- expr
             patExpr (nodeType t) <$> insertArgsExpr e
-                                 <*> (translateClauses <$$> traverse sequence cs)
+                                 <*> traverse (translateClauses <=< sequence) cs
 
         EFix t var expr1 expr2 -> do
             e <- expr1
-            fixExpr (nodeType t) var <$> insertArgsExpr e <*> expr2
+            fixExpr (nodeType t) var <$> insertArgsExpr e <*> local (first (var :)) expr2
 
         EVar t var -> do
             let (vs, ts) = partition (tIsVar . predicateType) (nodePredicates t)
 
-            classEnv <- askClassEnv
+            classEnv <- asks (getClassEnv . snd)
             fromType <- traverse (reduceSet classEnv)
                 (foldr (\(InClass n t) -> Map.insertWith (<>) t [n]) mempty ts)
 
@@ -744,7 +759,7 @@ s3_translate expr = do
         ELit   t prim      -> pure (litExpr (nodeType t) prim)
         ECon   t con es    -> conExpr (nodeType t) con <$> sequence es
         EApp   t es        -> appExpr (nodeType t) <$> sequence es
-        ELam   t name e    -> lamExpr (nodeType t) name <$> e
+        ELam   t name e    -> lamExpr (nodeType t) name <$> local (first (name :)) e
         EIf    t e1 e2 e3  -> ifExpr  (nodeType t) <$> e1 <*> e2 <*> e3
 
     translatePatterns = cata $ \case
@@ -753,18 +768,26 @@ s3_translate expr = do
         PAs    t as p      -> asPat   (nodeType t) as p
 
     translateClauses = \case
-        MonoClause t ps g ->
-            MonoClause (nodeType t) (translatePatterns <$> ps) g
+        MonoClause t ps (Choice es e) -> do
+            e1 <- local (first ((patternVars =<< ps) <>)) (pure e)
+            pure (MonoClause (nodeType t) (translatePatterns <$> ps) (Choice es e1))
+
+patternVars :: (Pattern t Void Void Void) -> [Name]
+patternVars = cata $ \case
+
+    PVar _ var  -> [var]
+    PCon _ _ ps -> concat ps
+    PAs  _ _ p  -> p
 
 dictTVar
   :: ( MonadSupply Int m
-     , MonadReader (ClassEnv, TypeEnv, KindEnv, ConstructorEnv) m )
+     , MonadReader ([Name], (ClassEnv, TypeEnv, KindEnv, ConstructorEnv)) m )
   => Name
   -> TypeF k i a
   -> StateT [(Name, (Name, Name))] m Name
 dictTVar name (TVar _ var) = do
     info <- get
-    classEnv <- askClassEnv
+    classEnv <- asks (getClassEnv . snd)
     maybe fresh pure (lookupVar info classEnv)
   where
     fresh = do
@@ -778,7 +801,7 @@ dictTVar name (TVar _ var) = do
 
 applyVarPredicates
   :: ( MonadSupply Int m
-     , MonadReader (ClassEnv, TypeEnv, KindEnv, ConstructorEnv) m )
+     , MonadReader ([Name], (ClassEnv, TypeEnv, KindEnv, ConstructorEnv)) m )
   => Stage3Expr Type
   -> [Predicate]
   -> StateT [(Name, (Name, Name))] m (Stage3Expr Type)
@@ -803,7 +826,7 @@ applyVarPredicates expr (InClass name ty:ps) = do
             pure (appExpr (cod t2) [expr, varExpr t1 tv])
   where
     baz = do
-        env <- askClassEnv
+        env <- asks (getClassEnv . snd)
         fromRight (error ("No class " <> show name))   -- TODO
             <$> runExceptT (lookupAllMethods name env)
 
@@ -835,21 +858,22 @@ lookupAllClassMethods name ty env = withClassInfo collectAll name ty env
 
 applyNonVarPredicates
   :: ( MonadSupply Int m
-     , MonadReader (ClassEnv, TypeEnv, KindEnv, ConstructorEnv) m )
+     , MonadReader ([Name], (ClassEnv, TypeEnv, KindEnv, ConstructorEnv)) m )
   => Stage3Expr Type
   -> [Predicate]
   -> StateT [(Name, (Name, Name))] m (Stage3Expr Type)
 applyNonVarPredicates expr [] = pure expr
 applyNonVarPredicates expr (InClass name ty:ps) = do
     dictMap <- collectMethods
+    shadowed <- asks fst
     case project expr of
         EVar t var ->
             -- Is this a member function of the class?
-            case lookup var dictMap of
+            case lookup var [d | d@(k, _) <- dictMap, k `notElem` shadowed] of
                 Just e ->
                     pure e
 
-                Nothing -> do
+                _ -> do
                     let t2 = foldr (tArr . predToType) (stage3ExprTag expr) ps
                     pure (appExpr t2
                         [ setStage2ExprTag ((tArr . predToType) (InClass name ty) t2) expr
@@ -860,7 +884,7 @@ applyNonVarPredicates expr (InClass name ty:ps) = do
                 , buildDict dictMap ])
   where
     collectMethods = do
-        env <- askClassEnv
+        env <- asks (getClassEnv . snd)
         runExceptT (lookupAllClassMethods name ty env)
             >>= traverse (secondM translateMethod)
               . fromRight (error ("No instance " <> show name <> " " <> show ty))
@@ -875,12 +899,13 @@ applyNonVarPredicates expr (InClass name ty:ps) = do
 
 translateMethod
   :: ( MonadSupply Int m
-     , MonadReader (ClassEnv, TypeEnv, KindEnv, ConstructorEnv) m )
+     , MonadReader ([Name], (ClassEnv, TypeEnv, KindEnv, ConstructorEnv)) m )
   => Ast (TypeInfo ()) Void
   -> m (Stage3Expr Type)
 translateMethod ast = do
-    a <- translateLiteral <$> s2_translate (s1_translate expr)
-    asks (runSupplyNats . runReaderT (evalStateT (s3_translate a) mempty))
+    (_, envs) <- ask
+    let a = translateLiteral <$> s2_translate (s1_translate expr)
+    evalStateT (s3_translate (runSupplyNats (runReaderT a envs))) mempty
   where
     expr = mapExprTag zzz (astExpr ast)
     zzz (TypeInfo () ty ps) = TypeInfo [] ty ps
@@ -888,12 +913,12 @@ translateMethod ast = do
 
 insertArgsExpr
   :: ( MonadSupply Int m
-     , MonadReader (ClassEnv, TypeEnv, KindEnv, ConstructorEnv) m )
+     , MonadReader ([Name], (ClassEnv, TypeEnv, KindEnv, ConstructorEnv)) m )
   => Stage3Expr Type
   -> StateT [(Name, (Name, Name))] m (Stage3Expr Type)
 insertArgsExpr expr = do
     s <- getAndReset
-    classEnv <- askClassEnv
+    classEnv <- asks (getClassEnv . snd)
 
     let abc :: Map Name [(Name, Name)]
         abc = foldr (\(var, rrrr) -> Map.insertWith (<>) var [rrrr]) mempty s

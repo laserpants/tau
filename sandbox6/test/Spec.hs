@@ -1238,7 +1238,7 @@ succeedRunExpr expr result =
 
     f = translateLiteral e
 
-    g = runSupplyNats (runReaderT (evalStateT (s3_translate f) mempty) (testClassEnv, testTypeEnv, testKindEnv, testConstructorEnv))
+    g = runSupplyNats (runReaderT (evalStateT (s3_translate f) mempty) (mempty, (testClassEnv, testTypeEnv, testKindEnv, testConstructorEnv)))
 
     h = runSupplyNats (s4_translate g)
 
@@ -1401,6 +1401,13 @@ testFlight = do
     succeedRunExpr
         (letExpr () (BFun () "f" [varPat () "x"]) (op2Expr () (OGt ()) (varExpr () "x") (litExpr () (TInteger 6))) (appExpr () [varExpr () "f", annExpr tInt (litExpr () (TInteger 4))]))
         (Just (Value (TBool False)))
+
+    succeedRunExpr
+        (letExpr () (BPat () (varPat () "foo")) (funExpr ()
+            [ Clause () [litPat () (TInteger 0)] [Choice [] (annExpr tInt (litExpr () (TInteger 1)))]
+            , Clause () [varPat () "n"] [Choice [] (annExpr tInt (litExpr () (TInteger 2)))]
+            ]) (appExpr () [varExpr () "foo", annExpr tInt (litExpr () (TInteger 1))]))
+        (Just (Value (TInt 2)))
 
 -------------------------------------------------------------------------------
 

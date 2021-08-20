@@ -870,8 +870,11 @@ test5expr :: ProgExpr () Type
 
 --test5expr = appExpr () [lamExpr () [varPat () "z"] (recordExpr () (rowExpr () "a" (annExpr tInt (litExpr () (TInteger 1))) (varExpr () "z"))), recordExpr () (conExpr () "{}" [])]
 
+--test5expr =
+--        (letExpr () (BFun () "f" [varPat () "z"]) (recordExpr () (rowExpr () "a" (annExpr tInt (litExpr () (TInteger 1))) (varExpr () "z"))) (appExpr () [varExpr () "f", recordExpr () (rowExpr () "b" (annExpr tInt (litExpr () (TInt 2))) (conExpr () "{}" []))]))
+
 test5expr =
-        (letExpr () (BFun () "f" [varPat () "z"]) (recordExpr () (rowExpr () "a" (annExpr tInt (litExpr () (TInteger 1))) (varExpr () "z"))) (appExpr () [varExpr () "f", recordExpr () (rowExpr () "b" (annExpr tInt (litExpr () (TInt 2))) (conExpr () "{}" []))]))
+        (letExpr () (BPat () (varPat () "foo")) (funExpr () [ Clause () [litPat () (TInteger 0)] [Choice [] (annExpr tInt (litExpr () (TInteger 1)))] , Clause () [varPat () "n"] [Choice [] (annExpr tInt (litExpr () (TInteger 2)))] ]) (appExpr () [varExpr () "foo", annExpr tInt (litExpr () (TInteger 1))]))
 
 runBundle :: Text -> Bundle
 runBundle input =
@@ -881,19 +884,17 @@ runBundle input =
         Right expr -> (compileBundle expr)
 
 compileBundle :: ProgExpr () Type -> Bundle
-compileBundle expr =
-    traceShow c
-      $ Bundle
-          { sourceExpr = expr
-          , typedExpr  = c1
-          , normalExpr = c2
-          , stage1Expr = d
-          , stage2Expr = f
-          , stage3Expr = g
-          , stage4Expr = h
-          , coreExpr   = i
-          , value      = j
-          , context    = ctx }
+compileBundle expr = Bundle
+    { sourceExpr = expr
+    , typedExpr  = c1
+    , normalExpr = c2
+    , stage1Expr = d
+    , stage2Expr = f
+    , stage3Expr = g
+    , stage4Expr = h
+    , coreExpr   = i
+    , value      = j
+    , context    = ctx }
   where
     ast = Ast expr
     (a, (_, _, ctx)) = runInfer mempty testClassEnv testTypeEnv testKindEnv testConstructorEnv (inferAstType ast)
@@ -904,7 +905,7 @@ compileBundle expr =
     d = s1_translate c2
     e = runSupplyNats (runReaderT (s2_translate d) (testClassEnv, testTypeEnv, testKindEnv, testConstructorEnv))
     f = translateLiteral e
-    g = runSupplyNats (runReaderT (evalStateT (s3_translate f) mempty) (testClassEnv, testTypeEnv, testKindEnv, testConstructorEnv))
+    g = runSupplyNats (runReaderT (evalStateT (s3_translate f) mempty) (mempty, (testClassEnv, testTypeEnv, testKindEnv, testConstructorEnv)))
     h = runSupplyNats (s4_translate g)
     i = coreTranslate h
     j = evalExpr i testEvalEnv
@@ -912,8 +913,6 @@ compileBundle expr =
 
 test5 :: IO ()
 test5 = do
-    --traceShowM b
-    traceShowM c
     liftIO $ LBS.writeFile "/home/laserpants/code/tau-tooling/src/tmp/bundle.json" (encodePretty' defConfig{ confIndent = Spaces 2 } (toRep bundle))
     -- astExpr a
   where
@@ -932,7 +931,7 @@ test5 = do
 
     f = translateLiteral e
 
-    g = runSupplyNats (runReaderT (evalStateT (s3_translate f) mempty) (testClassEnv, testTypeEnv, testKindEnv, testConstructorEnv))
+    g = runSupplyNats (runReaderT (evalStateT (s3_translate f) mempty) (mempty, (testClassEnv, testTypeEnv, testKindEnv, testConstructorEnv)))
 
     h = runSupplyNats (s4_translate g)
 

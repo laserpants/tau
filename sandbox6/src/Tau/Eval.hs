@@ -80,13 +80,6 @@ getField :: (Monad m) => Name -> [Value m] -> m (Value m)
 getField name [Data f (v:fs)]
     | f == ("{" <> name <> "}") = pure v
     | otherwise                 = getField name fs
-getField a b = do
-    traceShowM "vvvvvvvvvvvvvvv"
-    traceShowM "vvvvvvvvvvvvvvv"
-    traceShowM a
-    traceShowM b
-    traceShowM "vvvvvvvvvvvvvvv"
-    error ".."
 
 closure :: (MonadReader (ValueEnv m) m) => Name -> m (Value m) -> m (Value m)
 closure var a = pure (Closure var a mempty)
@@ -110,7 +103,7 @@ evalVar var =
                     fail ("No primitive function " <> Text.unpack prim)
                     --pure (Fail ("No primitive function " <> Text.unpack prim))
 
-        _ ->
+        _ -> do
             asks (Env.lookup var) >>= \case
                 Just value ->
                     pure value
