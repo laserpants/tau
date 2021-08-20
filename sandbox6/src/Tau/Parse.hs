@@ -403,7 +403,7 @@ exprParser = makeExprParser parseItem operator
 
     parseLet = do
         keyword "let"
-        bind <- try parseFunLet <|> parseNormalLet
+        bind <- try parseLetBinding <|> parseNameBinding
         expr <- (funParser <|> (symbol "=" *> annExprParser)) <* symbol "in"
         letExpr () bind expr <$> annExprParser
 
@@ -415,18 +415,18 @@ exprParser = makeExprParser parseItem operator
         try (braces spaces $> recordExpr () (conExpr () "{}" []))
             <|> recordExpr () <$> rowParser "=" annExprParser (rowExpr ()) (varExpr ()) (conExpr () "{}" [])
 
--- parseNameBinding
-parseNormalLet = do
+parseNameBinding :: Parser (Binding () (ProgPattern () Type))
+parseNameBinding = do
     p <- annPatternParser
     if hasLiteralPattern p
         then fail "Literal patterns are not allowed in let-bindings"
         else pure (BPat () p)
 
--- parseLetBinding
-parseFunLet = BFun () <$> nameParser <*> parseFunArg
+parseLetBinding :: Parser (Binding () (ProgPattern () Type))
+parseLetBinding = BFun () <$> nameParser <*> parseFunArg
 
-parseFunArg =
-    try (parens spaces $> [litPat () TUnit]) <|> argParser annPatternParser
+parseFunArg :: Parser [ProgPattern () Type]
+parseFunArg = try (parens spaces $> [litPat () TUnit]) <|> argParser annPatternParser
 
 hasLiteralPattern :: ProgPattern () u -> Bool
 hasLiteralPattern = cata $ \case
