@@ -299,7 +299,7 @@ prim TChar{}       = "#Char"
 prim TString{}     = "#String"
 
 ambiguityCheck
-  :: ( MonadReader (ClassEnv, TypeEnv, KindEnv, ConstructorEnv) m )
+  :: (MonadReader (ClassEnv, TypeEnv, KindEnv, ConstructorEnv) m)
   => ProgExpr TInfo Void
   -> m (ProgExpr TInfo Void)
 ambiguityCheck expr = do
