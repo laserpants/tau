@@ -2074,19 +2074,15 @@ byInstance env self@(InClass name ty) = do
     tryInstance ClassInfo{..} = applyBoth <$> matchClass classSignature self
                                           <*> pure classPredicates
 
-entail
-  :: ( MonadError UnificationError m
-     , MonadSupply Int m )
-  => ClassEnv
-  -> [Predicate]
-  -> Predicate
-  -> m Bool
-entail env cls0 cl = pure super ||^ instances
-  where
-    super = any (cl `elem`) (bySuper env <$> cls0)
-    instances = byInstance env cl >>= \case
-        Nothing   -> pure False
-        Just cls1 -> allM (entail env cls0) cls1
+entail :: ClassEnv -> [Predicate] -> Predicate -> Bool
+entail env ps cl = any (cl `elem`) (bySuper env <$> ps)
+
+--entail env cls0 cl = pure super ||^ instances
+--  where
+--    super = any (cl `elem`) (bySuper env <$> cls0)
+--    instances = byInstance env cl >>= \case
+--        Nothing   -> pure False
+--        Just cls1 -> allM (entail env cls0) cls1
 
 isHeadNormalForm :: Predicate -> Bool
 isHeadNormalForm (InClass _ t) =
@@ -2109,25 +2105,30 @@ toHeadNormalForm env ps =
             Nothing  -> throwError ContextReductionFailed
             Just cls -> toHeadNormalForm env cls
 
-simplify
-  :: ( MonadError UnificationError m
-     , MonadSupply Int m )
-  => ClassEnv
-  -> [Predicate]
-  -> m [Predicate]
-simplify env = loop []
-  where
-    loop qs [] = pure qs
-    loop qs (p:ps) = do
-        entailed <- entail env (qs <> ps) p
-        loop (if entailed then qs else p:qs) ps
+--simplify
+--  :: ( MonadError UnificationError m
+--     , MonadSupply Int m )
+--  => ClassEnv
+--  -> [Predicate]
+--  -> m [Predicate]
+simplify :: ClassEnv -> [Predicate] -> [Predicate]
+simplify env = loop [] where
+    loop qs [] = qs
+    loop qs (p:ps) = loop (if entail env (qs <> ps) p then qs else p:qs) ps
+
+--    loop qs [] = pure qs
+--    loop qs (p:ps) =
+--        loop (if entail env (qs <> ps) p then qs else p:qs) ps
+
+        --entailed <- entail env (qs <> ps) p
+        --loop (if entailed then qs else p:qs) ps
 
 reduce
   :: (MonadSupply Int m)
   => ClassEnv
   -> [Predicate]
   -> m (Either UnificationError [Predicate])
-reduce env cls = runExceptT (toHeadNormalForm env cls >>= simplify env)
+reduce env cls = runExceptT (simplify env <$> toHeadNormalForm env cls)
 
 reduceSet
   :: (MonadSupply Int m)
