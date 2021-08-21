@@ -874,7 +874,7 @@ applyNonVarPredicates expr (InClass name ty:ps) = do
                 _ -> do
                     let t2 = foldr (tArr . predToType) (stage3ExprTag expr) ps
                     pure (appExpr t2
-                        [ setStage2ExprTag ((tArr . predToType) (InClass name ty) t2) expr
+                        [ setStage3ExprTag ((tArr . predToType) (InClass name ty) t2) expr
                         , buildDict dictMap ])
         _ ->
             pure (appExpr (cod (stage3ExprTag expr))
@@ -932,7 +932,7 @@ insertArgsExpr expr = do
         let (ddd, eee) = fromJust (Map.lookup var x)
 
         if name `elem` ddd
-            then pure (lamExpr (predToType (InClass name (tVar kTyp var)) `tArr` stage2ExprTag e) dv e)
+            then pure (lamExpr (predToType (InClass name (tVar kTyp var)) `tArr` stage3ExprTag e) dv e)
             else pure (replaceVar dv (fromJust (lookup name eee)) e)
 
 --    fun
