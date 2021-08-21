@@ -1975,3 +1975,17 @@ testParse = do
         succeedParse annExprParser
             "match (x, y) with | (1, x) when(x /= 0) => x, otherwise => 0 | _ => 100"
             (patExpr () (tupleExpr () [varExpr () "x", varExpr () "y"]) [ Clause () (tuplePat () [litPat () (TInteger 1), varPat () "x"]) [Choice [op2Expr () (ONeq ()) (varExpr () "x") (litExpr () (TInteger 0))] (varExpr () "x"), Choice [] (litExpr () (TInteger 0))] , Clause () (anyPat ()) [Choice [] (litExpr () (TInteger 100))] ])
+
+    describe "• Topdecl" $ do
+
+        succeedParse topdeclParser
+            "f(x, y) = x"
+            (Top () (BFun () "f" [varPat () "x", varPat () "y"]) (varExpr () "x"))
+
+        succeedParse topdeclParser
+            "foo = 5"
+            (Top () (BPat () (varPat () "foo")) (litExpr () (TInteger 5)))
+
+        succeedParse topdeclParser
+            "f | (5, y) => y | _ => x"
+            (Top () (BPat () (varPat () "f")) (funExpr () [ Clause () [litPat () (TInteger 5), varPat () "y"] [Choice [] (varExpr () "y")], Clause () [anyPat ()] [Choice [] (varExpr () "x")]]))

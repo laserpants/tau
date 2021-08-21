@@ -460,6 +460,9 @@ data Product = Mul Name [Type]
 -- | A type declaration is a sum of products
 data Typedecl = Sum Name [Name] [Product]
 
+-- | Top-level declaration, e.g., f(x, y) = foo, or name = "Foo"
+data Topdecl t u = Top t (Binding t (ProgPattern t u)) (ProgExpr t u)
+
 -------------------------------------------------------------------------------
 
 getClassEnv :: (ClassEnv, TypeEnv, KindEnv, ConstructorEnv) -> ClassEnv
@@ -591,6 +594,10 @@ deriving instance Ord  Typedecl
 deriving instance (Show t, Show u) => Show (Ast t u)
 deriving instance (Eq   t, Eq   u) => Eq   (Ast t u)
 deriving instance (Ord  t, Ord  u) => Ord  (Ast t u)
+
+deriving instance (Show t, Show u) => Show (Topdecl t u)
+deriving instance (Eq   t, Eq   u) => Eq   (Topdecl t u)
+deriving instance (Ord  t, Ord  u) => Ord  (Topdecl t u)
 
 -------------------------------------------------------------------------------
 

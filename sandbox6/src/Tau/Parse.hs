@@ -439,3 +439,9 @@ hasLiteralPattern = cata $ \case
     PRow   _ _ p q  -> p || q
     PAnn   _ p      -> p
     _               -> False
+
+topdeclParser :: Parser (Topdecl () Type)
+topdeclParser = do
+    lhs  <- try parseLetBinding <|> parseNameBinding
+    expr <- funParser <|> (symbol "=" *> annExprParser)
+    pure (Top () lhs expr)

@@ -261,7 +261,8 @@ instance (FunArgs e1, Functor e2, Functor e4, Pretty e3, Pretty t4, Pretty (e2 (
             parensIf parensRequiredL doc1 <> prettyArgs es
           where
             prettyArgs [(Fix (ELit _ TUnit), _)] = "()"
-            prettyArgs args = parens (commaSep (snd <$> args))
+            -- prettyArgs args = parens (commaSep (snd <$> args))
+            prettyArgs args = align (tupled (snd <$> args))
 
             parensRequiredL =
                 case project e of
@@ -367,6 +368,14 @@ prettyWhens :: (Pretty p) => Doc a -> [p] -> Doc a
 prettyWhens stor = \case
     [] -> stor <> "otherwise"
     es -> stor <> "when" <> parens (commaSep (pretty <$> es))
+
+instance (Pretty u) => Pretty (Topdecl t u) where
+    pretty (Top _ bind@BPat{} expr) =
+        case project expr of
+            EFun{} -> pretty bind <+> "|" <+> pretty expr
+            _      -> pretty bind <+> "=" <+> pretty expr
+    pretty (Top _ bind expr) =
+        pretty bind <> " =" <+> pretty expr
 
 --
 --
