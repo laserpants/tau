@@ -27,3 +27,10 @@ main = do
 --     x > 5
 --   in 
 --     foo(8)
+--
+
+-- let f(x) = x + 1 in f(123 : Int)
+--
+--
+-- let f(x) = 11 in x => show(read(x))
+--

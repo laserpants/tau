@@ -613,10 +613,6 @@ allErrors = foldrExprTag (\ti es -> nodeErrors ti <> es) []
 constructorEnv :: [(Name, ([Name], Int))] -> ConstructorEnv
 constructorEnv = Env.fromList . (first Set.fromList <$$>)
 
-insertExprErrors :: [e] -> ProgExpr (TypeInfoT [e] t) u -> ProgExpr (TypeInfoT [e] t) u
-insertExprErrors errs = mapExprTag (\TypeInfo{..} ->
-    TypeInfo{ nodeErrors = errs <> nodeErrors, .. })
-
 -------------------------------------------------------------------------------
 
 -- Type class instances
@@ -1310,6 +1306,7 @@ setExprTag t = project >>> \case
     ETuple  _ es          -> tupleExpr  t es
     EList   _ es          -> listExpr   t es
     ERow    _ lab e r     -> rowExpr    t lab e r
+    ERecord _ r           -> recordExpr t r
 
 setPatternTag :: t -> ProgPattern t Void -> ProgPattern t Void
 setPatternTag t = project >>> \case

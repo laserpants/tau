@@ -304,42 +304,41 @@ ambiguityCheck
   -> m (ProgExpr TInfo Void)
 ambiguityCheck expr = do
     (a, vs) <- runStateT (walk expr) mempty
-    pure (insertExprErrors (checkAmbg (exprTag a) vs) a)
+    let t = exprTag a
+    pure (setExprTag (addErrors (checkAmbg t vs) t) a)
   where
-    walk
-      :: ( MonadReader (ClassEnv, TypeEnv, KindEnv, ConstructorEnv) m )
-      => ProgExpr TInfo Void
-      -> StateT [(Name, Name)] m (ProgExpr TInfo Void)
+    --pure (insertExprErrors (checkAmbg (exprTag a) vs) a)
+    --walk
+    --  :: ( MonadReader (ClassEnv, TypeEnv, KindEnv, ConstructorEnv) m )
+    --  => ProgExpr TInfo Void
+    --  -> StateT [(Name, Name)] m (ProgExpr TInfo Void)
     walk = cata $ \case
 
         EVar t var -> do
-            classEnv <- askClassEnv
-            let vs = filter (tIsVar . predicateType) (nodePredicates t)
-            forM_ (project <$$> vs) $ \(InClass name (TVar _ v)) ->
-                modify ((name, v) :)
+            collectPreds t
             pure (varExpr t var)
 
+        ELit t prim -> do
+            collectPreds t
+            pure (litExpr t prim)
+
         EPat t expr clauses -> do
-            e <- expr
+            e <- check expr
             cs <- traverse sequence clauses
-            vs <- nub <$> getAndReset
-            pure (patExpr (addErrors (checkAmbg t vs) t) e cs)
+            pure (patExpr t e cs)
 
         ELet t bind expr1 expr2 -> do
-            e1 <- expr1
+            e1 <- check expr1
             e2 <- expr2
-            vs <- nub <$> getAndReset
-            pure (letExpr (addErrors (checkAmbg t vs) t) bind e1 e2)
+            pure (letExpr t bind e1 e2)
 
         EFix t name expr1 expr2 -> do
-            e1 <- expr1
+            e1 <- check expr1
             e2 <- expr2
-            vs <- nub <$> getAndReset
-            pure (fixExpr (addErrors (checkAmbg t vs) t) name e1 e2)
+            pure (fixExpr t name e1 e2)
 
         EHole   t             -> pure (holeExpr t)
         ECon    t con es      -> conExpr t con <$> sequence es
-        ELit    t prim        -> pure (litExpr t prim)
         EApp    t es          -> appExpr t <$> sequence es
         ELam    t ps e        -> lamExpr t ps <$> e
         EIf     t e1 e2 e3    -> ifExpr t <$> e1 <*> e2 <*> e3
@@ -351,9 +350,29 @@ ambiguityCheck expr = do
         ERow    t lab e r     -> rowExpr t lab <$> e <*> r
         ERecord t r           -> recordExpr t <$> r
 
-    checkAmbg :: TInfo -> [(Name, Name)] -> [Error]
-    checkAmbg t = let freeVars = fst <$> free (nodeType t) in
-        concatMap (\(n, v) -> [AmbiguousType n v | v `notElem` freeVars])
+collectPreds
+  :: ( MonadReader (ClassEnv, TypeEnv, KindEnv, ConstructorEnv) m )
+  => TInfo
+  -> StateT [(Name, Name)] m ()
+collectPreds t = do
+    classEnv <- askClassEnv
+    let vs = filter (tIsVar . predicateType) (nodePredicates t)
+    forM_ (project <$$> vs) $ \(InClass name (TVar _ v)) ->
+        modify ((name, v) :)
+
+check
+  :: ( MonadReader (ClassEnv, TypeEnv, KindEnv, ConstructorEnv) m )
+  => StateT [(Name, Name)] m (ProgExpr TInfo Void)
+  -> StateT [(Name, Name)] m (ProgExpr TInfo Void)
+check expr = do
+    e <- expr
+    vs <- nub <$> getAndReset
+    let t = exprTag e
+    pure (setExprTag (addErrors (checkAmbg t vs) t) e)
+
+checkAmbg :: TInfo -> [(Name, Name)] -> [Error]
+checkAmbg t = let freeVars = fst <$> free (nodeType t) in
+    concatMap (\(n, v) -> [AmbiguousType n v | v `notElem` freeVars])
 
 -------------------------------------------------------------------------------
 -------------------------------------------------------------------------------
