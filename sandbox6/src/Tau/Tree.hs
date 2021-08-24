@@ -308,12 +308,9 @@ ambiguityCheck
   -> m (ProgExpr TInfo Void)
 ambiguityCheck ctx expr = do
     (a, vs) <- runStateT (walk expr) mempty
-    let t = exprTag a in pure (setExprTag (addErrors (checkAmbg t vs) t) a)
+    let t = exprTag a
+    pure (setExprTag (addErrors (checkAmbg t vs) t) a)
   where
---    walk
---      :: (MonadReader (ClassEnv, TypeEnv, KindEnv, ConstructorEnv) m)
---      => ProgExpr TInfo Void
---      -> StateT [(Name, Type)] m (ProgExpr TInfo Void)
     walk = cata $ \case
 
         EVar t var -> do
