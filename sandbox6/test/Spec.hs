@@ -568,8 +568,7 @@ testTypeInference = do
     succeedInferExpr
         (letExpr () (BFun () "f" [varPat () "x"]) (litExpr () (TInteger 11)) (lamExpr () [varPat () "x"] (appExpr () [varExpr () "show", appExpr () [varExpr () "read", varExpr () "x"]])))
         (tString `tArr` tString)
-        []
---        [AmbiguousType "Read" "$v15", AmbiguousType "Show" "$v15"]
+        [AmbiguousType "Read" (tVar kTyp "$v15"), AmbiguousType "Show" (tVar kTyp "$v15")]
 
     describe "• Records" $ do
 
