@@ -105,7 +105,7 @@ exhaustive :: (MonadReader ConstructorEnv m) => [[ProgPattern TInfo u]] -> m Boo
 exhaustive []         = pure False
 exhaustive pss@(ps:_) = not <$> useful pss (anyPat . patternTag <$> ps)
 
-clausesAreExhaustive :: (MonadReader ConstructorEnv m) => [Clause t [ProgPattern TInfo u] (ProgExpr t u)] -> m Bool
+clausesAreExhaustive :: (MonadReader ConstructorEnv m) => [ProgClause TInfo u] -> m Bool
 clausesAreExhaustive = exhaustive . fmap toMatrix
   where
     toMatrix (Clause _ ps choices)
