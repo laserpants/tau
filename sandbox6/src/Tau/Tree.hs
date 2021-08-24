@@ -208,18 +208,18 @@ defaultMatrix :: [[ProgPattern TInfo u]] -> [[ProgPattern TInfo u]]
 defaultMatrix = (fun =<<)
   where
     fun :: [ProgPattern TInfo u] -> [[ProgPattern TInfo u]]
-    fun (p:ps) =
-        case project p of
-            PCon{}            -> []
-            PTuple{}          -> []
-            PList{}           -> []
-            PRow{}            -> []
-            PRecord{}         -> []
-            PLit{}            -> []
-            PAnn _ p          -> fun (p:ps)
-            PAs  _ _ q        -> fun (q:ps)
-            POr  _ q r        -> fun (q:ps) <> fun (r:ps)
-            _                 -> [ps]
+    fun (p:ps) = case project p of
+
+        PCon{}            -> []
+        PTuple{}          -> []
+        PList{}           -> []
+        PRow{}            -> []
+        PRecord{}         -> []
+        PLit{}            -> []
+        PAnn _ p          -> fun (p:ps)
+        PAs  _ _ q        -> fun (q:ps)
+        POr  _ q r        -> fun (q:ps) <> fun (r:ps)
+        _                 -> [ps]
 
 isTupleCon :: Name -> Bool
 isTupleCon con = Just True == (allCommas <$> stripped con)
