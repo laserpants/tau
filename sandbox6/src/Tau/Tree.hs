@@ -1,12 +1,14 @@
-{-# LANGUAGE DeriveTraversable  #-}
-{-# LANGUAGE FlexibleContexts   #-}
-{-# LANGUAGE FlexibleInstances  #-}
-{-# LANGUAGE LambdaCase         #-}
-{-# LANGUAGE OverloadedStrings  #-}
-{-# LANGUAGE RecordWildCards    #-}
-{-# LANGUAGE StandaloneDeriving #-}
-{-# LANGUAGE StrictData         #-}
-{-# LANGUAGE TemplateHaskell    #-}
+{-# LANGUAGE DeriveTraversable      #-}
+{-# LANGUAGE FlexibleContexts       #-}
+{-# LANGUAGE FlexibleInstances      #-}
+{-# LANGUAGE FunctionalDependencies #-}
+{-# LANGUAGE LambdaCase             #-}
+{-# LANGUAGE MultiParamTypeClasses  #-}
+{-# LANGUAGE OverloadedStrings      #-}
+{-# LANGUAGE RecordWildCards        #-}
+{-# LANGUAGE StandaloneDeriving     #-}
+{-# LANGUAGE StrictData             #-}
+{-# LANGUAGE TemplateHaskell        #-}
 module Tau.Tree where
 
 import Control.Arrow ((>>>))
@@ -301,7 +303,7 @@ prim TString{}     = "#String"
 ambiguityCheck
   :: ( MonadReader (ClassEnv, TypeEnv, KindEnv, ConstructorEnv) m
      , MonadSupply Int m )
-  => Context 
+  => Context
   -> ProgExpr TInfo Void
   -> m (ProgExpr TInfo Void)
 ambiguityCheck ctx expr = do
@@ -371,7 +373,7 @@ collectPreds t = do
 --    let t = exprTag a
 ----    env <- askClassEnv
 ----    (subs, errors) <- unzip <$> forM vs (\(n, v) -> do
-----        xlss <- reduceSet env (Set.toList (Env.findWithDefaultEmpty v ctx)) 
+----        xlss <- reduceSet env (Set.toList (Env.findWithDefaultEmpty v ctx))
 ----        case find (xyz env xlss) [tInt] of
 ----            Nothing -> pure ([], [AmbiguousType n v])
 ----            Just ty -> pure ([v `mapsTo` ty], []))
@@ -449,10 +451,10 @@ collectPreds t = do
 --
 --getTy (ClassInfo (InClass _ t) _ _) = t
 --
---xyz env clss t = 
---    all (\c -> case Env.lookup c env of 
+--xyz env clss t =
+--    all (\c -> case Env.lookup c env of
 --                   Nothing -> False
---                   Just (_, infos) -> 
+--                   Just (_, infos) ->
 --                       (c `elem` ["Num", "Ord"]) && (t `elem` (getTy <$> infos))
 --                 ) clss
 --
@@ -461,26 +463,17 @@ collectPreds t = do
 -------------------------------------------------------------------------------
 -------------------------------------------------------------------------------
 
+class Tagged t a | t -> a where
+  getTag :: t -> a
+  setTag :: a -> t -> t
+
 data MonoClause t p a = MonoClause t [p] (Choice a)
 
 type Stage1Expr t = Expr t t Void Void [ProgPattern t Void]
     (MonoClause t (ProgPattern t Void)) (ProgBinding t Void) []
 
-setStage1ExprTag :: t -> Stage1Expr t -> Stage1Expr t
-setStage1ExprTag t = project >>> \case
-
-    EVar    _ var      -> varExpr t var
-    ECon    _ con es   -> conExpr t con es
-    ELit    _ prim     -> litExpr t prim
-    EApp    _ es       -> appExpr t es
-    EFix    _ n e1 e2  -> fixExpr t n e1 e2
-    ELam    _ ps e     -> lamExpr t ps e
-    EIf     _ e1 e2 e3 -> ifExpr  t e1 e2 e3
-    EPat    _ es cs    -> patExpr t es cs
-    ELet    _ e1 e2 e3 -> letExpr t e1 e2 e3
-
-stage1ExprTag :: Stage1Expr t -> t
-stage1ExprTag = cata $ \case
+instance Tagged (Stage1Expr TInfo) TInfo where
+  getTag = cata $ \case
 
     EVar    t _        -> t
     ECon    t _ _      -> t
@@ -491,6 +484,18 @@ stage1ExprTag = cata $ \case
     EIf     t _ _ _    -> t
     EPat    t _ _      -> t
     ELet    t _ _ _    -> t
+
+  setTag t = project >>> \case
+
+    EVar    _ var      -> varExpr t var
+    ECon    _ con es   -> conExpr t con es
+    ELit    _ prim     -> litExpr t prim
+    EApp    _ es       -> appExpr t es
+    EFix    _ n e1 e2  -> fixExpr t n e1 e2
+    ELam    _ ps e     -> lamExpr t ps e
+    EIf     _ e1 e2 e3 -> ifExpr  t e1 e2 e3
+    EPat    _ es cs    -> patExpr t es cs
+    ELet    _ e1 e2 e3 -> letExpr t e1 e2 e3
 
 -------------------------------------------------------------------------------
 
@@ -511,8 +516,8 @@ deriveShow1 ''MonoClause
 deriveEq1   ''MonoClause
 deriveOrd1  ''MonoClause
 
-instance (Typed t) => Typed (Stage1Expr t) where
-    typeOf = typeOf . stage1ExprTag
+instance Typed (Stage1Expr TInfo) where
+    typeOf = typeOf . getTag
 
 predToType :: Predicate -> Type
 predToType (InClass name ty) = tApp kTyp (tCon kFun name) ty
@@ -565,13 +570,13 @@ s1_translate = cata $ \case
 translateAppExpr :: TInfo -> [Stage1Expr TInfo] -> Stage1Expr TInfo
 translateAppExpr t es =
     foldr go
-        (appExpr (remArgs (length es - 1) <$> stage1ExprTag (head es)) replaceHoles)
+        (appExpr (remArgs (length es - 1) <$> getTag (head es)) replaceHoles)
         holes
   where
     go :: (Stage1Expr TInfo, Name) -> Stage1Expr TInfo -> Stage1Expr TInfo
     go (e, n) body = lamExpr
-        (tArr (nodeType (stage1ExprTag e)) <$> stage1ExprTag body)
-        [varPat (stage1ExprTag e) n] body
+        (tArr (nodeType (getTag e)) <$> getTag body)
+        [varPat (getTag e) n] body
 
     holes :: [(Stage1Expr TInfo, Name)]
     holes = zip (filter (hollow . project) es) ["^" <> showt n | n <- nats]
@@ -580,7 +585,7 @@ translateAppExpr t es =
       where
         f e | hollow (project e) = do
                 n <- supply
-                pure (varExpr (stage1ExprTag e) ("^" <> showt n))
+                pure (varExpr (getTag e) ("^" <> showt n))
             | otherwise =
                 pure e
 
@@ -598,7 +603,7 @@ translateFunExpr
 translateFunExpr t cs@(MonoClause _ ps (Choice _ e1):_) =
     lamExpr t (args varPat) (patExpr
         (TypeInfo [] (typeOf e1) [])
-        (setStage1ExprTag (TypeInfo [] (typeOf e) []) e)
+        (setTag (TypeInfo [] (typeOf e) []) e)
         (toClause <$> cs))
   where
     e = case args varExpr of
@@ -618,20 +623,8 @@ translateFunExpr t cs@(MonoClause _ ps (Choice _ e1):_) =
 type Stage2Expr t = Expr t Void Void Void Name
     (MonoClause t (Pattern t Void Void Void)) Void []
 
-setStage2ExprTag :: t -> Stage2Expr t -> Stage2Expr t
-setStage2ExprTag t = project >>> \case
-
-    EVar    _ var      -> varExpr t var
-    ECon    _ con es   -> conExpr t con es
-    ELit    _ prim     -> litExpr t prim
-    EApp    _ es       -> appExpr t es
-    EFix    _ n e1 e2  -> fixExpr t n e1 e2
-    ELam    _ ps e     -> lamExpr t ps e
-    EIf     _ e1 e2 e3 -> ifExpr  t e1 e2 e3
-    EPat    _ es cs    -> patExpr t es cs
-
-stage2ExprTag :: Stage2Expr t -> t
-stage2ExprTag = cata $ \case
+instance Tagged (Stage2Expr TInfo) TInfo where
+  getTag = cata $ \case
 
     EVar    t _        -> t
     ECon    t _ _      -> t
@@ -641,6 +634,17 @@ stage2ExprTag = cata $ \case
     ELam    t _ _      -> t
     EIf     t _ _ _    -> t
     EPat    t _ _      -> t
+
+  setTag t = project >>> \case
+
+    EVar    _ var      -> varExpr t var
+    ECon    _ con es   -> conExpr t con es
+    ELit    _ prim     -> litExpr t prim
+    EApp    _ es       -> appExpr t es
+    EFix    _ n e1 e2  -> fixExpr t n e1 e2
+    ELam    _ ps e     -> lamExpr t ps e
+    EIf     _ e1 e2 e3 -> ifExpr  t e1 e2 e3
+    EPat    _ es cs    -> patExpr t es cs
 
 -------------------------------------------------------------------------------
 
@@ -703,7 +707,7 @@ translateLambda
 translateLambda t pats expr =
     case project <$> pats of
         [PVar _ var] -> pure (lamExpr t var expr)
-        _            -> fst <$> foldrM fn (expr, stage2ExprTag expr) pats
+        _            -> fst <$> foldrM fn (expr, getTag expr) pats
   where
     fn pat (expr, t) = do
         var <- freshName
@@ -797,20 +801,8 @@ freshName = ("$e" <>) . showt <$> supply
 type Stage3Expr t = Expr t Void Void Void Name
     (MonoClause t (Pattern t Void Void Void)) Void []
 
-setStage3ExprTag :: t -> Stage3Expr t -> Stage3Expr t
-setStage3ExprTag t = project >>> \case
-
-    EVar    _ var      -> varExpr t var
-    ECon    _ con es   -> conExpr t con es
-    ELit    _ prim     -> litExpr t prim
-    EApp    _ es       -> appExpr t es
-    EFix    _ n e1 e2  -> fixExpr t n e1 e2
-    ELam    _ ps e     -> lamExpr t ps e
-    EIf     _ e1 e2 e3 -> ifExpr  t e1 e2 e3
-    EPat    _ es cs    -> patExpr t es cs
-
-stage3ExprTag :: Stage3Expr t -> t
-stage3ExprTag = cata $ \case
+instance Tagged (Stage3Expr Type) Type where
+  getTag = cata $ \case
 
     EVar    t _        -> t
     ECon    t _ _      -> t
@@ -820,6 +812,17 @@ stage3ExprTag = cata $ \case
     ELam    t _ _      -> t
     EIf     t _ _ _    -> t
     EPat    t _ _      -> t
+
+  setTag t = project >>> \case
+
+    EVar    _ var      -> varExpr t var
+    ECon    _ con es   -> conExpr t con es
+    ELit    _ prim     -> litExpr t prim
+    EApp    _ es       -> appExpr t es
+    EFix    _ n e1 e2  -> fixExpr t n e1 e2
+    ELam    _ ps e     -> lamExpr t ps e
+    EIf     _ e1 e2 e3 -> ifExpr  t e1 e2 e3
+    EPat    _ es cs    -> patExpr t es cs
 
 -------------------------------------------------------------------------------
 
@@ -909,18 +912,18 @@ applyVarPredicates expr [] = pure expr
 applyVarPredicates expr (InClass name ty:ps) = do
     tv <- dictTVar name (project ty)
     let t1 = tApp kTyp (tCon kFun name) ty
-        t2 = foldr (tArr . predToType) (stage3ExprTag expr) ps
+        t2 = foldr (tArr . predToType) (getTag expr) ps
     case project expr of
         EVar t var -> do
             all <- baz
             if var `elem` (fst <$> all)
-                then pure (appExpr (stage3ExprTag expr)
+                then pure (appExpr (getTag expr)
                     [ varExpr (tSymbol `tArr` t1 `tArr` t) "@(#)get_field"
                     , litExpr tSymbol (TSymbol var)
                     , varExpr t1 tv ])
                 else
                     pure (appExpr t2
-                        [ setStage3ExprTag ((tArr . predToType) (InClass name ty) t2) expr
+                        [ setTag ((tArr . predToType) (InClass name ty) t2) expr
                         , varExpr t1 tv ])
         _ ->
             pure (appExpr (cod t2) [expr, varExpr t1 tv])
@@ -974,12 +977,12 @@ applyNonVarPredicates expr (InClass name ty:ps) = do
                     pure e
 
                 _ -> do
-                    let t2 = foldr (tArr . predToType) (stage3ExprTag expr) ps
+                    let t2 = foldr (tArr . predToType) (getTag expr) ps
                     pure (appExpr t2
-                        [ setStage3ExprTag ((tArr . predToType) (InClass name ty) t2) expr
+                        [ setTag ((tArr . predToType) (InClass name ty) t2) expr
                         , buildDict dictMap ])
         _ ->
-            pure (appExpr (cod (stage3ExprTag expr))
+            pure (appExpr (cod (getTag expr))
                 [ expr
                 , buildDict dictMap ])
   where
@@ -994,7 +997,7 @@ applyNonVarPredicates expr (InClass name ty:ps) = do
             [foldr fn (conExpr tRowNil "{}" []) map]
       where
         fn (name, expr) e =
-            let row = tRow name (stage3ExprTag expr) (stage3ExprTag e)
+            let row = tRow name (getTag expr) (getTag e)
              in rowExprCons row name expr e
 
 translateMethod
@@ -1034,7 +1037,7 @@ insertArgsExpr expr = do
         let (ddd, eee) = fromJust (Map.lookup var x)
 
         if name `elem` ddd
-            then pure (lamExpr (predToType (InClass name (tVar kTyp var)) `tArr` stage3ExprTag e) dv e)
+            then pure (lamExpr (predToType (InClass name (tVar kTyp var)) `tArr` getTag e) dv e)
             else pure (replaceVar dv (fromJust (lookup name eee)) e)
 
 --    fun
@@ -1053,7 +1056,7 @@ insertArgsExpr expr = do
 --            if name `elem` set1
 --                then do
 --                    --let ty = tApp kTyp (tCon kFun name) (tVar kTyp var)
---                    lamExpr (predToType (InClass name (tVar kTyp var)) `tArr` stage2ExprTag e) dv e
+--                    lamExpr (predToType (InClass name (tVar kTyp var)) `tArr` getTag e) dv e
 --                else
 --                    replaceVar dv (fromJust (lookup name set2)) e
 
@@ -1079,8 +1082,8 @@ data ConsGroup t = ConsGroup
     , consPatterns :: [Pattern t Void Void Void]
     , consClauses  :: [MonoClause t (Pattern t Void Void Void) (Stage4Expr t)] }
 
-stage4ExprTag :: Stage4Expr t -> t
-stage4ExprTag = cata $ \case
+instance Tagged (Stage4Expr Type) Type where
+  getTag = cata $ \case
 
     EVar    t _        -> t
     ECon    t _ _      -> t
@@ -1090,6 +1093,17 @@ stage4ExprTag = cata $ \case
     ELam    t _ _      -> t
     EIf     t _ _ _    -> t
     EPat    t _ _      -> t
+
+  setTag t = project >>> \case
+
+    EVar    _ var      -> varExpr t var
+    ECon    _ con es   -> conExpr t con es
+    ELit    _ prim     -> litExpr t prim
+    EApp    _ es       -> appExpr t es
+    EFix    _ n e1 e2  -> fixExpr t n e1 e2
+    ELam    _ ps e     -> lamExpr t ps e
+    EIf     _ e1 e2 e3 -> ifExpr  t e1 e2 e3
+    EPat    _ es cs    -> patExpr t es cs
 
 -------------------------------------------------------------------------------
 
@@ -1131,7 +1145,7 @@ compilePatterns u qs =
     compileMatch [] []                                  c = pure c
     compileMatch [] (MonoClause _ [] (Choice [] e):_)   _ = pure e
     compileMatch [] (MonoClause _ [] (Choice exs e):qs) c = do
-        ifExpr (stage4ExprTag e) (foldr1 andExpr exs) e <$> compileMatch [] qs c
+        ifExpr (getTag e) (foldr1 andExpr exs) e <$> compileMatch [] qs c
     compileMatch (u:us) qs c =
         case clauseGroups qs of
             [Variable eqs] ->
@@ -1151,10 +1165,10 @@ compilePatterns u qs =
 
             [Constructor eqs@(MonoClause t _ (Choice _ e):_)] -> do
                 qs' <- traverse (toSimpleMatch t us c) (consGroups u eqs)
-                let rs = [MonoClause t [SCon (stage4ExprTag u) "$_" []] (Choice [] c) | not (isError c)]
+                let rs = [MonoClause t [SCon (getTag u) "$_" []] (Choice [] c) | not (isError c)]
                 pure $ case qs' <> rs of
                     []   -> c
-                    qs'' -> patExpr (stage4ExprTag e) u qs''
+                    qs'' -> patExpr (getTag e) u qs''
               where
                 isError :: Stage4Expr t -> Bool
                 isError = cata $ \case
