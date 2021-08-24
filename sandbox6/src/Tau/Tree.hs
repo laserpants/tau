@@ -299,19 +299,19 @@ prim TChar{}       = "#Char"
 prim TString{}     = "#String"
 
 ambiguityCheck
-  :: (MonadReader (ClassEnv, TypeEnv, KindEnv, ConstructorEnv) m)
-  => ProgExpr TInfo Void
+  :: ( MonadReader (ClassEnv, TypeEnv, KindEnv, ConstructorEnv) m
+     , MonadSupply Int m )
+  => Context 
+  -> ProgExpr TInfo Void
   -> m (ProgExpr TInfo Void)
-ambiguityCheck expr = do
+ambiguityCheck ctx expr = do
     (a, vs) <- runStateT (walk expr) mempty
-    let t = exprTag a
-    pure (setExprTag (addErrors (checkAmbg t vs) t) a)
+    let t = exprTag a in pure (setExprTag (addErrors (checkAmbg t vs) t) a)
   where
-    --pure (insertExprErrors (checkAmbg (exprTag a) vs) a)
-    --walk
-    --  :: ( MonadReader (ClassEnv, TypeEnv, KindEnv, ConstructorEnv) m )
-    --  => ProgExpr TInfo Void
-    --  -> StateT [(Name, Name)] m (ProgExpr TInfo Void)
+--    walk
+--      :: (MonadReader (ClassEnv, TypeEnv, KindEnv, ConstructorEnv) m)
+--      => ProgExpr TInfo Void
+--      -> StateT [(Name, Type)] m (ProgExpr TInfo Void)
     walk = cata $ \case
 
         EVar t var -> do
@@ -323,17 +323,17 @@ ambiguityCheck expr = do
             pure (litExpr t prim)
 
         EPat t expr clauses -> do
-            e <- check expr
+            e <- expr <* put []
             cs <- traverse sequence clauses
             pure (patExpr t e cs)
 
         ELet t bind expr1 expr2 -> do
-            e1 <- check expr1
+            e1 <- expr1 <* put []
             e2 <- expr2
             pure (letExpr t bind e1 e2)
 
         EFix t name expr1 expr2 -> do
-            e1 <- check expr1
+            e1 <- expr1 <* put []
             e2 <- expr2
             pure (fixExpr t name e1 e2)
 
@@ -350,29 +350,112 @@ ambiguityCheck expr = do
         ERow    t lab e r     -> rowExpr t lab <$> e <*> r
         ERecord t r           -> recordExpr t <$> r
 
-collectPreds
-  :: ( MonadReader (ClassEnv, TypeEnv, KindEnv, ConstructorEnv) m )
-  => TInfo
-  -> StateT [(Name, Name)] m ()
-collectPreds t = do
-    classEnv <- askClassEnv
-    let vs = filter (tIsVar . predicateType) (nodePredicates t)
-    forM_ (project <$$> vs) $ \(InClass name (TVar _ v)) ->
-        modify ((name, v) :)
-
-check
-  :: ( MonadReader (ClassEnv, TypeEnv, KindEnv, ConstructorEnv) m )
-  => StateT [(Name, Name)] m (ProgExpr TInfo Void)
-  -> StateT [(Name, Name)] m (ProgExpr TInfo Void)
-check expr = do
-    e <- expr
-    vs <- nub <$> getAndReset
-    let t = exprTag e
-    pure (setExprTag (addErrors (checkAmbg t vs) t) e)
-
-checkAmbg :: TInfo -> [(Name, Name)] -> [Error]
+checkAmbg :: TInfo -> [(Name, Type)] -> [Error]
 checkAmbg t = let freeVars = fst <$> free (nodeType t) in
-    concatMap (\(n, v) -> [AmbiguousType n v | v `notElem` freeVars])
+    concatMap (\(n, t@(Fix (TVar _ v))) -> [AmbiguousType n t | v `notElem` freeVars])
+
+--check expr = expr <* put []
+--    e <- expr
+--    put []
+--    pure e
+    --vs <- nub <$> getAndReset
+    --let t = exprTag e
+    --pure (setExprTag (addErrors (checkAmbg t vs) t) e)
+
+collectPreds t = do
+    let vs = filter (tIsVar . predicateType) (nodePredicates t)
+    forM_ vs $ \(InClass name t) -> modify ((name, t) :)
+
+--ambiguityCheck ctx expr = do
+--    (a, vs) <- runStateT (walk expr) mempty
+--    let t = exprTag a
+----    env <- askClassEnv
+----    (subs, errors) <- unzip <$> forM vs (\(n, v) -> do
+----        xlss <- reduceSet env (Set.toList (Env.findWithDefaultEmpty v ctx)) 
+----        case find (xyz env xlss) [tInt] of
+----            Nothing -> pure ([], [AmbiguousType n v])
+----            Just ty -> pure ([v `mapsTo` ty], []))
+----    let subs1 = foldr (<>) nullSub (concat subs)
+----    pure (setExprTag (addErrors (concat errors) t) (apply subs1 a))
+--
+--    pure (setExprTag (addErrors (checkAmbg t vs) t) a)
+--  where
+--    --pure (insertExprErrors (checkAmbg (exprTag a) vs) a)
+--    --walk
+--    --  :: ( MonadReader (ClassEnv, TypeEnv, KindEnv, ConstructorEnv) m )
+--    --  => ProgExpr TInfo Void
+--    --  -> StateT [(Name, Name)] m (ProgExpr TInfo Void)
+--    walk = cata $ \case
+--
+--        EVar t var -> do
+--            collectPreds t
+--            pure (varExpr t var)
+--
+--        ELit t prim -> do
+--            collectPreds t
+--            pure (litExpr t prim)
+--
+--        EPat t expr clauses -> do
+--            e <- check expr
+--            cs <- traverse sequence clauses
+--            pure (patExpr t e cs)
+--
+--        ELet t bind expr1 expr2 -> do
+--            e1 <- check expr1
+--            e2 <- expr2
+--            pure (letExpr t bind e1 e2)
+--
+--        EFix t name expr1 expr2 -> do
+--            e1 <- check expr1
+--            e2 <- expr2
+--            pure (fixExpr t name e1 e2)
+--
+--        EHole   t             -> pure (holeExpr t)
+--        ECon    t con es      -> conExpr t con <$> sequence es
+--        EApp    t es          -> appExpr t <$> sequence es
+--        ELam    t ps e        -> lamExpr t ps <$> e
+--        EIf     t e1 e2 e3    -> ifExpr t <$> e1 <*> e2 <*> e3
+--        EFun    t cs          -> funExpr t <$> traverse sequence cs
+--        EOp1    t op a        -> op1Expr t op <$> a
+--        EOp2    t op a b      -> op2Expr t op <$> a <*> b
+--        ETuple  t es          -> tupleExpr t <$> sequence es
+--        EList   t es          -> listExpr t <$> sequence es
+--        ERow    t lab e r     -> rowExpr t lab <$> e <*> r
+--        ERecord t r           -> recordExpr t <$> r
+--
+--collectPreds
+--  :: ( MonadReader (ClassEnv, TypeEnv, KindEnv, ConstructorEnv) m )
+--  => TInfo
+--  -> StateT [(Name, Name)] m ()
+--collectPreds t = do
+--    classEnv <- askClassEnv
+--    let vs = filter (tIsVar . predicateType) (nodePredicates t)
+--    forM_ (project <$$> vs) $ \(InClass name (TVar _ v)) ->
+--        modify ((name, v) :)
+--
+--check
+--  :: ( MonadReader (ClassEnv, TypeEnv, KindEnv, ConstructorEnv) m )
+--  => StateT [(Name, Name)] m (ProgExpr TInfo Void)
+--  -> StateT [(Name, Name)] m (ProgExpr TInfo Void)
+--check expr = do
+--    e <- expr
+--    vs <- nub <$> getAndReset
+--    let t = exprTag e
+--    pure (setExprTag (addErrors (checkAmbg t vs) t) e)
+--
+--checkAmbg :: TInfo -> [(Name, Name)] -> [Error]
+--checkAmbg t = let freeVars = fst <$> free (nodeType t) in
+--    concatMap (\(n, v) -> [AmbiguousType n v | v `notElem` freeVars])
+--
+--getTy (ClassInfo (InClass _ t) _ _) = t
+--
+--xyz env clss t = 
+--    all (\c -> case Env.lookup c env of 
+--                   Nothing -> False
+--                   Just (_, infos) -> 
+--                       (c `elem` ["Num", "Ord"]) && (t `elem` (getTy <$> infos))
+--                 ) clss
+--
 
 -------------------------------------------------------------------------------
 -------------------------------------------------------------------------------

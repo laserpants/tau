@@ -16,11 +16,11 @@ main = do
     B.putStrLn (encode (toRep (runBundle (pack p))))
 
 
--- let foo 
---   | 0 => 1 
---   | n => 2
---   in foo(1)
---
+--let foo 
+--  | 0 => 1 
+--  | n => 2
+--  in foo(1)
+
 
 -- let
 --   foo(x) =
@@ -28,6 +28,8 @@ main = do
 --   in 
 --     foo(8)
 --
+
+-- let f(x) = x + 1 in f(123)
 
 -- let f(x) = x + 1 in f(123 : Int)
 --

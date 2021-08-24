@@ -899,8 +899,8 @@ compileBundle expr = Bundle
     ast = Ast expr
     (a, (_, _, ctx)) = runInfer mempty testClassEnv testTypeEnv testKindEnv testConstructorEnv (inferAstType ast)
     c :: ProgExpr TInfo Void
-    c = runReader (exhaustivePatternsCheck (astExpr a)) testConstructorEnv
-    c1 = runReader (ambiguityCheck c) (testClassEnv, testTypeEnv, testKindEnv, testConstructorEnv)
+    c = runSupplyNats (runReaderT (exhaustivePatternsCheck (astExpr a)) testConstructorEnv)
+    c1 = runSupplyNats (runReaderT (ambiguityCheck ctx c) (testClassEnv, testTypeEnv, testKindEnv, testConstructorEnv))
     c2 = normalizeExpr c1
     d = s1_translate c2
     e = runSupplyNats (runReaderT (s2_translate d) (testClassEnv, testTypeEnv, testKindEnv, testConstructorEnv))
@@ -922,7 +922,7 @@ test5 = do
     c :: ProgExpr TInfo Void
     c = runReader (exhaustivePatternsCheck (astExpr a)) testConstructorEnv
 
-    c1 = runReader (ambiguityCheck c) (testClassEnv, testTypeEnv, testKindEnv, testConstructorEnv)
+    c1 = runSupplyNats (runReaderT (ambiguityCheck ctx c) (testClassEnv, testTypeEnv, testKindEnv, testConstructorEnv))
     c2 = normalizeExpr c1
 
     d = s1_translate c2

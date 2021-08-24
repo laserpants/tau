@@ -54,6 +54,7 @@ data KindF a
 type Kind = Fix KindF
 
 data TypeF k i a
+--    = TVar Name
     = TVar k Name                        -- ^ Type variable
     | TCon k Name                        -- ^ Type constructor
     | TRow Name a a                      -- ^ Row type
@@ -601,8 +602,8 @@ deriving instance (Ord  t, Ord  u) => Ord  (Topdecl t u)
 
 -------------------------------------------------------------------------------
 
-addErrors :: [e] -> TypeInfoT [e] t -> TypeInfoT [e] t
-addErrors errs TypeInfo{..} = TypeInfo{ nodeErrors = errs <> nodeErrors, .. }
+addErrors :: (Eq e) => [e] -> TypeInfoT [e] t -> TypeInfoT [e] t
+addErrors errs TypeInfo{..} = TypeInfo{ nodeErrors = nub (errs <> nodeErrors), .. }
 
 hasErrors :: ProgExpr (TypeInfoT [e] t) u -> Bool
 hasErrors = foldrExprTag (\ti rest -> rest || notNull (nodeErrors ti)) False
@@ -658,9 +659,9 @@ instance FreeIn TypeEnv where
 instance FreeIn (TypeInfo e) where
     free = free . nodeType
 
-instance (Substitutable Type a) => Substitutable (TypeInfo e) a where
+instance (Substitutable Error a, Substitutable Type a) => Substitutable (TypeInfo [Error]) a where
     apply sub = \case
-        TypeInfo e ty ps -> TypeInfo e (apply sub ty) (apply sub ps)
+        TypeInfo e ty ps -> TypeInfo (apply sub e) (apply sub ty) (apply sub ps)
 
 instance (Substitutable Scheme t) => Substitutable TypeEnv t where
     apply = Env.map . apply
@@ -670,6 +671,20 @@ instance (Substitutable Type t) => Substitutable (ClassInfo Type (Ast (TypeInfo 
         ClassInfo{ classPredicates = apply sub classPredicates
                  , classSignature  = apply sub classSignature
                  , .. }
+
+instance Substitutable Error Type where
+    apply sub = \case
+        MissingInstance n t -> MissingInstance n (apply sub t)
+        NonBooleanGuard e -> NonBooleanGuard (apply sub e)
+        AmbiguousType n t -> AmbiguousType n (apply sub t)
+        e -> e
+
+instance Substitutable Error Kind where
+    apply sub = \case
+        MissingInstance n t -> MissingInstance n (apply sub t)
+        NonBooleanGuard e -> NonBooleanGuard (apply sub e)
+        AmbiguousType n t -> AmbiguousType n (apply sub t)
+        e -> e
 
 -------------------------------------------------------------------------------
 -------------------------------------------------------------------------------
@@ -1840,7 +1855,7 @@ normalizer vars = fromList (zipWith (\(v, k) a -> (v, tVar k a)) vars letters)
 normalize :: Type -> Type
 normalize ty = apply (normalizer (typeVars ty)) ty
 
-normalizeExpr :: ProgExpr (TypeInfo [e]) u -> ProgExpr (TypeInfo [e]) u
+normalizeExpr :: ProgExpr (TypeInfo [Error]) u -> ProgExpr (TypeInfo [Error]) u
 normalizeExpr expr = apply sub expr
   where
     sub :: Substitution Type
@@ -1872,7 +1887,7 @@ data Error
     | PatternArityMismatch Name Int Int
     | NonBooleanGuard (ProgExpr (TypeInfo [Error]) Void)
     | NonExhaustivePatterns
-    | AmbiguousType Name Name
+    | AmbiguousType Name Type
 
 data UnificationError
     = InfiniteType
