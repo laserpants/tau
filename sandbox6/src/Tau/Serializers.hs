@@ -77,10 +77,10 @@ instance (ToRep a) => ToRep (Choice a) where
 instance ToRep Predicate where
     toRep = withPretty predicateRep
 
-instance ToRep (PredicateT Name) where
+instance ToRep (PredicateF Name) where
     toRep = withPretty predicateRep
 
-instance ToRep (PredicateT Int) where
+instance ToRep (PredicateF Int) where
     toRep = predicateRep
 
 instance (ToRep t, ToRep e) => ToRep (TypeInfoT [e] t) where
@@ -240,9 +240,9 @@ choiceRep :: (ToRep a) => Choice a -> Value
 choiceRep = \case
     Choice es e         -> makeRep "Choice" "Choice"   [toRep es, toRep e]
 
-predicateRep :: (ToRep a) => PredicateT a -> Value
+predicateRep :: (ToRep a) => PredicateF a -> Value
 predicateRep = \case
-    InClass name a      -> makeRep "PredicateT" "InClass" [String name, toRep a]
+    InClass name a      -> makeRep "PredicateF" "InClass" [String name, toRep a]
 
 typeInfoRep :: (ToRep t, ToRep e) => TypeInfoT [e] t -> Value
 typeInfoRep = \case

@@ -128,7 +128,7 @@ instance Pretty Type where
                     TVar{}      -> False
                     _           -> True
 
-instance Pretty (PredicateT Name) where
+instance Pretty (PredicateF Name) where
     pretty (InClass n t) = pretty n <+> pretty t
 
 instance Pretty Predicate where

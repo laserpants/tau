@@ -73,13 +73,13 @@ type Type = TypeT Void
 type Polytype = TypeT Int
 
 -- | Type class constraint
-data PredicateT a = InClass Name a
+data PredicateF a = InClass Name a
 
 -- | A standalone type class constraint
-type Predicate = PredicateT Type
+type Predicate = PredicateF Type
 
 -- | Polymorphic type scheme
-data Scheme = Forall [Kind] [PredicateT Int] Polytype
+data Scheme = Forall [Kind] [PredicateF Int] Polytype
 
 -- | Class of data types that carry type information
 class Typed a where
@@ -435,8 +435,8 @@ data TypeInfoT e t = TypeInfo
 type TypeInfo e = TypeInfoT e Type
 
 data ClassInfo p e = ClassInfo
-    { classSignature  :: PredicateT p
-    , classPredicates :: [PredicateT p]
+    { classSignature  :: PredicateF p
+    , classPredicates :: [PredicateF p]
     , classMethods    :: [(Name, e)] }
 
 type Instance = ClassInfo Type (Ast (TypeInfo ()) Void)
@@ -539,21 +539,21 @@ inConstructorEnv f (e1, e2, e3, e4) = (e1, e2, e3, f e4)
 -- Type class instances for Predicate
 
 deriving instance (Show a) =>
-    Show (PredicateT a)
+    Show (PredicateF a)
 
 deriving instance (Eq a) =>
-    Eq (PredicateT a)
+    Eq (PredicateF a)
 
 deriving instance (Ord a) =>
-    Ord (PredicateT a)
+    Ord (PredicateF a)
 
-deriveShow1 ''PredicateT
-deriveEq1   ''PredicateT
-deriveOrd1  ''PredicateT
+deriveShow1 ''PredicateF
+deriveEq1   ''PredicateF
+deriveOrd1  ''PredicateF
 
-deriving instance Functor     PredicateT
-deriving instance Foldable    PredicateT
-deriving instance Traversable PredicateT
+deriving instance Functor     PredicateF
+deriving instance Foldable    PredicateF
+deriving instance Traversable PredicateF
 
 -- Type class instances for Scheme
 
@@ -1189,10 +1189,10 @@ toScheme = Forall [] [] . toPolytype
 tupleCon :: Int -> Name
 tupleCon size = "(" <> Text.replicate (pred size) "," <> ")"
 
-predicateName :: PredicateT a -> Name
+predicateName :: PredicateF a -> Name
 predicateName (InClass name _) = name
 
-predicateType :: PredicateT a -> a
+predicateType :: PredicateF a -> a
 predicateType (InClass _ t) = t
 
 getKindVar :: Kind -> Maybe Name
@@ -1693,7 +1693,7 @@ instance Substitutable Polytype Type where
         TVar kind var        -> toPolytype (withDefault (tVar kind var) var sub)
         ty                   -> embed ty
 
-instance (Substitutable t a) => Substitutable (PredicateT t) a where
+instance (Substitutable t a) => Substitutable (PredicateF t) a where
     apply = fmap . apply
 
 instance (Substitutable t a) => Substitutable (ProgPattern t u) a where
@@ -1889,6 +1889,19 @@ data Error
     | NonExhaustivePatterns
     | AmbiguousType Name Type
 
+--data ErrorF t
+--    = UnificationError UnificationError
+--    | NotInScope Name
+--    | ConstructorNotInScope Name
+--    | NoSuchClass Name
+--    | MissingInstance Name t
+--    | PatternArityMismatch Name Int Int
+----    | NonBooleanGuard (ProgExpr t Void)
+--    | NonExhaustivePatterns
+--    | AmbiguousType Name t
+--
+--type Error = ErrorF Type
+
 data UnificationError
     = InfiniteType
     | InfiniteKind
@@ -1900,6 +1913,13 @@ data UnificationError
 
 deriving instance Show Error
 deriving instance Eq   Error
+
+--deriving instance (Show t) => Show (ErrorF t)
+--deriving instance (Eq   t) => Eq   (ErrorF t)
+--
+--deriving instance Functor     ErrorF
+--deriving instance Foldable    ErrorF
+--deriving instance Traversable ErrorF
 
 deriving instance Show UnificationError
 deriving instance Eq   UnificationError
@@ -2176,7 +2196,7 @@ lifted m (InClass c1 t1) (InClass c2 t2)
 
 withClassInfo
   :: (MonadError Error m, MonadSupply Int m)
-  => ([PredicateT Name] -> ClassInfo Type (Ast (TypeInfo ()) Void) -> m a)
+  => ([PredicateF Name] -> ClassInfo Type (Ast (TypeInfo ()) Void) -> m a)
   -> Name
   -> Type
   -> ClassEnv
