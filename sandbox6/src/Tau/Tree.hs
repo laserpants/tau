@@ -323,8 +323,6 @@ ambiguityCheck ctx expr = do
         sub = Sub (tGen <$> indexed)
         scheme = Forall (snd <$> freeVars) (fn <$$> x) (apply sub (toPolytype (nodeType t)))
 
-    traceShowM y
-
     --pure (setExprTag (addErrors (checkAmbg t vs) t) a)
     pure (setExprTag (addErrors [AmbiguousType n t | InClass n t <- y] t) a, scheme)
 
@@ -367,6 +365,13 @@ ambiguityCheck ctx expr = do
         ERow    t lab e r     -> rowExpr t lab <$> e <*> r
         ERecord t r           -> recordExpr t <$> r
 
+    collectPreds t =
+        forM_ (filter (tIsVar . predicateType) (nodePredicates t))
+              (\p -> modify (p :))
+
+        --let vs = filter (tIsVar . predicateType) (nodePredicates t)
+        --forM_ vs $ \(InClass name t) -> modify ((name, t) :)
+
 --checkAmbg :: TInfo -> [(Name, Type)] -> [Error]
 --checkAmbg t = let freeVars = fst <$> free (nodeType t) in
 --    concatMap (\(n, t@(Fix (TVar _ v))) -> [AmbiguousType n t | v `notElem` freeVars])
@@ -378,12 +383,6 @@ ambiguityCheck ctx expr = do
     --vs <- nub <$> getAndReset
     --let t = exprTag e
     --pure (setExprTag (addErrors (checkAmbg t vs) t) e)
-
-collectPreds t =
-    --let vs = filter (tIsVar . predicateType) (nodePredicates t)
-    --forM_ vs $ \(InClass name t) -> modify ((name, t) :)
-    forM_ (filter (tIsVar . predicateType) (nodePredicates t))
-          (\p -> modify (p :))
 
 --ambiguityCheck ctx expr = do
 --    (a, vs) <- runStateT (walk expr) mempty
