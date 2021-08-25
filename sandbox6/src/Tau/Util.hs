@@ -61,6 +61,7 @@ getAndReset = get <* put mempty
 
 nats :: [Int]
 nats = enumFrom 0
+{-# INLINE nats #-}
 
 runSupplyNats :: Supply Int a -> a
 runSupplyNats = fromJust . flip evalSupply nats
