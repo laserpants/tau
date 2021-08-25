@@ -277,10 +277,11 @@ patternParser = makeExprParser (try (parens patternParser) <|> parser)
 operator :: [[Operator Parser (ProgExpr () Type)]]
 operator =
     [
-      [ Postfix postfixFunArgParser ]
-      -- 10
-    , [ InfixL (symbol "." $> flip (op2Expr () (ODot ())))
+      -- 11
+      [ InfixL (symbol "." $> flip (op2Expr () (ODot ())))
       ]
+      -- 10
+    , [ Postfix postfixFunArgParser ]
       -- 9
     , [ InfixR (op2Expr () (OLarr ()) <$ symbol "<<")
       , InfixL (op2Expr () (ORarr ()) <$ symbol ">>")

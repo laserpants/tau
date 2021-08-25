@@ -1369,8 +1369,8 @@ opPrecedence = \case
     OBpip  _ -> 1
     OOpt   _ -> 3
     OStr   _ -> 5
-    ODot   _ -> 10
-    OField _ -> 10
+    ODot   _ -> 11
+    OField _ -> 11
 
 -- | Return the associativity of a binary operator
 opAssoc :: Op2 t -> Assoc

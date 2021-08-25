@@ -1976,6 +1976,10 @@ testParse = do
             "match (x, y) with | (1, x) when(x /= 0) => x, otherwise => 0 | _ => 100"
             (patExpr () (tupleExpr () [varExpr () "x", varExpr () "y"]) [ Clause () (tuplePat () [litPat () (TInteger 1), varPat () "x"]) [Choice [op2Expr () (ONeq ()) (varExpr () "x") (litExpr () (TInteger 0))] (varExpr () "x"), Choice [] (litExpr () (TInteger 0))] , Clause () (anyPat ()) [Choice [] (litExpr () (TInteger 100))] ])
 
+        succeedParse annExprParser
+            "{ foo = x => \"Hello\" }.foo(false) }"
+            (appExpr () [op2Expr () (ODot  ()) (varExpr () "foo") (recordExpr () (rowExpr () "foo" (lamExpr () [varPat () "x"] (litExpr () (TString "Hello"))) (conExpr () "{}" []))), litExpr () (TBool False)])
+
     describe "• Topdecl" $ do
 
         succeedParse topdeclParser
