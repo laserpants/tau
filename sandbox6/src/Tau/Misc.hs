@@ -54,7 +54,6 @@ data KindF a
 type Kind = Fix KindF
 
 data TypeF k i a
---    = TVar Name
     = TVar k Name                        -- ^ Type variable
     | TCon k Name                        -- ^ Type constructor
     | TRow Name a a                      -- ^ Row type
