@@ -2115,23 +2115,11 @@ toHeadNormalForm env ps =
             Nothing  -> throwError ContextReductionFailed
             Just cls -> toHeadNormalForm env cls
 
---simplify
---  :: ( MonadError UnificationError m
---     , MonadSupply Int m )
---  => ClassEnv
---  -> [Predicate]
---  -> m [Predicate]
 simplify :: ClassEnv -> [Predicate] -> [Predicate]
-simplify env = loop [] where
+simplify env = loop [] 
+  where
     loop qs [] = qs
     loop qs (p:ps) = loop (if entail env (qs <> ps) p then qs else p:qs) ps
-
---    loop qs [] = pure qs
---    loop qs (p:ps) =
---        loop (if entail env (qs <> ps) p then qs else p:qs) ps
-
-        --entailed <- entail env (qs <> ps) p
-        --loop (if entailed then qs else p:qs) ps
 
 reduce
   :: (MonadSupply Int m)
