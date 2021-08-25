@@ -33,13 +33,16 @@ instance (ToRep t) => ToRep (Maybe t) where
     toRep (Just t) = toRep t
 
 instance ToRep Type where
-    toRep = withPretty typeJson
+    toRep = withPretty typeRep
+
+instance ToRep Polytype where
+    toRep = polytypeRep
 
 instance ToRep Kind where
-    toRep = withPretty kindJson
+    toRep = withPretty kindRep
 
 instance ToRep Prim where
-    toRep = withPretty primJson
+    toRep = withPretty primRep
 
 instance ToRep () where
     toRep _ = makeRep "()" "()" []
@@ -77,6 +80,9 @@ instance ToRep Predicate where
 instance ToRep (PredicateT Name) where
     toRep = withPretty predicateRep
 
+instance ToRep (PredicateT Int) where
+    toRep = predicateRep
+
 instance (ToRep t, ToRep e) => ToRep (TypeInfoT [e] t) where
     toRep = typeInfoRep
 
@@ -104,22 +110,34 @@ instance ToRep Int where
 instance ToRep Context where
     toRep = contextRep
 
-typeJson :: Type -> Value
-typeJson = project >>> \case
+instance ToRep Scheme where
+    toRep = withPretty schemeRep
+
+typeRep :: Type -> Value
+typeRep = project >>> \case
     TVar k var          -> makeRep "Type" "TVar"       [toRep k, String var]
     TCon k con          -> makeRep "Type" "TCon"       [toRep k, String con]
     TApp k t1 t2        -> makeRep "Type" "TApp"       [toRep k, toRep t1, toRep t2]
     TArr t1 t2          -> makeRep "Type" "TArr"       [toRep t1, toRep t2]
     TRow label t1 t2    -> makeRep "Type" "TRow"       [String label, toRep t1, toRep t2]
 
-kindJson :: Kind -> Value
-kindJson = project >>> \case
+polytypeRep :: Polytype -> Value
+polytypeRep = project >>> \case
+    TVar k var          -> makeRep "Polytype" "TVar"   [toRep k, String var]
+    TCon k con          -> makeRep "Polytype" "TCon"   [toRep k, String con]
+    TApp k t1 t2        -> makeRep "Polytype" "TApp"   [toRep k, toRep t1, toRep t2]
+    TArr t1 t2          -> makeRep "Polytype" "TArr"   [toRep t1, toRep t2]
+    TRow label t1 t2    -> makeRep "Polytype" "TRow"   [String label, toRep t1, toRep t2]
+    TGen i              -> makeRep "Polytype" "TGen"   [toRep i]
+
+kindRep :: Kind -> Value
+kindRep = project >>> \case
     KVar var            -> makeRep "Kind" "KVar"       [String var]
     KCon con            -> makeRep "Kind" "KCon"       [String con]
     KArr k1 k2          -> makeRep "Kind" "KArr"       [toRep k1, toRep k2]
 
-primJson :: Prim -> Value
-primJson = \case
+primRep :: Prim -> Value
+primRep = \case
     TUnit               -> makeRep "Prim" "TUnit"      [String "()"]
     TBool    a          -> makeRep "Prim" "TBool"      [String (if a then "True" else "False")]
     TInt     a          -> makeRep "Prim" "TInt"       [toJSON a]
@@ -288,6 +306,10 @@ contextRep :: Context -> Value
 contextRep ctx = makeRep "Context" "Context" (kvp <$> (Set.toList <$$> Env.toList ctx))
   where
     kvp (k, v) = makeRep "ContextKeyValue" "ContextKeyValue" [toRep k, toRep v]
+
+schemeRep :: Scheme -> Value
+schemeRep = \case
+    Forall ks ps t                      -> makeRep "Scheme" "Forall"                [toRep ks, toRep ps, toRep t]
 
 -------------------------------------------------------------------------------
 

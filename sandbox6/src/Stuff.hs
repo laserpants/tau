@@ -874,7 +874,7 @@ test5expr :: ProgExpr () Type
 --        (letExpr () (BFun () "f" [varPat () "z"]) (recordExpr () (rowExpr () "a" (annExpr tInt (litExpr () (TInteger 1))) (varExpr () "z"))) (appExpr () [varExpr () "f", recordExpr () (rowExpr () "b" (annExpr tInt (litExpr () (TInt 2))) (conExpr () "{}" []))]))
 
 test5expr =
-        (letExpr () (BPat () (varPat () "foo")) (funExpr () [ Clause () [litPat () (TInteger 0)] [Choice [] (annExpr tInt (litExpr () (TInteger 1)))] , Clause () [varPat () "n"] [Choice [] (annExpr tInt (litExpr () (TInteger 2)))] ]) (appExpr () [varExpr () "foo", annExpr tInt (litExpr () (TInteger 1))]))
+        (letExpr () (BPat () (varPat () "foo")) (funExpr () [ Clause () [litPat () (TInteger 0)] [Choice [] (litExpr () (TInteger 1))] , Clause () [varPat () "n"] [Choice [] (litExpr () (TInteger 2))] ]) (appExpr () [varExpr () "foo", litExpr () (TInteger 1)]))
 
 runBundle :: Text -> Bundle
 runBundle input =
@@ -894,13 +894,15 @@ compileBundle expr = Bundle
     , stage4Expr = h
     , coreExpr   = i
     , value      = j
-    , context    = ctx }
+    , context    = ctx
+    , scheme     = scheme
+    }
   where
     ast = Ast expr
     (a, (_, _, ctx)) = runInfer mempty testClassEnv testTypeEnv testKindEnv testConstructorEnv (inferAstType ast)
     c :: ProgExpr TInfo Void
     c = runSupplyNats (runReaderT (exhaustivePatternsCheck (astExpr a)) testConstructorEnv)
-    c1 = runSupplyNats (runReaderT (ambiguityCheck ctx c) (testClassEnv, testTypeEnv, testKindEnv, testConstructorEnv))
+    (c1, scheme) = runSupplyNats (runReaderT (ambiguityCheck ctx c) (testClassEnv, testTypeEnv, testKindEnv, testConstructorEnv))
     c2 = normalizeExpr c1
     d = s1_translate c2
     e = runSupplyNats (runReaderT (s2_translate d) (testClassEnv, testTypeEnv, testKindEnv, testConstructorEnv))
@@ -913,6 +915,7 @@ compileBundle expr = Bundle
 
 test5 :: IO ()
 test5 = do
+
     liftIO $ LBS.writeFile "/home/laserpants/code/tau-tooling/src/tmp/bundle.json" (encodePretty' defConfig{ confIndent = Spaces 2 } (toRep bundle))
     -- astExpr a
   where
@@ -922,7 +925,7 @@ test5 = do
     c :: ProgExpr TInfo Void
     c = runReader (exhaustivePatternsCheck (astExpr a)) testConstructorEnv
 
-    c1 = runSupplyNats (runReaderT (ambiguityCheck ctx c) (testClassEnv, testTypeEnv, testKindEnv, testConstructorEnv))
+    (c1, scheme) = runSupplyNats (runReaderT (ambiguityCheck ctx c) (testClassEnv, testTypeEnv, testKindEnv, testConstructorEnv))
     c2 = normalizeExpr c1
 
     d = s1_translate c2
@@ -951,6 +954,7 @@ test5 = do
         , coreExpr   = i
         , value      = j
         , context    = ctx
+        , scheme     = scheme
         }
 
 data Bundle = Bundle
@@ -964,6 +968,7 @@ data Bundle = Bundle
     , coreExpr    :: Core
     , value       :: Maybe (Tau.Eval.Value Eval)
     , context     :: Context
+    , scheme      :: Scheme
     } deriving (Show, Eq)
 
 instance ToRep Bundle where
@@ -979,6 +984,7 @@ instance ToRep Bundle where
             , "core"    .= toRep coreExpr
             , "value"   .= toRep value
             , "context" .= toRep context
+            , "scheme"  .= toRep scheme
             ]
 
 -------------------------------------------------------------------------------

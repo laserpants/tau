@@ -377,6 +377,19 @@ instance (Pretty u) => Pretty (Topdecl t u) where
     pretty (Top _ bind expr) =
         pretty bind <> " =" <+> pretty expr
 
+instance Pretty Scheme where
+    pretty (Forall kinds ps ty) = forall <> classes <> pretty (instn ty)
+      where
+        forall
+            | null kinds = ""
+            | otherwise  = "forall" <+> sep (pretty <$> take (length kinds) letters) <> ". "
+        classes
+            | null ps    = ""
+            | otherwise  = tupled preds <+> "=> "
+
+        instn = fromPolytype (tVar kTyp <$> letters)
+        preds = [pretty c <+> pretty (instn (tGen ty)) | InClass c ty <- ps]
+
 --
 --
 --
