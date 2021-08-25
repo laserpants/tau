@@ -968,7 +968,7 @@ lookupAllClassMethods
   => Name
   -> Type
   -> ClassEnv
-  -> m [(Name, Ast (TypeInfo ()) Void)]
+  -> m [(Name, Ast (TypeInfo ()))]
 lookupAllClassMethods name ty env = withClassInfo collectAll name ty env
   where
     collectAll classPredicates ClassInfo{ classMethods = methods } = do
@@ -1020,7 +1020,7 @@ applyNonVarPredicates expr (InClass name ty:ps) = do
 translateMethod
   :: ( MonadSupply Int m
      , MonadReader ([Name], (ClassEnv, TypeEnv, KindEnv, ConstructorEnv)) m )
-  => Ast (TypeInfo ()) Void
+  => Ast (TypeInfo ()) 
   -> m (Stage3Expr Type)
 translateMethod ast = do
     (_, envs) <- ask

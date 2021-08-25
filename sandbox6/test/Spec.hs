@@ -494,7 +494,7 @@ succeedInferExpr expr ty errs =
                     and [err `elem` allErrors e2 | err <- errs]
   where
     (Ast e, (typeSub, kindSub, context)) =
-        runInfer mempty testClassEnv testTypeEnv testKindEnv testConstructorEnv (inferAstType (Ast expr))
+        runInfer mempty testClassEnv testTypeEnv testKindEnv testConstructorEnv (inferAstType expr)
 
     res = runMatch ty (typeOf (applyBoth (typeSub, kindSub) e))
     e1  = runReader (exhaustivePatternsCheck e) testConstructorEnv
@@ -1223,8 +1223,7 @@ succeedRunExpr expr result =
         it ("✔ evaluates to " <> prettyT (show result)) $
             result == j
   where
-    ast = Ast expr
-    (a, (_, _, ctx)) = runInfer mempty testClassEnv testTypeEnv testKindEnv testConstructorEnv (inferAstType ast)
+    (a, (_, _, ctx)) = runInfer mempty testClassEnv testTypeEnv testKindEnv testConstructorEnv (inferAstType expr)
 
     c :: ProgExpr TInfo Void
     c = runReader (exhaustivePatternsCheck (astExpr a)) testConstructorEnv

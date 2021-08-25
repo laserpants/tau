@@ -137,9 +137,9 @@ inferAstType
   :: ( MonadSupply Int m
      , MonadReader (ClassEnv, TypeEnv, KindEnv, ConstructorEnv) m
      , MonadState (Substitution Type, Substitution Kind, Context) m )
-  => Ast t Type
-  -> m (Ast (TypeInfo [Error]) Void)
-inferAstType (Ast expr) =
+  => ProgExpr t Type
+  -> m (Ast (TypeInfo [Error]))
+inferAstType expr =
     Ast <$> (tagTree (preproc expr) >>= inferExprType >>= applySubsTo)
   where
     preproc = cata $ \case
@@ -677,7 +677,7 @@ lookupClassInstance
      , MonadError Error m )
   => Name
   -> Type
-  -> m (ClassInfo Type (Ast (TypeInfo ()) Void))
+  -> m (ClassInfo Type (Ast (TypeInfo ())))
 lookupClassInstance name ty = do
     env <- askClassEnv
     (_, insts) <- liftMaybe (NoSuchClass name) (Env.lookup name env)
@@ -898,8 +898,7 @@ compileBundle expr = Bundle
     , scheme     = scheme
     }
   where
-    ast = Ast expr
-    (a, (_, _, ctx)) = runInfer mempty testClassEnv testTypeEnv testKindEnv testConstructorEnv (inferAstType ast)
+    (a, (_, _, ctx)) = runInfer mempty testClassEnv testTypeEnv testKindEnv testConstructorEnv (inferAstType expr)
     c :: ProgExpr TInfo Void
     c = runSupplyNats (runReaderT (exhaustivePatternsCheck (astExpr a)) testConstructorEnv)
     (c1, scheme) = runSupplyNats (runReaderT (ambiguityCheck ctx c) (testClassEnv, testTypeEnv, testKindEnv, testConstructorEnv))
@@ -919,8 +918,7 @@ test5 = do
     liftIO $ LBS.writeFile "/home/laserpants/code/tau-tooling/src/tmp/bundle.json" (encodePretty' defConfig{ confIndent = Spaces 2 } (toRep bundle))
     -- astExpr a
   where
-    ast = Ast test5expr
-    (a, (_, _, ctx)) = runInfer mempty testClassEnv testTypeEnv testKindEnv testConstructorEnv (inferAstType ast)
+    (a, (_, _, ctx)) = runInfer mempty testClassEnv testTypeEnv testKindEnv testConstructorEnv (inferAstType test5expr)
 
     c :: ProgExpr TInfo Void
     c = runReader (exhaustivePatternsCheck (astExpr a)) testConstructorEnv

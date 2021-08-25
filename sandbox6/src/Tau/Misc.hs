@@ -425,7 +425,7 @@ type ProgPattern t u = Pattern t t t u
 type ProgBinding t u = Binding t (ProgPattern t u)
 type ProgClause  t u = Clause t [ProgPattern t u] (ProgExpr t u)
 
-newtype Ast t u = Ast { astExpr :: ProgExpr t u }
+newtype Ast t = Ast { astExpr :: ProgExpr t Void }
 
 data TypeInfoT e t = TypeInfo
     { nodeErrors      :: e
@@ -439,7 +439,7 @@ data ClassInfo p e = ClassInfo
     , classPredicates :: [PredicateF p]
     , classMethods    :: [(Name, e)] }
 
-type Instance = ClassInfo Type (Ast (TypeInfo ()) Void)
+type Instance = ClassInfo Type (Ast (TypeInfo ()))
 
 -- Environments
 
@@ -451,7 +451,7 @@ type KindEnv = Env Kind
 
 type ClassEnv = Env
     ( ClassInfo Name Type                          -- Abstract interface
-    , [ClassInfo Type (Ast (TypeInfo ()) Void)] )  -- Instances
+    , [ClassInfo Type (Ast (TypeInfo ()))] )       -- Instances
 
 type ConstructorEnv = Env (Set Name, Int)
 
@@ -592,9 +592,9 @@ deriving instance Show Typedecl
 deriving instance Eq   Typedecl
 deriving instance Ord  Typedecl
 
-deriving instance (Show t, Show u) => Show (Ast t u)
-deriving instance (Eq   t, Eq   u) => Eq   (Ast t u)
-deriving instance (Ord  t, Ord  u) => Ord  (Ast t u)
+deriving instance (Show t) => Show (Ast t)
+deriving instance (Eq   t) => Eq   (Ast t)
+deriving instance (Ord  t) => Ord  (Ast t)
 
 deriving instance (Show t, Show u) => Show (Topdecl t u)
 deriving instance (Eq   t, Eq   u) => Eq   (Topdecl t u)
@@ -630,7 +630,7 @@ instance (Typed t) => Typed (Op1 t) where
 instance (Typed t) => Typed (Op2 t) where
     typeOf = typeOf . op2Tag
 
-instance (Typed t) => Typed (Ast t u) where
+instance (Typed t) => Typed (Ast t) where
     typeOf = typeOf . astTag
 
 deriving instance (Show e, Show t) =>
@@ -666,7 +666,7 @@ instance (Substitutable Error a, Substitutable Type a) => Substitutable (TypeInf
 instance (Substitutable Scheme t) => Substitutable TypeEnv t where
     apply = Env.map . apply
 
-instance (Substitutable Type t) => Substitutable (ClassInfo Type (Ast (TypeInfo e) u)) t where
+instance (Substitutable Type t) => Substitutable (ClassInfo Type (Ast (TypeInfo e))) t where
     apply sub ClassInfo{..} =
         ClassInfo{ classPredicates = apply sub classPredicates
                  , classSignature  = apply sub classSignature
@@ -1300,7 +1300,7 @@ bindingTag = \case
     BPat    t _     -> t
     BFun    t _ _   -> t
 
-astTag :: Ast t u -> t
+astTag :: Ast t -> t
 astTag = exprTag . astExpr
 
 setExprTag :: t -> ProgExpr t Void -> ProgExpr t Void
@@ -1774,7 +1774,7 @@ instance (Substitutable t a) => Substitutable (Op2 t) a where
         ODot   t             -> ODot   (apply sub t)
         OField t             -> OField (apply sub t)
 
-instance (Substitutable t a) => Substitutable (Ast t u) a where
+instance (Substitutable t a) => Substitutable (Ast t) a where
     apply sub = \case
         Ast expr             -> Ast (apply sub expr)
 
@@ -2196,7 +2196,7 @@ lifted m (InClass c1 t1) (InClass c2 t2)
 
 withClassInfo
   :: (MonadError Error m, MonadSupply Int m)
-  => ([PredicateF Name] -> ClassInfo Type (Ast (TypeInfo ()) Void) -> m a)
+  => ([PredicateF Name] -> ClassInfo Type (Ast (TypeInfo ())) -> m a)
   -> Name
   -> Type
   -> ClassEnv
