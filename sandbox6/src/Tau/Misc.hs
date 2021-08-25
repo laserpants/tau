@@ -596,6 +596,9 @@ deriving instance (Show t) => Show (Ast t)
 deriving instance (Eq   t) => Eq   (Ast t)
 deriving instance (Ord  t) => Ord  (Ast t)
 
+instance Functor Ast where
+  fmap f (Ast expr) = Ast (mapExprTag f expr)
+
 deriving instance (Show t, Show u) => Show (Topdecl t u)
 deriving instance (Eq   t, Eq   u) => Eq   (Topdecl t u)
 deriving instance (Ord  t, Ord  u) => Ord  (Topdecl t u)
@@ -673,18 +676,10 @@ instance (Substitutable Type t) => Substitutable (ClassInfo Type (Ast (TypeInfo 
                  , .. }
 
 instance Substitutable Error Type where
-    apply sub = \case
-        MissingInstance n t -> MissingInstance n (apply sub t)
-        NonBooleanGuard e -> NonBooleanGuard (apply sub e)
-        AmbiguousType n t -> AmbiguousType n (apply sub t)
-        e -> e
+    apply = fmap . apply
 
 instance Substitutable Error Kind where
-    apply sub = \case
-        MissingInstance n t -> MissingInstance n (apply sub t)
-        NonBooleanGuard e -> NonBooleanGuard (apply sub e)
-        AmbiguousType n t -> AmbiguousType n (apply sub t)
-        e -> e
+    apply = fmap . apply
 
 -------------------------------------------------------------------------------
 -------------------------------------------------------------------------------
@@ -1878,29 +1873,18 @@ applyBoth (typeSub, kindSub) = apply kindSub . apply typeSub
 -------------------------------------------------------------------------------
 -------------------------------------------------------------------------------
 
-data Error
+data ErrorF t
     = UnificationError UnificationError
     | NotInScope Name
     | ConstructorNotInScope Name
     | NoSuchClass Name
-    | MissingInstance Name Type
+    | MissingInstance Name t
     | PatternArityMismatch Name Int Int
-    | NonBooleanGuard (ProgExpr Type Void)
+    | NonBooleanGuard (Ast t)
     | NonExhaustivePatterns
-    | AmbiguousType Name Type
+    | AmbiguousType Name t
 
---data ErrorF t
---    = UnificationError UnificationError
---    | NotInScope Name
---    | ConstructorNotInScope Name
---    | NoSuchClass Name
---    | MissingInstance Name t
---    | PatternArityMismatch Name Int Int
-----    | NonBooleanGuard (ProgExpr t Void)
---    | NonExhaustivePatterns
---    | AmbiguousType Name t
---
---type Error = ErrorF Type
+type Error = ErrorF Type
 
 data UnificationError
     = InfiniteType
@@ -1911,15 +1895,10 @@ data UnificationError
     | ContextReductionFailed
     | ClassMismatch
 
-deriving instance Show Error
-deriving instance Eq   Error
+deriving instance (Show t) => Show (ErrorF t)
+deriving instance (Eq   t) => Eq   (ErrorF t)
 
---deriving instance (Show t) => Show (ErrorF t)
---deriving instance (Eq   t) => Eq   (ErrorF t)
---
---deriving instance Functor     ErrorF
---deriving instance Foldable    ErrorF
---deriving instance Traversable ErrorF
+deriving instance Functor ErrorF
 
 deriving instance Show UnificationError
 deriving instance Eq   UnificationError

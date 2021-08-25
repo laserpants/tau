@@ -538,7 +538,7 @@ unifyWhen
 unifyWhen expr = do
     e <- expr
     errs <- tryUnify tBool (typeOf e)
-    pure [NonBooleanGuard (mapExprTag nodeType e) | notNull errs]
+    pure [NonBooleanGuard (Ast (mapExprTag nodeType e)) | notNull errs]
 
 inferChoice
   :: ( MonadSupply Int m
