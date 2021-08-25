@@ -1885,7 +1885,7 @@ data Error
     | NoSuchClass Name
     | MissingInstance Name Type
     | PatternArityMismatch Name Int Int
-    | NonBooleanGuard (ProgExpr (TypeInfo [Error]) Void)
+    | NonBooleanGuard (ProgExpr Type Void)
     | NonExhaustivePatterns
     | AmbiguousType Name Type
 
