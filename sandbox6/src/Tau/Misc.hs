@@ -2087,13 +2087,6 @@ byInstance env self@(InClass name ty) = do
 entail :: ClassEnv -> [Predicate] -> Predicate -> Bool
 entail env ps cl = any (cl `elem`) (bySuper env <$> ps)
 
---entail env cls0 cl = pure super ||^ instances
---  where
---    super = any (cl `elem`) (bySuper env <$> cls0)
---    instances = byInstance env cl >>= \case
---        Nothing   -> pure False
---        Just cls1 -> allM (entail env cls0) cls1
-
 isHeadNormalForm :: Predicate -> Bool
 isHeadNormalForm (InClass _ t) =
     flip cata t $ \case
