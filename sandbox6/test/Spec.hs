@@ -1859,6 +1859,10 @@ testParse = do
         failParse annExprParser "!5"
 
         succeedParse annExprParser
+            "4.5"
+            (litExpr () (TDouble 4.5))
+
+        succeedParse annExprParser
             "4"
             (litExpr () (TInteger 4))
 
