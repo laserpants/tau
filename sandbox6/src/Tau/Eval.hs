@@ -30,8 +30,8 @@ data Value m
     | Closure Name (m (Value m)) ~(ValueEnv m)
 
 instance Show (Value m) where
-    show (Value lit)           = "Value " <> "(" <> show lit <> ")"
-    show (Data name lit)       = "Data " <> show name <> " " <> show lit
+    show (Value lit)           = "Value "   <> "(" <> show lit <> ")"
+    show (Data name lit)       = "Data "    <> show name <> " " <> show lit
     show (PrimFun name _ args) = "PrimFun " <> show name <> " " <> show args
     show Closure{}             = "<<function>>"
 
@@ -103,7 +103,7 @@ evalVar var =
                     fail ("No primitive function " <> Text.unpack prim)
                     --pure (Fail ("No primitive function " <> Text.unpack prim))
 
-        _ -> do
+        _ ->
             asks (Env.lookup var) >>= \case
                 Just value ->
                     pure value
@@ -172,11 +172,7 @@ evalApp fun arg = fun >>= \case
     err ->
         pure err
 
-evalPat
-  :: (MonadFail m, MonadReader (ValueEnv m) m)
-  => [([Name], m (Value m))]
-  -> Value m
-  -> m (Value m)
+evalPat :: (MonadFail m, MonadReader (ValueEnv m) m) => CMatrix (m (Value m)) -> Value m -> m (Value m)
 evalPat []            _ = fail "Runtime error (evalPat)"
 evalPat [(["$_"], e)] _ = e
 evalPat ((ps@[p, _, _], e):_) val
@@ -200,9 +196,9 @@ evalRowPat [p, q, r] val =
   where
     pmap = toMap val mempty
 
-    toMap :: Value m -> Map Name [Value m] -> Map Name [Value m]
-    toMap (Data "{}" [])    m = m
-    toMap (Data lab (v:vs)) m = foldr toMap (Map.insertWith (<>) lab [v] m) vs
+toMap :: Value m -> Map Name [Value m] -> Map Name [Value m]
+toMap (Data "{}" [])    m = m
+toMap (Data lab (v:vs)) m = foldr toMap (Map.insertWith (<>) lab [v] m) vs
 
-    fromMap :: Map Name [Value m] -> Value m
-    fromMap = Map.foldrWithKey (\k -> flip (foldr (\v m -> Data k [v, m]))) (Data "{}" [])
+fromMap :: Map Name [Value m] -> Value m
+fromMap = Map.foldrWithKey (\k -> flip (foldr (\v m -> Data k [v, m]))) (Data "{}" [])
