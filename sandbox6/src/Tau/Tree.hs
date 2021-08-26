@@ -540,6 +540,7 @@ predToType (InClass name ty) = tApp kTyp (tCon kFun name) ty
 
 cod :: Type -> Type
 cod (Fix (TArr _ t)) = t
+cod _ = error "Implementation error"
 
 -------------------------------------------------------------------------------
 
