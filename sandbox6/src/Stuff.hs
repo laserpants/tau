@@ -1117,6 +1117,19 @@ testClassEnv = Env.fromList
           ]
         )
       )
+    , ( "Fractional"
+        -- Interface
+      , ( ClassInfo (InClass "Fractional" "a") []
+            [ ( "fromRational" , tDouble `tArr` tVar kTyp "a" )
+            ]
+        -- Instances
+        , [ ClassInfo (InClass "Fractional" tFloat) []
+            [ ( "fromRational" , Ast (varExpr (TypeInfo () (tDouble `tArr` tFloat) []) "@Float.fromDouble") ) ]
+          , ClassInfo (InClass "Fractional" tDouble) []
+            [ ( "fromRational" , Ast (varExpr (TypeInfo () (tDouble `tArr` tDouble) []) "@Double.id") ) ]
+          ]
+        )
+      )
     , ( "Num"
         -- Interface
       , ( ClassInfo (InClass "Num" "a") [InClass "Eq" "a", InClass "Foo" "a"]

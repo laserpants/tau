@@ -798,11 +798,11 @@ translateLiteral = cata $ \case
         , litExpr (TypeInfo [] tInteger []) (TInteger n) ]
 
     ELit t (TFloat r) -> appExpr t
-        [ varExpr (t{ nodeType = tArr tDouble (nodeType t) }) "fromDouble"
+        [ varExpr (t{ nodeType = tArr tDouble (nodeType t) }) "fromRational"
         , litExpr (TypeInfo [] tDouble []) (TDouble (fromRational (toRational r))) ]
 
     ELit t (TDouble r) -> appExpr t
-        [ varExpr (t{ nodeType = tArr tDouble (nodeType t) }) "fromDouble"
+        [ varExpr (t{ nodeType = tArr tDouble (nodeType t) }) "fromRational"
         , litExpr (TypeInfo [] tDouble []) (TDouble r) ]
 
     e -> embed e

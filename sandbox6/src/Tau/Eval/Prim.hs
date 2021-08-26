@@ -184,6 +184,8 @@ primEnv = Env.fromList
     , ( "Float.fromInteger"    , fun1 (fromInteger :: Integer -> Float) )
     , ( "Double.fromInteger"   , fun1 (fromInteger :: Integer -> Double) )
 
+    , ( "Float.fromDouble"     , fun1 (fromRational . toRational :: Double -> Float) )
+
     , ( "Bool.id"              , fun1 (id :: Bool -> Bool) )
     , ( "Int.id"               , fun1 (id :: Int -> Int) )
     , ( "Integer.id"           , fun1 (id :: Integer -> Integer) )
