@@ -251,6 +251,10 @@ typeInfoRep :: (ToRep t, ToRep e) => TypeInfoT [e] t -> Value
 typeInfoRep = \case
     TypeInfo e t ps     -> makeRep "TypeInfoT" "TypeInfo" [toRep e, toRep t, toRep ps]
 
+schemeRep :: Scheme -> Value
+schemeRep = \case
+    Forall ks ps t      -> makeRep "Scheme" "Forall"   [toRep ks, toRep ps, toRep t]
+
 coreRep :: Core -> Value
 coreRep = project >>> \case
     CVar var            -> makeRep "Core" "CVar"       [String var]
@@ -309,10 +313,6 @@ contextRep :: Context -> Value
 contextRep ctx = makeRep "Context" "Context" (kvp <$> (Set.toList <$$> Env.toList ctx))
   where
     kvp (k, v) = makeRep "ContextKeyValue" "ContextKeyValue" [toRep k, toRep v]
-
-schemeRep :: Scheme -> Value
-schemeRep = \case
-    Forall ks ps t                      -> makeRep "Scheme" "Forall"                [toRep ks, toRep ps, toRep t]
 
 -------------------------------------------------------------------------------
 
