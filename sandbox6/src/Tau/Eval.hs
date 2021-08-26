@@ -7,8 +7,8 @@ module Tau.Eval where
 
 import Control.Monad.Reader
 import Data.Char
-import Data.Map.Strict (Map)
 import Data.Functor.Foldable
+import Data.Map.Strict (Map)
 import Data.Text (pack, unpack)
 import Debug.Trace
 import Tau.Env (Env(..))
