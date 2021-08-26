@@ -546,8 +546,8 @@ cod _ = error "Implementation error"
 
 -- S1. Desugaring
 
-s1_translate :: ProgExpr TInfo Void -> Stage1Expr TInfo
-s1_translate = cata $ \case
+stage1Translate :: ProgExpr TInfo Void -> Stage1Expr TInfo
+stage1Translate = cata $ \case
 
     -- Translate tuples, lists, records, and row expressions
     ETuple  t es                -> conExpr t (tupleCon (length es)) es
@@ -667,12 +667,12 @@ instance Tagged (Stage2Expr TInfo) TInfo where
 
 -- S2. Simplification
 
-s2_translate
+stage2Translate
   :: ( MonadSupply Int m
      , MonadReader (ClassEnv, TypeEnv, KindEnv, ConstructorEnv) m )
   => Stage1Expr TInfo
   -> m (Stage2Expr TInfo)
-s2_translate = cata $ \case
+stage2Translate = cata $ \case
 
     ELet t bind e1 e2 -> do
         a <- e1
@@ -845,12 +845,12 @@ instance Tagged (Stage3Expr Type) Type where
 
 -- S3. Typeclass expansion
 
-s3_translate
+stage3Translate
   :: ( MonadSupply Int m
      , MonadReader ([Name], (ClassEnv, TypeEnv, KindEnv, ConstructorEnv)) m )
   => Stage2Expr TInfo
   -> StateT [(Name, (Name, Name))] m (Stage3Expr Type)
-s3_translate expr = walk expr >>= insertArgsExpr where
+stage3Translate expr = walk expr >>= insertArgsExpr where
 
     walk = cata $ \case
 
@@ -1024,8 +1024,8 @@ translateMethod
   -> m (Stage3Expr Type)
 translateMethod ast = do
     (_, envs) <- ask
-    let a = translateLiteral <$> s2_translate (s1_translate expr)
-    evalStateT (s3_translate (runSupplyNats (runReaderT a envs))) mempty
+    let a = translateLiteral <$> stage2Translate (stage1Translate expr)
+    evalStateT (stage3Translate (runSupplyNats (runReaderT a envs))) mempty
   where
     expr = mapExprTag zzz (astExpr ast)
     zzz (TypeInfo () ty ps) = TypeInfo [] ty ps
@@ -1132,11 +1132,11 @@ deriving instance (Ord  t) => Ord  (PatternLight t)
 
 -- S4. Patterns
 
-s4_translate
+stage4Translate
   :: (MonadSupply Int m)
   => Stage3Expr Type
   -> m (Stage4Expr Type)
-s4_translate = cata $ \case
+stage4Translate = cata $ \case
 
     EPat t expr clauses -> do
         e <- expr

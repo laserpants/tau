@@ -903,11 +903,11 @@ compileBundle expr = Bundle
     c = runSupplyNats (runReaderT (exhaustivePatternsCheck (astExpr a)) testConstructorEnv)
     (c1, scheme) = runSupplyNats (runReaderT (ambiguityCheck ctx c) (testClassEnv, testTypeEnv, testKindEnv, testConstructorEnv))
     c2 = normalizeExpr c1
-    d = s1_translate c2
-    e = runSupplyNats (runReaderT (s2_translate d) (testClassEnv, testTypeEnv, testKindEnv, testConstructorEnv))
+    d = stage1Translate c2
+    e = runSupplyNats (runReaderT (stage2Translate d) (testClassEnv, testTypeEnv, testKindEnv, testConstructorEnv))
     f = translateLiteral e
-    g = runSupplyNats (runReaderT (evalStateT (s3_translate f) mempty) (mempty, (testClassEnv, testTypeEnv, testKindEnv, testConstructorEnv)))
-    h = runSupplyNats (s4_translate g)
+    g = runSupplyNats (runReaderT (evalStateT (stage3Translate f) mempty) (mempty, (testClassEnv, testTypeEnv, testKindEnv, testConstructorEnv)))
+    h = runSupplyNats (stage4Translate g)
     i = coreTranslate h
     j = evalExpr i testEvalEnv
 
@@ -926,15 +926,15 @@ test5 = do
     (c1, scheme) = runSupplyNats (runReaderT (ambiguityCheck ctx c) (testClassEnv, testTypeEnv, testKindEnv, testConstructorEnv))
     c2 = normalizeExpr c1
 
-    d = s1_translate c2
+    d = stage1Translate c2
 
-    e = runSupplyNats (runReaderT (s2_translate d) (testClassEnv, testTypeEnv, testKindEnv, testConstructorEnv))
+    e = runSupplyNats (runReaderT (stage2Translate d) (testClassEnv, testTypeEnv, testKindEnv, testConstructorEnv))
 
     f = translateLiteral e
 
-    g = runSupplyNats (runReaderT (evalStateT (s3_translate f) mempty) (mempty, (testClassEnv, testTypeEnv, testKindEnv, testConstructorEnv)))
+    g = runSupplyNats (runReaderT (evalStateT (stage3Translate f) mempty) (mempty, (testClassEnv, testTypeEnv, testKindEnv, testConstructorEnv)))
 
-    h = runSupplyNats (s4_translate g)
+    h = runSupplyNats (stage4Translate g)
 
     i = coreTranslate h
 
