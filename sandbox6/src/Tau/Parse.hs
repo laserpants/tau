@@ -291,6 +291,7 @@ operator =
       ]
       -- 7
     , [ InfixL (op2Expr () (OMul ()) <$ symbol "*")
+      , InfixL (op2Expr () (OMod ()) <$ symbol "%")
       , InfixL (op2Expr () (ODiv ()) <$ try (symbol "/" <* notFollowedBy (symbol "=")))
       ]
       -- 6

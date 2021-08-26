@@ -1350,6 +1350,7 @@ opPrecedence = \case
     OOr    _ -> 2
     OAdd   _ -> 6
     OSub   _ -> 6
+    OMod   _ -> 7
     OMul   _ -> 7
     ODiv   _ -> 7
     OPow   _ -> 8
@@ -1390,6 +1391,7 @@ opAssoc = \case
     OStr   _ -> AssocR
     ODot   _ -> AssocL
     OField _ -> AssocL
+    OMod   _ -> AssocL
 
 -- | Return the symbolic representation of a binary operator
 op2Symbol :: Op2 t -> Name

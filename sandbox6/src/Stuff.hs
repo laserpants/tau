@@ -450,8 +450,8 @@ inferOp2Type = \case
     OSub   t -> opType t OSub (Forall [kTyp] [InClass "Num" 0] (tGen 0 `tArr` tGen 0 `tArr` tGen 0))
     OMul   t -> opType t OMul (Forall [kTyp] [InClass "Num" 0] (tGen 0 `tArr` tGen 0 `tArr` tGen 0))
     ODiv   t -> opType t ODiv (Forall [kTyp] [InClass "Fractional" 0] (tGen 0 `tArr` tGen 0 `tArr` tGen 0))
-    OPow   t -> undefined -- TODO
-    OMod   t -> undefined -- TODO
+    OPow   t -> opType t OMod (Forall [kTyp, kTyp] [InClass "Integral" 0, InClass "Num" 1] (tGen 1 `tArr` tGen 0 `tArr` tGen 1))
+    OMod   t -> opType t OMod (Forall [kTyp] [InClass "Integral" 0] (tGen 0 `tArr` tGen 0 `tArr` tGen 0))
     OLt    t -> opType t OLt  (Forall [kTyp] [InClass "Ord" 0] (tGen 0 `tArr` tGen 0 `tArr` tBool))
     OGt    t -> opType t OGt  (Forall [kTyp] [InClass "Ord" 0] (tGen 0 `tArr` tGen 0 `tArr` tBool))
     OLte   t -> opType t OLte (Forall [kTyp] [InClass "Ord" 0] (tGen 0 `tArr` tGen 0 `tArr` tBool))
@@ -874,7 +874,7 @@ test5expr :: ProgExpr () Type
 --        (letExpr () (BFun () "f" [varPat () "z"]) (recordExpr () (rowExpr () "a" (annExpr tInt (litExpr () (TInteger 1))) (varExpr () "z"))) (appExpr () [varExpr () "f", recordExpr () (rowExpr () "b" (annExpr tInt (litExpr () (TInt 2))) (conExpr () "{}" []))]))
 
 test5expr =
-       op2Expr () (ODiv ()) (litExpr () (TInteger 3)) (litExpr () (TInteger 2)) 
+       op2Expr () (OMod ()) (annExpr tInt (litExpr () (TInteger 42))) (annExpr tInt (litExpr () (TInteger 2)) )
         --(letExpr () (BPat () (varPat () "foo")) (funExpr () [ Clause () [litPat () (TInteger 0)] [Choice [] (litExpr () (TInteger 1))] , Clause () [varPat () "n"] [Choice [] (litExpr () (TInteger 2))] ]) (appExpr () [varExpr () "foo", litExpr () (TInteger 1)]))
 
 runBundle :: Text -> Bundle
@@ -1115,6 +1115,19 @@ testClassEnv = Env.fromList
           , ClassInfo (InClass "Foo" tInteger) []
             -- [ ( "foo", (Ast (litExpr (TypeInfo () tInt []) (TInt 7))) )
             [ ( "foo", Ast (litExpr (TypeInfo () tBool []) (TBool False)) ) ]
+          ]
+        )
+      )
+    , ( "Integral"
+        -- Interface
+      , ( ClassInfo (InClass "Integral" "a") [InClass "Num" "a"]
+            [ ( "toInteger"   , tVar kTyp "a" `tArr` tInteger )
+            ]
+        -- Instances
+        , [ ClassInfo (InClass "Integral" tInt) []
+            [ ( "toInteger"   , Ast (varExpr (TypeInfo () (tInt `tArr` tInteger) []) "@Integer.fromInt") ) ]
+          , ClassInfo (InClass "Integral" tInteger) []
+            [ ( "toInteger"   , Ast (varExpr (TypeInfo () (tInteger `tArr` tInteger) []) "@Integer.id") ) ]
           ]
         )
       )

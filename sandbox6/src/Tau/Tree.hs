@@ -565,6 +565,12 @@ stage1Translate = cata $ \case
     ERow    t lab e r           -> conExpr t ("{" <> lab <> "}") [e, r]
     ERecord t r                 -> conExpr t "#" [r]
 
+    -- Expand mod-operator (%)
+    EOp2 t (OMod _) a b -> appExpr t
+        [ varExpr (TypeInfo [] tInteger []) "@Integer.(%)"
+        , appExpr (TypeInfo [] tInteger []) [ varExpr (TypeInfo [] (typeOf a `tArr` tInteger) [InClass "Integral" (typeOf a)]) "toInteger", a ]
+        , appExpr (TypeInfo [] tInteger []) [ varExpr (TypeInfo [] (typeOf b `tArr` tInteger) [InClass "Integral" (typeOf b)]) "toInteger", b ] ]
+
     -- Translate operators to prefix form
     EOp1    t op a              -> appExpr t [prefixOp1 op, a]
     EOp2    t op a b            -> translateAppExpr t [prefixOp2 op, a, b]
@@ -1030,7 +1036,7 @@ applyNonVarPredicates expr (InClass name ty:ps) = do
 translateMethod
   :: ( MonadSupply Int m
      , MonadReader ([Name], (ClassEnv, TypeEnv, KindEnv, ConstructorEnv)) m )
-  => Ast (TypeInfo ()) 
+  => Ast (TypeInfo ())
   -> m (Stage3Expr Type)
 translateMethod ast = do
     (_, envs) <- ask
