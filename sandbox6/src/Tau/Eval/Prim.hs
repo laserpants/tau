@@ -134,6 +134,9 @@ primEnv = Env.fromList
     , ( "Float.(*)"            , fun2 ((*) :: Float -> Float -> Float ) )
     , ( "Double.(*)"           , fun2 ((*) :: Double -> Double -> Double ) )
 
+    , ( "Float.(/)"            , fun2 ((/) :: Float -> Float -> Float ) )
+    , ( "Double.(/)"           , fun2 ((/) :: Double -> Double -> Double ) )
+
     , ( "Bool.(<)"             , fun2 ((<) :: Bool -> Bool -> Bool ) )
     , ( "Int.(<)"              , fun2 ((<) :: Int -> Int -> Bool ) )
     , ( "Integer.(<)"          , fun2 ((<) :: Integer -> Integer -> Bool ) )

@@ -449,7 +449,7 @@ inferOp2Type = \case
     OAdd   t -> opType t OAdd (Forall [kTyp] [InClass "Num" 0] (tGen 0 `tArr` tGen 0 `tArr` tGen 0))
     OSub   t -> opType t OSub (Forall [kTyp] [InClass "Num" 0] (tGen 0 `tArr` tGen 0 `tArr` tGen 0))
     OMul   t -> opType t OMul (Forall [kTyp] [InClass "Num" 0] (tGen 0 `tArr` tGen 0 `tArr` tGen 0))
-    ODiv   t -> undefined -- TODO
+    ODiv   t -> opType t ODiv (Forall [kTyp] [InClass "Fractional" 0] (tGen 0 `tArr` tGen 0 `tArr` tGen 0))
     OPow   t -> undefined -- TODO
     OMod   t -> undefined -- TODO
     OLt    t -> opType t OLt  (Forall [kTyp] [InClass "Ord" 0] (tGen 0 `tArr` tGen 0 `tArr` tBool))
@@ -874,7 +874,8 @@ test5expr :: ProgExpr () Type
 --        (letExpr () (BFun () "f" [varPat () "z"]) (recordExpr () (rowExpr () "a" (annExpr tInt (litExpr () (TInteger 1))) (varExpr () "z"))) (appExpr () [varExpr () "f", recordExpr () (rowExpr () "b" (annExpr tInt (litExpr () (TInt 2))) (conExpr () "{}" []))]))
 
 test5expr =
-        (letExpr () (BPat () (varPat () "foo")) (funExpr () [ Clause () [litPat () (TInteger 0)] [Choice [] (litExpr () (TInteger 1))] , Clause () [varPat () "n"] [Choice [] (litExpr () (TInteger 2))] ]) (appExpr () [varExpr () "foo", litExpr () (TInteger 1)]))
+       op2Expr () (ODiv ()) (litExpr () (TInteger 3)) (litExpr () (TInteger 2)) 
+        --(letExpr () (BPat () (varPat () "foo")) (funExpr () [ Clause () [litPat () (TInteger 0)] [Choice [] (litExpr () (TInteger 1))] , Clause () [varPat () "n"] [Choice [] (litExpr () (TInteger 2))] ]) (appExpr () [varExpr () "foo", litExpr () (TInteger 1)]))
 
 runBundle :: Text -> Bundle
 runBundle input =
@@ -1119,14 +1120,19 @@ testClassEnv = Env.fromList
       )
     , ( "Fractional"
         -- Interface
-      , ( ClassInfo (InClass "Fractional" "a") []
+      , ( ClassInfo (InClass "Fractional" "a") [InClass "Num" "a"]
             [ ( "fromRational" , tDouble `tArr` tVar kTyp "a" )
+            , ( "(/)"          , tVar kTyp "a" `tArr` tVar kTyp "a" `tArr` tVar kTyp "a" )
             ]
         -- Instances
         , [ ClassInfo (InClass "Fractional" tFloat) []
-            [ ( "fromRational" , Ast (varExpr (TypeInfo () (tDouble `tArr` tFloat) []) "@Float.fromDouble") ) ]
+            [ ( "fromRational" , Ast (varExpr (TypeInfo () (tDouble `tArr` tFloat) []) "@Float.fromDouble") ) 
+            , ( "(/)"          , Ast (varExpr (TypeInfo () (tFloat `tArr` tFloat `tArr` tFloat) []) "@Float.(/)") )
+            ]
           , ClassInfo (InClass "Fractional" tDouble) []
-            [ ( "fromRational" , Ast (varExpr (TypeInfo () (tDouble `tArr` tDouble) []) "@Double.id") ) ]
+            [ ( "fromRational" , Ast (varExpr (TypeInfo () (tDouble `tArr` tDouble) []) "@Double.id") ) 
+            , ( "(/)"          , Ast (varExpr (TypeInfo () (tDouble `tArr` tDouble `tArr` tDouble) []) "@Double.(/)") )
+            ]
           ]
         )
       )

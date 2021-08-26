@@ -310,6 +310,8 @@ ambiguityCheck ctx expr = do
     (a, vs) <- runStateT (walk expr) mempty
     let t = exprTag a
 
+    traceShowM vs
+
     classEnv <- askClassEnv
     zz1 <- reduce classEnv vs
     let zz3 = filter (`elem` fromRight [] zz1) (reverse (nub vs))
@@ -322,6 +324,8 @@ ambiguityCheck ctx expr = do
     let fn (Fix (TVar k v)) = fromJust (Map.lookup v indexed)
         sub = Sub (tGen <$> indexed)
         scheme = Forall (snd <$> freeVars) (fn <$$> x) (apply sub (toPolytype (nodeType t)))
+
+    traceShowM scheme
 
     --pure (setExprTag (addErrors (checkAmbg t vs) t) a)
     pure (setExprTag (addErrors [AmbiguousType n t | InClass n t <- y] t) a, scheme)
@@ -336,6 +340,14 @@ ambiguityCheck ctx expr = do
         ELit t prim -> do
             collectPreds t
             pure (litExpr t prim)
+
+        EOp1 t op a -> do
+            collectPreds t
+            op1Expr t op <$> a
+
+        EOp2 t op a b -> do
+            collectPreds t
+            op2Expr t op <$> a <*> b
 
         EPat t expr clauses -> do
             e <- expr <* put []
@@ -358,8 +370,6 @@ ambiguityCheck ctx expr = do
         ELam    t ps e        -> lamExpr t ps <$> e
         EIf     t e1 e2 e3    -> ifExpr t <$> e1 <*> e2 <*> e3
         EFun    t cs          -> funExpr t <$> traverse sequence cs
-        EOp1    t op a        -> op1Expr t op <$> a
-        EOp2    t op a b      -> op2Expr t op <$> a <*> b
         ETuple  t es          -> tupleExpr t <$> sequence es
         EList   t es          -> listExpr t <$> sequence es
         ERow    t lab e r     -> rowExpr t lab <$> e <*> r
