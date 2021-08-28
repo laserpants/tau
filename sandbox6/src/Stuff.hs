@@ -783,8 +783,6 @@ test3 :: ProgExpr t Type -> (ProgExpr (TypeInfo [Error]) Void, (Substitution Typ
 test3 expr =
     runInfer mempty testClassEnv testTypeEnv testKindEnv testConstructorEnv (tagTree expr >>= inferExprType)
 
-test4 = test3 (varExpr () "xxx")
-
 test5expr :: ProgExpr () Type
 --test5expr = funExpr () [ Clause () [conPat () "(::)" [varPat () "x", conPat () "(::)" [varPat () "y", varPat () "ys"]]] [Choice [] (litExpr () (TBool True))] , Clause () [conPat () "[]" []] [Choice [] (litExpr () (TBool True))] , Clause () [conPat () "(::)" [varPat () "z", varPat () "zs"]] [Choice [] (litExpr () (TBool True))] ]
 --test5expr = varExpr () "(+)"
