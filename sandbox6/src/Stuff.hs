@@ -450,7 +450,7 @@ inferOp2Type = \case
     OSub   t -> opType t OSub (Forall [kTyp] [InClass "Num" 0] (tGen 0 `tArr` tGen 0 `tArr` tGen 0))
     OMul   t -> opType t OMul (Forall [kTyp] [InClass "Num" 0] (tGen 0 `tArr` tGen 0 `tArr` tGen 0))
     ODiv   t -> opType t ODiv (Forall [kTyp] [InClass "Fractional" 0] (tGen 0 `tArr` tGen 0 `tArr` tGen 0))
-    OPow   t -> opType t OMod (Forall [kTyp, kTyp] [InClass "Integral" 0, InClass "Num" 1] (tGen 1 `tArr` tGen 0 `tArr` tGen 1))
+    OPow   t -> opType t OPow (Forall [kTyp, kTyp] [InClass "Integral" 0, InClass "Num" 1] (tGen 1 `tArr` tGen 0 `tArr` tGen 1))
     OMod   t -> opType t OMod (Forall [kTyp] [InClass "Integral" 0] (tGen 0 `tArr` tGen 0 `tArr` tGen 0))
     OLt    t -> opType t OLt  (Forall [kTyp] [InClass "Ord" 0] (tGen 0 `tArr` tGen 0 `tArr` tBool))
     OGt    t -> opType t OGt  (Forall [kTyp] [InClass "Ord" 0] (tGen 0 `tArr` tGen 0 `tArr` tBool))
@@ -874,8 +874,22 @@ test5expr :: ProgExpr () Type
 --        (letExpr () (BFun () "f" [varPat () "z"]) (recordExpr () (rowExpr () "a" (annExpr tInt (litExpr () (TInteger 1))) (varExpr () "z"))) (appExpr () [varExpr () "f", recordExpr () (rowExpr () "b" (annExpr tInt (litExpr () (TInt 2))) (conExpr () "{}" []))]))
 
 test5expr =
-       op2Expr () (OMod ()) (annExpr tInt (litExpr () (TInteger 42))) (annExpr tInt (litExpr () (TInteger 2)) )
+       op2Expr () (OPow ()) (annExpr tDouble (litExpr () (TDouble 5.0))) (annExpr tInt (litExpr () (TInteger 3)) )
         --(letExpr () (BPat () (varPat () "foo")) (funExpr () [ Clause () [litPat () (TInteger 0)] [Choice [] (litExpr () (TInteger 1))] , Clause () [varPat () "n"] [Choice [] (litExpr () (TInteger 2))] ]) (appExpr () [varExpr () "foo", litExpr () (TInteger 1)]))
+
+--test5expr = fixExpr () "foo"
+--    (lamExpr () [varPat () "f", varPat () "s"] (funExpr ()
+--        [ Clause () [annPat tInteger (litPat () (TInteger 0))] [Choice [] (varExpr () "s")]
+--        , Clause () [annPat tInteger (varPat () "n")] [Choice []
+--           (appExpr ()
+--               [ varExpr () "foo"
+--               , varExpr () "f"
+--               , appExpr () [varExpr () "f", varExpr () "s"]
+--               , appExpr () [varExpr () "@Integer.(-)", varExpr () "n", litExpr () (TInteger 1)]
+--               ])]
+--        ]))
+--    (varExpr () "foo")
+--
 
 runBundle :: Text -> Bundle
 runBundle input =
@@ -915,6 +929,11 @@ compileBundle expr = Bundle
 
 test5 :: IO ()
 test5 = do
+
+    traceShowM "vvvvvvvvvvvv"
+    traceShowM i
+    traceShowM j
+    traceShowM "^^^^^^^^^^^^"
 
     liftIO $ LBS.writeFile "/home/laserpants/code/tau-tooling/src/tmp/bundle.json" (encodePretty' defConfig{ confIndent = Spaces 2 } (toRep bundle))
     -- astExpr a
@@ -1099,6 +1118,14 @@ testClassEnv = Env.fromList
             [ ( "(==)", Ast (varExpr (TypeInfo () (tString `tArr` tString `tArr` tString) []) "@String.(==)" ) )
             , ( "(/=)", Ast (varExpr (TypeInfo () (tString `tArr` tString `tArr` tString) []) "@String.(/=)" ) )
             ]
+          , ClassInfo (InClass "Eq" tFloat) []
+            [ ( "(==)", Ast (varExpr (TypeInfo () (tFloat `tArr` tFloat `tArr` tBool) []) "@Float.(==)" ) )
+            , ( "(/=)", Ast (varExpr (TypeInfo () (tFloat `tArr` tFloat `tArr` tBool) []) "@Float.(/=)" ) )
+            ]
+          , ClassInfo (InClass "Eq" tDouble) []
+            [ ( "(==)", Ast (varExpr (TypeInfo () (tDouble `tArr` tDouble `tArr` tBool) []) "@Double.(==)" ) )
+            , ( "(/=)", Ast (varExpr (TypeInfo () (tDouble `tArr` tDouble `tArr` tBool) []) "@Double.(/=)" ) )
+            ]
           ]
         )
       )
@@ -1139,11 +1166,11 @@ testClassEnv = Env.fromList
             ]
         -- Instances
         , [ ClassInfo (InClass "Fractional" tFloat) []
-            [ ( "fromRational" , Ast (varExpr (TypeInfo () (tDouble `tArr` tFloat) []) "@Float.fromDouble") ) 
+            [ ( "fromRational" , Ast (varExpr (TypeInfo () (tDouble `tArr` tFloat) []) "@Float.fromDouble") )
             , ( "(/)"          , Ast (varExpr (TypeInfo () (tFloat `tArr` tFloat `tArr` tFloat) []) "@Float.(/)") )
             ]
           , ClassInfo (InClass "Fractional" tDouble) []
-            [ ( "fromRational" , Ast (varExpr (TypeInfo () (tDouble `tArr` tDouble) []) "@Double.id") ) 
+            [ ( "fromRational" , Ast (varExpr (TypeInfo () (tDouble `tArr` tDouble) []) "@Double.id") )
             , ( "(/)"          , Ast (varExpr (TypeInfo () (tDouble `tArr` tDouble `tArr` tDouble) []) "@Double.(/)") )
             ]
           ]
@@ -1151,7 +1178,7 @@ testClassEnv = Env.fromList
       )
     , ( "Num"
         -- Interface
-      , ( ClassInfo (InClass "Num" "a") [InClass "Eq" "a", InClass "Foo" "a"]
+      , ( ClassInfo (InClass "Num" "a") [InClass "Eq" "a"] -- , InClass "Foo" "a"]
             [ ( "(+)"         , tVar kTyp "a" `tArr` tVar kTyp "a" `tArr` tVar kTyp "a" )
             , ( "(*)"         , tVar kTyp "a" `tArr` tVar kTyp "a" `tArr` tVar kTyp "a" )
             , ( "(-)"         , tVar kTyp "a" `tArr` tVar kTyp "a" `tArr` tVar kTyp "a" )
@@ -1169,6 +1196,18 @@ testClassEnv = Env.fromList
             , ( "(*)"         , Ast (varExpr (TypeInfo () (tInteger `tArr` tInteger `tArr` tInteger) []) "@Integer.(*)") )
             , ( "(-)"         , Ast (varExpr (TypeInfo () (tInteger `tArr` tInteger `tArr` tInteger) []) "@Integer.(-)") )
             , ( "fromInteger" , Ast (varExpr (TypeInfo () (tInteger `tArr` tInteger) []) "@Integer.id") )
+            ]
+          , ClassInfo (InClass "Num" tFloat) []
+            [ ( "(+)"         , Ast (varExpr (TypeInfo () (tFloat `tArr` tFloat `tArr` tFloat) []) "@Float.(+)") )
+            , ( "(*)"         , Ast (varExpr (TypeInfo () (tFloat `tArr` tFloat `tArr` tFloat) []) "@Float.(*)") )
+            , ( "(-)"         , Ast (varExpr (TypeInfo () (tFloat `tArr` tFloat `tArr` tFloat) []) "@Float.(-)") )
+            , ( "fromInteger" , Ast (varExpr (TypeInfo () (tInteger `tArr` tFloat) []) "@Float.fromInteger") )
+            ]
+          , ClassInfo (InClass "Num" tDouble) []
+            [ ( "(+)"         , Ast (varExpr (TypeInfo () (tDouble `tArr` tDouble `tArr` tDouble) []) "@Double.(+)") )
+            , ( "(*)"         , Ast (varExpr (TypeInfo () (tDouble `tArr` tDouble `tArr` tDouble) []) "@Double.(*)") )
+            , ( "(-)"         , Ast (varExpr (TypeInfo () (tDouble `tArr` tDouble `tArr` tDouble) []) "@Double.(-)") )
+            , ( "fromInteger" , Ast (varExpr (TypeInfo () (tInteger `tArr` tDouble) []) "@Double.fromInteger") )
             ]
           ]
         )
@@ -1198,6 +1237,7 @@ testConstructorEnv = constructorEnv
 testEvalEnv :: ValueEnv Eval
 testEvalEnv = Env.fromList
     [ ( "_#"  , fromJust (evalExpr (cLam "?0" (cPat (cVar "?0") [(["#", "?1"], cVar "?1")])) mempty) )
+    , ( "_^"  , fromJust (evalExpr (cLam "n" (cLam "f" (cLam "s" (cLet "r" (cLam "x" (cLam "m" (cIf (cApp [cVar "@Integer.(==)", cLit (TInteger 0), cVar "m"]) (cVar "x") (cApp [cVar "r", cApp [cVar "f", cVar "x"], cApp [cVar "@Integer.(-)", cVar "m", cLit (TInteger 1)]])))) (cApp [cVar "r", cVar "s", cVar "n"]))))) mempty) )
     , ( "(.)" , fromJust (evalExpr (cLam "f" (cLam "x" (cApp [cVar "f", cVar "x"]))) mempty) )
     ]
 
@@ -1206,7 +1246,7 @@ testEvalEnv = Env.fromList
 testx :: ProgExpr () Type
 testx =
     patExpr () (varExpr () "x")
-        [ Clause () (conPat () "Some" [varPat () "x"])
+        [ Clause() (conPat () "Some" [varPat () "x"])
             [ Choice [op2Expr () (OEq ()) (varExpr () "x") (litExpr () (TInteger 111))] (litExpr () (TInteger 4))
             , Choice [op2Expr () (OEq ()) (varExpr () "x") (litExpr () (TInteger 112))] (litExpr () (TInteger 5))
             , Choice [] (litExpr () (TInteger 6))

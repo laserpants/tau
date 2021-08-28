@@ -556,6 +556,8 @@ cod _ = error "Implementation error"
 
 -- S1. Desugaring
 
+_TODO = TypeInfo [] (tVar kTyp "TODO") []
+
 stage1Translate :: ProgExpr TInfo Void -> Stage1Expr TInfo
 stage1Translate = cata $ \case
 
@@ -567,9 +569,17 @@ stage1Translate = cata $ \case
 
     -- Expand mod-operator (%)
     EOp2 t (OMod _) a b -> appExpr t
-        [ varExpr (TypeInfo [] tInteger []) "@Integer.(%)"
+        [ varExpr (TypeInfo [] (tInteger `tArr` tInteger `tArr` tInteger) []) "@iterate1"
         , appExpr (TypeInfo [] tInteger []) [ varExpr (TypeInfo [] (typeOf a `tArr` tInteger) [InClass "Integral" (typeOf a)]) "toInteger", a ]
         , appExpr (TypeInfo [] tInteger []) [ varExpr (TypeInfo [] (typeOf b `tArr` tInteger) [InClass "Integral" (typeOf b)]) "toInteger", b ] ]
+
+    -- Expand exponentiation-operator (^)
+    EOp2 t (OPow _) a b -> appExpr t
+        [ varExpr (TypeInfo [] (typeOf a) []) "_^"
+        , appExpr (TypeInfo [] tInteger []) [varExpr (TypeInfo [] (typeOf b `tArr` tInteger) [InClass "Integral" (typeOf b)]) "toInteger", b]
+        , appExpr (TypeInfo [] (typeOf a) []) [varExpr (TypeInfo [] (typeOf a `tArr` typeOf a `tArr` typeOf a) [InClass "Num" (typeOf a)]) "(*)", a]
+        , litExpr (TypeInfo [] (typeOf a) [InClass "Num" (typeOf a)]) (TInteger 1)
+        ]
 
     -- Translate operators to prefix form
     EOp1    t op a              -> appExpr t [prefixOp1 op, a]
