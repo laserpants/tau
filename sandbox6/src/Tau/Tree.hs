@@ -310,8 +310,6 @@ ambiguityCheck ctx expr = do
     (a, vs) <- runStateT (walk expr) mempty
     let t = exprTag a
 
-    traceShowM vs
-
     classEnv <- askClassEnv
     zz1 <- reduce classEnv vs
     let zz3 = filter (`elem` fromRight [] zz1) (reverse (nub vs))
