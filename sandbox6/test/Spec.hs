@@ -1408,6 +1408,10 @@ testFlight = do
             ]) (appExpr () [varExpr () "foo", annExpr tInt (litExpr () (TInteger 1))]))
         (Just (Value (TInt 2)))
 
+    succeedRunExpr
+        (op2Expr () (OPow ()) (annExpr tDouble (litExpr () (TDouble 5.0))) (annExpr tInt (litExpr () (TInteger 3))))
+        (Just (Value (TDouble 125.0)))
+
 -------------------------------------------------------------------------------
 
 -- Parser tests
