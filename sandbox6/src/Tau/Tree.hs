@@ -325,8 +325,6 @@ ambiguityCheck ctx expr = do
         sub = Sub (tGen <$> indexed)
         scheme = Forall (snd <$> freeVars) (fn <$$> x) (apply sub (toPolytype (nodeType t)))
 
-    traceShowM scheme
-
     --pure (setExprTag (addErrors (checkAmbg t vs) t) a)
     pure (setExprTag (addErrors [AmbiguousType n t | InClass n t <- y] t) a, scheme)
 
@@ -555,8 +553,6 @@ cod _ = error "Implementation error"
 -------------------------------------------------------------------------------
 
 -- S1. Desugaring
-
-_TODO = TypeInfo [] (tVar kTyp "TODO") []
 
 stage1Translate :: ProgExpr TInfo Void -> Stage1Expr TInfo
 stage1Translate = cata $ \case
