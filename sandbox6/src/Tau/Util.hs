@@ -75,9 +75,9 @@ renderDoc :: Doc a -> Text
 renderDoc = renderStrict . layoutPretty defaultLayoutOptions
 
 renderDocW :: Int -> Doc a -> Text
-renderDocW w = renderStrict . layoutPretty layoutOptions
-  where
-    layoutOptions = LayoutOptions { layoutPageWidth = AvailablePerLine w 1 }
+renderDocW w = renderStrict . layoutPretty layoutOptions where
+    layoutOptions =
+        LayoutOptions { layoutPageWidth = AvailablePerLine w 1 }
 
 prettyT :: (Pretty p) => p -> Text
 prettyT = renderDoc . pretty
