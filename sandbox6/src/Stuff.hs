@@ -872,7 +872,10 @@ test5expr :: ProgExpr () Type
 --        (letExpr () (BFun () "f" [varPat () "z"]) (recordExpr () (rowExpr () "a" (annExpr tInt (litExpr () (TInteger 1))) (varExpr () "z"))) (appExpr () [varExpr () "f", recordExpr () (rowExpr () "b" (annExpr tInt (litExpr () (TInt 2))) (conExpr () "{}" []))]))
 
 test5expr =
-       op2Expr () (OPow ()) (annExpr tDouble (litExpr () (TDouble 5.0))) (annExpr tInt (litExpr () (TInteger 3)) )
+    (Fix (ELet () (BFun () "f" [Fix (PVar () "x")]) (Fix (EOp2 () (OAdd ()) (Fix (EVar () "x")) (Fix (ELit () (TInteger 1))))) (Fix (EApp () [Fix (EVar () "f"),Fix (ELit () (TInteger 123))]))))
+
+--    (letExpr () (BFun () "f" [varPat () "x"]) (op2Expr () (OGt ()) (op2Expr () (OAdd ()) (varExpr () "x") (litExpr () (TInteger 1))) (litExpr () (TInteger 5))) (appExpr () [varExpr () "f", litExpr () (TInteger 3)]))
+--       op2Expr () (OPow ()) (annExpr tDouble (litExpr () (TDouble 5.0))) (litExpr () (TInteger 3) )
         --(letExpr () (BPat () (varPat () "foo")) (funExpr () [ Clause () [litPat () (TInteger 0)] [Choice [] (litExpr () (TInteger 1))] , Clause () [varPat () "n"] [Choice [] (litExpr () (TInteger 2))] ]) (appExpr () [varExpr () "foo", litExpr () (TInteger 1)]))
 
 --test5expr = fixExpr () "foo"

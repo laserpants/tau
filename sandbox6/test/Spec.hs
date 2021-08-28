@@ -1412,6 +1412,12 @@ testFlight = do
         (op2Expr () (OPow ()) (annExpr tDouble (litExpr () (TDouble 5.0))) (annExpr tInt (litExpr () (TInteger 3))))
         (Just (Value (TDouble 125.0)))
 
+    describe "• Defaulting" $ do
+
+        succeedRunExpr
+            (letExpr () (BFun () "f" [varPat () "x"]) (op2Expr () (OGt ()) (op2Expr () (OAdd ()) (varExpr () "x") (litExpr () (TInteger 1))) (litExpr () (TInteger 5))) (appExpr () [varExpr () "f", litExpr () (TInteger 5)]))
+            (Just (Value (TBool True)))
+
 -------------------------------------------------------------------------------
 
 -- Parser tests

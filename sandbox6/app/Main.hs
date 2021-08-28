@@ -16,6 +16,8 @@ main = do
     B.putStrLn (encode (toRep (runBundle (pack p))))
 
 
+--let f(x) = x + 1 > 5 in f(5)
+
 --let foo 
 --  | 0 => 1 
 --  | n => 2

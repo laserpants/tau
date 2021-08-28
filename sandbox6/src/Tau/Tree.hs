@@ -300,6 +300,57 @@ prim TDouble{}     = "#Double"
 prim TChar{}       = "#Char"
 prim TString{}     = "#String"
 
+applyDefaults
+  :: ( MonadReader (ClassEnv, TypeEnv, KindEnv, ConstructorEnv) m
+     , MonadSupply Int m )
+  => Context
+  -> [Predicate]
+  -> m ([Predicate], Substitution Type)
+applyDefaults ctx ps = do
+    sub <- foldr (<>) mempty <$> traverse foo ps
+    pure ([p | p@(InClass _ (Fix (TVar _ v))) <- ps, v `notElem` domain sub], sub)
+  where
+    foo p@(InClass n (Fix (TVar _ v))) = do
+        env <- askClassEnv
+        xlss <- reduceSet env (Set.toList (Env.findWithDefaultEmpty v ctx))
+        pure $ if n `elem` ["Num", "Integral"] && canSubst env  xlss
+            then (v `mapsTo` tInt)
+            else mempty
+--        (ps, sub) <- get
+--        let sub1 = v `mapsTo` tInt
+--        put $ if n `elem` ["Num", "Integral"] && canSubst
+--            then (ps, sub1 <> sub)
+--            else (p:ps, sub)
+
+    canSubst env clss =
+        all (\c -> case Env.lookup c env of
+            Nothing -> False
+            Just (_, infos) -> tInt `elem` (getTy <$> infos)) clss
+
+getTy (ClassInfo (InClass _ t) _ _) = t
+
+--applyDefaults
+--  :: ( MonadReader (ClassEnv, TypeEnv, KindEnv, ConstructorEnv) m
+--     , MonadSupply Int m )
+--  => [Predicate]
+--  -> ([Predicate], Substitution Type)
+--  -> m ([Predicate], Substitution Type)
+--applyDefaults _ (ps, sub) = pure (ps, sub)
+--applyDefaults qs (InClass n _:ps, sub1) =
+--    if canSubst sub
+--       then applyDefaults qs (ps, sub <> sub1)
+--       else undefined
+--  where
+--    canSubst = undefined
+--    sub = undefined
+--    foo =
+--      case n of
+--        "Num"      -> Just tInt
+--        "Integral" -> Just tInt
+--        _          -> Nothing
+--
+--applyDefault1 p = undefined
+
 ambiguityCheck
   :: ( MonadReader (ClassEnv, TypeEnv, KindEnv, ConstructorEnv) m
      , MonadSupply Int m )
@@ -311,8 +362,8 @@ ambiguityCheck ctx expr = do
     let t = exprTag a
 
     classEnv <- askClassEnv
-    zz1 <- reduce classEnv vs
-    let zz3 = filter (`elem` fromRight [] zz1) (reverse (nub vs))
+    zz1 <- fromRight [] <$> reduce classEnv vs
+    let zz3 = filter (`elem` zz1) (reverse (nub vs))
 
     let freeVars = free (nodeType t)
     let indexed = Map.fromList (zip (fst <$> freeVars) [0..])
@@ -323,8 +374,13 @@ ambiguityCheck ctx expr = do
         sub = Sub (tGen <$> indexed)
         scheme = Forall (snd <$> freeVars) (fn <$$> x) (apply sub (toPolytype (nodeType t)))
 
+    (yyy, sub) <- applyDefaults ctx y
+
+    pure (setExprTag (addErrors [AmbiguousType n t | InClass n t <- yyy] t) (apply sub a), scheme)
+
     --pure (setExprTag (addErrors (checkAmbg t vs) t) a)
-    pure (setExprTag (addErrors [AmbiguousType n t | InClass n t <- y] t) a, scheme)
+
+--    pure (setExprTag (addErrors [AmbiguousType n t | InClass n t <- y] t) a, scheme)
 
   where
     walk = cata $ \case
