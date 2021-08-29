@@ -182,15 +182,15 @@ typeFragmentParser = tVar <$> kindVar <*> nameParser
             <|> tRecord <$> rowParser ":" typeParser tRow (tVar kRow) tRowNil
 
     builtIn :: Parser Type
-    builtIn = builtInType "Integer" kTyp
-          <|> builtInType "Int"     kTyp
-          <|> builtInType "Unit"    kTyp
-          <|> builtInType "Bool"    kTyp
-          <|> builtInType "Float"   kTyp
-          <|> builtInType "Double"  kTyp
-          <|> builtInType "Char"    kTyp
-          <|> builtInType "String"  kTyp
-          <|> builtInType "Nat"     kTyp
+    builtIn = builtInType "bigint"  kTyp
+          <|> builtInType "int"     kTyp
+          <|> builtInType "unit"    kTyp
+          <|> builtInType "bool"    kTyp
+          <|> builtInType "float"   kTyp
+          <|> builtInType "double"  kTyp
+          <|> builtInType "char"    kTyp
+          <|> builtInType "string"  kTyp
+          <|> builtInType "nat"     kTyp
           <|> builtInType "List"    kFun
           <|> builtInType "Option"  kFun
 

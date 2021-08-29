@@ -755,47 +755,47 @@ typ = tCon kTyp
 -- Built-in types
 
 tVoid :: TypeT a
-tVoid = typ "Void"
+tVoid = typ "void"
 {-# INLINE tVoid #-}
 
 tUnit :: TypeT a
-tUnit = typ "Unit"
+tUnit = typ "unit"
 {-# INLINE tUnit #-}
 
 tBool :: TypeT a
-tBool = typ "Bool"
+tBool = typ "bool"
 {-# INLINE tBool #-}
 
 tNat :: TypeT a
-tNat = typ "Nat"
+tNat = typ "nat"
 {-# INLINE tNat #-}
 
 tInt :: TypeT a
-tInt = typ "Int"
+tInt = typ "int"
 {-# INLINE tInt #-}
 
 tInteger :: TypeT a
-tInteger = typ "Integer"
+tInteger = typ "bigint"
 {-# INLINE tInteger #-}
 
 tFloat :: TypeT a
-tFloat = typ "Float"
+tFloat = typ "float"
 {-# INLINE tFloat #-}
 
 tDouble :: TypeT a
-tDouble = typ "Double"
+tDouble = typ "double"
 {-# INLINE tDouble #-}
 
 tChar :: TypeT a
-tChar = typ "Char"
+tChar = typ "char"
 {-# INLINE tChar #-}
 
 tString :: TypeT a
-tString = typ "String"
+tString = typ "string"
 {-# INLINE tString #-}
 
 tSymbol :: TypeT a
-tSymbol = typ "Symbol"
+tSymbol = typ "symbol"
 {-# INLINE tSymbol #-}
 
 -- Lists
@@ -1331,15 +1331,15 @@ setPatternTag t = project >>> \case
 
 primName :: Prim -> Name
 primName = \case
-    TUnit      -> "Unit"
-    TBool    _ -> "Bool"
-    TInt     _ -> "Int"
-    TInteger _ -> "Integer"
-    TFloat   _ -> "Float"
-    TDouble  _ -> "Double"
-    TChar    _ -> "Char"
-    TString  _ -> "String"
-    TSymbol  _ -> "Symbol"
+    TUnit      -> "unit"
+    TBool    _ -> "bool"
+    TInt     _ -> "int"
+    TInteger _ -> "bigint"
+    TFloat   _ -> "float"
+    TDouble  _ -> "double"
+    TChar    _ -> "char"
+    TString  _ -> "string"
+    TSymbol  _ -> "symbol"
 
 -- | Return the precedence of a binary operator
 opPrecedence :: Op2 t -> Int

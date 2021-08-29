@@ -430,11 +430,11 @@ testTypeVars = do
 testKindOf :: SpecWith ()
 testKindOf = do
 
-    describe "The kind of Bool" $ do
+    describe "The kind of bool" $ do
         it "✔ is *"
             (kindOf tBool == kTyp)
 
-    describe "The kind of (Int -> Int)" $ do
+    describe "The kind of (int -> int)" $ do
         it "✔ is *"
             (kindOf (tInt `tArr` tInt) == kTyp)
 
@@ -442,7 +442,7 @@ testKindOf = do
         it "✔ is *"
             (kindOf (tList _a) == kTyp)
 
-    describe "The kind of (List Int)" $ do
+    describe "The kind of (List int)" $ do
         it "✔ is *"
             (kindOf (tList tInt) == kTyp)
 
@@ -680,9 +680,9 @@ testTypeInference = do
         --       xs.loopList(fun
         --         | [Cons'(_, _, a)]
         --                    => 1 + a
-        --         | [Nil']     => 0 : Int)
+        --         | [Nil']     => 0 : int)
         --       in
-        --         let xs = [2] : List Int
+        --         let xs = [2] : List int
         --           in
         --             match xs with
         --               | [x :: _]
@@ -712,8 +712,8 @@ testTypeInference = do
         --   match (x, y) with
         --     | [(1 : Int, x)]
         --         when(x /= 0) => x
-        --         otherwise    => 0 : Int
-        --     | [_]            => 100 : Int)(1, 5)
+        --         otherwise    => 0 : int
+        --     | [_]            => 100 : int)(1, 5)
         --
         succeedInferExpr
             (appExpr () [ lamExpr () [varPat () "x", varPat () "y"] (patExpr () (tupleExpr () [varExpr () "x", varExpr () "y"]) [ Clause () (tuplePat () [annPat tInt (litPat () (TInteger 1)), varPat () "x"])  [ Choice [op2Expr () (ONeq ()) (varExpr () "x") (litExpr () (TInteger 0))] (varExpr () "x") , Choice [] (annExpr tInt (litExpr () (TInteger 0))) ] , Clause () (anyPat ()) [ Choice [] (annExpr tInt (litExpr () (TInteger 100))) ] ]) , litExpr () (TInteger 1) , litExpr () (TInteger 5) ])
@@ -736,7 +736,7 @@ testTypeInference = do
             []
 
         succeedInferExpr
-            (Fix (ELet () (BPat () (Fix (PVar () "xs"))) (Fix (EAnn (Fix (TApp (Fix (KVar "k15")) (Fix (TCon (Fix (KArr (Fix (KCon "*")) (Fix (KCon "*")))) "List")) (Fix (TCon (Fix (KCon "*")) "Int")))) (Fix (EList () [Fix (ELit () (TInteger 1))])))) (Fix (EPat () (Fix (EVar () "xs")) [ Clause {clauseTag = (), clausePatterns = Fix (PCon () "(::)" [Fix (PVar () "x"),Fix (PAny ())]), clauseChoices = [Choice [Fix (EOp2 () (OEq ()) (Fix (EVar () "x")) (Fix (ELit () (TInteger 1))))] (Fix (EVar () "x"))]} , Clause {clauseTag = (), clausePatterns = Fix (PAny ()), clauseChoices = [Choice [] (Fix (ELit () (TInteger 0)))]}]))))
+            (Fix (ELet () (BPat () (Fix (PVar () "xs"))) (Fix (EAnn (Fix (TApp (Fix (KVar "k15")) (Fix (TCon (Fix (KArr (Fix (KCon "*")) (Fix (KCon "*")))) "List")) (Fix (TCon (Fix (KCon "*")) "int")))) (Fix (EList () [Fix (ELit () (TInteger 1))])))) (Fix (EPat () (Fix (EVar () "xs")) [ Clause {clauseTag = (), clausePatterns = Fix (PCon () "(::)" [Fix (PVar () "x"),Fix (PAny ())]), clauseChoices = [Choice [Fix (EOp2 () (OEq ()) (Fix (EVar () "x")) (Fix (ELit () (TInteger 1))))] (Fix (EVar () "x"))]} , Clause {clauseTag = (), clausePatterns = Fix (PAny ()), clauseChoices = [Choice [] (Fix (ELit () (TInteger 0)))]}]))))
             tInt
             []
 
@@ -751,17 +751,17 @@ testTypeInference = do
             []
 
         succeedInferExpr
-            (Fix (ELet () (BPat () (Fix (PVar () "xs"))) (Fix (EList () [Fix (EAnn (Fix (TCon (Fix (KCon "*")) "Int")) (Fix (ELit () (TInteger 1)))),Fix (ELit () (TInteger 2)),Fix (ELit () (TInteger 3))])) (Fix (EPat () (Fix (EVar () "xs")) [Clause {clauseTag = (), clausePatterns = Fix (POr () (Fix (PList () [Fix (PVar () "x")])) (Fix (POr () (Fix (PList () [Fix (PVar () "x"),Fix (PAny ())])) (Fix (PList () [Fix (PVar () "x"),Fix (PAny ()),Fix (PAny ())]))))), clauseChoices = [Choice [] (Fix (EVar () "x"))]},Clause {clauseTag = (), clausePatterns = Fix (PAny ()), clauseChoices = [Choice [] (Fix (ELit () (TInteger 0)))]}]))))
+            (Fix (ELet () (BPat () (Fix (PVar () "xs"))) (Fix (EList () [Fix (EAnn (Fix (TCon (Fix (KCon "*")) "int")) (Fix (ELit () (TInteger 1)))),Fix (ELit () (TInteger 2)),Fix (ELit () (TInteger 3))])) (Fix (EPat () (Fix (EVar () "xs")) [Clause {clauseTag = (), clausePatterns = Fix (POr () (Fix (PList () [Fix (PVar () "x")])) (Fix (POr () (Fix (PList () [Fix (PVar () "x"),Fix (PAny ())])) (Fix (PList () [Fix (PVar () "x"),Fix (PAny ()),Fix (PAny ())]))))), clauseChoices = [Choice [] (Fix (EVar () "x"))]},Clause {clauseTag = (), clausePatterns = Fix (PAny ()), clauseChoices = [Choice [] (Fix (ELit () (TInteger 0)))]}]))))
             tInt
             []
 
         succeedInferExpr
-            (Fix (ELet () (BPat () (Fix (PVar () "xs"))) (Fix (EList () [Fix (EAnn (Fix (TCon (Fix (KCon "*")) "Int")) (Fix (ELit () (TInteger 5)))),Fix (ELit () (TInteger 3)),Fix (ELit () (TInteger 3)),Fix (ELit () (TInteger 3))])) (Fix (EPat () (Fix (EVar () "xs")) [ Clause {clauseTag = (), clausePatterns = Fix (PList () [Fix (PVar () "x")]), clauseChoices = [Choice [] (Fix (EVar () "x"))]} , Clause {clauseTag = (), clausePatterns = Fix (PList () [Fix (PVar () "x"),Fix (PVar () "y")]), clauseChoices = [Choice [] (Fix (EVar () "x"))]} , Clause {clauseTag = (), clausePatterns = Fix (PList () [Fix (PVar () "x"),Fix (PVar () "y"),Fix (PVar () "z")]), clauseChoices = [Choice [] (Fix (EVar () "x"))]} , Clause {clauseTag = (), clausePatterns = Fix (PAny ()), clauseChoices = [Choice [] (Fix (ELit () (TInteger 0)))]}]))))
+            (Fix (ELet () (BPat () (Fix (PVar () "xs"))) (Fix (EList () [Fix (EAnn (Fix (TCon (Fix (KCon "*")) "int")) (Fix (ELit () (TInteger 5)))),Fix (ELit () (TInteger 3)),Fix (ELit () (TInteger 3)),Fix (ELit () (TInteger 3))])) (Fix (EPat () (Fix (EVar () "xs")) [ Clause {clauseTag = (), clausePatterns = Fix (PList () [Fix (PVar () "x")]), clauseChoices = [Choice [] (Fix (EVar () "x"))]} , Clause {clauseTag = (), clausePatterns = Fix (PList () [Fix (PVar () "x"),Fix (PVar () "y")]), clauseChoices = [Choice [] (Fix (EVar () "x"))]} , Clause {clauseTag = (), clausePatterns = Fix (PList () [Fix (PVar () "x"),Fix (PVar () "y"),Fix (PVar () "z")]), clauseChoices = [Choice [] (Fix (EVar () "x"))]} , Clause {clauseTag = (), clausePatterns = Fix (PAny ()), clauseChoices = [Choice [] (Fix (ELit () (TInteger 0)))]}]))))
             tInt
             []
 
         succeedInferExpr
-            (Fix (ELet () (BPat () (Fix (PVar () "xs"))) (Fix (EList () [Fix (EAnn (Fix (TCon (Fix (KCon "*")) "Int")) (Fix (ELit () (TInteger 5)))),Fix (ELit () (TInteger 3)),Fix (ELit () (TInteger 3))])) (Fix (EPat () (Fix (EVar () "xs")) [ Clause {clauseTag = (), clausePatterns = Fix (PList () [Fix (PVar () "x")]), clauseChoices = [Choice [] (Fix (EVar () "x"))]} , Clause {clauseTag = (), clausePatterns = Fix (PList () [Fix (PVar () "x"),Fix (PVar () "y")]), clauseChoices = [Choice [] (Fix (EVar () "x"))]} , Clause {clauseTag = (), clausePatterns = Fix (PList () [Fix (PVar () "x"),Fix (PVar () "y"),Fix (PVar () "z")]), clauseChoices = [Choice [] (Fix (EVar () "x"))]} , Clause {clauseTag = (), clausePatterns = Fix (PAny ()), clauseChoices = [Choice [] (Fix (ELit () (TInteger 0)))]} ]))))
+            (Fix (ELet () (BPat () (Fix (PVar () "xs"))) (Fix (EList () [Fix (EAnn (Fix (TCon (Fix (KCon "*")) "int")) (Fix (ELit () (TInteger 5)))),Fix (ELit () (TInteger 3)),Fix (ELit () (TInteger 3))])) (Fix (EPat () (Fix (EVar () "xs")) [ Clause {clauseTag = (), clausePatterns = Fix (PList () [Fix (PVar () "x")]), clauseChoices = [Choice [] (Fix (EVar () "x"))]} , Clause {clauseTag = (), clausePatterns = Fix (PList () [Fix (PVar () "x"),Fix (PVar () "y")]), clauseChoices = [Choice [] (Fix (EVar () "x"))]} , Clause {clauseTag = (), clausePatterns = Fix (PList () [Fix (PVar () "x"),Fix (PVar () "y"),Fix (PVar () "z")]), clauseChoices = [Choice [] (Fix (EVar () "x"))]} , Clause {clauseTag = (), clausePatterns = Fix (PAny ()), clauseChoices = [Choice [] (Fix (ELit () (TInteger 0)))]} ]))))
             tInt
             []
 
@@ -858,7 +858,7 @@ testTypeInference = do
         --  fix map =
         --    f => fun | [[]] => [] | [x :: xs] => f(x) :: map(f, xs)
         --    in
-        --      map(x => x + 1, [1, 2, 3] : List Int)
+        --      map(x => x + 1, [1, 2, 3] : List int)
         succeedInferExpr
             (fixExpr () "map" (lamExpr () [varPat () "f"] (funExpr () [ Clause () [conPat () "[]" []] [ Choice [] (conExpr () "[]" []) ] , Clause () [conPat () "(::)" [varPat () "x", varPat () "xs"]] [ Choice [] (conExpr () "(::)" [ appExpr () [varExpr () "f", varExpr () "x"] , appExpr () [varExpr () "map", varExpr () "f", varExpr () "xs"] ]) ]])) (appExpr () [ varExpr () "map" , lamExpr () [varPat () "x"] (op2Expr () (OAdd ()) (varExpr () "x") (litExpr () (TInteger 1))) , annExpr (tList tInt) (listExpr () [litExpr () (TInteger 1), litExpr () (TInteger 2), litExpr () (TInteger 3)]) ]))
             (tList tInt)
@@ -889,22 +889,22 @@ testTypeInference = do
             tInt
             []
 
-        -- let r = { a = 1 : Int, b = 2 : Int } in r.b
+        -- let r = { a = 1 : Int, b = 2 : int } in r.b
         succeedInferExpr
             (letExpr () (BPat () (varPat () "r")) (recordExpr () (rowExpr () "a" (annExpr tInt (litExpr () (TInt 1))) (rowExpr () "b" (annExpr tInt (litExpr () (TInt 2))) (conExpr () "{}" [])))) (op2Expr () (ODot ()) (varExpr () "b") (varExpr () "r")))
             tInt
             []
 
-        -- let f(x) = x + 1 in f(123 : Int)
+        -- let f(x) = x + 1 in f(123 : int)
         succeedInferExpr
             (letExpr () (BFun () "f" [varPat () "x"]) (op2Expr () (OAdd ()) (varExpr () "x") (litExpr () (TInt 1))) (appExpr () [varExpr () "f", annExpr tInt (litExpr () (TInt 123))]))
             tInt
             []
 
         -- ( fun
-        --     | (True, Some(True))  => 1 : Int
-        --     | (True, Some(False)) => 2
-        --     | (_, _)              => 3 )(True, Some(False))
+        --     | (True, Some(true))  => 1 : int
+        --     | (True, Some(false)) => 2
+        --     | (_, _)              => 3 )(True, Some(false))
         --
         succeedInferExpr
             (appExpr () [ funExpr () [ Clause () [litPat () (TBool True), conPat () "Some" [litPat () (TBool True)]] [ Choice [] (annExpr tInt (litExpr () (TInt 1))) ] , Clause () [litPat () (TBool True), conPat () "Some" [litPat () (TBool False)]] [ Choice [] (litExpr () (TInt 2)) ] , Clause () [anyPat (), anyPat ()] [ Choice [] (litExpr () (TInt 3)) ] ] , litExpr () (TBool True) , conExpr () "Some" [litExpr () (TBool False)] ])
@@ -912,8 +912,8 @@ testTypeInference = do
             []
 
         -- ( fun
-        --     | (True, Some(True))  => 1 : Int
-        --     | (True, Some(False)) => 2 )(True, Some(False))
+        --     | (True, Some(true))  => 1 : int
+        --     | (True, Some(false)) => 2 )(true, Some(false))
         --
         succeedInferExpr
             (appExpr () [ funExpr () [ Clause () [litPat () (TBool True), conPat () "Some" [litPat () (TBool True)]] [ Choice [] (annExpr tInt (litExpr () (TInt 1))) ] , Clause () [litPat () (TBool True), conPat () "Some" [litPat () (TBool False)]] [ Choice [] (litExpr () (TInt 2)) ] ] , litExpr () (TBool True) , conExpr () "Some" [litExpr () (TBool False)] ])
@@ -991,7 +991,7 @@ testPrettyprinters = do
 
         suceedPrintType
             tInt
-            "Int"
+            "int"
 
         suceedPrintType
             (_a `tArr` _b `tArr` _c)
@@ -1003,27 +1003,27 @@ testPrettyprinters = do
 
         suceedPrintType
             (tList tInt `tArr` _b `tArr` _c)
-            "List Int -> b -> c"
+            "List int -> b -> c"
 
         suceedPrintType
             (tList (tList tInt))
-            "List (List Int)"
+            "List (List int)"
 
         suceedPrintType
             (tList (tInt `tArr` _a))
-            "List (Int -> a)"
+            "List (int -> a)"
 
         suceedPrintType
             (tApp kTyp (tApp kFun (tCon kFun2 "C") tInt) tInt)
-            "C Int Int"
+            "C int int"
 
         suceedPrintType
             (tApp kTyp (tApp kFun (tCon kFun2 "C") tInt) tInt `tArr` _a)
-            "C Int Int -> a"
+            "C int int -> a"
 
         suceedPrintType
             (tApp kTyp (tApp kFun (tCon kFun2 "C") (_a `tArr` _a)) tInt `tArr` _a)
-            "C (a -> a) Int -> a"
+            "C (a -> a) int -> a"
 
         suceedPrintType
             (tApp kTyp (tApp kFun (tCon kFun2 "C") (_a `tArr` _a)) (_b `tArr` _b) `tArr` _a)
@@ -1046,8 +1046,8 @@ testPrettyprinters = do
             "{}"
 
         suceedPrintType
-            (tApp kTyp (tApp kTyp (tCon (kArr kTyp (kArr kTyp kTyp)) "(,)") (tCon kTyp "String")) (tCon kTyp "Bool"))
-            "(String, Bool)"
+            (tApp kTyp (tApp kTyp (tCon (kArr kTyp (kArr kTyp kTyp)) "(,)") (tCon kTyp "string")) (tCon kTyp "Bool"))
+            "(string, bool)"
 
     describe "• Kind" $ do
 
@@ -1153,7 +1153,7 @@ testPrettyprinters = do
 
         suceedPrint
             (InClass "Eq" tInt :: Predicate)
-            "Eq Int"
+            "Eq int"
 
     describe "• Expr" $ do
 
@@ -1210,7 +1210,7 @@ testPrettyprinters = do
         describe "• Type declarations" $ do
 
             suceedPrintTypedecl
-                (Sum "List" ["a"] [Mul "A" [Fix (TCon (Fix (KCon "*")) "Int"),Fix (TCon (Fix (KCon "*")) "Bool")]])
+                (Sum "List" ["a"] [Mul "A" [Fix (TCon (Fix (KCon "*")) "int"),Fix (TCon (Fix (KCon "*")) "Bool")]])
                 "type List a = A Int Bool"
 
 -------------------------------------------------------------------------------
@@ -1290,7 +1290,7 @@ testFlight = do
         (Just (Value (TString "d")))
 
     succeedRunExpr
-        (Fix (ELet () (BPat () (Fix (PVar () "xs"))) (Fix (EAnn (Fix (TApp (Fix (KVar "k15")) (Fix (TCon (Fix (KArr (Fix (KCon "*")) (Fix (KCon "*")))) "List")) (Fix (TCon (Fix (KCon "*")) "Int")))) (Fix (EList () [Fix (ELit () (TInteger 1))])))) (Fix (EPat () (Fix (EVar () "xs")) [ Clause {clauseTag = (), clausePatterns = Fix (PCon () "(::)" [Fix (PVar () "x"),Fix (PAny ())]), clauseChoices = [Choice [Fix (EOp2 () (OEq ()) (Fix (EVar () "x")) (Fix (ELit () (TInteger 1))))] (Fix (EVar () "x"))]} , Clause {clauseTag = (), clausePatterns = Fix (PAny ()), clauseChoices = [Choice [] (Fix (ELit () (TInteger 0)))]}]))))
+        (Fix (ELet () (BPat () (Fix (PVar () "xs"))) (Fix (EAnn (Fix (TApp (Fix (KVar "k15")) (Fix (TCon (Fix (KArr (Fix (KCon "*")) (Fix (KCon "*")))) "List")) (Fix (TCon (Fix (KCon "*")) "int")))) (Fix (EList () [Fix (ELit () (TInteger 1))])))) (Fix (EPat () (Fix (EVar () "xs")) [ Clause {clauseTag = (), clausePatterns = Fix (PCon () "(::)" [Fix (PVar () "x"),Fix (PAny ())]), clauseChoices = [Choice [Fix (EOp2 () (OEq ()) (Fix (EVar () "x")) (Fix (ELit () (TInteger 1))))] (Fix (EVar () "x"))]} , Clause {clauseTag = (), clausePatterns = Fix (PAny ()), clauseChoices = [Choice [] (Fix (ELit () (TInteger 0)))]}]))))
         (Just (Value (TInt 1)))
 
     succeedRunExpr
@@ -1302,23 +1302,23 @@ testFlight = do
         (Just (Value (TInt 8)))
 
     succeedRunExpr
-        (Fix (ELet () (BPat () (Fix (PVar () "xs"))) (Fix (EList () [Fix (EAnn (Fix (TCon (Fix (KCon "*")) "Int")) (Fix (ELit () (TInteger 1)))),Fix (ELit () (TInteger 2)),Fix (ELit () (TInteger 3))])) (Fix (EPat () (Fix (EVar () "xs")) [Clause {clauseTag = (), clausePatterns = Fix (POr () (Fix (PList () [Fix (PVar () "x")])) (Fix (POr () (Fix (PList () [Fix (PVar () "x"),Fix (PAny ())])) (Fix (PList () [Fix (PVar () "x"),Fix (PAny ()),Fix (PAny ())]))))), clauseChoices = [Choice [] (Fix (EVar () "x"))]},Clause {clauseTag = (), clausePatterns = Fix (PAny ()), clauseChoices = [Choice [] (Fix (ELit () (TInteger 0)))]}]))))
+        (Fix (ELet () (BPat () (Fix (PVar () "xs"))) (Fix (EList () [Fix (EAnn (Fix (TCon (Fix (KCon "*")) "int")) (Fix (ELit () (TInteger 1)))),Fix (ELit () (TInteger 2)),Fix (ELit () (TInteger 3))])) (Fix (EPat () (Fix (EVar () "xs")) [Clause {clauseTag = (), clausePatterns = Fix (POr () (Fix (PList () [Fix (PVar () "x")])) (Fix (POr () (Fix (PList () [Fix (PVar () "x"),Fix (PAny ())])) (Fix (PList () [Fix (PVar () "x"),Fix (PAny ()),Fix (PAny ())]))))), clauseChoices = [Choice [] (Fix (EVar () "x"))]},Clause {clauseTag = (), clausePatterns = Fix (PAny ()), clauseChoices = [Choice [] (Fix (ELit () (TInteger 0)))]}]))))
         (Just (Value (TInt 1)))
 
     succeedRunExpr
-        (Fix (ELet () (BPat () (Fix (PVar () "xs"))) (Fix (EList () [Fix (EAnn (Fix (TCon (Fix (KCon "*")) "Int")) (Fix (ELit () (TInteger 100)))),Fix (ELit () (TInteger 2)),Fix (ELit () (TInteger 3))])) (Fix (EPat () (Fix (EVar () "xs")) [Clause {clauseTag = (), clausePatterns = Fix (POr () (Fix (PList () [Fix (PVar () "x")])) (Fix (POr () (Fix (PList () [Fix (PVar () "x"),Fix (PAny ())])) (Fix (PList () [Fix (PVar () "x"),Fix (PAny ()),Fix (PAny ())]))))), clauseChoices = [Choice [] (Fix (EVar () "x"))]},Clause {clauseTag = (), clausePatterns = Fix (PAny ()), clauseChoices = [Choice [] (Fix (ELit () (TInteger 0)))]}]))))
+        (Fix (ELet () (BPat () (Fix (PVar () "xs"))) (Fix (EList () [Fix (EAnn (Fix (TCon (Fix (KCon "*")) "int")) (Fix (ELit () (TInteger 100)))),Fix (ELit () (TInteger 2)),Fix (ELit () (TInteger 3))])) (Fix (EPat () (Fix (EVar () "xs")) [Clause {clauseTag = (), clausePatterns = Fix (POr () (Fix (PList () [Fix (PVar () "x")])) (Fix (POr () (Fix (PList () [Fix (PVar () "x"),Fix (PAny ())])) (Fix (PList () [Fix (PVar () "x"),Fix (PAny ()),Fix (PAny ())]))))), clauseChoices = [Choice [] (Fix (EVar () "x"))]},Clause {clauseTag = (), clausePatterns = Fix (PAny ()), clauseChoices = [Choice [] (Fix (ELit () (TInteger 0)))]}]))))
         (Just (Value (TInt 100)))
 
     succeedRunExpr
-        (Fix (ELet () (BPat () (Fix (PVar () "xs"))) (Fix (EList () [Fix (EAnn (Fix (TCon (Fix (KCon "*")) "Int")) (Fix (ELit () (TInteger 100))))])) (Fix (EPat () (Fix (EVar () "xs")) [Clause {clauseTag = (), clausePatterns = Fix (POr () (Fix (PList () [Fix (PVar () "x")])) (Fix (POr () (Fix (PList () [Fix (PVar () "x"),Fix (PAny ())])) (Fix (PList () [Fix (PVar () "x"),Fix (PAny ()),Fix (PAny ())]))))), clauseChoices = [Choice [] (Fix (EVar () "x"))]},Clause {clauseTag = (), clausePatterns = Fix (PAny ()), clauseChoices = [Choice [] (Fix (ELit () (TInteger 0)))]}]))))
+        (Fix (ELet () (BPat () (Fix (PVar () "xs"))) (Fix (EList () [Fix (EAnn (Fix (TCon (Fix (KCon "*")) "int")) (Fix (ELit () (TInteger 100))))])) (Fix (EPat () (Fix (EVar () "xs")) [Clause {clauseTag = (), clausePatterns = Fix (POr () (Fix (PList () [Fix (PVar () "x")])) (Fix (POr () (Fix (PList () [Fix (PVar () "x"),Fix (PAny ())])) (Fix (PList () [Fix (PVar () "x"),Fix (PAny ()),Fix (PAny ())]))))), clauseChoices = [Choice [] (Fix (EVar () "x"))]},Clause {clauseTag = (), clausePatterns = Fix (PAny ()), clauseChoices = [Choice [] (Fix (ELit () (TInteger 0)))]}]))))
         (Just (Value (TInt 100)))
 
     succeedRunExpr
-        (Fix (ELet () (BPat () (Fix (PVar () "xs"))) (Fix (EList () [Fix (EAnn (Fix (TCon (Fix (KCon "*")) "Int")) (Fix (ELit () (TInteger 100)))),Fix (ELit () (TInteger 2)),Fix (ELit () (TInteger 3)),Fix (ELit () (TInteger 4))])) (Fix (EPat () (Fix (EVar () "xs")) [Clause {clauseTag = (), clausePatterns = Fix (POr () (Fix (PList () [Fix (PVar () "x")])) (Fix (POr () (Fix (PList () [Fix (PVar () "x"),Fix (PAny ())])) (Fix (PList () [Fix (PVar () "x"),Fix (PAny ()),Fix (PAny ())]))))), clauseChoices = [Choice [] (Fix (EVar () "x"))]},Clause {clauseTag = (), clausePatterns = Fix (PAny ()), clauseChoices = [Choice [] (Fix (ELit () (TInteger 0)))]}]))))
+        (Fix (ELet () (BPat () (Fix (PVar () "xs"))) (Fix (EList () [Fix (EAnn (Fix (TCon (Fix (KCon "*")) "int")) (Fix (ELit () (TInteger 100)))),Fix (ELit () (TInteger 2)),Fix (ELit () (TInteger 3)),Fix (ELit () (TInteger 4))])) (Fix (EPat () (Fix (EVar () "xs")) [Clause {clauseTag = (), clausePatterns = Fix (POr () (Fix (PList () [Fix (PVar () "x")])) (Fix (POr () (Fix (PList () [Fix (PVar () "x"),Fix (PAny ())])) (Fix (PList () [Fix (PVar () "x"),Fix (PAny ()),Fix (PAny ())]))))), clauseChoices = [Choice [] (Fix (EVar () "x"))]},Clause {clauseTag = (), clausePatterns = Fix (PAny ()), clauseChoices = [Choice [] (Fix (ELit () (TInteger 0)))]}]))))
         (Just (Value (TInt 0)))
 
     succeedRunExpr
-        (Fix (ELet () (BPat () (Fix (PVar () "xs"))) (Fix (EList () [Fix (EAnn (Fix (TCon (Fix (KCon "*")) "Int")) (Fix (ELit () (TInteger 5)))),Fix (ELit () (TInteger 3)),Fix (ELit () (TInteger 3)),Fix (ELit () (TInteger 3))])) (Fix (EPat () (Fix (EVar () "xs")) [ Clause {clauseTag = (), clausePatterns = Fix (PList () [Fix (PVar () "x")]), clauseChoices = [Choice [] (Fix (EVar () "x"))]} , Clause {clauseTag = (), clausePatterns = Fix (PList () [Fix (PVar () "x"),Fix (PVar () "y")]), clauseChoices = [Choice [] (Fix (EVar () "x"))]} , Clause {clauseTag = (), clausePatterns = Fix (PList () [Fix (PVar () "x"),Fix (PVar () "y"),Fix (PVar () "z")]), clauseChoices = [Choice [] (Fix (EVar () "x"))]} , Clause {clauseTag = (), clausePatterns = Fix (PAny ()), clauseChoices = [Choice [] (Fix (ELit () (TInteger 0)))]}]))))
+        (Fix (ELet () (BPat () (Fix (PVar () "xs"))) (Fix (EList () [Fix (EAnn (Fix (TCon (Fix (KCon "*")) "int")) (Fix (ELit () (TInteger 5)))),Fix (ELit () (TInteger 3)),Fix (ELit () (TInteger 3)),Fix (ELit () (TInteger 3))])) (Fix (EPat () (Fix (EVar () "xs")) [ Clause {clauseTag = (), clausePatterns = Fix (PList () [Fix (PVar () "x")]), clauseChoices = [Choice [] (Fix (EVar () "x"))]} , Clause {clauseTag = (), clausePatterns = Fix (PList () [Fix (PVar () "x"),Fix (PVar () "y")]), clauseChoices = [Choice [] (Fix (EVar () "x"))]} , Clause {clauseTag = (), clausePatterns = Fix (PList () [Fix (PVar () "x"),Fix (PVar () "y"),Fix (PVar () "z")]), clauseChoices = [Choice [] (Fix (EVar () "x"))]} , Clause {clauseTag = (), clausePatterns = Fix (PAny ()), clauseChoices = [Choice [] (Fix (ELit () (TInteger 0)))]}]))))
         (Just (Value (TInt 0)))
 
     succeedRunExpr
@@ -1460,13 +1460,17 @@ testParse = do
             "type List a = Nil | Cons a (List a)"
             (Sum "List" ["a"] [ Mul "Nil" [] , Mul "Cons" [tVar kTyp "a", tApp kTyp (tCon kFun "List") (tVar kTyp "a")]])
 
-        succeedParse typedeclParser
-            "type User = User { name : String }"
-            (Sum "User" [] [ Mul "User" [ tRecord (tRow "name" tString tRowNil) ] ])
+        succeedParse typeParser
+            "{ name : string }"
+            (tRecord (tRow "name" tString tRowNil))
 
-        succeedParse typedeclParser
-            "type User a = User { name : String | a }"
-            (Sum "User" ["a"] [ Mul "User" [ tRecord (tRow "name" tString (tVar kRow "a")) ] ])
+--        succeedParse typedeclParser
+--            "type User = User { name : string }"
+--            (Sum "User" [] [ Mul "User" [ tRecord (tRow "name" tString tRowNil) ] ])
+--
+--        succeedParse typedeclParser
+--            "type User a = User { name : string | a }"
+--            (Sum "User" ["a"] [ Mul "User" [ tRecord (tRow "name" tString (tVar kRow "a")) ] ])
 
     describe "• Prim" $ do
 
@@ -1493,19 +1497,19 @@ testParse = do
     describe "• Type" $ do
 
         succeedParseType typeParser
-            "Int"
+            "int"
             tInt
 
         succeedParseType typeParser
-            "Int -> Int"
+            "int -> int"
             (tInt `tArr` tInt)
 
         succeedParseType typeParser
-            "List Int"
+            "List int"
             (tList tInt)
 
         succeedParseType typeParser
-            "List (List Int)"
+            "List (List int)"
             (tApp kTyp (tCon (kArr kTyp kTyp) "List") (tApp kTyp (tCon (kArr kTyp kTyp) "List") tInt))
 
         succeedParseType typeParser
@@ -1517,499 +1521,499 @@ testParse = do
             (tApp kTyp (tVar (kArr kTyp kTyp) "m") (tVar kTyp "a"))
 
         succeedParseType typeParser
-            "List Int -> a"
+            "List int -> a"
             (tApp kTyp (tCon (kArr kTyp kTyp) "List") tInt `tArr` tVar kTyp "a")
 
         succeedParseType typeParser
             "A B C"
             (tApp kTyp (tApp (kArr kTyp kTyp) (tCon (kArr kTyp (kArr kTyp kTyp)) "A") (tCon kTyp "B")) (tCon kTyp "C") :: Type)
 
-        succeedParseType typeParser
-            "A b c"
-            (tApp kTyp (tApp (kArr kTyp kTyp) (tCon (kArr kTyp (kArr kTyp kTyp)) "A") (tVar kTyp "b")) (tVar kTyp "c") :: Type)
-
-        succeedParseType typeParser
-            "A (B C) D"
-            (tApp kTyp (tApp (kArr kTyp kTyp) (tCon (kArr kTyp (kArr kTyp kTyp)) "A") (tApp kTyp (tCon (kArr kTyp kTyp) "B") (tCon kTyp "C"))) (tCon kTyp "D") :: Type)
-
-        describe "• Tuples" $ do
-
-            succeedParseType typeParser
-                "(Int, Int)"
-                (tTuple [tInt, tInt])
-
-            succeedParseType typeParser
-                "(Int, a)"
-                (tTuple [tInt, tVar kTyp "a"])
-
-        describe "• Records" $ do
-
-            succeedParseType typeParser
-                "{ a : Int }"
-                (tRecord (tRow "a" tInt tRowNil))
-
-            succeedParseType typeParser
-                "{ a : Int, b : a }"
-                (tRecord (tRow "a" tInt (tRow "b" (tVar kTyp "a") tRowNil)))
-
-            succeedParseType typeParser
-                "{ a : Int, b : a | c }"
-                (tRecord (tRow "a" tInt (tRow "b" (tVar kTyp "a") (tVar kRow "c"))))
-
-            succeedParseType typeParser
-                "{}"
-                (tRecord tRowNil)
-
-    describe "• Pattern" $ do
-
-        succeedParse annPatternParser
-            "x"
-            (varPat () "x")
-
-        succeedParse annPatternParser
-            "5"
-            (litPat () (TInteger 5))
-
-        succeedParse annPatternParser
-            "Some(x)"
-            (conPat () "Some" [varPat () "x"])
-
-        succeedParse annPatternParser
-            "None"
-            (conPat () "None" [])
-
-        succeedParse annPatternParser
-            "_"
-            (anyPat ())
-
-        succeedParse annPatternParser
-            "(4, 3)"
-            (tuplePat () [litPat () (TInteger 4), litPat () (TInteger 3)])
-
-        succeedParse annPatternParser
-            "x or 5"
-            (orPat () (varPat () "x") (litPat () (TInteger 5)))
-
-        succeedParse annPatternParser
-            "{ x = 5 }"
-            (recordPat () (rowPat () "x" (litPat () (TInteger 5)) (conPat () "{}" [])))
-
-        succeedParse annPatternParser
-            "{ x = 5 } as y"
-            (asPat () "y" (recordPat () (rowPat () "x" (litPat () (TInteger 5)) (conPat () "{}" []))))
-
-        succeedParse annPatternParser
-            "{}"
-            (recordPat () (conPat () "{}" []))
-
-        succeedParse annPatternParser
-            "[1, 2]"
-            (listPat () [litPat () (TInteger 1), litPat () (TInteger 2)])
-
-        succeedParse annPatternParser
-            "[]"
-            (conPat () "[]" [])
-
-        succeedParse annPatternParser
-            "x : Int"
-            (annPat tInt (varPat () "x"))
-
-        succeedParse annPatternParser
-            "5 : Int"
-            (annPat tInt (litPat () (TInteger 5)))
-
-        succeedParse annPatternParser
-            "_ : Int"
-            (annPat tInt (anyPat ()))
-
-        succeedParse annPatternParser
-            "(4, 3) : Int"
-            (annPat tInt (tuplePat () [litPat () (TInteger 4), litPat () (TInteger 3)]))
-
-        succeedParse annPatternParser
-            "(x or 5) : Int"
-            (annPat tInt (orPat () (varPat () "x") (litPat () (TInteger 5))))
-
-        succeedParse annPatternParser
-            "x or 5 : Int"
-            (annPat tInt (orPat () (varPat () "x") (litPat () (TInteger 5))))
-
-        succeedParse annPatternParser
-            "(x or 5 : Int)"
-            (annPat tInt (orPat () (varPat () "x") (litPat () (TInteger 5))))
-
-        succeedParse annPatternParser
-            "((x or 5 : Int))"
-            (annPat tInt (orPat () (varPat () "x") (litPat () (TInteger 5))))
-
-        succeedParse annPatternParser
-            "_ as x : Int"
-            (annPat tInt (asPat () "x" (anyPat ())))
-
-        succeedParse annPatternParser
-            "((_ as x : Int))"
-            (annPat tInt (asPat () "x" (anyPat ())))
-
-    describe "• Expr" $ do
-
-        succeedParse annExprParser
-            "x"
-            (varExpr () "x")
-
-        succeedParse annExprParser
-            "Some(x)"
-            (conExpr () "Some" [varExpr () "x"])
-
-        succeedParse annExprParser
-            "None"
-            (conExpr () "None" [])
-
-        succeedParse annExprParser
-            "(4, 3)"
-            (tupleExpr () [litExpr () (TInteger 4), litExpr () (TInteger 3)])
-
-        succeedParse annExprParser
-            "((4, 3))"
-            (tupleExpr () [litExpr () (TInteger 4), litExpr () (TInteger 3)])
-
-        succeedParse annExprParser
-            "(((4, 3)))"
-            (tupleExpr () [litExpr () (TInteger 4), litExpr () (TInteger 3)])
-
-        succeedParse annExprParser
-            "((((4, 3))))"
-            (tupleExpr () [litExpr () (TInteger 4), litExpr () (TInteger 3)])
-
-        succeedParse annExprParser
-            "(1, 3, 4)"
-            (tupleExpr () [litExpr () (TInteger 1), litExpr () (TInteger 3), litExpr () (TInteger 4)])
-
-        succeedParse annExprParser
-            "if (4, 3) then (1, 3, 4) else (5, 6, 7)"
-            (ifExpr ()
-                (tupleExpr () [litExpr () (TInteger 4), litExpr () (TInteger 3)])
-                (tupleExpr () [litExpr () (TInteger 1), litExpr () (TInteger 3), litExpr () (TInteger 4)])
-                (tupleExpr () [litExpr () (TInteger 5), litExpr () (TInteger 6), litExpr () (TInteger 7)]))
-
-        succeedParse annExprParser
-            "fn(1, 3, 4)"
-            (appExpr () [varExpr () "fn", litExpr () (TInteger 1), litExpr () (TInteger 3), litExpr () (TInteger 4)])
-
-        succeedParse annExprParser
-            "fn (1, 3, 4)"
-            (appExpr () [varExpr () "fn", litExpr () (TInteger 1), litExpr () (TInteger 3), litExpr () (TInteger 4)])
-
-        succeedParse annExprParser
-            "fn(x, 3, 4)"
-            (appExpr () [varExpr () "fn", varExpr () "x", litExpr () (TInteger 3), litExpr () (TInteger 4)])
-
-        succeedParse annExprParser
-            "(fn)(x, 3, 4)"
-            (appExpr () [varExpr () "fn", varExpr () "x", litExpr () (TInteger 3), litExpr () (TInteger 4)])
-
-        succeedParse annExprParser
-            "(fn(x))(y)"
-            (appExpr () [appExpr () [varExpr () "fn", varExpr () "x"], varExpr () "y"])
-
-        succeedParse annExprParser
-            "((fn(x))(y))"
-            (appExpr () [appExpr () [varExpr () "fn", varExpr () "x"], varExpr () "y"])
-
-        succeedParse annExprParser
-            "[1,2,3]"
-            (listExpr () [litExpr () (TInteger 1), litExpr () (TInteger 2), litExpr () (TInteger 3)])
-
-        succeedParse annExprParser
-            "let x = (1, 2) in z"
-            (letExpr () (BPat () (varPat () "x")) (tupleExpr () [litExpr () (TInteger 1), litExpr () (TInteger 2)]) (varExpr () "z"))
-
-        succeedParse annExprParser
-            "let f(x) = (1, 2) in z"
-            (letExpr () (BFun () "f" [varPat () "x"]) (tupleExpr () [litExpr () (TInteger 1), litExpr () (TInteger 2)]) (varExpr () "z"))
-
-        succeedParse annExprParser
-            "{ x = 5 }"
-            (recordExpr () (rowExpr () "x" (litExpr () (TInteger 5)) (conExpr () "{}" [])))
-
-        succeedParse annExprParser
-            "{ x = { y = 5 } }"
-            (recordExpr () (rowExpr () "x" (recordExpr () (rowExpr () "y" (litExpr () (TInteger 5)) (conExpr () "{}" []))) (conExpr () "{}" [])))
-
-        succeedParse annExprParser
-            "(x) => x"
-            (lamExpr () [varPat () "x"] (varExpr () "x"))
-
-        succeedParse annExprParser
-            "x => x"
-            (lamExpr () [varPat () "x"] (varExpr () "x"))
-
-        succeedParse annExprParser
-            "(x) => { x = 5 }"
-            (lamExpr () [varPat () "x"] (recordExpr () (rowExpr () "x" (litExpr () (TInteger 5)) (conExpr () "{}" []))))
-
-        succeedParse annExprParser
-            "x => { x = 5 }"
-            (lamExpr () [varPat () "x"] (recordExpr () (rowExpr () "x" (litExpr () (TInteger 5)) (conExpr () "{}" []))))
-
-        succeedParse annExprParser
-            "(x => { x = 5 })"
-            (lamExpr () [varPat () "x"] (recordExpr () (rowExpr () "x" (litExpr () (TInteger 5)) (conExpr () "{}" []))))
-
-        succeedParse annExprParser
-            "((x => { x = 5 }))"
-            (lamExpr () [varPat () "x"] (recordExpr () (rowExpr () "x" (litExpr () (TInteger 5)) (conExpr () "{}" []))))
-
-        succeedParse annExprParser
-            "((x) => { x = 5 })"
-            (lamExpr () [varPat () "x"] (recordExpr () (rowExpr () "x" (litExpr () (TInteger 5)) (conExpr () "{}" []))))
-
-        succeedParse annExprParser
-            "((x) => ({ x = 5 }))"
-            (lamExpr () [varPat () "x"] (recordExpr () (rowExpr () "x" (litExpr () (TInteger 5)) (conExpr () "{}" []))))
-
-        succeedParse annExprParser
-            "(x) => x + 1"
-            (lamExpr () [varPat () "x"] (op2Expr () (OAdd ()) (varExpr () "x") (litExpr () (TInteger 1))))
-
-        succeedParse annExprParser
-            "((x) => x + 1)(5)"
-            (appExpr ()
-                [ lamExpr () [varPat () "x"] (op2Expr () (OAdd ()) (varExpr () "x") (litExpr () (TInteger 1)))
-                , litExpr () (TInteger 5) ])
-
-        succeedParse annExprParser
-            "Some(x) => x + 1"
-            (lamExpr () [conPat () "Some" [varPat () "x"]] (op2Expr () (OAdd ()) (varExpr () "x") (litExpr () (TInteger 1))))
-
-        succeedParse annExprParser
-            "(Some(x) => x + 1)"
-            (lamExpr () [conPat () "Some" [varPat () "x"]] (op2Expr () (OAdd ()) (varExpr () "x") (litExpr () (TInteger 1))))
-
-        succeedParse annExprParser
-            "() => ()"
-            (lamExpr () [litPat () TUnit] (litExpr () TUnit))
-
-        succeedParse annExprParser
-            "let f = (x) => x + 1 in y"
-            (letExpr () (BPat () (varPat () "f")) (lamExpr () [varPat () "x"] (op2Expr () (OAdd ()) (varExpr () "x") (litExpr () (TInteger 1)))) (varExpr () "y"))
-
-        succeedParse annExprParser
-            "let f = x => x + 1 in y"
-            (letExpr () (BPat () (varPat () "f")) (lamExpr () [varPat () "x"] (op2Expr () (OAdd ()) (varExpr () "x") (litExpr () (TInteger 1)))) (varExpr () "y"))
-
-        succeedParse annExprParser
-            "let withDefault | Some(y) => y | None => 0 in Some(3)"
-            (letExpr () (BPat () (varPat () "withDefault")) (funExpr () [ Clause () [conPat () "Some" [varPat () "y"]] [Choice [] (varExpr () "y")] , Clause () [conPat () "None" []] [Choice [] (litExpr () (TInteger 0))] ]) (conExpr () "Some" [litExpr () (TInteger 3)]))
-
-        succeedParse annExprParser
-            "let withDefault(val) | Some(y) => y | None => val in Some(3)"
-            (letExpr () (BFun () "withDefault" [varPat () "val"]) (funExpr () [ Clause () [conPat () "Some" [varPat () "y"]] [Choice [] (varExpr () "y")] , Clause () [conPat () "None" []] [Choice [] (varExpr () "val")] ]) (conExpr () "Some" [litExpr () (TInteger 3)]))
-
-        succeedParse annExprParser
-            "{ a = true | b }"
-            (recordExpr () (rowExpr () "a" (litExpr () (TBool True)) (varExpr () "b")))
-
-        succeedParse annExprParser
-            "{}"
-            (recordExpr () (conExpr () "{}" []))
-
-        succeedParse annExprParser
-            "(x, y) => x"
-            (lamExpr () [varPat () "x", varPat () "y"] (varExpr () "x"))
-
-        succeedParse annExprParser
-            "((x, y)) => x"
-            (lamExpr () [tuplePat () [varPat () "x", varPat () "y"]] (varExpr () "x"))
-
-        succeedParse annExprParser
-            "(((x, y))) => x"
-            (lamExpr () [tuplePat () [varPat () "x", varPat () "y"]] (varExpr () "x"))
-
-        succeedParse annExprParser
-            "[1, 2]"
-            (listExpr () [litExpr () (TInteger 1), litExpr () (TInteger 2)])
-
-        succeedParse annExprParser
-            "[]"
-            (conExpr () "[]" [])
-
-        succeedParse annExprParser
-            "[  ]"
-            (conExpr () "[]" [])
-
-        succeedParse annExprParser
-            "let f() = () in f()"
-            (letExpr () (BFun () "f" [litPat () TUnit]) (litExpr () TUnit) (appExpr () [varExpr () "f", litExpr () TUnit]))
-
-        succeedParse annExprParser
-            "length(xs) <= 3"
-            (op2Expr () (OLte ()) (appExpr () [varExpr () "length", varExpr () "xs"]) (litExpr () (TInteger 3)))
-
-        succeedParse annExprParser
-            "(length(xs) <= 3)"
-            (op2Expr () (OLte ()) (appExpr () [varExpr () "length", varExpr () "xs"]) (litExpr () (TInteger 3)))
-
-        succeedParse annExprParser
-            "((length(xs) <= 3))"
-            (op2Expr () (OLte ()) (appExpr () [varExpr () "length", varExpr () "xs"]) (litExpr () (TInteger 3)))
-
-        succeedParse annExprParser
-            "add(5, _)"
-            (appExpr () [varExpr () "add", litExpr () (TInteger 5), holeExpr ()])
-
-        succeedParse annExprParser
-            "add(5, _ : Int)"
-            (appExpr () [varExpr () "add", litExpr () (TInteger 5), annExpr tInt (holeExpr ())])
-
-        succeedParse annExprParser
-            "r.a + 100"
-            (op2Expr () (OAdd ()) (op2Expr () (ODot ()) (varExpr () "a") (varExpr () "r")) (litExpr () (TInteger 100)))
-
-        succeedParse annExprParser
-            "5 + _"
-            (op2Expr () (OAdd ()) (litExpr () (TInteger 5)) (holeExpr ()))
-
-        succeedParse annExprParser
-            "_ + _"
-            (op2Expr () (OAdd ()) (holeExpr ()) (holeExpr ()))
-
-        failParse annExprParser "!5"
-
-        succeedParse annExprParser
-            "4.5"
-            (litExpr () (TDouble 4.5))
-
-        succeedParse annExprParser
-            "4"
-            (litExpr () (TInteger 4))
-
-        succeedParse annExprParser
-            "4 : Int"
-            (annExpr tInt (litExpr () (TInteger 4)))
-
-        succeedParse annExprParser
-            "(4 : Int)"
-            (annExpr tInt (litExpr () (TInteger 4)))
-
-        succeedParse annExprParser
-            "(4)"
-            (litExpr () (TInteger 4))
-
-        succeedParse annExprParser
-            "((4))"
-            (litExpr () (TInteger 4))
-
-        succeedParse annExprParser
-            "((4) : Int)"
-            (annExpr tInt (litExpr () (TInteger 4)))
-
-        succeedParse annExprParser
-            "(4) : Int"
-            (annExpr tInt (litExpr () (TInteger 4)))
-
-        succeedParse annExprParser
-            "((4, 3) : Int)"
-            (annExpr tInt (tupleExpr () [litExpr () (TInteger 4), litExpr () (TInteger 3)]))
-
-        succeedParse annExprParser
-            "(((4, 3)))"
-            (tupleExpr () [litExpr () (TInteger 4), litExpr () (TInteger 3)])
-
-        succeedParse annExprParser
-            "((((4, 3))))"
-            (tupleExpr () [litExpr () (TInteger 4), litExpr () (TInteger 3)])
-
-        failParse annExprParser
-            "((((4, 3)]]]"
-
-        succeedParse annExprParser
-            "(((4, 3) : Int))"
-            (annExpr tInt (tupleExpr () [litExpr () (TInteger 4), litExpr () (TInteger 3)]))
-
-        succeedParse annExprParser
-            "(4, 3) : Int"
-            (annExpr tInt (tupleExpr () [litExpr () (TInteger 4), litExpr () (TInteger 3)]))
-
-        succeedParse annExprParser
-            "if (4, 3) : Int then (1, 3, 4) else (5, 6, 7)"
-            (ifExpr ()
-                (annExpr tInt (tupleExpr () [litExpr () (TInteger 4), litExpr () (TInteger 3)]))
-                (tupleExpr () [litExpr () (TInteger 1), litExpr () (TInteger 3), litExpr () (TInteger 4)])
-                (tupleExpr () [litExpr () (TInteger 5), litExpr () (TInteger 6), litExpr () (TInteger 7)]))
-
-        succeedParse annExprParser
-            "(if (4, 3) : Int then (1, 3, 4) else (5, 6, 7)) : Int"
-            (annExpr tInt (ifExpr ()
-                (annExpr tInt (tupleExpr () [litExpr () (TInteger 4), litExpr () (TInteger 3)]))
-                (tupleExpr () [litExpr () (TInteger 1), litExpr () (TInteger 3), litExpr () (TInteger 4)])
-                (tupleExpr () [litExpr () (TInteger 5), litExpr () (TInteger 6), litExpr () (TInteger 7)])))
-
-        succeedParse annExprParser
-            "fn(1 : Int, 3, 4)"
-            (appExpr () [varExpr () "fn", annExpr tInt (litExpr () (TInteger 1)), litExpr () (TInteger 3), litExpr () (TInteger 4)])
-
-        succeedParse annExprParser
-            "fn(1 : Int, 3, 4) : Int"
-            (annExpr tInt (appExpr () [varExpr () "fn", annExpr tInt (litExpr () (TInteger 1)), litExpr () (TInteger 3), litExpr () (TInteger 4)]))
-
-        succeedParse annExprParser
-            "fn(x : Int, 3, 4)"
-            (appExpr () [varExpr () "fn", annExpr tInt (varExpr () "x"), litExpr () (TInteger 3), litExpr () (TInteger 4)])
-
-        succeedParse annExprParser
-            "((fn(x))(y))"
-            (appExpr () [appExpr () [varExpr () "fn", varExpr () "x"], varExpr () "y"])
-
-        succeedParse exprParser
-            "[1 : Int, 2, 3]"
-            (listExpr () [annExpr tInt (litExpr () (TInteger 1)), litExpr () (TInteger 2), litExpr () (TInteger 3)])
-
-        succeedParse exprParser
-            "let x = (1, 2) : Int in z"
-            (letExpr () (BPat () (varPat () "x")) (annExpr tInt (tupleExpr () [litExpr () (TInteger 1), litExpr () (TInteger 2)])) (varExpr () "z"))
-
-        succeedParse exprParser
-            "let x = (1, 2) : Int in z : Int"
-            (letExpr () (BPat () (varPat () "x")) (annExpr tInt (tupleExpr () [litExpr () (TInteger 1), litExpr () (TInteger 2)])) (annExpr tInt (varExpr () "z")))
-
-        succeedParse annExprParser
-            "(let x = (1, 2) : Int in z : Int) : Int"
-            (annExpr tInt (letExpr () (BPat () (varPat () "x")) (annExpr tInt (tupleExpr () [litExpr () (TInteger 1), litExpr () (TInteger 2)])) (annExpr tInt (varExpr () "z"))))
-
-        succeedParse annExprParser
-            "{ x = 5 : Int }"
-            (recordExpr () (rowExpr () "x" (annExpr tInt (litExpr () (TInteger 5))) (conExpr () "{}" [])))
-
-        succeedParse annExprParser
-            "(x : Int) => x + 1"
-            (lamExpr () [annPat tInt (varPat () "x")] (op2Expr () (OAdd ()) (varExpr () "x") (litExpr () (TInteger 1))))
-
-        succeedParse annExprParser
-            "x : Int => x + 1"
-            (lamExpr () [annPat tInt (varPat () "x")] (op2Expr () (OAdd ()) (varExpr () "x") (litExpr () (TInteger 1))))
-
-        succeedParse annExprParser
-            "Some(x) => x + 1 | None => 0"
-            (funExpr () [ Clause () [conPat () "Some" [varPat () "x"]] [Choice [] (op2Expr () (OAdd ()) (varExpr () "x") (litExpr () (TInteger 1)))] , Clause () [conPat () "None" []] [Choice [] (litExpr () (TInteger 0))] ])
-
-        succeedParse annExprParser
-            "match (x, y) with | (1, x) when(x /= 0) => x, otherwise => 0 | _ => 100"
-            (patExpr () (tupleExpr () [varExpr () "x", varExpr () "y"]) [ Clause () (tuplePat () [litPat () (TInteger 1), varPat () "x"]) [Choice [op2Expr () (ONeq ()) (varExpr () "x") (litExpr () (TInteger 0))] (varExpr () "x"), Choice [] (litExpr () (TInteger 0))] , Clause () (anyPat ()) [Choice [] (litExpr () (TInteger 100))] ])
-
-        succeedParse annExprParser
-            "{ foo = x => \"Hello\" }.foo(false) }"
-            (appExpr () [op2Expr () (ODot  ()) (varExpr () "foo") (recordExpr () (rowExpr () "foo" (lamExpr () [varPat () "x"] (litExpr () (TString "Hello"))) (conExpr () "{}" []))), litExpr () (TBool False)])
-
-    describe "• Topdecl" $ do
-
-        succeedParse topdeclParser
-            "f(x, y) = x"
-            (Top () (BFun () "f" [varPat () "x", varPat () "y"]) (varExpr () "x"))
-
-        succeedParse topdeclParser
-            "foo = 5"
-            (Top () (BPat () (varPat () "foo")) (litExpr () (TInteger 5)))
-
-        succeedParse topdeclParser
-            "f | (5, y) => y | _ => x"
-            (Top () (BPat () (varPat () "f")) (funExpr () [ Clause () [litPat () (TInteger 5), varPat () "y"] [Choice [] (varExpr () "y")], Clause () [anyPat ()] [Choice [] (varExpr () "x")]]))
+--        succeedParseType typeParser
+--            "A b c"
+--            (tApp kTyp (tApp (kArr kTyp kTyp) (tCon (kArr kTyp (kArr kTyp kTyp)) "A") (tVar kTyp "b")) (tVar kTyp "c") :: Type)
+--
+--        succeedParseType typeParser
+--            "A (B C) D"
+--            (tApp kTyp (tApp (kArr kTyp kTyp) (tCon (kArr kTyp (kArr kTyp kTyp)) "A") (tApp kTyp (tCon (kArr kTyp kTyp) "B") (tCon kTyp "C"))) (tCon kTyp "D") :: Type)
+--
+--        describe "• Tuples" $ do
+--
+--            succeedParseType typeParser
+--                "(int, int)"
+--                (tTuple [tInt, tInt])
+--
+--            succeedParseType typeParser
+--                "(int, a)"
+--                (tTuple [tInt, tVar kTyp "a"])
+--
+--        describe "• Records" $ do
+--
+--            succeedParseType typeParser
+--                "{ a : int }"
+--                (tRecord (tRow "a" tInt tRowNil))
+--
+--            succeedParseType typeParser
+--                "{ a : int, b : a }"
+--                (tRecord (tRow "a" tInt (tRow "b" (tVar kTyp "a") tRowNil)))
+--
+--            succeedParseType typeParser
+--                "{ a : int, b : a | c }"
+--                (tRecord (tRow "a" tInt (tRow "b" (tVar kTyp "a") (tVar kRow "c"))))
+--
+--            succeedParseType typeParser
+--                "{}"
+--                (tRecord tRowNil)
+--
+--    describe "• Pattern" $ do
+--
+--        succeedParse annPatternParser
+--            "x"
+--            (varPat () "x")
+--
+--        succeedParse annPatternParser
+--            "5"
+--            (litPat () (TInteger 5))
+--
+--        succeedParse annPatternParser
+--            "Some(x)"
+--            (conPat () "Some" [varPat () "x"])
+--
+--        succeedParse annPatternParser
+--            "None"
+--            (conPat () "None" [])
+--
+--        succeedParse annPatternParser
+--            "_"
+--            (anyPat ())
+--
+--        succeedParse annPatternParser
+--            "(4, 3)"
+--            (tuplePat () [litPat () (TInteger 4), litPat () (TInteger 3)])
+--
+--        succeedParse annPatternParser
+--            "x or 5"
+--            (orPat () (varPat () "x") (litPat () (TInteger 5)))
+--
+--        succeedParse annPatternParser
+--            "{ x = 5 }"
+--            (recordPat () (rowPat () "x" (litPat () (TInteger 5)) (conPat () "{}" [])))
+--
+--        succeedParse annPatternParser
+--            "{ x = 5 } as y"
+--            (asPat () "y" (recordPat () (rowPat () "x" (litPat () (TInteger 5)) (conPat () "{}" []))))
+--
+--        succeedParse annPatternParser
+--            "{}"
+--            (recordPat () (conPat () "{}" []))
+--
+--        succeedParse annPatternParser
+--            "[1, 2]"
+--            (listPat () [litPat () (TInteger 1), litPat () (TInteger 2)])
+--
+--        succeedParse annPatternParser
+--            "[]"
+--            (conPat () "[]" [])
+--
+--        succeedParse annPatternParser
+--            "x : int"
+--            (annPat tInt (varPat () "x"))
+--
+--        succeedParse annPatternParser
+--            "5 : int"
+--            (annPat tInt (litPat () (TInteger 5)))
+--
+--        succeedParse annPatternParser
+--            "_ : int"
+--            (annPat tInt (anyPat ()))
+--
+--        succeedParse annPatternParser
+--            "(4, 3) : int"
+--            (annPat tInt (tuplePat () [litPat () (TInteger 4), litPat () (TInteger 3)]))
+--
+--        succeedParse annPatternParser
+--            "(x or 5) : int"
+--            (annPat tInt (orPat () (varPat () "x") (litPat () (TInteger 5))))
+--
+--        succeedParse annPatternParser
+--            "x or 5 : int"
+--            (annPat tInt (orPat () (varPat () "x") (litPat () (TInteger 5))))
+--
+--        succeedParse annPatternParser
+--            "(x or 5 : int)"
+--            (annPat tInt (orPat () (varPat () "x") (litPat () (TInteger 5))))
+--
+--        succeedParse annPatternParser
+--            "((x or 5 : int))"
+--            (annPat tInt (orPat () (varPat () "x") (litPat () (TInteger 5))))
+--
+--        succeedParse annPatternParser
+--            "_ as x : int"
+--            (annPat tInt (asPat () "x" (anyPat ())))
+--
+--        succeedParse annPatternParser
+--            "((_ as x : int))"
+--            (annPat tInt (asPat () "x" (anyPat ())))
+--
+--    describe "• Expr" $ do
+--
+--        succeedParse annExprParser
+--            "x"
+--            (varExpr () "x")
+--
+--        succeedParse annExprParser
+--            "Some(x)"
+--            (conExpr () "Some" [varExpr () "x"])
+--
+--        succeedParse annExprParser
+--            "None"
+--            (conExpr () "None" [])
+--
+--        succeedParse annExprParser
+--            "(4, 3)"
+--            (tupleExpr () [litExpr () (TInteger 4), litExpr () (TInteger 3)])
+--
+--        succeedParse annExprParser
+--            "((4, 3))"
+--            (tupleExpr () [litExpr () (TInteger 4), litExpr () (TInteger 3)])
+--
+--        succeedParse annExprParser
+--            "(((4, 3)))"
+--            (tupleExpr () [litExpr () (TInteger 4), litExpr () (TInteger 3)])
+--
+--        succeedParse annExprParser
+--            "((((4, 3))))"
+--            (tupleExpr () [litExpr () (TInteger 4), litExpr () (TInteger 3)])
+--
+--        succeedParse annExprParser
+--            "(1, 3, 4)"
+--            (tupleExpr () [litExpr () (TInteger 1), litExpr () (TInteger 3), litExpr () (TInteger 4)])
+--
+--        succeedParse annExprParser
+--            "if (4, 3) then (1, 3, 4) else (5, 6, 7)"
+--            (ifExpr ()
+--                (tupleExpr () [litExpr () (TInteger 4), litExpr () (TInteger 3)])
+--                (tupleExpr () [litExpr () (TInteger 1), litExpr () (TInteger 3), litExpr () (TInteger 4)])
+--                (tupleExpr () [litExpr () (TInteger 5), litExpr () (TInteger 6), litExpr () (TInteger 7)]))
+--
+--        succeedParse annExprParser
+--            "fn(1, 3, 4)"
+--            (appExpr () [varExpr () "fn", litExpr () (TInteger 1), litExpr () (TInteger 3), litExpr () (TInteger 4)])
+--
+--        succeedParse annExprParser
+--            "fn (1, 3, 4)"
+--            (appExpr () [varExpr () "fn", litExpr () (TInteger 1), litExpr () (TInteger 3), litExpr () (TInteger 4)])
+--
+--        succeedParse annExprParser
+--            "fn(x, 3, 4)"
+--            (appExpr () [varExpr () "fn", varExpr () "x", litExpr () (TInteger 3), litExpr () (TInteger 4)])
+--
+--        succeedParse annExprParser
+--            "(fn)(x, 3, 4)"
+--            (appExpr () [varExpr () "fn", varExpr () "x", litExpr () (TInteger 3), litExpr () (TInteger 4)])
+--
+--        succeedParse annExprParser
+--            "(fn(x))(y)"
+--            (appExpr () [appExpr () [varExpr () "fn", varExpr () "x"], varExpr () "y"])
+--
+--        succeedParse annExprParser
+--            "((fn(x))(y))"
+--            (appExpr () [appExpr () [varExpr () "fn", varExpr () "x"], varExpr () "y"])
+--
+--        succeedParse annExprParser
+--            "[1,2,3]"
+--            (listExpr () [litExpr () (TInteger 1), litExpr () (TInteger 2), litExpr () (TInteger 3)])
+--
+--        succeedParse annExprParser
+--            "let x = (1, 2) in z"
+--            (letExpr () (BPat () (varPat () "x")) (tupleExpr () [litExpr () (TInteger 1), litExpr () (TInteger 2)]) (varExpr () "z"))
+--
+--        succeedParse annExprParser
+--            "let f(x) = (1, 2) in z"
+--            (letExpr () (BFun () "f" [varPat () "x"]) (tupleExpr () [litExpr () (TInteger 1), litExpr () (TInteger 2)]) (varExpr () "z"))
+--
+--        succeedParse annExprParser
+--            "{ x = 5 }"
+--            (recordExpr () (rowExpr () "x" (litExpr () (TInteger 5)) (conExpr () "{}" [])))
+--
+--        succeedParse annExprParser
+--            "{ x = { y = 5 } }"
+--            (recordExpr () (rowExpr () "x" (recordExpr () (rowExpr () "y" (litExpr () (TInteger 5)) (conExpr () "{}" []))) (conExpr () "{}" [])))
+--
+--        succeedParse annExprParser
+--            "(x) => x"
+--            (lamExpr () [varPat () "x"] (varExpr () "x"))
+--
+--        succeedParse annExprParser
+--            "x => x"
+--            (lamExpr () [varPat () "x"] (varExpr () "x"))
+--
+--        succeedParse annExprParser
+--            "(x) => { x = 5 }"
+--            (lamExpr () [varPat () "x"] (recordExpr () (rowExpr () "x" (litExpr () (TInteger 5)) (conExpr () "{}" []))))
+--
+--        succeedParse annExprParser
+--            "x => { x = 5 }"
+--            (lamExpr () [varPat () "x"] (recordExpr () (rowExpr () "x" (litExpr () (TInteger 5)) (conExpr () "{}" []))))
+--
+--        succeedParse annExprParser
+--            "(x => { x = 5 })"
+--            (lamExpr () [varPat () "x"] (recordExpr () (rowExpr () "x" (litExpr () (TInteger 5)) (conExpr () "{}" []))))
+--
+--        succeedParse annExprParser
+--            "((x => { x = 5 }))"
+--            (lamExpr () [varPat () "x"] (recordExpr () (rowExpr () "x" (litExpr () (TInteger 5)) (conExpr () "{}" []))))
+--
+--        succeedParse annExprParser
+--            "((x) => { x = 5 })"
+--            (lamExpr () [varPat () "x"] (recordExpr () (rowExpr () "x" (litExpr () (TInteger 5)) (conExpr () "{}" []))))
+--
+--        succeedParse annExprParser
+--            "((x) => ({ x = 5 }))"
+--            (lamExpr () [varPat () "x"] (recordExpr () (rowExpr () "x" (litExpr () (TInteger 5)) (conExpr () "{}" []))))
+--
+--        succeedParse annExprParser
+--            "(x) => x + 1"
+--            (lamExpr () [varPat () "x"] (op2Expr () (OAdd ()) (varExpr () "x") (litExpr () (TInteger 1))))
+--
+--        succeedParse annExprParser
+--            "((x) => x + 1)(5)"
+--            (appExpr ()
+--                [ lamExpr () [varPat () "x"] (op2Expr () (OAdd ()) (varExpr () "x") (litExpr () (TInteger 1)))
+--                , litExpr () (TInteger 5) ])
+--
+--        succeedParse annExprParser
+--            "Some(x) => x + 1"
+--            (lamExpr () [conPat () "Some" [varPat () "x"]] (op2Expr () (OAdd ()) (varExpr () "x") (litExpr () (TInteger 1))))
+--
+--        succeedParse annExprParser
+--            "(Some(x) => x + 1)"
+--            (lamExpr () [conPat () "Some" [varPat () "x"]] (op2Expr () (OAdd ()) (varExpr () "x") (litExpr () (TInteger 1))))
+--
+--        succeedParse annExprParser
+--            "() => ()"
+--            (lamExpr () [litPat () TUnit] (litExpr () TUnit))
+--
+--        succeedParse annExprParser
+--            "let f = (x) => x + 1 in y"
+--            (letExpr () (BPat () (varPat () "f")) (lamExpr () [varPat () "x"] (op2Expr () (OAdd ()) (varExpr () "x") (litExpr () (TInteger 1)))) (varExpr () "y"))
+--
+--        succeedParse annExprParser
+--            "let f = x => x + 1 in y"
+--            (letExpr () (BPat () (varPat () "f")) (lamExpr () [varPat () "x"] (op2Expr () (OAdd ()) (varExpr () "x") (litExpr () (TInteger 1)))) (varExpr () "y"))
+--
+--        succeedParse annExprParser
+--            "let withDefault | Some(y) => y | None => 0 in Some(3)"
+--            (letExpr () (BPat () (varPat () "withDefault")) (funExpr () [ Clause () [conPat () "Some" [varPat () "y"]] [Choice [] (varExpr () "y")] , Clause () [conPat () "None" []] [Choice [] (litExpr () (TInteger 0))] ]) (conExpr () "Some" [litExpr () (TInteger 3)]))
+--
+--        succeedParse annExprParser
+--            "let withDefault(val) | Some(y) => y | None => val in Some(3)"
+--            (letExpr () (BFun () "withDefault" [varPat () "val"]) (funExpr () [ Clause () [conPat () "Some" [varPat () "y"]] [Choice [] (varExpr () "y")] , Clause () [conPat () "None" []] [Choice [] (varExpr () "val")] ]) (conExpr () "Some" [litExpr () (TInteger 3)]))
+--
+--        succeedParse annExprParser
+--            "{ a = true | b }"
+--            (recordExpr () (rowExpr () "a" (litExpr () (TBool True)) (varExpr () "b")))
+--
+--        succeedParse annExprParser
+--            "{}"
+--            (recordExpr () (conExpr () "{}" []))
+--
+--        succeedParse annExprParser
+--            "(x, y) => x"
+--            (lamExpr () [varPat () "x", varPat () "y"] (varExpr () "x"))
+--
+--        succeedParse annExprParser
+--            "((x, y)) => x"
+--            (lamExpr () [tuplePat () [varPat () "x", varPat () "y"]] (varExpr () "x"))
+--
+--        succeedParse annExprParser
+--            "(((x, y))) => x"
+--            (lamExpr () [tuplePat () [varPat () "x", varPat () "y"]] (varExpr () "x"))
+--
+--        succeedParse annExprParser
+--            "[1, 2]"
+--            (listExpr () [litExpr () (TInteger 1), litExpr () (TInteger 2)])
+--
+--        succeedParse annExprParser
+--            "[]"
+--            (conExpr () "[]" [])
+--
+--        succeedParse annExprParser
+--            "[  ]"
+--            (conExpr () "[]" [])
+--
+--        succeedParse annExprParser
+--            "let f() = () in f()"
+--            (letExpr () (BFun () "f" [litPat () TUnit]) (litExpr () TUnit) (appExpr () [varExpr () "f", litExpr () TUnit]))
+--
+--        succeedParse annExprParser
+--            "length(xs) <= 3"
+--            (op2Expr () (OLte ()) (appExpr () [varExpr () "length", varExpr () "xs"]) (litExpr () (TInteger 3)))
+--
+--        succeedParse annExprParser
+--            "(length(xs) <= 3)"
+--            (op2Expr () (OLte ()) (appExpr () [varExpr () "length", varExpr () "xs"]) (litExpr () (TInteger 3)))
+--
+--        succeedParse annExprParser
+--            "((length(xs) <= 3))"
+--            (op2Expr () (OLte ()) (appExpr () [varExpr () "length", varExpr () "xs"]) (litExpr () (TInteger 3)))
+--
+--        succeedParse annExprParser
+--            "add(5, _)"
+--            (appExpr () [varExpr () "add", litExpr () (TInteger 5), holeExpr ()])
+--
+--        succeedParse annExprParser
+--            "add(5, _ : int)"
+--            (appExpr () [varExpr () "add", litExpr () (TInteger 5), annExpr tInt (holeExpr ())])
+--
+--        succeedParse annExprParser
+--            "r.a + 100"
+--            (op2Expr () (OAdd ()) (op2Expr () (ODot ()) (varExpr () "a") (varExpr () "r")) (litExpr () (TInteger 100)))
+--
+--        succeedParse annExprParser
+--            "5 + _"
+--            (op2Expr () (OAdd ()) (litExpr () (TInteger 5)) (holeExpr ()))
+--
+--        succeedParse annExprParser
+--            "_ + _"
+--            (op2Expr () (OAdd ()) (holeExpr ()) (holeExpr ()))
+--
+--        failParse annExprParser "!5"
+--
+--        succeedParse annExprParser
+--            "4.5"
+--            (litExpr () (TDouble 4.5))
+--
+--        succeedParse annExprParser
+--            "4"
+--            (litExpr () (TInteger 4))
+--
+--        succeedParse annExprParser
+--            "4 : int"
+--            (annExpr tInt (litExpr () (TInteger 4)))
+--
+--        succeedParse annExprParser
+--            "(4 : int)"
+--            (annExpr tInt (litExpr () (TInteger 4)))
+--
+--        succeedParse annExprParser
+--            "(4)"
+--            (litExpr () (TInteger 4))
+--
+--        succeedParse annExprParser
+--            "((4))"
+--            (litExpr () (TInteger 4))
+--
+--        succeedParse annExprParser
+--            "((4) : int)"
+--            (annExpr tInt (litExpr () (TInteger 4)))
+--
+--        succeedParse annExprParser
+--            "(4) : int"
+--            (annExpr tInt (litExpr () (TInteger 4)))
+--
+--        succeedParse annExprParser
+--            "((4, 3) : int)"
+--            (annExpr tInt (tupleExpr () [litExpr () (TInteger 4), litExpr () (TInteger 3)]))
+--
+--        succeedParse annExprParser
+--            "(((4, 3)))"
+--            (tupleExpr () [litExpr () (TInteger 4), litExpr () (TInteger 3)])
+--
+--        succeedParse annExprParser
+--            "((((4, 3))))"
+--            (tupleExpr () [litExpr () (TInteger 4), litExpr () (TInteger 3)])
+--
+--        failParse annExprParser
+--            "((((4, 3)]]]"
+--
+--        succeedParse annExprParser
+--            "(((4, 3) : int))"
+--            (annExpr tInt (tupleExpr () [litExpr () (TInteger 4), litExpr () (TInteger 3)]))
+--
+--        succeedParse annExprParser
+--            "(4, 3) : int"
+--            (annExpr tInt (tupleExpr () [litExpr () (TInteger 4), litExpr () (TInteger 3)]))
+--
+--        succeedParse annExprParser
+--            "if (4, 3) : int then (1, 3, 4) else (5, 6, 7)"
+--            (ifExpr ()
+--                (annExpr tInt (tupleExpr () [litExpr () (TInteger 4), litExpr () (TInteger 3)]))
+--                (tupleExpr () [litExpr () (TInteger 1), litExpr () (TInteger 3), litExpr () (TInteger 4)])
+--                (tupleExpr () [litExpr () (TInteger 5), litExpr () (TInteger 6), litExpr () (TInteger 7)]))
+--
+--        succeedParse annExprParser
+--            "(if (4, 3) : int then (1, 3, 4) else (5, 6, 7)) : int"
+--            (annExpr tInt (ifExpr ()
+--                (annExpr tInt (tupleExpr () [litExpr () (TInteger 4), litExpr () (TInteger 3)]))
+--                (tupleExpr () [litExpr () (TInteger 1), litExpr () (TInteger 3), litExpr () (TInteger 4)])
+--                (tupleExpr () [litExpr () (TInteger 5), litExpr () (TInteger 6), litExpr () (TInteger 7)])))
+--
+--        succeedParse annExprParser
+--            "fn(1 : int, 3, 4)"
+--            (appExpr () [varExpr () "fn", annExpr tInt (litExpr () (TInteger 1)), litExpr () (TInteger 3), litExpr () (TInteger 4)])
+--
+--        succeedParse annExprParser
+--            "fn(1 : int, 3, 4) : int"
+--            (annExpr tInt (appExpr () [varExpr () "fn", annExpr tInt (litExpr () (TInteger 1)), litExpr () (TInteger 3), litExpr () (TInteger 4)]))
+--
+--        succeedParse annExprParser
+--            "fn(x : int, 3, 4)"
+--            (appExpr () [varExpr () "fn", annExpr tInt (varExpr () "x"), litExpr () (TInteger 3), litExpr () (TInteger 4)])
+--
+--        succeedParse annExprParser
+--            "((fn(x))(y))"
+--            (appExpr () [appExpr () [varExpr () "fn", varExpr () "x"], varExpr () "y"])
+--
+--        succeedParse exprParser
+--            "[1 : int, 2, 3]"
+--            (listExpr () [annExpr tInt (litExpr () (TInteger 1)), litExpr () (TInteger 2), litExpr () (TInteger 3)])
+--
+--        succeedParse exprParser
+--            "let x = (1, 2) : int in z"
+--            (letExpr () (BPat () (varPat () "x")) (annExpr tInt (tupleExpr () [litExpr () (TInteger 1), litExpr () (TInteger 2)])) (varExpr () "z"))
+--
+--        succeedParse exprParser
+--            "let x = (1, 2) : int in z : int"
+--            (letExpr () (BPat () (varPat () "x")) (annExpr tInt (tupleExpr () [litExpr () (TInteger 1), litExpr () (TInteger 2)])) (annExpr tInt (varExpr () "z")))
+--
+--        succeedParse annExprParser
+--            "(let x = (1, 2) : Int in z : int) : int"
+--            (annExpr tInt (letExpr () (BPat () (varPat () "x")) (annExpr tInt (tupleExpr () [litExpr () (TInteger 1), litExpr () (TInteger 2)])) (annExpr tInt (varExpr () "z"))))
+--
+--        succeedParse annExprParser
+--            "{ x = 5 : int }"
+--            (recordExpr () (rowExpr () "x" (annExpr tInt (litExpr () (TInteger 5))) (conExpr () "{}" [])))
+--
+--        succeedParse annExprParser
+--            "(x : int) => x + 1"
+--            (lamExpr () [annPat tInt (varPat () "x")] (op2Expr () (OAdd ()) (varExpr () "x") (litExpr () (TInteger 1))))
+--
+--        succeedParse annExprParser
+--            "x : int => x + 1"
+--            (lamExpr () [annPat tInt (varPat () "x")] (op2Expr () (OAdd ()) (varExpr () "x") (litExpr () (TInteger 1))))
+--
+--        succeedParse annExprParser
+--            "Some(x) => x + 1 | None => 0"
+--            (funExpr () [ Clause () [conPat () "Some" [varPat () "x"]] [Choice [] (op2Expr () (OAdd ()) (varExpr () "x") (litExpr () (TInteger 1)))] , Clause () [conPat () "None" []] [Choice [] (litExpr () (TInteger 0))] ])
+--
+--        succeedParse annExprParser
+--            "match (x, y) with | (1, x) when(x /= 0) => x, otherwise => 0 | _ => 100"
+--            (patExpr () (tupleExpr () [varExpr () "x", varExpr () "y"]) [ Clause () (tuplePat () [litPat () (TInteger 1), varPat () "x"]) [Choice [op2Expr () (ONeq ()) (varExpr () "x") (litExpr () (TInteger 0))] (varExpr () "x"), Choice [] (litExpr () (TInteger 0))] , Clause () (anyPat ()) [Choice [] (litExpr () (TInteger 100))] ])
+--
+--        succeedParse annExprParser
+--            "{ foo = x => \"Hello\" }.foo(false) }"
+--            (appExpr () [op2Expr () (ODot  ()) (varExpr () "foo") (recordExpr () (rowExpr () "foo" (lamExpr () [varPat () "x"] (litExpr () (TString "Hello"))) (conExpr () "{}" []))), litExpr () (TBool False)])
+--
+--    describe "• Topdecl" $ do
+--
+--        succeedParse topdeclParser
+--            "f(x, y) = x"
+--            (Top () (BFun () "f" [varPat () "x", varPat () "y"]) (varExpr () "x"))
+--
+--        succeedParse topdeclParser
+--            "foo = 5"
+--            (Top () (BPat () (varPat () "foo")) (litExpr () (TInteger 5)))
+--
+--        succeedParse topdeclParser
+--            "f | (5, y) => y | _ => x"
+--            (Top () (BPat () (varPat () "f")) (funExpr () [ Clause () [litPat () (TInteger 5), varPat () "y"] [Choice [] (varExpr () "y")], Clause () [anyPat ()] [Choice [] (varExpr () "x")]]))
