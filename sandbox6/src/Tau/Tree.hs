@@ -313,19 +313,22 @@ applyDefaults ctx ps = do
     foo p@(InClass n (Fix (TVar _ v))) = do
         env <- askClassEnv
         xlss <- reduceSet env (Set.toList (Env.findWithDefaultEmpty v ctx))
-        pure $ if n `elem` ["Num", "Integral"] && canSubst env  xlss
+        pure $ if n `elem` ["Num", "Integral"] && canSubst tInt env xlss
             then (v `mapsTo` tInt)
-            else mempty
---        (ps, sub) <- get
+            else if n == "Fractional" && canSubst tDouble env xlss
+                then (v `mapsTo` tDouble)
+                else mempty
+
+--        (pj, sub) <- get
 --        let sub1 = v `mapsTo` tInt
 --        put $ if n `elem` ["Num", "Integral"] && canSubst
 --            then (ps, sub1 <> sub)
 --            else (p:ps, sub)
 
-    canSubst env clss =
+    canSubst t env clss =
         all (\c -> case Env.lookup c env of
             Nothing -> False
-            Just (_, infos) -> tInt `elem` (getTy <$> infos)) clss
+            Just (_, infos) -> t `elem` (getTy <$> infos)) clss
 
 getTy (ClassInfo (InClass _ t) _ _) = t
 
@@ -375,6 +378,10 @@ ambiguityCheck ctx expr = do
         scheme = Forall (snd <$> freeVars) (fn <$$> x) (apply sub (toPolytype (nodeType t)))
 
     (yyy, sub) <- applyDefaults ctx y
+
+    traceShowM "////"
+    traceShowM "////"
+    traceShowM sub
 
     pure (setExprTag (addErrors [AmbiguousType n t | InClass n t <- yyy] t) (apply sub a), scheme)
 
@@ -1121,7 +1128,7 @@ insertArgsExpr expr = do
 
     x <- forM abc $ \vs -> do
         set1 <- reduceSet classEnv (fst <$> vs)
-        pure (set1, [(p, b) | (a, b) <- vs, a `elem` set1, p <- super1 classEnv a])
+        pure (set1, [(p, b) | (a, b) <- vs, a `elem` set1, p <- superClosure classEnv a])
 
     foldrM (fun x) expr (reverse s)
   where
@@ -1131,7 +1138,19 @@ insertArgsExpr expr = do
 
         if name `elem` ddd
             then pure (lamExpr (predToType (InClass name (tVar kTyp var)) `tArr` getTag e) dv e)
-            else pure (replaceVar dv (fromJust (lookup name eee)) e)
+            -- else pure (replaceVar dv (fromJust (lookup name eee)) e)
+            else do
+                traceShowM name
+                traceShowM eee
+                traceShowM "............"
+                case lookup name eee of
+                    Just foo -> pure (replaceVar dv foo e)
+                    Nothing -> pure e
+
+--                traceShowM "............."
+--                traceShowM name
+--                traceShowM eee
+--                pure (replaceVar dv (fromJust (lookup name eee)) e)
 
 --    fun
 --      :: ( MonadSupply Int m

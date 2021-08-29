@@ -2066,6 +2066,12 @@ super env name = maybe [] (fmap predicateName . classPredicates . fst)
 super1 :: ClassEnv -> Name -> [Name]
 super1 env name = name:super env name
 
+superClosure :: ClassEnv -> Name -> [Name]
+superClosure env name =
+  case super env name of
+      [] -> [name]
+      ns -> name:(superClosure env =<< ns)
+
 instances :: ClassEnv -> Name -> [Instance]
 instances env name = maybe [] snd (Env.lookup name env)
 
@@ -2111,7 +2117,7 @@ toHeadNormalForm env ps =
             Just cls -> toHeadNormalForm env cls
 
 simplify :: ClassEnv -> [Predicate] -> [Predicate]
-simplify env = loop [] 
+simplify env = loop []
   where
     loop qs [] = qs
     loop qs (p:ps) = loop (if entail env (qs <> ps) p then qs else p:qs) ps
