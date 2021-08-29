@@ -463,17 +463,17 @@ data Typedecl = Sum Name [Name] [Product]
 -- | Top-level declaration, e.g., f(x, y) = foo, or name = "Foo"
 data Topdecl t u = Top t (Binding t (ProgPattern t u)) (ProgExpr t u)
 
---data Topdef t u
---    = Namedecl t (Binding t (ProgPattern t u)) (ProgExpr t u)
---    -- ^ Function or constant
---    | Typesig
---    -- ^ Type signature
---    | Typedecl
---    -- ^ Type declaration
---    | Classdecl
---    -- ^ Type class declaration
---    | Instdef
---    -- ^ Type class instance
+data Progdecl t u
+    = Topdecl (Topdecl t u)
+    -- ^ Function or constant
+    | Typesig
+    -- ^ Type signature
+    | Typedecl Typedecl
+    -- ^ Type declaration
+    | Classdecl
+    -- ^ Type class declaration
+    | Instdef
+    -- ^ Type class instance
 
 -------------------------------------------------------------------------------
 
@@ -613,6 +613,10 @@ instance Functor Ast where
 deriving instance (Show t, Show u) => Show (Topdecl t u)
 deriving instance (Eq   t, Eq   u) => Eq   (Topdecl t u)
 deriving instance (Ord  t, Ord  u) => Ord  (Topdecl t u)
+
+deriving instance (Show t, Show u) => Show (Progdecl t u)
+deriving instance (Eq   t, Eq   u) => Eq   (Progdecl t u)
+deriving instance (Ord  t, Ord  u) => Ord  (Progdecl t u)
 
 -------------------------------------------------------------------------------
 
