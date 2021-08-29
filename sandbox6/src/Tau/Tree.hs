@@ -1136,9 +1136,6 @@ insertArgsExpr expr = do
             then pure (lamExpr (predToType (InClass name (tVar kTyp var)) `tArr` getTag e) dv e)
             -- else pure (replaceVar dv (fromJust (lookup name eee)) e)
             else do
-                traceShowM name
-                traceShowM eee
-                traceShowM "............"
                 case lookup name eee of
                     Just foo -> pure (replaceVar dv foo e)
                     Nothing -> pure e

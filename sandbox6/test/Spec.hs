@@ -1418,6 +1418,13 @@ testFlight = do
             (letExpr () (BFun () "f" [varPat () "x"]) (op2Expr () (OGt ()) (op2Expr () (OAdd ()) (varExpr () "x") (litExpr () (TInteger 1))) (litExpr () (TInteger 5))) (appExpr () [varExpr () "f", litExpr () (TInteger 5)]))
             (Just (Value (TBool True)))
 
+        succeedRunExpr
+            (letExpr () (BPat () (varPat () "f")) (funExpr ()
+                [ Clause () [litPat () (TDouble 0.0)] [Choice [] (annExpr tInt (litExpr () (TInteger 1)))]
+                , Clause () [varPat () "n"] [Choice [] (annExpr tInt (litExpr () (TInteger 2)))]
+                ]) (appExpr () [varExpr () "f", litExpr () (TInteger 1)]))
+            (Just (Value (TInt 2)))
+
 -------------------------------------------------------------------------------
 
 -- Parser tests
