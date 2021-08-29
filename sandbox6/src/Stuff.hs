@@ -874,7 +874,7 @@ test5expr :: ProgExpr () Type
 test5expr =
     letExpr () (BPat () (varPat () "foo")) (funExpr () 
       [ Clause () [litPat () (TDouble 0.0)] [Choice [] (annExpr tInt (litExpr () (TInteger 1)))]
-      , Clause () [varPat () "n"] [Choice [] (litExpr () (TInteger 2))]
+      , Clause () [litPat () (TString "F")] [Choice [] (litExpr () (TInteger 2))]
       ]) (appExpr () [varExpr () "foo", litExpr () (TInteger 1)])
 
 --    (letExpr () (BFun () "f" [varPat () "x"]) (op2Expr () (OGt ()) (op2Expr () (OAdd ()) (varExpr () "x") (litExpr () (TInteger 1))) (litExpr () (TInteger 5))) (appExpr () [varExpr () "f", litExpr () (TInteger 3)]))
@@ -929,7 +929,6 @@ compileBundle expr = Bundle
     h = runSupplyNats (stage4Translate g)
     i = coreTranslate h
     j = evalExpr i testEvalEnv
-
 
 test5 :: IO ()
 test5 = do
