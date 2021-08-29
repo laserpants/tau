@@ -463,6 +463,18 @@ data Typedecl = Sum Name [Name] [Product]
 -- | Top-level declaration, e.g., f(x, y) = foo, or name = "Foo"
 data Topdecl t u = Top t (Binding t (ProgPattern t u)) (ProgExpr t u)
 
+--data Topdef t u
+--    = Namedecl t (Binding t (ProgPattern t u)) (ProgExpr t u)
+--    -- ^ Function or constant
+--    | Typesig
+--    -- ^ Type signature
+--    | Typedecl
+--    -- ^ Type declaration
+--    | Classdecl
+--    -- ^ Type class declaration
+--    | Instdef
+--    -- ^ Type class instance
+
 -------------------------------------------------------------------------------
 
 getClassEnv :: (ClassEnv, TypeEnv, KindEnv, ConstructorEnv) -> ClassEnv
