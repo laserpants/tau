@@ -379,10 +379,6 @@ ambiguityCheck ctx expr = do
 
     (yyy, sub) <- applyDefaults ctx y
 
-    traceShowM "////"
-    traceShowM "////"
-    traceShowM sub
-
     pure (setExprTag (addErrors [AmbiguousType n t | InClass n t <- yyy] t) (apply sub a), scheme)
 
     --pure (setExprTag (addErrors (checkAmbg t vs) t) a)
