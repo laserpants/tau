@@ -170,8 +170,8 @@ typeParser = makeExprParser (try (parens typeParser) <|> parser)
         foldlM (\s t -> kindVar >>= \k -> pure (tApp k s t)) t ts
 
 typeFragmentParser :: Parser Type
-typeFragmentParser = tVar <$> kindVar <*> nameParser
-    <|> builtIn
+typeFragmentParser = builtIn
+    <|> tVar <$> kindVar <*> nameParser
     <|> tCon <$> kindVar <*> constructorParser
     <|> tTuple <$> components typeParser
     <|> recordTypeParser
