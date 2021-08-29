@@ -670,18 +670,6 @@ testTypeInference = do
 
     describe "• Larger expressions" $ do
 
-        -- fix 
-        --   nat' =
-        --     ((go, n) =>
-        --       match n with
-        --         | succ(m) => go(succ'(m, nat'(go, m)))
-        --         | zero    => go(zero'))
-        --   in
-        --     
-        --
-        --
-        --
-
         -- fix loopList =
         --   (g, ys) =>
         --     match ys with

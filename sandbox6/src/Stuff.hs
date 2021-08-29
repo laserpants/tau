@@ -871,15 +871,28 @@ test5expr :: ProgExpr () Type
 --test5expr =
 --        (letExpr () (BFun () "f" [varPat () "z"]) (recordExpr () (rowExpr () "a" (annExpr tInt (litExpr () (TInteger 1))) (varExpr () "z"))) (appExpr () [varExpr () "f", recordExpr () (rowExpr () "b" (annExpr tInt (litExpr () (TInt 2))) (conExpr () "{}" []))]))
 
-test5expr =
-    letExpr () (BPat () (varPat () "foo")) (funExpr () 
-      [ Clause () [litPat () (TDouble 0.0)] [Choice [] (annExpr tInt (litExpr () (TInteger 1)))]
-      , Clause () [litPat () (TString "F")] [Choice [] (litExpr () (TInteger 2))]
-      ]) (appExpr () [varExpr () "foo", litExpr () (TInteger 1)])
+--test5expr =
+--    letExpr () (BPat () (varPat () "foo")) (funExpr () 
+--      [ Clause () [litPat () (TDouble 0.0)] [Choice [] (annExpr tInt (litExpr () (TInteger 1)))]
+--      , Clause () [litPat () (TString "F")] [Choice [] (litExpr () (TInteger 2))]
+--      ]) (appExpr () [varExpr () "foo", litExpr () (TInteger 1)])
 
 --    (letExpr () (BFun () "f" [varPat () "x"]) (op2Expr () (OGt ()) (op2Expr () (OAdd ()) (varExpr () "x") (litExpr () (TInteger 1))) (litExpr () (TInteger 5))) (appExpr () [varExpr () "f", litExpr () (TInteger 3)]))
 --       op2Expr () (OPow ()) (annExpr tDouble (litExpr () (TDouble 5.0))) (litExpr () (TInteger 3) )
         --(letExpr () (BPat () (varPat () "foo")) (funExpr () [ Clause () [litPat () (TInteger 0)] [Choice [] (litExpr () (TInteger 1))] , Clause () [varPat () "n"] [Choice [] (litExpr () (TInteger 2))] ]) (appExpr () [varExpr () "foo", litExpr () (TInteger 1)]))
+
+test5expr =
+  fixExpr () "nat'" 
+    (lamExpr () [varPat () "go", varPat () "n"] 
+      (patExpr () (varExpr () "n") 
+        [ Clause () (conPat () "succ" [varPat () "m"]) [Choice [] (appExpr () [conExpr () "succ'" [varExpr () "m", appExpr () [varExpr () "nat'", varExpr () "go", varExpr () "m"]]])]
+        , Clause () (conPat () "zero" []) [Choice [] (appExpr () [varExpr () "go", conExpr () "zero'" []])]
+        ]))
+    (letExpr () 
+      (BFun () "factorial" [varPat () "n"])
+      (appExpr () [varExpr () "nat'", varExpr () "n", 
+          undefined])
+      (appExpr () [varExpr () "factorial", litExpr () (TInteger 3)]))
 
 --test5expr = fixExpr () "foo"
 --    (lamExpr () [varPat () "f", varPat () "s"] (funExpr ()
@@ -1023,6 +1036,8 @@ testTypeEnv = Env.fromList
     , ( "Some"         , Forall [kTyp] [] (tGen 0 `tArr` tApp kTyp (tCon kFun "Option") (tGen 0)) )
     , ( "zero"         , Forall []     [] (tNat) )
     , ( "succ"         , Forall []     [] (tNat `tArr` tNat) )
+    , ( "zero'"        , Forall []     [] (tCon kTyp "nat'") )
+    , ( "succ'"        , Forall [kTyp] [] (tCon kTyp "nat'" `tArr` tGen 0 `tArr` tCon kTyp "nat'") )
     , ( "Leaf"         , Forall [kTyp] [] (tApp kTyp (tCon kFun "Tree") (tGen 0)) )
     , ( "Node"         , Forall [kTyp] [] (tGen 0 `tArr` tApp kTyp (tCon kFun "Tree") (tGen 0) `tArr` tApp kTyp (tCon kFun "Tree") (tGen 0) `tArr` tApp kTyp (tCon kFun "Tree") (tGen 0)) )
     , ( "Leaf'"        , Forall [kTyp, kTyp] [] (tApp kTyp (tApp kFun (tCon kFun2 "Tree'") (tGen 0)) (tGen 1)) )
@@ -1223,6 +1238,8 @@ testConstructorEnv = constructorEnv
     , ("None"     , ( ["Some", "None"], 0 ))
     , ("zero"     , ( ["zero", "succ"], 0 ))
     , ("succ"     , ( ["zero", "succ"], 1 ))
+    , ("zero'"    , ( ["zero'", "succ'"], 0 ))
+    , ("succ'"    , ( ["zero'", "succ'"], 2 ))
     , ("Leaf"     , ( ["Leaf", "Node"], 0 ))
     , ("Node"     , ( ["Leaf", "Node"], 3 ))
     , ("Leaf'"    , ( ["Leaf'", "Node'"], 0 ))
