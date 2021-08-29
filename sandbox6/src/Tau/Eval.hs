@@ -118,6 +118,10 @@ evalVar var =
 -- TODO
 isConstructor :: Name -> Bool
 isConstructor var
+    | "succ" == var   = True
+    | "succ'" == var  = True
+    | "zero" == var   = True
+    | "zero'" == var  = True
     | isLower init    = False
     | '_' == init     = False
     | '$' == init     = False
