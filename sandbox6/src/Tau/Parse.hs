@@ -86,6 +86,10 @@ reserved =
     , "where"
     , "when"
     , "with"
+    , "succ"
+    , "zero"
+    , "succ'"
+    , "zero'"
     ]
 
 word :: Parser Text -> Parser Text
@@ -101,7 +105,11 @@ nameParser :: Parser Text
 nameParser = word (withInitial (lowerChar <|> char '_'))
 
 constructorParser :: Parser Name
-constructorParser = word (withInitial upperChar)
+constructorParser = symbol "zero" 
+    <|> symbol "succ" 
+    <|> symbol "zero'" 
+    <|> symbol "succ'"
+    <|> word (withInitial upperChar)
 
 commaSep :: Parser a -> Parser [a]
 commaSep parser = parser `sepBy1` symbol ","
