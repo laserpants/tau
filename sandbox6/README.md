@@ -58,16 +58,4 @@ let
 
 https://hackage.haskell.org/package/numhask
 
-
-
-nat
-int
-bigint
-float
-double
-bool
-unit
-char
-string
-
 -->
