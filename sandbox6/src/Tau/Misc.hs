@@ -466,14 +466,14 @@ data Topdecl t u = Top t (Binding t (ProgPattern t u)) (ProgExpr t u)
 data Progdecl t u
     = Topdecl (Topdecl t u)
     -- ^ Function or constant
-    | Typesig
-    -- ^ Type signature
+--    | Typesig
+--    -- ^ Type signature
     | Typedecl Typedecl
     -- ^ Type declaration
-    | Classdecl
-    -- ^ Type class declaration
-    | Instdef
-    -- ^ Type class instance
+--    | Classdecl
+--    -- ^ Type class declaration
+--    | Instdef
+--    -- ^ Type class instance
 
 -------------------------------------------------------------------------------
 

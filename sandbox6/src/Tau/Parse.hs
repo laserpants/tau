@@ -447,3 +447,7 @@ topdeclParser = do
     lhs  <- try parseLetBinding <|> parseNameBinding
     expr <- funParser <|> (symbol "=" *> annExprParser)
     pure (Top () lhs expr)
+
+progdeclParser :: Parser (Progdecl () Type)
+progdeclParser = Topdecl <$> topdeclParser
+    <|> Typedecl <$> typedeclParser
