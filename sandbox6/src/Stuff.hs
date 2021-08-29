@@ -1110,8 +1110,8 @@ testClassEnv = Env.fromList
             , ( "(/=)", Ast (varExpr (TypeInfo () (tInt `tArr` tInt `tArr` tBool) []) "@Int.(/=)" ) )
             ]
           , ClassInfo (InClass "Eq" tInteger) []
-            [ ( "(==)", Ast (varExpr (TypeInfo () (tInt `tArr` tInt `tArr` tBool) []) "@Integer.(==)" ) )
-            , ( "(/=)", Ast (varExpr (TypeInfo () (tInt `tArr` tInt `tArr` tBool) []) "@Integer.(/=)" ) )
+            [ ( "(==)", Ast (varExpr (TypeInfo () (tInteger `tArr` tInteger `tArr` tBool) []) "@Integer.(==)" ) )
+            , ( "(/=)", Ast (varExpr (TypeInfo () (tInteger `tArr` tInteger `tArr` tBool) []) "@Integer.(/=)" ) )
             ]
           , ClassInfo (InClass "Eq" tBool) []
             [ ( "(==)", Ast (varExpr (TypeInfo () (tBool `tArr` tBool `tArr` tBool) []) "@Bool.(==)" ) )
