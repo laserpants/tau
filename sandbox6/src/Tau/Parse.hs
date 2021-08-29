@@ -451,3 +451,10 @@ topdeclParser = do
 progdeclParser :: Parser (Progdecl () Type)
 progdeclParser = Topdecl <$> topdeclParser
     <|> Typedecl <$> typedeclParser
+
+moduleParser :: Parser (Module () Type)
+moduleParser = do
+    keyword "module"
+    name <- word (withInitial upperChar)
+    defs <- many progdeclParser 
+    pure (Module name defs)
