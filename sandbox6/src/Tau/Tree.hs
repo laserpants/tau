@@ -184,8 +184,8 @@ useful pss ps = step3 (step2 . step1 <$$> pss) (step2 . step1 <$> ps)
         , ("#",         ( ["#"], 1 ))
         , ("[]",        ( ["[]", "(::)"], 0 ))
         , ("(::)",      ( ["[]", "(::)"], 2 ))
-        , ("Zero",      ( ["Zero", "Succ"], 0 ))
-        , ("Succ",      ( ["Zero", "Succ"], 1 ))
+        , ("zero",      ( ["zero", "succ"], 0 ))
+        , ("succ",      ( ["zero", "succ"], 1 ))
         ]
 
 specialized :: Name -> [TInfo] -> [[ProgPattern TInfo u]] -> [[ProgPattern TInfo u]]
