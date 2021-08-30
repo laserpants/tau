@@ -1429,7 +1429,7 @@ testFlight = do
                   , Clause () [conPat () "succ'" [varPat () "m", varPat () "x"]] [Choice [] (op2Expr () (OMul ()) (conExpr () "succ" [varExpr () "m"]) (varExpr () "x"))]
                   ], varExpr () "n"])
               (appExpr () [varExpr () "factorial", litExpr () (TInteger 4)])))
-        (Just (fromJust (evalExpr (cApp [cVar "_&&", cLit (TInteger 24)]) testEvalEnv)))
+        (Just (fromJust (evalExpr (cApp [cVar ";pack", cLit (TInteger 24)]) testEvalEnv)))
 
 --        (fixExpr () "f"
 --            (funExpr () [ Clause () [litPat () (TInteger 0)] [Choice [] (conExpr () "zero" [])]
