@@ -58,4 +58,20 @@ let
 
 https://hackage.haskell.org/package/numhask
 
+fix 
+  nat' =
+    ((go, n) =>
+      match n with
+        | succ(m) => go(succ'(m, nat'(go, m)))
+        | zero    => go(zero'))
+  in
+    let 
+      factorial(n) = 
+        n.nat'( zero => 
+                  succ(zero)
+              | succ(m, x) => 
+                  succ(m) * x )
+      in
+        factorial(3)
+            
 -->

@@ -871,15 +871,40 @@ test5expr :: ProgExpr () Type
 --test5expr =
 --        (letExpr () (BFun () "f" [varPat () "z"]) (recordExpr () (rowExpr () "a" (annExpr tInt (litExpr () (TInteger 1))) (varExpr () "z"))) (appExpr () [varExpr () "f", recordExpr () (rowExpr () "b" (annExpr tInt (litExpr () (TInt 2))) (conExpr () "{}" []))]))
 
-test5expr =
-    letExpr () (BPat () (varPat () "foo")) (funExpr () 
-      [ Clause () [litPat () (TDouble 0.0)] [Choice [] (annExpr tInt (litExpr () (TInteger 1)))]
-      , Clause () [litPat () (TString "F")] [Choice [] (litExpr () (TInteger 2))]
-      ]) (appExpr () [varExpr () "foo", litExpr () (TInteger 1)])
+--test5expr =
+--    letExpr () (BPat () (varPat () "foo")) (funExpr ()
+--      [ Clause () [litPat () (TDouble 0.0)] [Choice [] (annExpr tInt (litExpr () (TInteger 1)))]
+--      , Clause () [litPat () (TString "F")] [Choice [] (litExpr () (TInteger 2))]
+--      ]) (appExpr () [varExpr () "foo", litExpr () (TInteger 1)])
 
 --    (letExpr () (BFun () "f" [varPat () "x"]) (op2Expr () (OGt ()) (op2Expr () (OAdd ()) (varExpr () "x") (litExpr () (TInteger 1))) (litExpr () (TInteger 5))) (appExpr () [varExpr () "f", litExpr () (TInteger 3)]))
 --       op2Expr () (OPow ()) (annExpr tDouble (litExpr () (TDouble 5.0))) (litExpr () (TInteger 3) )
         --(letExpr () (BPat () (varPat () "foo")) (funExpr () [ Clause () [litPat () (TInteger 0)] [Choice [] (litExpr () (TInteger 1))] , Clause () [varPat () "n"] [Choice [] (litExpr () (TInteger 2))] ]) (appExpr () [varExpr () "foo", litExpr () (TInteger 1)]))
+
+--test5expr = annExpr tNat (litExpr () (TInteger 4))
+
+--test5expr =
+--        (fixExpr () "f"
+--            (funExpr () [ Clause () [litPat () (TInteger 0)] [Choice [] (conExpr () "zero" [])]
+--                        , Clause () [varPat () "n"] [Choice [] (conExpr () "succ" [appExpr () [varExpr () "f", op2Expr () (OSub ()) (varExpr () "n") (annExpr tInteger (litExpr () (TInteger 1)))]])] ])
+--            (appExpr () [varExpr () "f", litExpr () (TInteger 3)]))
+
+
+
+test5expr =
+  fixExpr () "nat'"
+    (lamExpr () [varPat () "go", varPat () "n"]
+      (patExpr () (varExpr () "n")
+        [ Clause () (conPat () "succ" [varPat () "m"]) [Choice [] (appExpr () [varExpr () "go", conExpr () "succ'" [varExpr () "m", appExpr () [varExpr () "nat'", varExpr () "go", varExpr () "m"]]])]
+        , Clause () (conPat () "zero" []) [Choice [] (appExpr () [varExpr () "go", conExpr () "zero'" []])]
+        ]))
+    (letExpr ()
+      (BFun () "factorial" [varPat () "n"])
+      (appExpr () [varExpr () "nat'", funExpr ()
+          [ Clause () [conPat () "zero'" []] [Choice [] (conExpr () "succ" [conExpr () "zero" []])]
+          , Clause () [conPat () "succ'" [varPat () "m", varPat () "x"]] [Choice [] (op2Expr () (OMul ()) (conExpr () "succ" [varExpr () "m"]) (varExpr () "x"))]
+          ], varExpr () "n"])
+      (appExpr () [varExpr () "factorial", litExpr () (TInteger 5)]))
 
 --test5expr = fixExpr () "foo"
 --    (lamExpr () [varPat () "f", varPat () "s"] (funExpr ()
@@ -1023,6 +1048,8 @@ testTypeEnv = Env.fromList
     , ( "Some"         , Forall [kTyp] [] (tGen 0 `tArr` tApp kTyp (tCon kFun "Option") (tGen 0)) )
     , ( "zero"         , Forall []     [] (tNat) )
     , ( "succ"         , Forall []     [] (tNat `tArr` tNat) )
+    , ( "zero'"        , Forall []     [] (tCon kTyp "nat'") )
+    , ( "succ'"        , Forall [kTyp] [] (tCon kTyp "nat'" `tArr` tGen 0 `tArr` tCon kTyp "nat'") )
     , ( "Leaf"         , Forall [kTyp] [] (tApp kTyp (tCon kFun "Tree") (tGen 0)) )
     , ( "Node"         , Forall [kTyp] [] (tGen 0 `tArr` tApp kTyp (tCon kFun "Tree") (tGen 0) `tArr` tApp kTyp (tCon kFun "Tree") (tGen 0) `tArr` tApp kTyp (tCon kFun "Tree") (tGen 0)) )
     , ( "Leaf'"        , Forall [kTyp, kTyp] [] (tApp kTyp (tApp kFun (tCon kFun2 "Tree'") (tGen 0)) (tGen 1)) )
@@ -1129,6 +1156,9 @@ testClassEnv = Env.fromList
             [ ( "(==)", Ast (varExpr (TypeInfo () (tDouble `tArr` tDouble `tArr` tBool) []) "@Double.(==)" ) )
             , ( "(/=)", Ast (varExpr (TypeInfo () (tDouble `tArr` tDouble `tArr` tBool) []) "@Double.(/=)" ) )
             ]
+          , ClassInfo (InClass "Eq" tNat) []
+            [
+            ]
           ]
         )
       )
@@ -1212,6 +1242,12 @@ testClassEnv = Env.fromList
             , ( "(-)"         , Ast (varExpr (TypeInfo () (tDouble `tArr` tDouble `tArr` tDouble) []) "@Double.(-)") )
             , ( "fromInteger" , Ast (varExpr (TypeInfo () (tInteger `tArr` tDouble) []) "@Double.fromInteger") )
             ]
+          , ClassInfo (InClass "Num" tNat) []
+            [ ( "(+)"         , Ast (varExpr (TypeInfo () (tNat `tArr` tNat `tArr` tNat) []) "_@2") )
+            , ( "(*)"         , Ast (varExpr (TypeInfo () (tNat `tArr` tNat `tArr` tNat) []) "_@@") )
+            , ( "(-)"         , Ast (varExpr (TypeInfo () (tNat `tArr` tNat `tArr` tNat) []) "_@3") )
+            , ( "fromInteger" , Ast (varExpr (TypeInfo () (tInteger `tArr` tNat) []) "_&&") )
+            ]
           ]
         )
       )
@@ -1223,6 +1259,8 @@ testConstructorEnv = constructorEnv
     , ("None"     , ( ["Some", "None"], 0 ))
     , ("zero"     , ( ["zero", "succ"], 0 ))
     , ("succ"     , ( ["zero", "succ"], 1 ))
+    , ("zero'"    , ( ["zero'", "succ'"], 0 ))
+    , ("succ'"    , ( ["zero'", "succ'"], 2 ))
     , ("Leaf"     , ( ["Leaf", "Node"], 0 ))
     , ("Node"     , ( ["Leaf", "Node"], 3 ))
     , ("Leaf'"    , ( ["Leaf'", "Node'"], 0 ))
@@ -1242,6 +1280,13 @@ testEvalEnv = Env.fromList
     [ ( "_#"  , fromJust (evalExpr (cLam "?0" (cPat (cVar "?0") [(["#", "?1"], cVar "?1")])) mempty) )
     , ( "_^"  , fromJust (evalExpr (cLam "n" (cLam "f" (cLam "s" (cLet "r" (cLam "x" (cLam "m" (cIf (cApp [cVar "@Integer.(==)", cLit (TInteger 0), cVar "m"]) (cVar "x") (cApp [cVar "r", cApp [cVar "f", cVar "x"], cApp [cVar "@Integer.(-)", cVar "m", cLit (TInteger 1)]])))) (cApp [cVar "r", cVar "s", cVar "n"]))))) mempty) )
     , ( "(.)" , fromJust (evalExpr (cLam "f" (cLam "x" (cApp [cVar "f", cVar "x"]))) mempty) )
+    -- Integer -> nat
+    , ( "_&&" , fromJust (evalExpr (cLam "?0" (cLet "f" (cLam "#0" (cIf (cApp [cVar "@Integer.(==)", cVar "#0", cLit (TInteger 0)]) (cVar "zero") (cApp [cVar "succ", cApp [cVar "f", cApp [cVar "@Integer.(-)", cVar "#0", cLit (TInteger 1)]]]))) (cApp [cVar "f", cVar "?0"]))) mempty) )
+    -- nat -> Integer
+    , ( "_%%" , fromJust (evalExpr (cLam "?0" (cLet "f" (cLam "#0" (cLam "#1" (cPat (cVar "#1") [(["zero"], cVar "#0"), (["succ", "?1"], cApp [cVar "f", cApp [cVar "@Integer.(+)", cVar "#0", cLit (TInteger 1)], cVar "?1"])]))) (cApp [cVar "f", cLit (TInteger 0), cVar "?0"]))) mempty) )
+    , ( "_@@" , fromJust (evalExpr (cLam "?0" (cLam "?1" (cApp [cVar "_&&", cApp [cVar "@Integer.(*)", cApp [cVar "_%%", cVar "?0"], cApp [cVar "_%%", cVar "?1"]]]))) mempty) )
+    , ( "_@2" , fromJust (evalExpr (cLam "?0" (cLam "?1" (cApp [cVar "_&&", cApp [cVar "@Integer.(+)", cApp [cVar "_%%", cVar "?0"], cApp [cVar "_%%", cVar "?1"]]]))) mempty) )
+    , ( "_@3" , fromJust (evalExpr (cLam "?0" (cLam "?1" (cApp [cVar "_&&", cApp [cVar "@Integer.(-)", cApp [cVar "_%%", cVar "?0"], cApp [cVar "_%%", cVar "?1"]]]))) mempty) )
     ]
 
 --testx = (fixExpr () "loopList" (lamExpr () [varPat () "g", varPat () "ys"] (patExpr () (varExpr () "ys") [ Clause () (conPat () "(::)" [varPat () "x", varPat () "xs"]) [Choice [] (appExpr () [varExpr () "g", conExpr () "Cons'" [varExpr () "x", varExpr () "xs", appExpr () [varExpr () "loopList", varExpr () "g", varExpr () "xs"]]])] , Clause () (conPat () "[]" []) [Choice [] (appExpr () [varExpr () "g", conExpr () "Nil'" []])] ])) (letExpr () (BFun () "length" [varPat () "xs"]) (op2Expr () (ODot ()) (appExpr () [ varExpr () "loopList" , funExpr () [ Clause () [conPat () "Cons'" [anyPat (), anyPat (), varPat () "a"]] [Choice [] (op2Expr () (OAdd ()) (litExpr () (TInteger 1)) (varExpr () "a"))] , Clause () [conPat () "Nil'" []] [Choice [] (annExpr tInt (litExpr () (TInteger 0)))] ] ]) (varExpr () "xs")) (letExpr () (BPat () (varPat () "xs")) (annExpr (tList tInt) (listExpr () [litExpr () (TInteger 2)])) (patExpr () (varExpr () "xs") [ Clause () (conPat () "(::)" [varPat () "x", anyPat ()]) [Choice [op2Expr () (OLte ()) (appExpr () [varExpr () "length", varExpr () "xs"]) (litExpr () (TInteger 3))] (varExpr () "x")] , Clause () (anyPat ()) [Choice [] (litExpr () (TInteger 0))] ]))))
