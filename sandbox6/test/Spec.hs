@@ -1412,6 +1412,15 @@ testFlight = do
         (op2Expr () (OPow ()) (annExpr tDouble (litExpr () (TDouble 5.0))) (annExpr tInt (litExpr () (TInteger 3))))
         (Just (Value (TDouble 125.0)))
 
+    succeedRunExpr
+        (fixExpr () "loopList" (lamExpr () [varPat () "g", varPat () "ys"] (patExpr () (varExpr () "ys") [ Clause () (conPat () "(::)" [varPat () "x", varPat () "xs"]) [Choice [] (appExpr () [varExpr () "g", conExpr () "Cons'" [varExpr () "x", varExpr () "xs", appExpr () [varExpr () "loopList", varExpr () "g", varExpr () "xs"]]])] , Clause () (conPat () "[]" []) [Choice [] (appExpr () [varExpr () "g", conExpr () "Nil'" []])] ])) (letExpr () (BFun () "length" [varPat () "xs"]) (op2Expr () (ODot ()) (appExpr () [ varExpr () "loopList" , funExpr () [ Clause () [conPat () "Cons'" [anyPat (), anyPat (), varPat () "a"]] [Choice [] (op2Expr () (OAdd ()) (litExpr () (TInteger 1)) (varExpr () "a"))] , Clause () [conPat () "Nil'" []] [Choice [] (annExpr tInt (litExpr () (TInteger 0)))] ] ]) (varExpr () "xs")) (letExpr () (BPat () (varPat () "xs")) (annExpr (tList tInt) (listExpr () [litExpr () (TInteger 1), litExpr () (TInteger 2)])) (appExpr () [varExpr () "length", varExpr () "xs"]))))
+        (Just (Value (TInt 2)))
+
+--        (fixExpr () "f"
+--            (funExpr () [ Clause () [litPat () (TInteger 0)] [Choice [] (conExpr () "zero" [])]
+--                        , Clause () [varPat () "n"] [Choice [] (conExpr () "succ" [appExpr () [varExpr () "f", op2Expr () (OSub ()) (varExpr () "n") (litExpr () (TInteger 1))]])] ])
+--        (varExpr () "f")
+
     describe "• Defaulting" $ do
 
         succeedRunExpr
