@@ -105,9 +105,9 @@ nameParser :: Parser Text
 nameParser = word (withInitial (lowerChar <|> char '_'))
 
 constructorParser :: Parser Name
-constructorParser = symbol "zero" 
-    <|> symbol "succ" 
-    <|> symbol "zero'" 
+constructorParser = symbol "zero"
+    <|> symbol "succ"
+    <|> symbol "zero'"
     <|> symbol "succ'"
     <|> word (withInitial upperChar)
 
@@ -464,5 +464,5 @@ moduleParser :: Parser (Module () Type)
 moduleParser = do
     keyword "module"
     name <- word (withInitial upperChar)
-    defs <- many progdeclParser 
+    defs <- many progdeclParser
     pure (Module name defs)
