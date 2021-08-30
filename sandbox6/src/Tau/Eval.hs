@@ -5,7 +5,7 @@
 {-# LANGUAGE StrictData                 #-}
 module Tau.Eval where
 
-import Control.Monad.Fix
+--import Control.Monad.Fix
 import Control.Monad.Reader
 import Data.Char
 import Data.Functor.Foldable
@@ -47,7 +47,7 @@ newtype Eval a = Eval { unEval :: ReaderT (ValueEnv Eval) Maybe a } deriving
     , Applicative
     , Monad
     , MonadFail
-    , MonadFix
+--    , MonadFix
     , MonadReader (ValueEnv Eval) )
 
 runEval :: Eval a -> ValueEnv Eval -> Maybe a
@@ -57,7 +57,7 @@ evalExpr :: Core -> ValueEnv Eval -> Maybe (Value Eval)
 evalExpr = runEval . eval
 
 eval
-  :: (MonadFix m, MonadFail m, MonadReader (ValueEnv m) m)
+  :: (MonadFail m, MonadReader (ValueEnv m) m)
   => Core
   -> m (Value m)
 eval = cata $ \case
@@ -68,7 +68,8 @@ eval = cata $ \case
     CLam var e1 -> asks (Closure var e1)
 
     CLet var e1 e2 -> do
-        val <- mfix (\val -> local (Env.insert var val) e1)
+        --val <- mfix (\val -> local (Env.insert var val) e1)
+        val <- e1
         local (Env.insert var val) e2
 
     CIf e1 e2 e3 -> do
