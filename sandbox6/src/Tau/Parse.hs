@@ -338,9 +338,11 @@ postfixFunArgParser = do
     pure (\fun -> appExpr () (fun:args))
 
 annExprParser :: Parser (ProgExpr () Type)
-annExprParser = makeExprParser (try funParser <|> try (parens annExprParser) <|> exprParser)
-    [ [ Postfix postfixFunArgParser ]
-    , [ Postfix (symbol ":" *> (annExpr <$> typeParser)) ] ]
+annExprParser = makeExprParser parseItem operator
+  where
+    parseItem = makeExprParser (try funParser <|> try (parens annExprParser) <|> exprParser)
+        [ [ Postfix postfixFunArgParser ]
+        , [ Postfix (symbol ":" *> (annExpr <$> typeParser)) ] ]
 
 funParser :: Parser (ProgExpr () Type)
 funParser = do
