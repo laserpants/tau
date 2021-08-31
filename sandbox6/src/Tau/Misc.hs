@@ -97,7 +97,7 @@ data Prim
     = TUnit                              -- ^ Unit value
     | TBool    Bool                      -- ^ Booleans
     | TInt     Int                       -- ^ Bounded machine integers (32 or 64 bit)
-    | TInteger Integer                   -- ^ Arbitrary precision (big) integers
+    | TBig     Integer                   -- ^ Arbitrary precision (big) integers
     | TNat     Integer                   -- ^ Natural numbers
     | TFloat   Float                     -- ^ Single precision floating point numbers
     | TDouble  Double                    -- ^ Double precision floating point numbers
@@ -799,9 +799,9 @@ tInt :: TypeT a
 tInt = typ "int"
 {-# INLINE tInt #-}
 
-tInteger :: TypeT a
-tInteger = typ "bigint"
-{-# INLINE tInteger #-}
+tBigint :: TypeT a
+tBigint = typ "bigint"
+{-# INLINE tBigint #-}
 
 tFloat :: TypeT a
 tFloat = typ "float"
@@ -1359,7 +1359,7 @@ primName = \case
     TUnit      -> "unit"
     TBool    _ -> "bool"
     TInt     _ -> "int"
-    TInteger _ -> "bigint"
+    TBig     _ -> "bigint"
     TFloat   _ -> "float"
     TDouble  _ -> "double"
     TChar    _ -> "char"

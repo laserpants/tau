@@ -108,13 +108,13 @@ evalVar var =
 
         _ | ";pack" == var ->
             closure "?a" $ do
-                Just (Value (TInteger n)) <- asks (Env.lookup "?a")
+                Just (Value (TBig n)) <- asks (Env.lookup "?a")
                 pure (Value (TNat n))
 
         _ | ";unpack" == var ->
             closure "?a" $ do
                 Just (Value (TNat n)) <- asks (Env.lookup "?a")
-                pure (Value (TInteger n))
+                pure (Value (TBig n))
 
         _ | "zero" == var ->
             pure (Value (TNat 0))

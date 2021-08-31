@@ -294,7 +294,7 @@ prim (TBool True)  = "#True"
 prim (TBool False) = "#False"
 prim TUnit         = "#()"
 prim TInt{}        = "#Int"
-prim TInteger{}    = "#Integer"
+prim TBig{}        = "#Integer"
 prim TFloat{}      = "#Float"
 prim TDouble{}     = "#Double"
 prim TChar{}       = "#Char"
@@ -622,16 +622,16 @@ stage1Translate = cata $ \case
 
     -- Expand mod-operator (%)
     EOp2 t (OMod _) a b -> appExpr t
-        [ varExpr (TypeInfo [] (tInteger `tArr` tInteger `tArr` tInteger) []) "@iterate1"
-        , appExpr (TypeInfo [] tInteger []) [ varExpr (TypeInfo [] (typeOf a `tArr` tInteger) [InClass "Integral" (typeOf a)]) "toInteger", a ]
-        , appExpr (TypeInfo [] tInteger []) [ varExpr (TypeInfo [] (typeOf b `tArr` tInteger) [InClass "Integral" (typeOf b)]) "toInteger", b ] ]
+        [ varExpr (TypeInfo [] (tBigint `tArr` tBigint `tArr` tBigint) []) "@iterate1"
+        , appExpr (TypeInfo [] tBigint []) [ varExpr (TypeInfo [] (typeOf a `tArr` tBigint) [InClass "Integral" (typeOf a)]) "toInteger", a ]
+        , appExpr (TypeInfo [] tBigint []) [ varExpr (TypeInfo [] (typeOf b `tArr` tBigint) [InClass "Integral" (typeOf b)]) "toInteger", b ] ]
 
     -- Expand exponentiation-operator (^)
     EOp2 t (OPow _) a b -> appExpr t
         [ varExpr (TypeInfo [] (typeOf a) []) "_^"
-        , appExpr (TypeInfo [] tInteger []) [varExpr (TypeInfo [] (typeOf b `tArr` tInteger) [InClass "Integral" (typeOf b)]) "toInteger", b]
+        , appExpr (TypeInfo [] tBigint []) [varExpr (TypeInfo [] (typeOf b `tArr` tBigint) [InClass "Integral" (typeOf b)]) "toInteger", b]
         , appExpr (TypeInfo [] (typeOf a) []) [varExpr (TypeInfo [] (typeOf a `tArr` typeOf a `tArr` typeOf a) [InClass "Num" (typeOf a)]) "(*)", a]
-        , litExpr (TypeInfo [] (typeOf a) [InClass "Num" (typeOf a)]) (TInteger 1)
+        , litExpr (TypeInfo [] (typeOf a) [InClass "Num" (typeOf a)]) (TBig 1)
         ]
 
     -- Translate operators to prefix form
@@ -869,12 +869,12 @@ translateLiteral :: Stage2Expr TInfo -> Stage2Expr TInfo
 translateLiteral = cata $ \case
 
     ELit t (TInt n) -> appExpr t
-        [ varExpr (t{ nodeType = tArr tInteger (nodeType t) }) "fromInteger"
-        , litExpr (TypeInfo [] tInteger []) (TInteger (fromIntegral n)) ]
+        [ varExpr (t{ nodeType = tArr tBigint (nodeType t) }) "fromInteger"
+        , litExpr (TypeInfo [] tBigint []) (TBig (fromIntegral n)) ]
 
-    ELit t (TInteger n) -> appExpr t
-        [ varExpr (t{ nodeType = tArr tInteger (nodeType t) }) "fromInteger"
-        , litExpr (TypeInfo [] tInteger []) (TInteger n) ]
+    ELit t (TBig n) -> appExpr t
+        [ varExpr (t{ nodeType = tArr tBigint (nodeType t) }) "fromInteger"
+        , litExpr (TypeInfo [] tBigint []) (TBig n) ]
 
     ELit t (TFloat r) -> appExpr t
         [ varExpr (t{ nodeType = tArr tDouble (nodeType t) }) "fromRational"
