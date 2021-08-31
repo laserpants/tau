@@ -337,12 +337,12 @@ postfixFunArgParser = do
     args <- try (parens spaces $> [litExpr () TUnit]) <|> argParser annExprParser
     pure (\fun -> appExpr () (fun:args))
 
-annExprParser = makeExprParser bannExprParser operator
-
-bannExprParser :: Parser (ProgExpr () Type)
-bannExprParser = makeExprParser (try funParser <|> try (parens annExprParser) <|> exprParser)
-    [ [ Postfix postfixFunArgParser ]
-    , [ Postfix (symbol ":" *> (annExpr <$> typeParser)) ] ]
+annExprParser :: Parser (ProgExpr () Type)
+annExprParser = makeExprParser parseItem operator
+  where
+    parseItem = makeExprParser (try funParser <|> try (parens annExprParser) <|> exprParser)
+        [ [ Postfix postfixFunArgParser ]
+        , [ Postfix (symbol ":" *> (annExpr <$> typeParser)) ] ]
 
 funParser :: Parser (ProgExpr () Type)
 funParser = do
@@ -384,17 +384,8 @@ matchParser = do
     cs <- clauseParser annPatternParser `sepBy1` symbol "|"
     pure (patExpr () expr cs)
 
-
-exprParser = makeExprParser bexprParser operator
-
---fooParser :: Parser (ProgExpr () Type)
---fooParser = 
---    try (parens booParser) 
---    <|> (varExpr () <$> nameParser)
-
-
-bexprParser :: Parser (ProgExpr () Type)
-bexprParser = parseItem -- makeExprParser parseItem operator
+exprParser :: Parser (ProgExpr () Type)
+exprParser = makeExprParser parseItem operator
   where
     parseItem = try funParser
         <|> try (parens exprParser)
