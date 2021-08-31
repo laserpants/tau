@@ -2028,6 +2028,14 @@ testParse = do
             "{ foo = x => \"Hello\" }.foo(false) }"
             (appExpr () [op2Expr () (ODot  ()) (varExpr () "foo") (recordExpr () (rowExpr () "foo" (lamExpr () [varPat () "x"] (litExpr () (TString "Hello"))) (conExpr () "{}" []))), litExpr () (TBool False)])
 
+        succeedParse exprParser
+            "(a + b) * c"
+            (op2Expr () (OMul ()) (op2Expr () (OAdd ()) (varExpr () "a") (varExpr () "b")) (varExpr () "c"))
+
+        succeedParse annExprParser
+            "(a + b) * c"
+            (op2Expr () (OMul ()) (op2Expr () (OAdd ()) (varExpr () "a") (varExpr () "b")) (varExpr () "c"))
+
     describe "• Topdecl" $ do
 
         succeedParse topdeclParser

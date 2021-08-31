@@ -106,6 +106,18 @@ evalVar var =
                     fail ("No primitive function " <> Text.unpack prim)
                     --pure (Fail ("No primitive function " <> Text.unpack prim))
 
+        _ | ";pack" == var ->
+            closure "?a" $ do
+                Just (Value (TInteger n)) <- asks (Env.lookup "?a")
+                pure (Value (TNat n))
+
+        _ | ";unpack" == var ->
+            closure "?a" $ do
+                Just (Value (TNat n)) <- asks (Env.lookup "?a")
+                pure (Value (TInteger n))
+
+        _ | "zero" == var ->
+            pure (Value (TNat 0))
         _ ->
             asks (Env.lookup var) >>= \case
                 Just value ->
@@ -171,6 +183,21 @@ evalApp fun arg = fun >>= \case
     PrimFun name fun args -> do
         val <- arg
         evalPrim name fun (val:args)
+
+    Data "succ" args -> do
+        --(Value (TNat n)) <- arg
+        a <- arg
+        case a of
+            Value (TNat n) ->
+                pure (Value (TNat (succ n)))
+            _ ->
+                pure (Data "succ" (args <> [a]))
+
+        --pure (Data "succ" (args <> [a]))
+--        pure (Value (TNat (succ n)))
+
+--        --Value (TNat n) <- arg
+--        pure (Value (TNat 5))
 
     Data con args -> do
         a <- arg

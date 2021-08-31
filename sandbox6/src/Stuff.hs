@@ -891,20 +891,27 @@ test5expr :: ProgExpr () Type
 
 
 
+--test5expr =
+--  fixExpr () "nat'"
+--    (lamExpr () [varPat () "go", varPat () "n"]
+--      (patExpr () (varExpr () "n")
+--        [ Clause () (conPat () "succ" [varPat () "m"]) [Choice [] (appExpr () [varExpr () "go", conExpr () "succ'" [varExpr () "m", appExpr () [varExpr () "nat'", varExpr () "go", varExpr () "m"]]])]
+--        , Clause () (conPat () "zero" []) [Choice [] (appExpr () [varExpr () "go", conExpr () "zero'" []])]
+--        ]))
+--    (letExpr ()
+--      (BFun () "factorial" [varPat () "n"])
+--      (appExpr () [varExpr () "nat'", funExpr ()
+--          [ Clause () [conPat () "zero'" []] [Choice [] (conExpr () "succ" [conExpr () "zero" []])]
+--          , Clause () [conPat () "succ'" [varPat () "m", varPat () "x"]] [Choice [] (op2Expr () (OMul ()) (conExpr () "succ" [varExpr () "m"]) (varExpr () "x"))]
+--          ], varExpr () "n"])
+--      (appExpr () [varExpr () "factorial", litExpr () (TInteger 5)]))
+
 test5expr =
-  fixExpr () "nat'"
-    (lamExpr () [varPat () "go", varPat () "n"]
-      (patExpr () (varExpr () "n")
-        [ Clause () (conPat () "succ" [varPat () "m"]) [Choice [] (appExpr () [varExpr () "go", conExpr () "succ'" [varExpr () "m", appExpr () [varExpr () "nat'", varExpr () "go", varExpr () "m"]]])]
-        , Clause () (conPat () "zero" []) [Choice [] (appExpr () [varExpr () "go", conExpr () "zero'" []])]
-        ]))
-    (letExpr ()
-      (BFun () "factorial" [varPat () "n"])
-      (appExpr () [varExpr () "nat'", funExpr ()
-          [ Clause () [conPat () "zero'" []] [Choice [] (conExpr () "succ" [conExpr () "zero" []])]
-          , Clause () [conPat () "succ'" [varPat () "m", varPat () "x"]] [Choice [] (op2Expr () (OMul ()) (conExpr () "succ" [varExpr () "m"]) (varExpr () "x"))]
-          ], varExpr () "n"])
-      (appExpr () [varExpr () "factorial", litExpr () (TInteger 5)]))
+  op2Expr () (OMul ())
+      (op2Expr () (OAdd ())
+          (litExpr () (TInteger 33))
+          (conExpr () "succ" [conExpr () "succ" [conExpr () "succ" [litExpr () (TInteger 4)]]]))
+      (conExpr () "zero" [])
 
 --test5expr = fixExpr () "foo"
 --    (lamExpr () [varPat () "f", varPat () "s"] (funExpr ()
@@ -1281,9 +1288,11 @@ testEvalEnv = Env.fromList
     , ( "_^"  , fromJust (evalExpr (cLam "n" (cLam "f" (cLam "s" (cLet "r" (cLam "x" (cLam "m" (cIf (cApp [cVar "@Integer.(==)", cLit (TInteger 0), cVar "m"]) (cVar "x") (cApp [cVar "r", cApp [cVar "f", cVar "x"], cApp [cVar "@Integer.(-)", cVar "m", cLit (TInteger 1)]])))) (cApp [cVar "r", cVar "s", cVar "n"]))))) mempty) )
     , ( "(.)" , fromJust (evalExpr (cLam "f" (cLam "x" (cApp [cVar "f", cVar "x"]))) mempty) )
     -- Integer -> nat
-    , ( ";pack" , fromJust (evalExpr (cLam "?0" (cLet "f" (cLam "#0" (cIf (cApp [cVar "@Integer.(==)", cVar "#0", cLit (TInteger 0)]) (cVar "zero") (cApp [cVar "succ", cApp [cVar "f", cApp [cVar "@Integer.(-)", cVar "#0", cLit (TInteger 1)]]]))) (cApp [cVar "f", cVar "?0"]))) mempty) )
+--    , ( ";pack" , fromJust (evalExpr (cLam "?0" (cLet "f" (cLam "#0" (cIf (cApp [cVar "@Integer.(==)", cVar "#0", cLit (TInteger 0)]) (cVar "zero") (cApp [cVar "succ", cApp [cVar "f", cApp [cVar "@Integer.(-)", cVar "#0", cLit (TInteger 1)]]]))) (cApp [cVar "f", cVar "?0"]))) mempty) )
+--    , ( ";pack" , fromJust (evalExpr (cLam "?0" (cLit (TNat 100))) mempty) )
     -- nat -> Integer
-    , ( ";unpack" , fromJust (evalExpr (cLam "?0" (cLet "f" (cLam "#0" (cLam "#1" (cPat (cVar "#1") [(["zero"], cVar "#0"), (["succ", "?1"], cApp [cVar "f", cApp [cVar "@Integer.(+)", cVar "#0", cLit (TInteger 1)], cVar "?1"])]))) (cApp [cVar "f", cLit (TInteger 0), cVar "?0"]))) mempty) )
+--    , ( ";unpack" , fromJust (evalExpr (cLam "?0" (cLet "f" (cLam "#0" (cLam "#1" (cPat (cVar "#1") [(["zero"], cVar "#0"), (["succ", "?1"], cApp [cVar "f", cApp [cVar "@Integer.(+)", cVar "#0", cLit (TInteger 1)], cVar "?1"])]))) (cApp [cVar "f", cLit (TInteger 0), cVar "?0"]))) mempty) )
+--    , ( ";unpack" , fromJust (evalExpr (cLam "?0" (cLit (TInteger 33))) mempty) )
     , ( ";(*)" , fromJust (evalExpr (cLam "?0" (cLam "?1" (cApp [cVar ";pack", cApp [cVar "@Integer.(*)", cApp [cVar ";unpack", cVar "?0"], cApp [cVar ";unpack", cVar "?1"]]]))) mempty) )
     , ( ";(+)" , fromJust (evalExpr (cLam "?0" (cLam "?1" (cApp [cVar ";pack", cApp [cVar "@Integer.(+)", cApp [cVar ";unpack", cVar "?0"], cApp [cVar ";unpack", cVar "?1"]]]))) mempty) )
     , ( ";(-)" , fromJust (evalExpr (cLam "?0" (cLam "?1" (cApp [cVar ";pack", cApp [cVar "@Integer.(-)", cApp [cVar ";unpack", cVar "?0"], cApp [cVar ";unpack", cVar "?1"]]]))) mempty) )

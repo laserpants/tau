@@ -145,6 +145,7 @@ primRep = \case
     TBool    a          -> makeRep "Prim" "TBool"      [String (if a then "True" else "False")]
     TInt     a          -> makeRep "Prim" "TInt"       [toJSON a]
     TInteger a          -> makeRep "Prim" "TInteger"   [toJSON a]
+    TNat     a          -> makeRep "Prim" "TNat"       [toJSON a]
     TFloat   a          -> makeRep "Prim" "TFloat"     [toJSON a]
     TDouble  a          -> makeRep "Prim" "TDouble"    [toJSON a]
     TChar    a          -> makeRep "Prim" "TChar"      [toJSON a]

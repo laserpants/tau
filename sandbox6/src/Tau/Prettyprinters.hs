@@ -43,6 +43,7 @@ instance Pretty Prim where
         TBool False -> "false"
         TInt     a  -> pretty a
         TInteger a  -> pretty a
+        TNat     a  -> pretty a
         TFloat   a  -> pretty a
         TDouble  a  -> pretty a
         TChar    a  -> squotes (pretty a)
