@@ -111,8 +111,13 @@ headSize
   | _ => None
 
 
-map : (Functor f) => (a -> b) -> f a -> f b
-map(f, xs) = []
+map : (a -> b) -> List a -> List b
+map(f, xs) = xs.List'(Nil' => [] | Cons'(y, _, ys) => f y :: ys)
+
+
+
+map : (a -> b) -> List a -> List b
+map(f, xs) = xs.List'(Nil' => [] | Cons'(y, _, ys) => f y :: ys)
 
 
 -->
