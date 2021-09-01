@@ -1436,6 +1436,30 @@ testFlight = do
 --                        , Clause () [varPat () "n"] [Choice [] (conExpr () "succ" [appExpr () [varExpr () "f", op2Expr () (OSub ()) (varExpr () "n") (litExpr () (TBig 1))]])] ])
 --        (varExpr () "f")
 
+    succeedRunExpr
+        (op2Expr () (OMul ()) (op2Expr () (OAdd ()) (conExpr () "succ" [litExpr () (TBig 5)]) (litExpr () (TBig 3))) (litExpr () (TBig 0)))
+        (Just (Value (TNat 0)))
+
+    succeedRunExpr
+        (op2Expr () (OMul ()) (op2Expr () (OAdd ()) (conExpr () "succ" [litExpr () (TBig 5)]) (litExpr () (TBig 3))) (conExpr () "zero" []))
+        (Just (Value (TNat 0)))
+
+    succeedRunExpr
+        (op2Expr () (OMul ()) (op2Expr () (OAdd ()) (conExpr () "succ" [litExpr () (TBig 5)]) (litExpr () (TBig 3))) (conExpr () "succ" [conExpr () "zero" []]))
+        (Just (Value (TNat 9)))
+
+    succeedRunExpr
+        (op2Expr () (OMul ()) (op2Expr () (OAdd ()) (conExpr () "succ" [litExpr () (TBig 5)]) (litExpr () (TBig 3))) (conExpr () "succ" [litExpr () (TBig 0)]))
+        (Just (Value (TNat 9)))
+
+    succeedRunExpr
+        (annExpr tNat (op2Expr () (OSub ()) (litExpr () (TBig 0)) (litExpr () (TBig 100))))
+        (Just (Value (TNat 0)))
+
+    succeedRunExpr
+        (annExpr tNat (op2Expr () (OSub ()) (conExpr () "zero" []) (litExpr () (TBig 100))))
+        (Just (Value (TNat 0)))
+
     describe "• Defaulting" $ do
 
         succeedRunExpr
@@ -2036,6 +2060,30 @@ testParse = do
             "(a + b) * c"
             (op2Expr () (OMul ()) (op2Expr () (OAdd ()) (varExpr () "a") (varExpr () "b")) (varExpr () "c"))
 
+        succeedParse annExprParser
+            "((succ(5)+3)*0)"
+            (op2Expr () (OMul ()) (op2Expr () (OAdd ()) (conExpr () "succ" [litExpr () (TBig 5)]) (litExpr () (TBig 3))) (litExpr () (TBig 0)))
+
+        succeedParse annExprParser
+            "((succ(5)+3)*zero)"
+            (op2Expr () (OMul ()) (op2Expr () (OAdd ()) (conExpr () "succ" [litExpr () (TBig 5)]) (litExpr () (TBig 3))) (conExpr () "zero" []))
+
+        succeedParse annExprParser
+            "((succ(5)+3)*succ(zero))"
+            (op2Expr () (OMul ()) (op2Expr () (OAdd ()) (conExpr () "succ" [litExpr () (TBig 5)]) (litExpr () (TBig 3))) (conExpr () "succ" [conExpr () "zero" []]))
+
+        succeedParse annExprParser
+            "((succ(5)+3)*succ(0))"
+            (op2Expr () (OMul ()) (op2Expr () (OAdd ()) (conExpr () "succ" [litExpr () (TBig 5)]) (litExpr () (TBig 3))) (conExpr () "succ" [litExpr () (TBig 0)]))
+
+        succeedParse annExprParser
+            "(0-100):nat"
+            (annExpr tNat (op2Expr () (OSub ()) (litExpr () (TBig 0)) (litExpr () (TBig 100))))
+
+        succeedParse annExprParser
+            "(zero-100):nat"
+            (annExpr tNat (op2Expr () (OSub ()) (conExpr () "zero" []) (litExpr () (TBig 100))))
+
     describe "• Topdecl" $ do
 
         succeedParse topdeclParser
@@ -2049,11 +2097,3 @@ testParse = do
         succeedParse topdeclParser
             "f | (5, y) => y | _ => x"
             (Top () (BPat () (varPat () "f")) (funExpr () [ Clause () [litPat () (TBig 5), varPat () "y"] [Choice [] (varExpr () "y")], Clause () [anyPat ()] [Choice [] (varExpr () "x")]]))
-
-
--- ((succ(5)+3)*0)
--- ((succ(5)+3)*zero)
--- ((succ(5)+3)*succ(zero))
--- ((succ(5)+3)*succ(0))
-
--- (0-100):nat

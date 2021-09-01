@@ -915,21 +915,24 @@ test5expr :: ProgExpr () Type
 --      (conExpr () "zero" [])
 
 test5expr =
-        (fixExpr () "nat'"
-            (lamExpr () [varPat () "go", annPat tNat (varPat () "n")]
-                --(annExpr tNat (litExpr () (TBig 8))))
-                (patExpr () (varExpr () "n")
-                    [ Clause () (conPat () "succ" [varPat () "m"]) [Choice [] (appExpr () [varExpr () "go", conExpr () "succ'" [varExpr () "m", appExpr () [varExpr () "nat'", varExpr () "go", varExpr () "m"]]])]
-                    , Clause () (conPat () "zero" []) [Choice [] (annExpr tNat (appExpr () [varExpr () "go", conExpr () "zero'" []]))]]))
---                    , Clause () (anyPat ()) [Choice [] (appExpr () [varExpr () "go", conExpr () "zero'" []])] 
---                    ]))
-          (letExpr ()
-              (BFun () "factorial" [annPat tNat (varPat () "n")])
-              (appExpr () [varExpr () "nat'", funExpr ()
-                  [ Clause () [conPat () "zero'" []] [Choice [] (conExpr () "succ" [conExpr () "zero" []])]
-                  , Clause () [conPat () "succ'" [varPat () "m", varPat () "x"]] [Choice [] (op2Expr () (OMul ()) (conExpr () "succ" [varExpr () "m"]) (varExpr () "x"))]
-                  ], varExpr () "n"])
-              (appExpr () [varExpr () "factorial", litExpr () (TBig 8)])))
+    (op2Expr () (OMul ()) (op2Expr () (OAdd ()) (conExpr () "succ" [litExpr () (TBig 5)]) (litExpr () (TBig 3))) (litExpr () (TBig 0)))
+
+--test5expr =
+--        (fixExpr () "nat'"
+--            (lamExpr () [varPat () "go", annPat tNat (varPat () "n")]
+--                --(annExpr tNat (litExpr () (TBig 8))))
+--                (patExpr () (varExpr () "n")
+--                    [ Clause () (conPat () "succ" [varPat () "m"]) [Choice [] (appExpr () [varExpr () "go", conExpr () "succ'" [varExpr () "m", appExpr () [varExpr () "nat'", varExpr () "go", varExpr () "m"]]])]
+--                    , Clause () (conPat () "zero" []) [Choice [] (annExpr tNat (appExpr () [varExpr () "go", conExpr () "zero'" []]))]]))
+----                    , Clause () (anyPat ()) [Choice [] (appExpr () [varExpr () "go", conExpr () "zero'" []])]
+----                    ]))
+--          (letExpr ()
+--              (BFun () "factorial" [annPat tNat (varPat () "n")])
+--              (appExpr () [varExpr () "nat'", funExpr ()
+--                  [ Clause () [conPat () "zero'" []] [Choice [] (conExpr () "succ" [conExpr () "zero" []])]
+--                  , Clause () [conPat () "succ'" [varPat () "m", varPat () "x"]] [Choice [] (op2Expr () (OMul ()) (conExpr () "succ" [varExpr () "m"]) (varExpr () "x"))]
+--                  ], varExpr () "n"])
+--              (appExpr () [varExpr () "factorial", litExpr () (TBig 8)])))
 
 
 --test5expr = fixExpr () "foo"
