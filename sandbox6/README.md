@@ -22,9 +22,17 @@ Tau.Comp.TypeInference
 Tau.Comp.Unification
 Tau.Comp.Pipeline
 
+Tau.Tech
+Tau.Tech.Compiler
+
 Tau.Util
+Tau.Util.Env
 
 Tau.Eval
+
+Tau.Libs
+Tau.Bork
+Tau.Doge
 
 
 
