@@ -486,6 +486,7 @@ inferPrimType = \case
     TString{}  -> Forall [] [] tString
     TInt{}     -> Forall [kTyp] [InClass "Num" 0] (tGen 0)
     TBig{}     -> Forall [kTyp] [InClass "Num" 0] (tGen 0)
+    TNat{}     -> Forall [kTyp] [InClass "Num" 0] (tGen 0)
     TFloat{}   -> Forall [kTyp] [InClass "Fractional" 0] (tGen 0)
     TDouble{}  -> Forall [kTyp] [InClass "Fractional" 0] (tGen 0)
     TSymbol{}  -> Forall [kTyp] [] (tGen 0)
@@ -906,12 +907,30 @@ test5expr :: ProgExpr () Type
 --          ], varExpr () "n"])
 --      (appExpr () [varExpr () "factorial", litExpr () (TBig 5)]))
 
+--test5expr =
+--  op2Expr () (OMul ())
+--      (op2Expr () (OAdd ())
+--          (litExpr () (TBig 33))
+--          (conExpr () "succ" [conExpr () "succ" [conExpr () "succ" [litExpr () (TBig 4)]]]))
+--      (conExpr () "zero" [])
+
 test5expr =
-  op2Expr () (OMul ())
-      (op2Expr () (OAdd ())
-          (litExpr () (TBig 33))
-          (conExpr () "succ" [conExpr () "succ" [conExpr () "succ" [litExpr () (TBig 4)]]]))
-      (conExpr () "zero" [])
+        (fixExpr () "nat'"
+            (lamExpr () [varPat () "go", annPat tNat (varPat () "n")]
+                --(annExpr tNat (litExpr () (TBig 8))))
+                (patExpr () (varExpr () "n")
+                    [ Clause () (conPat () "succ" [varPat () "m"]) [Choice [] (appExpr () [varExpr () "go", conExpr () "succ'" [varExpr () "m", appExpr () [varExpr () "nat'", varExpr () "go", varExpr () "m"]]])]
+                    , Clause () (conPat () "zero" []) [Choice [] (annExpr tNat (appExpr () [varExpr () "go", conExpr () "zero'" []]))]]))
+--                    , Clause () (anyPat ()) [Choice [] (appExpr () [varExpr () "go", conExpr () "zero'" []])] 
+--                    ]))
+          (letExpr ()
+              (BFun () "factorial" [annPat tNat (varPat () "n")])
+              (appExpr () [varExpr () "nat'", funExpr ()
+                  [ Clause () [conPat () "zero'" []] [Choice [] (conExpr () "succ" [conExpr () "zero" []])]
+                  , Clause () [conPat () "succ'" [varPat () "m", varPat () "x"]] [Choice [] (op2Expr () (OMul ()) (conExpr () "succ" [varExpr () "m"]) (varExpr () "x"))]
+                  ], varExpr () "n"])
+              (appExpr () [varExpr () "factorial", litExpr () (TBig 8)])))
+
 
 --test5expr = fixExpr () "foo"
 --    (lamExpr () [varPat () "f", varPat () "s"] (funExpr ()
@@ -932,7 +951,8 @@ runBundle input =
     case runParserStack annExprParser "" input of
         Left err -> traceShow "error" (error (show err))
         --Right expr -> traceShow expr (compileBundle expr)
-        Right expr -> (compileBundle expr)
+        --Right expr -> (compileBundle expr)
+        Right expr -> (compileBundle test5expr)
 
 compileBundle :: ProgExpr () Type -> Bundle
 compileBundle expr = Bundle
@@ -1056,7 +1076,7 @@ testTypeEnv = Env.fromList
     , ( "zero"         , Forall []     [] (tNat) )
     , ( "succ"         , Forall []     [] (tNat `tArr` tNat) )
     , ( "zero'"        , Forall []     [] (tCon kTyp "nat'") )
-    , ( "succ'"        , Forall [kTyp] [] (tCon kTyp "nat'" `tArr` tGen 0 `tArr` tCon kTyp "nat'") )
+    , ( "succ'"        , Forall [kTyp] [] (tNat `tArr` tGen 0 `tArr` tCon kTyp "nat'") )
     , ( "Leaf"         , Forall [kTyp] [] (tApp kTyp (tCon kFun "Tree") (tGen 0)) )
     , ( "Node"         , Forall [kTyp] [] (tGen 0 `tArr` tApp kTyp (tCon kFun "Tree") (tGen 0) `tArr` tApp kTyp (tCon kFun "Tree") (tGen 0) `tArr` tApp kTyp (tCon kFun "Tree") (tGen 0)) )
     , ( "Leaf'"        , Forall [kTyp, kTyp] [] (tApp kTyp (tApp kFun (tCon kFun2 "Tree'") (tGen 0)) (tGen 1)) )

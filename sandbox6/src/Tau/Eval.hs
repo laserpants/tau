@@ -213,6 +213,10 @@ evalPat ((ps@[p, _, _], e):_) val
     | isRowCon p = evalRowPat ps val >>= flip local e
 evalPat ((p:ps, e):eqs) val =
     case val of
+        Value (TNat m) | 0 /= m && p == "succ" ->
+            local (Env.insert (head ps) (Value (TNat (pred m)))) e
+        Value (TNat 0) | p == "zero" ->
+            e
         Data con args | p == con ->
             local (Env.inserts (zip ps args)) e
         _ ->
