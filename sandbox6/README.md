@@ -75,6 +75,24 @@ fix
         factorial(3)
 
 
+fix
+  nat! =
+    ((go, n) =>
+      match n with
+        | succ(m) => go(succ!(m, nat!(go, m)))
+        | zero    => go(zero!))
+  in
+    let
+      factorial(n) =
+        n.nat!( zero! =>
+                  succ(zero)
+              | succ!(m, x) =>
+                  succ(m) * x )
+      in
+        factorial(3)
+
+
+
 
 headSize : (Ord a) => a -> Option string
 headSize
