@@ -31,8 +31,6 @@ Tau.Util.Env
 Tau.Eval
 
 Tau.Libs
-Tau.Bork
-Tau.Doge
 
 
 
@@ -41,11 +39,11 @@ Tau.Doge
 let
   fn
     | ("foo", Some(y))
-        when(y == 1)    => 1
-      , when(y == 2)    => 2
-      , otherwise       => 4
-    | (_, None)         => 0 : Int
-    | (_, _)            => 999 : Int
+        when(y == 1)    = 1
+      , when(y == 2)    = 2
+      , otherwise       = 4
+    | (_, None)         = 0 : Int
+    | (_, _)            = 999 : Int
   in
     fn( "baz"
       , Some(2 : Int) )
@@ -70,8 +68,8 @@ fix
   nat' =
     ((go, n) =>
       match n with
-        | succ(m) => go(succ'(m, nat'(go, m)))
-        | zero    => go(zero'))
+        | succ(m) = go(succ'(m, nat'(go, m)))
+        | zero    = go(zero'))
   in
     let
       factorial(n) =
@@ -87,8 +85,8 @@ fix
   nat! =
     ((go, n) =>
       match n with
-        | succ(m) => go(succ!(m, nat!(go, m)))
-        | zero    => go(zero!))
+        | succ(m) = go(succ!(m, nat!(go, m)))
+        | zero    = go(zero!))
   in
     let
       factorial(n) =
@@ -105,10 +103,10 @@ fix
 headSize : (Ord a) => a -> Option string
 headSize
   | x :: xs
-      when(x > 100) => Some("L")
-    , when(x > 10)  => Some("M")
-    , otherwise     => Some("S")
-  | _ => None
+      when(x > 100) = Some("L")
+    , when(x > 10)  = Some("M")
+    , otherwise     = Some("S")
+  | _               = None
 
 
 map : (a -> b) -> List a -> List b
@@ -124,8 +122,8 @@ fix
   List' =
     ((go, ys) =>
       match ys with
-        | x :: xs => go(Cons'(x, xs, List'(go, xs)))
-        | []      => go(Nil'))
+        | x :: xs = go(Cons'(x, xs, List'(go, xs)))
+        | []      = go(Nil'))
   in
     let
       map(f, xs) =
@@ -145,6 +143,21 @@ isZero
 fourIsZero : bool
 fourIsZero = 4.isZero
 
+
+
+
+
+match (x, y) with
+  | (1, x)
+      when(x /= 0) => x
+    , otherwise    => 0
+  | _              => 100
+
+match (x, y) with
+  | (1, x)
+      when(x /= 0) = x
+    , otherwise    = 0
+  | _              = 100
 
 -->
 

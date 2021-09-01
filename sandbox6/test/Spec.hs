@@ -686,8 +686,8 @@ testTypeInference = do
         --           in
         --             match xs with
         --               | [x :: _]
-        --                   when(length(xs) <= 3) => x
-        --               | [_]                     => 0
+        --                   when(length(xs) <= 3) = x
+        --               | [_]                     = 0
         --
         succeedInferExpr
             (fixExpr () "loopList" (lamExpr () [varPat () "g", varPat () "ys"] (patExpr () (varExpr () "ys") [ Clause () (conPat () "(::)" [varPat () "x", varPat () "xs"]) [Choice [] (appExpr () [varExpr () "g", conExpr () "Cons'" [varExpr () "x", varExpr () "xs", appExpr () [varExpr () "loopList", varExpr () "g", varExpr () "xs"]]])] , Clause () (conPat () "[]" []) [Choice [] (appExpr () [varExpr () "g", conExpr () "Nil'" []])] ])) (letExpr () (BFun () "length" [varPat () "xs"]) (op2Expr () (ODot ()) (appExpr () [ varExpr () "loopList" , funExpr () [ Clause () [conPat () "Cons'" [anyPat (), anyPat (), varPat () "a"]] [Choice [] (op2Expr () (OAdd ()) (litExpr () (TBig 1)) (varExpr () "a"))] , Clause () [conPat () "Nil'" []] [Choice [] (annExpr tInt (litExpr () (TBig 0)))] ] ]) (varExpr () "xs")) (letExpr () (BPat () (varPat () "xs")) (annExpr (tList tInt) (listExpr () [litExpr () (TBig 2)])) (patExpr () (varExpr () "xs") [ Clause () (conPat () "(::)" [varPat () "x", anyPat ()]) [Choice [op2Expr () (OLte ()) (appExpr () [varExpr () "length", varExpr () "xs"]) (litExpr () (TBig 3))] (varExpr () "x")] , Clause () (anyPat ()) [Choice [] (litExpr () (TBig 0))] ]))))
@@ -2071,8 +2071,12 @@ testParse = do
             "Some(x) => x + 1 | None => 0"
             (funExpr () [ Clause () [conPat () "Some" [varPat () "x"]] [Choice [] (op2Expr () (OAdd ()) (varExpr () "x") (litExpr () (TBig 1)))] , Clause () [conPat () "None" []] [Choice [] (litExpr () (TBig 0))] ])
 
+--        succeedParse annExprParser
+--            "match (x, y) with | (1, x) when(x /= 0) => x, otherwise => 0 | _ => 100"
+--            (patExpr () (tupleExpr () [varExpr () "x", varExpr () "y"]) [ Clause () (tuplePat () [litPat () (TBig 1), varPat () "x"]) [Choice [op2Expr () (ONeq ()) (varExpr () "x") (litExpr () (TBig 0))] (varExpr () "x"), Choice [] (litExpr () (TBig 0))] , Clause () (anyPat ()) [Choice [] (litExpr () (TBig 100))] ])
+
         succeedParse annExprParser
-            "match (x, y) with | (1, x) when(x /= 0) => x, otherwise => 0 | _ => 100"
+            "match (x, y) with | (1, x) when(x /= 0) = x, otherwise = 0 | _ = 100"
             (patExpr () (tupleExpr () [varExpr () "x", varExpr () "y"]) [ Clause () (tuplePat () [litPat () (TBig 1), varPat () "x"]) [Choice [op2Expr () (ONeq ()) (varExpr () "x") (litExpr () (TBig 0))] (varExpr () "x"), Choice [] (litExpr () (TBig 0))] , Clause () (anyPat ()) [Choice [] (litExpr () (TBig 100))] ])
 
         succeedParse annExprParser
