@@ -89,7 +89,4 @@ map : (Functor f) => (a -> b) -> f a -> f b
 map(f, xs) = []
 
 
-((5 : int, y : int) => y | _ => 9)(3, 8)
-((5 : int, y : int) => y | (_, _) => 9)(3, 8)
-
 -->
