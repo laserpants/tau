@@ -98,7 +98,7 @@ data Prim
     | TBool    Bool                      -- ^ Booleans
     | TInt     Int                       -- ^ Bounded machine integers (32 or 64 bit)
     | TBig     Integer                   -- ^ Arbitrary precision integers (bigints) 
-    | TNat     Integer                   -- ^ Natural numbers
+    | TNat     Integer                   -- ^ Natural numbers (based on the Peano axioms)
     | TFloat   Float                     -- ^ Single precision floating point numbers
     | TDouble  Double                    -- ^ Double precision floating point numbers
     | TChar    Char                      -- ^ Chars
