@@ -109,7 +109,7 @@ evalVar var =
         _ | ";pack" == var ->
             closure "?a" $ do
                 Just (Value (TBig n)) <- asks (Env.lookup "?a")
-                pure (Value (TNat n))
+                pure (Value (TNat (max 0 n)))
 
         _ | ";unpack" == var ->
             closure "?a" $ do

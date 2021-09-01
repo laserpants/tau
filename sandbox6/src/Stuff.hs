@@ -951,8 +951,8 @@ runBundle input =
     case runParserStack annExprParser "" input of
         Left err -> traceShow "error" (error (show err))
         --Right expr -> traceShow expr (compileBundle expr)
-        --Right expr -> (compileBundle expr)
-        Right expr -> (compileBundle test5expr)
+        Right expr -> (compileBundle expr)
+        --Right expr -> (compileBundle test5expr)
 
 compileBundle :: ProgExpr () Type -> Bundle
 compileBundle expr = Bundle

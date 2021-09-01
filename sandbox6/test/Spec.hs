@@ -2049,3 +2049,11 @@ testParse = do
         succeedParse topdeclParser
             "f | (5, y) => y | _ => x"
             (Top () (BPat () (varPat () "f")) (funExpr () [ Clause () [litPat () (TBig 5), varPat () "y"] [Choice [] (varExpr () "y")], Clause () [anyPat ()] [Choice [] (varExpr () "x")]]))
+
+
+-- ((succ(5)+3)*0)
+-- ((succ(5)+3)*zero)
+-- ((succ(5)+3)*succ(zero))
+-- ((succ(5)+3)*succ(0))
+
+-- (0-100):nat
