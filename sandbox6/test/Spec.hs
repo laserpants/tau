@@ -1877,11 +1877,11 @@ testParse = do
             (letExpr () (BPat () (varPat () "f")) (lamExpr () [varPat () "x"] (op2Expr () (OAdd ()) (varExpr () "x") (litExpr () (TBig 1)))) (varExpr () "y"))
 
         succeedParse annExprParser
-            "let withDefault | Some(y) => y | None => 0 in Some(3)"
+            "let withDefault | Some(y) = y | None = 0 in Some(3)"
             (letExpr () (BPat () (varPat () "withDefault")) (funExpr () [ Clause () [conPat () "Some" [varPat () "y"]] [Choice [] (varExpr () "y")] , Clause () [conPat () "None" []] [Choice [] (litExpr () (TBig 0))] ]) (conExpr () "Some" [litExpr () (TBig 3)]))
 
         succeedParse annExprParser
-            "let withDefault(val) | Some(y) => y | None => val in Some(3)"
+            "let withDefault(val) | Some(y) = y | None = val in Some(3)"
             (letExpr () (BFun () "withDefault" [varPat () "val"]) (funExpr () [ Clause () [conPat () "Some" [varPat () "y"]] [Choice [] (varExpr () "y")] , Clause () [conPat () "None" []] [Choice [] (varExpr () "val")] ]) (conExpr () "Some" [litExpr () (TBig 3)]))
 
         succeedParse annExprParser
@@ -2130,5 +2130,5 @@ testParse = do
             (Top () (BPat () (varPat () "foo")) (litExpr () (TBig 5)))
 
         succeedParse topdeclParser
-            "f | (5, y) => y | _ => x"
+            "f | (5, y) = y | _ = x"
             (Top () (BPat () (varPat () "f")) (funExpr () [ Clause () [litPat () (TBig 5), varPat () "y"] [Choice [] (varExpr () "y")], Clause () [anyPat ()] [Choice [] (varExpr () "x")]]))

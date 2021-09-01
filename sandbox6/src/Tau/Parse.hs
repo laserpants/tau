@@ -340,22 +340,22 @@ postfixFunArgParser = do
 annExprParser :: Parser (ProgExpr () Type)
 annExprParser = makeExprParser parseItem operator
   where
-    parseItem = makeExprParser (try funParser <|> try (parens annExprParser) <|> exprParser)
+    parseItem = makeExprParser (try (funParser "=>") <|> try (parens annExprParser) <|> exprParser)
         [ [ Postfix postfixFunArgParser ]
         , [ Postfix (symbol ":" *> (annExpr <$> typeParser)) ] ]
 
-funParser :: Parser (ProgExpr () Type)
-funParser = do
+funParser :: Text -> Parser (ProgExpr () Type)
+funParser sym = do
     optional (symbol "|")
-    cs <- clauseParser parser `sepBy1` symbol "|"
+    cs <- clauseParser parser sym `sepBy1` symbol "|"
     case cs of
         [Clause _ ps [Choice [] e]] -> pure (lamExpr () ps e)
         _                           -> pure (funExpr () cs)
   where
     parser = try (argParser annPatternParser) <|> pure <$> annPatternParser
 
-clauseParser :: Parser p -> Parser (Clause () p (ProgExpr () Type))
-clauseParser parser = Clause () <$> parser <*> (try guarded <|> nonGuarded)
+clauseParser :: Parser p -> Text -> Parser (Clause () p (ProgExpr () Type))
+clauseParser parser sym = Clause () <$> parser <*> (try guarded <|> nonGuarded)
   where
     guarded = do
         try withCatchAll <|> (whenClause `sepBy1` whenClause)
@@ -366,28 +366,28 @@ clauseParser parser = Clause () <$> parser <*> (try guarded <|> nonGuarded)
         pure (whens <> [Choice [] final])
 
     whenClause = Choice
-        <$> (keyword "when" *> argParser exprParser <* symbol "=>")
+        <$> (keyword "when" *> argParser exprParser <* symbol sym)
         <*> annExprParser
 
     otherwise = do
-        keyword "otherwise" *> symbol "=>"
+        keyword "otherwise" *> symbol sym
         Choice [] <$> annExprParser
 
     nonGuarded = do
-        expr <- symbol "=>" *> annExprParser
+        expr <- symbol sym *> annExprParser
         pure [Choice [] expr]
 
 matchParser :: Parser (ProgExpr () Type)
 matchParser = do
     expr <- keyword "match" *> annExprParser <* keyword "with"
     optional (symbol "|")
-    cs <- clauseParser annPatternParser `sepBy1` symbol "|"
+    cs <- clauseParser annPatternParser "=>" `sepBy1` symbol "|"
     pure (patExpr () expr cs)
 
 exprParser :: Parser (ProgExpr () Type)
 exprParser = makeExprParser parseItem operator
   where
-    parseItem = try funParser
+    parseItem = try (funParser "=>")
         <|> try (parens exprParser)
         <|> parser
 
@@ -416,7 +416,7 @@ exprParser = makeExprParser parseItem operator
     parseLet = do
         keyword "let"
         bind <- try parseLetBinding <|> parseNameBinding
-        expr <- (funParser <|> (symbol "=" *> annExprParser)) <* symbol "in"
+        expr <- (funParser "=" <|> (symbol "=" *> annExprParser)) <* symbol "in"
         letExpr () bind expr <$> annExprParser
 
     parseList =
@@ -455,7 +455,7 @@ hasLiteralPattern = cata $ \case
 topdeclParser :: Parser (Topdecl () Type)
 topdeclParser = do
     lhs  <- try parseLetBinding <|> parseNameBinding
-    expr <- funParser <|> (symbol "=" *> annExprParser)
+    expr <- funParser "=" <|> (symbol "=" *> annExprParser)
     pure (Top () lhs expr)
 
 progdeclParser :: Parser (Progdecl () Type)
