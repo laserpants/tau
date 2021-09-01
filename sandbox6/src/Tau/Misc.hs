@@ -84,9 +84,11 @@ data Scheme = Forall [Kind] [PredicateF Int] Polytype
 class Typed a where
     typeOf :: a -> Type
 
+type TyVar = (Name, Kind)
+
 -- | Class of data types that contain free type variables
 class FreeIn t where
-    free :: t -> [(Name, Kind)]
+    free :: t -> [TyVar]
 
 -------------------------------------------------------------------------------
 -- Lang
@@ -1177,7 +1179,7 @@ kindVars = nub . cata (\case
     KArr k1 k2   -> k1 <> k2
     _            -> [])
 
-typeVars :: TypeT a -> [(Name, Kind)]
+typeVars :: TypeT a -> [TyVar]
 typeVars = nub . cata (\case
     TVar k var   -> [(var, k)]
     TApp _ t1 t2 -> t1 <> t2
@@ -1871,7 +1873,7 @@ merge s1 s2
     applySub :: Substitution a -> Name -> Maybe a
     applySub sub var = Map.lookup var (getSub sub)
 
-normalizer :: [(Name, Kind)] -> Substitution Type
+normalizer :: [TyVar] -> Substitution Type
 normalizer vars = fromList (zipWith (\(v, k) a -> (v, tVar k a)) vars letters)
 
 normalize :: Type -> Type
