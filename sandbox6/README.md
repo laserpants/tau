@@ -67,11 +67,22 @@ fix
   in
     let 
       factorial(n) = 
-        n.nat'( zero => 
+        n.nat'( zero' => 
                   succ(zero)
-              | succ(m, x) => 
+              | succ'(m, x) => 
                   succ(m) * x )
       in
         factorial(3)
             
+
+
+headSize : (Ord a) => a -> Option string
+headSize 
+  | x :: xs
+      when(x > 100) => Some("L")
+    , when(x > 10)  => Some("M")
+    , otherwise =>  => Some("S")
+  | _ => None
+
+
 -->

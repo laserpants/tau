@@ -1360,6 +1360,7 @@ primName = \case
     TBool    _ -> "bool"
     TInt     _ -> "int"
     TBig     _ -> "bigint"
+    TNat     _ -> "nat"
     TFloat   _ -> "float"
     TDouble  _ -> "double"
     TChar    _ -> "char"
