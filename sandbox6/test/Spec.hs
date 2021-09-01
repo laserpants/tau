@@ -1460,6 +1460,18 @@ testFlight = do
         (annExpr tNat (op2Expr () (OSub ()) (conExpr () "zero" []) (litExpr () (TBig 100))))
         (Just (Value (TNat 0)))
 
+    succeedRunExpr
+        (appExpr () [funExpr () [ Clause () [annPat tInt (litPat () (TBig 5)), annPat tInt (varPat () "y")] [Choice [] (varExpr () "y")] , Clause () [anyPat (), anyPat ()] [Choice [] (litExpr () (TBig 9))] ], litExpr () (TBig 3), litExpr () (TBig 8) ])
+        (Just (Value (TInt 9)))
+
+    succeedRunExpr
+        (appExpr () [funExpr () [ Clause () [annPat tInt (litPat () (TBig 5)), annPat tInt (varPat () "y")] [Choice [] (varExpr () "y")] , Clause () [anyPat ()] [Choice [] (litExpr () (TBig 9))] ], litExpr () (TBig 3), litExpr () (TBig 8) ])
+        (Just (Value (TInt 9)))
+
+    succeedRunExpr
+        (appExpr () [funExpr () [ Clause () [annPat tInt (litPat () (TBig 5)), annPat tInt (varPat () "y")] [Choice [] (varExpr () "y")] , Clause () [anyPat ()] [Choice [] (litExpr () (TBig 9))] ], litExpr () (TBig 5), litExpr () (TBig 8) ])
+        (Just (Value (TInt 8)))
+
     describe "• Defaulting" $ do
 
         succeedRunExpr
@@ -2084,6 +2096,14 @@ testParse = do
             "(zero-100):nat"
             (annExpr tNat (op2Expr () (OSub ()) (conExpr () "zero" []) (litExpr () (TBig 100))))
 
+        succeedParse annExprParser
+            "((5, y) => y | (_, _) => 9)(3, 8)"
+            (appExpr () [funExpr () [ Clause () [litPat () (TBig 5), varPat () "y"] [Choice [] (varExpr () "y")] , Clause () [anyPat (), anyPat ()] [Choice [] (litExpr () (TBig 9))] ], litExpr () (TBig 3), litExpr () (TBig 8) ])
+
+        succeedParse annExprParser
+            "((5, y) => y | _ => 9)(3, 8)"
+            (appExpr () [funExpr () [ Clause () [litPat () (TBig 5), varPat () "y"] [Choice [] (varExpr () "y")] , Clause () [anyPat ()] [Choice [] (litExpr () (TBig 9))] ], litExpr () (TBig 3), litExpr () (TBig 8) ])
+
     describe "• Topdecl" $ do
 
         succeedParse topdeclParser
@@ -2097,9 +2117,3 @@ testParse = do
         succeedParse topdeclParser
             "f | (5, y) => y | _ => x"
             (Top () (BPat () (varPat () "f")) (funExpr () [ Clause () [litPat () (TBig 5), varPat () "y"] [Choice [] (varExpr () "y")], Clause () [anyPat ()] [Choice [] (varExpr () "x")]]))
-
-
--- ((5 : int, y : int) => y)(3, 8)
--- ((5, y) => y | (_, _) => 9)(3, 8)
--- ((5, y) => y | _ => 9)(3, 8)
--- ((5, y) => y | _ => 9)(5, 8)
