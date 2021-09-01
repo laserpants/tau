@@ -97,7 +97,7 @@ data Prim
     = TUnit                              -- ^ Unit value
     | TBool    Bool                      -- ^ Booleans
     | TInt     Int                       -- ^ Bounded machine integers (32 or 64 bit)
-    | TBig     Integer                   -- ^ Arbitrary precision (big) integers
+    | TBig     Integer                   -- ^ Arbitrary precision integers (bigints) 
     | TNat     Integer                   -- ^ Natural numbers
     | TFloat   Float                     -- ^ Single precision floating point numbers
     | TDouble  Double                    -- ^ Double precision floating point numbers
@@ -2092,6 +2092,7 @@ super env name = maybe [] (fmap predicateName . classPredicates . fst)
 super1 :: ClassEnv -> Name -> [Name]
 super1 env name = name:super env name
 
+-- transitive closure
 superClosure :: ClassEnv -> Name -> [Name]
 superClosure env name =
   case super env name of
