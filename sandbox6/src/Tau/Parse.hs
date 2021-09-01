@@ -385,7 +385,8 @@ matchParser = do
     pure (patExpr () expr cs)
   where
     -- TODO: use => or = ???
-    sepParser = try (symbol "=>") <|> symbol "="
+    --sepParser = try (symbol "=>") <|> symbol "="
+    sepParser = symbol "="
 
 exprParser :: Parser (ProgExpr () Type)
 exprParser = makeExprParser parseItem operator
