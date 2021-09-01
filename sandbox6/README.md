@@ -112,12 +112,28 @@ headSize
 
 
 map : (a -> b) -> List a -> List b
-map(f, xs) = xs.List'(Nil' => [] | Cons'(y, _, ys) => f y :: ys)
+map(f, xs) = xs.List'(Nil' => [] | Cons'(y, _, ys) => f(y) :: ys)
 
 
 
 map : (a -> b) -> List a -> List b
-map(f, xs) = xs.List'(Nil' => [] | Cons'(y, _, ys) => f y :: ys)
+map(f, xs) = xs.List'(Nil' => [] | Cons'(y, _, ys) => f(y) :: ys)
+
+
+fix
+  List' =
+    ((go, ys) =>
+      match ys with
+        | x :: xs => go(Cons'(x, xs, List'(go, xs)))
+        | []      => go(Nil'))
+  in
+    let
+      map(f, xs) =
+        xs.List'( Nil' => []
+                | Cons'(y, _, ys) => f(y) :: ys )
+      in
+        [1, 2, 3, 4].map(x => x + 1)
 
 
 -->
+

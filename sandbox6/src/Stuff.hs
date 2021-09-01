@@ -922,13 +922,28 @@ test5expr :: ProgExpr () Type
 --test5expr =
 --    (op2Expr () (OMul ()) (op2Expr () (OAdd ()) (conExpr () "succ" [litExpr () (TBig 5)]) (litExpr () (TBig 3))) (litExpr () (TBig 0)))
 
-test5expr =
-  --appExpr () [lamExpr () [annPat tInt (litPat () (TBig 5)), varPat () "y"] (varExpr () "y"), annExpr tInt (litExpr () (TBig 5)), annExpr tInt (litExpr () (TBig 8))]
+--test5expr =
+--  --appExpr () [lamExpr () [annPat tInt (litPat () (TBig 5)), varPat () "y"] (varExpr () "y"), annExpr tInt (litExpr () (TBig 5)), annExpr tInt (litExpr () (TBig 8))]
+--
+--  appExpr () [funExpr () [
+--      Clause () [annPat tInt (litPat () (TBig 5)), annPat tInt (varPat () "y")] [Choice [] (varExpr () "y")]
+--    , Clause () [anyPat ()] [Choice [] (litExpr () (TBig 9))]
+--                         ], annExpr tInt (litExpr () (TBig 9)), annExpr tInt (litExpr () (TBig 8))]
 
-  appExpr () [funExpr () [
-      Clause () [annPat tInt (litPat () (TBig 5)), annPat tInt (varPat () "y")] [Choice [] (varExpr () "y")]
-    , Clause () [anyPat ()] [Choice [] (litExpr () (TBig 9))]
-                         ], annExpr tInt (litExpr () (TBig 9)), annExpr tInt (litExpr () (TBig 8))]
+test5expr =
+        (fixExpr () "List'"
+            (lamExpr () [varPat () "go", varPat () "ys"] (patExpr () (varExpr () "ys")
+                  [ Clause () (conPat () "(::)" [varPat () "x", varPat () "xs"]) [Choice [] (appExpr () [varExpr () "go", conExpr () "Cons'" [varExpr () "x", varExpr () "xs", appExpr () [varExpr () "List'", varExpr () "go", varExpr () "xs"]]])]
+                  , Clause () (conPat () "[]" []) [Choice [] (appExpr () [varExpr () "go", conExpr () "Nil'" []])]
+                  ]))
+            (letExpr ()
+                (BFun () "map" [varPat () "f", varPat () "xs"])
+                (appExpr () [op2Expr () (ODot ()) (varExpr () "List'") (funExpr ()
+                    [ Clause () [conPat () "Nil'" []] [Choice [] (conExpr () "[]" [])]
+                    , Clause () [conPat () "Cons'" [varPat () "y", anyPat (), varPat () "ys"]] [Choice [] (conExpr () "(::)" [appExpr () [varExpr () "f", varExpr () "y"], varExpr () "ys"])]
+                    ]), (varExpr () "xs")])
+                (appExpr () [op2Expr () (ODot ()) (varExpr () "map") (lamExpr () [varPat () "x"] (op2Expr () (OAdd ()) (varExpr () "x") (litExpr () (TBig 1)))), (listExpr () [annExpr tInt (litExpr () (TBig 1)), litExpr () (TBig 2), litExpr () (TBig 3), litExpr () (TBig 4)])])))
+
 
 --test5expr =
 --        (fixExpr () "nat'"
