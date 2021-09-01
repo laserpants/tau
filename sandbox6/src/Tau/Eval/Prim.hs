@@ -21,10 +21,10 @@ instance PrimType Int where
         _        -> 0
 
 instance PrimType Integer where
-    toPrim = TInteger
+    toPrim = TBig
     fromPrim = \case
-        TInteger lit -> lit
-        _            -> 0
+        TBig lit -> lit
+        _        -> 0
 
 instance PrimType Float where
     toPrim = TFloat

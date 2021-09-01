@@ -97,7 +97,8 @@ data Prim
     = TUnit                              -- ^ Unit value
     | TBool    Bool                      -- ^ Booleans
     | TInt     Int                       -- ^ Bounded machine integers (32 or 64 bit)
-    | TInteger Integer                   -- ^ Arbitrary precision (big) integers
+    | TBig     Integer                   -- ^ Arbitrary precision integers (bigints)
+    | TNat     Integer                   -- ^ Natural numbers (based on the Peano axioms)
     | TFloat   Float                     -- ^ Single precision floating point numbers
     | TDouble  Double                    -- ^ Double precision floating point numbers
     | TChar    Char                      -- ^ Chars
@@ -798,9 +799,9 @@ tInt :: TypeT a
 tInt = typ "int"
 {-# INLINE tInt #-}
 
-tInteger :: TypeT a
-tInteger = typ "bigint"
-{-# INLINE tInteger #-}
+tBigint :: TypeT a
+tBigint = typ "bigint"
+{-# INLINE tBigint #-}
 
 tFloat :: TypeT a
 tFloat = typ "float"
@@ -1358,7 +1359,8 @@ primName = \case
     TUnit      -> "unit"
     TBool    _ -> "bool"
     TInt     _ -> "int"
-    TInteger _ -> "bigint"
+    TBig     _ -> "bigint"
+    TNat     _ -> "nat"
     TFloat   _ -> "float"
     TDouble  _ -> "double"
     TChar    _ -> "char"
@@ -2090,6 +2092,7 @@ super env name = maybe [] (fmap predicateName . classPredicates . fst)
 super1 :: ClassEnv -> Name -> [Name]
 super1 env name = name:super env name
 
+-- transitive closure
 superClosure :: ClassEnv -> Name -> [Name]
 superClosure env name =
   case super env name of

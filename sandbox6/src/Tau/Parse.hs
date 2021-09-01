@@ -161,7 +161,7 @@ primParser = parseUnit
     parseChar      = TChar <$> surroundedBy (symbol "'") printChar
     parseString    = lexeme (TString . pack <$> chars)
     parseFloat     = TDouble <$> lexeme Lexer.float
-    parseIntegral  = TInteger <$> lexeme Lexer.decimal
+    parseIntegral  = TBig <$> lexeme Lexer.decimal
     chars          = char '\"' *> manyTill Lexer.charLiteral (char '\"')
 
 -------------------------------------------------------------------------------
