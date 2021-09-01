@@ -265,7 +265,12 @@ inferExprType = cata $ \case
         pure (letExpr (TypeInfo (errs1 <> errs2 <> errs3) t []) (BFun (TypeInfo [] bt []) f ps) e1 e2)
 
     EFun t clauses -> do
-        cs <- traverse inferClauseType clauses
+        -- Exception to allow for "catch all" single wildcard patterns, e.g., ((_, _) => a | _ => b)
+        let n = maximum (length . clausePatterns <$> clauses)
+            fn = \case (Clause t [Fix (PAny t1)] cs) -> Clause t (replicate n (anyPat t1)) cs
+                       clause                        -> clause
+        cs <- traverse inferClauseType (fn <$> clauses)
+
         errss <- forM cs $ \(Clause ti ps ds) -> do
             concat <$> forM ds (\(Choice _ e) -> do
                 errs1 <- tryUnify t (foldr tArr (typeOf e) (typeOf <$> ps))
@@ -914,8 +919,16 @@ test5expr :: ProgExpr () Type
 --          (conExpr () "succ" [conExpr () "succ" [conExpr () "succ" [litExpr () (TBig 4)]]]))
 --      (conExpr () "zero" [])
 
+--test5expr =
+--    (op2Expr () (OMul ()) (op2Expr () (OAdd ()) (conExpr () "succ" [litExpr () (TBig 5)]) (litExpr () (TBig 3))) (litExpr () (TBig 0)))
+
 test5expr =
-    (op2Expr () (OMul ()) (op2Expr () (OAdd ()) (conExpr () "succ" [litExpr () (TBig 5)]) (litExpr () (TBig 3))) (litExpr () (TBig 0)))
+  --appExpr () [lamExpr () [annPat tInt (litPat () (TBig 5)), varPat () "y"] (varExpr () "y"), annExpr tInt (litExpr () (TBig 5)), annExpr tInt (litExpr () (TBig 8))]
+
+  appExpr () [funExpr () [
+      Clause () [annPat tInt (litPat () (TBig 5)), annPat tInt (varPat () "y")] [Choice [] (varExpr () "y")]
+    , Clause () [anyPat ()] [Choice [] (litExpr () (TBig 9))]
+                         ], annExpr tInt (litExpr () (TBig 9)), annExpr tInt (litExpr () (TBig 8))]
 
 --test5expr =
 --        (fixExpr () "nat'"

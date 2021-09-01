@@ -81,8 +81,11 @@ headSize
   | x :: xs
       when(x > 100) => Some("L")
     , when(x > 10)  => Some("M")
-    , otherwise =>  => Some("S")
+    , otherwise     => Some("S")
   | _ => None
 
+
+((5 : int, y : int) => y | _ => 9)(3, 8)
+((5 : int, y : int) => y | (_, _) => 9)(3, 8)
 
 -->
