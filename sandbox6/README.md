@@ -32,9 +32,9 @@ Tau.Eval
 
 let
   fn
-    | ("foo", Some(y)) 
+    | ("foo", Some(y))
         when(y == 1)    => 1
-      , when(y == 2)    => 2 
+      , when(y == 2)    => 2
       , otherwise       => 4
     | (_, None)         => 0 : Int
     | (_, _)            => 999 : Int
@@ -45,9 +45,9 @@ let
 
 let
   fn
-    | ("foo", Some(y)) 
+    | ("foo", Some(y))
         when(y == 1) = 1
-      , when(y == 2) = 2 
+      , when(y == 2) = 2
       , otherwise    = 4
     | (_, None)      = 0 : Int
     | (_, _)         = 999 : Int
@@ -58,26 +58,26 @@ let
 
 https://hackage.haskell.org/package/numhask
 
-fix 
+fix
   nat' =
     ((go, n) =>
       match n with
         | succ(m) => go(succ'(m, nat'(go, m)))
         | zero    => go(zero'))
   in
-    let 
-      factorial(n) = 
-        n.nat'( zero' => 
+    let
+      factorial(n) =
+        n.nat'( zero' =>
                   succ(zero)
-              | succ'(m, x) => 
+              | succ'(m, x) =>
                   succ(m) * x )
       in
         factorial(3)
-            
+
 
 
 headSize : (Ord a) => a -> Option string
-headSize 
+headSize
   | x :: xs
       when(x > 100) => Some("L")
     , when(x > 10)  => Some("M")
