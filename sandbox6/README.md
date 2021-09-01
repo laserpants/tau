@@ -135,5 +135,16 @@ fix
         [1, 2, 3, 4].map(x => x + 1)
 
 
+
+
+isZero : nat -> bool
+isZero
+  | zero = true
+  | _    = false
+
+fourIsZero : bool
+fourIsZero = 4.isZero
+
+
 -->
 
