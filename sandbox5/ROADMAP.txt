@@ -7,7 +7,7 @@
 [x] Type class ambg.
 [x] Recursion
 [x] Type class argument order
-[-] Defaulting
-[-] Modules/Program
+[x] Defaulting
 [-] Codata
+[-] Modules/Program
 [-] Effects system
