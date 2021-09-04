@@ -280,7 +280,7 @@ inferExprType = cata $ \case
 
     EOp1 t op1 expr -> do
         a <- expr
-        (op, ps) <- inferOp1Type op1
+        (op, ps) <- inferOpType (typeInfo <$> op1) (op1Scheme op1)
         errs <- tryUnify (typeOf op) (typeOf a `tArr` t)
         pure (op1Expr (TypeInfo errs t ps) op a)
 
@@ -297,13 +297,13 @@ inferExprType = cata $ \case
 
         case (op2, field) of
             (ODot t1, Just (name, t2)) -> do
-                (op, ps) <- inferOp2Type (OField t1)
+                (op, ps) <- inferOpType (OField (TypeInfo [] t1 [])) (op2Scheme op2)
                 errs1 <- tryUnify (typeOf op) (typeOf a `tArr` typeOf b `tArr` t)
                 errs2 <- tryUnify t t2
                 pure (op2Expr (TypeInfo (errs1 <> errs2) t ps) op
                               (litExpr (TypeInfo [] tSymbol []) (TSymbol name)) b)
             _ -> do
-                (op, ps) <- inferOp2Type op2
+                (op, ps) <- inferOpType (typeInfo <$> op2) (op2Scheme op2)
                 ty <- fresh
                 errs1 <- tryUnify t (foldr tArr ty (typeOf <$> filter isHole [a, b]))
                 errs2 <- tryUnify (typeOf op) (foldr tArr ty (typeOf <$> [a, b]))
@@ -342,9 +342,9 @@ inferExprType = cata $ \case
 
     EAnn t expr -> do
         e <- expr
-        let TypeInfo errs1 t1 ps = exprTag e
+        let TypeInfo errs1 t1 ps = getTag e
         errs2 <- tryUnify t t1
-        pure (setExprTag (TypeInfo (errs1 <> errs2) t1 ps) e)
+        pure (setTag (TypeInfo (errs1 <> errs2) t1 ps) e)
 
 inferPatternType
   :: ( MonadSupply Int m
@@ -424,82 +424,56 @@ inferPatternType = cata $ \case
 
     PAnn t pat -> do
         (p, vs) <- pat
-        let TypeInfo errs1 t1 ps = patternTag p
+        let TypeInfo errs1 t1 ps = getTag p
         errs2 <- tryUnify t t1
-        pure (setPatternTag (TypeInfo (errs1 <> errs2) t1 ps) p, vs)
+        pure (setTag (TypeInfo (errs1 <> errs2) t1 ps) p, vs)
 
-inferOp1Type
+-- TODO: move?
+typeInfo :: Type -> TypeInfo [Error]
+typeInfo t = TypeInfo [] t []
+
+inferOpType
   :: ( MonadSupply Int m
      , MonadReader (ClassEnv, TypeEnv, KindEnv, ConstructorEnv) m
-     , MonadState (Substitution Type, Substitution Kind, Context) m )
-  => Op1 Type
-  -> m (Op1 (TypeInfo [Error]), [Predicate])
-inferOp1Type = \case
-
-    ONeg   t -> opType t ONeg (Forall [kTyp] [InClass "Num" 0] (tGen 0 `tArr` tGen 0))
-    ONot   t -> opType t ONot (Forall [] [] (tBool `tArr` tBool))
-
-inferOp2Type
-  :: ( MonadSupply Int m
-     , MonadReader (ClassEnv, TypeEnv, KindEnv, ConstructorEnv) m
-     , MonadState (Substitution Type, Substitution Kind, Context) m )
-  => Op2 Type
-  -> m (Op2 (TypeInfo [Error]), [Predicate])
-inferOp2Type = \case
-
-    OEq    t -> opType t OEq  eqOpType
-    ONeq   t -> opType t ONeq neqOpType
-    OAnd   t -> opType t OAnd andOpType
-    OOr    t -> opType t OOr  orOpType
-    OAdd   t -> opType t OAdd addOpType
-    OSub   t -> opType t OSub subOpType
-    OMul   t -> opType t OMul (Forall [kTyp] [InClass "Num" 0] (tGen 0 `tArr` tGen 0 `tArr` tGen 0))
-    ODiv   t -> opType t ODiv (Forall [kTyp] [InClass "Fractional" 0] (tGen 0 `tArr` tGen 0 `tArr` tGen 0))
-    OPow   t -> opType t OPow (Forall [kTyp, kTyp] [InClass "Integral" 0, InClass "Num" 1] (tGen 1 `tArr` tGen 0 `tArr` tGen 1))
-    OMod   t -> opType t OMod (Forall [kTyp] [InClass "Integral" 0] (tGen 0 `tArr` tGen 0 `tArr` tGen 0))
-    OLt    t -> opType t OLt  (Forall [kTyp] [InClass "Ord" 0] (tGen 0 `tArr` tGen 0 `tArr` tBool))
-    OGt    t -> opType t OGt  (Forall [kTyp] [InClass "Ord" 0] (tGen 0 `tArr` tGen 0 `tArr` tBool))
-    OLte   t -> opType t OLte (Forall [kTyp] [InClass "Ord" 0] (tGen 0 `tArr` tGen 0 `tArr` tBool))
-    OGte   t -> opType t OGte (Forall [kTyp] [InClass "Ord" 0] (tGen 0 `tArr` tGen 0 `tArr` tBool))
-    OLarr  t -> opType t OLarr (Forall [kTyp, kTyp, kTyp] [] ((tGen 1 `tArr` tGen 2) `tArr` (tGen 0 `tArr` tGen 1) `tArr` tGen 0 `tArr` tGen 2))
-    ORarr  t -> opType t ORarr (Forall [kTyp, kTyp, kTyp] [] ((tGen 0 `tArr` tGen 1) `tArr` (tGen 1 `tArr` tGen 2) `tArr` tGen 0 `tArr` tGen 2))
-    OFpip  t -> opType t OFpip (Forall [kTyp, kTyp] [] (tGen 0 `tArr` (tGen 0 `tArr` tGen 1) `tArr` tGen 1))
-    OBpip  t -> opType t OBpip (Forall [kTyp, kTyp] [] ((tGen 0 `tArr` tGen 1) `tArr` tGen 0 `tArr` tGen 1))
-    OOpt   t -> opType t OOpt (Forall [kTyp] [] (tApp kTyp (tCon kFun "Option") (tGen 0) `tArr` tGen 0 `tArr` tGen 0))
-    OStr   t -> opType t OOpt (Forall [] [] (tString `tArr` tString `tArr` tString))
-    ODot   t -> opType t ODot (Forall [kTyp, kTyp] [] ((tGen 0 `tArr` tGen 1) `tArr` tGen 0 `tArr` tGen 1))
-    OField t -> opType t OField (Forall [kTyp, kTyp] [] (tCon kTyp "Symbol" `tArr` tGen 1 `tArr` tGen 0))
-
-eqOpType :: Scheme
-eqOpType = Forall [kTyp] [InClass "Eq" 0] (tGen 0 `tArr` tGen 0 `tArr` tBool)
-
-neqOpType :: Scheme
-neqOpType = Forall [kTyp] [InClass "Eq" 0] (tGen 0 `tArr` tGen 0 `tArr` tBool)
-
-andOpType :: Scheme
-andOpType = Forall [] [] (tBool `tArr` tBool `tArr` tBool)
-
-orOpType :: Scheme
-orOpType = Forall [] [] (tBool `tArr` tBool `tArr` tBool)
-
-addOpType :: Scheme
-addOpType = Forall [kTyp] [InClass "Num" 0] (tGen 0 `tArr` tGen 0 `tArr` tGen 0)
-
-subOpType :: Scheme
-subOpType = Forall [kTyp] [InClass "Num" 0] (tGen 0 `tArr` tGen 0 `tArr` tGen 0)
-
-opType
-  :: ( MonadSupply Int m
-     , MonadReader (ClassEnv, TypeEnv, KindEnv, ConstructorEnv) m
-     , MonadState (Substitution Type, Substitution Kind, Context) m )
-  => Type
-  -> (TypeInfo [Error] -> a)
+     , MonadState (Substitution Type, Substitution Kind, Context) m
+     , Typed a, Tagged a (TypeInfo [Error]) )
+  => a
   -> Scheme
   -> m (a, [Predicate])
-opType t op scheme = do
+inferOpType op scheme = do
     (ty, ps) <- instantiate scheme
-    errs <- tryUnify t ty
-    pure (op (TypeInfo errs ty ps), ps)
+    errs <- tryUnify (typeOf op) ty
+    pure (setTag (TypeInfo errs ty ps) op, ps)
+
+op1Scheme :: Op1 t -> Scheme
+op1Scheme = \case
+    ONeg   _ -> Forall [kTyp] [InClass "Num" 0] (tGen 0 `tArr` tGen 0)
+    ONot   _ -> Forall [] [] (tBool `tArr` tBool)
+
+op2Scheme :: Op2 t -> Scheme
+op2Scheme = \case
+    OEq    _ -> Forall [kTyp] [InClass "Eq" 0] (tGen 0 `tArr` tGen 0 `tArr` tBool)
+    ONeq   _ -> Forall [kTyp] [InClass "Eq" 0] (tGen 0 `tArr` tGen 0 `tArr` tBool)
+    OAnd   _ -> Forall [] [] (tBool `tArr` tBool `tArr` tBool)
+    OOr    _ -> Forall [] [] (tBool `tArr` tBool `tArr` tBool)
+    OAdd   _ -> Forall [kTyp] [InClass "Num" 0] (tGen 0 `tArr` tGen 0 `tArr` tGen 0)
+    OSub   _ -> Forall [kTyp] [InClass "Num" 0] (tGen 0 `tArr` tGen 0 `tArr` tGen 0)
+    OMul   _ -> Forall [kTyp] [InClass "Num" 0] (tGen 0 `tArr` tGen 0 `tArr` tGen 0)
+    ODiv   _ -> Forall [kTyp] [InClass "Fractional" 0] (tGen 0 `tArr` tGen 0 `tArr` tGen 0)
+    OPow   _ -> Forall [kTyp, kTyp] [InClass "Integral" 0, InClass "Num" 1] (tGen 1 `tArr` tGen 0 `tArr` tGen 1)
+    OMod   _ -> Forall [kTyp] [InClass "Integral" 0] (tGen 0 `tArr` tGen 0 `tArr` tGen 0)
+    OLt    _ -> Forall [kTyp] [InClass "Ord" 0] (tGen 0 `tArr` tGen 0 `tArr` tBool)
+    OGt    _ -> Forall [kTyp] [InClass "Ord" 0] (tGen 0 `tArr` tGen 0 `tArr` tBool)
+    OLte   _ -> Forall [kTyp] [InClass "Ord" 0] (tGen 0 `tArr` tGen 0 `tArr` tBool)
+    OGte   _ -> Forall [kTyp] [InClass "Ord" 0] (tGen 0 `tArr` tGen 0 `tArr` tBool)
+    OLarr  _ -> Forall [kTyp, kTyp, kTyp] [] ((tGen 1 `tArr` tGen 2) `tArr` (tGen 0 `tArr` tGen 1) `tArr` tGen 0 `tArr` tGen 2)
+    ORarr  _ -> Forall [kTyp, kTyp, kTyp] [] ((tGen 0 `tArr` tGen 1) `tArr` (tGen 1 `tArr` tGen 2) `tArr` tGen 0 `tArr` tGen 2)
+    OFpip  _ -> Forall [kTyp, kTyp] [] (tGen 0 `tArr` (tGen 0 `tArr` tGen 1) `tArr` tGen 1)
+    OBpip  _ -> Forall [kTyp, kTyp] [] ((tGen 0 `tArr` tGen 1) `tArr` tGen 0 `tArr` tGen 1)
+    OOpt   _ -> Forall [kTyp] [] (tApp kTyp (tCon kFun "Option") (tGen 0) `tArr` tGen 0 `tArr` tGen 0)
+    OStr   _ -> Forall [] [] (tString `tArr` tString `tArr` tString)
+    ODot   _ -> Forall [kTyp, kTyp] [] ((tGen 0 `tArr` tGen 1) `tArr` tGen 0 `tArr` tGen 1)
+    OField _ -> Forall [kTyp, kTyp] [] (tCon kTyp "Symbol" `tArr` tGen 1 `tArr` tGen 0)
 
 inferPrimType :: Prim -> Scheme
 inferPrimType = \case

@@ -1,14 +1,15 @@
-{-# LANGUAGE DeriveTraversable     #-}
-{-# LANGUAGE FlexibleContexts      #-}
-{-# LANGUAGE FlexibleInstances     #-}
-{-# LANGUAGE LambdaCase            #-}
-{-# LANGUAGE MultiParamTypeClasses #-}
-{-# LANGUAGE OverloadedStrings     #-}
-{-# LANGUAGE RecordWildCards       #-}
-{-# LANGUAGE StandaloneDeriving    #-}
-{-# LANGUAGE StrictData            #-}
-{-# LANGUAGE TemplateHaskell       #-}
-{-# LANGUAGE TupleSections         #-}
+{-# LANGUAGE DeriveTraversable      #-}
+{-# LANGUAGE FlexibleContexts       #-}
+{-# LANGUAGE FlexibleInstances      #-}
+{-# LANGUAGE FunctionalDependencies #-}
+{-# LANGUAGE LambdaCase             #-}
+{-# LANGUAGE MultiParamTypeClasses  #-}
+{-# LANGUAGE OverloadedStrings      #-}
+{-# LANGUAGE RecordWildCards        #-}
+{-# LANGUAGE StandaloneDeriving     #-}
+{-# LANGUAGE StrictData             #-}
+{-# LANGUAGE TemplateHaskell        #-}
+{-# LANGUAGE TupleSections          #-}
 module Tau.Misc where
 
 import Control.Arrow ((<<<), (>>>))
@@ -89,6 +90,10 @@ type TyVar = (Name, Kind)
 -- | Class of data types that contain free type variables
 class FreeIn t where
     free :: t -> [TyVar]
+
+class Tagged t a | t -> a where
+    getTag :: t -> a
+    setTag :: a -> t -> t
 
 -------------------------------------------------------------------------------
 -- Lang
@@ -273,11 +278,15 @@ deriving instance (Show t) => Show (Op1 t)
 deriving instance (Eq   t) => Eq   (Op1 t)
 deriving instance (Ord  t) => Ord  (Op1 t)
 
+deriving instance Functor Op1
+
 -- Type class instances for Op2
 
 deriving instance (Show t) => Show (Op2 t)
 deriving instance (Eq   t) => Eq   (Op2 t)
 deriving instance (Ord  t) => Ord  (Op2 t)
+
+deriving instance Functor Op2
 
 -- Type class instances for Binding
 
@@ -648,19 +657,22 @@ constructorEnv = Env.fromList . (first Set.fromList <$$>)
 -- Type class instances
 
 instance (Typed t) => Typed (ProgExpr t u) where
-    typeOf = typeOf . exprTag
+    typeOf = typeOf . getTag
 
 instance (Typed t) => Typed (ProgPattern t u) where
-    typeOf = typeOf . patternTag
+    typeOf = typeOf . getTag
 
 instance (Typed t) => Typed (Op1 t) where
-    typeOf = typeOf . op1Tag
+    typeOf = typeOf . getTag
 
 instance (Typed t) => Typed (Op2 t) where
-    typeOf = typeOf . op2Tag
+    typeOf = typeOf . getTag
 
 instance (Typed t) => Typed (Ast t) where
-    typeOf = typeOf . astTag
+    typeOf = typeOf . getTag
+
+instance (Typed t) => Typed (Binding t p) where
+    typeOf = typeOf . getTag
 
 deriving instance (Show e, Show t) =>
     Show (TypeInfoT e t)
@@ -672,9 +684,6 @@ deriving instance Functor (TypeInfoT e)
 
 instance (Typed t) => Typed (TypeInfoT e t) where
     typeOf = typeOf . nodeType
-
-instance (Typed t) => Typed (Binding t p) where
-    typeOf = typeOf . bindingTag
 
 instance Typed Void where
     typeOf _ = tVar kTyp "a"
@@ -1251,110 +1260,143 @@ unpackRecordType = para $ \case
 -------------------------------------------------------------------------------
 -------------------------------------------------------------------------------
 
-exprTag :: (Functor e2, Functor e4) => Expr t t t u e1 e2 e3 e4 -> t
-exprTag = cata $ \case
-    EVar    t _     -> t
-    EHole   t       -> t
-    ECon    t _ _   -> t
-    ELit    t _     -> t
-    EApp    t _     -> t
-    ELet    t _ _ _ -> t
-    EFix    t _ _ _ -> t
-    ELam    t _ _   -> t
-    EIf     t _ _ _ -> t
-    EPat    t _ _   -> t
-    EFun    t _     -> t
-    EOp1    t _ _   -> t
-    EOp2    t _ _ _ -> t
-    ETuple  t _     -> t
-    EList   t _     -> t
-    ERow    t _ _ _ -> t
-    ERecord t _     -> t
-    EAnn    _ e     -> e
+instance Tagged (Op1 t) t where
+    getTag = \case
+        ONeg    t       -> t
+        ONot    t       -> t
 
-patternTag :: Pattern t t t u -> t
-patternTag = cata $ \case
-    PVar    t _     -> t
-    PCon    t _ _   -> t
-    PLit    t _     -> t
-    PAs     t _ _   -> t
-    POr     t _ _   -> t
-    PAny    t       -> t
-    PTuple  t _     -> t
-    PList   t _     -> t
-    PRow    t _ _ _ -> t
-    PRecord t _     -> t
-    PAnn    _ p     -> p
+    setTag t = \case
+        ONeg    _       -> ONeg  t
+        ONot    _       -> ONot  t
 
-op1Tag :: Op1 t -> t
-op1Tag = \case
-    ONeg    t       -> t
-    ONot    t       -> t
+instance Tagged (Op2 t) t where
+    getTag = \case
+        OEq     t       -> t
+        ONeq    t       -> t
+        OAnd    t       -> t
+        OOr     t       -> t
+        OAdd    t       -> t
+        OSub    t       -> t
+        OMul    t       -> t
+        ODiv    t       -> t
+        OPow    t       -> t
+        OMod    t       -> t
+        OLt     t       -> t
+        OGt     t       -> t
+        OLte    t       -> t
+        OGte    t       -> t
+        OLarr   t       -> t
+        ORarr   t       -> t
+        OFpip   t       -> t
+        OBpip   t       -> t
+        OOpt    t       -> t
+        OStr    t       -> t
+        ODot    t       -> t
+        OField  t       -> t
 
-op2Tag :: Op2 t -> t
-op2Tag = \case
-    OEq     t       -> t
-    ONeq    t       -> t
-    OAnd    t       -> t
-    OOr     t       -> t
-    OAdd    t       -> t
-    OSub    t       -> t
-    OMul    t       -> t
-    ODiv    t       -> t
-    OPow    t       -> t
-    OMod    t       -> t
-    OLt     t       -> t
-    OGt     t       -> t
-    OLte    t       -> t
-    OGte    t       -> t
-    OLarr   t       -> t
-    ORarr   t       -> t
-    OFpip   t       -> t
-    OBpip   t       -> t
-    OOpt    t       -> t
-    OStr    t       -> t
-    ODot    t       -> t
-    OField  t       -> t
+    setTag t = \case
+        OEq     _       -> OEq    t
+        ONeq    _       -> ONeq   t
+        OAnd    _       -> OAnd   t
+        OOr     _       -> OOr    t
+        OAdd    _       -> OAdd   t
+        OSub    _       -> OSub   t
+        OMul    _       -> OMul   t
+        ODiv    _       -> ODiv   t
+        OPow    _       -> OPow   t
+        OMod    _       -> OMod   t
+        OLt     _       -> OLt    t
+        OGt     _       -> OGt    t
+        OLte    _       -> OLte   t
+        OGte    _       -> OGte   t
+        OLarr   _       -> OLarr  t
+        ORarr   _       -> ORarr  t
+        OFpip   _       -> OFpip  t
+        OBpip   _       -> OBpip  t
+        OOpt    _       -> OOpt   t
+        OStr    _       -> OStr   t
+        ODot    _       -> ODot   t
+        OField  _       -> OField t
 
-bindingTag :: Binding t p -> t
-bindingTag = \case
-    BPat    t _     -> t
-    BFun    t _ _   -> t
+instance Tagged (ProgExpr t u) t where
+    getTag = cata $ \case
+        EVar    t _     -> t
+        EHole   t       -> t
+        ECon    t _ _   -> t
+        ELit    t _     -> t
+        EApp    t _     -> t
+        ELet    t _ _ _ -> t
+        EFix    t _ _ _ -> t
+        ELam    t _ _   -> t
+        EIf     t _ _ _ -> t
+        EPat    t _ _   -> t
+        EFun    t _     -> t
+        EOp1    t _ _   -> t
+        EOp2    t _ _ _ -> t
+        ETuple  t _     -> t
+        EList   t _     -> t
+        ERow    t _ _ _ -> t
+        ERecord t _     -> t
+        EAnn    _ e     -> e
 
-astTag :: Ast t -> t
-astTag = exprTag . astExpr
+    setTag t = project >>> \case
+        EVar    _ var         -> varExpr    t var
+        EHole   _             -> holeExpr   t
+        ECon    _ con es      -> conExpr    t con es
+        ELit    _ prim        -> litExpr    t prim
+        EApp    _ es          -> appExpr    t es
+        ELet    _ bind e1 e2  -> letExpr    t bind e1 e2
+        EFix    _ name e1 e2  -> fixExpr    t name e1 e2
+        ELam    _ ps e        -> lamExpr    t ps e
+        EIf     _ e1 e2 e3    -> ifExpr     t e1 e2 e3
+        EPat    _ es cs       -> patExpr    t es cs
+        EFun    _ cs          -> funExpr    t cs
+        EOp1    _ op a        -> op1Expr    t op a
+        EOp2    _ op a b      -> op2Expr    t op a b
+        ETuple  _ es          -> tupleExpr  t es
+        EList   _ es          -> listExpr   t es
+        ERow    _ lab e r     -> rowExpr    t lab e r
+        ERecord _ r           -> recordExpr t r
 
-setExprTag :: t -> ProgExpr t Void -> ProgExpr t Void
-setExprTag t = project >>> \case
-    EVar    _ var         -> varExpr    t var
-    EHole   _             -> holeExpr   t
-    ECon    _ con es      -> conExpr    t con es
-    ELit    _ prim        -> litExpr    t prim
-    EApp    _ es          -> appExpr    t es
-    ELet    _ bind e1 e2  -> letExpr    t bind e1 e2
-    EFix    _ name e1 e2  -> fixExpr    t name e1 e2
-    ELam    _ ps e        -> lamExpr    t ps e
-    EIf     _ e1 e2 e3    -> ifExpr     t e1 e2 e3
-    EPat    _ es cs       -> patExpr    t es cs
-    EFun    _ cs          -> funExpr    t cs
-    EOp1    _ op a        -> op1Expr    t op a
-    EOp2    _ op a b      -> op2Expr    t op a b
-    ETuple  _ es          -> tupleExpr  t es
-    EList   _ es          -> listExpr   t es
-    ERow    _ lab e r     -> rowExpr    t lab e r
-    ERecord _ r           -> recordExpr t r
+instance Tagged (ProgPattern t u) t where
+    setTag t = project >>> \case
+        PVar    _ var         -> varPat     t var
+        PCon    _ con ps      -> conPat     t con ps
+        PLit    _ prim        -> litPat     t prim
+        PAs     _ as p        -> asPat      t as p
+        POr     _ p q         -> orPat      t p q
+        PAny    _             -> anyPat     t
+        PTuple  _ ps          -> tuplePat   t ps
+        PList   _ ps          -> listPat    t ps
+        PRow    _ lab p r     -> rowPat     t lab p r
 
-setPatternTag :: t -> ProgPattern t Void -> ProgPattern t Void
-setPatternTag t = project >>> \case
-    PVar    _ var         -> varPat     t var
-    PCon    _ con ps      -> conPat     t con ps
-    PLit    _ prim        -> litPat     t prim
-    PAs     _ as p        -> asPat      t as p
-    POr     _ p q         -> orPat      t p q
-    PAny    _             -> anyPat     t
-    PTuple  _ ps          -> tuplePat   t ps
-    PList   _ ps          -> listPat    t ps
-    PRow    _ lab p r     -> rowPat     t lab p r
+    getTag = cata $ \case
+        PVar    t _     -> t
+        PCon    t _ _   -> t
+        PLit    t _     -> t
+        PAs     t _ _   -> t
+        POr     t _ _   -> t
+        PAny    t       -> t
+        PTuple  t _     -> t
+        PList   t _     -> t
+        PRow    t _ _ _ -> t
+        PRecord t _     -> t
+        PAnn    _ p     -> p
+
+instance Tagged (Binding t p) t where
+    getTag = \case
+        BPat    t _     -> t
+        BFun    t _ _   -> t
+
+    setTag t = \case
+        BPat    _ p     -> BPat t p
+        BFun    _ n ps  -> BFun t n ps
+
+instance Tagged (Ast t) t where
+      getTag = getTag . astExpr
+      setTag t (Ast e) = Ast (setTag t e)
+
+-------------------------------------------------------------------------------
 
 primName :: Prim -> Name
 primName = \case
@@ -1463,8 +1505,8 @@ mapExprTag f = cata $ \case
     EIf     t e1 e2 e3       -> ifExpr     (f t) e1 e2 e3
     EPat    t es cs          -> patExpr    (f t) es (mapClause1 <$> cs)
     EFun    t cs             -> funExpr    (f t) (mapClause <$> cs)
-    EOp1    t op a           -> op1Expr    (f t) (mapOp1 op) a
-    EOp2    t op a b         -> op2Expr    (f t) (mapOp2 op) a b
+    EOp1    t op a           -> op1Expr    (f t) (f <$> op) a
+    EOp2    t op a b         -> op2Expr    (f t) (f <$> op) a b
     ETuple  t es             -> tupleExpr  (f t) es
     EList   t es             -> listExpr   (f t) es
     ERow    t lab e r        -> rowExpr    (f t) lab e r
@@ -1493,34 +1535,6 @@ mapExprTag f = cata $ \case
         PRow    t lab p r    -> rowPat     (f t) lab p r
         PRecord t r          -> recordPat  (f t) r
         PAnn    t p          -> annPat     t p
-
-    mapOp1 = \case
-        ONeg    t            -> ONeg       (f t)
-        ONot    t            -> ONot       (f t)
-
-    mapOp2 = \case
-        OEq     t            -> OEq        (f t)
-        ONeq    t            -> ONeq       (f t)
-        OAnd    t            -> OAnd       (f t)
-        OOr     t            -> OOr        (f t)
-        OAdd    t            -> OAdd       (f t)
-        OSub    t            -> OSub       (f t)
-        OMul    t            -> OMul       (f t)
-        ODiv    t            -> ODiv       (f t)
-        OPow    t            -> OPow       (f t)
-        OMod    t            -> OMod       (f t)
-        OLt     t            -> OLt        (f t)
-        OGt     t            -> OGt        (f t)
-        OLte    t            -> OLte       (f t)
-        OGte    t            -> OGte       (f t)
-        OLarr   t            -> OLarr      (f t)
-        ORarr   t            -> ORarr      (f t)
-        OFpip   t            -> OFpip      (f t)
-        OBpip   t            -> OBpip      (f t)
-        OOpt    t            -> OOpt       (f t)
-        OStr    t            -> OStr       (f t)
-        ODot    t            -> ODot       (f t)
-        OField  t            -> OField     (f t)
 
 foldrExprTag :: (a -> b -> b) -> b -> ProgExpr a u -> b
 foldrExprTag f s e = foldr1 (.) (foldExpr f e) s

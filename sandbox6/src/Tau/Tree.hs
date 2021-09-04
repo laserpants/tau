@@ -1,7 +1,6 @@
 {-# LANGUAGE DeriveTraversable      #-}
 {-# LANGUAGE FlexibleContexts       #-}
 {-# LANGUAGE FlexibleInstances      #-}
-{-# LANGUAGE FunctionalDependencies #-}
 {-# LANGUAGE LambdaCase             #-}
 {-# LANGUAGE MultiParamTypeClasses  #-}
 {-# LANGUAGE OverloadedStrings      #-}
@@ -105,7 +104,7 @@ exhaustivePatternsCheck = para $ \case
 
 exhaustive :: (MonadReader ConstructorEnv m) => [[ProgPattern TInfo u]] -> m Bool
 exhaustive []         = pure False
-exhaustive pss@(ps:_) = not <$> useful pss (anyPat . patternTag <$> ps)
+exhaustive pss@(ps:_) = not <$> useful pss (anyPat . getTag <$> ps)
 
 clausesAreExhaustive :: (MonadReader ConstructorEnv m) => [ProgClause TInfo u] -> m Bool
 clausesAreExhaustive = exhaustive . fmap toMatrix
@@ -147,14 +146,14 @@ useful pss ps = step3 (step2 . step1 <$$> pss) (step2 . step1 <$> ps)
     step3 pss (q:qs) =
         case groupPatterns q of
             ConGroup con rs  ->
-                let special = specialized con (patternTag <$> rs)
+                let special = specialized con (getTag <$> rs)
                  in step3 (special pss) (head (special [q:qs]))
             WildcardPattern -> do
                 let cs = headCons pss
                 isComplete <- complete (fst <$> cs)
                 if isComplete
                     then cs & anyM (\(con, rs) -> do
-                        let special = specialized con (patternTag <$> rs)
+                        let special = specialized con (getTag <$> rs)
                          in step3 (special pss) (head (special [q:qs])))
                     else
                         step3 (defaultMatrix pss) qs
@@ -248,10 +247,10 @@ foldRow r = fromMap final mapRep
 
     fromMap :: ProgPattern TInfo u -> Map Name [ProgPattern TInfo u] -> ProgPattern TInfo u
     fromMap p ps =
-        fst (Map.foldrWithKey (flip . foldr . fn) (p, patternTag p) ps)
+        fst (Map.foldrWithKey (flip . foldr . fn) (p, getTag p) ps)
       where
         fn name p (q, t0) =
-            let t1 = TypeInfo [] (tRow name (nodeType (patternTag p)) (nodeType t0)) []
+            let t1 = TypeInfo [] (tRow name (nodeType (getTag p)) (nodeType t0)) []
              in (rowPat t1 name p q, t1)
 
     fields = flip para r $ \case
@@ -363,7 +362,7 @@ ambiguityCheck
   -> m (ProgExpr TInfo Void, Scheme)
 ambiguityCheck ctx expr = do
     (a, vs) <- runStateT (walk expr) mempty
-    let t = exprTag a
+    let t = getTag a
 
     classEnv <- askClassEnv
     zz1 <- fromRight [] <$> reduce classEnv vs
@@ -380,11 +379,11 @@ ambiguityCheck ctx expr = do
 
     (yyy, sub) <- applyDefaults ctx y
 
-    pure (setExprTag (addErrors [AmbiguousType n t | InClass n t <- yyy] t) (apply sub a), scheme)
+    pure (setTag (addErrors [AmbiguousType n t | InClass n t <- yyy] t) (apply sub a), scheme)
 
-    --pure (setExprTag (addErrors (checkAmbg t vs) t) a)
+    --pure (setTag (addErrors (checkAmbg t vs) t) a)
 
---    pure (setExprTag (addErrors [AmbiguousType n t | InClass n t <- y] t) a, scheme)
+--    pure (setTag (addErrors [AmbiguousType n t | InClass n t <- y] t) a, scheme)
 
   where
     walk = cata $ \case
@@ -448,7 +447,7 @@ ambiguityCheck ctx expr = do
 --    pure e
     --vs <- nub <$> getAndReset
     --let t = exprTag e
-    --pure (setExprTag (addErrors (checkAmbg t vs) t) e)
+    --pure (setTag (addErrors (checkAmbg t vs) t) e)
 
 --ambiguityCheck ctx expr = do
 --    (a, vs) <- runStateT (walk expr) mempty
@@ -460,9 +459,9 @@ ambiguityCheck ctx expr = do
 ----            Nothing -> pure ([], [AmbiguousType n v])
 ----            Just ty -> pure ([v `mapsTo` ty], []))
 ----    let subs1 = foldr (<>) nullSub (concat subs)
-----    pure (setExprTag (addErrors (concat errors) t) (apply subs1 a))
+----    pure (setTag (addErrors (concat errors) t) (apply subs1 a))
 --
---    pure (setExprTag (addErrors (checkAmbg t vs) t) a)
+--    pure (setTag (addErrors (checkAmbg t vs) t) a)
 --  where
 --    --pure (insertExprErrors (checkAmbg (exprTag a) vs) a)
 --    --walk
@@ -525,7 +524,7 @@ ambiguityCheck ctx expr = do
 --    e <- expr
 --    vs <- nub <$> getAndReset
 --    let t = exprTag e
---    pure (setExprTag (addErrors (checkAmbg t vs) t) e)
+--    pure (setTag (addErrors (checkAmbg t vs) t) e)
 --
 --checkAmbg :: TInfo -> [(Name, Name)] -> [Error]
 --checkAmbg t = let freeVars = fst <$> free (nodeType t) in
@@ -544,10 +543,6 @@ ambiguityCheck ctx expr = do
 -------------------------------------------------------------------------------
 -------------------------------------------------------------------------------
 -------------------------------------------------------------------------------
-
-class Tagged t a | t -> a where
-  getTag :: t -> a
-  setTag :: a -> t -> t
 
 data MonoClause t p a = MonoClause t [p] (Choice a)
 
@@ -659,7 +654,7 @@ stage1Translate = cata $ \case
     prefixOp1 (ONeg t)    = varExpr t "negate"
     prefixOp1 (ONot t)    = varExpr t "not"
     prefixOp2 (OField t)  = varExpr t "@(#)get_field"
-    prefixOp2 op          = varExpr (op2Tag op) ("(" <> op2Symbol op <> ")")
+    prefixOp2 op          = varExpr (getTag op) ("(" <> op2Symbol op <> ")")
 
     patToList (Clause t p a)      = Clause t [p] a
     expandClause (Clause t ps gs) = [MonoClause t ps g | g <- gs]
@@ -707,7 +702,7 @@ translateFunExpr t cs@(MonoClause _ ps (Choice _ e1):_) =
         [e] -> e
         es  -> conExpr (TypeInfo [] (tTuple (typeOf <$> es)) []) (tupleCon (length es)) es
 
-    args con = [con (patternTag p) ("#" <> showt n) | (p, n) <- zip ps nats]
+    args con = [con (getTag p) ("#" <> showt n) | (p, n) <- zip ps nats]
 
     toClause clause@(MonoClause t ps ds)
         | length ps < 2 = clause
@@ -808,8 +803,8 @@ translateLambda t pats expr =
   where
     fn pat (expr, t) = do
         var <- freshName
-        let ti = TypeInfo [] (nodeType (patternTag pat) `tArr` nodeType t) []
-        e <- translateMatchExpr t (varExpr (patternTag pat) var)
+        let ti = TypeInfo [] (nodeType (getTag pat) `tArr` nodeType t) []
+        e <- translateMatchExpr t (varExpr (getTag pat) var)
                                   [MonoClause t [pat] (Choice [] expr)]
         pure (lamExpr ti var e, ti)
 
