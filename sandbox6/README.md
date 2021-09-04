@@ -170,7 +170,7 @@ match (x, y) with
   | _              = 100
 
 
-cotype Stream a = 
+cotype Stream a =
   { Head : a
   , Tail : Stream a
   }
@@ -188,10 +188,8 @@ enumFrom n = Stream
   }
 
 enumFrom : Nat -> Stream Nat
-enumFrom n = Stream(s => 
-  { Head = n
-  , Tail = s.Head + 1 }
-
+enumFrom n =
+  Stream'((m, s) =>
+    (m + 1, { Head = n, Tail = s }), n)
 
 -->
-
