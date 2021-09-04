@@ -17,7 +17,8 @@ import Data.Text.Prettyprint.Doc.Render.Text
 
 type Name = Text
 
-type Algebra f a = f a -> a
+type Algebra   f a = f a -> a
+type Coalgebra f a = a -> f a
 
 (<$$>) :: (Functor f, Functor g) => (a -> b) -> f (g a) -> f (g b)
 (<$$>) f = ((f <$>) <$>)

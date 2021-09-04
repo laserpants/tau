@@ -447,12 +447,12 @@ inferOp2Type
   -> m (Op2 (TypeInfo [Error]), [Predicate])
 inferOp2Type = \case
 
-    OEq    t -> opType t OEq  (Forall [kTyp] [InClass "Eq" 0] (tGen 0 `tArr` tGen 0 `tArr` tBool))
-    ONeq   t -> opType t ONeq (Forall [kTyp] [InClass "Eq" 0] (tGen 0 `tArr` tGen 0 `tArr` tBool))
-    OAnd   t -> opType t OAnd (Forall [] [] (tBool `tArr` tBool `tArr` tBool))
-    OOr    t -> opType t OOr  (Forall [] [] (tBool `tArr` tBool `tArr` tBool))
-    OAdd   t -> opType t OAdd (Forall [kTyp] [InClass "Num" 0] (tGen 0 `tArr` tGen 0 `tArr` tGen 0))
-    OSub   t -> opType t OSub (Forall [kTyp] [InClass "Num" 0] (tGen 0 `tArr` tGen 0 `tArr` tGen 0))
+    OEq    t -> opType t OEq  eqOpType
+    ONeq   t -> opType t ONeq neqOpType
+    OAnd   t -> opType t OAnd andOpType
+    OOr    t -> opType t OOr  orOpType
+    OAdd   t -> opType t OAdd addOpType
+    OSub   t -> opType t OSub subOpType
     OMul   t -> opType t OMul (Forall [kTyp] [InClass "Num" 0] (tGen 0 `tArr` tGen 0 `tArr` tGen 0))
     ODiv   t -> opType t ODiv (Forall [kTyp] [InClass "Fractional" 0] (tGen 0 `tArr` tGen 0 `tArr` tGen 0))
     OPow   t -> opType t OPow (Forall [kTyp, kTyp] [InClass "Integral" 0, InClass "Num" 1] (tGen 1 `tArr` tGen 0 `tArr` tGen 1))
@@ -469,6 +469,24 @@ inferOp2Type = \case
     OStr   t -> opType t OOpt (Forall [] [] (tString `tArr` tString `tArr` tString))
     ODot   t -> opType t ODot (Forall [kTyp, kTyp] [] ((tGen 0 `tArr` tGen 1) `tArr` tGen 0 `tArr` tGen 1))
     OField t -> opType t OField (Forall [kTyp, kTyp] [] (tCon kTyp "Symbol" `tArr` tGen 1 `tArr` tGen 0))
+
+eqOpType :: Scheme
+eqOpType = Forall [kTyp] [InClass "Eq" 0] (tGen 0 `tArr` tGen 0 `tArr` tBool)
+
+neqOpType :: Scheme
+neqOpType = Forall [kTyp] [InClass "Eq" 0] (tGen 0 `tArr` tGen 0 `tArr` tBool)
+
+andOpType :: Scheme
+andOpType = Forall [] [] (tBool `tArr` tBool `tArr` tBool)
+
+orOpType :: Scheme
+orOpType = Forall [] [] (tBool `tArr` tBool `tArr` tBool)
+
+addOpType :: Scheme
+addOpType = Forall [kTyp] [InClass "Num" 0] (tGen 0 `tArr` tGen 0 `tArr` tGen 0)
+
+subOpType :: Scheme
+subOpType = Forall [kTyp] [InClass "Num" 0] (tGen 0 `tArr` tGen 0 `tArr` tGen 0)
 
 opType
   :: ( MonadSupply Int m
@@ -943,6 +961,17 @@ test5expr =
                     , Clause () [conPat () "Cons'" [varPat () "y", anyPat (), varPat () "ys"]] [Choice [] (conExpr () "(::)" [appExpr () [varExpr () "f", varExpr () "y"], varExpr () "ys"])]
                     ]), (varExpr () "xs")])
                 (appExpr () [op2Expr () (ODot ()) (varExpr () "map") (lamExpr () [varPat () "x"] (op2Expr () (OAdd ()) (varExpr () "x") (litExpr () (TBig 1)))), (listExpr () [annExpr tInt (litExpr () (TBig 1)), litExpr () (TBig 2), litExpr () (TBig 3), litExpr () (TBig 4)])])))
+
+
+--test5expr =
+--  -- let foo(a, b) = { Head = () => a, Tail = () => b }
+--  (letExpr () (BFun () "foo" [varPat () "a", varPat () "b"])
+--    (recordExpr () (rowExpr () "Head"
+--      (lamExpr () [litPat () TUnit] (varExpr () "a"))
+--        (rowExpr () "Tail"
+--          (lamExpr () [litPat () TUnit] (varExpr () "b"))
+--            (conExpr () "{}" []))))
+--    undefined)
 
 
 --test5expr =

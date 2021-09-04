@@ -99,6 +99,13 @@ fix
 
 
 
+factorial : nat -> nat
+factorial(n) =
+  fold n as
+    | zero         = 1
+    | succ(m), val = succ(m) * val
+
+
 
 headSize : (Ord a) => a -> Option string
 headSize
@@ -113,9 +120,12 @@ map : (a -> b) -> List a -> List b
 map(f, xs) = xs.List'(Nil' => [] | Cons'(y, _, ys) => f(y) :: ys)
 
 
-
 map : (a -> b) -> List a -> List b
-map(f, xs) = xs.List'(Nil' => [] | Cons'(y, _, ys) => f(y) :: ys)
+map(f, xs) =
+  fold xs as
+    | []           = []
+    | (y :: _), ys = f(y) :: ys
+
 
 
 fix
@@ -158,6 +168,30 @@ match (x, y) with
       when(x /= 0) = x
     , otherwise    = 0
   | _              = 100
+
+
+cotype Stream a = 
+  { Head : a
+  , Tail : Stream a
+  }
+
+cotype Stream a = Stream
+  { Head : a
+  , Tail : Stream a
+  }
+
+
+enumFrom : Nat -> Stream Nat
+enumFrom n = Stream
+  { Head = n
+  , Tail = enumFrom (Succ n) 
+  }
+
+enumFrom : Nat -> Stream Nat
+enumFrom n = Stream(s => 
+  { Head = n
+  , Tail = s.Head + 1 }
+
 
 -->
 

@@ -1,12 +1,53 @@
+{-# LANGUAGE RecordWildCards #-}
+{-# LANGUAGE DeriveFunctor #-}
 module Main where
 
 import Data.Aeson
 import Data.Aeson.Encode.Pretty
+import Data.Fix (Fix(..))
+import Data.Function (fix)
+import Data.Functor.Foldable
 import Data.Text (pack)
 import Stuff
 import System.Environment
 import Tau.Serializers
+import Tau.Util (Coalgebra)
 import qualified Data.ByteString.Lazy.Char8 as B
+
+
+data Stream = Stream
+    { _head :: Int 
+    , _tail :: Stream 
+    } deriving (Show, Eq)
+
+
+implFun :: (a -> s -> (a, s)) -> a -> s
+implFun f n = let (m, s) = f n (implFun f m) in s
+
+clientFun :: Int -> Stream -> (Int, Stream)
+clientFun n next = (n + 1, Stream { _head = n, _tail = next })
+
+
+go = implFun clientFun 1
+
+foo = _head go
+
+
+--data StreamF a = StreamF
+--    { _head :: Int 
+--    , _tail :: StreamF a }
+--    deriving (Show, Eq, Functor)
+--
+--type Stream = Fix StreamF
+--
+---- para - apo
+--
+--build :: Int -> Stream
+--build n = apo go n where
+--  go :: Int -> StreamF (Either Stream Int)
+----  go 0 = StreamF { _head = 1, _tail = StreamF { _head = 1, _tail = undefined } }
+--  go n = StreamF { _head = 1, _tail = undefined }
+
 
 main :: IO ()
 main = do
