@@ -1118,6 +1118,9 @@ testTypeEnv = Env.fromList
     , ( "Nil'"         , Forall [kTyp, kTyp] [] (tApp kTyp (tApp kFun (tCon kFun2 "List'") (tGen 0)) (tGen 1)) )
     , ( "Cons'"        , Forall [kTyp, kTyp] [] (tGen 0 `tArr` tList (tGen 0) `tArr` tGen 1 `tArr` tApp kTyp (tApp kFun (tCon kFun2 "List'") (tGen 0)) (tGen 1)) )
     , ( "Foo"          , Forall [] [] (tInt `tArr` tInt `tArr` tCon kTyp "Foo") )
+
+    , ( "Stream"       , Forall [] [] (tRecord (tRow "head" tInt (tRow "tail" (tCon kTyp "Stream") tRowNil)) `tArr` tCon kTyp "Stream") )
+
     , ( "id"           , Forall [kTyp] [] (tGen 0 `tArr` tGen 0) )
     , ( "(::)"         , Forall [kTyp] [] (tGen 0 `tArr` tList (tGen 0) `tArr` tList (tGen 0)) )
     , ( "(==)"         , Forall [kTyp] [InClass "Eq" 0] (tGen 0 `tArr` tGen 0 `tArr` tBool) )
