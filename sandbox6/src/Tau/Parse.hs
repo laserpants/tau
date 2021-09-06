@@ -410,6 +410,7 @@ exprParser = makeExprParser parseItem operator
         <|> parseLet
         <|> matchParser
         <|> symbol "_" $> holeExpr ()
+        <|> parsePrefixOp
         <|> parseVar
         <|> parseLit
         <|> parseCon
@@ -441,6 +442,12 @@ exprParser = makeExprParser parseItem operator
     parseRecord =
         try (braces spaces $> recordExpr () (conExpr () "{}" []))
             <|> recordExpr () <$> rowParser "=" annExprParser (rowExpr ()) (varExpr ()) (conExpr () "{}" [])
+
+    parsePrefixOp = try $ do
+        symbol "("
+        sym <- choice ["==", "/=", "&&", "||", "+", "-", "*", "/", "^", "%", "<", ">", "<=", ">=", "<<", ">>", "|>", "<|", "?", "++", "."]
+        symbol ")"
+        pure (varExpr () ("(" <> sym <> ")"))
 
 parseNameBinding :: Parser (Binding () (ProgPattern () Type))
 parseNameBinding = do
