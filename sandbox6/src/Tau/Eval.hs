@@ -115,6 +115,7 @@ evalVar var =
 
         _ | "zero" == var ->
             pure (Value (TNat 0))
+
         _ ->
             asks (Env.lookup var) >>= \case
                 Just value ->

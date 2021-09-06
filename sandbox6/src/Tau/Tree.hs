@@ -94,6 +94,7 @@ exhaustivePatternsCheck = para $ \case
         EList   t es          -> listExpr t <$> sequence es
         ERow    t lab e r     -> rowExpr t lab <$> e <*> r
         ERecord t r           -> recordExpr t <$> r
+        ECodata t name r      -> codataExpr t name <$> r
 
   where
     check f as ti = do
@@ -429,6 +430,7 @@ ambiguityCheck ctx expr = do
         EList   t es          -> listExpr t <$> sequence es
         ERow    t lab e r     -> rowExpr t lab <$> e <*> r
         ERecord t r           -> recordExpr t <$> r
+        ECodata t name r      -> codataExpr t name <$> r
 
     collectPreds t =
         forM_ (filter (tIsVar . predicateType) (nodePredicates t))
@@ -615,6 +617,7 @@ stage1Translate = cata $ \case
     EList   t es                -> foldr (listExprCons t) (conExpr t "[]" []) es
     ERow    t lab e r           -> conExpr t ("{" <> lab <> "}") [e, r]
     ERecord t r                 -> conExpr t "#" [r]
+    ECodata t name r            -> conExpr t ("!" <> name) [r]
 
     -- Expand mod-operator (%)
     EOp2 t (OMod _) a b -> appExpr t
@@ -632,6 +635,8 @@ stage1Translate = cata $ \case
 
     -- Translate operators to prefix form
     EOp1    t op a              -> appExpr t [prefixOp1 op, a]
+    EOp2    t (ODot _) a b      -> translateAppExpr t [a, b]
+    EOp2    t (OField t1) a b   -> translateAppExpr t [varExpr t1 "@(#)get_field", a, b]
     EOp2    t op a b            -> translateAppExpr t [prefixOp2 op, a, b]
 
     -- Expand pattern clause guards and eliminate fun expressions
@@ -653,7 +658,6 @@ stage1Translate = cata $ \case
   where
     prefixOp1 (ONeg t)    = varExpr t "negate"
     prefixOp1 (ONot t)    = varExpr t "not"
-    prefixOp2 (OField t)  = varExpr t "@(#)get_field"
     prefixOp2 op          = varExpr (getTag op) ("(" <> op2Symbol op <> ")")
 
     patToList (Clause t p a)      = Clause t [p] a
@@ -687,6 +691,8 @@ translateAppExpr t es =
     remArgs :: Int -> Type -> Type
     remArgs 0 t = t
     remArgs n (Fix (TArr _ t2)) = remArgs (pred n) t2
+
+    remArgs n e = error (show (n, e))
 
 translateFunExpr
   :: TInfo

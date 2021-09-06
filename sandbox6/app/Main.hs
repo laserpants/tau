@@ -49,9 +49,27 @@ foo = _head go
 --  go n = StreamF { _head = 1, _tail = undefined }
 
 
+
 main :: IO ()
 main = do
     [p] <- getArgs
+    
+
+    -- (False.foo)({ foo = ... })
+
+    -- (foo(False))({ foo = ... })
+
+    -- (foo(False, { foo = ... })
+
+    --let p = "{ foo = () => true }.foo(false)"
+--    let p = "{ foo = () => true }.foo()"
+
+--    let p = "{ foo = _ => \"Hello\" }.foo(0)"
+
+--    let p = "let g = (x : int) => x + 3 in let f = (x : int) => x + 1 in 5.f.g"
+
+--    let p = "{ foo = x => \"Hello\" }.foo(false)"
+
     -- B.putStrLn (encodePretty' defConfig{ confIndent = Spaces 2 } (toRep (runBundle (pack p))))
 --    let p = "let f(x) = x > 3 in f(3 : int)"
     B.putStrLn (encode (toRep (runBundle (pack p))))

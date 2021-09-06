@@ -140,20 +140,11 @@ instance Pretty Predicate where
             TArr{} -> True
             _      -> False
 
-isTupleType :: Type -> Bool
-isTupleType = cata $ \case
-    TCon _ con -> Just True == (allCommas <$> stripped con)
-    TApp _ a _ -> a
-    _          -> False
-  where
-    allCommas = Text.all (== ',')
-    stripped  = Text.stripSuffix ")" <=< Text.stripPrefix "("
-
-isRecordType :: Type -> Bool
-isRecordType = cata $ \case
-    TCon _ c | "#" == c -> True
-    TApp _ a _ -> a
-    _          -> False
+--isRecordType :: Type -> Bool
+--isRecordType = cata $ \case
+--    TCon _ c | "#" == c -> True
+--    TApp _ a _ -> a
+--    _          -> False
 
 instance Pretty Product where
     pretty (Mul con types) = pretty con <> rhs
@@ -271,6 +262,7 @@ instance (FunArgs e1, Functor e2, Functor e4, Pretty e3, Pretty t4, Pretty (e2 (
                     _      -> True
 
         ERecord _ r                      -> prettyRecord (unfoldRow (fst r))
+        ECodata _ name e                 -> "::TODO::"
         ELam    _ ps e                   -> prettyLam (funArgs ps) (snd e)
         ELet    _ bind e1 e2             -> prettyLet "let" (pretty bind) (letRhs e1) (snd e2)
         EFix    _ name e1 e2             -> prettyLet "fix" (pretty name) (snd e1) (snd e2)

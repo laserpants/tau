@@ -116,6 +116,20 @@ headSize
   | _               = None
 
 
+
+headSize
+  : (Ord a)
+  => a
+  -> Option string
+headSize
+  | x :: xs
+      when(x > 100) = Some("L")
+    , when(x > 10)  = Some("M")
+    , otherwise     = Some("S")
+  | _               = None
+
+
+
 map : (a -> b) -> List a -> List b
 map(f, xs) = xs.List'(Nil' => [] | Cons'(y, _, ys) => f(y) :: ys)
 
@@ -175,21 +189,42 @@ cotype Stream a =
   , Tail : Stream a
   }
 
-cotype Stream a = Stream
-  { Head : a
+cotype Stream a =
+  ( Head : a
   , Tail : Stream a
-  }
+  )
+
+let
+  s =
+    !Stream( Head = 1, Tail = t )
+  in
+    s.Head
+
+let
+  s =
+    Stream( Head = 1, Tail = t )
+  in
+    s.Head
 
 
 enumFrom : Nat -> Stream Nat
 enumFrom n = Stream
   { Head = n
-  , Tail = enumFrom (Succ n) 
+  , Tail = enumFrom (Succ n)
   }
 
 enumFrom : Nat -> Stream Nat
 enumFrom n =
   Stream'((m, s) =>
-    (m + 1, { Head = n, Tail = s }), n)
+    ( m + 1
+    , Stream( Head = n
+            , Tail = s )
+    ), n)
+
+type List a
+  = Nil
+  | Cons (List (Option a))
+
+??
 
 -->

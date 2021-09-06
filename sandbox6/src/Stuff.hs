@@ -19,6 +19,7 @@ import Control.Monad.Trans.Maybe (MaybeT(..))
 import Control.Monad.Supply
 import Data.Aeson
 import Data.Aeson.Encode.Pretty
+import Data.Char (isUpper)
 import Data.Either.Extra (eitherToMaybe)
 import Data.Fix (Fix(..))
 import Data.Function ((&))
@@ -42,6 +43,7 @@ import TextShow
 import qualified Data.ByteString.Lazy as LBS
 import qualified Data.Map.Strict as Map
 import qualified Data.Set.Monad as Set
+import qualified Data.Text as Text
 import qualified Tau.Env as Env
 
 --
@@ -75,6 +77,7 @@ tagTree = cata alg
         EList   _ es            -> listExpr   <$> freshType <*> sequence es
         ERow    _ lab e r       -> rowExpr    <$> freshType <*> pure lab <*> e <*> r
         ERecord _ e             -> recordExpr <$> freshType <*> e
+        ECodata _ name e        -> codataExpr <$> freshType <*> pure name <*> e
         EHole   _               -> holeExpr   <$> freshType
         EAnn    t a             -> annExpr t  <$> a
 
@@ -170,7 +173,7 @@ inferExprType = cata $ \case
                     Just scheme -> do
                         (ty, ps) <- instantiate scheme
                         errs <- tryUnify t ty
-                        pure (recordExpr (TypeInfo errs (tRecord t) ps) (varExpr (TypeInfo [] t []) var))
+                        pure (recordExpr (TypeInfo errs (tRecord t) ps) (varExpr (typeInfo t) var))
 
                     Nothing ->
                         pure (varExpr (TypeInfo [NotInScope var] t []) var)
@@ -251,7 +254,7 @@ inferExprType = cata $ \case
         e2 <- local (inTypeEnv (Env.inserts schemes)) expr2
         errs2 <- tryUnify t (typeOf e2)
         errs3 <- tryUnify bt (typeOf e1)
-        pure (letExpr (TypeInfo (errs1 <> errs2 <> errs3) t []) (BPat (TypeInfo [] bt []) p) e1 e2)
+        pure (letExpr (TypeInfo (errs1 <> errs2 <> errs3) t []) (BPat (typeInfo bt) p) e1 e2)
 
     ELet t (BFun bt f pats) expr1 expr2 -> do
         (ps, vss) <- unzip <$> traverse inferPatternType pats
@@ -262,7 +265,7 @@ inferExprType = cata $ \case
         e2 <- local (inTypeEnv (Env.insert f scheme)) expr2
         errs2 <- tryUnify t (typeOf e2)
         errs3 <- tryUnify t1 bt
-        pure (letExpr (TypeInfo (errs1 <> errs2 <> errs3) t []) (BFun (TypeInfo [] bt []) f ps) e1 e2)
+        pure (letExpr (TypeInfo (errs1 <> errs2 <> errs3) t []) (BFun (typeInfo bt) f ps) e1 e2)
 
     EFun t clauses -> do
         -- Exception to allow for "catch all" single wildcard patterns, e.g., ((_, _) => a | _ => b)
@@ -287,21 +290,10 @@ inferExprType = cata $ \case
     EOp2 t op2 expr1 expr2 -> do
         a <- expr1
         b <- expr2
-
         ty <- applySubsTo (typeOf b)
-        field <- case (project a, unpackRecordType ty) of
-            (EVar _ name, Just row) ->
-                (,) name <$$> lookupRowType name <$> applySubsTo row
-            _ ->
-                pure Nothing
-
-        case (op2, field) of
-            (ODot t1, Just (name, t2)) -> do
-                (op, ps) <- inferOpType (OField (TypeInfo [] t1 [])) (op2Scheme op2)
-                errs1 <- tryUnify (typeOf op) (typeOf a `tArr` typeOf b `tArr` t)
-                errs2 <- tryUnify t t2
-                pure (op2Expr (TypeInfo (errs1 <> errs2) t ps) op
-                              (litExpr (TypeInfo [] tSymbol []) (TSymbol name)) b)
+        case op2 of
+            ODot _ | isRecordType ty -> inferFieldOpType t (fromJust (unpackRecordType ty)) a b
+            ODot _                   -> inferDotOpType t a b
             _ -> do
                 (op, ps) <- inferOpType (typeInfo <$> op2) (op2Scheme op2)
                 ty <- fresh
@@ -337,14 +329,75 @@ inferExprType = cata $ \case
         errs <- tryUnify t (tRecord (typeOf e))
         pure (recordExpr (TypeInfo errs t []) e)
 
+    ECodata t name expr -> do
+        e <- expr
+        lookupScheme name >>= \case
+            Nothing ->
+                pure (codataExpr (TypeInfo [ConstructorNotInScope name] t []) name e)
+
+            Just scheme -> do
+                (ty, ps) <- instantiate scheme
+                errs <- tryUnify ty (typeOf e `tArr` t)
+                pure (codataExpr (TypeInfo errs t ps) name e)
+
     EHole t ->
-        pure (holeExpr (TypeInfo [] t []))
+        pure (holeExpr (typeInfo t))
 
     EAnn t expr -> do
         e <- expr
         let TypeInfo errs1 t1 ps = getTag e
         errs2 <- tryUnify t t1
         pure (setTag (TypeInfo (errs1 <> errs2) t1 ps) e)
+
+inferDotOpType
+  :: ( MonadSupply Int m
+     , MonadReader (ClassEnv, TypeEnv, KindEnv, ConstructorEnv) m
+     , MonadState (Substitution Type, Substitution Kind, Context) m )
+  => Type
+  -> ProgExpr (TypeInfo [Error]) Void
+  -> ProgExpr (TypeInfo [Error]) Void
+  -> m (ProgExpr (TypeInfo [Error]) Void)
+inferDotOpType t a b = do
+    (t1, _) <- instantiate (Forall [kTyp, kTyp] [] ((tGen 0 `tArr` tGen 1) `tArr` tGen 0 `tArr` tGen 1))
+    ty <- fresh
+    errs1 <- tryUnify t (foldr tArr ty (typeOf <$> filter isHole [a, b]))
+    errs2 <- tryUnify t1 (foldr tArr ty (typeOf <$> [a, b]))
+    pure (op2Expr (TypeInfo (errs1 <> errs2) t []) (ODot (typeInfo ty)) a b)
+
+inferFieldOpType
+  :: ( MonadSupply Int m
+     , MonadReader (ClassEnv, TypeEnv, KindEnv, ConstructorEnv) m
+     , MonadState (Substitution Type, Substitution Kind, Context) m )
+  => Type
+  -> Type
+  -> ProgExpr (TypeInfo [Error]) Void
+  -> ProgExpr (TypeInfo [Error]) Void
+  -> m (ProgExpr (TypeInfo [Error]) Void)
+inferFieldOpType t row a b = do
+    case project a of
+        EVar _ name -> do
+            case lookupRowType name row of
+                Nothing ->
+                    inferDotOpType t a b
+
+                Just t2 -> do
+                    t1 <- fresh
+                    errs1 <- tryUnify t1 (tSymbol `tArr` typeOf b `tArr` t)
+                    errs2 <- tryUnify t t2
+                    pure (op2Expr (TypeInfo (errs1 <> errs2) t []) (OField (typeInfo t1))
+                                  (litExpr (typeInfo tSymbol) (TSymbol name)) b)
+
+        EApp _ (Fix (EVar _ name):args) -> do
+            case lookupRowType name row of
+                Nothing ->
+                    inferDotOpType t a b
+
+                Just t2 -> do
+                    t1 <- fresh
+                    errs1 <- tryUnify t1 (tSymbol `tArr` typeOf b `tArr` t2)
+                    errs2 <- tryUnify t2 (foldr tArr t (typeOf <$> args))
+                    pure (appExpr (TypeInfo (errs1 <> errs2) t [])
+                         (op2Expr (typeInfo t2) (OField (typeInfo t1)) (litExpr (typeInfo tSymbol) (TSymbol name)) b:args))
 
 inferPatternType
   :: ( MonadSupply Int m
@@ -355,7 +408,7 @@ inferPatternType
 inferPatternType = cata $ \case
 
     PVar t var ->
-        pure (varPat (TypeInfo [] t []) var, [(var, t)])
+        pure (varPat (typeInfo t) var, [(var, t)])
 
     PCon t con pats -> do
         (ps, vss) <- unzip <$> sequence pats
@@ -428,10 +481,6 @@ inferPatternType = cata $ \case
         errs2 <- tryUnify t t1
         pure (setTag (TypeInfo (errs1 <> errs2) t1 ps) p, vs)
 
--- TODO: move?
-typeInfo :: Type -> TypeInfo [Error]
-typeInfo t = TypeInfo [] t []
-
 inferOpType
   :: ( MonadSupply Int m
      , MonadReader (ClassEnv, TypeEnv, KindEnv, ConstructorEnv) m
@@ -473,7 +522,7 @@ op2Scheme = \case
     OOpt   _ -> Forall [kTyp] [] (tApp kTyp (tCon kFun "Option") (tGen 0) `tArr` tGen 0 `tArr` tGen 0)
     OStr   _ -> Forall [] [] (tString `tArr` tString `tArr` tString)
     ODot   _ -> Forall [kTyp, kTyp] [] ((tGen 0 `tArr` tGen 1) `tArr` tGen 0 `tArr` tGen 1)
-    OField _ -> Forall [kTyp, kTyp] [] (tCon kTyp "Symbol" `tArr` tGen 1 `tArr` tGen 0)
+    OField _ -> Forall [kTyp, kTyp] [] (tSymbol `tArr` tGen 1 `tArr` tGen 0)
 
 inferPrimType :: Prim -> Scheme
 inferPrimType = \case
@@ -523,6 +572,7 @@ unifyClause eq@(Clause t _ _) (ps, vs) = do
     gs <- traverse inferChoice choices
     pure (Clause (TypeInfo (concat errss) t []) ps gs)
 
+-- TODO: move
 choiceToPair :: Choice a -> ([a], a)
 choiceToPair (Choice es e) = (es, e)
 {-# INLINE choiceToPair #-}
@@ -922,19 +972,45 @@ test5expr :: ProgExpr () Type
 --    , Clause () [anyPat ()] [Choice [] (litExpr () (TBig 9))]
 --                         ], annExpr tInt (litExpr () (TBig 9)), annExpr tInt (litExpr () (TBig 8))]
 
+--test5expr =
+--        (fixExpr () "list'"
+--            (lamExpr () [varPat () "go", varPat () "ys"] (patExpr () (varExpr () "ys")
+--                  [ Clause () (conPat () "(::)" [varPat () "x", varPat () "xs"]) [Choice [] (appExpr () [varExpr () "go", conExpr () "Cons'" [varExpr () "x", varExpr () "xs", appExpr () [varExpr () "list'", varExpr () "go", varExpr () "xs"]]])]
+--                  , Clause () (conPat () "[]" []) [Choice [] (appExpr () [varExpr () "go", conExpr () "Nil'" []])]
+--                  ]))
+--            (letExpr ()
+--                (BFun () "map" [varPat () "f", varPat () "xs"])
+--                (appExpr () [op2Expr () (ODot ()) (varExpr () "list'") (funExpr ()
+--                    [ Clause () [conPat () "Nil'" []] [Choice [] (conExpr () "[]" [])]
+--                    , Clause () [conPat () "Cons'" [varPat () "y", anyPat (), varPat () "ys"]] [Choice [] (conExpr () "(::)" [appExpr () [varExpr () "f", varExpr () "y"], varExpr () "ys"])]
+--                    ]), (varExpr () "xs")])
+--                (appExpr () [op2Expr () (ODot ()) (varExpr () "map") (lamExpr () [varPat () "x"] (op2Expr () (OAdd ()) (varExpr () "x") (litExpr () (TBig 1)))), (listExpr () [annExpr tInt (litExpr () (TBig 1)), litExpr () (TBig 2), litExpr () (TBig 3), litExpr () (TBig 4)])])))
+
+lazy :: ProgExpr () Type -> ProgExpr () Type
+lazy = lamExpr () [litPat () TUnit]
+
 test5expr =
-        (fixExpr () "List'"
-            (lamExpr () [varPat () "go", varPat () "ys"] (patExpr () (varExpr () "ys")
-                  [ Clause () (conPat () "(::)" [varPat () "x", varPat () "xs"]) [Choice [] (appExpr () [varExpr () "go", conExpr () "Cons'" [varExpr () "x", varExpr () "xs", appExpr () [varExpr () "List'", varExpr () "go", varExpr () "xs"]]])]
-                  , Clause () (conPat () "[]" []) [Choice [] (appExpr () [varExpr () "go", conExpr () "Nil'" []])]
-                  ]))
-            (letExpr ()
-                (BFun () "map" [varPat () "f", varPat () "xs"])
-                (appExpr () [op2Expr () (ODot ()) (varExpr () "List'") (funExpr ()
-                    [ Clause () [conPat () "Nil'" []] [Choice [] (conExpr () "[]" [])]
-                    , Clause () [conPat () "Cons'" [varPat () "y", anyPat (), varPat () "ys"]] [Choice [] (conExpr () "(::)" [appExpr () [varExpr () "f", varExpr () "y"], varExpr () "ys"])]
-                    ]), (varExpr () "xs")])
-                (appExpr () [op2Expr () (ODot ()) (varExpr () "map") (lamExpr () [varPat () "x"] (op2Expr () (OAdd ()) (varExpr () "x") (litExpr () (TBig 1)))), (listExpr () [annExpr tInt (litExpr () (TBig 1)), litExpr () (TBig 2), litExpr () (TBig 3), litExpr () (TBig 4)])])))
+    --
+    -- fix
+    --   s =
+    --     Stream( Head = 1 : int, Tail = s )
+    --   in
+    --     s.Head
+    --
+    -- fix
+    --   s =
+    --     Stream({ head = () => 1 : int, tail = () => s })
+    --   in
+    --     s.Head
+    --
+--    fixExpr () "s"
+--        (codataExpr () "Stream" (rowExpr () "head" (lazy (annExpr tInt (litExpr () (TBig 1)))) (rowExpr () "tail" (lazy (varExpr () "s")) (conExpr () "{}" []))))
+--        (op2Expr () (ODot ()) (varExpr () "Head") (varExpr () "s"))
+
+    (op2Expr () (ODot ())
+        (varExpr () "foo")
+        (varExpr () "a"))
+
 
 
 --test5expr =
@@ -1115,11 +1191,11 @@ testTypeEnv = Env.fromList
     , ( "Node"         , Forall [kTyp] [] (tGen 0 `tArr` tApp kTyp (tCon kFun "Tree") (tGen 0) `tArr` tApp kTyp (tCon kFun "Tree") (tGen 0) `tArr` tApp kTyp (tCon kFun "Tree") (tGen 0)) )
     , ( "Leaf'"        , Forall [kTyp, kTyp] [] (tApp kTyp (tApp kFun (tCon kFun2 "Tree'") (tGen 0)) (tGen 1)) )
     , ( "Node'"        , Forall [kTyp, kTyp] [] (tGen 0 `tArr` tApp kTyp (tCon kFun "Tree") (tGen 0) `tArr` tApp kTyp (tCon kFun "Tree") (tGen 0) `tArr` tGen 1 `tArr` tGen 1 `tArr` tApp kTyp (tApp kFun (tCon kFun2 "Tree'") (tGen 0)) (tGen 1)) )
-    , ( "Nil'"         , Forall [kTyp, kTyp] [] (tApp kTyp (tApp kFun (tCon kFun2 "List'") (tGen 0)) (tGen 1)) )
-    , ( "Cons'"        , Forall [kTyp, kTyp] [] (tGen 0 `tArr` tList (tGen 0) `tArr` tGen 1 `tArr` tApp kTyp (tApp kFun (tCon kFun2 "List'") (tGen 0)) (tGen 1)) )
+    , ( "Nil'"         , Forall [kTyp, kTyp] [] (tApp kTyp (tApp kFun (tCon kFun2 "list'") (tGen 0)) (tGen 1)) )
+    , ( "Cons'"        , Forall [kTyp, kTyp] [] (tGen 0 `tArr` tList (tGen 0) `tArr` tGen 1 `tArr` tApp kTyp (tApp kFun (tCon kFun2 "list'") (tGen 0)) (tGen 1)) )
     , ( "Foo"          , Forall [] [] (tInt `tArr` tInt `tArr` tCon kTyp "Foo") )
 
-    , ( "Stream"       , Forall [] [] (tRecord (tRow "head" tInt (tRow "tail" (tCon kTyp "Stream") tRowNil)) `tArr` tCon kTyp "Stream") )
+    , ( "Stream"       , Forall [] [] (tRow "head" (tLazy tInt) (tRow "tail" (tLazy (tCon kTyp "Stream")) tRowNil) `tArr` tCon kTyp "Stream") )
 
     , ( "id"           , Forall [kTyp] [] (tGen 0 `tArr` tGen 0) )
     , ( "(::)"         , Forall [kTyp] [] (tGen 0 `tArr` tList (tGen 0) `tArr` tList (tGen 0)) )
@@ -1135,9 +1211,14 @@ testTypeEnv = Env.fromList
     , ( "fromInteger"  , Forall [kTyp] [InClass "Num" 0] (tBigint `tArr` tGen 0) )
     , ( "fn1"          , Forall [kTyp] [InClass "Num" 0] (tGen 0 `tArr` tGen 0 `tArr` tGen 0))
 
+                         -- (a -> b) -> List a -> List b
+    , ( "map"          , Forall [kTyp, kTyp] [] ((tGen 0 `tArr` tGen 1) `tArr` tList (tGen 0) `tArr` tList (tGen 1)))
+
     , ( "show"         , Forall [kTyp] [InClass "Show" 0] (tGen 0 `tArr` tString) )
     , ( "read"         , Forall [kTyp] [InClass "Read" 0] (tString `tArr` tGen 0) )
     ]
+
+tLazy = tArr tUnit
 
 testClassEnv :: ClassEnv
 testClassEnv = Env.fromList
@@ -1219,6 +1300,10 @@ testClassEnv = Env.fromList
           , ClassInfo (InClass "Eq" tDouble) []
             [ ( "(==)", Ast (varExpr (TypeInfo () (tDouble `tArr` tDouble `tArr` tBool) []) "@Double.(==)" ) )
             , ( "(/=)", Ast (varExpr (TypeInfo () (tDouble `tArr` tDouble `tArr` tBool) []) "@Double.(/=)" ) )
+            ]
+          , ClassInfo (InClass "Eq" tUnit) []
+            [ ( "(==)", Ast (varExpr (TypeInfo () (tUnit `tArr` tUnit `tArr` tBool) []) "@Unit.(==)" ) )
+            , ( "(/=)", Ast (varExpr (TypeInfo () (tUnit `tArr` tUnit `tArr` tBool) []) "@Unit.(/=)" ) )
             ]
           , ClassInfo (InClass "Eq" tNat) []
             [
@@ -1344,6 +1429,8 @@ testEvalEnv = Env.fromList
     [ ( "_#"  , fromJust (evalExpr (cLam "?0" (cPat (cVar "?0") [(["#", "?1"], cVar "?1")])) mempty) )
     , ( "_^"  , fromJust (evalExpr (cLam "n" (cLam "f" (cLam "s" (cLet "r" (cLam "x" (cLam "m" (cIf (cApp [cVar "@Integer.(==)", cLit (TBig 0), cVar "m"]) (cVar "x") (cApp [cVar "r", cApp [cVar "f", cVar "x"], cApp [cVar "@Integer.(-)", cVar "m", cLit (TBig 1)]])))) (cApp [cVar "r", cVar "s", cVar "n"]))))) mempty) )
     , ( "(.)" , fromJust (evalExpr (cLam "f" (cLam "x" (cApp [cVar "f", cVar "x"]))) mempty) )
+
+
     -- Integer -> nat
 --    , ( ";pack" , fromJust (evalExpr (cLam "?0" (cLet "f" (cLam "#0" (cIf (cApp [cVar "@Integer.(==)", cVar "#0", cLit (TBig 0)]) (cVar "zero") (cApp [cVar "succ", cApp [cVar "f", cApp [cVar "@Integer.(-)", cVar "#0", cLit (TBig 1)]]]))) (cApp [cVar "f", cVar "?0"]))) mempty) )
 --    , ( ";pack" , fromJust (evalExpr (cLam "?0" (cLit (TNat 100))) mempty) )

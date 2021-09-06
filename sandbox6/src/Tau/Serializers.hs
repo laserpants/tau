@@ -195,6 +195,7 @@ exprRep = project >>> \case
     EList   t es        -> makeRep "Expr" "EList"      [toRep t, toRep es]
     ERow    t lab a b   -> makeRep "Expr" "ERow"       [toRep t, String lab, toRep a, toRep b]
     ERecord t e         -> makeRep "Expr" "ERecord"    [toRep t, toRep e]
+    ECodata t name e    -> makeRep "Expr" "ECodata"    [toRep t, String name, toRep e]
     EAnn    t a         -> makeRep "Expr" "EAnn"       [toRep t, toRep a]
 
 op1Rep :: (ToRep t) => Op1 t -> Value
@@ -238,7 +239,8 @@ clauseRep = \case
 
 monoClauseRep :: (ToRep t, ToRep p, ToRep a) => MonoClause t p a -> Value
 monoClauseRep = \case
-    MonoClause t ps e   -> makeRep "MonoClause" "MonoClause" [toRep t, toRep ps, toRep e]
+    MonoClause t ps e   -> makeRep "MonoClause"
+                                   "MonoClause"        [toRep t, toRep ps, toRep e]
 
 choiceRep :: (ToRep a) => Choice a -> Value
 choiceRep = \case
@@ -246,11 +248,13 @@ choiceRep = \case
 
 predicateRep :: (ToRep a) => PredicateF a -> Value
 predicateRep = \case
-    InClass name a      -> makeRep "PredicateF" "InClass" [String name, toRep a]
+    InClass name a      -> makeRep "PredicateF"
+                                   "InClass"           [String name, toRep a]
 
 typeInfoRep :: (ToRep t, ToRep e) => TypeInfoT [e] t -> Value
 typeInfoRep = \case
-    TypeInfo e t ps     -> makeRep "TypeInfoT" "TypeInfo" [toRep e, toRep t, toRep ps]
+    TypeInfo e t ps     -> makeRep "TypeInfoT"
+                                   "TypeInfo"          [toRep e, toRep t, toRep ps]
 
 schemeRep :: Scheme -> Value
 schemeRep = \case

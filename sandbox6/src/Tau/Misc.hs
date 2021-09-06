@@ -65,7 +65,7 @@ data TypeF k i a
 -- | Type
 type TypeT i = Fix (TypeF Kind i)
 
--- | Standalone type (a type that is not part of a type scheme)
+-- | Standalone type (i.e., a type that is not part of a type scheme)
 type Type = TypeT Void
 
 -- | A type which appears in a type scheme and therefore may contain quantified
@@ -145,6 +145,7 @@ data ExprF t1 t2 t3 t4 e1 e2 e3 e4 a
     | EList   t3 [a]                     -- ^ List literal
     | ERow    t3 Name a a                -- ^ Row expression
     | ERecord t3 a                       -- ^ Record expression
+    | ECodata t3 Name a                  -- ^ Codata expression
     | EHole   t3                         -- ^ Blank argument in partial function application
     | EAnn    t4 a                       -- ^ Explicit type annotation
 
@@ -374,8 +375,8 @@ data CoreF a
     | CIf  a ~a ~a              -- ^ If-clause
     | CPat a (CMatrix a)        -- ^ Pattern match clause matrix
 
--- | Core language expression used for interpreted program evaluation and code
--- generation
+-- | Core language expression suitable for interpreted program evaluation and
+-- code generation
 type Core = Fix CoreF
 
 -------------------------------------------------------------------------------
@@ -472,7 +473,7 @@ data Product = Mul Name [Type]
 -- | A type declaration is a sum of products
 data Typedecl = Sum Name [Name] [Product]
 
--- | Top-level declaration, e.g., f(x, y) = foo, or name = "Foo"
+-- | Top-level declaration, e.g., f(x, y) = foo(x) + foo(y), or name = "Foo"
 data Topdecl t u = Top t (Binding t (ProgPattern t u)) (ProgExpr t u)
 
 --
@@ -490,6 +491,11 @@ data Progdecl t u
     -- ^ Type class instance
 
 data Module t u = Module Name [Progdecl t u]
+
+-------------------------------------------------------------------------------
+
+typeInfo :: t -> TypeInfoT [e] t
+typeInfo t = TypeInfo [] t []
 
 -------------------------------------------------------------------------------
 
@@ -1091,6 +1097,15 @@ recordExpr
 recordExpr = embed2 ERecord
 {-# INLINE recordExpr #-}
 
+codataExpr
+  :: (Functor e2, Functor e4)
+  => t3
+  -> Name
+  -> Expr t1 t2 t3 t4 e1 e2 e3 e4
+  -> Expr t1 t2 t3 t4 e1 e2 e3 e4
+codataExpr = embed3 ECodata
+{-# INLINE codataExpr #-}
+
 holeExpr
   :: (Functor e2, Functor e4)
   => t3
@@ -1250,6 +1265,27 @@ lookupRowType name = para $ \case
     TRow label (r, _) (_, next) -> if name == label then Just r else next
     _                           -> Nothing
 
+isTupleType :: Type -> Bool
+isTupleType = cata $ \case
+    TCon _ con -> Just True == (allCommas <$> stripped con)
+    TApp _ a _ -> a
+    _          -> False
+  where
+    allCommas = Text.all (== ',')
+    stripped  = Text.stripSuffix ")" <=< Text.stripPrefix "("
+
+isRecordType :: Type -> Bool
+isRecordType = cata $ \case
+    TCon _ c | "#" == c -> True
+    TApp _ a _ -> a
+    _          -> False
+
+--isRecordType :: Type -> Bool
+--isRecordType = para $ \case
+--    TApp _ (Fix (TCon _ c), _) (t, _) | "#" == c -> True
+--    TApp _ (_, a) _ -> a
+--    _               -> False
+
 unpackRecordType :: Type -> Maybe Type
 unpackRecordType = para $ \case
     TApp _ (Fix (TCon _ c), _) (t, _) | "#" == c -> Just t
@@ -1337,6 +1373,7 @@ instance Tagged (ProgExpr t u) t where
         EList   t _     -> t
         ERow    t _ _ _ -> t
         ERecord t _     -> t
+        ECodata t _ _   -> t
         EAnn    _ e     -> e
 
     setTag t = project >>> \case
@@ -1357,6 +1394,7 @@ instance Tagged (ProgExpr t u) t where
         EList   _ es          -> listExpr   t es
         ERow    _ lab e r     -> rowExpr    t lab e r
         ERecord _ r           -> recordExpr t r
+        ECodata _ name r      -> codataExpr t name r
 
 instance Tagged (ProgPattern t u) t where
     setTag t = project >>> \case
@@ -1434,8 +1472,8 @@ opPrecedence = \case
     OBpip  _ -> 1
     OOpt   _ -> 3
     OStr   _ -> 5
-    ODot   _ -> 11
-    OField _ -> 11
+    ODot   _ -> 10
+    OField _ -> 10
 
 -- | Return the associativity of a binary operator
 opAssoc :: Op2 t -> Assoc
@@ -1511,6 +1549,7 @@ mapExprTag f = cata $ \case
     EList   t es             -> listExpr   (f t) es
     ERow    t lab e r        -> rowExpr    (f t) lab e r
     ERecord t r              -> recordExpr (f t) r
+    ECodata t name r         -> codataExpr (f t) name r
     EAnn    t e              -> annExpr    t e
   where
     mapBind = \case
@@ -1559,6 +1598,7 @@ foldrExprTag f s e = foldr1 (.) (foldExpr f e) s
         EList   t es         -> (f t:concat es)
         ERow    t _ e r      -> (f t:e <> r)
         ERecord t r          -> (f t:r)
+        ECodata t _ r        -> (f t:r)
         EAnn    _ e          -> e
 
     foldClause :: (t -> s -> s) -> Clause t [ProgPattern t u] [s -> s] -> [s -> s]
@@ -1780,6 +1820,7 @@ instance (Substitutable t a) => Substitutable (ProgExpr t u) a where
         EList   t es         -> listExpr   (apply sub t) es
         ERow    t lab e r    -> rowExpr    (apply sub t) lab e r
         ERecord t e          -> recordExpr (apply sub t) e
+        ECodata t name e     -> codataExpr (apply sub t) name e
         EAnn    t e          -> annExpr    t e
 
 instance (Substitutable t a) => Substitutable (Op1 t) a where
@@ -2064,7 +2105,8 @@ unifyRows
 unifyRows combineTypes combinePairs t u =
     fn (mapRep t, final t) (mapRep u, final u)
   where
-    mapRep = foldr (uncurry (Map.insertWith (<>))) mempty . fields
+    mapRep =
+        foldr (uncurry (Map.insertWith (<>))) mempty . fields
 
     fromMap =
         Map.foldrWithKey (flip . foldr . tRow)

@@ -7,6 +7,7 @@ import Control.Monad
 import Control.Monad.Combinators.Expr
 import Control.Monad.Supply
 import Control.Monad.Trans (lift)
+import Data.Fix (Fix(..))
 import Data.Foldable (foldlM)
 import Data.Function ((&))
 import Data.Functor (($>))
@@ -286,10 +287,10 @@ operator :: [[Operator Parser (ProgExpr () Type)]]
 operator =
     [
       -- 11
-      [ InfixL (symbol "." $> flip (op2Expr () (ODot ())))
-      ]
+      [ Postfix postfixFunArgParser ]
       -- 10
-    , [ Postfix postfixFunArgParser ]
+    , [ InfixL (symbol "." $> flip (op2Expr () (ODot ())))
+      ]
       -- 9
     , [ InfixR (op2Expr () (OLarr ()) <$ symbol "<<")
       , InfixL (op2Expr () (ORarr ()) <$ symbol ">>")
@@ -336,6 +337,13 @@ postfixFunArgParser :: Parser (ProgExpr () Type -> ProgExpr () Type)
 postfixFunArgParser = do
     args <- try (parens spaces $> [litExpr () TUnit]) <|> argParser annExprParser
     pure (\fun -> appExpr () (fun:args))
+    --pure (\fun ->
+    --  case fun of
+    --    --Fix (EOp2 _ (ODot _) a b) ->
+    --    --  let r:rs = args
+    --    --   in appExpr () ((op2Expr () (ODot ()) a r):rs <> [b])
+    --    _ ->
+    --      appExpr () (fun:args))
 
 annExprParser :: Parser (ProgExpr () Type)
 annExprParser = makeExprParser parseItem operator
