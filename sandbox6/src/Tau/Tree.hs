@@ -636,7 +636,7 @@ stage1Translate = cata $ \case
     -- Translate operators to prefix form
     EOp1    t op a              -> appExpr t [prefixOp1 op, a]
     EOp2    t (ODot _) a b      -> translateAppExpr t [a, b]
-    EOp2    t (OField t1) a b   -> translateAppExpr t [varExpr t1 "@(#)get_field", a, b]
+    EOp2    t (OField t1) a b   -> translateAppExpr t [varExpr t1 "@(#).getField", a, b]
     EOp2    t op a b            -> translateAppExpr t [prefixOp2 op, a, b]
 
     -- Expand pattern clause guards and eliminate fun expressions
@@ -1016,7 +1016,7 @@ applyVarPredicates expr (InClass name ty:ps) = do
             all <- baz
             if var `elem` (fst <$> all)
                 then pure (appExpr (getTag expr)
-                    [ varExpr (tSymbol `tArr` t1 `tArr` t) "@(#)get_field"
+                    [ varExpr (tSymbol `tArr` t1 `tArr` t) "@(#).getField"
                     , litExpr tSymbol (TSymbol var)
                     , varExpr t1 tv ])
                 else

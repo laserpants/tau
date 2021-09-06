@@ -87,7 +87,7 @@ closure var a = pure (Closure var a mempty)
 evalVar :: (MonadFail m, MonadReader (ValueEnv m) m) => Name -> m (Value m)
 evalVar var =
     case Text.stripPrefix "@" var of
-        Just "(#)get_field" ->
+        Just "(#).getField" ->
             closure "?a" $ do
                 Just (Value (TSymbol name)) <- asks (Env.lookup "?a")
                 closure "?b" $ do
