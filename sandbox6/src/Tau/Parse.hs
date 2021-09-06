@@ -396,6 +396,9 @@ matchParser = do
     --sepParser = try (symbol "=>") <|> symbol "="
     sepParser = symbol "="
 
+-- TODO: A check needs to be added to ensure that holes only
+-- appear in function applications
+--
 exprParser :: Parser (ProgExpr () Type)
 exprParser = makeExprParser parseItem operator
   where
