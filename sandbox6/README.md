@@ -106,14 +106,44 @@ factorial(n) =
     | succ(m), val = succ(m) * val
 
 
+-- proposal: 
+factorial(n) : nat -> nat =
+  fold n as
+    | zero         = 1
+    | succ(m), val = succ(m) * val
 
-headSize : (Ord a) => a -> Option string
+
+
+
+headSize 
+  : (Ord a)
+    => a 
+    -> Option string
 headSize
   | x :: xs
       when(x > 100) = Some("L")
     , when(x > 10)  = Some("M")
     , otherwise     = Some("S")
   | _               = None
+
+
+-- proposal: 
+headSize (Ord a) : a -> Option string
+  | x :: xs
+      when(x > 100) = Some("L")
+    , when(x > 10)  = Some("M")
+    , otherwise     = Some("S")
+  | _               = None
+
+
+-- proposal: 
+headSize : (Ord a) => a -> Option string
+  | x :: xs
+      when(x > 100) = Some("L")
+    , when(x > 10)  = Some("M")
+    , otherwise     = Some("S")
+  | _               = None
+
 
 
 
@@ -139,6 +169,22 @@ map(f, xs) =
   fold xs as
     | []           = []
     | (y :: _), ys = f(y) :: ys
+
+
+-- proposal: 
+map(f, xs) { (Functor f) : (a -> b) -> f a -> f b } =
+  fold xs as
+    | []           = []
+    | (y :: _), ys = f(y) :: ys
+
+
+-- proposal: 
+map(f, xs) : (Functor f) => (a -> b) -> f a -> f b =
+  fold xs as
+    | []           = []
+    | (y :: _), ys = f(y) :: ys
+
+
 
 
 
@@ -167,6 +213,8 @@ isZero
 fourIsZero : bool
 fourIsZero = 4.isZero
 
+
+fourIsZero : bool = 4.isZero
 
 
 
