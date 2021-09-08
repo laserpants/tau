@@ -4,6 +4,7 @@
 import Control.Monad.Except (runExceptT)
 import Control.Monad.Reader
 import Control.Monad.State
+import Data.Either (fromRight)
 import Data.Either (isLeft, isRight)
 import Data.Fix (Fix(..))
 import Data.Functor.Foldable (cata, para, embed)
@@ -1494,6 +1495,14 @@ testFlight = do
                 --                     ]) (varExpr () "map"), lamExpr () [varPat () "x"] (op2Expr () (OAdd ()) (varExpr () "x") (litExpr () (TBig 1)))])))
 
           (Just (Data "(::)" [Value (TInt 2), Data "(::)" [Value (TInt 3), Data "(::)" [Value (TInt 4), Data "(::)" [Value (TInt 5), Data "[]" []]]]]))
+
+    succeedRunExpr
+          (fromRight (error "Error parsing expression") (runParserStack annExprParser "" "{ a = () }.a"))
+          (Just (Value TUnit))
+
+    succeedRunExpr
+          (fromRight (error "Error parsing expression") (runParserStack annExprParser "" "let b = { foo = () } in { a = () | b }.foo"))
+          (Just (Value TUnit))
 
     describe "• Defaulting" $ do
 

@@ -109,7 +109,7 @@ primEnv = Env.fromList
     , ( "Double.(==)"          , fun2 ((==) :: Double -> Double -> Bool) )
     , ( "Char.(==)"            , fun2 ((==) :: Char -> Char -> Bool) )
     , ( "String.(==)"          , fun2 ((==) :: Text -> Text -> Bool) )
-
+-------------------------------------------------------------------------------
     , ( "Unit.(/=)"            , fun2 ((/=) :: () -> () -> Bool) )
     , ( "Bool.(/=)"            , fun2 ((/=) :: Bool -> Bool -> Bool) )
     , ( "Int.(/=)"             , fun2 ((/=) :: Int -> Int -> Bool) )
@@ -118,25 +118,25 @@ primEnv = Env.fromList
     , ( "Double.(/=)"          , fun2 ((/=) :: Double -> Double -> Bool) )
     , ( "Char.(/=)"            , fun2 ((/=) :: Char -> Char -> Bool) )
     , ( "String.(/=)"          , fun2 ((/=) :: Text -> Text -> Bool) )
-
+-------------------------------------------------------------------------------
     , ( "Int.(+)"              , fun2 ((+) :: Int -> Int -> Int ) )
     , ( "Integer.(+)"          , fun2 ((+) :: Integer -> Integer -> Integer ) )
     , ( "Float.(+)"            , fun2 ((+) :: Float -> Float -> Float ) )
     , ( "Double.(+)"           , fun2 ((+) :: Double -> Double -> Double ) )
-
+-------------------------------------------------------------------------------
     , ( "Int.(-)"              , fun2 ((-) :: Int -> Int -> Int ) )
     , ( "Integer.(-)"          , fun2 ((-) :: Integer -> Integer -> Integer ) )
     , ( "Float.(-)"            , fun2 ((-) :: Float -> Float -> Float ) )
     , ( "Double.(-)"           , fun2 ((-) :: Double -> Double -> Double ) )
-
+-------------------------------------------------------------------------------
     , ( "Int.(*)"              , fun2 ((*) :: Int -> Int -> Int ) )
     , ( "Integer.(*)"          , fun2 ((*) :: Integer -> Integer -> Integer ) )
     , ( "Float.(*)"            , fun2 ((*) :: Float -> Float -> Float ) )
     , ( "Double.(*)"           , fun2 ((*) :: Double -> Double -> Double ) )
-
+-------------------------------------------------------------------------------
     , ( "Float.(/)"            , fun2 ((/) :: Float -> Float -> Float ) )
     , ( "Double.(/)"           , fun2 ((/) :: Double -> Double -> Double ) )
-
+-------------------------------------------------------------------------------
     , ( "Bool.(<)"             , fun2 ((<) :: Bool -> Bool -> Bool ) )
     , ( "Int.(<)"              , fun2 ((<) :: Int -> Int -> Bool ) )
     , ( "Integer.(<)"          , fun2 ((<) :: Integer -> Integer -> Bool ) )
@@ -145,7 +145,7 @@ primEnv = Env.fromList
     , ( "Char.(<)"             , fun2 ((<) :: Char -> Char -> Bool ) )
     , ( "String.(<)"           , fun2 ((<) :: Text -> Text -> Bool ) )
     , ( "Unit.(<)"             , fun2 ((<) :: () -> () -> Bool ) )
-
+-------------------------------------------------------------------------------
     , ( "Bool.(<=)"            , fun2 ((<=) :: Bool -> Bool -> Bool ) )
     , ( "Int.(<=)"             , fun2 ((<=) :: Int -> Int -> Bool ) )
     , ( "Integer.(<=)"         , fun2 ((<=) :: Integer -> Integer -> Bool ) )
@@ -154,7 +154,7 @@ primEnv = Env.fromList
     , ( "Char.(<=)"            , fun2 ((<=) :: Char -> Char -> Bool ) )
     , ( "String.(<=)"          , fun2 ((<=) :: Text -> Text -> Bool ) )
     , ( "Unit.(<=)"            , fun2 ((<=) :: () -> () -> Bool ) )
-
+-------------------------------------------------------------------------------
     , ( "Bool.(>)"             , fun2 ((>) :: Bool -> Bool -> Bool ) )
     , ( "Int.(>)"              , fun2 ((>) :: Int -> Int -> Bool ) )
     , ( "Integer.(>)"          , fun2 ((>) :: Integer -> Integer -> Bool ) )
@@ -163,7 +163,7 @@ primEnv = Env.fromList
     , ( "Char.(>)"             , fun2 ((>) :: Char -> Char -> Bool ) )
     , ( "String.(>)"           , fun2 ((>) :: Text -> Text -> Bool ) )
     , ( "Unit.(>)"             , fun2 ((>) :: () -> () -> Bool ) )
-
+-------------------------------------------------------------------------------
     , ( "Bool.(>=)"            , fun2 ((>=) :: Bool -> Bool -> Bool ) )
     , ( "Int.(>=)"             , fun2 ((>=) :: Int -> Int -> Bool ) )
     , ( "Integer.(>=)"         , fun2 ((>=) :: Integer -> Integer -> Bool ) )
@@ -172,7 +172,7 @@ primEnv = Env.fromList
     , ( "Char.(>=)"            , fun2 ((>=) :: Char -> Char -> Bool ) )
     , ( "String.(>=)"          , fun2 ((>=) :: Text -> Text -> Bool ) )
     , ( "Unit.(>=)"            , fun2 ((>=) :: () -> () -> Bool ) )
-
+-------------------------------------------------------------------------------
     , ( "Bool.show"            , fun1 (Text.pack . show :: Bool -> Text ) )
     , ( "Int.show"             , fun1 (Text.pack . show :: Int -> Text ) )
     , ( "Integer.show"         , fun1 (Text.pack . show :: Integer -> Text ) )
@@ -181,17 +181,17 @@ primEnv = Env.fromList
     , ( "Char.show"            , fun1 (Text.pack . show :: Char -> Text ) )
     , ( "Unit.show"            , fun1 (Text.pack . show :: () -> Text ) )
     , ( "String.show"          , fun1 (id :: Text -> Text) )
-
+-------------------------------------------------------------------------------
     , ( "Int.fromInteger"      , fun1 (fromInteger :: Integer -> Int) )
     , ( "Integer.fromInteger"  , fun1 (fromInteger :: Integer -> Integer) )
     , ( "Float.fromInteger"    , fun1 (fromInteger :: Integer -> Float) )
     , ( "Double.fromInteger"   , fun1 (fromInteger :: Integer -> Double) )
-
+-------------------------------------------------------------------------------
     , ( "Integer.fromInt"      , fun1 (fromIntegral :: Int -> Integer) )
     , ( "Integer.(%)"          , fun2 (mod :: Integer -> Integer -> Integer) )
-
+-------------------------------------------------------------------------------
     , ( "Float.fromDouble"     , fun1 (fromRational . toRational :: Double -> Float) )
-
+-------------------------------------------------------------------------------
     , ( "Bool.id"              , fun1 (id :: Bool -> Bool) )
     , ( "Int.id"               , fun1 (id :: Int -> Int) )
     , ( "Integer.id"           , fun1 (id :: Integer -> Integer) )
@@ -200,11 +200,11 @@ primEnv = Env.fromList
     , ( "Char.id"              , fun1 (id :: Char -> Char) )
     , ( "String.id"            , fun1 (id :: Text -> Text) )
     , ( "Unit.id"              , fun1 (id :: () -> ()) )
-
+-------------------------------------------------------------------------------
     , ( "String.length"        , fun1 (Text.length :: Text -> Int ) )
-
+-------------------------------------------------------------------------------
     , ( "(++)"                 , fun2 ((<>) :: Text -> Text -> Text ) )
-
+-------------------------------------------------------------------------------
     , ( "(&&)"                 , fun2 ((&&) :: Bool -> Bool -> Bool ) )
     , ( "(||)"                 , fun2 ((||) :: Bool -> Bool -> Bool ) )
     ]
