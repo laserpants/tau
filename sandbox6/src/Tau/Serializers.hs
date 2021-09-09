@@ -195,7 +195,7 @@ exprRep = project >>> \case
     EList   t es        -> makeRep "Expr" "EList"      [toRep t, toRep es]
     ERow    t lab a b   -> makeRep "Expr" "ERow"       [toRep t, String lab, toRep a, toRep b]
     ERecord t e         -> makeRep "Expr" "ERecord"    [toRep t, toRep e]
-    ECodata t name e    -> makeRep "Expr" "ECodata"    [toRep t, String name, toRep e]
+    ECodata t e         -> makeRep "Expr" "ECodata"    [toRep t, toRep e]
     EAnn    t a         -> makeRep "Expr" "EAnn"       [toRep t, toRep a]
 
 op1Rep :: (ToRep t) => Op1 t -> Value
