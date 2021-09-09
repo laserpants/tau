@@ -262,7 +262,7 @@ instance (FunArgs e1, Functor e2, Functor e4, Pretty e3, Pretty t4, Pretty (e2 (
                     _      -> True
 
         ERecord _ r                      -> prettyRecord (unfoldRow (fst r))
-        ECodata _ name e                 -> "::TODO::"
+        ECodata _ e                      -> "::TODO::"
         ELam    _ ps e                   -> prettyLam (funArgs ps) (snd e)
         ELet    _ bind e1 e2             -> prettyLet "let" (pretty bind) (letRhs e1) (snd e2)
         EFix    _ name e1 e2             -> prettyLet "fix" (pretty name) (snd e1) (snd e2)
