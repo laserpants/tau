@@ -145,7 +145,7 @@ data ExprF t1 t2 t3 t4 e1 e2 e3 e4 a
     | EList   t3 [a]                     -- ^ List literal
     | ERow    t3 Name a a                -- ^ Row expression
     | ERecord t3 a                       -- ^ Record expression
-    | ECodata t3 Name a                  -- ^ Codata expression
+    | ECodata t3 a                       -- ^ Codata expression
     | EHole   t3                         -- ^ Blank argument in partial function application
     | EAnn    t4 a                       -- ^ Explicit type annotation
 
@@ -878,6 +878,14 @@ tRecordCon = tCon (kArr kRow kTyp) "#"
 tRecord :: TypeT a -> TypeT a
 tRecord = tApp kTyp tRecordCon
 
+-- Codata
+
+tCodataCon :: TypeT a
+tCodataCon = tCon (kArr kRow kTyp) "!"
+
+tCodata :: TypeT a -> TypeT a
+tCodata = tApp kTyp tCodataCon
+
 --
 
 tIsVar :: TypeT a -> Bool
@@ -1100,10 +1108,9 @@ recordExpr = embed2 ERecord
 codataExpr
   :: (Functor e2, Functor e4)
   => t3
-  -> Name
   -> Expr t1 t2 t3 t4 e1 e2 e3 e4
   -> Expr t1 t2 t3 t4 e1 e2 e3 e4
-codataExpr = embed3 ECodata
+codataExpr = embed2 ECodata
 {-# INLINE codataExpr #-}
 
 holeExpr
@@ -1287,8 +1294,14 @@ isRecordType = cata $ \case
 --    _               -> False
 
 unpackRecordType :: Type -> Maybe Type
-unpackRecordType = para $ \case
-    TApp _ (Fix (TCon _ c), _) (t, _) | "#" == c -> Just t
+unpackRecordType = unpackRow "#"
+
+unpackCodataType :: Type -> Maybe Type
+unpackCodataType = unpackRow "!"
+
+unpackRow :: Name -> Type -> Maybe Type
+unpackRow con = para $ \case
+    TApp _ (Fix (TCon _ c), _) (t, _) | con == c -> Just t
     TApp _ (_, a) _ -> a
     _               -> Nothing
 
@@ -1373,7 +1386,7 @@ instance Tagged (ProgExpr t u) t where
         EList   t _     -> t
         ERow    t _ _ _ -> t
         ERecord t _     -> t
-        ECodata t _ _   -> t
+        ECodata t _     -> t
         EAnn    _ e     -> e
 
     setTag t = project >>> \case
@@ -1394,7 +1407,7 @@ instance Tagged (ProgExpr t u) t where
         EList   _ es          -> listExpr   t es
         ERow    _ lab e r     -> rowExpr    t lab e r
         ERecord _ r           -> recordExpr t r
-        ECodata _ name r      -> codataExpr t name r
+        ECodata _ r           -> codataExpr t r
 
 instance Tagged (ProgPattern t u) t where
     setTag t = project >>> \case
@@ -1549,7 +1562,7 @@ mapExprTag f = cata $ \case
     EList   t es             -> listExpr   (f t) es
     ERow    t lab e r        -> rowExpr    (f t) lab e r
     ERecord t r              -> recordExpr (f t) r
-    ECodata t name r         -> codataExpr (f t) name r
+    ECodata t r              -> codataExpr (f t) r
     EAnn    t e              -> annExpr    t e
   where
     mapBind = \case
@@ -1598,7 +1611,7 @@ foldrExprTag f s e = foldr1 (.) (foldExpr f e) s
         EList   t es         -> (f t:concat es)
         ERow    t _ e r      -> (f t:e <> r)
         ERecord t r          -> (f t:r)
-        ECodata t _ r        -> (f t:r)
+        ECodata t r          -> (f t:r)
         EAnn    _ e          -> e
 
     foldClause :: (t -> s -> s) -> Clause t [ProgPattern t u] [s -> s] -> [s -> s]
@@ -1820,7 +1833,7 @@ instance (Substitutable t a) => Substitutable (ProgExpr t u) a where
         EList   t es         -> listExpr   (apply sub t) es
         ERow    t lab e r    -> rowExpr    (apply sub t) lab e r
         ERecord t e          -> recordExpr (apply sub t) e
-        ECodata t name e     -> codataExpr (apply sub t) name e
+        ECodata t e          -> codataExpr (apply sub t) e
         EAnn    t e          -> annExpr    t e
 
 instance (Substitutable t a) => Substitutable (Op1 t) a where
