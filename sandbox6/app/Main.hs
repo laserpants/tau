@@ -3,6 +3,7 @@
 module Main where
 
 import Data.Aeson
+import Debug.Trace
 import Data.Aeson.Encode.Pretty
 import Data.Fix (Fix(..))
 import Data.Function (fix)
@@ -14,27 +15,51 @@ import Tau.Serializers
 import Tau.Util (Coalgebra)
 import qualified Data.ByteString.Lazy.Char8 as B
 
+data StreamCodata a = StreamCodata
+    { _head :: () -> a
+    , _tail :: () -> Stream a
+    }
 
-data Stream = Stream
-    { _head :: Int 
-    , _tail :: Stream 
-    } deriving (Show, Eq)
+data Stream a = Stream (StreamCodata a)
+
+unfolds :: ((a, b) -> (a, b)) -> a -> b
+unfolds f n = let (m, s) = f (n, unfolds f m) in s
+
+enumFroms :: Int -> Stream Int
+enumFroms n =
+    Stream (unfolds fun n)
+  where
+    fun :: (Int, StreamCodata Int) -> (Int, StreamCodata Int)
+    fun (n, next) = (n + 1, StreamCodata{ _head = \_ -> n, _tail = \_ -> Stream next })
+
+tails :: Stream a -> Stream a
+tails (Stream (StreamCodata { _tail = t })) = t ()
+
+heads :: Stream a -> a
+heads (Stream (StreamCodata { _head = h })) = h ()
 
 
-implFun :: (a -> s -> (a, s)) -> a -> s
-implFun f n = let (m, s) = f n (implFun f m) in s
 
-clientFun :: Int -> Stream -> (Int, Stream)
-clientFun n next = (n + 1, Stream { _head = n, _tail = next })
-
-
-go = implFun clientFun 1
-
-foo = _head go
+--data Stream = Stream
+--    { _head :: Int
+--    , _tail :: Stream
+--    } deriving (Show, Eq)
+--
+--
+--implFun :: (a -> s -> (a, s)) -> a -> s
+--implFun f n = let (m, s) = f n (implFun f m) in s
+--
+--clientFun :: Int -> Stream -> (Int, Stream)
+--clientFun n next = (n + 1, Stream { _head = n, _tail = next })
+--
+--
+--go = implFun clientFun 1
+--
+--foo = _head go
 
 
 --data StreamF a = StreamF
---    { _head :: Int 
+--    { _head :: Int
 --    , _tail :: StreamF a }
 --    deriving (Show, Eq, Functor)
 --
@@ -53,7 +78,7 @@ foo = _head go
 main :: IO ()
 main = do
     [p] <- getArgs
-    
+
 
     -- (False.foo)({ foo = ... })
 
@@ -72,13 +97,18 @@ main = do
 
     -- B.putStrLn (encodePretty' defConfig{ confIndent = Spaces 2 } (toRep (runBundle (pack p))))
 --    let p = "let f(x) = x > 3 in f(3 : int)"
+--    let xx = (runBundle (pack p))
+--    let ff = encode (toRep xx)
+--    putChar (B.head ff)
+--    traceShowM (value xx)
+
     B.putStrLn (encode (toRep (runBundle (pack p))))
 
 
 --let f(x) = x + 1 > 5 in f(5)
 
---let foo 
---  | 0 => 1 
+--let foo
+--  | 0 => 1
 --  | n => 2
 --  in foo(1)
 
@@ -86,7 +116,7 @@ main = do
 -- let
 --   foo(x) =
 --     x > 5
---   in 
+--   in
 --     foo(8)
 --
 

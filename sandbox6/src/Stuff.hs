@@ -19,7 +19,7 @@ import Control.Monad.Trans.Maybe (MaybeT(..))
 import Control.Monad.Supply
 import Data.Aeson
 import Data.Aeson.Encode.Pretty
-import Data.Char (isUpper)
+import Data.Char (isUpper, toLower)
 import Data.Either.Extra (eitherToMaybe)
 import Data.Fix (Fix(..))
 import Data.Function ((&))
@@ -77,7 +77,7 @@ tagTree = cata alg
         EList   _ es            -> listExpr   <$> freshType <*> sequence es
         ERow    _ lab e r       -> rowExpr    <$> freshType <*> pure lab <*> e <*> r
         ERecord _ e             -> recordExpr <$> freshType <*> e
-        ECodata _ name e        -> codataExpr <$> freshType <*> pure name <*> e
+        ECodata _ e             -> codataExpr <$> freshType <*> e
         EHole   _               -> holeExpr   <$> freshType
         EAnn    t a             -> annExpr t  <$> a
 
@@ -294,6 +294,7 @@ inferExprType = cata $ \case
         case op2 of
             ODot _ | isRecordType ty -> inferFieldOpType t (fromJust (unpackRecordType ty)) a b
             ODot _                   -> inferDotOpType t a b
+            OField _                 -> inferFieldOpType t (makeFieldsStrict (fromJust (unpackCodataType ty))) a b
             _ -> do
                 (op, ps) <- inferOpType (typeInfo <$> op2) (op2Scheme op2)
                 ty <- fresh
@@ -329,16 +330,19 @@ inferExprType = cata $ \case
         errs <- tryUnify t (tRecord (typeOf e))
         pure (recordExpr (TypeInfo errs t []) e)
 
-    ECodata t name expr -> do
+    ECodata t expr -> do
         e <- expr
-        lookupScheme name >>= \case
-            Nothing ->
-                pure (codataExpr (TypeInfo [ConstructorNotInScope name] t []) name e)
+        errs <- tryUnify t (tCodata (typeOf e))
+        pure (codataExpr (TypeInfo errs t []) e)
+        --e <- expr
+        --lookupScheme name >>= \case
+        --    Nothing ->
+        --        pure (codataExpr (TypeInfo [ConstructorNotInScope name] t []) name e)
 
-            Just scheme -> do
-                (ty, ps) <- instantiate scheme
-                errs <- tryUnify ty (typeOf e `tArr` t)
-                pure (codataExpr (TypeInfo errs t ps) name e)
+        --    Just scheme -> do
+        --        (ty, ps) <- instantiate scheme
+        --        errs <- tryUnify ty (typeOf e `tArr` t)
+        --        pure (codataExpr (TypeInfo errs t ps) name e)
 
     EHole t ->
         pure (holeExpr (typeInfo t))
@@ -364,6 +368,16 @@ inferDotOpType t a b = do
     errs2 <- tryUnify t1 (foldr tArr ty (typeOf <$> [a, b]))
     pure (op2Expr (TypeInfo (errs1 <> errs2) t []) (ODot (typeInfo ty)) a b)
 
+withInitialLower :: Name -> Name
+withInitialLower name = toLower (Text.head name) `Text.cons` Text.tail name
+
+makeFieldsStrict :: Type -> Type
+makeFieldsStrict = cata $ \case
+    TRow label t next -> tRow label (cod t) next
+    t                 -> embed t
+  where
+    cod = project >>> \case TArr _ t -> t
+
 inferFieldOpType
   :: ( MonadSupply Int m
      , MonadReader (ClassEnv, TypeEnv, KindEnv, ConstructorEnv) m
@@ -376,7 +390,7 @@ inferFieldOpType
 inferFieldOpType t row a b = do
     case project a of
         EVar _ name -> do
-            case lookupRowType name row of
+            case lookupRowType (withInitialLower name) row of
                 Nothing ->
                     inferDotOpType t a b
 
@@ -388,7 +402,7 @@ inferFieldOpType t row a b = do
                                   (litExpr (typeInfo tSymbol) (TSymbol name)) b)
 
         EApp _ (Fix (EVar _ name):args) -> do
-            case lookupRowType name row of
+            case lookupRowType (withInitialLower name) row of
                 Nothing ->
                     inferDotOpType t a b
 
@@ -999,17 +1013,18 @@ test5expr =
     --
     -- fix
     --   s =
-    --     Stream({ head = () => 1 : int, tail = () => s })
+    --     ( head = () => 1 : int, tail = () => s )
     --   in
     --     s.Head
     --
---    fixExpr () "s"
---        (codataExpr () "Stream" (rowExpr () "head" (lazy (annExpr tInt (litExpr () (TBig 1)))) (rowExpr () "tail" (lazy (varExpr () "s")) (conExpr () "{}" []))))
---        (op2Expr () (ODot ()) (varExpr () "Head") (varExpr () "s"))
+    fixExpr () "s"
+        --(codataExpr () (rowExpr () "head" (lazy (annExpr tInt (litExpr () (TBig 1)))) (rowExpr () "tail" (lazy (varExpr () "s")) (conExpr () "{}" []))))
+        (codataExpr () (rowExpr () "head" (lazy (annExpr tInt (litExpr () (TBig 1)))) (rowExpr () "tail" (lazy (litExpr () TUnit)) (conExpr () "{}" []))))
+        (op2Expr () (OField ()) (varExpr () "Head") (varExpr () "s"))
 
-    (op2Expr () (ODot ())
-        (varExpr () "foo")
-        (varExpr () "a"))
+--    (op2Expr () (ODot ())
+--        (varExpr () "foo")
+--        (varExpr () "a"))
 
 
 
@@ -1061,8 +1076,8 @@ runBundle input =
     case runParserStack annExprParser "" input of
         Left err -> traceShow "error" (error (show err))
         --Right expr -> traceShow expr (compileBundle expr)
-        Right expr -> (compileBundle expr)
-        --Right expr -> (compileBundle test5expr)
+        --Right expr -> (compileBundle expr)
+        Right expr -> (compileBundle test5expr)
 
 compileBundle :: ProgExpr () Type -> Bundle
 compileBundle expr = Bundle
@@ -1206,6 +1221,7 @@ testTypeEnv = Env.fromList
     , ( "(+)"          , Forall [kTyp] [InClass "Num" 0] (tGen 0 `tArr` tGen 0 `tArr` tGen 0) )
     , ( "(*)"          , Forall [kTyp] [InClass "Num" 0] (tGen 0 `tArr` tGen 0 `tArr` tGen 0) )
     , ( "#"            , Forall [kRow] [] (tGen 0 `tArr` tApp kTyp tRecordCon (tGen 0)) )
+    , ( "!"            , Forall [kRow] [] (tGen 0 `tArr` tApp kTyp tCodataCon (tGen 0)) )
     , ( "{}"           , Forall [] [] tRowNil )
     , ( "_#"           , Forall [kRow] [] (tApp kTyp (tCon (kArr kRow kTyp) "#") (tGen 0) `tArr` tGen 0) )
     , ( "fromInteger"  , Forall [kTyp] [InClass "Num" 0] (tBigint `tArr` tGen 0) )
@@ -1419,6 +1435,7 @@ testConstructorEnv = constructorEnv
     , ("(,)"      , ( ["(,)"], 2 ))
     , ("Foo"      , ( ["Foo"], 2 ))
     , ("#"        , ( ["#"], 1 ))
+    , ("!"        , ( ["!"], 1 ))
     , ("{}"       , ( ["{}"], 0 ))
     , ("Cons'"    , ( ["Nil'", "Cons'"], 3 ))
     , ("Nil'"     , ( ["Nil'", "Cons'"], 0 ))
