@@ -84,9 +84,21 @@ getField name [Data f (v:fs)]
 closure :: (MonadReader (ValueEnv m) m) => Name -> m (Value m) -> m (Value m)
 closure var a = pure (Closure var a mempty)
 
+-- TODO: DRY
+withInitialLower_ :: Name -> Name
+withInitialLower_ name = toLower (Text.head name) `Text.cons` Text.tail name
+
 evalVar :: (MonadFail m, MonadReader (ValueEnv m) m) => Name -> m (Value m)
 evalVar var =
     case Text.stripPrefix "@" var of
+        Just "(!).getField" ->
+            closure "?a" $ do
+                Just (Value (TSymbol name)) <- asks (Env.lookup "?a")
+                closure "?b" $ do
+                    Just (Data "!" fields) <- asks (Env.lookup "?b")
+                    Closure var body _ <- getField (withInitialLower_ name) fields
+                    local (Env.insert var (Value TUnit)) body
+
         Just "(#).getField" ->
             closure "?a" $ do
                 Just (Value (TSymbol name)) <- asks (Env.lookup "?a")
@@ -145,6 +157,7 @@ isConstructor var
     | "(,)" == var    = True
     | "[]" == var     = True
     | "#" == var      = True
+    | "!" == var      = True
 --    | isTupleCon var  = True
 --    | isRecordCon var = True
     -- TODO
