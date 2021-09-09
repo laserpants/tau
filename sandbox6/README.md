@@ -106,7 +106,7 @@ factorial(n) =
     | succ(m), val = succ(m) * val
 
 
--- proposal: 
+-- proposal:
 factorial(n) : nat -> nat =
   fold n as
     | zero         = 1
@@ -115,9 +115,9 @@ factorial(n) : nat -> nat =
 
 
 
-headSize 
+headSize
   : (Ord a)
-    => a 
+    => a
     -> Option string
 headSize
   | x :: xs
@@ -127,7 +127,7 @@ headSize
   | _               = None
 
 
--- proposal: 
+-- proposal:
 headSize (Ord a) : a -> Option string
   | x :: xs
       when(x > 100) = Some("L")
@@ -136,7 +136,7 @@ headSize (Ord a) : a -> Option string
   | _               = None
 
 
--- proposal: 
+-- proposal:
 headSize : (Ord a) => a -> Option string
   | x :: xs
       when(x > 100) = Some("L")
@@ -171,14 +171,14 @@ map(f, xs) =
     | (y :: _), ys = f(y) :: ys
 
 
--- proposal: 
+-- proposal:
 map(f, xs) { (Functor f) : (a -> b) -> f a -> f b } =
   fold xs as
     | []           = []
     | (y :: _), ys = f(y) :: ys
 
 
--- proposal: 
+-- proposal:
 map(f, xs) : (Functor f) => (a -> b) -> f a -> f b =
   fold xs as
     | []           = []
@@ -214,7 +214,8 @@ fourIsZero : bool
 fourIsZero = 4.isZero
 
 
-fourIsZero : bool = 4.isZero
+fourIsZero : bool =
+  4.isZero
 
 
 
@@ -274,5 +275,25 @@ type List a
   | Cons (List (Option a))
 
 ??
+
+{#} Record
+(#) Codata
+
+type Stream a = Stream ( Head : a, Tail : Stream a )
+
+enumFrom : nat -> Stream nat
+enumFrom n =
+  Stream (unfold((m, s) => (m + 1, ( Head = m, Tail = Stream s )), n))
+
+baz : ( Head : a | r ) -> a
+baz s = s.Head
+
+baz : _ ( Head : a | r ) -> a
+baz s = s.Head
+
+
+baz2 : Stream a -> a
+baz2 (Stream s) = s.Head
+
 
 -->
