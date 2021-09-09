@@ -18,6 +18,7 @@ import Control.Monad.Reader
 import Control.Monad.State
 import Control.Monad.Supply
 import Control.Monad.Writer
+import Data.Char (isUpper)
 import Data.Either (fromRight)
 import Data.Eq.Deriving
 import Data.Fix (Fix(..))
@@ -94,7 +95,7 @@ exhaustivePatternsCheck = para $ \case
         EList   t es          -> listExpr t <$> sequence es
         ERow    t lab e r     -> rowExpr t lab <$> e <*> r
         ERecord t r           -> recordExpr t <$> r
-        ECodata t name r      -> codataExpr t name <$> r
+        ECodata t r           -> codataExpr t <$> r
 
   where
     check f as ti = do
@@ -128,7 +129,9 @@ data PatternGroup t u
     | OrPattern (ProgPattern t u) (ProgPattern t u)
     | WildcardPattern
 
-useful :: (MonadReader ConstructorEnv m) => [[ProgPattern TInfo u]] -> [ProgPattern TInfo u] -> m Bool
+type PatternMatrix a = [[ProgPattern TInfo a]]
+
+useful :: (MonadReader ConstructorEnv m) => PatternMatrix u -> [ProgPattern TInfo u] -> m Bool
 useful pss ps = step3 (step2 . step1 <$$> pss) (step2 . step1 <$> ps)
   where
     step1 = cata $ \case
@@ -188,7 +191,7 @@ useful pss ps = step3 (step2 . step1 <$$> pss) (step2 . step1 <$> ps)
         , ("succ",      ( ["zero", "succ"], 1 ))
         ]
 
-specialized :: Name -> [TInfo] -> [[ProgPattern TInfo u]] -> [[ProgPattern TInfo u]]
+specialized :: Name -> [TInfo] -> PatternMatrix u -> PatternMatrix u
 specialized name ts = (rec =<<)
   where
     rec [] = error "Implementation error (specialized)"
@@ -206,10 +209,10 @@ specialized name ts = (rec =<<)
             POr     _ p1 p2   -> rec (p1:ps) <> rec (p2:ps)
             _                 -> [(anyPat <$> ts) <> ps]
 
-defaultMatrix :: [[ProgPattern TInfo u]] -> [[ProgPattern TInfo u]]
+defaultMatrix :: PatternMatrix u -> PatternMatrix u
 defaultMatrix = (fun =<<)
   where
-    fun :: [ProgPattern TInfo u] -> [[ProgPattern TInfo u]]
+    fun :: [ProgPattern TInfo u] -> PatternMatrix u
     fun (p:ps) = case project p of
 
         PCon{}            -> []
@@ -273,7 +276,7 @@ groupPatterns = project >>> \case
     POr     _ a b             -> OrPattern a b
     _                         -> WildcardPattern
 
-headCons :: [[ProgPattern TInfo u]] -> [(Name, [ProgPattern TInfo u])]
+headCons :: PatternMatrix u -> [(Name, [ProgPattern TInfo u])]
 headCons = (>>= fun)
   where
     fun :: [ProgPattern TInfo u] -> [(Name, [ProgPattern TInfo u])]
@@ -430,7 +433,7 @@ ambiguityCheck ctx expr = do
         EList   t es          -> listExpr t <$> sequence es
         ERow    t lab e r     -> rowExpr t lab <$> e <*> r
         ERecord t r           -> recordExpr t <$> r
-        ECodata t name r      -> codataExpr t name <$> r
+        ECodata t r           -> codataExpr t <$> r
 
     collectPreds t =
         forM_ (filter (tIsVar . predicateType) (nodePredicates t))
@@ -617,7 +620,7 @@ stage1Translate = cata $ \case
     EList   t es                -> foldr (listExprCons t) (conExpr t "[]" []) es
     ERow    t lab e r           -> conExpr t ("{" <> lab <> "}") [e, r]
     ERecord t r                 -> conExpr t "#" [r]
-    ECodata t name r            -> conExpr t ("!" <> name) [r]
+    ECodata t r                 -> conExpr t "!" [r]
 
     -- Expand mod-operator (%)
     EOp2 t (OMod _) a b -> appExpr t
@@ -636,7 +639,7 @@ stage1Translate = cata $ \case
     -- Translate operators to prefix form
     EOp1    t op a              -> appExpr t [prefixOp1 op, a]
     EOp2    t (ODot _) a b      -> translateAppExpr t [a, b]
-    EOp2    t (OField t1) a b   -> translateAppExpr t [varExpr t1 "@(#).getField", a, b]
+    EOp2    t (OField t1) a b   -> translateFieldAccess t t1 a b
     EOp2    t op a b            -> translateAppExpr t [prefixOp2 op, a, b]
 
     -- Expand pattern clause guards and eliminate fun expressions
@@ -662,6 +665,14 @@ stage1Translate = cata $ \case
 
     patToList (Clause t p a)      = Clause t [p] a
     expandClause (Clause t ps gs) = [MonoClause t ps g | g <- gs]
+
+translateFieldAccess :: TInfo -> TInfo -> Stage1Expr TInfo -> Stage1Expr TInfo -> Stage1Expr TInfo
+translateFieldAccess t t1 a b =
+    translateAppExpr t [varExpr t1 primFun, a, b]
+  where
+    primFun = case project a of
+        ELit _ (TSymbol name) | isUpper (Text.head name) -> "@(!).getField"
+        _                                                -> "@(#).getField"
 
 translateAppExpr :: TInfo -> [Stage1Expr TInfo] -> Stage1Expr TInfo
 translateAppExpr t es =
