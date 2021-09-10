@@ -291,6 +291,8 @@ inferExprType = cata $ \case
         a <- expr1
         b <- expr2
         ty <- applySubsTo (typeOf b)
+        traceShowM a
+        traceShowM b
         case op2 of
             ODot _ | isRecordType ty -> inferFieldOpType t (fromJust (unpackRecordType ty)) a b
             ODot _                   -> inferDotOpType t a b
@@ -387,9 +389,12 @@ inferFieldOpType
   -> ProgExpr (TypeInfo [Error]) Void
   -> ProgExpr (TypeInfo [Error]) Void
   -> m (ProgExpr (TypeInfo [Error]) Void)
-inferFieldOpType t row a b = do
+inferFieldOpType t row a b = 
     case project a of
         EVar _ name -> do
+
+--        ELit _ (TSymbol name) -> do
+
             case lookupRowType (withInitialLower name) row of
                 Nothing ->
                     inferDotOpType t a b
@@ -1017,10 +1022,61 @@ test5expr =
     --   in
     --     s.Head
     --
-    fixExpr () "s"
-        --(codataExpr () (rowExpr () "head" (lazy (annExpr tInt (litExpr () (TBig 1)))) (rowExpr () "tail" (lazy (varExpr () "s")) (conExpr () "{}" []))))
-        (codataExpr () (rowExpr () "head" (lazy (annExpr tInt (litExpr () (TBig 1)))) (rowExpr () "tail" (lazy (litExpr () TUnit)) (conExpr () "{}" []))))
-        (op2Expr () (OField ()) (varExpr () "Head") (varExpr () "s"))
+
+
+    --
+    -- fix 
+    --   unfolds =
+    --     (f, n) =>
+    --       let 
+    --         (m, s) =
+    --           f((n, unfolds(f, m)))
+    --         in
+    --           s
+    --   in
+    --     let 
+    --       unStream(Stream(s)) = 
+    --         s
+    --       in
+    --         let
+    --           s =
+    --             Stream(unfolds((n, next) => (n + 1, ( head = () => n, tail = () => Stream(next) )), 1))
+    --           in
+    --             unStream(s).Head
+    --         
+    --     
+    --         
+    --
+--    letExpr () (BPat () (varPat () "s"))
+--        (codataExpr () (rowExpr () "head" (lazy (annExpr tInt (litExpr () (TBig 1)))) (rowExpr () "tail" (lazy (conExpr () "Stream" [varExpr () "next"])) (conExpr () "{}" []))))
+--        --(varExpr () "s")
+--        (op2Expr () (OField ()) (varExpr () "s") (varExpr () "Head"))
+               
+
+    letExpr () (BPat () (varPat () "s"))
+        (recordExpr () (rowExpr () "head" (lazy (annExpr tInt (litExpr () (TBig 1)))) (rowExpr () "tail" (lazy (conExpr () "Stream" [varExpr () "next"])) (conExpr () "{}" []))))
+        --(varExpr () "s")
+        (op2Expr () (ODot ()) (litExpr () (TSymbol "head")) (varExpr () "s"))
+
+--          (letExpr () (BFun () "unStream" [conPat () "Stream" [varPat () "s"]])
+--              (varExpr () "s")
+--              (letExpr () 
+--                  (BPat () (varPat () "s"))
+--                  (conExpr () "Stream" [appExpr () 
+--                      [ varExpr () "unfolds"
+--                      , lamExpr () [varPat () "n", varPat () "next"] (tupleExpr () 
+--                            [ op2Expr () (OAdd ()) (varExpr () "n") (litExpr () (TBig 1))
+--                            , codataExpr () (rowExpr () "head" (lazy (annExpr tInt (litExpr () (TBig 1)))) (rowExpr () "tail" (lazy (conExpr () "Stream" [varExpr () "next"])) (conExpr () "{}" [])))
+--                            ])
+--                      , annExpr tInt (litExpr () (TBig 1)) 
+--                      ]])
+--                  --(op2Expr () (ODot ()) (conExpr () "Head" []) (appExpr () [varExpr () "unStream", varExpr () "s"]))))
+--                  (op2Expr () (ODot ()) (appExpr () [varExpr () "unStream", varExpr () "s"]) (conExpr () "Head" []))))
+
+--        (fixExpr () "s"
+--            --(codataExpr () (rowExpr () "head" (lazy (annExpr tInt (litExpr () (TBig 1)))) (rowExpr () "tail" (lazy (varExpr () "s")) (conExpr () "{}" []))))
+--            (codataExpr () (rowExpr () "head" (lazy (annExpr tInt (litExpr () (TBig 1)))) (rowExpr () "tail" (lazy (litExpr () TUnit)) (conExpr () "{}" []))))
+--            (op2Expr () (OField ()) (varExpr () "Head") (varExpr () "s")))
 
 --    (op2Expr () (ODot ())
 --        (varExpr () "foo")
@@ -1210,7 +1266,8 @@ testTypeEnv = Env.fromList
     , ( "Cons'"        , Forall [kTyp, kTyp] [] (tGen 0 `tArr` tList (tGen 0) `tArr` tGen 1 `tArr` tApp kTyp (tApp kFun (tCon kFun2 "list'") (tGen 0)) (tGen 1)) )
     , ( "Foo"          , Forall [] [] (tInt `tArr` tInt `tArr` tCon kTyp "Foo") )
 
-    , ( "Stream"       , Forall [] [] (tRow "head" (tLazy tInt) (tRow "tail" (tLazy (tCon kTyp "Stream")) tRowNil) `tArr` tCon kTyp "Stream") )
+    --, ( "Stream"       , Forall [] [] (tRow "head" (tLazy tInt) (tRow "tail" (tLazy (tCon kTyp "Stream")) tRowNil) `tArr` tCon kTyp "Stream") )
+    , ( "Stream"       , Forall [] [] (tCodata (tRow "head" (tLazy tInt) (tRow "tail" (tLazy (tCon kTyp "Stream")) tRowNil)) `tArr` tCon kTyp "Stream") )
 
     , ( "id"           , Forall [kTyp] [] (tGen 0 `tArr` tGen 0) )
     , ( "(::)"         , Forall [kTyp] [] (tGen 0 `tArr` tList (tGen 0) `tArr` tList (tGen 0)) )

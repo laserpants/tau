@@ -97,12 +97,14 @@ main = do
 
     -- B.putStrLn (encodePretty' defConfig{ confIndent = Spaces 2 } (toRep (runBundle (pack p))))
 --    let p = "let f(x) = x > 3 in f(3 : int)"
---    let xx = (runBundle (pack p))
---    let ff = encode (toRep xx)
---    putChar (B.head ff)
+
+    let xx = (runBundle (pack p))
+    let ff = encode (toRep xx)
+    putChar (B.head ff)
+
 --    traceShowM (value xx)
 
-    B.putStrLn (encode (toRep (runBundle (pack p))))
+--    B.putStrLn (encode (toRep (runBundle (pack p))))
 
 
 --let f(x) = x + 1 > 5 in f(5)
