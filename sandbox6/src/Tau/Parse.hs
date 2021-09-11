@@ -17,7 +17,7 @@ import Data.Text (Text, pack, unpack, strip)
 import Data.Void
 import Tau.Misc
 import Tau.Util hiding (parens, brackets, braces, commaSep)
-import Text.Megaparsec
+import Text.Megaparsec hiding (token)
 import Text.Megaparsec.Char
 import TextShow
 import qualified Text.Megaparsec.Char as Megaparsec
@@ -43,17 +43,17 @@ spaces = Lexer.space
 lexeme :: Parser a -> Parser a
 lexeme = Lexer.lexeme spaces
 
-symbol :: Text -> Parser Text
-symbol = Lexer.symbol spaces
+token :: Text -> Parser Text
+token = Lexer.symbol spaces
 
 parens :: Parser a -> Parser a
-parens = between (symbol "(") (symbol ")")
+parens = between (token "(") (token ")")
 
 brackets :: Parser a -> Parser a
-brackets = between (symbol "[") (symbol "]")
+brackets = between (token "[") (token "]")
 
 braces :: Parser a -> Parser a
-braces = between (symbol "{") (symbol "}")
+braces = between (token "{") (token "}")
 
 surroundedBy :: Parser Text -> Parser a -> Parser a
 surroundedBy parser = between parser parser
@@ -106,14 +106,14 @@ nameParser :: Parser Text
 nameParser = word (withInitial (lowerChar <|> char '_'))
 
 constructorParser :: Parser Name
-constructorParser = symbol "zero"
-    <|> symbol "succ"
-    <|> symbol "zero'"
-    <|> symbol "succ'"
+constructorParser = token "zero"
+    <|> token "succ"
+    <|> token "zero'"
+    <|> token "succ'"
     <|> word (withInitial upperChar)
 
 commaSep :: Parser a -> Parser [a]
-commaSep parser = parser `sepBy1` symbol ","
+commaSep parser = parser `sepBy1` token ","
 
 elements :: Parser a -> Parser [a]
 elements = brackets . commaSep
@@ -122,7 +122,7 @@ components :: Parser a -> Parser [a]
 components = parens . commaSep
 
 fields :: Name -> Parser a -> Parser [(Name, a)]
-fields stor parser = commaSep $ (,) <$> nameParser <*> (symbol stor *> parser)
+fields stor parser = commaSep $ (,) <$> nameParser <*> (token stor *> parser)
 
 rowParser
   :: Text
@@ -133,7 +133,7 @@ rowParser
   -> Parser a
 rowParser stor parser rowCon varCon empty = braces $ do
     pairs <- fields stor parser
-    rest <- optional (symbol "|" *> nameParser)
+    rest <- optional (token "|" *> nameParser)
     pure $ case pairs of
         [] -> empty
         (label, value):row -> do
@@ -156,10 +156,10 @@ primParser = parseUnit
     <|> try parseFloat
     <|> parseIntegral
   where
-    parseUnit      = symbol "()" $> TUnit
+    parseUnit      = token "()" $> TUnit
     parseTrue      = keyword "true"  $> TBool True
     parseFalse     = keyword "false" $> TBool False
-    parseChar      = TChar <$> surroundedBy (symbol "'") printChar
+    parseChar      = TChar <$> surroundedBy (token "'") printChar
     parseString    = lexeme (TString . pack <$> chars)
     parseFloat     = TDouble <$> lexeme Lexer.float
     parseIntegral  = TBig <$> lexeme Lexer.decimal
@@ -172,7 +172,7 @@ kindVar = lift (kVar . ("k" <>) . showt <$> supply)
 
 typeParser :: Parser Type
 typeParser = makeExprParser (try (parens typeParser) <|> parser)
-    [[ InfixR (tArr <$ symbol "->") ]]
+    [[ InfixR (tArr <$ token "->") ]]
   where
     parser = do
         (t:ts) <- some typeFragmentParser
@@ -187,7 +187,7 @@ typeFragmentParser = builtIn
   where
     recordTypeParser :: Parser Type
     recordTypeParser =
-        symbol "{}" $> tRecord tRowNil
+        token "{}" $> tRecord tRowNil
             <|> tRecord <$> rowParser ":" typeParser tRow (tVar kRow) tRowNil
 
     builtIn :: Parser Type
@@ -212,8 +212,8 @@ typedeclParser :: Parser Typedecl
 typedeclParser = do
     keyword "type"
     Sum <$> constructorParser
-        <*> many nameParser <* symbol "="
-        <*> productParser `sepBy` symbol "|"
+        <*> many nameParser <* token "="
+        <*> productParser `sepBy` token "|"
 
 productParser :: Parser Product
 productParser =
@@ -249,13 +249,13 @@ insertKinds = go kTyp
 
 annPatternParser :: Parser (ProgPattern () Type)
 annPatternParser = makeExprParser (try (parens annPatternParser) <|> patternParser)
-    [[ Postfix (symbol ":" *> (annPat <$> typeParser)) ]]
+    [[ Postfix (token ":" *> (annPat <$> typeParser)) ]]
 
 patternParser :: Parser (ProgPattern () Type)
 patternParser = makeExprParser (try (parens patternParser) <|> parser)
-    [ [ InfixR (orPat () <$ symbol "or") ]
+    [ [ InfixR (orPat () <$ token "or") ]
     , [ Postfix parseAsPattern ]
-    , [ InfixR (listPatCons () <$ symbol "::") ] ]
+    , [ InfixR (listPatCons () <$ token "::") ] ]
   where
     parser = parseWildcard
       <|> parseVar
@@ -265,7 +265,7 @@ patternParser = makeExprParser (try (parens patternParser) <|> parser)
       <|> parseTuple
       <|> parseRecord
 
-    parseWildcard  = symbol "_" $> anyPat ()
+    parseWildcard  = token "_" $> anyPat ()
     parseAsPattern = keyword "as" >> asPat () <$> nameParser
     parseVar       = varPat   () <$> nameParser
     parseLit       = litPat   () <$> primParser
@@ -283,53 +283,60 @@ patternParser = makeExprParser (try (parens patternParser) <|> parser)
 
 -------------------------------------------------------------------------------
 
+dotExprParser :: ProgExpr () Type -> ProgExpr () Type -> ProgExpr () Type
+dotExprParser a b = op2Expr () (ODot ()) (symb b) a where
+    symb = project >>> \case
+        EVar _ name -> symbol () name
+        _           -> b
+
 operator :: [[Operator Parser (ProgExpr () Type)]]
 operator =
     [
       -- 11
       [ Postfix postfixFunArgParser ]
       -- 10
-    , [ InfixL (symbol "." $> flip (op2Expr () (ODot ())))
+--    , [ InfixL (token "." $> flip (op2Expr () (ODot ())))
+    , [ InfixL (token "." $> dotExprParser)
       ]
       -- 9
-    , [ InfixR (op2Expr () (OLarr ()) <$ symbol "<<")
-      , InfixL (op2Expr () (ORarr ()) <$ symbol ">>")
+    , [ InfixR (op2Expr () (OLarr ()) <$ token "<<")
+      , InfixL (op2Expr () (ORarr ()) <$ token ">>")
       ]
       -- 8
-    , [ InfixR (op2Expr () (OPow ()) <$ symbol "^")
+    , [ InfixR (op2Expr () (OPow ()) <$ token "^")
       ]
       -- 7
-    , [ InfixL (op2Expr () (OMul ()) <$ symbol "*")
-      , InfixL (op2Expr () (OMod ()) <$ symbol "%")
-      , InfixL (op2Expr () (ODiv ()) <$ try (symbol "/" <* notFollowedBy (symbol "=")))
+    , [ InfixL (op2Expr () (OMul ()) <$ token "*")
+      , InfixL (op2Expr () (OMod ()) <$ token "%")
+      , InfixL (op2Expr () (ODiv ()) <$ try (token "/" <* notFollowedBy (token "=")))
       ]
       -- 6
-    , [ InfixL (op2Expr () (OAdd ()) <$ try (symbol "+" <* notFollowedBy (symbol "+")))
-      , InfixL (op2Expr () (OSub ()) <$ symbol "-")
+    , [ InfixL (op2Expr () (OAdd ()) <$ try (token "+" <* notFollowedBy (token "+")))
+      , InfixL (op2Expr () (OSub ()) <$ token "-")
       ]
       -- 5
-    , [ InfixR (listExprCons () <$ symbol "::")
-      , InfixR (op2Expr () (OStr ()) <$ symbol "++")
+    , [ InfixR (listExprCons () <$ token "::")
+      , InfixR (op2Expr () (OStr ()) <$ token "++")
       ]
       -- 4
-    , [ InfixN (op2Expr () (OEq ()) <$ symbol "==")
-      , InfixN (op2Expr () (ONeq ()) <$ symbol "/=")
-      , InfixN (op2Expr () (OLt ()) <$ try (symbol "<" <* notFollowedBy (symbol "=")))
-      , InfixN (op2Expr () (OGt ()) <$ try (symbol ">" <* notFollowedBy (symbol "=")))
-      , InfixN (op2Expr () (OLte ()) <$ symbol "<=")
-      , InfixN (op2Expr () (OGte ()) <$ symbol ">=")
+    , [ InfixN (op2Expr () (OEq ()) <$ token "==")
+      , InfixN (op2Expr () (ONeq ()) <$ token "/=")
+      , InfixN (op2Expr () (OLt ()) <$ try (token "<" <* notFollowedBy (token "=")))
+      , InfixN (op2Expr () (OGt ()) <$ try (token ">" <* notFollowedBy (token "=")))
+      , InfixN (op2Expr () (OLte ()) <$ token "<=")
+      , InfixN (op2Expr () (OGte ()) <$ token ">=")
       ]
       -- 3
-    , [ InfixR (op2Expr () (OAnd ()) <$ symbol "&&")
-      , InfixN (op2Expr () (OOpt ()) <$ symbol "?")
+    , [ InfixR (op2Expr () (OAnd ()) <$ token "&&")
+      , InfixN (op2Expr () (OOpt ()) <$ token "?")
       ]
       -- 2
-    , [ InfixR (op2Expr () (OOr ()) <$ symbol "||")
+    , [ InfixR (op2Expr () (OOr ()) <$ token "||")
       , Prefix (op1Expr () (ONot ()) <$ (keyword "not" *> spaces))
       ]
       -- 1
-    , [ InfixL (op2Expr () (OFpip ()) <$ symbol "|>")
-      , InfixR (op2Expr () (OBpip ()) <$ symbol "<|")
+    , [ InfixL (op2Expr () (OFpip ()) <$ token "|>")
+      , InfixR (op2Expr () (OBpip ()) <$ token "<|")
       ]
     ]
 
@@ -348,14 +355,14 @@ postfixFunArgParser = do
 annExprParser :: Parser (ProgExpr () Type)
 annExprParser = makeExprParser parseItem operator
   where
-    parseItem = makeExprParser (try (funParser (symbol "=>")) <|> try (parens annExprParser) <|> exprParser)
+    parseItem = makeExprParser (try (funParser (token "=>")) <|> try (parens annExprParser) <|> exprParser)
         [ [ Postfix postfixFunArgParser ]
-        , [ Postfix (symbol ":" *> (annExpr <$> typeParser)) ] ]
+        , [ Postfix (token ":" *> (annExpr <$> typeParser)) ] ]
 
 funParser :: Parser Text -> Parser (ProgExpr () Type)
 funParser sym = do
-    optional (symbol "|")
-    cs <- clauseParser parser sym `sepBy1` symbol "|"
+    optional (token "|")
+    cs <- clauseParser parser sym `sepBy1` token "|"
     case cs of
         [Clause _ ps [Choice [] e]] -> pure (lamExpr () ps e)
         _                           -> pure (funExpr () cs)
@@ -369,7 +376,7 @@ clauseParser parser sym = Clause () <$> parser <*> (try guarded <|> nonGuarded)
         try withCatchAll <|> (whenClause `sepBy1` whenClause)
 
     withCatchAll = do
-        whens <- manyTill (whenClause <* symbol ",") (keyword "otherwise")
+        whens <- manyTill (whenClause <* token ",") (keyword "otherwise")
         final <- sym *> annExprParser
         pure (whens <> [Choice [] final])
 
@@ -388,13 +395,13 @@ clauseParser parser sym = Clause () <$> parser <*> (try guarded <|> nonGuarded)
 matchParser :: Parser (ProgExpr () Type)
 matchParser = do
     expr <- keyword "match" *> annExprParser <* keyword "with"
-    optional (symbol "|")
-    cs <- clauseParser annPatternParser sepParser `sepBy1` symbol "|"
+    optional (token "|")
+    cs <- clauseParser annPatternParser sepParser `sepBy1` token "|"
     pure (patExpr () expr cs)
   where
     -- TODO: use => or = ???
-    --sepParser = try (symbol "=>") <|> symbol "="
-    sepParser = symbol "="
+    --sepParser = try (token "=>") <|> token "="
+    sepParser = token "="
 
 -- TODO: A check needs to be added to ensure that holes only
 -- appear in function applications
@@ -409,7 +416,7 @@ exprParser = makeExprParser parseItem operator
     parser = parseIf
         <|> parseLet
         <|> matchParser
-        <|> symbol "_" $> holeExpr ()
+        <|> token "_" $> holeExpr ()
         <|> parsePrefixOp
         <|> parseVar
         <|> parseLit
@@ -432,7 +439,7 @@ exprParser = makeExprParser parseItem operator
     parseLet = do
         keyword "let"
         bind <- try parseLetBinding <|> parseNameBinding
-        expr <- (funParser (symbol "=") <|> (symbol "=" *> annExprParser)) <* symbol "in"
+        expr <- (funParser (token "=") <|> (token "=" *> annExprParser)) <* token "in"
         letExpr () bind expr <$> annExprParser
 
     parseList =
@@ -444,9 +451,9 @@ exprParser = makeExprParser parseItem operator
             <|> recordExpr () <$> rowParser "=" annExprParser (rowExpr ()) (varExpr ()) (conExpr () "{}" [])
 
     parsePrefixOp = try $ do
-        symbol "("
+        token "("
         sym <- choice ["==", "/=", "&&", "||", "+", "-", "*", "/", "^", "%", "<", ">", "<=", ">=", "<<", ">>", "|>", "<|", "?", "++", "."]
-        symbol ")"
+        token ")"
         pure (varExpr () ("(" <> sym <> ")"))
 
 parseNameBinding :: Parser (Binding () (ProgPattern () Type))
@@ -477,7 +484,7 @@ hasLiteralPattern = cata $ \case
 topdeclParser :: Parser (Topdecl () Type)
 topdeclParser = do
     lhs  <- try parseLetBinding <|> parseNameBinding
-    expr <- funParser (symbol "=") <|> (symbol "=" *> annExprParser)
+    expr <- funParser (token "=") <|> (token "=" *> annExprParser)
     pure (Top () lhs expr)
 
 progdeclParser :: Parser (Progdecl () Type)
