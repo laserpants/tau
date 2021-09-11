@@ -1211,6 +1211,13 @@ kindOf = project >>> \case
     TArr{}       -> kTyp
     TRow{}       -> kRow
 
+setKind :: Kind -> Type -> Type
+setKind k = project >>> \case
+    TVar _ var   -> tVar k var
+    TCon _ con   -> tCon k con
+    TApp _ a b   -> tApp k a b
+    t            -> embed t
+
 kindVars :: Kind -> [Name]
 kindVars = nub . cata (\case
     KVar var     -> [var]
