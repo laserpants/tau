@@ -1168,6 +1168,13 @@ rowPatCons
 rowPatCons t label pat row = conPat t ("{" <> label <> "}") [pat, row]
 {-# INLINE rowPatCons #-}
 
+symbol
+  :: (Functor e2, Functor e4)
+  => t1
+  -> Name
+  -> Expr t1 t2 t3 t4 e1 e2 e3 e4
+symbol t = litExpr t . TSymbol
+
 isVar
   :: (Functor e2, Functor e4)
   => Expr t1 t2 t3 t4 e1 e2 e3 e4
@@ -1259,12 +1266,12 @@ getTypeVar = project >>> \case
 
 unfoldArr :: Type -> [Type]
 unfoldArr = para $ \case
-    TArr a b   -> snd a <> snd b
+    TArr a b   -> [fst a] <> snd b
     t          -> [embed (fst <$> t)]
 
 unfoldApp :: Type -> [Type]
 unfoldApp = para $ \case
-    TApp _ a b -> snd a <> snd b
+    TApp _ a b -> snd a <> [fst b]
     t          -> [embed (fst <$> t)]
 
 lookupRowType :: Name -> Type -> Maybe Type
@@ -1282,8 +1289,14 @@ isTupleType = cata $ \case
     stripped  = Text.stripSuffix ")" <=< Text.stripPrefix "("
 
 isRecordType :: Type -> Bool
-isRecordType = cata $ \case
-    TCon _ c | "#" == c -> True
+isRecordType = isConType "#"
+
+isCodataType :: Type -> Bool
+isCodataType = isConType "!"
+
+isConType :: Name -> Type -> Bool
+isConType con = cata $ \case
+    TCon _ c | con == c -> True
     TApp _ a _ -> a
     _          -> False
 
