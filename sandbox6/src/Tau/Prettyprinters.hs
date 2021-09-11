@@ -74,23 +74,7 @@ instance Pretty Type where
                     _      -> False
 
         TApp _ (Fix (TCon _ "#"), _) (t2, _) ->
-            --
-            -- Record types
-            --
-            if null fields
-                then maybe "{}" (wrapped "{" "}") final
-                else "{" <+> commaSep fields <+> maybe "}" (wrapped "|" "}") final
-          where
-            wrapped p q = encloseSpace p q . pretty
-
-            fields = flip para t2 $ \case
-                TRow label ty rest -> pretty label <+> ":" <+> pretty (fst ty):snd rest
-                _                  -> []
-
-            final = flip cata t2 $ \case
-                TRow _ _ r         -> r
-                TVar _ v           -> Just v
-                _                  -> Nothing
+            prettyRecordType t2
 
         TApp k (t1, _) (t2, _) | isTupleType t1 ->
             let (_:ts) = unfoldApp (tApp k t1 t2)
@@ -128,6 +112,26 @@ instance Pretty Type where
                     TCon _ "{}" -> False
                     TVar{}      -> False
                     _           -> True
+
+prettyRecordType :: Type -> Doc a
+prettyRecordType t =
+    --
+    -- Record types
+    --
+    if null fields
+        then maybe "{}" (wrapped "{" "}") final
+        else "{" <+> commaSep fields <+> maybe "}" (wrapped "|" "}") final
+  where
+    wrapped p q = encloseSpace p q . pretty
+
+    fields = flip para t $ \case
+        TRow label ty rest -> pretty label <+> ":" <+> pretty (fst ty):snd rest
+        _                  -> []
+
+    final = flip cata t $ \case
+        TRow _ _ r         -> r
+        TVar _ v           -> Just v
+        _                  -> Nothing
 
 instance Pretty (PredicateF Name) where
     pretty (InClass n t) = pretty n <+> pretty t
