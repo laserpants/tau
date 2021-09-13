@@ -631,13 +631,15 @@ testTypeInference = do
 
         -- { a = 1 : Int, b = 2 : Int }.a
         succeedInferExpr
-            (op2Expr () (ODot ()) (varExpr () "a") (recordExpr () (rowExpr () "a" (annExpr tInt (litExpr () (TInt 1))) (rowExpr () "b" (annExpr tInt (litExpr () (TInt 2))) (conExpr () "{}" [])))))
+            --(op2Expr () (ODot ()) (varExpr () "a") (recordExpr () (rowExpr () "a" (annExpr tInt (litExpr () (TInt 1))) (rowExpr () "b" (annExpr tInt (litExpr () (TInt 2))) (conExpr () "{}" [])))))
+            (op2Expr () (ODot ()) (symbol () "a") (recordExpr () (rowExpr () "a" (annExpr tInt (litExpr () (TInt 1))) (rowExpr () "b" (annExpr tInt (litExpr () (TInt 2))) (conExpr () "{}" [])))))
             tInt
             []
 
         -- { a = (), b = 2 }.a
         succeedInferExpr
-            (op2Expr () (ODot ()) (varExpr () "a") (recordExpr () (rowExpr () "a" (litExpr () TUnit) (rowExpr () "b" (annExpr tInt (litExpr () (TInt 2))) (conExpr () "{}" [])))))
+            --(op2Expr () (ODot ()) (varExpr () "a") (recordExpr () (rowExpr () "a" (litExpr () TUnit) (rowExpr () "b" (annExpr tInt (litExpr () (TInt 2))) (conExpr () "{}" [])))))
+            (op2Expr () (ODot ()) (symbol () "a") (recordExpr () (rowExpr () "a" (litExpr () TUnit) (rowExpr () "b" (annExpr tInt (litExpr () (TInt 2))) (conExpr () "{}" [])))))
             tUnit
             []
 
@@ -645,7 +647,7 @@ testTypeInference = do
         succeedInferExpr
             (letExpr () (BPat () (varPat () "c"))
                 (lamExpr () [anyPat ()] (litExpr () (TBool True)))
-                (op2Expr () (ODot ()) (varExpr () "c") (recordExpr () (rowExpr () "a" (litExpr () TUnit) (rowExpr () "b" (annExpr tInt (litExpr () (TInt 2))) (conExpr () "{}" []))))))
+                (op2Expr () (ODot ()) (symbol () "c") (recordExpr () (rowExpr () "a" (litExpr () TUnit) (rowExpr () "b" (annExpr tInt (litExpr () (TInt 2))) (conExpr () "{}" []))))))
             tBool
             []
 
@@ -653,19 +655,19 @@ testTypeInference = do
         succeedInferExpr
             (letExpr () (BFun () "c" [anyPat ()])
                 (litExpr () (TBool True))
-                (op2Expr () (ODot ()) (varExpr () "c") (recordExpr () (rowExpr () "a" (litExpr () TUnit) (rowExpr () "b" (annExpr tInt (litExpr () (TInt 2))) (conExpr () "{}" []))))))
+                (op2Expr () (ODot ()) (symbol () "c") (recordExpr () (rowExpr () "a" (litExpr () TUnit) (rowExpr () "b" (annExpr tInt (litExpr () (TInt 2))) (conExpr () "{}" []))))))
             tBool
             []
 
         -- { a = { b = { c = \"d\" } } }.a.b.c
         succeedInferExpr
-            (op2Expr () (ODot ()) (varExpr () "c") (op2Expr () (ODot ()) (varExpr () "b") (op2Expr () (ODot ()) (varExpr () "a") (recordExpr () (rowExpr () "a" (recordExpr () (rowExpr () "b" (recordExpr () (rowExpr () "c" (litExpr () (TString "d")) (conExpr () "{}" []))) (conExpr () "{}" []))) (conExpr () "{}" []))))))
+            (op2Expr () (ODot ()) (symbol () "c") (op2Expr () (ODot ()) (symbol () "b") (op2Expr () (ODot ()) (symbol () "a") (recordExpr () (rowExpr () "a" (recordExpr () (rowExpr () "b" (recordExpr () (rowExpr () "c" (litExpr () (TString "d")) (conExpr () "{}" []))) (conExpr () "{}" []))) (conExpr () "{}" []))))))
             tString
             []
 
         -- { a = { b = { c = \"d\" } } }.a.b
         succeedInferExpr
-            (op2Expr () (ODot ()) (varExpr () "b") (op2Expr () (ODot ()) (varExpr () "a") (recordExpr () (rowExpr () "a" (recordExpr () (rowExpr () "b" (recordExpr () (rowExpr () "c" (litExpr () (TString "d")) (conExpr () "{}" []))) (conExpr () "{}" []))) (conExpr () "{}" [])))))
+            (op2Expr () (ODot ()) (symbol () "b") (op2Expr () (ODot ()) (symbol () "a") (recordExpr () (rowExpr () "a" (recordExpr () (rowExpr () "b" (recordExpr () (rowExpr () "c" (litExpr () (TString "d")) (conExpr () "{}" []))) (conExpr () "{}" []))) (conExpr () "{}" [])))))
             (tRecord (tRow "c" tString tRowNil))
             []
 
@@ -732,7 +734,7 @@ testTypeInference = do
             []
 
         succeedInferExpr
-            (Fix (EOp2 () (ODot ()) (Fix (EVar () "c")) (Fix (EOp2 () (ODot ()) (Fix (EVar () "b")) (Fix (EOp2 () (ODot ()) (Fix (EVar () "a")) (Fix (ECon () "#" [Fix (ERow () "a" (Fix (ECon () "#" [Fix (ERow () "b" (Fix (ECon () "#" [Fix (ERow () "c" (Fix (ELit () (TString "d"))) (Fix (ECon () "{}" [])))])) (Fix (ECon () "{}" [])))])) (Fix (ECon () "{}" [])))]))))))))
+            (Fix (EOp2 () (ODot ()) (symbol () "c") (Fix (EOp2 () (ODot ()) (symbol () "b") (Fix (EOp2 () (ODot ()) (symbol () "a") (Fix (ECon () "#" [Fix (ERow () "a" (Fix (ECon () "#" [Fix (ERow () "b" (Fix (ECon () "#" [Fix (ERow () "c" (Fix (ELit () (TString "d"))) (Fix (ECon () "{}" [])))])) (Fix (ECon () "{}" [])))])) (Fix (ECon () "{}" [])))]))))))))
             tString
             []
 
@@ -892,7 +894,7 @@ testTypeInference = do
 
         -- let r = { a = 1 : Int, b = 2 : int } in r.b
         succeedInferExpr
-            (letExpr () (BPat () (varPat () "r")) (recordExpr () (rowExpr () "a" (annExpr tInt (litExpr () (TInt 1))) (rowExpr () "b" (annExpr tInt (litExpr () (TInt 2))) (conExpr () "{}" [])))) (op2Expr () (ODot ()) (varExpr () "b") (varExpr () "r")))
+            (letExpr () (BPat () (varPat () "r")) (recordExpr () (rowExpr () "a" (annExpr tInt (litExpr () (TInt 1))) (rowExpr () "b" (annExpr tInt (litExpr () (TInt 2))) (conExpr () "{}" [])))) (op2Expr () (ODot ()) (symbol () "b") (varExpr () "r")))
             tInt
             []
 
@@ -1048,6 +1050,10 @@ testPrettyprinters = do
 
         suceedPrintType
             (tApp kTyp (tApp kTyp (tCon (kArr kTyp (kArr kTyp kTyp)) "(,)") (tCon kTyp "string")) (tCon kTyp "bool"))
+            "(string, bool)"
+
+        suceedPrintType
+            (tTuple [tString, tBool])
             "(string, bool)"
 
     describe "• Kind" $ do
@@ -1287,7 +1293,7 @@ testFlight = do
         (Just (Value (TInt 10)))
 
     succeedRunExpr
-        (Fix (EOp2 () (ODot ()) (Fix (EVar () "c")) (Fix (EOp2 () (ODot ()) (Fix (EVar () "b")) (Fix (EOp2 () (ODot ()) (Fix (EVar () "a")) (Fix (ECon () "#" [Fix (ERow () "a" (Fix (ECon () "#" [Fix (ERow () "b" (Fix (ECon () "#" [Fix (ERow () "c" (Fix (ELit () (TString "d"))) (Fix (ECon () "{}" [])))])) (Fix (ECon () "{}" [])))])) (Fix (ECon () "{}" [])))]))))))))
+        (Fix (EOp2 () (ODot ()) (symbol () "c") (Fix (EOp2 () (ODot ()) (symbol () "b") (Fix (EOp2 () (ODot ()) (symbol () "a") (Fix (ECon () "#" [Fix (ERow () "a" (Fix (ECon () "#" [Fix (ERow () "b" (Fix (ECon () "#" [Fix (ERow () "c" (Fix (ELit () (TString "d"))) (Fix (ECon () "{}" [])))])) (Fix (ECon () "{}" [])))])) (Fix (ECon () "{}" [])))]))))))))
         (Just (Value (TString "d")))
 
     succeedRunExpr
@@ -1959,7 +1965,7 @@ testParse = do
 
         succeedParse annExprParser
             "r.a + 100"
-            (op2Expr () (OAdd ()) (op2Expr () (ODot ()) (varExpr () "a") (varExpr () "r")) (litExpr () (TBig 100)))
+            (op2Expr () (OAdd ()) (op2Expr () (ODot ()) (symbol () "a") (varExpr () "r")) (litExpr () (TBig 100)))
 
         succeedParse annExprParser
             "5 + _"

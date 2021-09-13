@@ -238,13 +238,6 @@ insertKinds = go kTyp
                 TCon _ "{}" -> tCon kRow "{}"
                 t           -> setKind kTyp (embed t)
 
-    setKind :: Kind -> Type -> Type
-    setKind k = project >>> \case
-        TVar _ var   -> tVar k var
-        TCon _ con   -> tCon k con
-        TApp _ a b   -> tApp k a b
-        t            -> embed t
-
 -------------------------------------------------------------------------------
 
 annPatternParser :: Parser (ProgPattern () Type)

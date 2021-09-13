@@ -296,4 +296,12 @@ baz2 : Stream a -> a
 baz2 (Stream s) = s.Head
 
 
+_.Head
+
+
+type Stream a = Stream ( Head : a, Tail : Stream a )
+
+
+
+
 -->

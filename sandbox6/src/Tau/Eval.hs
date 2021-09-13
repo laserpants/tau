@@ -6,10 +6,13 @@
 module Tau.Eval where
 
 import Control.Monad.Reader
+import Control.Monad.Fix
+import Data.Foldable
 import Data.Char
 import Data.Functor.Foldable
 import Data.Map.Strict (Map)
 import Data.Text (pack, unpack)
+import Data.Maybe (fromJust)
 import Debug.Trace
 import Tau.Env (Env(..))
 import Tau.Eval.Prim
@@ -19,7 +22,8 @@ import qualified Data.Map.Strict as Map
 import qualified Data.Text as Text
 import qualified Tau.Env as Env
 
-type ValueEnv m = Env (Value m)
+--type ValueEnv m = Env (Value m)
+type ValueEnv m = Env (m ~(Value m))
 
 -- | An expression evaluates to a literal value, a fully applied data
 -- constructor, a primitive function, or a closure.
@@ -46,6 +50,7 @@ newtype Eval a = Eval { unEval :: ReaderT (ValueEnv Eval) Maybe a } deriving
     , Applicative
     , Monad
     , MonadFail
+    , MonadFix
     , MonadReader (ValueEnv Eval) )
 
 runEval :: Eval a -> ValueEnv Eval -> Maybe a
@@ -54,8 +59,25 @@ runEval = runReaderT . unEval
 evalExpr :: Core -> ValueEnv Eval -> Maybe (Value Eval)
 evalExpr = runEval . eval
 
+--foo 
+--  :: (MonadFix m, MonadFail m, MonadReader (ValueEnv m) m)
+--  => Name 
+--  -> m (Value m)
+--  -> m (Value m)
+--foo = closure 
+
+--gork 
+--  :: (MonadFix m, MonadFail m, MonadReader (ValueEnv m) m)
+--  => Value m
+--  -> Value m
+--gork val = 
+--    undefined
+--  where
+----    zopp :: m (Value m)
+--    zopp = closure "_" (pure val)
+
 eval
-  :: (MonadFail m, MonadReader (ValueEnv m) m)
+  :: (MonadFix m, MonadFail m, MonadReader (ValueEnv m) m)
   => Core
   -> m (Value m)
 eval = cata $ \case
@@ -66,15 +88,38 @@ eval = cata $ \case
     CLam var e1 -> asks (Closure var e1)
 
     CLet var e1 e2 -> do
-        val <- e1
-        local (Env.insert var val) e2
+        --val <- mfix (\val -> local (Env.insert var (gork val)) e1)
+        local (Env.insert var e1) e2
 
     CIf e1 e2 e3 -> do
         Value (TBool isTrue) <- e1
         if isTrue then e2 else e3
 
     CPat expr clauses ->
-        expr >>= evalPat clauses
+        evalPat clauses expr 
+
+--eval
+--  :: (MonadFix m, MonadFail m, MonadReader (ValueEnv m) m)
+--  => Core
+--  -> m (Value m)
+--eval = cata $ \case
+--
+--    CVar var    -> evalVar var
+--    CLit lit    -> pure (Value lit)
+--    CApp exs    -> foldl1 evalApp exs
+--    CLam var e1 -> asks (Closure var e1)
+--
+--    CLet var e1 e2 -> do
+--        val <- e1
+----        val <- mfix (\val -> local (Env.insert var (gork val)) e1)
+--        local (Env.insert var val) e2
+--
+--    CIf e1 e2 e3 -> do
+--        Value (TBool isTrue) <- e1
+--        if isTrue then e2 else e3
+--
+--    CPat expr clauses ->
+--        expr >>= evalPat clauses
 
 getField :: (Monad m) => Name -> [Value m] -> m (Value m)
 getField name [Data f (v:fs)]
@@ -93,17 +138,21 @@ evalVar var =
     case Text.stripPrefix "@" var of
         Just "(!).getField" ->
             closure "?a" $ do
-                Just (Value (TSymbol name)) <- asks (Env.lookup "?a")
+                env <- ask
+                Value (TSymbol name) <- fromJust (Env.lookup "?a" env)
                 closure "?b" $ do
-                    Just (Data "!" fields) <- asks (Env.lookup "?b")
+                    env <- ask
+                    Data "!" fields <- fromJust (Env.lookup "?b" env)
                     Closure var body _ <- getField (withInitialLower_ name) fields
-                    local (Env.insert var (Value TUnit)) body
+                    local (Env.insert var (pure (Value TUnit))) body
 
         Just "(#).getField" ->
             closure "?a" $ do
-                Just (Value (TSymbol name)) <- asks (Env.lookup "?a")
+                env <- ask
+                Value (TSymbol name) <- fromJust (Env.lookup "?a" env)
                 closure "?b" $ do
-                    Just (Data "#" fields) <- asks (Env.lookup "?b")
+                    env <- ask
+                    Data "#" fields <- fromJust (Env.lookup "?b" env)
                     getField name fields
 
         Just prim -> do
@@ -117,12 +166,14 @@ evalVar var =
 
         _ | ";pack" == var ->
             closure "?a" $ do
-                Just (Value (TBig n)) <- asks (Env.lookup "?a")
+                env <- ask
+                Value (TBig n) <- fromJust (Env.lookup "?a" env)
                 pure (Value (TNat (max 0 n)))
 
         _ | ";unpack" == var ->
             closure "?a" $ do
-                Just (Value (TNat n)) <- asks (Env.lookup "?a")
+                env <- ask
+                Value (TNat n) <- fromJust (Env.lookup "?a" env)
                 pure (Value (TBig n))
 
         _ | "zero" == var ->
@@ -131,7 +182,7 @@ evalVar var =
         _ ->
             asks (Env.lookup var) >>= \case
                 Just value ->
-                    pure value
+                    value
                 Nothing ->
                     if isConstructor var
                         then pure (Data var [])
@@ -139,6 +190,58 @@ evalVar var =
                             traceShowM ("Unbound identifier " <> var)
                             fail ("Unbound identifier '" <> unpack var <> "'")
                             --pure (Fail ("Unbound identifier '" <> unpack var <> "'"))
+
+--evalVar :: (MonadFail m, MonadReader (ValueEnv m) m) => Name -> m (Value m)
+--evalVar var =
+--    case Text.stripPrefix "@" var of
+--        Just "(!).getField" ->
+--            closure "?a" $ do
+--                Just (Value (TSymbol name)) <- asks (Env.lookup "?a")
+--                closure "?b" $ do
+--                    Just (Data "!" fields) <- asks (Env.lookup "?b")
+--                    Closure var body _ <- getField (withInitialLower_ name) fields
+--                    local (Env.insert var (Value TUnit)) body
+--
+--        Just "(#).getField" ->
+--            closure "?a" $ do
+--                Just (Value (TSymbol name)) <- asks (Env.lookup "?a")
+--                closure "?b" $ do
+--                    Just (Data "#" fields) <- asks (Env.lookup "?b")
+--                    getField name fields
+--
+--        Just prim -> do
+--            case Env.lookup prim primEnv of
+--                Just fun ->
+--                    evalPrim prim fun []
+--                Nothing -> do
+--                    traceShowM ("No primitive function " <> Text.unpack prim)
+--                    fail ("No primitive function " <> Text.unpack prim)
+--                    --pure (Fail ("No primitive function " <> Text.unpack prim))
+--
+--        _ | ";pack" == var ->
+--            closure "?a" $ do
+--                Just (Value (TBig n)) <- asks (Env.lookup "?a")
+--                pure (Value (TNat (max 0 n)))
+--
+--        _ | ";unpack" == var ->
+--            closure "?a" $ do
+--                Just (Value (TNat n)) <- asks (Env.lookup "?a")
+--                pure (Value (TBig n))
+--
+--        _ | "zero" == var ->
+--            pure (Value (TNat 0))
+--
+--        _ ->
+--            asks (Env.lookup var) >>= \case
+--                Just value ->
+--                    pure value
+--                Nothing ->
+--                    if isConstructor var
+--                        then pure (Data var [])
+--                        else do
+--                            traceShowM ("Unbound identifier " <> var)
+--                            fail ("Unbound identifier '" <> unpack var <> "'")
+--                            --pure (Fail ("Unbound identifier '" <> unpack var <> "'"))
 
 -- TODO
 isConstructor :: Name -> Bool
@@ -185,30 +288,20 @@ evalApp
   => m (Value m)
   -> m (Value m)
   -> m (Value m)
-evalApp fun arg = fun >>= \case
+evalApp fun arg = fun >>= \case 
 
-    Closure var body closure -> do
-        val <- arg
-        local (Env.insert var val closure <>) body
+    Closure var body closure ->
+        local (Env.insert var arg closure <>) body
 
     PrimFun name fun args -> do
         val <- arg
         evalPrim name fun (val:args)
 
     Data "succ" args -> do
-        --(Value (TNat n)) <- arg
         a <- arg
-        case a of
-            Value (TNat n) ->
-                pure (Value (TNat (succ n)))
-            _ ->
-                pure (Data "succ" (args <> [a]))
-
-        --pure (Data "succ" (args <> [a]))
---        pure (Value (TNat (succ n)))
-
---        --Value (TNat n) <- arg
---        pure (Value (TNat 5))
+        pure $ case a of
+            Value (TNat n) -> Value (TNat (succ n))
+            _              -> Data "succ" (args <> [a])
 
     Data con args -> do
         a <- arg
@@ -217,37 +310,141 @@ evalApp fun arg = fun >>= \case
     err ->
         pure err
 
-evalPat :: (MonadFail m, MonadReader (ValueEnv m) m) => CMatrix (m (Value m)) -> Value m -> m (Value m)
+--evalApp
+--  :: (MonadFail m, MonadReader (ValueEnv m) m)
+--  => m (Value m)
+--  -> m (Value m)
+--  -> m (Value m)
+--evalApp fun arg = fun >>= \case
+--
+--    Closure var body closure -> do
+--        val <- arg
+--        local (Env.insert var val closure <>) body
+--
+--    PrimFun name fun args -> do
+--        val <- arg
+--        evalPrim name fun (val:args)
+--
+--    Data "succ" args -> do
+--        --(Value (TNat n)) <- arg
+--        a <- arg
+--        case a of
+--            Value (TNat n) ->
+--                pure (Value (TNat (succ n)))
+--            _ ->
+--                pure (Data "succ" (args <> [a]))
+--
+--        --pure (Data "succ" (args <> [a]))
+----        pure (Value (TNat (succ n)))
+--
+----        --Value (TNat n) <- arg
+----        pure (Value (TNat 5))
+--
+--    Data con args -> do
+--        a <- arg
+--        pure (Data con (args <> [a]))
+--
+--    err ->
+--        pure err
+
+
+--evalRowPat :: (MonadFail m) => [Name] -> Value m -> m (Env (Value m) -> Env (Value m))
+
+evalPat :: (MonadFail m, MonadReader (ValueEnv m) m) => CMatrix (m (Value m)) -> m (Value m) -> m (Value m)
 evalPat []            _ = fail "Runtime error (evalPat)"
 evalPat [(["$_"], e)] _ = e
 evalPat ((ps@[p, _, _], e):_) val
     | isRowCon p = evalRowPat ps val >>= flip local e
 evalPat ((p:ps, e):eqs) val =
-    case val of
+    val >>= \case
+
         Value (TNat m) | 0 /= m && p == "succ" ->
-            local (Env.insert (head ps) (Value (TNat (pred m)))) e
+            local (Env.insert (head ps) (pure (Value (TNat (pred m))))) e
+
         Value (TNat 0) | p == "zero" ->
             e
+
         Data con args | p == con ->
-            local (Env.inserts (zip ps args)) e
+            local (Env.inserts (zip ps (pure <$> args))) e
+
         _ ->
             evalPat eqs val
+
+
+--evalPat :: (MonadFail m, MonadReader (ValueEnv m) m) => CMatrix (m (Value m)) -> Value m -> m (Value m)
+--evalPat []            _ = fail "Runtime error (evalPat)"
+--evalPat [(["$_"], e)] _ = e
+--evalPat ((ps@[p, _, _], e):_) val
+--    | isRowCon p = do -- evalRowPat ps val >>= flip local e
+--        xxx <- evalRowPat ps val
+--        local undefined e
+--evalPat ((p:ps, e):eqs) val =
+--    case val of
+--        Value (TNat m) | 0 /= m && p == "succ" ->
+--            undefined -- local (Env.insert (head ps) (Value (TNat (pred m)))) e
+--        Value (TNat 0) | p == "zero" ->
+--            e
+--        Data con args | p == con ->
+--            undefined
+--            -- local (Env.inserts (zip ps args)) e
+--        _ ->
+--            evalPat eqs val
+
+
+--evalPat :: (MonadFail m, MonadReader (ValueEnv m) m) => CMatrix (m (Value m)) -> Value m -> m (Value m)
+--evalPat []            _ = fail "Runtime error (evalPat)"
+--evalPat [(["$_"], e)] _ = e
+--evalPat ((ps@[p, _, _], e):_) val
+--    | isRowCon p = evalRowPat ps val >>= flip local e
+--evalPat ((p:ps, e):eqs) val =
+--    case val of
+--        Value (TNat m) | 0 /= m && p == "succ" ->
+--            local (Env.insert (head ps) (Value (TNat (pred m)))) e
+--        Value (TNat 0) | p == "zero" ->
+--            e
+--        Data con args | p == con ->
+--            local (Env.inserts (zip ps args)) e
+--        _ ->
+--            evalPat eqs val
 
 isRowCon :: Name -> Bool
 isRowCon ""  = False
 isRowCon con = Text.head con == '{' && Text.last con == '}'
 
-evalRowPat :: (MonadFail m) => [Name] -> Value m -> m (Env (Value m) -> Env (Value m))
-evalRowPat [p, q, r] val =
+--evalRowPat :: (MonadFail m) => [Name] -> Value m -> m (Env (Value m) -> Env (Value m))
+--evalRowPat [p, q, r] val =
+--    case Map.lookup p pmap of
+--        Nothing    -> fail "Runtime error (evalPat)"
+--        Just (v:_) -> pure (Env.inserts [(q, v), (r, fromMap (Map.delete p pmap))])
+--  where
+--    pmap = toMap val mempty
+
+evalRowPat :: (MonadFail m) => [Name] -> m (Value m) -> m (Env (m (Value m)) -> Env (m (Value m)))
+evalRowPat [p, q, r] val = do
+    pmap <- toMap val mempty
     case Map.lookup p pmap of
         Nothing    -> fail "Runtime error (evalPat)"
         Just (v:_) -> pure (Env.inserts [(q, v), (r, fromMap (Map.delete p pmap))])
+
+toMap :: (MonadFail m) => m (Value m) -> Map Name [m (Value m)] -> m (Map Name [m (Value m)])
+toMap zz m = zz >>= \case
+
+    Data "{}" []    -> pure m
+    Data lab (v:vs) -> foldrM toMap (Map.insertWith (<>) lab [pure v] m) (pure <$> vs)
+
+fromMap :: (MonadFail m) => Map Name [m (Value m)] -> m (Value m)
+fromMap m = foldrM foo (Data "{}" []) (Map.toList m) -- Map.foldrWithKey foo (Data "{}" []) m
   where
-    pmap = toMap val mempty
+    foo (k, w) zz = foldrM zoo zz w -- foldrM (\v m -> pure (Data k [v, m])) w
+      where
+        zoo v m = do
+            vv <- v
+            pure (Data k [vv, m])
 
-toMap :: Value m -> Map Name [Value m] -> Map Name [Value m]
-toMap (Data "{}" [])    m = m
-toMap (Data lab (v:vs)) m = foldr toMap (Map.insertWith (<>) lab [v] m) vs
 
-fromMap :: Map Name [Value m] -> Value m
-fromMap = Map.foldrWithKey (\k -> flip (foldr (\v m -> Data k [v, m]))) (Data "{}" [])
+--toMap :: Value m -> Map Name [Value m] -> Map Name [Value m]
+--toMap (Data "{}" [])    m = m
+--toMap (Data lab (v:vs)) m = foldr toMap (Map.insertWith (<>) lab [v] m) vs
+--
+--fromMap :: Map Name [Value m] -> Value m
+--fromMap = Map.foldrWithKey (\k -> flip (foldr (\v m -> Data k [v, m]))) (Data "{}" [])

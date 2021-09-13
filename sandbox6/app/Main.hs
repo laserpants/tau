@@ -1,7 +1,9 @@
+{-# LANGUAGE FlexibleContexts #-}
 {-# LANGUAGE RecordWildCards #-}
 {-# LANGUAGE DeriveFunctor #-}
 module Main where
 
+import Control.Monad.Writer
 import Data.Aeson
 import Debug.Trace
 import Data.Aeson.Encode.Pretty

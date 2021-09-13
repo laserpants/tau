@@ -165,23 +165,8 @@ inferExprType
   -> m (ProgExpr (TypeInfo [Error]) Void)
 inferExprType = cata $ \case
 
-    EVar t var -> do
-        lookupScheme var >>= \case
-            Nothing ->
-                -- Special case for record/row types
-                lookupScheme ("#" <> var) >>= \case
-                    Just scheme -> do
-                        (ty, ps) <- instantiate scheme
-                        errs <- tryUnify t ty
-                        pure (recordExpr (TypeInfo errs (tRecord t) ps) (varExpr (typeInfo t) var))
-
-                    Nothing ->
-                        pure (varExpr (TypeInfo [NotInScope var] t []) var)
-
-            Just scheme -> do
-                (ty, ps) <- instantiate scheme
-                errs <- tryUnify t ty
-                pure (varExpr (TypeInfo errs t ps) var)
+    EVar t var ->
+        inferVar t var
 
     ECon t con exprs -> do
         es <- sequence exprs
@@ -291,12 +276,10 @@ inferExprType = cata $ \case
         a <- expr1
         b <- expr2
         ty <- applySubsTo (typeOf b)
-        traceShowM a
-        traceShowM b
         case op2 of
-            ODot _ | isRecordType ty -> inferFieldOpType t (fromJust (unpackRecordType ty)) a b
-            ODot _                   -> inferDotOpType t a b
-            OField _                 -> inferFieldOpType t (makeFieldsStrict (fromJust (unpackCodataType ty))) a b
+            ODot _ | isRecordType ty   -> inferFieldOpType t (fromJust (unpackRecordType ty)) a b
+            ODot _                     -> inferDotOpType t a b
+            OField _ | isCodataType ty -> inferFieldOpType t (makeFieldsStrict (fromJust (unpackCodataType ty))) a b
             _ -> do
                 (op, ps) <- inferOpType (typeInfo <$> op2) (op2Scheme op2)
                 ty <- fresh
@@ -306,8 +289,11 @@ inferExprType = cata $ \case
 
     ETuple t exprs -> do
         es <- sequence exprs
-        errs <- tryUnify t (tTuple (typeOf <$> es))
-        pure (tupleExpr (TypeInfo errs t []) es)
+        errs1 <- tryUnify t (tTuple (typeOf <$> es))
+        errss <- forM es $ \e ->
+            fresh >>= tryUnify (typeOf e) . setKind kTyp
+
+        pure (tupleExpr (TypeInfo (errs1 <> concat errss) t []) es)
 
     EList t exprs -> do
         es <- sequence exprs
@@ -355,6 +341,31 @@ inferExprType = cata $ \case
         errs2 <- tryUnify t t1
         pure (setTag (TypeInfo (errs1 <> errs2) t1 ps) e)
 
+inferVar
+  :: ( MonadSupply Int m
+     , MonadReader (ClassEnv, TypeEnv, KindEnv, ConstructorEnv) m
+     , MonadState (Substitution Type, Substitution Kind, Context) m )
+  => Type
+  -> Name
+  -> m (ProgExpr (TypeInfo [Error]) Void)
+inferVar t var = lookupScheme var >>= \case
+
+    Nothing ->
+        -- Special case for record/row types
+        lookupScheme ("#" <> var) >>= \case
+            Just scheme -> do
+                (ty, ps) <- instantiate scheme
+                errs <- tryUnify t ty
+                pure (recordExpr (TypeInfo errs (tRecord t) ps) (varExpr (typeInfo t) var))
+
+            Nothing ->
+                pure (varExpr (TypeInfo [NotInScope var] t []) var)
+
+    Just scheme -> do
+        (ty, ps) <- instantiate scheme
+        errs <- tryUnify t ty
+        pure (varExpr (TypeInfo errs t ps) var)
+
 inferDotOpType
   :: ( MonadSupply Int m
      , MonadReader (ClassEnv, TypeEnv, KindEnv, ConstructorEnv) m
@@ -370,16 +381,6 @@ inferDotOpType t a b = do
     errs2 <- tryUnify t1 (foldr tArr ty (typeOf <$> [a, b]))
     pure (op2Expr (TypeInfo (errs1 <> errs2) t []) (ODot (typeInfo ty)) a b)
 
-withInitialLower :: Name -> Name
-withInitialLower name = toLower (Text.head name) `Text.cons` Text.tail name
-
-makeFieldsStrict :: Type -> Type
-makeFieldsStrict = cata $ \case
-    TRow label t next -> tRow label (cod t) next
-    t                 -> embed t
-  where
-    cod = project >>> \case TArr _ t -> t
-
 inferFieldOpType
   :: ( MonadSupply Int m
      , MonadReader (ClassEnv, TypeEnv, KindEnv, ConstructorEnv) m
@@ -389,15 +390,16 @@ inferFieldOpType
   -> ProgExpr (TypeInfo [Error]) Void
   -> ProgExpr (TypeInfo [Error]) Void
   -> m (ProgExpr (TypeInfo [Error]) Void)
-inferFieldOpType t row a b = 
+inferFieldOpType t row a b =
     case project a of
-        EVar _ name -> do
+--        EVar _ name -> do
 
---        ELit _ (TSymbol name) -> do
+        ELit t1 (TSymbol name) -> do
 
             case lookupRowType (withInitialLower name) row of
-                Nothing ->
-                    inferDotOpType t a b
+                Nothing -> do
+                    a1 <- inferVar (nodeType t1) name
+                    inferDotOpType t a1 b
 
                 Just t2 -> do
                     t1 <- fresh
@@ -417,6 +419,16 @@ inferFieldOpType t row a b =
                     errs2 <- tryUnify t2 (foldr tArr t (typeOf <$> args))
                     pure (appExpr (TypeInfo (errs1 <> errs2) t [])
                          (op2Expr (typeInfo t2) (OField (typeInfo t1)) (litExpr (typeInfo tSymbol) (TSymbol name)) b:args))
+
+withInitialLower :: Name -> Name
+withInitialLower name = toLower (Text.head name) `Text.cons` Text.tail name
+
+makeFieldsStrict :: Type -> Type
+makeFieldsStrict = cata $ \case
+    TRow label t next -> tRow label (cod t) next
+    t                 -> embed t
+  where
+    cod = project >>> \case TArr _ t -> t
 
 inferPatternType
   :: ( MonadSupply Int m
@@ -462,8 +474,11 @@ inferPatternType = cata $ \case
 
     PTuple t pats -> do
         (ps, vss) <- unzip <$> sequence pats
-        errs <- tryUnify t (tTuple (typeOf <$> ps))
-        pure (tuplePat (TypeInfo errs t []) ps, concat vss)
+        errs1 <- tryUnify t (tTuple (typeOf <$> ps))
+        errss <- forM ps $ \p ->
+            fresh >>= tryUnify (typeOf p) . setKind kTyp
+
+        pure (tuplePat (TypeInfo (errs1 <> concat errss) t []) ps, concat vss)
 
     PList t pats -> do
         (ps, vss) <- unzip <$> sequence pats
@@ -1025,17 +1040,17 @@ test5expr =
 
 
     --
-    -- fix 
+    -- fix
     --   unfolds =
     --     (f, n) =>
-    --       let 
+    --       let
     --         (m, s) =
     --           f((n, unfolds(f, m)))
     --         in
     --           s
     --   in
-    --     let 
-    --       unStream(Stream(s)) = 
+    --     let
+    --       unStream(Stream(s)) =
     --         s
     --       in
     --         let
@@ -1043,32 +1058,165 @@ test5expr =
     --             Stream(unfolds((n, next) => (n + 1, ( head = () => n, tail = () => Stream(next) )), 1))
     --           in
     --             unStream(s).Head
-    --         
-    --     
-    --         
     --
---    letExpr () (BPat () (varPat () "s"))
---        (codataExpr () (rowExpr () "head" (lazy (annExpr tInt (litExpr () (TBig 1)))) (rowExpr () "tail" (lazy (conExpr () "Stream" [varExpr () "next"])) (conExpr () "{}" []))))
---        --(varExpr () "s")
---        (op2Expr () (OField ()) (varExpr () "s") (varExpr () "Head"))
-               
+    --
+    --
+    --
 
-    letExpr () (BPat () (varPat () "s"))
-        (recordExpr () (rowExpr () "head" (lazy (annExpr tInt (litExpr () (TBig 1)))) (rowExpr () "tail" (lazy (conExpr () "Stream" [varExpr () "next"])) (conExpr () "{}" []))))
-        --(varExpr () "s")
-        (op2Expr () (ODot ()) (litExpr () (TSymbol "head")) (varExpr () "s"))
+--
+--  let
+--    fst(x, _) =
+--      x
+--    in
+--      let
+--        snd(_, x) =
+--          x
+--        in
+--          fix
+--            unfolds =
+--              (f, n) =>
+--                fix
+--                  x =
+--                    f(n, unfolds(f, fst(x))
+--                  in
+--                    snd(x)
+--            in
+--              let
+--                foo(n, next) =
+--                  (n + 1, ( head => n, tail = () => Stream(next) ) )
+--                in
+--                  let
+--                    unStream(Stream(s)) =
+--                      s
+--                    in
+--                      let
+--                        s =
+--                          Stream(unfolds(foo, 1))
+--                        in
+--                          unStream(s).Head
+--
+--    (letExpr () (BFun () "fst" [tuplePat () [varPat () "x", anyPat ()]]) (varExpr () "x")
+--        (letExpr () (BFun () "snd" [tuplePat () [anyPat (), varPat () "x"]]) (varExpr () "x")
+--            (fixExpr () "unfolds"
+--                (lamExpr () [varPat () "f", varPat () "n"]
+--                    (fixExpr () "x"
+--                    (appExpr () [varExpr () "f", varExpr () "n", appExpr () [varExpr () "unfolds", varExpr () "f", appExpr () [varExpr () "fst", varExpr () "x"]]])
+--                    (appExpr () [varExpr () "snd", varExpr () "x"])))
+--                    (letExpr () (BFun () "foo" [varPat () "n", varPat () "next"])
+--                        (tupleExpr ()
+--                            [ op2Expr () (OAdd ()) (varExpr () "n") (litExpr () (TBig 1))
+--                            , codataExpr () (rowExpr () "head" (lazy (varExpr () "n")) (rowExpr () "tail" (lazy (conExpr () "Stream" [varExpr () "next"])) (conExpr () "{}" [])))
+--                            ])
+--                        (letExpr () (BFun () "unStream" [conPat () "Stream" [varPat () "s"]])
+--                            (varExpr () "s")
+--                            (letExpr ()
+--                                (BPat () (varPat () "s"))
+--                                (conExpr () "Stream" [appExpr () [varExpr () "unfolds", varExpr () "foo", litExpr () (TBig 1)]])
+--                                (op2Expr () (OField ()) (symbol () "Head") (appExpr () [varExpr () "unStream", varExpr () "s"]))))))))
+--
+
+
+----        (letExpr () (BFun () "f" [varPat () "x"]) (op2Expr () (OGt ()) (varExpr () "x") (litExpr () (TBig 6))) (appExpr () [varExpr () "f", annExpr tInt (litExpr () (TBig 4))]))
+--
+--
+--                    (letExpr () (BFun () "foo" [varPat () "n"])
+--                        --(op2Expr () (OAdd ()) (varExpr () "n") (litExpr () (TBig 1)))
+--                        (tupleExpr ()
+--                            [ op2Expr () (OAdd ()) (varExpr () "n") (litExpr () (TBig 1))
+--                            , (lazy (varExpr () "n")) -- recordExpr () (rowExpr () "head" (lazy (varExpr () "n")) (conExpr () "{}" []))
+--                            ])
+----                        --
+----                        --(tupleExpr ()
+----                        --    [ op2Expr () (OAdd ()) (varExpr () "n") (litExpr () (TBig 1))
+----                        --    -- , codataExpr () (rowExpr () "head" (lazy (varExpr () "n")) (rowExpr () "tail" (lazy (conExpr () "Stream" [varExpr () "next"])) (conExpr () "{}" [])))
+----                        --    -- , lazy (varExpr () "n")
+----                        --    ])
+--                         (appExpr () [varExpr () "foo", annExpr tInt (litExpr () (TBig 5))]))
+--
+
+
+
+--
+-- let
+--   fst(x, _) =
+--     x
+--   in
+--     let
+--       snd(_, x) =
+--         x
+--       in
+--         fix
+--           unfolds =
+--             (f, n) =>
+--               fix
+--                 x =
+--                   f(n, unfolds(f, fst(x))
+--                 in
+--                   snd(x)
+--           in
+--             let
+--               foo(n, next) =
+--                 (n + 1, ( head = () => n, tail = () => Stream next ) )
+--               in
+--                 let
+--                   unStream(s) =
+--                     s
+--                   in
+--                     let
+--                       s =
+--                         Stream(unfolds(foo, 1))
+--                       in
+--                         unStream(s).Head
+--
+--
+
+    (letExpr () (BFun () "fst" [tuplePat () [varPat () "x", anyPat ()]]) (varExpr () "x")
+        (letExpr () (BFun () "snd" [tuplePat () [anyPat (), varPat () "x"]]) (varExpr () "x")
+            (fixExpr () "unfolds"
+                (lamExpr () [varPat () "f", varPat () "n"]
+                    (fixExpr () "x"
+                        (appExpr () [varExpr () "f", varExpr () "n", appExpr () [varExpr () "unfolds", varExpr () "f", appExpr () [varExpr () "fst", varExpr () "x"]]])
+                        (appExpr () [varExpr () "snd", varExpr () "x"])))
+                    --(letExpr ()
+                    --    (BPat () (tuplePat () [varPat () "m", varPat () "s"]))
+                    --    (appExpr () [varExpr () "f", varExpr () "n", appExpr () [varExpr () "unfolds", varExpr () "f", varExpr () "m"]])
+                    --    (varExpr () "s")))
+                (letExpr ()
+                    (BFun () "foo" [varPat () "n", varPat () "next"])
+                    (tupleExpr ()
+                        [ op2Expr () (OAdd ()) (varExpr () "n") (litExpr () (TBig 1))
+                        , codataExpr () (rowExpr () "head" (lazy (varExpr () "n")) (rowExpr () "tail" (lazy (conExpr () "Stream" [varExpr () "next"])) (conExpr () "{}" [])))
+                        ])
+                    (letExpr () (BFun () "unStream" [conPat () "Stream" [varPat () "s"]])
+                    (varExpr () "s")
+                    (letExpr () (BPat () (varPat () "s"))
+                        --(conExpr () "Stream" [codataExpr () (rowExpr () "head" (lazy (annExpr tInt (litExpr () (TBig 1)))) (rowExpr () "tail" (lazy (conExpr () "Stream" [varExpr () "next"])) (conExpr () "{}" [])))])
+                        (conExpr () "Stream" [appExpr () [varExpr () "unfolds", varExpr () "foo", litExpr () (TBig 1)]])
+                        (op2Expr () (OField ()) (symbol () "Head") (appExpr () [varExpr () "unStream", varExpr () "s"]))))))))
+
+--    (letExpr () (BFun () "c" [anyPat ()])
+--        (litExpr () (TBool True))
+--        (op2Expr () (ODot ()) (symbol () "c") (recordExpr () (rowExpr () "a" (litExpr () TUnit) (rowExpr () "b" (annExpr tInt (litExpr () (TInt 2))) (conExpr () "{}" []))))))
+--        --(op2Expr () (ODot ()) (varExpr () "c") (recordExpr () (rowExpr () "a" (litExpr () TUnit) (rowExpr () "b" (annExpr tInt (litExpr () (TInt 2))) (conExpr () "{}" []))))))
+
+
+--    letExpr () (BPat () (varPat () "s"))
+--        (recordExpr () (rowExpr () "head" (lazy (annExpr tInt (litExpr () (TBig 1)))) (rowExpr () "tail" (lazy (conExpr () "Stream" [varExpr () "next"])) (conExpr () "{}" []))))
+--        --(varExpr () "s")
+--        --(op2Expr () (ODot ()) (litExpr () (TSymbol "head")) (varExpr () "s"))
+--        (op2Expr () (ODot ()) (litExpr () (TSymbol "xx")) (varExpr () "s"))
 
 --          (letExpr () (BFun () "unStream" [conPat () "Stream" [varPat () "s"]])
 --              (varExpr () "s")
---              (letExpr () 
+--              (letExpr ()
 --                  (BPat () (varPat () "s"))
---                  (conExpr () "Stream" [appExpr () 
+--                  (conExpr () "Stream" [appExpr ()
 --                      [ varExpr () "unfolds"
---                      , lamExpr () [varPat () "n", varPat () "next"] (tupleExpr () 
+--                      , lamExpr () [varPat () "n", varPat () "next"] (tupleExpr ()
 --                            [ op2Expr () (OAdd ()) (varExpr () "n") (litExpr () (TBig 1))
 --                            , codataExpr () (rowExpr () "head" (lazy (annExpr tInt (litExpr () (TBig 1)))) (rowExpr () "tail" (lazy (conExpr () "Stream" [varExpr () "next"])) (conExpr () "{}" [])))
 --                            ])
---                      , annExpr tInt (litExpr () (TBig 1)) 
+--                      , annExpr tInt (litExpr () (TBig 1))
 --                      ]])
 --                  --(op2Expr () (ODot ()) (conExpr () "Head" []) (appExpr () [varExpr () "unStream", varExpr () "s"]))))
 --                  (op2Expr () (ODot ()) (appExpr () [varExpr () "unStream", varExpr () "s"]) (conExpr () "Head" []))))
@@ -1268,6 +1416,8 @@ testTypeEnv = Env.fromList
 
     --, ( "Stream"       , Forall [] [] (tRow "head" (tLazy tInt) (tRow "tail" (tLazy (tCon kTyp "Stream")) tRowNil) `tArr` tCon kTyp "Stream") )
     , ( "Stream"       , Forall [] [] (tCodata (tRow "head" (tLazy tInt) (tRow "tail" (tLazy (tCon kTyp "Stream")) tRowNil)) `tArr` tCon kTyp "Stream") )
+
+--    , ( "Stream"       , Forall [] [] (tCodata (tRow "head" (tLazy tInt) tRowNil) `tArr` tCon kTyp "Stream") )
 
     , ( "id"           , Forall [kTyp] [] (tGen 0 `tArr` tGen 0) )
     , ( "(::)"         , Forall [kTyp] [] (tGen 0 `tArr` tList (tGen 0) `tArr` tList (tGen 0)) )
@@ -1496,13 +1646,14 @@ testConstructorEnv = constructorEnv
     , ("{}"       , ( ["{}"], 0 ))
     , ("Cons'"    , ( ["Nil'", "Cons'"], 3 ))
     , ("Nil'"     , ( ["Nil'", "Cons'"], 0 ))
+    , ("Stream"   , ( ["Stream"], 1 ))
     ]
 
 testEvalEnv :: ValueEnv Eval
 testEvalEnv = Env.fromList
-    [ ( "_#"  , fromJust (evalExpr (cLam "?0" (cPat (cVar "?0") [(["#", "?1"], cVar "?1")])) mempty) )
-    , ( "_^"  , fromJust (evalExpr (cLam "n" (cLam "f" (cLam "s" (cLet "r" (cLam "x" (cLam "m" (cIf (cApp [cVar "@Integer.(==)", cLit (TBig 0), cVar "m"]) (cVar "x") (cApp [cVar "r", cApp [cVar "f", cVar "x"], cApp [cVar "@Integer.(-)", cVar "m", cLit (TBig 1)]])))) (cApp [cVar "r", cVar "s", cVar "n"]))))) mempty) )
-    , ( "(.)" , fromJust (evalExpr (cLam "f" (cLam "x" (cApp [cVar "f", cVar "x"]))) mempty) )
+    [ ( "_#"  , pure $ fromJust (evalExpr (cLam "?0" (cPat (cVar "?0") [(["#", "?1"], cVar "?1")])) mempty) )
+    , ( "_^"  , pure $ fromJust (evalExpr (cLam "n" (cLam "f" (cLam "s" (cLet "r" (cLam "x" (cLam "m" (cIf (cApp [cVar "@Integer.(==)", cLit (TBig 0), cVar "m"]) (cVar "x") (cApp [cVar "r", cApp [cVar "f", cVar "x"], cApp [cVar "@Integer.(-)", cVar "m", cLit (TBig 1)]])))) (cApp [cVar "r", cVar "s", cVar "n"]))))) mempty) )
+    , ( "(.)" , pure $ fromJust (evalExpr (cLam "f" (cLam "x" (cApp [cVar "f", cVar "x"]))) mempty) )
 
 
     -- Integer -> nat
@@ -1511,9 +1662,9 @@ testEvalEnv = Env.fromList
     -- nat -> Integer
 --    , ( ";unpack" , fromJust (evalExpr (cLam "?0" (cLet "f" (cLam "#0" (cLam "#1" (cPat (cVar "#1") [(["zero"], cVar "#0"), (["succ", "?1"], cApp [cVar "f", cApp [cVar "@Integer.(+)", cVar "#0", cLit (TBig 1)], cVar "?1"])]))) (cApp [cVar "f", cLit (TBig 0), cVar "?0"]))) mempty) )
 --    , ( ";unpack" , fromJust (evalExpr (cLam "?0" (cLit (TBig 33))) mempty) )
-    , ( ";(*)" , fromJust (evalExpr (cLam "?0" (cLam "?1" (cApp [cVar ";pack", cApp [cVar "@Integer.(*)", cApp [cVar ";unpack", cVar "?0"], cApp [cVar ";unpack", cVar "?1"]]]))) mempty) )
-    , ( ";(+)" , fromJust (evalExpr (cLam "?0" (cLam "?1" (cApp [cVar ";pack", cApp [cVar "@Integer.(+)", cApp [cVar ";unpack", cVar "?0"], cApp [cVar ";unpack", cVar "?1"]]]))) mempty) )
-    , ( ";(-)" , fromJust (evalExpr (cLam "?0" (cLam "?1" (cApp [cVar ";pack", cApp [cVar "@Integer.(-)", cApp [cVar ";unpack", cVar "?0"], cApp [cVar ";unpack", cVar "?1"]]]))) mempty) )
+    , ( ";(*)" , pure $ fromJust (evalExpr (cLam "?0" (cLam "?1" (cApp [cVar ";pack", cApp [cVar "@Integer.(*)", cApp [cVar ";unpack", cVar "?0"], cApp [cVar ";unpack", cVar "?1"]]]))) mempty) )
+    , ( ";(+)" , pure $ fromJust (evalExpr (cLam "?0" (cLam "?1" (cApp [cVar ";pack", cApp [cVar "@Integer.(+)", cApp [cVar ";unpack", cVar "?0"], cApp [cVar ";unpack", cVar "?1"]]]))) mempty) )
+    , ( ";(-)" , pure $ fromJust (evalExpr (cLam "?0" (cLam "?1" (cApp [cVar ";pack", cApp [cVar "@Integer.(-)", cApp [cVar ";unpack", cVar "?0"], cApp [cVar ";unpack", cVar "?1"]]]))) mempty) )
     ]
 
 --testx = (fixExpr () "loopList" (lamExpr () [varPat () "g", varPat () "ys"] (patExpr () (varExpr () "ys") [ Clause () (conPat () "(::)" [varPat () "x", varPat () "xs"]) [Choice [] (appExpr () [varExpr () "g", conExpr () "Cons'" [varExpr () "x", varExpr () "xs", appExpr () [varExpr () "loopList", varExpr () "g", varExpr () "xs"]]])] , Clause () (conPat () "[]" []) [Choice [] (appExpr () [varExpr () "g", conExpr () "Nil'" []])] ])) (letExpr () (BFun () "length" [varPat () "xs"]) (op2Expr () (ODot ()) (appExpr () [ varExpr () "loopList" , funExpr () [ Clause () [conPat () "Cons'" [anyPat (), anyPat (), varPat () "a"]] [Choice [] (op2Expr () (OAdd ()) (litExpr () (TBig 1)) (varExpr () "a"))] , Clause () [conPat () "Nil'" []] [Choice [] (annExpr tInt (litExpr () (TBig 0)))] ] ]) (varExpr () "xs")) (letExpr () (BPat () (varPat () "xs")) (annExpr (tList tInt) (listExpr () [litExpr () (TBig 2)])) (patExpr () (varExpr () "xs") [ Clause () (conPat () "(::)" [varPat () "x", anyPat ()]) [Choice [op2Expr () (OLte ()) (appExpr () [varExpr () "length", varExpr () "xs"]) (litExpr () (TBig 3))] (varExpr () "x")] , Clause () (anyPat ()) [Choice [] (litExpr () (TBig 0))] ]))))
