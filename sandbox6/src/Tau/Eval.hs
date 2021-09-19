@@ -23,7 +23,7 @@ import qualified Data.Text as Text
 import qualified Tau.Env as Env
 
 --type ValueEnv m = Env (Value m)
-type ValueEnv m = Env (m ~(Value m))
+type ValueEnv m = Env (m (Value m))
 
 -- | An expression evaluates to a literal value, a fully applied data
 -- constructor, a primitive function, or a closure.

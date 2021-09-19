@@ -804,7 +804,7 @@ translateLet t bind e1 e2 =
 
         BFun t1 f ps -> do
             e <- translateLambda t1 (embed <$> ps) e1
-            translateMatchExpr t e [MonoClause t [varPat t1 f] (Choice [] e2)]
+            translateLet t (BPat t1 (varPat t1 f)) e e2
 
 translateLambda
   :: ( MonadSupply Int m

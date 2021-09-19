@@ -32,6 +32,8 @@ Tau.Eval
 
 Tau.Libs
 
+Tau.Magic
+
 
 
 

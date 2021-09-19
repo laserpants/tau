@@ -47,7 +47,7 @@ main =
         describe "tupleCon"       testTupleCon
         describe "Type inference" testTypeInference
         describe "Prettyprinters" testPrettyprinters
-        describe "Flight"         testFlight
+--        describe "Flight"         testFlight
         describe "Parse"          testParse
 
 _a :: Type
