@@ -1,8 +1,28 @@
 {-# LANGUAGE GeneralizedNewtypeDeriving #-}
-module Tau.Env where
+module Tau.Env
+  ( Env
+  , empty
+  , insert
+  , inserts
+  , insertWith
+  , fromList
+  , fromListWith
+  , toList
+  , union
+  , elems
+  , domain
+  , lookup
+  , findWithDefault
+  , findWithDefaultEmpty
+  , isMember
+  , update
+  , alter
+  , delete
+  , map
+  ) where
 
 import Data.Map.Strict (Map)
-import Prelude hiding (lookup, insert)
+import Prelude hiding (lookup, insert, map)
 import Tau.Util (Name)
 import qualified Data.Map.Strict as Map
 
@@ -61,6 +81,9 @@ update f name (Env envMap) = Env (Map.update f name envMap)
 
 alter :: (Maybe a -> Maybe a) -> Name -> Env a -> Env a
 alter f name (Env envMap) = Env (Map.alter f name envMap)
+
+delete :: Name -> Env a -> Env a
+delete key (Env envMap) = Env (Map.delete key envMap)
 
 map :: (a -> b) -> Env a -> Env b
 map f (Env envMap) = Env (Map.map f envMap)
