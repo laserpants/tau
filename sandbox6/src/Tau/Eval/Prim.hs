@@ -39,7 +39,7 @@ instance PrimType Double where
         _           -> 0
 
 instance PrimType Text where
-    toPrim = TString 
+    toPrim = TString
     fromPrim = \case
         TString lit -> lit
         _           -> Text.pack ""
@@ -60,22 +60,22 @@ instance PrimType Bool where
         TBool lit -> lit
         _         -> False
 
-fun1 :: (PrimType a, PrimType b) => (a -> b) -> Fun 
+fun1 :: (PrimType a, PrimType b) => (a -> b) -> Fun
 fun1 f = Fun1 (\a -> let b = f (fromPrim a) in toPrim b)
 
-fun2 :: (PrimType a, PrimType b, PrimType c) => (a -> b -> c) -> Fun 
+fun2 :: (PrimType a, PrimType b, PrimType c) => (a -> b -> c) -> Fun
 fun2 f = Fun2 (\a b -> let c = f (fromPrim a) (fromPrim b) in toPrim c)
 
-fun3 :: (PrimType a, PrimType b, PrimType c, PrimType d) => (a -> b -> c -> d) -> Fun 
+fun3 :: (PrimType a, PrimType b, PrimType c, PrimType d) => (a -> b -> c -> d) -> Fun
 fun3 f = Fun3 (\a b c -> let d = f (fromPrim a) (fromPrim b) (fromPrim c) in toPrim d)
 
-fun4 :: (PrimType a, PrimType b, PrimType c, PrimType d, PrimType e) => (a -> b -> c -> d -> e) -> Fun 
+fun4 :: (PrimType a, PrimType b, PrimType c, PrimType d, PrimType e) => (a -> b -> c -> d -> e) -> Fun
 fun4 f = Fun4 (\a b c d -> let e = f (fromPrim a) (fromPrim b) (fromPrim c) (fromPrim d) in toPrim e)
 
-fun5 :: (PrimType a, PrimType b, PrimType c, PrimType d, PrimType e, PrimType f) => (a -> b -> c -> d -> e -> f) -> Fun 
+fun5 :: (PrimType a, PrimType b, PrimType c, PrimType d, PrimType e, PrimType f) => (a -> b -> c -> d -> e -> f) -> Fun
 fun5 f = Fun5 (\a b c d e -> let g = f (fromPrim a) (fromPrim b) (fromPrim c) (fromPrim d) (fromPrim e) in toPrim g)
 
-data Fun 
+data Fun
     = Fun1 (Prim -> Prim)
     | Fun2 (Prim -> Prim -> Prim)
     | Fun3 (Prim -> Prim -> Prim -> Prim)
@@ -136,6 +136,9 @@ primEnv = Env.fromList
 -------------------------------------------------------------------------------
     , ( "Float.(/)"            , fun2 ((/) :: Float -> Float -> Float ) )
     , ( "Double.(/)"           , fun2 ((/) :: Double -> Double -> Double ) )
+-------------------------------------------------------------------------------
+    , ( "Int.(--)"             , fun1 ((\n -> pred n) :: Int -> Int) )
+    , ( "Int.(++)"             , fun1 ((\n -> succ n) :: Int -> Int) )
 -------------------------------------------------------------------------------
     , ( "Bool.(<)"             , fun2 ((<) :: Bool -> Bool -> Bool ) )
     , ( "Int.(<)"              , fun2 ((<) :: Int -> Int -> Bool ) )
@@ -207,4 +210,10 @@ primEnv = Env.fromList
 -------------------------------------------------------------------------------
     , ( "(&&)"                 , fun2 ((&&) :: Bool -> Bool -> Bool ) )
     , ( "(||)"                 , fun2 ((||) :: Bool -> Bool -> Bool ) )
+-------------------------------------------------------------------------------
+    , ( "Int.isZero"           , fun1 ((== 0) :: Int -> Bool ) )
+-------------------------------------------------------------------------------
+
+
+    , ( "xxx"                  , fun3 ((\a b c -> a + c - b) :: Int -> Int -> Int -> Int ) )
     ]
