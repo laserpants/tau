@@ -372,7 +372,7 @@ data CoreF a
     | CApp [a]                  -- ^ Function application
     | CLet Name a a             -- ^ Let expression
     | CLam Name a               -- ^ Lambda abstraction
-    | CIf  a ~a ~a              -- ^ If-clause
+    | CIf  a a a                -- ^ If-clause
     | CPat a (CMatrix a)        -- ^ Pattern match clause matrix
 
 -- | Core language expression suitable for interpreted program evaluation and
