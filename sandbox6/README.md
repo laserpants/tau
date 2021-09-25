@@ -181,10 +181,27 @@ map(f, xs) { (Functor f) : (a -> b) -> f a -> f b } =
 
 
 -- proposal:
+map(f, xs) oftype (Functor f) : (a -> b) -> f a -> f b =
+  fold xs as
+    | []           = []
+    | (y :: _), ys = f(y) :: ys
+
+
+
+-- proposal:
 map(f, xs) : (Functor f) => (a -> b) -> f a -> f b =
   fold xs as
     | []           = []
     | (y :: _), ys = f(y) :: ys
+
+
+-- proposal:
+map(f, xs) 
+  : (Functor f) => (a -> b) -> f a -> f b 
+  = fold xs as
+    | []           = []
+    | (y :: _), ys = f(y) :: ys
+
 
 
 

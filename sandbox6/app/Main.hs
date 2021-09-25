@@ -606,7 +606,7 @@ fff124 =
                   (cLam "$e0"  -- n
                       (cLet "x" 
                           (cApp [cVar "$e1", cVar "$e0",   -- f(n, unfolds(f, fst(x)))
-                              cApp [cVar "unfolds", cVar "$e1"], cApp [cVar "fst", cVar "x"]])
+                              cApp [cVar "unfolds", cVar "$e1", cApp [cVar "fst", cVar "x"]]])
                           (cApp [cVar "snd", cVar "x"])
                           )))
               (cLet "foo"
