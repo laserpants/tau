@@ -621,7 +621,8 @@ fff124 =
                                   [ cVar "!"
                                   , cApp 
                                       [ cVar "{head}"
-                                      , cLam "_" (cVar "$e8")
+                                      -- , cLam "_" (cVar "$e8")
+                                      , cLam "_" (cLit (TInt 123))
                                       , cApp 
                                           [ cVar "{tail}"
                                           , cLam "_" (cApp [cVar "Stream", cVar "$e7"])

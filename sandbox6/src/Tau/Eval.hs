@@ -24,193 +24,292 @@ import qualified Data.Text as Text
 import qualified Tau.Env as Env
 
 
-type ValueEnvX m = Env (m (ValueX m))
-
-newtype EvalX a = EvalX { unEvalX :: ReaderT (ValueEnvX EvalX) (Either Text) a } deriving
-    ( Functor
-    , Applicative
-    , Monad
-    , MonadError Text
-    , MonadReader (ValueEnvX EvalX) )
-
-runEvalX :: EvalX a -> ValueEnvX EvalX -> Either Text a
-runEvalX = runReaderT . unEvalX
-
-evalExprX :: Core -> ValueEnvX EvalX -> Either Text (ValueX EvalX)
-evalExprX = runEvalX . interpret
-
-data ValueX m
-    = ValueX Prim
-    | DataX Name [ValueX m]
-    | ClosureX Name (m (ValueX m)) (ValueEnvX m)
-    | PrimFunX Name Fun [m (ValueX m)]
-
-instance Eq (ValueX m) where
-    (==) (ValueX v) (ValueX w)             = v == w
-    (==) (DataX c vs) (DataX d ws)         = c == d && vs == ws
-    (==) (PrimFunX f _ _) (PrimFunX g _ _) = f == g
-    (==) _ _                               = False
-
-instance Show (ValueX m) where
-    show (ValueX prim)          = "Value "   <> "(" <> show prim <> ")"
-    show (DataX name vs)        = "Data "    <> show name <> " " <> show vs
-    show (PrimFunX name _ args) = "PrimFun " <> show name <> " " <> show (length args)
-    show (ClosureX f _ _)       = "<<function " <> show f <> ">>"
-
-interpret
-  :: (MonadError Text m, MonadReader (ValueEnvX m) m)
-  => Core
-  -> m (ValueX m)
-interpret = cata $ \case
-
-    CVar var -> evalVarX var
-    CLit lit -> pure (ValueX lit)
-    CApp exs -> foldl1 evalAppX exs
-
-    CLam var e1 -> 
-        asks (ClosureX var e1)
-
-    CLet var e1 e2 -> 
-        local (Env.insert var e1) e2
-
-    CIf e1 e2 e3 -> e1 >>= \case 
-        ValueX (TBool isTrue) ->
-            if isTrue then e2 else e3
-        _ ->
-            throwError "If clause: not a boolean"
-
-    CPat expr clauses ->
-        evalPatX expr clauses 
-
---getFieldX :: (Monad m) => Name -> [Value m] -> m (Value m)
-getFieldX name [DataX f (v:fs)]
-    | f == ("{" <> name <> "}") = pure v
-    | otherwise                 = getFieldX name fs
-
---closureX :: (MonadReader (ValueEnv m) m) => Name -> m (Value m) -> m (Value m)
-closureX var a = pure (ClosureX var a mempty)
-
-evalVarX 
-  :: (MonadError Text m, MonadReader (ValueEnvX m) m) 
-  => Name 
-  -> m (ValueX m)
-evalVarX var =
-    case Text.stripPrefix "@" var of
-
-        Just "(!).getField" -> do
-            closureX "?a" $ do
-                env <- ask
-                x <- fromJust (Env.lookup "?a" env)
-                let (ValueX (TSymbol name)) = x
-                closureX "?b" $ do
-                    env <- ask
-                    x <- fromJust (Env.lookup "?b" env)
-                    let DataX "!" fields = x
-                    x <- getFieldX (withInitialLower_ name) fields
-                    let ClosureX var body _ = x
-                    local (Env.insert var (pure (ValueX TUnit))) body
-
-        Just "(#).getField" ->
-            undefined
-
-        Just prim ->
-            case Env.lookup prim primEnv of
-                Just fun -> do
-                    pure (PrimFunX prim fun [])
-                Nothing -> do
-                    throwError ("No primitive function " <> prim)
-
-        Nothing -> do
-            env <- ask
-            case Env.lookup var env of
-                Just value -> do
-                    value
-                _ ->
-                    if isConstructor var
-                        then pure (DataX var [])
-                        else 
-                            throwError ("Unbound identifier '" <> var <> "'")
-
-evalAppX
-  :: (MonadError Text m, MonadReader (ValueEnvX m) m)
-  => m (ValueX m)
-  -> m (ValueX m)
-  -> m (ValueX m)
-evalAppX fun arg = do
-    f <- fun
-    --traceShowM (">> " <> show f)
-    case f of
-        ClosureX var body closure -> do
-            env <- ask
-
-            let env0 = Env.insert var arg (closure <> env)  -- (Env.insert var arg closure <> env) ???
-            env1 <- traverse sequence (Env.toList env0)
-
-            local (const $ Env.fromList (pure <$$> env1)) body
-
-            --local (\env -> runEvalX $ boos var arg closure env) body
-
-        PrimFunX name fun args -> do
-            if arity fun == length args + 1
-                then do
-                    let unValue (ValueX p) = p
-                    xs <- fmap unValue . reverse <$> sequence (arg:args)
-                    pure (ValueX (applyFun fun xs))
-                else
-            --        let unValue (ValueX p) = p
-            --        xs <- fmap unValue . reverse <$> sequence (arg:args)
-            --        pure (ValueX (applyFun fun xs))
-            --    else
-                    pure (PrimFunX name fun (arg:args))
-
-        DataX con args -> do
-            a <- arg
-            pure (DataX con (args <> [a]))
-
---            let unValue (ValueX p) = p
---            xs <- fmap unValue . reverse <$> sequence (arg:args)
---            pure (ValueX (applyFun fun xs))
+--type ValueEnvX m = Env (m (ValueX m))
 --
---            --    else 
---            --        pure (PrimFunX name fun (arg:args))
+--newtype EvalX a = EvalX { unEvalX :: ReaderT (ValueEnvX EvalX) (Either Text) a } deriving
+--    ( Functor
+--    , Applicative
+--    , Monad
+--    , MonadError Text
+--    , MonadReader (ValueEnvX EvalX) )
 --
---        _ -> do
---            traceShowM "&&&&&&&&&"
---            traceShowM f
---            undefined
-
-isCatchAll :: [Name] -> Bool
-isCatchAll = (== ["$_"])
-
-evalPatX 
-  :: (MonadError Text m, MonadReader (ValueEnvX m) m) 
-  => m (ValueX m) 
-  -> CMatrix (m (ValueX m)) 
-  -> m (ValueX m)
-evalPatX val = \case
-
-    [] -> throwError "Implementation error (evalPat)"
-    [(c, e)] | isCatchAll c -> e
-
-    ((ps@[p, _, _], e):_) | isRowCon p ->
-        undefined
-
-    ((p:ps, e):eqs) ->
-        val >>= \case
-
-            -- TODO: handle nat cases
-        
-            DataX con args | p == con ->
-                --local (Env.inserts (zip ps args)) e
-                local (Env.inserts (zip ps (pure <$> args))) e
-
-            _ -> do
---                traceShowM "evalPatX"
-                evalPatX val eqs 
-
--- =======================================================================================
--- =======================================================================================
--- =======================================================================================
+--runEvalX :: EvalX a -> ValueEnvX EvalX -> Either Text a
+--runEvalX = runReaderT . unEvalX
+--
+--evalExprX :: Core -> ValueEnvX EvalX -> Either Text (ValueX EvalX)
+--evalExprX = runEvalX . interpret
+--
+--data ValueX m
+--    = ValueX Prim
+--    | DataX Name [ValueX m]
+--    | ClosureX Name (m (ValueX m)) (ValueEnvX m)
+--    | PrimFunX Name Fun [m (ValueX m)]
+--
+--instance Eq (ValueX m) where
+--    (==) (ValueX v) (ValueX w)             = v == w
+--    (==) (DataX c vs) (DataX d ws)         = c == d && vs == ws
+--    (==) (PrimFunX f _ _) (PrimFunX g _ _) = f == g
+--    (==) _ _                               = False
+--
+--instance Show (ValueX m) where
+--    show (ValueX prim)          = "Value "   <> "(" <> show prim <> ")"
+--    show (DataX name vs)        = "Data "    <> show name <> " " <> show vs
+--    show (PrimFunX name _ args) = "PrimFun " <> show name <> " " <> show (length args)
+--    show (ClosureX f _ _)       = "<<function " <> show f <> ">>"
+--
+--interpret
+--  :: (MonadError Text m, MonadReader (ValueEnvX m) m)
+--  => Core
+--  -> m (ValueX m)
+--interpret = cata $ \case
+--
+--    CVar var -> traceShowM ("CVar " <> show var) >> evalVarX var
+--    CLit lit -> traceShowM "CLit" >> pure (ValueX lit)
+--    CApp exs -> traceShowM "CApp" >> foldl1 evalAppX exs
+--
+--    CLam var e1 -> traceShowM "CLam" >> 
+--        asks (ClosureX var e1)
+--
+--    CLet var e1 e2 -> traceShowM "CLet" >>
+--        local (Env.insert var e1) e2
+--
+--    CIf e1 e2 e3 -> traceShowM "CIf" >> e1 >>= \case 
+--        ValueX (TBool isTrue) ->
+--            if isTrue then e2 else e3
+--        x -> do
+--            traceShowM x
+--            throwError "If clause: not a boolean"
+--
+--    CPat expr clauses -> traceShowM "CPat" >> 
+--        evalPatX expr clauses 
+--
+----getFieldX :: (Monad m) => Name -> [Value m] -> m (Value m)
+--getFieldX name [DataX f (v:fs)]
+--    | f == ("{" <> name <> "}") = pure v
+--    | otherwise                 = getFieldX name fs
+--
+----closureX :: (MonadReader (ValueEnv m) m) => Name -> m (Value m) -> m (Value m)
+--closureX var a = pure (ClosureX var a mempty)
+--
+--evalVarX 
+--  :: (MonadError Text m, MonadReader (ValueEnvX m) m) 
+--  => Name 
+--  -> m (ValueX m)
+--evalVarX var =
+--    case Text.stripPrefix "@" var of
+--
+--        Just "(!).getField" -> do
+--            closureX "?a" $ do
+--                env <- ask
+--                x <- fromJust (Env.lookup "?a" env)
+--                let (ValueX (TSymbol name)) = x
+--                closureX "?b" $ do
+--                    env <- ask
+--                    x <- fromJust (Env.lookup "?b" env)
+--                    let DataX "!" fields = x
+--                    x <- getFieldX (withInitialLower_ name) fields
+--                    let ClosureX var body _ = x
+--                    local (Env.insert var (pure (ValueX TUnit))) body
+--
+--        Just "(#).getField" ->
+--            closureX "?a" $ do
+--                env <- ask
+--                x <- fromJust (Env.lookup "?a" env)
+--                let (ValueX (TSymbol name)) = x
+--                closureX "?b" $ do
+--                    env <- ask
+--                    x <- fromJust (Env.lookup "?b" env)
+--                    let DataX "#" fields = x
+--                    getFieldX name fields
+--                    --env <- ask
+--                    --Data "#" fields <- fromJust (Env.lookup "?b" env)
+--                    --getField name fields
+--
+--        Just prim ->
+--            case Env.lookup prim primEnv of
+--                Just fun -> do
+--                    pure (PrimFunX prim fun [])
+--                Nothing -> do
+--                    throwError ("No primitive function " <> prim)
+--
+--        _ | ";pack" == var ->
+--            closureX "?a" $ do
+--                env <- ask
+--                x <- fromJust (Env.lookup "?a" env)
+--                let ValueX (TBig n) = x
+--                pure (ValueX (TNat (max 0 n)))
+--
+--        _ | ";unpack" == var ->
+--            closureX "?a" $ do
+--                env <- ask
+--                x <- fromJust (Env.lookup "?a" env)
+--                let (ValueX (TNat n)) = x
+--                pure (ValueX (TBig n))
+--
+--        _ | "zero" == var ->
+--            pure (ValueX (TNat 0))
+--
+--        Nothing -> do
+--            env <- ask
+--            case Env.lookup var env of
+--                Just value -> do
+--                    value
+--                _ ->
+--                    if isConstructor var
+--                        then pure (DataX var [])
+--                        else 
+--                            throwError ("Unbound identifier '" <> var <> "'")
+--
+--evalAppX
+--  :: (MonadError Text m, MonadReader (ValueEnvX m) m)
+--  => m (ValueX m)
+--  -> m (ValueX m)
+--  -> m (ValueX m)
+--evalAppX fun arg = do
+--    f <- fun
+--    --traceShowM (">> " <> show f)
+--    case f of
+--        ClosureX var body closure -> do
+--            env <- ask
+--
+--            let env0 = Env.insert var arg (closure <> env)  -- (Env.insert var arg closure <> env) ???
+--            env1 <- traverse sequence (Env.toList env0)
+--
+--            local (const $ Env.fromList (pure <$$> env1)) body
+--
+--            --local (\env -> runEvalX $ boos var arg closure env) body
+--
+--        PrimFunX name fun args -> do
+--            evalPrimX name fun args
+--            --if arity fun == length args + 1
+--            --    then do
+--            --        let unValue (ValueX p) = p
+--            --        xs <- fmap unValue . reverse <$> sequence (arg:args)
+--            --        pure (ValueX (applyFun fun xs))
+--            --    else
+--            --        let unValue (ValueX p) = p
+--            --        xs <- fmap unValue . reverse <$> sequence (arg:args)
+--            --        pure (ValueX (applyFun fun xs))
+--            --    else
+----                    pure (PrimFunX name fun (arg:args))
+--
+--        DataX "succ" args -> do
+--            a <- arg
+--            pure $ case a of
+--                ValueX (TNat n) -> ValueX (TNat (succ n))
+--                _               -> DataX "succ" (args <> [a])
+--
+--        DataX con args -> do
+--            a <- arg
+--            pure (DataX con (args <> [a]))
+--
+--        v -> do
+--            traceShowM v
+--            error "??"
+--
+--
+----            let unValue (ValueX p) = p
+----            xs <- fmap unValue . reverse <$> sequence (arg:args)
+----            pure (ValueX (applyFun fun xs))
+----
+----            --    else 
+----            --        pure (PrimFunX name fun (arg:args))
+----
+----        _ -> do
+----            traceShowM "&&&&&&&&&"
+----            traceShowM f
+----            undefined
+--
+--evalPrimX
+--  :: (MonadError Text m, MonadReader (ValueEnvX m) m)
+--  => Name
+--  -> Fun
+--  -> [m (ValueX m)]
+--  -> m (ValueX m)
+--evalPrimX name fun args
+--    | arity fun == length args = do
+--        one <- sequence args
+--        two <- traverse literal (reverse one)
+--        pure (ValueX (applyFun fun two))
+--        -- ValueX . applyFun fun <$> traverse literal (reverse args)
+--    | otherwise =
+--        pure (PrimFunX name fun args)
+--  where
+--    literal (ValueX lit) = pure lit
+--    literal _           = throwError "Runtime error (evalPrim)"
+--
+--            --if arity fun == length args + 1
+--            --    then do
+--            --        let unValue (ValueX p) = p
+--            --        xs <- fmap unValue . reverse <$> sequence (arg:args)
+--            --        pure (ValueX (applyFun fun xs))
+--            --    else
+--            --        let unValue (ValueX p) = p
+--            --        xs <- fmap unValue . reverse <$> sequence (arg:args)
+--            --        pure (ValueX (applyFun fun xs))
+--            --    else
+--
+--
+--isCatchAll :: [Name] -> Bool
+--isCatchAll = (== ["$_"])
+--
+--evalPatX 
+--  :: (MonadError Text m, MonadReader (ValueEnvX m) m) 
+--  => m (ValueX m) 
+--  -> CMatrix (m (ValueX m)) 
+--  -> m (ValueX m)
+--evalPatX val = \case
+--
+--    [] -> throwError "Implementation error (evalPat)"
+--    [(c, e)] | isCatchAll c -> e
+--
+--    ((ps@[p, _, _], e):_) | isRowCon p -> do
+--        env <- evalRowPatX ps val 
+--        local env e
+--
+--    ((p:ps, e):eqs) ->
+--        val >>= \case
+--
+--            ValueX (TNat m) | 0 /= m && p == "succ" ->
+--                local (Env.insert (head ps) (pure (ValueX (TNat (pred m))))) e
+--
+--            ValueX (TNat 0) | p == "zero" ->
+--                e
+--        
+--            DataX con args | p == con ->
+--                --local (Env.inserts (zip ps args)) e
+--                local (Env.inserts (zip ps (pure <$> args))) e
+--
+--            _ -> do
+----                traceShowM "evalPatX"
+--                evalPatX val eqs 
+--
+--evalRowPatX :: (Monad m, MonadError Text m) => [Name] -> m (ValueX m) -> m (Env (m (ValueX m)) -> Env (m (ValueX m)))
+--evalRowPatX [p, q, r] val = do
+--    pmap <- toMapX val mempty
+--    case Map.lookup p pmap of
+--        Nothing    -> throwError "Runtime error (evalPat)"
+--        Just (v:_) -> pure (Env.inserts [(q, v), (r, fromMapX (Map.delete p pmap))])
+--
+--toMapX :: (Monad m, MonadError Text m) => m (ValueX m) -> Map Name [m (ValueX m)] -> m (Map Name [m (ValueX m)])
+--toMapX zz m = zz >>= \case
+--    DataX "{}" []    -> pure m
+--    DataX lab (v:vs) -> foldrM toMapX (Map.insertWith (<>) lab [pure v] m) (pure <$> vs)
+--
+----fromMapX :: (MonadFail m) => Map Name [m (ValueX m)] -> m (ValueX m)
+--fromMapX m = foldrM foo (DataX "{}" []) (Map.toList m) -- Map.foldrWithKey foo (Data "{}" []) m
+--  where
+--    foo (k, w) zz = foldrM zoo zz w -- foldrM (\v m -> pure (Data k [v, m])) w
+--      where
+--        zoo v m = do
+--            vv <- v
+--            pure (DataX k [vv, m])
+--
+--
+--
+---- =======================================================================================
+---- =======================================================================================
+---- =======================================================================================
 
 
 --type ValueEnv m = Env (Value m)
@@ -481,8 +580,16 @@ evalApp
   -> m (Value m)
 evalApp fun arg = fun >>= \case 
 
-    Closure var body closure ->
-        local (Env.insert var arg closure <>) body
+    Closure var body closure -> do
+        -- local (Env.insert var arg closure <>) body
+
+        env <- ask
+
+        let env0 = Env.insert var arg (closure <> env)  -- (Env.insert var arg closure <> env) ???
+        env1 <- traverse sequence (Env.toList env0)
+
+        local (const $ Env.fromList (pure <$$> env1)) body
+
 
     PrimFun name fun args -> do
         val <- arg
