@@ -601,6 +601,16 @@ fff124 =
           (cLam "$p" (cPat (cVar "$p") 
               [ (["(,)", "$f0", "$f1"], cVar "$f1")
               ]))
+          --
+          -- let unfolds = 
+          --   f => 
+          --     n => 
+          --       let 
+          --         x =  
+          --           f(n, unfolds(f, fst(x)))
+          --         in
+          --           snd(x)
+          --
           (cLet "unfolds" 
               (cLam "$e1"      -- f
                   (cLam "$e0"  -- n
@@ -612,7 +622,7 @@ fff124 =
               (cLet "foo"
                   (cLam "$e8"      -- n
                       (cLam "$e7"  -- next
-                          (cApp 
+                          (cApp
                               [ cVar "(,)"
                               -- n + 1
                               , cApp [cVar "@Int.(+)", cVar "$e8", cLit (TInt 1)] 
@@ -623,7 +633,7 @@ fff124 =
                                       [ cVar "{head}"
                                       -- , cLam "_" (cVar "$e8")
                                       , cLam "_" (cLit (TInt 123))
-                                      , cApp 
+                                      , cApp
                                           [ cVar "{tail}"
                                           , cLam "_" (cApp [cVar "Stream", cVar "$e7"])
                                           , (cVar "{}")
@@ -633,6 +643,13 @@ fff124 =
                               ])))
                   (cLet "unStream"
                       (cLam "s" (cPat (cVar "s") [ (["Stream", "s"], cVar "s") ]))
+                      -- 
+                      -- let 
+                      --   s =
+                      --     Stream(unfolds(foo, 1)) 
+                      --   in
+                      --     unStream(s).Head
+                      --
                       (cLet "s"
                           -- Stream(unfolds(foo, 1))
                           (cApp [cVar "Stream", cApp [cVar "unfolds", cVar "foo", cLit (TInt 1)]])
@@ -640,6 +657,60 @@ fff124 =
                           (cApp [cVar "@(!).getField", cLit (TSymbol "Head"), cApp [cVar "unStream", cVar "s"]]))
                   )
               )))
+
+
+fff128 =
+
+  (cLet "fst"
+      (cLam "$p" (cPat (cVar "$p") 
+          [ (["(,)", "$f0", "$f1"], cVar "$f0")
+          ]))
+      (cLet "snd"
+          (cLam "$p" (cPat (cVar "$p") 
+              [ (["(,)", "$f0", "$f1"], cVar "$f1")
+              ]))
+
+          --
+          -- let
+          --   foo =
+          --     n =>
+          --       ( n + 1
+          --       , { head = () => n, tail = () => foo (n + 1) }
+          --       )
+          --
+          (cLet "foo"
+              (cLam "$e8"      -- n
+                  (cApp
+                      [ cVar "(,)"
+                      -- n + 1
+                      , cApp [cVar "@Int.(+)", cVar "$e8", cLit (TInt 1)] 
+                      -- { head = () => n, tail = () => Stream(next) }
+                      , cApp 
+                          [ cVar "#"
+                          , cApp 
+                              [ cVar "{head}"
+                              , cLam "_" (cVar "$e8")
+                              , cApp
+                                  [ cVar "{tail}"
+                                  , cLam "_" (cApp [cVar "foo", cApp [cVar "@Int.(+)", cVar "$e8", cLit (TInt 1)]])
+                                  , (cVar "{}")
+                                  ]
+                              ]
+                          ]
+                      ]))
+
+                  (cApp 
+                      [ cVar "@(#).getField"
+                      , cLit (TSymbol "tail")
+                      , (cApp [cVar "snd", (cApp [cVar "foo", cLit (TInt 1)])])
+                      , (cLit TUnit)
+                      ]))
+
+          ))
+
+
+
+
 
 -------------------------------------------------------------------------------------------------------------------
 
