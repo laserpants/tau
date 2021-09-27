@@ -2184,7 +2184,6 @@ testEval =
         it ("✔ TODO") $
             Just (Value (TInt 3)) == evalExpr (cLet "myFun" (cLam "n" (cLam "next" (cApp [ cVar "!" , cApp [ cVar "{head}", cLam "_" (cVar "n") , cApp [ cVar "{tail}", cLam "_" (cApp [cVar "next", cApp [cVar "@Int.(+)", cVar "n", cLit (TInt 1)]]) , cVar "{}" ] ] ]))) (cLet "unfoldx" (cLam "f" (cLam "n" (cApp [cVar "f", cVar "n", cApp [cVar "unfoldx", cVar "f"]]))) (getHead (getTail (getTail (cApp [ cVar "unfoldx" , cVar "myFun" , cLit (TInt 1) ])))))) mempty
     
-
 getHead e = cApp [cVar "@(!).getField", cLit (TSymbol "Head"), e]
 getTail e = cApp [cVar "@(!).getField", cLit (TSymbol "Tail"), e]
 
