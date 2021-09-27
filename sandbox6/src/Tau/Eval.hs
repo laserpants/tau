@@ -322,7 +322,7 @@ data Value m
     = Value Prim
     | Data Name [Value m]
     | PrimFun Name Fun [Value m]
-    | Closure Name (m (Value m)) ~(ValueEnv m)
+    | Closure Name (m (Value m)) (ValueEnv m)
 
 instance Show (Value m) where
     show (Value lit)           = "Value "   <> "(" <> show lit <> ")"

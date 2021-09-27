@@ -25,6 +25,11 @@ type Coalgebra f a = a -> f a
 
 infixl 4 <$$>
 
+(<#>) :: (Functor f) => f a -> (a -> b) -> f b
+(<#>) = flip (<$>)
+
+infixl 1 <#>
+
 embed1 :: (Corecursive t) => (t1 -> Base t t) -> t1 -> t
 embed1 t a = embed (t a)
 {-# INLINE embed1 #-}
