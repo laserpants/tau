@@ -74,20 +74,20 @@ import qualified Tau.Env as Env
 --    CLit lit -> pure (ValueX lit)
 --    CApp exs -> foldl1 evalAppX exs
 --
---    CLam var e1 -> 
+--    CLam var e1 ->
 --        asks (ClosureX var e1)
 --
---    CLet var e1 e2 -> 
+--    CLet var e1 e2 ->
 --        local (Env.insert var e1) e2
 --
---    CIf e1 e2 e3 -> e1 >>= \case 
+--    CIf e1 e2 e3 -> e1 >>= \case
 --        ValueX (TBool isTrue) ->
 --            if isTrue then e2 else e3
 --        _ ->
 --            throwError "If clause: not a boolean"
 --
 --    CPat expr clauses ->
---        evalPatX expr clauses 
+--        evalPatX expr clauses
 --
 ----getFieldX :: (Monad m) => Name -> [Value m] -> m (Value m)
 --getFieldX name [DataX f (v:fs)]
@@ -97,9 +97,9 @@ import qualified Tau.Env as Env
 ----closureX :: (MonadReader (ValueEnv m) m) => Name -> m (Value m) -> m (Value m)
 --closureX var a = pure (ClosureX var a mempty)
 --
---evalVarX 
---  :: (MonadError Text m, MonadReader (ValueEnvX m) m) 
---  => Name 
+--evalVarX
+--  :: (MonadError Text m, MonadReader (ValueEnvX m) m)
+--  => Name
 --  -> m (ValueX m)
 --evalVarX var =
 --    case Text.stripPrefix "@" var of
@@ -135,7 +135,7 @@ import qualified Tau.Env as Env
 --                _ ->
 --                    if isConstructor var
 --                        then pure (DataX var [])
---                        else 
+--                        else
 --                            throwError ("Unbound identifier '" <> var <> "'")
 --
 --
@@ -211,7 +211,7 @@ import qualified Tau.Env as Env
 ----            xs <- fmap unValue . reverse <$> sequence (arg:args)
 ----            pure (ValueX (applyFun fun xs))
 ----
-----            --    else 
+----            --    else
 ----            --        pure (PrimFunX name fun (arg:args))
 ----
 ----        _ -> do
@@ -236,7 +236,7 @@ import qualified Tau.Env as Env
 ----        --    local (Env.insert var arg) (pure body)
 ----
 ----        PrimFunX name fun args -> do
-----            if arity fun - 1 == length args 
+----            if arity fun - 1 == length args
 ----                then do
 ----                    val <- arg
 ----                    traceShowM "########"
@@ -288,9 +288,9 @@ import qualified Tau.Env as Env
 ------                throwError "If clause: not a boolean"
 ------
 ------    CPat expr clauses ->
-------        evalPatX expr clauses 
+------        evalPatX expr clauses
 --
-----interpret2 
+----interpret2
 ----  :: (MonadFix m, MonadError Text m, MonadReader (ValueEnvX m) m)
 ----  => Core
 ----  -> m (ValueX m)
@@ -358,15 +358,15 @@ import qualified Tau.Env as Env
 ----                    throwError "If clause: not a boolean"
 ----
 ----        CPat expr clauses ->
-----            evalPatX expr clauses 
+----            evalPatX expr clauses
 --
 --isCatchAll :: [Name] -> Bool
 --isCatchAll = (== ["$_"])
 --
---evalPatX 
---  :: (MonadError Text m, MonadReader (ValueEnvX m) m) 
---  => m (ValueX m) 
---  -> CMatrix (m (ValueX m)) 
+--evalPatX
+--  :: (MonadError Text m, MonadReader (ValueEnvX m) m)
+--  => m (ValueX m)
+--  -> CMatrix (m (ValueX m))
 --  -> m (ValueX m)
 --evalPatX val = \case
 --
@@ -380,14 +380,14 @@ import qualified Tau.Env as Env
 --        val >>= \case
 --
 --            -- TODO: handle nat cases
---        
+--
 --            DataX con args | p == con ->
 --                --local (Env.inserts (zip ps args)) e
 --                local (Env.inserts (zip ps (pure <$> args))) e
 --
 --            _ -> do
 ----                traceShowM "evalPatX"
---                evalPatX val eqs 
+--                evalPatX val eqs
 --
 ------getFieldX :: (Monad m) => Name -> [Value m] -> m (Value m)
 ----getFieldX name [DataX f (v:fs)]
@@ -397,9 +397,9 @@ import qualified Tau.Env as Env
 ------closureX :: (MonadReader (ValueEnv m) m) => Name -> m (Value m) -> m (Value m)
 ----closureX var a = pure (ClosureX var a mempty)
 ----
-----evalVarX 
-----  :: (MonadError Text m, MonadReader (ValueEnvX m) m) 
-----  => Name 
+----evalVarX
+----  :: (MonadError Text m, MonadReader (ValueEnvX m) m)
+----  => Name
 ----  -> m (ValueX m)
 ----evalVarX var = do
 ----    traceShowM var
@@ -419,7 +419,7 @@ import qualified Tau.Env as Env
 ----                    --DataX "!" fields <- fromJust (Env.lookup "?b" env)
 ----                    ----ClosureX var body _ <- getFieldX (withInitialLower_ name) fields
 ----                    case getFieldX (withInitialLower_ name) fields of
-----                        Just (ClosureX var body _) -> 
+----                        Just (ClosureX var body _) ->
 ----                            local (Env.insert var (pure (ValueX TUnit))) body
 ----
 ----        Just prim -> do
@@ -433,7 +433,7 @@ import qualified Tau.Env as Env
 ----
 ----        Nothing -> do
 ----            --case Env.lookup var env of
-----            --    Just value -> 
+----            --    Just value ->
 ----            --        value
 ----
 ----            --    _ ->
@@ -454,7 +454,7 @@ import qualified Tau.Env as Env
 ----                _ -> do
 ----                    traceShowM "b"
 ----                    if isConstructor var
-----                        then 
+----                        then
 ----                            pure (DataX var [])
 ----
 ----                        else
@@ -569,15 +569,15 @@ fff123 =
 
                    (cApp [ cVar "fn"
                          -- , cApp [cVar "@Int.(--)", cVar "n"]
-                         , cApp [cVar "@Int.(-)", cVar "n", cLit (TInt 1)] 
-                         , cApp [cVar "@Int.(+)", cVar "m", cLit (TInt 1)] 
+                         , cApp [cVar "@Int.(-)", cVar "n", cLit (TInt 1)]
+                         , cApp [cVar "@Int.(+)", cVar "m", cLit (TInt 1)]
                          ])
 
                     --(cVar "m")
                     --(cApp [ cVar "fn"
                     --      , cLit (TInt 0) -- cApp [cVar "@Int.(-)", cVar "n", cLit (TInt 1)]
-                    --      --, cApp [cVar "@Int.(+)", cVar "m", cLit (TInt 1)] 
-                    --      , cVar "m" -- cApp [cVar "@Int.(+)", cLit (TInt 11), cLit (TInt 1)] 
+                    --      --, cApp [cVar "@Int.(+)", cVar "m", cLit (TInt 1)]
+                    --      , cVar "m" -- cApp [cVar "@Int.(+)", cLit (TInt 11), cLit (TInt 1)]
                     --      ])
                 )
             )
@@ -586,7 +586,7 @@ fff123 =
                     --(cApp [ (cApp [ cVar "fn"
                     --              , cLit (TInt 0) -- cApp [cVar "@Int.(-)", cVar "n", cLit (TInt 1)]
                     --              ])
-                    --       , cApp [cVar "@Int.(+)", cVar "m", cLit (TInt 1)] 
+                    --       , cApp [cVar "@Int.(+)", cVar "m", cLit (TInt 1)]
                     --       ]))))
 
 --        (cApp [cVar "fn", cLit (TInt 5), cLit (TInt 8)]) -- , cLit (TInt 8)])
@@ -598,20 +598,20 @@ fff124 =
         (cLet "snd" (cLam "$p" (cPat (cVar "$p") [ (["(,)", "$f0", "$f1"], cVar "$f1") ]))
 
           --
-          -- let unfolds = 
-          --   f => 
-          --     n => 
-          --       let 
-          --         x =  
+          -- let unfolds =
+          --   f =>
+          --     n =>
+          --       let
+          --         x =
           --           f(n, unfolds(f, fst(x)))
           --         in
           --           snd(x)
           --
-          (cLet "unfolds" 
+          (cLet "unfolds"
               (cLam "$e1"      -- f
                   (cLam "$e0"  -- n
-                      (cLet "x" 
-                          (cApp 
+                      (cLet "x"
+                          (cApp
                               [ cVar "$e1"
                               , cVar "$e0"
                               ,   -- f(n, unfolds(f, fst(x)))
@@ -626,11 +626,11 @@ fff124 =
                           (cApp
                               [ cVar "(,)"
                               -- n + 1
-                              , cApp [cVar "@Int.(+)", cVar "$e8", cLit (TInt 1)] 
+                              , cApp [cVar "@Int.(+)", cVar "$e8", cLit (TInt 1)]
                               -- ( head = () => n, tail = () => Stream(next) )
-                              , cApp 
+                              , cApp
                                   [ cVar "!"
-                                  , cApp 
+                                  , cApp
                                       [ cVar "{head}"
                                       -- , cLam "_" (cVar "$e8")
                                       , cLam "_" (cLit (TInt 123))
@@ -644,10 +644,10 @@ fff124 =
                               ])))
                   (cLet "unStream"
                       (cLam "s" (cPat (cVar "s") [ (["Stream", "s"], cVar "s") ]))
-                      -- 
-                      -- let 
+                      --
+                      -- let
                       --   s =
-                      --     Stream(unfolds(foo, 1)) 
+                      --     Stream(unfolds(foo, 1))
                       --   in
                       --     unStream(s).Head
                       --
@@ -663,19 +663,19 @@ fff124 =
 fff128 =
 
   (cLet "fst"
-      (cLam "$p" (cPat (cVar "$p") 
+      (cLam "$p" (cPat (cVar "$p")
           [ (["(,)", "$f0", "$f1"], cVar "$f0") ]))
       (cLet "snd"
-          (cLam "$p" (cPat (cVar "$p") 
+          (cLam "$p" (cPat (cVar "$p")
               [ (["(,)", "$f0", "$f1"], cVar "$f1") ]))
           (cLet "unStream"
               (cLam "s" (cPat (cVar "s") [ (["Stream", "s"], cVar "s") ]))
 
                   (cLet "woo"
                       (cLam "$e1"   -- next
-                          (cApp 
+                          (cApp
                               [ cVar "!"
-                              , cApp 
+                              , cApp
                                   [ cVar "{head}"
                                   , cLam "_" (cLit (TInt 123))
                                   , cApp
@@ -688,12 +688,12 @@ fff128 =
                           )
 
                   (cLet "foo"
-                      (cLam "_" 
-                          (cApp 
+                      (cLam "_"
+                          (cApp
                           [ cVar "Stream"
-                          , cApp 
+                          , cApp
                               [ cVar "!"
-                              , cApp 
+                              , cApp
                                   [ cVar "{head}"
                                   , cLam "_" (cLit (TInt 123))
                                   , cApp
@@ -711,8 +711,8 @@ fff128 =
                           (cApp [cVar "woo", cLit TUnit])
 
                           --(cLit (TInt 78))
-                          
-                          (cApp 
+
+                          (cApp
                               [ cVar "@(!).getField"
                               , cLit (TSymbol "Tail")
                               , cVar "s" -- cApp [ cVar "unStream", cVar "s" ]
@@ -738,7 +738,7 @@ fff128 =
 --                          , cApp [cVar "@Int.(+)", cVar "$e8", cLit (TInt 1)]
 --                          , cApp
 --                              [ cVar "Stream"
---                              , cApp 
+--                              , cApp
 --                                  [ cVar "!"
 --                                  , cApp
 --                                      [ cVar "{head}"
@@ -758,7 +758,7 @@ fff128 =
 --          -- let
 --          --   foo =
 --          --     n =>
---          --       ( n 
+--          --       ( n
 --          --       , { head = () => n, tail = () => snd (foo (n + 1)) }
 --          --       )
 --          --
@@ -766,10 +766,10 @@ fff128 =
 --              (cLam "$e8"      -- n
 --                  (cApp
 --                      [ cVar "(,)"
---                      -- n 
+--                      -- n
 --                      , cVar "$e8"
 --                      --  { head = () => n, tail = () => snd (foo (n + 1)) }
---                      , cApp 
+--                      , cApp
 --                              [ cVar "!"
 --                              , cApp
 --                                  [ cVar "{head}"
@@ -784,15 +784,15 @@ fff128 =
 --                      ]))
 --
 --                  -- unStream(snd(foo(1)).Tail).Head
---                  (cApp 
+--                  (cApp
 --                      [ cVar "@(!).getField"
 --                      , cLit (TSymbol "Head")
---                      , cApp 
+--                      , cApp
 --                          [ cVar "unStream"
---                          , cApp 
+--                          , cApp
 --                              [ cVar "@(!).getField"
 --                              , cLit (TSymbol "Tail")
---                              , cApp 
+--                              , cApp
 --                                  [ cVar "unStream"
 --                                  , cApp [cVar "snd", (cApp [cVar "foo", cLit (TInt 1)])]
 --                                  ]
@@ -809,7 +809,7 @@ getTail e = cApp [cVar "@(!).getField", cLit (TSymbol "Tail"), e]
 
 fff129 =
     (cLet "myFun"
-        (cLam "n" (cLam "next" (cApp 
+        (cLam "n" (cLam "next" (cApp
             [ cVar "!"
             , cApp
                 [ cVar "{head}", cLam "_" (cVar "n")
@@ -820,13 +820,14 @@ fff129 =
         (cLet "unfoldx"
             (cLam "f" (cLam "n" (cApp [cVar "f", cVar "n", cApp [cVar "unfoldx", cVar "f"]])))
 
-            (getHead 
-                (getTail 
-                    (cApp 
-                        [ cVar "unfoldx"
-                        , cVar "myFun"
-                        , cLit (TInt 1)
-                        ])))))
+            (getHead
+                (getTail
+                    (getTail
+                        (cApp
+                            [ cVar "unfoldx"
+                            , cVar "myFun"
+                            , cLit (TInt 1)
+                            ]))))))
 
 
 
