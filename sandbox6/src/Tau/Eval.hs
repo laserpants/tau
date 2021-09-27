@@ -1,4 +1,5 @@
 {-# LANGUAGE FlexibleContexts           #-}
+{-# LANGUAGE BangPatterns #-}
 {-# LANGUAGE GeneralizedNewtypeDeriving #-}
 {-# LANGUAGE LambdaCase                 #-}
 {-# LANGUAGE OverloadedStrings          #-}
@@ -366,6 +367,16 @@ evalExpr = runEval . eval
 ----    zopp :: m (Value m)
 --    zopp = closure "_" (pure val)
 
+foo 
+  :: (MonadFix m, MonadFail m, MonadReader (ValueEnv m) m)
+  => Name 
+  -> m (Value m)
+  -> m (Value m) 
+  -> m (Value m)
+foo var val x = do
+    a <- val
+    local (\env -> Env.insert var (pure a) env) x
+
 eval
   :: (MonadFix m, MonadFail m, MonadReader (ValueEnv m) m)
   => Core
@@ -378,8 +389,10 @@ eval = cata $ \case
     CLam var e1 -> asks (Closure var e1)
 
     CLet var e1 e2 -> do
-        --val <- mfix (\val -> local (Env.insert var (gork val)) e1)
-        local (Env.insert var e1) e2
+        e <- e1
+        local (Env.insert var (pure e)) e2
+        --val <- mfix (foo var) e1 --(\val -> local (\env -> Env.insert var val env)) e1)
+        --local (Env.insert var (pure val)) e2
 
     CIf e1 e2 e3 -> do
         Value (TBool isTrue) <- e1
@@ -420,6 +433,7 @@ closure :: (MonadReader (ValueEnv m) m) => Name -> m (Value m) -> m (Value m)
 closure var a = pure (Closure var a mempty)
 
 -- TODO: DRY
+-- toLowerInitial
 withInitialLower_ :: Name -> Name
 withInitialLower_ name = toLower (Text.head name) `Text.cons` Text.tail name
 
@@ -433,8 +447,8 @@ evalVar var =
                 closure "?b" $ do
                     env <- ask
                     Data "!" fields <- fromJust (Env.lookup "?b" env)
-                    Closure var body _ <- getField (withInitialLower_ name) fields
-                    local (Env.insert var (pure (Value TUnit))) body
+                    Closure v body cl <- getField (withInitialLower_ name) fields
+                    local (Env.insert v (pure (Value TUnit)) . (cl <>)) body
 
         Just "(#).getField" ->
             closure "?a" $ do
@@ -578,35 +592,33 @@ evalApp
   => m (Value m)
   -> m (Value m)
   -> m (Value m)
-evalApp fun arg = fun >>= \case 
+evalApp fun arg = do
+    val <- arg
+    fun >>= \case 
 
-    Closure var body closure -> do
-        -- local (Env.insert var arg closure <>) body
+        Closure var body closure -> 
+            local (Env.insert var (pure val) . (closure <>)) body
 
-        env <- ask
+    --        env <- ask
+    --
+    --        let env0 = Env.insert var arg (closure <> env)  -- (Env.insert var arg closure <> env) ???
+    --        env1 <- traverse sequence (Env.toList env0)
+    --
+    --        local (const $ Env.fromList (pure <$$> env1)) body
 
-        let env0 = Env.insert var arg (closure <> env)  -- (Env.insert var arg closure <> env) ???
-        env1 <- traverse sequence (Env.toList env0)
+        PrimFun name fun args -> 
+            evalPrim name fun (val:args)
 
-        local (const $ Env.fromList (pure <$$> env1)) body
+        Data "succ" args ->
+            pure $ case val of
+                Value (TNat n) -> Value (TNat (succ n))
+                _              -> Data "succ" (args <> [val])
 
+        Data con args -> 
+            pure (Data con (args <> [val]))
 
-    PrimFun name fun args -> do
-        val <- arg
-        evalPrim name fun (val:args)
-
-    Data "succ" args -> do
-        a <- arg
-        pure $ case a of
-            Value (TNat n) -> Value (TNat (succ n))
-            _              -> Data "succ" (args <> [a])
-
-    Data con args -> do
-        a <- arg
-        pure (Data con (args <> [a]))
-
-    err ->
-        pure err
+        err ->
+            pure err
 
 --evalApp
 --  :: (MonadFail m, MonadReader (ValueEnv m) m)

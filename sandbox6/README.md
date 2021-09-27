@@ -148,16 +148,18 @@ headSize : (Ord a) => a -> Option string
 
 
 
+type Size = Small | Medium | Large
+
 
 headSize
   : (Ord a)
   => a
-  -> Option string
+  -> Option Size
 headSize
   | x :: xs
-      when(x > 100) = Some("L")
-    , when(x > 10)  = Some("M")
-    , otherwise     = Some("S")
+      when(x > 100) = Some(Large)
+    , when(x > 10)  = Some(Medium)
+    , otherwise     = Some(Small)
   | _               = None
 
 
@@ -181,7 +183,7 @@ map(f, xs) { (Functor f) : (a -> b) -> f a -> f b } =
 
 
 -- proposal:
-map(f, xs) oftype (Functor f) : (a -> b) -> f a -> f b =
+map(f, xs) of (Functor f) : (a -> b) -> f a -> f b =
   fold xs as
     | []           = []
     | (y :: _), ys = f(y) :: ys

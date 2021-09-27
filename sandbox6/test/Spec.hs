@@ -49,6 +49,7 @@ main =
         describe "Prettyprinters" testPrettyprinters
         describe "Flight"         testFlight
         describe "Parse"          testParse
+        describe "Eval"           testEval
 
 _a :: Type
 _a = tVar kTyp "a"
@@ -2170,6 +2171,17 @@ testParse = do
         succeedParse topdeclParser
             "f | (5, y) = y | _ = x"
             (Top () (BPat () (varPat () "f")) (funExpr () [ Clause () [litPat () (TBig 5), varPat () "y"] [Choice [] (varExpr () "y")], Clause () [anyPat ()] [Choice [] (varExpr () "x")]]))
+
+testEval :: SpecWith ()
+testEval = 
+    describe "• Eval" $ do
+        it ("✔ TODO") $
+            Just (Value (TInt 98)) == evalExpr (cLet "foo" (cLam "x" (cLit (TInt 98))) (cLet "s" (cApp [cVar "foo", cLit TUnit]) (cVar "s"))) mempty
+
+        it ("✔ TODO") $
+            Just (Value (TInt 13)) == evalExpr (cLet "fn" (cLam "n" (cLam "m" (cIf (cApp [cVar "@Int.(==)", cVar "n", cLit (TInt 0)]) (cVar "m") (cApp [ cVar "fn" , cApp [cVar "@Int.(-)", cVar "n", cLit (TInt 1)] , cApp [cVar "@Int.(+)", cVar "m", cLit (TInt 1)] ])))) (cApp [cVar "fn", cLit (TInt 5), cLit (TInt 8)])) mempty
+
+
 
 
 -- a.foo               ==> (.) foo a       ==> foo(a)

@@ -7,6 +7,7 @@
 {-# LANGUAGE DeriveFunctor #-}
 module Main where
 
+import Foo
 import Control.Arrow ((<<<))
 import Control.Monad.Except
 import Control.Monad.Reader
@@ -593,14 +594,9 @@ fff123 =
 
 
 fff124 =
-  cLet "fst"
-      (cLam "$p" (cPat (cVar "$p") 
-          [ (["(,)", "$f0", "$f1"], cVar "$f0")
-          ]))
-      (cLet "snd"
-          (cLam "$p" (cPat (cVar "$p") 
-              [ (["(,)", "$f0", "$f1"], cVar "$f1")
-              ]))
+    cLet "fst" (cLam "$p" (cPat (cVar "$p") [ (["(,)", "$f0", "$f1"], cVar "$f0") ]))
+        (cLet "snd" (cLam "$p" (cPat (cVar "$p") [ (["(,)", "$f0", "$f1"], cVar "$f1") ]))
+
           --
           -- let unfolds = 
           --   f => 
@@ -615,8 +611,13 @@ fff124 =
               (cLam "$e1"      -- f
                   (cLam "$e0"  -- n
                       (cLet "x" 
-                          (cApp [cVar "$e1", cVar "$e0",   -- f(n, unfolds(f, fst(x)))
-                              cApp [cVar "unfolds", cVar "$e1", cApp [cVar "fst", cVar "x"]]])
+                          (cApp 
+                              [ cVar "$e1"
+                              , cVar "$e0"
+                              ,   -- f(n, unfolds(f, fst(x)))
+                                cLit (TInt 77) -- cApp [cVar "unfolds", cVar "$e1", cApp [cVar "fst", cVar "x"]]
+                              ]
+                          )
                           (cApp [cVar "snd", cVar "x"])
                           )))
               (cLet "foo"
@@ -635,7 +636,7 @@ fff124 =
                                       , cLam "_" (cLit (TInt 123))
                                       , cApp
                                           [ cVar "{tail}"
-                                          , cLam "_" (cApp [cVar "Stream", cVar "$e7"])
+                                          , cLam "_" (cApp []) -- cVar "Stream", cVar "$e7"])
                                           , (cVar "{}")
                                           ]
                                       ]
@@ -654,7 +655,7 @@ fff124 =
                           -- Stream(unfolds(foo, 1))
                           (cApp [cVar "Stream", cApp [cVar "unfolds", cVar "foo", cLit (TInt 1)]])
                           -- unStream(s).Head
-                          (cApp [cVar "@(!).getField", cLit (TSymbol "Head"), cApp [cVar "unStream", cVar "s"]]))
+                          (cLit (TInt 123))) -- (cApp [cVar "@(!).getField", cLit (TSymbol "Head"), cApp [cVar "unStream", cVar "s"]]))
                   )
               )))
 
@@ -663,51 +664,169 @@ fff128 =
 
   (cLet "fst"
       (cLam "$p" (cPat (cVar "$p") 
-          [ (["(,)", "$f0", "$f1"], cVar "$f0")
-          ]))
+          [ (["(,)", "$f0", "$f1"], cVar "$f0") ]))
       (cLet "snd"
           (cLam "$p" (cPat (cVar "$p") 
-              [ (["(,)", "$f0", "$f1"], cVar "$f1")
-              ]))
+              [ (["(,)", "$f0", "$f1"], cVar "$f1") ]))
+          (cLet "unStream"
+              (cLam "s" (cPat (cVar "s") [ (["Stream", "s"], cVar "s") ]))
 
-          --
-          -- let
-          --   foo =
-          --     n =>
-          --       ( n + 1
-          --       , { head = () => n, tail = () => foo (n + 1) }
-          --       )
-          --
-          (cLet "foo"
-              (cLam "$e8"      -- n
-                  (cApp
-                      [ cVar "(,)"
-                      -- n + 1
-                      , cApp [cVar "@Int.(+)", cVar "$e8", cLit (TInt 1)] 
-                      -- { head = () => n, tail = () => Stream(next) }
-                      , cApp 
-                          [ cVar "#"
+                  (cLet "woo"
+                      (cLam "$e1"   -- next
+                          (cApp 
+                              [ cVar "!"
+                              , cApp 
+                                  [ cVar "{head}"
+                                  , cLam "_" (cLit (TInt 123))
+                                  , cApp
+                                      [ cVar "{tail}"
+                                      , cLam "_" (cVar "$e1") -- (cApp [cVar "Stream", cVar "$e7"])
+                                      , (cVar "{}")
+                                      ]
+                                  ]
+                              ])
+                          )
+
+                  (cLet "foo"
+                      (cLam "_" 
+                          (cApp 
+                          [ cVar "Stream"
                           , cApp 
-                              [ cVar "{head}"
-                              , cLam "_" (cVar "$e8")
-                              , cApp
-                                  [ cVar "{tail}"
-                                  , cLam "_" (cApp [cVar "foo", cApp [cVar "@Int.(+)", cVar "$e8", cLit (TInt 1)]])
-                                  , (cVar "{}")
+                              [ cVar "!"
+                              , cApp 
+                                  [ cVar "{head}"
+                                  , cLam "_" (cLit (TInt 123))
+                                  , cApp
+                                      [ cVar "{tail}"
+                                      , cLam "_" (cApp [cVar "foo", cLit TUnit]) -- (cApp [cVar "Stream", cVar "$e7"])
+                                      , (cVar "{}")
+                                      ]
                                   ]
                               ]
-                          ]
-                      ]))
+                          ])
+                      )
 
-                  (cApp 
-                      [ cVar "@(#).getField"
-                      , cLit (TSymbol "tail")
-                      , (cApp [cVar "snd", (cApp [cVar "foo", cLit (TInt 1)])])
-                      , (cLit TUnit)
-                      ]))
+                      (cLet "s"
 
-          ))
+                          (cApp [cVar "woo", cLit TUnit])
 
+                          --(cLit (TInt 78))
+                          
+                          (cApp 
+                              [ cVar "@(!).getField"
+                              , cLit (TSymbol "Tail")
+                              , cVar "s" -- cApp [ cVar "unStream", cVar "s" ]
+                              ])
+                        )
+              ) ) )) )
+
+--          --
+--          -- let
+--          --   zoo =
+--          --     n =>
+--          --       next =>
+--          --         ( n + 1
+--          --         , Stream { head = () => n, tail = () => next () }
+--          --         )
+--          --
+--          (cLet "zoo"
+--              (cLam "$e8"        -- n
+--                  (cLam "$e9"    -- next
+--                      (cApp
+--                          [ cVar "(,)"
+--                          -- n + 1
+--                          , cApp [cVar "@Int.(+)", cVar "$e8", cLit (TInt 1)]
+--                          , cApp
+--                              [ cVar "Stream"
+--                              , cApp 
+--                                  [ cVar "!"
+--                                  , cApp
+--                                      [ cVar "{head}"
+--                                      , cLam "_" (cVar "$e8")
+--                                      , cApp
+--                                          [ cVar "{tail}"
+--                                          , cLam "_" (cApp [cVar "next", cLit TUnit])
+--                                          , cVar "{}"
+--                                          ]
+--                                      ]
+--                                  ]
+--                              ]
+--                          ])))
+--                undefined))))
+--
+--          --
+--          -- let
+--          --   foo =
+--          --     n =>
+--          --       ( n 
+--          --       , { head = () => n, tail = () => snd (foo (n + 1)) }
+--          --       )
+--          --
+--          (cLet "foo"
+--              (cLam "$e8"      -- n
+--                  (cApp
+--                      [ cVar "(,)"
+--                      -- n 
+--                      , cVar "$e8"
+--                      --  { head = () => n, tail = () => snd (foo (n + 1)) }
+--                      , cApp 
+--                              [ cVar "!"
+--                              , cApp
+--                                  [ cVar "{head}"
+--                                  , cLam "_" (cVar "$e8")
+--                                  , cApp
+--                                      [ cVar "{tail}"
+--                                      , cLam "_" (cApp [cVar "snd", cApp [cVar "foo", cApp [cVar "@Int.(+)", cVar "$e8", cLit (TInt 1)]]])
+--                                      , cVar "{}"
+--                                      ]
+--                                  ]
+--                          ]
+--                      ]))
+--
+--                  -- unStream(snd(foo(1)).Tail).Head
+--                  (cApp 
+--                      [ cVar "@(!).getField"
+--                      , cLit (TSymbol "Head")
+--                      , cApp 
+--                          [ cVar "unStream"
+--                          , cApp 
+--                              [ cVar "@(!).getField"
+--                              , cLit (TSymbol "Tail")
+--                              , cApp 
+--                                  [ cVar "unStream"
+--                                  , cApp [cVar "snd", (cApp [cVar "foo", cLit (TInt 1)])]
+--                                  ]
+--        --                      , (cLit TUnit)
+--                              ]
+--                          ]
+--                      ]))
+--
+--          ))))
+
+
+getHead e = cApp [cVar "@(!).getField", cLit (TSymbol "Head"), e]
+getTail e = cApp [cVar "@(!).getField", cLit (TSymbol "Tail"), e]
+
+fff129 =
+    (cLet "myFun"
+        (cLam "n" (cLam "next" (cApp 
+            [ cVar "!"
+            , cApp
+                [ cVar "{head}", cLam "_" (cVar "n")
+                , cApp
+                    [ cVar "{tail}", cLam "_" (cApp [cVar "next", cApp [cVar "@Int.(+)", cVar "n", cLit (TInt 1)]])
+                    , cVar "{}"
+                    ] ] ])))
+        (cLet "unfoldx"
+            (cLam "f" (cLam "n" (cApp [cVar "f", cVar "n", cApp [cVar "unfoldx", cVar "f"]])))
+
+            (getHead 
+                (getTail 
+                    (cApp 
+                        [ cVar "unfoldx"
+                        , cVar "myFun"
+                        , cLit (TInt 1)
+                        ])))))
 
 
 
