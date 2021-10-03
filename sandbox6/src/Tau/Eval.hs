@@ -480,6 +480,12 @@ evalVar var =
                 Value (TNat n) <- fromJust (Env.lookup "?a" env)
                 pure (Value (TBig n))
 
+        _ | "succ" == var ->
+            closure "?a" $ do
+                env <- ask
+                Value (TNat n) <- fromJust (Env.lookup "?a" env)
+                pure (Value (TNat (succ n)))
+
         _ | "zero" == var ->
             pure (Value (TNat 0))
 
@@ -609,10 +615,10 @@ evalApp fun arg = do
         PrimFun name fun args -> 
             evalPrim name fun (val:args)
 
-        Data "succ" args ->
-            pure $ case val of
-                Value (TNat n) -> Value (TNat (succ n))
-                _              -> Data "succ" (args <> [val])
+--        Data "succ" args ->
+--            pure $ case val of
+--                Value (TNat n) -> Value (TNat (succ n))
+--                _              -> Data "succ" (args <> [val])
 
         Data con args -> 
             pure (Data con (args <> [val]))

@@ -893,6 +893,9 @@ heads (Stream (StreamCodata { _head = h })) = h ()
 --  go n = StreamF { _head = 1, _tail = undefined }
 
 
+xx1 = cApp [cVar "succ", cLit (TInt 1)]
+--xx1 = cApp [cVar "succ", cVar "zero"]
+
 
 main :: IO ()
 main = do

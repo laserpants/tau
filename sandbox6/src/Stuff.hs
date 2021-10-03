@@ -1170,38 +1170,38 @@ test5expr =
 --
 --
 
---    (letExpr () (BFun () "fst" [tuplePat () [varPat () "x", anyPat ()]]) (varExpr () "x")
---        (letExpr () (BFun () "snd" [tuplePat () [anyPat (), varPat () "x"]]) (varExpr () "x")
---            (fixExpr () "unfolds"
---                (lamExpr () [varPat () "f", varPat () "n"]
---                    (fixExpr () "x"
---                        (appExpr () [varExpr () "f", varExpr () "n", appExpr () [varExpr () "unfolds", varExpr () "f", appExpr () [varExpr () "fst", varExpr () "x"]]])
---                        (appExpr () [varExpr () "snd", varExpr () "x"])))
---                    --(letExpr ()
---                    --    (BPat () (tuplePat () [varPat () "m", varPat () "s"]))
---                    --    (appExpr () [varExpr () "f", varExpr () "n", appExpr () [varExpr () "unfolds", varExpr () "f", varExpr () "m"]])
---                    --    (varExpr () "s")))
---                (letExpr ()
---                    (BFun () "foo" [varPat () "n", varPat () "next"])
---                    (tupleExpr ()
---                        [ op2Expr () (OAdd ()) (varExpr () "n") (litExpr () (TBig 1))
---                        , codataExpr () (rowExpr () "head" (lazy (varExpr () "n")) (rowExpr () "tail" (lazy (conExpr () "Stream" [varExpr () "next"])) (conExpr () "{}" [])))
---                        ])
---                    (letExpr () (BFun () "unStream" [conPat () "Stream" [varPat () "s"]])
---                    (varExpr () "s")
---                    (letExpr () (BPat () (varPat () "s"))
---                        --(conExpr () "Stream" [codataExpr () (rowExpr () "head" (lazy (annExpr tInt (litExpr () (TBig 1)))) (rowExpr () "tail" (lazy (conExpr () "Stream" [varExpr () "next"])) (conExpr () "{}" [])))])
---                        (conExpr () "Stream" [appExpr () [varExpr () "unfolds", varExpr () "foo", litExpr () (TBig 1)]])
---                        (op2Expr () (OField ()) (symbol () "Head") (appExpr () [varExpr () "unStream", varExpr () "s"]))))))))
+    (letExpr () (BFun () "fst" [tuplePat () [varPat () "x", anyPat ()]]) (varExpr () "x")
+        (letExpr () (BFun () "snd" [tuplePat () [anyPat (), varPat () "x"]]) (varExpr () "x")
+            (fixExpr () "unfolds"
+                (lamExpr () [varPat () "f", varPat () "n"]
+                    (fixExpr () "x"
+                        (appExpr () [varExpr () "f", varExpr () "n", appExpr () [varExpr () "unfolds", varExpr () "f", appExpr () [varExpr () "fst", varExpr () "x"]]])
+                        (appExpr () [varExpr () "snd", varExpr () "x"])))
+                    --(letExpr ()
+                    --    (BPat () (tuplePat () [varPat () "m", varPat () "s"]))
+                    --    (appExpr () [varExpr () "f", varExpr () "n", appExpr () [varExpr () "unfolds", varExpr () "f", varExpr () "m"]])
+                    --    (varExpr () "s")))
+                (letExpr ()
+                    (BFun () "foo" [varPat () "n", varPat () "next"])
+                    (tupleExpr ()
+                        [ op2Expr () (OAdd ()) (varExpr () "n") (litExpr () (TBig 1))
+                        , codataExpr () (rowExpr () "head" (lazy (varExpr () "n")) (rowExpr () "tail" (lazy (conExpr () "Stream" [varExpr () "next"])) (conExpr () "{}" [])))
+                        ])
+                    (letExpr () (BFun () "unStream" [conPat () "Stream" [varPat () "s"]])
+                    (varExpr () "s")
+                    (letExpr () (BPat () (varPat () "s"))
+                        --(conExpr () "Stream" [codataExpr () (rowExpr () "head" (lazy (annExpr tInt (litExpr () (TBig 1)))) (rowExpr () "tail" (lazy (conExpr () "Stream" [varExpr () "next"])) (conExpr () "{}" [])))])
+                        (conExpr () "Stream" [appExpr () [varExpr () "unfolds", varExpr () "foo", litExpr () (TBig 1)]])
+                        (op2Expr () (OField ()) (symbol () "Head") (appExpr () [varExpr () "unStream", varExpr () "s"]))))))))
 
 
-    (appExpr () 
-        [ funExpr () 
-            [ Clause () [annPat tInt (litPat () (TBig 5)), annPat tInt (varPat () "y")] [Choice [] (varExpr () "y")] 
-            , Clause () [anyPat (), anyPat ()] [Choice [] (litExpr () (TBig 9))] ]
-        , litExpr () (TBig 3)
-        , litExpr () (TBig 8) 
-        ])
+--    (appExpr () 
+--        [ funExpr () 
+--            [ Clause () [annPat tInt (litPat () (TBig 5)), annPat tInt (varPat () "y")] [Choice [] (varExpr () "y")] 
+--            , Clause () [anyPat (), anyPat ()] [Choice [] (litExpr () (TBig 9))] ]
+--        , litExpr () (TBig 3)
+--        , litExpr () (TBig 8) 
+--        ])
 
 
 --    (letExpr () (BFun () "fst" [tuplePat () [varPat () "x", anyPat ()]]) (varExpr () "x")
