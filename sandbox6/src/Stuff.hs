@@ -277,9 +277,15 @@ inferExprType = cata $ \case
         b <- expr2
         ty <- applySubsTo (typeOf b)
         case op2 of
-            ODot _ | isRecordType ty   -> inferFieldOpType t (fromJust (unpackRecordType ty)) a b
-            ODot _                     -> inferDotOpType t a b
-            OField _ | isCodataType ty -> inferFieldOpType t (makeFieldsStrict (fromJust (unpackCodataType ty))) a b
+            ODot _ | isRecordType ty ->
+                inferFieldOpType t (fromJust (unpackRecordType ty)) a b
+
+            ODot _ ->
+                inferDotOpType t a b
+
+            OField _ | isCodataType ty ->
+                inferFieldOpType t (makeFieldsStrict (fromJust (unpackCodataType ty))) a b
+
             _ -> do
                 (op, ps) <- inferOpType (typeInfo <$> op2) (op2Scheme op2)
                 ty <- fresh
@@ -1194,18 +1200,18 @@ test5expr =
                         (conExpr () "Stream" [appExpr () [varExpr () "unfolds", varExpr () "foo", litExpr () (TBig 1)]])
                         --(op2Expr () (OField ()) (symbol () "Head") (appExpr () [varExpr () "unStream", varExpr () "s"]))))))))
                         (op2Expr () (OField ()) (symbol () "Head")
-                            (appExpr () 
+                            (appExpr ()
                                 [ varExpr () "unStream"
                                 , op2Expr () (OField ()) (symbol () "Tail") (appExpr () [varExpr () "unStream", varExpr () "s"])
                                 ])))))))
 
 
---    (appExpr () 
---        [ funExpr () 
---            [ Clause () [annPat tInt (litPat () (TBig 5)), annPat tInt (varPat () "y")] [Choice [] (varExpr () "y")] 
+--    (appExpr ()
+--        [ funExpr ()
+--            [ Clause () [annPat tInt (litPat () (TBig 5)), annPat tInt (varPat () "y")] [Choice [] (varExpr () "y")]
 --            , Clause () [anyPat (), anyPat ()] [Choice [] (litExpr () (TBig 9))] ]
 --        , litExpr () (TBig 3)
---        , litExpr () (TBig 8) 
+--        , litExpr () (TBig 8)
 --        ])
 
 
@@ -1213,7 +1219,7 @@ test5expr =
 --
 ----    (letExpr () (BPat () (varPat () "fst"))
 --
-----        (lamExpr () 
+----        (lamExpr ()
 ----            [tuplePat () [varPat () "x", anyPat ()]] (varExpr () "x"))
 --
 --                (appExpr () [varExpr () "fst", tupleExpr () [litExpr () TUnit, litExpr () TUnit]]))

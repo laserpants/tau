@@ -1458,7 +1458,7 @@ testFlight = do
                             (appExpr () [varExpr () "f", varExpr () "n", lamExpr () [anyPat ()] (appExpr () [varExpr () "unfolds", varExpr () "f", appExpr () [varExpr () "fst", varExpr () "x"]])])
                             (appExpr () [varExpr () "snd", varExpr () "x"])))
                     (letExpr ()
-                        (BFun () "foo" [varPat () "n", varPat () "next"])
+                        (BFun () "worker" [varPat () "n", varPat () "next"])
                         (tupleExpr ()
                             [ op2Expr () (OAdd ()) (varExpr () "n") (litExpr () (TBig 1))
                             , codataExpr () (rowExpr () "head" (lazy (varExpr () "n")) (rowExpr () "tail" (lazy (conExpr () "Stream" [appExpr () [varExpr () "next", litExpr () TUnit]])) (conExpr () "{}" [])))
@@ -1466,7 +1466,7 @@ testFlight = do
                         (letExpr () (BFun () "unStream" [conPat () "Stream" [varPat () "s"]])
                         (varExpr () "s")
                         (letExpr () (BPat () (varPat () "s"))
-                            (conExpr () "Stream" [appExpr () [varExpr () "unfolds", varExpr () "foo", litExpr () (TBig 1)]])
+                            (conExpr () "Stream" [appExpr () [varExpr () "unfolds", varExpr () "worker", litExpr () (TBig 1)]])
                             (op2Expr () (OField ()) (symbol () "Head")
                                 (appExpr ()
                                     [ varExpr () "unStream"
