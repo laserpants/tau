@@ -1150,7 +1150,7 @@ test5expr =
 --             (f, n) =>
 --               fix
 --                 x =
---                   f(n, unfolds(f, fst(x)))
+--                   f(n, () => unfolds(f, fst(x)))
 --                 in
 --                   snd(x)
 --           in
@@ -1170,12 +1170,12 @@ test5expr =
 --
 --
 
-    (letExpr () (BFun () "fst" [tuplePat () [varPat () "x", anyPat ()]]) (varExpr () "x")
+    letExpr () (BFun () "fst" [tuplePat () [varPat () "x", anyPat ()]]) (varExpr () "x")
         (letExpr () (BFun () "snd" [tuplePat () [anyPat (), varPat () "x"]]) (varExpr () "x")
             (fixExpr () "unfolds"
                 (lamExpr () [varPat () "f", varPat () "n"]
                     (fixExpr () "x"
-                        (appExpr () [varExpr () "f", varExpr () "n", appExpr () [varExpr () "unfolds", varExpr () "f", appExpr () [varExpr () "fst", varExpr () "x"]]])
+                        (appExpr () [varExpr () "f", varExpr () "n", lamExpr () [anyPat ()] (appExpr () [varExpr () "unfolds", varExpr () "f", appExpr () [varExpr () "fst", varExpr () "x"]])])
                         (appExpr () [varExpr () "snd", varExpr () "x"])))
                     --(letExpr ()
                     --    (BPat () (tuplePat () [varPat () "m", varPat () "s"]))
@@ -1185,14 +1185,19 @@ test5expr =
                     (BFun () "foo" [varPat () "n", varPat () "next"])
                     (tupleExpr ()
                         [ op2Expr () (OAdd ()) (varExpr () "n") (litExpr () (TBig 1))
-                        , codataExpr () (rowExpr () "head" (lazy (varExpr () "n")) (rowExpr () "tail" (lazy (conExpr () "Stream" [varExpr () "next"])) (conExpr () "{}" [])))
+                        , codataExpr () (rowExpr () "head" (lazy (varExpr () "n")) (rowExpr () "tail" (lazy (conExpr () "Stream" [appExpr () [varExpr () "next", litExpr () TUnit]])) (conExpr () "{}" [])))
                         ])
                     (letExpr () (BFun () "unStream" [conPat () "Stream" [varPat () "s"]])
                     (varExpr () "s")
                     (letExpr () (BPat () (varPat () "s"))
                         --(conExpr () "Stream" [codataExpr () (rowExpr () "head" (lazy (annExpr tInt (litExpr () (TBig 1)))) (rowExpr () "tail" (lazy (conExpr () "Stream" [varExpr () "next"])) (conExpr () "{}" [])))])
                         (conExpr () "Stream" [appExpr () [varExpr () "unfolds", varExpr () "foo", litExpr () (TBig 1)]])
-                        (op2Expr () (OField ()) (symbol () "Head") (appExpr () [varExpr () "unStream", varExpr () "s"]))))))))
+                        --(op2Expr () (OField ()) (symbol () "Head") (appExpr () [varExpr () "unStream", varExpr () "s"]))))))))
+                        (op2Expr () (OField ()) (symbol () "Head")
+                            (appExpr () 
+                                [ varExpr () "unStream"
+                                , op2Expr () (OField ()) (symbol () "Tail") (appExpr () [varExpr () "unStream", varExpr () "s"])
+                                ])))))))
 
 
 --    (appExpr () 

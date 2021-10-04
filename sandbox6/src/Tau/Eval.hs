@@ -389,7 +389,8 @@ eval = cata $ \case
     CLam var e1 -> asks (Closure var e1)
 
     CLet var e1 e2 -> do
-        e <- e1
+        --e <- e1
+        e <- mfix (\val -> local (Env.insert var (pure val)) e1)
         local (Env.insert var (pure e)) e2
         --val <- mfix (foo var) e1 --(\val -> local (\env -> Env.insert var val env)) e1)
         --local (Env.insert var (pure val)) e2

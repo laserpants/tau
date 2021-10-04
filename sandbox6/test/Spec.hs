@@ -1450,6 +1450,31 @@ testFlight = do
 ----        (varExpr () "f")
 
     succeedRunExpr
+        (letExpr () (BFun () "fst" [tuplePat () [varPat () "x", anyPat ()]]) (varExpr () "x")
+            (letExpr () (BFun () "snd" [tuplePat () [anyPat (), varPat () "x"]]) (varExpr () "x")
+                (fixExpr () "unfolds"
+                    (lamExpr () [varPat () "f", varPat () "n"]
+                        (fixExpr () "x"
+                            (appExpr () [varExpr () "f", varExpr () "n", lamExpr () [anyPat ()] (appExpr () [varExpr () "unfolds", varExpr () "f", appExpr () [varExpr () "fst", varExpr () "x"]])])
+                            (appExpr () [varExpr () "snd", varExpr () "x"])))
+                    (letExpr ()
+                        (BFun () "foo" [varPat () "n", varPat () "next"])
+                        (tupleExpr ()
+                            [ op2Expr () (OAdd ()) (varExpr () "n") (litExpr () (TBig 1))
+                            , codataExpr () (rowExpr () "head" (lazy (varExpr () "n")) (rowExpr () "tail" (lazy (conExpr () "Stream" [appExpr () [varExpr () "next", litExpr () TUnit]])) (conExpr () "{}" [])))
+                            ])
+                        (letExpr () (BFun () "unStream" [conPat () "Stream" [varPat () "s"]])
+                        (varExpr () "s")
+                        (letExpr () (BPat () (varPat () "s"))
+                            (conExpr () "Stream" [appExpr () [varExpr () "unfolds", varExpr () "foo", litExpr () (TBig 1)]])
+                            (op2Expr () (OField ()) (symbol () "Head")
+                                (appExpr ()
+                                    [ varExpr () "unStream"
+                                    , op2Expr () (OField ()) (symbol () "Tail") (appExpr () [varExpr () "unStream", varExpr () "s"])
+                                    ]))))))))
+        (Just (Value (TInt 2)))
+
+    succeedRunExpr
         (op2Expr () (OMul ()) (op2Expr () (OAdd ()) (conExpr () "succ" [litExpr () (TBig 5)]) (litExpr () (TBig 3))) (conExpr () "zero" []))
         (Just (Value (TNat 0)))
 
@@ -2173,7 +2198,7 @@ testParse = do
             (Top () (BPat () (varPat () "f")) (funExpr () [ Clause () [litPat () (TBig 5), varPat () "y"] [Choice [] (varExpr () "y")], Clause () [anyPat ()] [Choice [] (varExpr () "x")]]))
 
 testEval :: SpecWith ()
-testEval = 
+testEval =
     describe "• Eval" $ do
         it ("✔ TODO") $
             Just (Value (TInt 98)) == evalExpr (cLet "foo" (cLam "x" (cLit (TInt 98))) (cLet "s" (cApp [cVar "foo", cLit TUnit]) (cVar "s"))) mempty
@@ -2183,7 +2208,7 @@ testEval =
 
         it ("✔ TODO") $
             Just (Value (TInt 3)) == evalExpr (cLet "myFun" (cLam "n" (cLam "next" (cApp [ cVar "!" , cApp [ cVar "{head}", cLam "_" (cVar "n") , cApp [ cVar "{tail}", cLam "_" (cApp [cVar "next", cApp [cVar "@Int.(+)", cVar "n", cLit (TInt 1)]]) , cVar "{}" ] ] ]))) (cLet "unfoldx" (cLam "f" (cLam "n" (cApp [cVar "f", cVar "n", cApp [cVar "unfoldx", cVar "f"]]))) (getHead (getTail (getTail (cApp [ cVar "unfoldx" , cVar "myFun" , cLit (TInt 1) ])))))) mempty
-    
+
 getHead e = cApp [cVar "@(!).getField", cLit (TSymbol "Head"), e]
 getTail e = cApp [cVar "@(!).getField", cLit (TSymbol "Tail"), e]
 
